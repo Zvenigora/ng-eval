@@ -1,0 +1,26 @@
+Zvenigora libs
+
+1. Create empty workspace
+
+npx create-nx-workspace
+
+
+√ Where would you like to create your workspace? · zvenigora
+√ Which stack do you want to use? · none
+√ Package-based monorepo, integrated monorepo, or standalone project? · integrated
+√ Enable distributed caching to make your CI faster · No
+
+1.1 Start new branch 0.1.x
+
+1.2 Add Angular plugin
+
+npm install -D @nx/angular
+
+2. Add publishable Angular library
+
+	eval-core
+
+2.1 Add Acorn
+
+npm install acorn
+
