@@ -24,3 +24,14 @@ npm install -D @nx/angular
 
 npm install acorn
 
+3. Add services
+
+	--npx nx generate @schematics/angular:interface expression --project=eval-core --path=modules/eval-core/src/lib/interfaces --no-interactive
+
+	npx nx generate @schematics/angular:service base-eval --project=eval-core --path=modules/eval-core/src/lib/actual/services --no-interactive
+	npx nx generate @schematics/angular:service parser    --project=eval-core --path=modules/eval-core/src/lib/actual/services --no-interactive
+	npx nx generate @schematics/angular:service eval      --project=eval-core --path=modules/eval-core/src/lib/actual/services --no-interactive
+	npx nx generate @schematics/angular:service compiler  --project=eval-core --path=modules/eval-core/src/lib/actual/services --no-interactive
+	--npx nx generate @schematics/angular:service validator --project=eval-core --path=modules/eval-core/src/lib/services --no-interactive
+	--npx nx generate @schematics/angular:service evaluator --project=eval-core --path=modules/eval-core/src/lib/services --no-interactive
+
