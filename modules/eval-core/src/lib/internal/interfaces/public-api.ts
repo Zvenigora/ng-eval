@@ -86,4 +86,6 @@ export {
   version
 } from './parser-types';
 
-export {ParserOptions, ExpressionTypes} from './parser-types';
+export { ParserOptions, ExpressionTypes } from './parser-types';
+
+export { RegistryType } from './scope-type';

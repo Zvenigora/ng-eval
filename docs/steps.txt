@@ -66,3 +66,9 @@ ToDo:
   - add OpenTelemetry
   - add OpenCensus
   - add OpenMetrics
+
+5. Add registry
+
+  --npx nx generate @schematics/angular:library registry --directory=eval-core --importPath=@zvenigora/eval-core/registry --no-interactive
+
+  nx g @schematics/angular:class --name=case-insensitive-registry --project=eval-core --path=modules/eval-core/src/lib/internal/classes
