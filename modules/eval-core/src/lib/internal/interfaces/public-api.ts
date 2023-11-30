@@ -88,4 +88,4 @@ export {
 
 export { ParserOptions, ExpressionTypes } from './parser-types';
 
-export { RegistryType } from './scope-type';
+export { RegistryType } from './registry-type';

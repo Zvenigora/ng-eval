@@ -6,15 +6,16 @@ import { RegistryType } from "../interfaces";
 /**
  * Represents a case-insensitive registry that maps keys to values.
  */
-export class CaseInsensitiveRegistry implements RegistryType {
-  private readonly registry = new Map<string, string>();
-  private keysMap = new Map<string, string>();
+export class CaseInsensitiveRegistry<TKey, TValue> implements RegistryType<TKey, TValue> {
+
+  private readonly registry: Map<TKey, TValue> = new Map();
+  private keysMap = new Map<TKey, TKey>();
 
   /**
    * Creates a new instance of CaseInsensitiveRegistry.
    * @param entries - Optional initial entries to populate the registry.
    */
-  constructor(entries?: readonly (readonly [string, string])[] | null) {
+  constructor(entries?: readonly (readonly [TKey, TValue])[] | null) {
     if (entries) {
       for (const [key, value] of entries) {
         this.set(key, value);
@@ -27,10 +28,10 @@ export class CaseInsensitiveRegistry implements RegistryType {
    * @param object - The object containing key-value pairs.
    * @returns A new CaseInsensitiveRegistry instance.
    */
-  public static fromObject(object: Record<string, string>): CaseInsensitiveRegistry {
-    const registry = new CaseInsensitiveRegistry();
+  public static fromObject<TKey extends string | number | symbol, TValue>(object: Record<TKey, TValue>): RegistryType<TKey, TValue> {
+    const registry = new CaseInsensitiveRegistry<TKey, TValue>();
     for (const [key, value] of Object.entries(object)) {
-      registry.set(key, value);
+      registry.set(key as TKey, value as TValue);
     }
     return registry;
   }
@@ -40,8 +41,8 @@ export class CaseInsensitiveRegistry implements RegistryType {
    * @param key - The key.
    * @returns The value associated with the key, or undefined if the key is not found.
    */
-    public get(key: string): string | undefined {
-      return this.registry.get(key.toLowerCase());
+    public get(key: TKey): TValue | undefined {
+      return this.registry.get(this.getKey(key));
     }
 
   /**
@@ -49,10 +50,10 @@ export class CaseInsensitiveRegistry implements RegistryType {
    * @param key - The key.
    * @param value - The value.
    */
-  public set(key: string, value: string): void {
-    const keyLowerCase = key.toLowerCase();
-    this.registry.set(keyLowerCase, value);
-    this.keysMap.set(keyLowerCase, key);
+  public set(key: TKey, value: TValue): void {
+    const newKey = this.getKey(key);
+    this.registry.set(newKey, value);
+    this.keysMap.set(newKey, key);
   }
 
   /**
@@ -60,8 +61,8 @@ export class CaseInsensitiveRegistry implements RegistryType {
    * @param key - The key.
    * @returns True if the key is found, false otherwise.
    */
-  public has(key: string): boolean {
-    return this.registry.has(key.toLowerCase());
+  public has(key: TKey): boolean {
+    return this.registry.has(this.getKey(key));
   }
 
   /**
@@ -69,10 +70,10 @@ export class CaseInsensitiveRegistry implements RegistryType {
    * @param key - The key.
    * @returns True if the key-value pair is deleted, false if the key is not found.
    */
-  public delete(key: string): boolean {
-    const keyLowerCase = key.toLowerCase();
-    this.keysMap.delete(keyLowerCase);
-    return this.registry.delete(keyLowerCase);
+  public delete(key: TKey): boolean {
+    const newKey = this.getKey(key);
+    this.keysMap.delete(newKey);
+    return this.registry.delete(newKey);
   }
 
   /**
@@ -93,25 +94,24 @@ export class CaseInsensitiveRegistry implements RegistryType {
   /**
    * Gets an iterator for the keys in the registry.
    */
-  public get keys(): IterableIterator<string> {
+  public get keys(): IterableIterator<TKey> {
     return this.keysMap.values();
   }
 
   /**
    * Gets an iterator for the values in the registry.
    */
-  public get values(): IterableIterator<string> {
+  public get values(): IterableIterator<TValue> {
     return this.registry.values();
   }
 
   /**
    * Gets an iterator for the key-value pairs in the registry.
    */
-  public get entries(): IterableIterator<[string, string]> {
-    // return this.registry.entries();
+  public get entries(): IterableIterator<[TKey, TValue]> {
     const keys = this.keysMap.values();
     const values = this.registry.values();
-    const entries = new Array<[string, string]> ;
+    const entries = new Array<[TKey, TValue]> ;
     for (let i = 0; i < this.registry.size; i++) {
       entries.push([keys.next().value, values.next().value]);
     }
@@ -122,7 +122,7 @@ export class CaseInsensitiveRegistry implements RegistryType {
    * Executes a provided function once for each key-value pair in the registry.
    * @param callbackfn - The function to execute for each key-value pair.
    */
-  public forEach(callbackfn: (value: string, key: string, map: Map<string, string>) => void): void {
+  public forEach(callbackfn: (value: TValue, key: TKey, map: Map<TKey, TValue>) => void): void {
     this.registry.forEach(callbackfn);
   }
 
@@ -130,8 +130,15 @@ export class CaseInsensitiveRegistry implements RegistryType {
    * Returns an iterator for the entries of the registry.
    * @returns An iterator that yields key-value pairs of type [string, unknown].
    */
-  [Symbol.iterator](): IterableIterator<[string, string]> {
+  [Symbol.iterator](): IterableIterator<[TKey, TValue]> {
     return this.registry[Symbol.iterator]();
+  }
+
+  private getKey(key: TKey): TKey {
+    const keyLowerCase = typeof key === 'string'
+            ? key.toLowerCase() as unknown as TKey
+            : key;
+    return keyLowerCase;
   }
 
 }
