@@ -1,24 +1,21 @@
 import { RegistryType } from "../interfaces";
-import { BaseRegistry } from "./base-registry";
-import { CaseInsensitiveRegistry } from "./case-insensitive-registry";
 
-export class Registry<TKey, TValue> implements RegistryType<TKey, TValue> {
-  private readonly _registry: RegistryType<TKey, TValue>
-  private readonly _caseInsensitive: boolean;
-
-  get caseInsensitive(): boolean {
-    return this._caseInsensitive;
-  }
+/**
+ * Represents a registry that stores key-value pairs.
+ */
+export class BaseRegistry<TKey, TValue> implements RegistryType<TKey, TValue> {
+  private readonly _registry: Map<TKey, TValue> = new Map();
 
   /**
    * Creates a new Registry instance.
    * @param entries - Optional array of key-value pairs to initialize the registry.
    */
-  constructor(entries?: readonly (readonly [TKey, TValue])[] | null, caseInsensitive: boolean = false) {
-    this._caseInsensitive = caseInsensitive;
-    this._registry = caseInsensitive
-      ? new CaseInsensitiveRegistry<TKey, TValue>(entries)
-      : new BaseRegistry<TKey, TValue>(entries)
+  constructor(entries?: readonly (readonly [TKey, TValue])[] | null) {
+    if (entries) {
+      for (const [key, value] of entries) {
+        this.set(key, value);
+      }
+    }
   }
 
   /**
@@ -26,13 +23,11 @@ export class Registry<TKey, TValue> implements RegistryType<TKey, TValue> {
    * @param object - The object containing key-value pairs.
    * @returns A new Registry instance.
    */
-  public static fromObject<TKey extends string | number | symbol, TValue>(object: Record<TKey, TValue>,
-    caseInsensitive: boolean = false): RegistryType<TKey, TValue> {
-
-    const registry: RegistryType<TKey, TValue> = caseInsensitive
-      ? CaseInsensitiveRegistry.fromObject(object)
-      : BaseRegistry.fromObject(object);
-
+  public static fromObject<TKey extends string | number | symbol, TValue>(object: Record<TKey, TValue>): RegistryType<TKey, TValue> {
+    const registry = new BaseRegistry<TKey, TValue>();
+    for (const [key, value] of Object.entries(object)) {
+      registry.set(key as TKey, value as TValue);
+    }
     return registry;
   }
 
@@ -90,21 +85,21 @@ export class Registry<TKey, TValue> implements RegistryType<TKey, TValue> {
    * Gets an iterator for the keys in the registry.
    */
   public get keys(): IterableIterator<TKey> {
-    return this._registry.keys;
+    return this._registry.keys();
   }
 
   /**
    * Gets an iterator for the values in the registry.
    */
   public get values(): IterableIterator<TValue> {
-    return this._registry.values;
+    return this._registry.values();
   }
 
   /**
    * Gets an iterator for the key-value pairs in the registry.
    */
   public get entries(): IterableIterator<[TKey, TValue]> {
-    return this._registry.entries;
+    return this._registry.entries();
   }
 
   /**
@@ -121,6 +116,6 @@ export class Registry<TKey, TValue> implements RegistryType<TKey, TValue> {
    * @returns An iterator that yields key-value pairs of type [TKey, TValue].
    */
   public [Symbol.iterator](): IterableIterator<[TKey, TValue]> {
-    return this._registry.entries;
+    return this._registry.entries();
   }
 }

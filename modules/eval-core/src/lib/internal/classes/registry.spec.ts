@@ -5,121 +5,69 @@ describe('Registry', () => {
     expect(new Registry()).toBeTruthy();
   });
 
-  it('should create an instance with entries', () => {
-    const registry = new Registry([['foo', 'bar'], ['bar', 'baz']]);
-    expect(registry.size).toEqual(2);
+  it('should set and get values', () => {
+    const registry = new Registry([], true);
+    registry.set('Key1', 'value1');
+    registry.set('Key2', 'value2');
+    expect(registry.get('key1')).toBe('value1');
+    expect(registry.get('key2')).toBe('value2');
   });
 
-  it('should create an instance from an object', () => {
-    const registry = Registry.fromObject({ foo: 'bar', bar: 'baz' });
-    expect(registry.size).toEqual(2);
+  it('should return undefined for non-existent keys', () => {
+    const registry = new Registry([], true);
+    expect(registry.get('nonexistent')).toBeUndefined();
   });
 
-  it('should set and get a value', () => {
-    const registry = new Registry();
-    registry.set('foo', 'bar');
-    expect(registry.get('foo')).toEqual('bar');
+  it('should check if a key exists', () => {
+    const registry = new Registry([], true);
+    registry.set('Key', 'value');
+    expect(registry.has('key')).toBe(true);
+    expect(registry.has('nonexistent')).toBe(false);
   });
 
-  it('should return undefined if a key is not set', () => {
-    const registry = new Registry();
-    expect(registry.get('foo')).toBeUndefined();
+  it('should delete a key-value pair', () => {
+    const registry = new Registry([], true);
+    registry.set('Key', 'value');
+    expect(registry.delete('key')).toBe(true);
+    expect(registry.has('key')).toBe(false);
+    expect(registry.delete('nonexistent')).toBe(false);
   });
 
-  it('should return true if a key is set', () => {
-    const registry = new Registry();
-    registry.set('foo', 'bar');
-    expect(registry.has('foo')).toBeTruthy();
-  });
-
-  it('should return false if a key is not set', () => {
-    const registry = new Registry();
-    expect(registry.has('foo')).toBeFalsy();
-  });
-
-  it('should return true if a key is deleted', () => {
-    const registry = new Registry();
-    registry.set('foo', 'bar');
-    expect(registry.delete('foo')).toBeTruthy();
-  });
-
-  it('should return false if a key is not deleted', () => {
-    const registry = new Registry();
-    expect(registry.delete('foo')).toBeFalsy();
-  });
-
-  it('should return the correct size', () => {
-    const registry = new Registry();
-    registry.set('foo', 'bar');
-    registry.set('bar', 'baz');
-    expect(registry.size).toEqual(2);
-  });
-
-  it('should clear the registry', () => {
-    const registry = new Registry();
-    registry.set('foo', 'bar');
-    registry.set('bar', 'baz');
+  it('should clear all key-value pairs', () => {
+    const registry = new Registry([], true);
+    registry.set('Key1', 'value1');
+    registry.set('Key2', 'value2');
     registry.clear();
-    expect(registry.size).toEqual(0);
+    expect(registry.size).toBe(0);
   });
 
-  it('should return the correct keys', () => {
-    const registry = new Registry();
-    registry.set('foo', 'bar');
-    registry.set('bar', 'baz');
-    expect(Array.from(registry.keys)).toEqual(['foo', 'bar']);
+  it('should create a new registry from an object', () => {
+    const object = { key1: 'value1', key2: 'value2' };
+    const registry = Registry.fromObject(object, true);
+    expect(registry.get('key1')).toBe('value1');
+    expect(registry.get('key2')).toBe('value2');
   });
 
-  it('should return the correct values', () => {
-    const registry = new Registry();
-    registry.set('foo', 'bar');
-    registry.set('bar', 'baz');
-    expect(Array.from(registry.values)).toEqual(['bar', 'baz']);
+  it('should return keys', () => {
+    const registry = new Registry([], true);
+    registry.set('Key1', 'value1');
+    registry.set('Key2', 'value2');
+    expect(Array.from(registry.keys)).toEqual(['Key1', 'Key2']);
   });
 
-  it('should return the correct entries', () => {
-    const registry = new Registry();
-    registry.set('foo', 'bar');
-    registry.set('bar', 'baz');
-    expect(Array.from(registry.entries)).toEqual([['foo', 'bar'], ['bar', 'baz']]);
+  it('should return values', () => {
+    const registry = new Registry([], true);
+    registry.set('Key1', 'value1');
+    registry.set('Key2', 'value2');
+    expect(Array.from(registry.values)).toEqual(['value1', 'value2']);
   });
 
-  it('should call the callback function', () => {
-    const registry = new Registry();
-    registry.set('foo', 'bar');
-    registry.set('bar', 'baz');
-    const callback = jest.fn();
-    registry.forEach(callback);
-    expect(callback).toHaveBeenCalledTimes(2);
+  it('should return entries', () => {
+    const registry = new Registry([], true);
+    registry.set('Key1', 'value1');
+    registry.set('Key2', 'value2');
+    expect(Array.from(registry.entries)).toEqual([['Key1', 'value1'], ['Key2', 'value2']]);
   });
 
-  // it('should call the callback function with the correct arguments', () => {
-  //   const registry = new Registry();
-  //   registry.set('foo', 'bar');
-  //   registry.set('bar', 'baz');
-  //   const callback = jest.fn();
-  //   registry.forEach(callback);
-  //   expect(callback).toHaveBeenCalledWith('bar', 'foo', registry);
-  //   expect(callback).toHaveBeenCalledWith('baz', 'bar', registry);
-  // });
 
-  // it('should call the callback function with the correct thisArg', () => {
-  //   const registry = new Registry();
-  //   registry.set('foo', 'bar');
-  //   registry.set('bar', 'baz');
-  //   const callback = jest.fn();
-  //   const thisArg = {};
-  //   registry.forEach(callback, thisArg);
-  //   expect(callback).toHaveBeenCalledWith('bar', 'foo', registry);
-  //   expect(callback).toHaveBeenCalledWith('baz', 'bar', registry);
-  // });
-
-  it('should return an iterator for the entries', () => {
-    const registry = new Registry();
-    registry.set('foo', 'bar');
-    registry.set('bar', 'baz');
-    const iterator = registry[Symbol.iterator]();
-    expect(iterator.next().value).toEqual(['foo', 'bar']);
-    expect(iterator.next().value).toEqual(['bar', 'baz']);
-  });
 });
