@@ -80,3 +80,7 @@ ToDo:
 
   nx g @schematics/angular:interface --name=queue-type --project=eval-core --path=modules/eval-core/src/lib/internal/interfaces
   nx g @schematics/angular:class --name=queue --project=eval-core --path=modules/eval-core/src/lib/internal/classes
+
+6. install acorn-walk
+
+npm install acorn-walk
