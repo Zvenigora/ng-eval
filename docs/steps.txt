@@ -67,7 +67,7 @@ ToDo:
   - add OpenCensus
   - add OpenMetrics
 
-5. Add registry, stack
+5. Add registry, stack, queue and scope
 
   --npx nx generate @schematics/angular:library registry --directory=eval-core --importPath=@zvenigora/eval-core/registry --no-interactive
 
@@ -76,3 +76,7 @@ ToDo:
   nx g @schematics/angular:class --name=registry --project=eval-core --path=modules/eval-core/src/lib/internal/classes
 
   nx g @schematics/angular:interface --name=stack-type --project=eval-core --path=modules/eval-core/src/lib/internal/interfaces
+  nx g @schematics/angular:class --name=stack --project=eval-core --path=modules/eval-core/src/lib/internal/classes
+
+  nx g @schematics/angular:interface --name=queue-type --project=eval-core --path=modules/eval-core/src/lib/internal/interfaces
+  nx g @schematics/angular:class --name=queue --project=eval-core --path=modules/eval-core/src/lib/internal/classes
