@@ -68,3 +68,8 @@ npx nx generate @schematics/angular:service discovery    --project=eval-core --p
 8. install js-sha256
 
 npm install js-sha256
+
+9. create Cache class
+
+nx g @schematics/angular:class --name=cache --project=eval-core --path=modules/eval-core/src/lib/internal/classes
+nx g @schematics/angular:interface --name=cache-type --project=eval-core --path=modules/eval-core/src/lib/internal/interfaces
