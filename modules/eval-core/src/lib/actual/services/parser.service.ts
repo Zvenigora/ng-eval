@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
-import * as acorn from 'acorn';
 import { BaseEval } from './base-eval';
-import { Expression, ModuleDeclaration, ParserOptions,
-  Program, Statement, defaultOptions } from '../../internal/interfaces';
+import { ParserOptions } from '../../internal/interfaces';
+import { Expression, ModuleDeclaration, Program, Statement,
+  defaultOptions, version as acornVersion, parse, AnyNode } from 'acorn';
+
 
 @Injectable({
   providedIn: 'root'
@@ -24,7 +25,15 @@ export class ParserService extends BaseEval {
    * Returns acorn version.
    */
   get version(): string {
-    return acorn.version;
+    return acornVersion;
+  }
+
+  /**
+   * Gets the parser options.
+   * @returns The parser options.
+   */
+  get options(): ParserOptions {
+    return this.parserOptions;
   }
 
   /**
@@ -32,7 +41,8 @@ export class ParserService extends BaseEval {
    * Parses expression and returns ES6/ES2020 AST.
    * @param expr expression to parse
    */
-  parse(expr: string, options?: ParserOptions): Program | Expression | undefined {
+  public parse(expr: string, options?: ParserOptions)
+      : Program | AnyNode | Expression | undefined {
     if (expr) {
       try {
         const parserOptions = { ...this.parserOptions, ...options };
@@ -56,8 +66,9 @@ export class ParserService extends BaseEval {
  * @param expr expression to parse
  * @param options parser options
  */
-  private doParse(expr: string, options: ParserOptions): Program | Expression | undefined {
-    const program: Program = acorn.parse(expr, options);
+  private doParse(expr: string, options: ParserOptions)
+        : Program | AnyNode | undefined {
+    const program: Program = parse(expr, options);
     if (!options.extractExpressions) {
       return program;
     }
@@ -69,7 +80,8 @@ export class ParserService extends BaseEval {
    * Walks through the AST and extracts first expression.
    * @param expr expression to parse
    */
-  private extractExpression(program: Program): Expression | undefined {
+  private extractExpression(program: Program)
+          : Expression | undefined {
 
     if (program.body.length === 1) {
       const expression: Statement | ModuleDeclaration = program.body[0];
