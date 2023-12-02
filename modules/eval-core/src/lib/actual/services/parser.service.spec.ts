@@ -1,7 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 
 import { ParserService } from './parser.service';
-import { BinaryExpression, Literal, ParserOptions } from '../../internal/interfaces';
+import { ParserOptions } from '../../internal/interfaces';
+import { BinaryExpression, Literal } from 'acorn';
 
 describe('ParserService', () => {
   let service: ParserService;
