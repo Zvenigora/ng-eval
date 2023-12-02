@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BaseEval } from './base-eval';
-import { ParserOptions } from '../../internal/interfaces';
+import { CacheType, ParserOptions } from '../../internal/interfaces';
+import { Cache } from '../../internal/classes';
 import { Expression, ModuleDeclaration, Program, Statement,
   defaultOptions, version as acornVersion, parse, AnyNode } from 'acorn';
 
@@ -10,14 +11,19 @@ import { Expression, ModuleDeclaration, Program, Statement,
 })
 export class ParserService extends BaseEval {
 
+  private _cache?: CacheType<Program | AnyNode | Expression | undefined>;
+
   constructor() {
     super();
     this.parserOptions = {
       ...defaultOptions,
       ecmaVersion: 2020,
       extractExpressions: true,
-      cacheSize: undefined
+      cacheSize: 100
     };
+    if (this.parserOptions.cacheSize) {
+      this._cache = new Cache<AnyNode>(this.parserOptions.cacheSize);
+    }
   }
 
   /**
@@ -46,7 +52,10 @@ export class ParserService extends BaseEval {
     if (expr) {
       try {
         const parserOptions = { ...this.parserOptions, ...options };
-        const ast = this.doParse(expr, parserOptions);
+        const isCache = this.parserOptions.cacheSize && this._cache;
+        const ast = isCache
+          ? this.doCacheParse(expr, parserOptions)
+          : this.doParse(expr, parserOptions);
         return ast;
       } catch (error) {
         if (error instanceof Error) {
@@ -60,6 +69,19 @@ export class ParserService extends BaseEval {
   }
 
   //#region Private methods
+  private doCacheParse(expr: string, options: ParserOptions) {
+    if (this._cache) {
+      const hashKey = this._cache.getHashKey('', expr);
+      let ast = this._cache.get(hashKey);
+      if (!ast) {
+        ast = this.doParse(expr, options);
+        this._cache.set(hashKey, ast);
+      }
+      return ast;
+    }
+    return undefined;
+  }
+
   /**
  * @description
  * Parses expression and returns ES6/ES2020 AST.

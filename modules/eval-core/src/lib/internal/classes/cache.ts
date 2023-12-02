@@ -1,6 +1,6 @@
-import { sha256 } from "js-sha256";
-import { BaseRegistry, RegistryType } from "../interfaces";
-import { CacheType } from "../interfaces/cache-type";
+import { sha256 } from 'js-sha256';
+import { RegistryType, CacheType } from '../interfaces';
+import { BaseRegistry } from './base-registry';
 
 /**
  * Represents a cache implementation that stores key-value pairs.
