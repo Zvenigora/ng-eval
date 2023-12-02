@@ -17,8 +17,11 @@ describe('ParserService', () => {
   });
 
   it('should parse expression', () => {
+    // const t0 = performance.now();
     const expr = '1 + 2';
     const ast = service.parse(expr, {} as ParserOptions);
+    // const t1 = performance.now();
+    // console.log(`Call to parse took ${t1 - t0} milliseconds.`);
     expect(ast).toBeDefined();
     expect(ast?.type).toBe('BinaryExpression');
     expect((ast as BinaryExpression).operator).toBe('+');
