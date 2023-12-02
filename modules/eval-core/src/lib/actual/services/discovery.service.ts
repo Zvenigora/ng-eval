@@ -1,19 +1,13 @@
 import { Injectable } from '@angular/core';
 import { BaseEval } from './base-eval';
 import { ParserService } from './parser.service';
-import { AnyNode } from 'acorn';
+import { AnyNode, defaultOptions } from 'acorn';
 import { AnyNodeTypes, ParserOptions } from '../../internal/interfaces';
 import * as walk from "acorn-walk";
 
-
 /**
-  * Discovers nodes in the given expression or AST based on the specified search type.
-  * @param expression The expression or AST to be searched.
-  * @param searchType The type of nodes to search for.
-  * @param options Optional parser options.
-  * @returns An array of discovered nodes, or undefined if no nodes are found.
-  * @throws If an error occurs during the discovery process.
-  */
+ * Service responsible for discovering nodes in an abstract syntax tree (AST).
+ */
 @Injectable({
   providedIn: 'root'
 })
@@ -23,17 +17,39 @@ export class DiscoveryService extends BaseEval {
     public parserService: ParserService
   ) {
     super();
+    this.parserOptions = {
+      ...defaultOptions,
+      ecmaVersion: 2020,
+      extractExpressions: false,
+      cacheSize: undefined
+    };
   }
 
+  /**
+   * Gets the parser options.
+   * @returns The parser options.
+   */
+  get options(): ParserOptions {
+    return this.parserOptions;
+  }
 
-  discover(expression: string | AnyNode,
-        searchType: AnyNodeTypes,
-        options?: ParserOptions): AnyNode[] | undefined {
+  /**
+   * Finds all nodes in the AST that match the given expression and search type.
+   * @param expression The expression to search for. Can be a string or an AST node.
+   * @param searchType The type of nodes to search for.
+   * @param options Optional parser options.
+   * @returns An array of nodes that match the search criteria, or undefined if no nodes are found.
+   * @throws If an error occurs during the search process.
+   */
+  findAll(expression: string | AnyNode | undefined,
+    searchType: AnyNodeTypes,
+    options?: ParserOptions): AnyNode[] | undefined {
     try {
-      const ast  = typeof expression === 'string'
-        ? this.parserService.parse(expression, options)
+      const parserOptions = { ...this.parserOptions, ...options };
+      const ast = typeof expression === 'string'
+        ? this.parserService.parse(expression, parserOptions)
         : expression;
-      const value = this.doDiscover(ast, searchType);
+      const value = this.doFindAll(ast, searchType);
       return value;
     } catch (error) {
       if (error instanceof Error) {
@@ -44,8 +60,8 @@ export class DiscoveryService extends BaseEval {
     }
   }
 
-  private doDiscover(ast: AnyNode | undefined,
-      searchType: AnyNodeTypes): AnyNode[] | undefined {
+  private doFindAll(ast: AnyNode | undefined,
+    searchType: AnyNodeTypes): AnyNode[] | undefined {
     if (ast) {
 
       const state: AnyNode[] = [];
@@ -60,6 +76,5 @@ export class DiscoveryService extends BaseEval {
     }
     return undefined;
   }
-
 
 }
