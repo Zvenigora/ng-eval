@@ -16,6 +16,15 @@ export class Cache<TValue> implements CacheType<TValue> {
    */
   private readonly _keyQueue: string[];
 
+  type: Readonly<string> = 'Cache';
+
+  /**
+   * Options for the cache.
+   */
+  options: Readonly<Record<string, unknown>> = {
+    caseInsensitive: false
+  };
+
   /**
    * Creates a new instance of the Cache class.
    * @param _maxCacheSize The maximum size of the cache.

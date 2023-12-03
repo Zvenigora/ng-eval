@@ -1,8 +1,16 @@
 import { BaseRegistry } from './base-registry';
 
-describe('Registry', () => {
+describe('BaseRegistry', () => {
   it('should create an instance', () => {
     expect(new BaseRegistry()).toBeTruthy();
+  });
+
+  it('should have type of BaseRegistry', () => {
+    expect(new BaseRegistry().type).toEqual('BaseRegistry');
+  });
+
+  it('should be case sensitive', () => {
+    expect(new BaseRegistry().options['caseInsensitive']).toBeFalsy();
   });
 
   it('should create an instance with entries', () => {
@@ -92,27 +100,6 @@ describe('Registry', () => {
     registry.forEach(callback);
     expect(callback).toHaveBeenCalledTimes(2);
   });
-
-  // it('should call the callback function with the correct arguments', () => {
-  //   const registry = new Registry();
-  //   registry.set('foo', 'bar');
-  //   registry.set('bar', 'baz');
-  //   const callback = jest.fn();
-  //   registry.forEach(callback);
-  //   expect(callback).toHaveBeenCalledWith('bar', 'foo', registry);
-  //   expect(callback).toHaveBeenCalledWith('baz', 'bar', registry);
-  // });
-
-  // it('should call the callback function with the correct thisArg', () => {
-  //   const registry = new Registry();
-  //   registry.set('foo', 'bar');
-  //   registry.set('bar', 'baz');
-  //   const callback = jest.fn();
-  //   const thisArg = {};
-  //   registry.forEach(callback, thisArg);
-  //   expect(callback).toHaveBeenCalledWith('bar', 'foo', registry);
-  //   expect(callback).toHaveBeenCalledWith('baz', 'bar', registry);
-  // });
 
   it('should return an iterator for the entries', () => {
     const registry = new BaseRegistry();

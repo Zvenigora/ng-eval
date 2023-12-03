@@ -50,6 +50,7 @@ ToDo:
   nx g @schematics/angular:class --name=base-registry --project=eval-core --path=modules/eval-core/src/lib/internal/classes
   nx g @schematics/angular:class --name=case-insensitive-registry --project=eval-core --path=modules/eval-core/src/lib/internal/classes
   nx g @schematics/angular:class --name=registry --project=eval-core --path=modules/eval-core/src/lib/internal/classes
+  nx g @schematics/angular:class --name=scope-registry --project=eval-core --path=modules/eval-core/src/lib/internal/classes
 
   nx g @schematics/angular:interface --name=stack-type --project=eval-core --path=modules/eval-core/src/lib/internal/interfaces
   nx g @schematics/angular:class --name=stack --project=eval-core --path=modules/eval-core/src/lib/internal/classes

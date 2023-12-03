@@ -1,4 +1,4 @@
-import { RegistryType } from "../interfaces";
+import { CaseInsensitiveRegistryType, RegistryType } from "../interfaces";
 
 // some code here:
 // https://stackoverflow.com/questions/50019920/javascript-map-key-value-pairs-case-insensitive-search
@@ -6,10 +6,19 @@ import { RegistryType } from "../interfaces";
 /**
  * Represents a case-insensitive registry that maps keys to values.
  */
-export class CaseInsensitiveRegistry<TKey, TValue> implements RegistryType<TKey, TValue> {
+export class CaseInsensitiveRegistry<TKey, TValue> implements CaseInsensitiveRegistryType<TKey, TValue> {
 
   private readonly registry: Map<TKey, TValue> = new Map();
   private keysMap = new Map<TKey, TKey>();
+
+  type: Readonly<string> = 'CaseInsensitiveRegistry';
+
+  /**
+   * Options for the registry.
+   */
+  options: Readonly<Record<string, unknown>> = {
+    caseInsensitive: true
+  };
 
   /**
    * Creates a new instance of CaseInsensitiveRegistry.
