@@ -1,10 +1,19 @@
-import { RegistryType } from "../interfaces";
+import { BaseRegistryType, RegistryType } from "../interfaces";
 
 /**
  * Represents a registry that stores key-value pairs.
  */
-export class BaseRegistry<TKey, TValue> implements RegistryType<TKey, TValue> {
+export class BaseRegistry<TKey, TValue> implements BaseRegistryType<TKey, TValue> {
   private readonly _registry: Map<TKey, TValue> = new Map();
+
+  type: Readonly<string> = 'BaseRegistry';
+
+  /**
+   * Options for the base registry.
+   */
+  options: Readonly<Record<string, unknown>> = {
+    caseInsensitive: false
+  };
 
   /**
    * Creates a new Registry instance.

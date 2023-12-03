@@ -5,6 +5,14 @@ describe('CaseInsensitiveRegistry', () => {
     expect(new CaseInsensitiveRegistry()).toBeTruthy();
   });
 
+  it('should have type of CaseInsensitiveRegistry', () => {
+    expect(new CaseInsensitiveRegistry().type).toEqual('CaseInsensitiveRegistry');
+  });
+
+  it('should be case insensitive', () => {
+    expect(new CaseInsensitiveRegistry().options['caseInsensitive']).toBeTruthy();
+  });
+
   it('should set and get values', () => {
     const registry = new CaseInsensitiveRegistry();
     registry.set('Key1', 'value1');
