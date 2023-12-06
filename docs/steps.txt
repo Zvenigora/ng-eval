@@ -74,3 +74,10 @@ npm install js-sha256
 
 nx g @schematics/angular:class --name=cache --project=eval-core --path=modules/eval-core/src/lib/internal/classes
 nx g @schematics/angular:interface --name=cache-type --project=eval-core --path=modules/eval-core/src/lib/internal/interfaces
+
+10. create EvalContext, EvalOptions, EvalResult, EvalStack, EvalQueue, EvalScope classes
+
+nx g @schematics/angular:class --name=EvalContext --project=eval-core --path=modules/eval-core/src/lib/actual/classes
+nx g @schematics/angular:class --name=EvalOptions --project=eval-core --path=modules/eval-core/src/lib/actual/classes
+nx g @schematics/angular:class --name=EvalResult --project=eval-core --path=modules/eval-core/src/lib/actual/classes
+
