@@ -80,4 +80,5 @@ nx g @schematics/angular:interface --name=cache-type --project=eval-core --path=
 nx g @schematics/angular:class --name=EvalContext --project=eval-core --path=modules/eval-core/src/lib/actual/classes
 nx g @schematics/angular:class --name=EvalOptions --project=eval-core --path=modules/eval-core/src/lib/actual/classes
 nx g @schematics/angular:class --name=EvalResult --project=eval-core --path=modules/eval-core/src/lib/actual/classes
+nx g @schematics/angular:class --name=EvalState --project=eval-core --path=modules/eval-core/src/lib/actual/classes
 
