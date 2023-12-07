@@ -2,8 +2,8 @@ import { Injectable } from '@angular/core';
 import { BaseEval } from './base-eval';
 import { ParserService } from './parser.service';
 import { AnyNode, defaultOptions } from 'acorn';
-import { AnyNodeTypes, ParserOptions } from '../../internal/interfaces';
-import * as walk from "acorn-walk";
+import { AnyNodeTypes } from '../../internal/interfaces';
+import * as walk from 'acorn-walk';
 
 /**
  * Service responsible for discovering nodes in an abstract syntax tree (AST).
@@ -26,14 +26,6 @@ export class DiscoveryService extends BaseEval {
   }
 
   /**
-   * Gets the parser options.
-   * @returns The parser options.
-   */
-  get options(): ParserOptions {
-    return this.parserOptions;
-  }
-
-  /**
    * Finds all nodes in the AST that match the given expression and search type.
    * @param expression The expression to search for. Can be a string or an AST node.
    * @param searchType The type of nodes to search for.
@@ -42,13 +34,9 @@ export class DiscoveryService extends BaseEval {
    * @throws If an error occurs during the search process.
    */
   findAll(expression: string | AnyNode | undefined,
-    searchType: AnyNodeTypes,
-    options?: ParserOptions): AnyNode[] | undefined {
+    searchType: AnyNodeTypes): AnyNode[] | undefined {
     try {
-      const parserOptions = { ...this.parserOptions, ...options };
-      const ast = typeof expression === 'string'
-        ? this.parserService.parse(expression, parserOptions)
-        : expression;
+      const ast = this.toAst(expression);
       const value = this.doFindAll(ast, searchType);
       return value;
     } catch (error) {
@@ -57,6 +45,17 @@ export class DiscoveryService extends BaseEval {
       } else {
         throw error;
       }
+    }
+  }
+
+  private toAst(expression: string | AnyNode | undefined): AnyNode | undefined {
+    if (!expression) {
+      return undefined;
+    } else if (typeof expression === 'string') {
+      const ast = this.parserService.parse(expression, this.parserOptions);
+      return ast;
+    } else {
+      return expression as AnyNode;
     }
   }
 

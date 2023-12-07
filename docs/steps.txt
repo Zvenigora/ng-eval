@@ -82,3 +82,8 @@ nx g @schematics/angular:class --name=EvalOptions --project=eval-core --path=mod
 nx g @schematics/angular:class --name=EvalResult --project=eval-core --path=modules/eval-core/src/lib/actual/classes
 nx g @schematics/angular:class --name=EvalState --project=eval-core --path=modules/eval-core/src/lib/actual/classes
 
+11. started visitors:
+  before, after, literal, identifier, binaryExpression
+  recursive, results
+
+
