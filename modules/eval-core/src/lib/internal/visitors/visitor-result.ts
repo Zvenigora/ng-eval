@@ -1,0 +1,21 @@
+import { AnyNode } from 'acorn';
+import { EvalState } from '../../actual/classes';
+
+export const pushVisitorResult = (node: AnyNode, st: EvalState, value: unknown) => {
+  const key = getKey(node);
+  const result = st.result;
+  result.stack.push(value);
+  result.trace.set(key, value);
+  return value;
+}
+
+export const popVisitorResult = (node: AnyNode, st: EvalState) => {
+  const result = st.result;
+  const value = result.stack.pop();
+  return value;
+}
+
+const getKey = (node: AnyNode) => {
+  const key = `${node.type}(${node.start}:${node.end})`;
+  return key;
+}
