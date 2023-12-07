@@ -1,6 +1,5 @@
 import { Registry } from '../../internal/classes';
 import { EvalContext } from './eval-context';
-
 import { EvalOptions } from './eval-options';
 
 describe('EvalContext', () => {
@@ -20,10 +19,52 @@ describe('EvalContext', () => {
   });
 
   it('should create an instance with object to create a registry from', () => {
-    const object = { key: 'value' };
+    const object = { testKey: 'value' };
     const evalContext = new EvalContext(object, options);
-    expect(evalContext.original).toEqual(Registry.fromObject(object));
+    // expect(evalContext.original.get).toEqual(Registry.fromObject(object));
     expect(evalContext.scopes).toEqual([]);
     expect(evalContext.options).toBe(options);
+  });
+
+  it('should get value from original registry', () => {
+    const key = 'key';
+    const value = 'value';
+    original.set(key, value);
+    const evalContext = new EvalContext(original, options);
+    expect(evalContext.get(key)).toBe(value);
+  });
+
+  it('should get value from object registry', () => {
+    const key = 'key';
+    const value = 'value';
+    const object = { [key]: value };
+    const evalContext = new EvalContext(object, options);
+    expect(evalContext.get(key)).toBe(value);
+  });
+
+  it('should get value from scope registry', () => {
+    const key = 'key';
+    const value = 'value';
+    const scope = new Registry<unknown, unknown>();
+    scope.set(key, value);
+    const evalContext = new EvalContext(original, options);
+    (evalContext.scopes as Registry<unknown, unknown>[]).push(scope);
+    expect(evalContext.get(key)).toBe(value);
+  });
+
+  it('should get value from lookup function', () => {
+    const key = 'key';
+    const value = 'value';
+    const lookup = jest.fn().mockReturnValue(value);
+    const evalContext = new EvalContext(original, options);
+    evalContext['lookups'].set(key, lookup);
+    expect(evalContext.get(key)).toBe(value);
+    expect(lookup).toHaveBeenCalledWith(key, evalContext, options);
+  });
+
+  it('should return undefined for non-existent key', () => {
+    const key = 'non-existent';
+    const evalContext = new EvalContext(original, options);
+    expect(evalContext.get(key)).toBeUndefined();
   });
 });

@@ -1,5 +1,6 @@
 export { BaseRegistry } from './base-registry';
 export { CaseInsensitiveRegistry } from './case-insensitive-registry';
+export { ScopeRegistry } from './scope-registry';
 export { Registry } from './registry';
 export { Queue } from './queue';
 export { Stack } from './stack';

@@ -4,6 +4,7 @@
 export class EvalOptions {
 
   private _caseInsensitive?: boolean;
+  private _trackTime?: boolean;
 
   /**
    * Gets or sets a value indicating whether the evaluation should be case-insensitive.
@@ -11,6 +12,17 @@ export class EvalOptions {
   public get caseInsensitive(): boolean | undefined {
     return this._caseInsensitive;
   }
+
+  /**
+   * Gets or sets a value indicating whether the evaluation should track time.
+   */
+  public get trackTime(): boolean | undefined {
+    return this._trackTime;
+  }
+  public set trackTime(value: boolean | undefined) {
+    this._trackTime = value;
+  }
+
 
   /**
    * Gets the value of the EvalOptions object as a record of string keys and unknown values.
@@ -25,9 +37,11 @@ export class EvalOptions {
   }
 
   constructor(
-    caseInsensitive = false
+    caseInsensitive = false,
+    trackTime = false
   ) {
     this._caseInsensitive = caseInsensitive;
+    this._trackTime = trackTime;
   }
 
 }
