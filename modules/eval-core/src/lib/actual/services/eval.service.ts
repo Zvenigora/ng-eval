@@ -6,7 +6,7 @@ import * as walk from 'acorn-walk';
 import { Registry } from '../../internal/classes';
 import { binaryExpressionVisitor,
   callExpressionVisitor,
-  identifierVisitor, literalVisitor, popVisitorResult, popVisitorResultAsync } from '../../internal/visitors';
+  identifierVisitor, literalVisitor, popVisitorResult } from '../../internal/visitors';
 import { EvalContext, EvalOptions, EvalResult, EvalState } from '../classes';
 
 
@@ -83,7 +83,7 @@ export class EvalService extends BaseEval {
   evalAsync(expression: string | AnyNode | undefined,
        context?: EvalContext | Record<string, unknown> | Registry<string, unknown> | undefined,
        options?: EvalOptions
-  ): Promise<unknown | undefined> | undefined {
+  ): Promise<unknown | undefined> {
     try {
       const ast = this.parse(expression);
       const ctx = this.createContext(context, options);
@@ -112,31 +112,20 @@ export class EvalService extends BaseEval {
 
       walk.recursive(state.ast, state, visitors);
 
-      const resultValue = popVisitorResult(state.ast, state)
+      const value = popVisitorResult(state.ast, state)
 
-      return resultValue;
+      return value;
     }
 
     return undefined;
   }
 
-  private doEvalAsync(state: EvalState): Promise<unknown | undefined> | undefined {
-    if (state.ast) {
-
-      const visitors: walk.RecursiveVisitors<EvalState> = {};
-
-      visitors['BinaryExpression'] = binaryExpressionVisitor;
-      visitors['Identifier'] = identifierVisitor;
-      visitors['Literal'] = literalVisitor;
-
-      walk.recursive(state.ast, state, visitors);
-
-      const resultValue: Promise<unknown | undefined> = popVisitorResultAsync(state.ast, state)
-
-      return resultValue;
-    }
-
-    return undefined;
+  private doEvalAsync(state: EvalState): Promise<unknown | undefined> {
+    const promise = new Promise<unknown | undefined>((resolve) => {
+      const value = this.doEval(state);
+      resolve(value);
+    });
+    return promise;
   }
 
 }
