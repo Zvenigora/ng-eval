@@ -1,5 +1,4 @@
 import { TestBed } from '@angular/core/testing';
-
 import { EvalService } from './eval.service';
 
 describe('EvalService', () => {
@@ -39,16 +38,18 @@ describe('EvalService', () => {
     expect(value).toBe(1 + 2);
   });
 
-  // it('#eval asyncFunc(one, two) should return 3', async () => {
-  //   const context = {
-  //     one: 10,
-  //     two: 20,
-  //     asyncFunc: async (a: number, b: number) => { return await (a+b); }
-  //   };
-  //   const expr = 'asyncFunc(one, two)';
-  //   const value = await service.evalAsync(expr, context);
-  //   expect(value).toBe(1 + 2);
-  // });
+  it('#eval asyncFunc(one, two) should return 3', async () => {
+    const context = {
+      one: 1,
+      two: 2,
+      asyncFunc: async (a: number, b: number) => { return await (a+b); }
+    };
+    const expr = 'asyncFunc(one, two)';
+    const testValue = await context.asyncFunc(context.one, context.two);
+    const value = await service.evalAsync(expr, context);
+    expect(value).toBe(1 + 2);
+    expect(value).toBe(testValue);
+  });
 
   // it('should evaluate an AST expression', () => {
   //   const expression = { type: 'BinaryExpression', operator: '+', left: 2, right: 2 };
