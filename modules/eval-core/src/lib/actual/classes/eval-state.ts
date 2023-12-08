@@ -12,6 +12,7 @@ export class EvalState {
   private _context: Readonly<EvalContext | undefined>;
   private _result: Readonly<EvalResult>;
   private _options: Readonly<EvalOptions | undefined>;
+  private _isAsync: Readonly<boolean | undefined>;
 
   /**
    * Gets the expression.
@@ -49,17 +50,26 @@ export class EvalState {
     return this._options;
   }
 
+  /**
+   * Gets whether the evaluation is asynchronous.
+   */
+  public get isAsync(): Readonly<boolean | undefined> {
+    return this._isAsync;
+  }
+
   constructor(expression: string | AnyNode | undefined,
     ast: AnyNode | undefined,
     context: EvalContext | undefined,
     result: EvalResult,
-    options?: EvalOptions) {
+    options?: EvalOptions,
+    isAsync?: boolean) {
 
     this._expression = expression;
     this._ast = ast;
     this._context = context;
     this._result = result;
     this._options = options;
+    this._isAsync = isAsync;
   }
 
 }

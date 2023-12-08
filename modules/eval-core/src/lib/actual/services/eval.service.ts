@@ -5,7 +5,8 @@ import { AnyNode, defaultOptions } from 'acorn';
 import * as walk from 'acorn-walk';
 import { Registry } from '../../internal/classes';
 import { binaryExpressionVisitor,
-  identifierVisitor, literalVisitor, popVisitorResult } from '../../internal/visitors';
+  callExpressionVisitor,
+  identifierVisitor, literalVisitor, popVisitorResult, popVisitorResultAsync } from '../../internal/visitors';
 import { EvalContext, EvalOptions, EvalResult, EvalState } from '../classes';
 
 
@@ -53,15 +54,16 @@ export class EvalService extends BaseEval {
                      ast: AnyNode | undefined,
                      context: EvalContext | undefined,
                      result: EvalResult,
-                     options?: EvalOptions): EvalState {
-      const state = new EvalState(expression, ast, context, result, options);
+                     options?: EvalOptions,
+                     isAsync?: boolean): EvalState {
+      const state = new EvalState(expression, ast, context, result, options, isAsync);
       return state;
   }
 
   eval(expression: string | AnyNode | undefined,
        context?: EvalContext | Record<string, unknown> | Registry<string, unknown> | undefined,
        options?: EvalOptions
-  ): unknown {
+  ): unknown | undefined {
     try {
       const ast = this.parse(expression);
       const ctx = this.createContext(context, options);
@@ -78,29 +80,48 @@ export class EvalService extends BaseEval {
     }
   }
 
+  evalAsync(expression: string | AnyNode | undefined,
+       context?: EvalContext | Record<string, unknown> | Registry<string, unknown> | undefined,
+       options?: EvalOptions
+  ): Promise<unknown | undefined> | undefined {
+    try {
+      const ast = this.parse(expression);
+      const ctx = this.createContext(context, options);
+      const result = this.createResult(expression, ctx);
+      const state = this.createState(expression, ast, ctx, result, options, true);
+      const promise = this.doEvalAsync(state);
+      return promise;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(error.message);
+      } else {
+        throw error;
+      }
+    }
+  }
+
   private doEval(state: EvalState): unknown | undefined {
     if (state.ast) {
 
-      // const context: Record<string, unknown> = {
-      //   a: 10
-      // };
-      // const scope: ScopeRegistryType<unknown, unknown> = ScopeRegistry.fromObject(context);
-      // const result: RecursiveVisitorResult<unknown | undefined> = {
-      //   type: 'stack',
-      //   stack: new Stack<unknown>()
-      // };
-      // const option: RecursiveVisitorOptions = {
-      //   trackTime: false,
-      //   resultType: 'stack'
-      // };
+      const visitors: walk.RecursiveVisitors<EvalState> = {};
 
-      // const state: RecursiveVisitorState = {
-      //   scope,
-      //   result,
-      //   option,
-      //   // beforeVisitors: new ScopeRegistry<AnyNode, (node: AnyNode, st: RecursiveVisitorState) => number | undefined>(),
-      //   // afterVisitors: new ScopeRegistry<AnyNode, (node: AnyNode, st: RecursiveVisitorState) => number | undefined>()
-      // };
+      visitors['BinaryExpression'] = binaryExpressionVisitor;
+      visitors['Identifier'] = identifierVisitor;
+      visitors['Literal'] = literalVisitor;
+      visitors['CallExpression'] = callExpressionVisitor;
+
+      walk.recursive(state.ast, state, visitors);
+
+      const resultValue = popVisitorResult(state.ast, state)
+
+      return resultValue;
+    }
+
+    return undefined;
+  }
+
+  private doEvalAsync(state: EvalState): Promise<unknown | undefined> | undefined {
+    if (state.ast) {
 
       const visitors: walk.RecursiveVisitors<EvalState> = {};
 
@@ -110,7 +131,7 @@ export class EvalService extends BaseEval {
 
       walk.recursive(state.ast, state, visitors);
 
-      const resultValue = popVisitorResult(state.ast, state)
+      const resultValue: Promise<unknown | undefined> = popVisitorResultAsync(state.ast, state)
 
       return resultValue;
     }

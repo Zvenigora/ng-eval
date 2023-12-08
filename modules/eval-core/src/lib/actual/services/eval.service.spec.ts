@@ -21,6 +21,35 @@ describe('EvalService', () => {
     expect(result).toEqual(32);
   });
 
+  it('#eval a + b / c should be 2.4 for (a=2, b=2, c=5)', () => {
+    const context = {a: 2, b: 2, c: 5};
+    const expr = 'a + b / c';
+    const value = service.eval(expr, context);
+    expect(value).toBe(2 + 2 / 5);
+  });
+
+  it('#eval func(one, two) should return 3', () => {
+    const context = {
+      one: 1,
+      two: 2,
+      func: (a: number, b: number) => { return a+b; }
+    };
+    const expr = 'func(one, two)';
+    const value = service.eval(expr, context);
+    expect(value).toBe(1 + 2);
+  });
+
+  // it('#eval asyncFunc(one, two) should return 3', async () => {
+  //   const context = {
+  //     one: 10,
+  //     two: 20,
+  //     asyncFunc: async (a: number, b: number) => { return await (a+b); }
+  //   };
+  //   const expr = 'asyncFunc(one, two)';
+  //   const value = await service.evalAsync(expr, context);
+  //   expect(value).toBe(1 + 2);
+  // });
+
   // it('should evaluate an AST expression', () => {
   //   const expression = { type: 'BinaryExpression', operator: '+', left: 2, right: 2 };
   //   const result = service.eval(expression);
