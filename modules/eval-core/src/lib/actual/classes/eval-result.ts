@@ -3,19 +3,21 @@ import { Registry, Stack } from "../../internal/classes";
 import { EvalContext } from "./eval-context";
 import { EvalOptions } from "./eval-options";
 
+type UnknownValue = unknown | Promise<unknown>;
+
 /**
  * Represents the result of an evaluation.
  */
 export class EvalResult {
 
-  private _stack: Readonly<Stack<unknown>>;
-  private _value?: unknown;
+  private _stack: Readonly<Stack<UnknownValue>>;
+  private _value?: UnknownValue;
   private _error?: unknown;
   private _errorMessage?: string;
   private _isError?: boolean;
   private _isSuccess?: boolean;
   private _isUndefined?: boolean;
-  private _trace: Readonly<Registry<unknown, unknown>>;
+  private _trace: Readonly<Registry<unknown, UnknownValue>>;
   private _context: EvalContext;
   private _expression?: string;
   private _ast?: AnyNode;
@@ -25,13 +27,13 @@ export class EvalResult {
   /**
    * Gets the stack of evaluated values.
    */
-  public get stack(): Readonly<Stack<unknown>> {
+  public get stack(): Readonly<Stack<UnknownValue>> {
     return this._stack;
   }
   /**
    * Gets the evaluated value.
    */
-  public get value(): unknown | undefined {
+  public get value(): UnknownValue | undefined {
     return this._value;
   }
   /**
@@ -67,7 +69,7 @@ export class EvalResult {
   /**
    * Gets the trace of evaluated values.
    */
-  public get trace(): Readonly<Registry<unknown, unknown>> {
+  public get trace(): Readonly<Registry<unknown, UnknownValue>> {
     return this._trace;
   }
   /**
@@ -120,8 +122,8 @@ export class EvalResult {
     } else {
       this._ast = expression;
     }
-    this._stack = new Stack();
-    this._trace = new Registry<unknown, unknown>;
+    this._stack = new Stack<UnknownValue>();
+    this._trace = new Registry<unknown, UnknownValue>;
     this._context = context;
   }
 
