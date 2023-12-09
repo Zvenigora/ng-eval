@@ -4,10 +4,10 @@ import { ParserService } from './parser.service';
 import { AnyNode, defaultOptions } from 'acorn';
 import * as walk from 'acorn-walk';
 import { Registry } from '../../internal/classes';
-import { awaitVisitor, binaryExpressionVisitor,
+import { arrayExpressionVisitor, awaitVisitor, binaryExpressionVisitor,
   callExpressionVisitor,
   conditionalExpressionVisitor,
-  identifierVisitor, literalVisitor, popVisitorResult } from '../../internal/visitors';
+  identifierVisitor, literalVisitor, memberExpressionVisitor, popVisitorResult, unaryExpressionVisitor } from '../../internal/visitors';
 import { EvalContext, EvalOptions, EvalResult, EvalState } from '../classes';
 
 
@@ -112,6 +112,9 @@ export class EvalService extends BaseEval {
       visitors['CallExpression'] = callExpressionVisitor;
       visitors['AwaitExpression'] = awaitVisitor;
       visitors['ConditionalExpression'] = conditionalExpressionVisitor;
+      visitors['MemberExpression'] = memberExpressionVisitor;
+      visitors['ArrayExpression'] = arrayExpressionVisitor;
+      visitors['UnaryExpression'] = unaryExpressionVisitor;
 
       walk.recursive(state.ast, state, visitors);
 

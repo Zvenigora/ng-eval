@@ -226,32 +226,4 @@ describe('EvalService Core', () => {
     expect(actual).toEqual(expected);
   });
 
-  // 14. custom operators
-  // it.each([
-  //   ['@2',          'two'],
-  //   ['3#4',         3.4 ],
-  //   ['(1 # 2 # 3)', 1.5],
-  //   ['1 + 2 ~ 3',   9],
-  //   ['2 ** 3 ** 4', 2 ** 3 ** 4],
-  // ])("14. custom operators: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-
-  //   service.addUnaryOp('@', (a) => {
-  //     if (a === 2) {
-  //       return 'two';
-  //     }
-  //     throw new Error('Unexpected value: ' + a);
-  //   });
-
-  //   service.addBinaryOp('#', 1, (a: unknown, b: unknown) => (a as number) + (b as number) / 10);
-
-  //   service.addBinaryOp('~', 1, (a: unknown, b: unknown) => (a as number) * (b as number));
-
-  //   service.addBinaryOp('**', 11, true, (a: unknown, b: unknown) => (a as number) ** (b as number));
-
-  //   // JseEval.addEvaluator('TestNodeType', function(node) { return node.test + this.context.string });
-
-  //   const actual = service.eval(expr, context);
-  //   expect(actual).toEqual(expected);
-  // });
-
 });

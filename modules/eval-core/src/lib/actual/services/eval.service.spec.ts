@@ -54,9 +54,9 @@ describe('EvalService', () => {
   it.each([
     ['asyncFunc(one, two)',     3 ],
     ['promiseFunc(one, two)',   3 ],
-    // ['await 2',                 2 ],
-    // ['await Promise.resolve(3)',3 ],
-    // ['await asyncFunc(1, 2)',   3 ],
+    // ['await 2',                 2 ], // SyntaxError: await is only valid in async function
+    // ['await Promise.resolve(3)',3 ], // SyntaxError: await is only valid in async function
+    // ['await asyncFunc(1, 2)',   3 ], // SyntaxError: await is only valid in async function
     ['asyncFunc(1, 2)',         3 ],
   ])("22. async expression: when the input is '%s', value is %p", async (expr: string, expected: unknown) => {
     const context = {
