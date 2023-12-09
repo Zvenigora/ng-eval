@@ -51,6 +51,28 @@ describe('EvalService', () => {
     expect(value).toBe(testValue);
   });
 
+  it.each([
+    ['asyncFunc(one, two)',     3 ],
+    ['promiseFunc(one, two)',   3 ],
+    // ['await 2',                 2 ],
+    // ['await Promise.resolve(3)',3 ],
+    // ['await asyncFunc(1, 2)',   3 ],
+    ['asyncFunc(1, 2)',         3 ],
+  ])("22. async expression: when the input is '%s', value is %p", async (expr: string, expected: unknown) => {
+    const context = {
+      one: 1,
+      two: 2,
+      promise: (v: unknown) => Promise.resolve(v),
+      Promise,
+      asyncFunc: async (a: number, b: number) => await a + b,
+      promiseFunc: (a: number, b: number) => new Promise((resolve) => {
+        setTimeout(() => resolve(a + b), 1000);
+      }),
+    }
+    const actual = await service.evalAsync(expr, context);
+    expect(actual).toEqual(expected);
+  });
+
   // it('should evaluate an AST expression', () => {
   //   const expression = { type: 'BinaryExpression', operator: '+', left: 2, right: 2 };
   //   const result = service.eval(expression);
