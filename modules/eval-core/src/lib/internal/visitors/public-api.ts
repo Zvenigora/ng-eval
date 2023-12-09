@@ -8,5 +8,6 @@ export {binaryExpressionVisitor} from './binary-expression';
 export {callExpressionVisitor} from './call-expression';
 export {awaitVisitor} from './await-expression';
 export {conditionalExpressionVisitor} from './conditional-expression';
-// export {memberExpressionVisitor} from './member-expression';
-// export {unaryExpressionVisitor} from './unary-expression';
+export {memberExpressionVisitor} from './member-expression';
+export {arrayExpressionVisitor} from './array-expression';
+export {unaryExpressionVisitor} from './unary-expression';
