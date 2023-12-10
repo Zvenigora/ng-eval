@@ -4,13 +4,11 @@ import { beforeVisitor } from './before-visitor';
 import { pushVisitorResult, popVisitorResult } from './visitor-result';
 import { EvalState } from '../../actual/classes';
 import { afterVisitor } from './after-visitor';
+import { evaluateMember } from './member-expression';
 
 export const callExpressionVisitor = (node: CallExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
 
   beforeVisitor(node, st);
-
-  //const callee: Expression | Super = node.callee;
-  //const optional: boolean = node.optional;
 
   const args = node.arguments.map((argument) => {
     callback(argument, st);
@@ -18,12 +16,46 @@ export const callExpressionVisitor = (node: CallExpression, st: EvalState, callb
     return value;
   });
 
-  callback(node.callee, st);
-  const caller = popVisitorResult(node, st) as (...args: unknown[]) => unknown;
-
-  const value = caller.apply(st.context, args);
-
-  pushVisitorResult(node, st, value);
+  if (node.callee.type === 'MemberExpression') {
+    const [object, , fn] = evaluateMember(node.callee, st, callback);
+    const caller = fn as (...args: unknown[]) => unknown;
+    const value = !caller && node.callee.optional
+      ? undefined : caller.apply(object, args);
+    pushVisitorResult(node, st, value);
+  } else {
+    callback(node.callee, st);
+    const caller = popVisitorResult(node, st) as (...args: unknown[]) => unknown;
+    const value = !caller && node.optional
+      ? undefined : caller.apply(st.context, args);
+    pushVisitorResult(node, st, value);
+  }
 
   afterVisitor(node, st);
 }
+
+export const evaluateCall = (node: CallExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
+
+  callback(node.callee, st);
+  const caller = popVisitorResult(node, st) as (...args: unknown[]) => unknown;
+
+  const args = node.arguments.map((argument) => {
+    callback(argument, st);
+    const value = popVisitorResult(node, st);
+    return value;
+  });
+
+  const value = caller.apply(st.context, args);
+  return value;
+}
+
+// export const evalFunctionName = (callee: Identifier | MemberExpression): string | undefined => {
+//   if (callee.type === 'Identifier') {
+//     return callee.name;
+//   } else if (callee.type === 'MemberExpression') {
+//     const property = callee.property;
+//     if (property.type === 'Identifier') {
+//       return property.name;
+//     }
+//   }
+//   return undefined;
+// }
