@@ -2,6 +2,16 @@ import { TestBed } from '@angular/core/testing';
 
 import { EvalService } from './eval.service';
 
+function myTag(strings: string[], personExp: string, ageExp: number) {
+  const str0 = strings[0]; // "That "
+  const str1 = strings[1]; // " is a "
+  const str2 = strings[2]; // "."
+
+  const ageStr = ageExp < 100 ? "youngster" : "centenarian";
+
+  return `${str0}${personExp}${str1}${ageStr}${str2}`;
+}
+
 const context = {
   string: 'string',
   number: 123,
@@ -19,6 +29,9 @@ const context = {
   Date,
   sub: { sub2: { Date } },
   tag: (strings: unknown[], ...expand: unknown[]) => [...strings, '=>', ...expand].join(','),
+  person: 'Mike',
+  age: 28,
+  myTag: myTag,
   promise: (v: unknown) => Promise.resolve(v),
   Promise,
   asyncFunc: async (a: number, b: number) => await a + b,
@@ -35,7 +48,6 @@ describe('EvalService - extended', () => {
     TestBed.configureTestingModule({});
     service = TestBed.inject(EvalService);
   });
-
 
   // 15. Arrow Functions
   it.each([
@@ -85,7 +97,6 @@ describe('EvalService - extended', () => {
     expect(context).toMatchObject(expObj);
   });
 
-
   // 18. new operator
   it.each([
     ['(new Date(2021, 8)).getFullYear()', 2021],
@@ -123,12 +134,12 @@ describe('EvalService - extended', () => {
     expect(actual).toEqual(expected);
   });
 
-
   // 21. template literals
   it.each([
     ['`abc`', 'abc'],
     ['`hi ${foo.bar}`', 'hi baz'],
     ['tag`hi ${list[0]} and ${list[3]}`', 'hi , and ,,=>,1,4'],
+    ['myTag`That ${person} is a ${age}.`', 'That Mike is a youngster.'],
   ])("20. template literals: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
     const actual = service.eval(expr, context);
     expect(actual).toEqual(expected);
