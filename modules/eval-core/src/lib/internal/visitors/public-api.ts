@@ -13,3 +13,4 @@ export {arrayExpressionVisitor} from './array-expression';
 export {unaryExpressionVisitor} from './unary-expression';
 export {logicalExpressionVisitor} from './logical-expression';
 export {thisExpressionVisitor} from './this-expression';
+export {newExpressionVisitor} from './new-expression';
