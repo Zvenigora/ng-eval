@@ -7,7 +7,8 @@ import { Registry } from '../../internal/classes';
 import { arrayExpressionVisitor, awaitVisitor, binaryExpressionVisitor,
   callExpressionVisitor,
   conditionalExpressionVisitor,
-  identifierVisitor, literalVisitor, memberExpressionVisitor, popVisitorResult, unaryExpressionVisitor } from '../../internal/visitors';
+  identifierVisitor, literalVisitor, logicalExpressionVisitor, memberExpressionVisitor, popVisitorResult,
+  thisExpressionVisitor, unaryExpressionVisitor } from '../../internal/visitors';
 import { EvalContext, EvalOptions, EvalResult, EvalState } from '../classes';
 
 
@@ -115,6 +116,8 @@ export class EvalService extends BaseEval {
       visitors['MemberExpression'] = memberExpressionVisitor;
       visitors['ArrayExpression'] = arrayExpressionVisitor;
       visitors['UnaryExpression'] = unaryExpressionVisitor;
+      visitors['LogicalExpression'] = logicalExpressionVisitor;
+      visitors['ThisExpression'] = thisExpressionVisitor;
 
       walk.recursive(state.ast, state, visitors);
 

@@ -8,12 +8,12 @@ const context = {
   one: 1,
   two: 2,
   three: 3,
-  // foo: {bar: 'baz', baz: 'wow', func: function(x: string) { return this[x]; }},
+  foo: {bar: 'baz', baz: 'wow', func: function(x: string) { return (this as Record<string, unknown>) [x] as unknown; }},
   numMap: {10: 'ten', 3: 'three'},
   list: [1,2,3,4,5],
   func: function(...x: number[]) { return x.reduce((sum, v) => sum + v, 1); },
   isArray: Array.isArray,
-  throw: () => { throw new Error('Should not be called.'); },
+  throwFunc: () => { throw new Error('Should not be called.'); },
   Date,
   sub: { sub2: { Date } },
   tag: (strings: unknown[], ...expand: unknown[]) => [...strings, '=>', ...expand].join(','),
@@ -157,9 +157,9 @@ describe('EvalService Core', () => {
 
   // 08. logical expression lazy evaluation
   it.each([
-    ['true || throw()',   true],
+    ['true || throwFunc()',   true],
     ['false || true',     true],
-    ['false && throw()',  false],
+    ['false && throwFunc()',  false],
     ['true && false',     false],
   ])("08. logical expression lazy evaluation: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
     const actual = service.eval(expr, context);
