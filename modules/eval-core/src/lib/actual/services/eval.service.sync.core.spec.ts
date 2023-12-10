@@ -220,8 +220,16 @@ describe('EvalService Core', () => {
 
   // 13. 'this' context
   it.each([
-    ['this.three', 3],
-  ])("13. 'this' context: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
+    ['this.three',        3],
+    ['this.increment()',  1],
+    ['this.getcounter()', 0]
+  ])("13. `this` context: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
+    const context = {
+      three: 3,
+      counter: 0,
+      increment: function() {return ++this.counter;},
+      getcounter: function() {return this.counter;}
+    }
     const actual = service.eval(expr, context);
     expect(actual).toEqual(expected);
   });
