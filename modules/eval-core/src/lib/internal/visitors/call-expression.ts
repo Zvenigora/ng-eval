@@ -47,15 +47,3 @@ export const evaluateCall = (node: CallExpression, st: EvalState, callback: walk
   const value = caller.apply(st.context, args);
   return value;
 }
-
-// export const evalFunctionName = (callee: Identifier | MemberExpression): string | undefined => {
-//   if (callee.type === 'Identifier') {
-//     return callee.name;
-//   } else if (callee.type === 'MemberExpression') {
-//     const property = callee.property;
-//     if (property.type === 'Identifier') {
-//       return property.name;
-//     }
-//   }
-//   return undefined;
-// }
