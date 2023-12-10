@@ -25,7 +25,8 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
   if (node.property.type === 'Identifier') {
     if (object === st.context) {
       const value = st.context.get(node.property.name);
-      return [object, node.property.name, value];
+      const thisValue = st.context.getThis(node.property.name);
+      return [thisValue ?? object, node.property.name, value];
     } else if ((object as Record<string, unknown>)[node.property.name]) {
       const value = (object as Record<string, unknown>)[node.property.name];
       return [object, node.property.name, value];

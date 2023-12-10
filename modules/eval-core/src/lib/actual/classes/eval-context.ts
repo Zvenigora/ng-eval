@@ -112,6 +112,33 @@ export class EvalContext {
     return undefined;
   }
 
+  public getThis(key: unknown): unknown | undefined {   // ToDo: refactor
+    if (this._original && this._original instanceof Registry) {
+      const value = this.getFromRegistry(this._original, key);
+      if (value !== undefined) {
+        return this._original;
+      }
+    } else if (this._original && this._original instanceof Object) {
+      const value = this.getFromObject(this._original, key as string);
+      if (value !== undefined) {
+        return this._original;
+      }
+    }
+    for (const scope of this._scopes) {
+      const value = this.getFromRegistry(scope, key);
+      if (value !== undefined) {
+        return scope;
+      }
+    }
+    for (const lookup of this._lookups.values) {
+      const value = lookup(key, this, this._options);
+      if (value !== undefined) {
+        return lookup;
+      }
+    }
+    return undefined;
+  }
+
   private getFromRegistry(registry: Registry<unknown, unknown>, key: unknown): unknown | undefined {
     return registry.get(key);
   }
