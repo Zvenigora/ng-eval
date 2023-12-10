@@ -14,3 +14,5 @@ export {unaryExpressionVisitor} from './unary-expression';
 export {logicalExpressionVisitor} from './logical-expression';
 export {thisExpressionVisitor} from './this-expression';
 export {newExpressionVisitor} from './new-expression';
+export {templateLiteralVisitor} from './template-literal';
+export {taggedTemplateExpressionVisitor} from './tagged-template-expression';
