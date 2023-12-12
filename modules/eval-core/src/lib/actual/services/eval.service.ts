@@ -8,7 +8,7 @@ import { arrayExpressionVisitor, awaitVisitor, binaryExpressionVisitor,
   callExpressionVisitor,
   conditionalExpressionVisitor,
   identifierVisitor, literalVisitor, logicalExpressionVisitor, memberExpressionVisitor,
-  newExpressionVisitor, popVisitorResult,
+  newExpressionVisitor, objectExpressionVisitor, popVisitorResult,
   taggedTemplateExpressionVisitor,
   templateLiteralVisitor,
   thisExpressionVisitor, unaryExpressionVisitor } from '../../internal/visitors';
@@ -124,6 +124,7 @@ export class EvalService extends BaseEval {
       visitors['NewExpression'] = newExpressionVisitor;
       visitors['TemplateLiteral'] = templateLiteralVisitor;
       visitors['TaggedTemplateExpression'] = taggedTemplateExpressionVisitor;
+      visitors['ObjectExpression'] = objectExpressionVisitor;
 
       walk.recursive(state.ast, state, visitors);
 
