@@ -1,5 +1,5 @@
 import {
-  arrayExpressionVisitor, awaitVisitor, binaryExpressionVisitor,
+  arrayExpressionVisitor, assignmentExpressionVisitor, awaitVisitor, binaryExpressionVisitor,
   callExpressionVisitor,conditionalExpressionVisitor,
   identifierVisitor, literalVisitor, logicalExpressionVisitor,
   memberExpressionVisitor, newExpressionVisitor, objectExpressionVisitor,
@@ -46,6 +46,7 @@ export const getDefaultVisitors = () => {
   visitors['TemplateLiteral'] = templateLiteralVisitor;
   visitors['TaggedTemplateExpression'] = taggedTemplateExpressionVisitor;
   visitors['ObjectExpression'] = objectExpressionVisitor;
+  visitors['AssignmentExpression'] = assignmentExpressionVisitor;
 
   return visitors;
 }
