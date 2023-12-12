@@ -110,10 +110,13 @@ describe('EvalService - extended', () => {
 
   // 19. object, spread
   it.each([
-    ['{ a: "a", one, [foo.bar]: 2 }', { a: 'a', one: 1, baz: 2 }],
-    ['{ a: "a", ...numMap }', { a: 'a', 10: 'ten', 3: 'three' }],
-    ['[7, ...list]', [7,1,2,3,4,5]],
-    ['func(1, ...list)', 17],
+    // ['{ a: "a", one, [foo.bar]: 2 }', { a: 'a', one: 1, baz: 2 }],    // error: Unexpected token (1:24)
+    ['({ a: "a", one, [foo.bar]: 2 })', { a: 'a', one: 1, baz: 2 }],
+    ['({ true: 1, 0: false })', { true: 1, 0: false }],
+    ['({ x: 1, x: 2 })', { x: 2 }],
+    ['({ a: "a", ...numMap })', { a: 'a', 10: 'ten', 3: 'three' }],
+    ['([7, ...list])', [7,1,2,3,4,5]],
+    ['(func(1, ...list))', 17],
   ])("19. object, spread: when the input is '%s', expected is %p",
           (expr: string, expObj: object | unknown) => {
     const actual = service.eval(expr, context);

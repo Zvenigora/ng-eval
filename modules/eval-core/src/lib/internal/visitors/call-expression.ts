@@ -5,16 +5,13 @@ import { pushVisitorResult, popVisitorResult } from './visitor-result';
 import { EvalState } from '../../actual/classes';
 import { afterVisitor } from './after-visitor';
 import { evaluateMember } from './member-expression';
+import { evaluateArray } from './array-expression';
 
 export const callExpressionVisitor = (node: CallExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
 
   beforeVisitor(node, st);
 
-  const args = node.arguments.map((argument) => {
-    callback(argument, st);
-    const value = popVisitorResult(node, st);
-    return value;
-  });
+  const args = evaluateArray(node, node.arguments, st, callback);
 
   if (node.callee.type === 'MemberExpression') {
     const [object, , fn] = evaluateMember(node.callee, st, callback);
