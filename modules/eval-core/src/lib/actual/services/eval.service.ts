@@ -2,18 +2,9 @@ import { Injectable } from '@angular/core';
 import { BaseEval } from './base-eval';
 import { ParserService } from './parser.service';
 import { AnyNode, defaultOptions } from 'acorn';
-import * as walk from 'acorn-walk';
 import { Registry } from '../../internal/classes';
-import { arrayExpressionVisitor, awaitVisitor, binaryExpressionVisitor,
-  callExpressionVisitor,
-  conditionalExpressionVisitor,
-  identifierVisitor, literalVisitor, logicalExpressionVisitor, memberExpressionVisitor,
-  newExpressionVisitor, objectExpressionVisitor, popVisitorResult,
-  taggedTemplateExpressionVisitor,
-  templateLiteralVisitor,
-  thisExpressionVisitor, unaryExpressionVisitor } from '../../internal/visitors';
 import { EvalContext, EvalOptions, EvalResult, EvalState } from '../classes';
-
+import { doEval } from '../../internal/visitors';
 
 @Injectable({
   providedIn: 'root'
@@ -74,7 +65,7 @@ export class EvalService extends BaseEval {
       const ctx = this.createContext(context, options);
       const result = this.createResult(expression, ctx);
       const state = this.createState(expression, ast, ctx, result, options);
-      const value = this.doEval(state);
+      const value = doEval(state);
       return value;
     } catch (error) {
       if (error instanceof Error) {
@@ -105,40 +96,9 @@ export class EvalService extends BaseEval {
     }
   }
 
-  private doEval(state: EvalState): unknown | undefined {
-    if (state.ast) {
-
-      const visitors: walk.RecursiveVisitors<EvalState> = {};
-
-      visitors['BinaryExpression'] = binaryExpressionVisitor;
-      visitors['Identifier'] = identifierVisitor;
-      visitors['Literal'] = literalVisitor;
-      visitors['CallExpression'] = callExpressionVisitor;
-      visitors['AwaitExpression'] = awaitVisitor;
-      visitors['ConditionalExpression'] = conditionalExpressionVisitor;
-      visitors['MemberExpression'] = memberExpressionVisitor;
-      visitors['ArrayExpression'] = arrayExpressionVisitor;
-      visitors['UnaryExpression'] = unaryExpressionVisitor;
-      visitors['LogicalExpression'] = logicalExpressionVisitor;
-      visitors['ThisExpression'] = thisExpressionVisitor;
-      visitors['NewExpression'] = newExpressionVisitor;
-      visitors['TemplateLiteral'] = templateLiteralVisitor;
-      visitors['TaggedTemplateExpression'] = taggedTemplateExpressionVisitor;
-      visitors['ObjectExpression'] = objectExpressionVisitor;
-
-      walk.recursive(state.ast, state, visitors);
-
-      const value = popVisitorResult(state.ast, state)
-
-      return value;
-    }
-
-    return undefined;
-  }
-
   private doEvalAsync(state: EvalState): Promise<unknown | undefined> {
     const promise = new Promise<unknown | undefined>((resolve) => {
-      const value = this.doEval(state);
+      const value = doEval(state);
       resolve(value);
     });
     return promise;
