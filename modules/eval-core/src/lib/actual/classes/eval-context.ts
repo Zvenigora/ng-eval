@@ -139,6 +139,17 @@ export class EvalContext {
     return undefined;
   }
 
+
+  public set(key: unknown, value: unknown): void {
+    if (this._original && this._original instanceof Registry) {
+      const registry = this._original as Registry<unknown, unknown>;
+      registry.set(key, value);
+    } else if (this._original && this._original instanceof Object) {
+      const obj = this._original as Record<string, unknown>;
+      obj[key as string | number] = value;
+    }
+  }
+
   private getFromRegistry(registry: Registry<unknown, unknown>, key: unknown): unknown | undefined {
     return registry.get(key);
   }
