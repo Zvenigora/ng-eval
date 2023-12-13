@@ -38,15 +38,9 @@ export const binaryExpressionVisitor = (node: BinaryExpression, st: EvalState, c
     node.operator === '<=' ? left <= right :
     node.operator === '>' ? left > right :
     node.operator === '>=' ? left >= right :
-    // node.operator === 'in' ? left in right :
-    // node.operator === 'instanceof' ? left instanceof right :
-    // node.operator === '??' ? left ?? right :
-    // node.operator === '&&' ? left && right :
-    // node.operator === '||' ? left || right :
-    // node.operator === '??=' ? left ??= right :
-    // node.operator === '&&=' ? left &&= right :
-    // node.operator === '||=' ? left ||= right :
-    // node.operator === '??' ? left ?? right :
+    node.operator === 'in' ? (left as unknown as string) in (right as unknown as object):
+    node.operator === 'instanceof' ? (left as unknown as object) instanceof (right  as unknown as ()=> unknown):
+    node.operator === '??' ? left ?? right :
     undefined;
 
   pushVisitorResult(node, st, value);

@@ -18,6 +18,9 @@ export const unaryExpressionVisitor = (node: UnaryExpression, st: EvalState, cal
     node.operator === '+' ? +argument :
     node.operator === '~' ? ~argument :
     node.operator === '!' ? !argument :
+    node.operator === 'typeof' ? typeof argument :
+    node.operator === 'void' ? void argument :
+    // node.operator === 'delete' ? delete argument :
     undefined;
 
   pushVisitorResult(node, st, value);

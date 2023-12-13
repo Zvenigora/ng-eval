@@ -5,7 +5,7 @@ import {
   memberExpressionVisitor, newExpressionVisitor, objectExpressionVisitor,
   popVisitorResult,
   taggedTemplateExpressionVisitor, templateLiteralVisitor,
-  thisExpressionVisitor, unaryExpressionVisitor
+  thisExpressionVisitor, unaryExpressionVisitor, updateExpressionVisitor
 } from '../../internal/visitors';
 
 import { EvalState } from '../../actual/classes';
@@ -47,6 +47,7 @@ export const getDefaultVisitors = () => {
   visitors['TaggedTemplateExpression'] = taggedTemplateExpressionVisitor;
   visitors['ObjectExpression'] = objectExpressionVisitor;
   visitors['AssignmentExpression'] = assignmentExpressionVisitor;
+  visitors['UpdateExpression'] = updateExpressionVisitor;
 
   return visitors;
 }
