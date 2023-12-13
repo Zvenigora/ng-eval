@@ -19,3 +19,4 @@ export {taggedTemplateExpressionVisitor} from './tagged-template-expression';
 export {objectExpressionVisitor} from './object-expression';
 export {getDefaultVisitors, doEval} from './recursive-visitors';
 export {assignmentExpressionVisitor} from './assignment-expression';
+export {updateExpressionVisitor} from './update-expression';
