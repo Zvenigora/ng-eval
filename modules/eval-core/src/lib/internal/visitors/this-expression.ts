@@ -1,7 +1,7 @@
 import { ThisExpression } from 'acorn';
 import { beforeVisitor } from './before-visitor';
 import { pushVisitorResult } from './visitor-result';
-import { EvalState } from '../../actual/classes';
+import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 
 export const thisExpressionVisitor = (node: ThisExpression, st: EvalState) => {

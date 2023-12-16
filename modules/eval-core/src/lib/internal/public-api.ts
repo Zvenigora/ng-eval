@@ -1,2 +1,2 @@
-export * from './classes';
+export * from './classes/common';
 export * from './interfaces';

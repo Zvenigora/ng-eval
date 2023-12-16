@@ -2,7 +2,7 @@ import { ObjectExpression, Property } from 'acorn';
 import * as walk from 'acorn-walk';
 import { beforeVisitor } from './before-visitor';
 import { pushVisitorResult, popVisitorResult } from './visitor-result';
-import { EvalState } from '../../actual/classes';
+import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 
 type KeyValuePair = {key: unknown; value: unknown};

@@ -1,5 +1,5 @@
 import { sha256 } from 'js-sha256';
-import { RegistryType, CacheType } from '../interfaces';
+import { RegistryType, CacheType } from '../../interfaces';
 import { BaseRegistry } from './base-registry';
 
 /**

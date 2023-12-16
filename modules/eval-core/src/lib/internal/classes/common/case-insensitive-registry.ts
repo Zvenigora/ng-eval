@@ -1,4 +1,4 @@
-import { CaseInsensitiveRegistryType, RegistryType } from "../interfaces";
+import { CaseInsensitiveRegistryType, RegistryType } from "../../interfaces";
 
 // some code here:
 // https://stackoverflow.com/questions/50019920/javascript-map-key-value-pairs-case-insensitive-search

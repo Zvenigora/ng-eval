@@ -1,4 +1,4 @@
-import { RegistryOptionType, ScopeType } from '../interfaces';
+import { RegistryOptionType, ScopeType } from '../../interfaces';
 
 /**
  * Represents a scope that holds key-value pairs.

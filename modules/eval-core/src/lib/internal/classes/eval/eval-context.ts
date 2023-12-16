@@ -1,4 +1,4 @@
-import { Registry } from '../../internal/classes';
+import { Registry } from '../common';
 import { EvalOptions } from './eval-options';
 
 /**

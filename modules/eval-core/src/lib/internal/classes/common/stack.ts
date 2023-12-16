@@ -1,4 +1,4 @@
-import { StackType } from '../interfaces';
+import { StackType } from '../../interfaces';
 
 /**
  * Represents a stack data structure.

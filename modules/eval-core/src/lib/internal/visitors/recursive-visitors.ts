@@ -1,31 +1,17 @@
 import {
-  arrayExpressionVisitor, assignmentExpressionVisitor, awaitVisitor, binaryExpressionVisitor,
+  arrayExpressionVisitor, arrowFunctionExpressionVisitor, assignmentExpressionVisitor, awaitVisitor, binaryExpressionVisitor,
   callExpressionVisitor,conditionalExpressionVisitor,
   identifierVisitor, literalVisitor, logicalExpressionVisitor,
   memberExpressionVisitor, newExpressionVisitor, objectExpressionVisitor,
-  popVisitorResult,
   taggedTemplateExpressionVisitor, templateLiteralVisitor,
   thisExpressionVisitor, unaryExpressionVisitor, updateExpressionVisitor
 } from '../../internal/visitors';
 
-import { EvalState } from '../../actual/classes';
+import { EvalState } from '../classes/eval';
 
 import * as walk from 'acorn-walk';
 
-export const doEval = (state: EvalState): unknown | undefined => {
-  if (state.ast) {
 
-    const visitors: walk.RecursiveVisitors<EvalState> = getDefaultVisitors();
-
-    walk.recursive(state.ast, state, visitors);
-
-    const value = popVisitorResult(state.ast, state)
-
-    return value;
-  }
-
-  return undefined;
-}
 
 export const getDefaultVisitors = () => {
 
@@ -48,6 +34,7 @@ export const getDefaultVisitors = () => {
   visitors['ObjectExpression'] = objectExpressionVisitor;
   visitors['AssignmentExpression'] = assignmentExpressionVisitor;
   visitors['UpdateExpression'] = updateExpressionVisitor;
+  visitors['ArrowFunctionExpression'] = arrowFunctionExpressionVisitor;
 
   return visitors;
 }

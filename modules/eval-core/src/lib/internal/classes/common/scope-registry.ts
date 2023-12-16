@@ -1,4 +1,4 @@
-import { RegistryType, ScopeRegistryOptions, ScopeRegistryType } from "../interfaces";
+import { RegistryType, ScopeRegistryOptions, ScopeRegistryType } from "../../interfaces";
 import { Registry } from "./registry";
 
 const defaultOptions: ScopeRegistryOptions = {

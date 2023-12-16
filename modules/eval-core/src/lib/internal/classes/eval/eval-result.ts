@@ -1,5 +1,5 @@
 import { AnyNode } from "acorn";
-import { Registry, Stack } from "../../internal/classes";
+import { Registry, Stack } from "../common";
 import { EvalContext } from "./eval-context";
 import { EvalOptions } from "./eval-options";
 

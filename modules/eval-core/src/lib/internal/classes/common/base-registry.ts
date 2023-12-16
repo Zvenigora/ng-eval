@@ -1,4 +1,4 @@
-import { BaseRegistryType, RegistryType } from "../interfaces";
+import { BaseRegistryType, RegistryType } from "../../interfaces";
 
 /**
  * Represents a registry that stores key-value pairs.
