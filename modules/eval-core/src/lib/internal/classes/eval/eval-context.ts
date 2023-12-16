@@ -1,33 +1,46 @@
-import { Registry } from '../common';
+import { Context, Registry, Stack, fromContext } from '../common';
+import { getContextValue } from '../common/context';
+import { EvalLookup } from './eval-lookup';
 import { EvalOptions } from './eval-options';
 
 /**
  * Represents the evaluation context for the code execution.
  */
 export class EvalContext {
-  private _original: Readonly<Registry<unknown, unknown> | Record<string, unknown>  | undefined>;
-  private _scopes: Readonly<Registry<unknown, unknown>[]>;
-  private _lookups: Readonly<Registry<unknown, (key: unknown, thisArg: unknown, options?: EvalOptions) => unknown>>;
+
+  type = 'EvalContext';
+
+  private _original: Readonly<Context>;
+  private _priorScopes: Readonly<Context[]>;
+  private _scopes: Readonly<Stack<Context>>;
+  private _lookups: Readonly<Registry<unknown, EvalLookup>>;
   private _options: Readonly<EvalOptions>;
 
   /**
    * Gets the original registry.
    */
-  public get original(): Registry<unknown, unknown> | Record<string, unknown>  | undefined {
+  public get original(): Context {
     return this._original;
   }
 
   /**
    * Gets the scopes registry.
    */
-  public get scopes(): Readonly<Registry<unknown, unknown>[]> {
-    return this._scopes;
+  public get priorScopes(): Readonly<Context[]> {
+    return this._priorScopes;
   }
+
+    /**
+   * Gets the scopes registry.
+   */
+    public get scopes(): Readonly<Stack<Context>> {
+      return this._scopes;
+    }
 
   /**
    * Gets the lookups registry.
    */
-  public get lookups(): Readonly<Registry<unknown, (key: unknown, thisArg: unknown, options?: EvalOptions) => unknown>> {
+  public get lookups(): Readonly<Registry<unknown, EvalLookup>> {
     return this._lookups;
   }
 
@@ -44,22 +57,14 @@ export class EvalContext {
    * @param options - The evaluation options.
    */
   constructor(
-    original: Registry<unknown, unknown> | Record<string, unknown> | undefined,
+    original: Context,
     options: EvalOptions
   ) {
-    const caseInsensitive = options.caseInsensitive;
-    if (original instanceof Registry) {
-      this._original = original;
-    } else if (!original) {
-      this._original = undefined;
-    } else if (caseInsensitive) {
-      this._original = Registry.fromObject(original, options.value);
-    } else {
-      this._original = original as Record<string, unknown>;
-    }
-    this._scopes = [];
+    this._original = original;
+    this._priorScopes = [];
+    this._scopes = new Stack<Context>();
     this._options = options;
-    this._lookups = new Registry<unknown, (key: unknown, thisArg: unknown, options?: EvalOptions) => unknown>();
+    this._lookups = new Registry<unknown, EvalLookup>();
   }
 
   /**
@@ -68,16 +73,10 @@ export class EvalContext {
    * @param options - The evaluation options.
    * @returns The converted EvalContext instance.
    */
-  public static toContext(context?: EvalContext | Record<string, unknown> | Registry<string, unknown> | undefined,
+  public static toContext(context?: Context,
                           options?: EvalOptions): EvalContext {
-    if (!context) {
-      return new EvalContext(undefined, options || new EvalOptions());
-    } else if (context instanceof EvalContext) {
-      return context;
-    } else if (context instanceof Registry) {
-      return new EvalContext(context, options || new EvalOptions());
-    }
-    return new EvalContext(context as Record<string, unknown>, options || new EvalOptions());
+    const ctx = fromContext(context ?? {}, options);
+    return new EvalContext(ctx, options ?? {});
   }
 
   /**
@@ -86,23 +85,27 @@ export class EvalContext {
    * @returns The value associated with the key, or undefined if not found.
    */
   public get(key: unknown): unknown | undefined {
-    if (this._original && this._original instanceof Registry) {
-      const value = this.getFromRegistry(this._original, key);
-      if (value !== undefined) {
-        return value;
-      }
-    } else if (this._original && this._original instanceof Object) {
-      const value = this.getFromObject(this._original, key as string);
+    if (this._original) {
+      const value = getContextValue(this._original, key);
       if (value !== undefined) {
         return value;
       }
     }
-    for (const scope of this._scopes) {
-      const value = this.getFromRegistry(scope, key);
+
+    for (const scope of this._scopes.asArray()) {
+      const value = getContextValue(scope, key);
       if (value !== undefined) {
         return value;
       }
     }
+
+    for (const scope of this._priorScopes) {
+      const value = getContextValue(scope, key);
+      if (value !== undefined) {
+        return value;
+      }
+    }
+
     for (const lookup of this._lookups.values) {
       const value = lookup(key, this, this._options);
       if (value !== undefined) {
@@ -112,20 +115,15 @@ export class EvalContext {
     return undefined;
   }
 
-  public getThis(key: unknown): unknown | undefined {   // ToDo: refactor
-    if (this._original && this._original instanceof Registry) {
-      const value = this.getFromRegistry(this._original, key);
-      if (value !== undefined) {
-        return this._original;
-      }
-    } else if (this._original && this._original instanceof Object) {
-      const value = this.getFromObject(this._original, key as string);
+  public getThis(key: unknown): unknown | undefined {
+    if (this._original) {
+      const value = getContextValue(this._original, key);
       if (value !== undefined) {
         return this._original;
       }
     }
-    for (const scope of this._scopes) {
-      const value = this.getFromRegistry(scope, key);
+    for (const scope of this._priorScopes) {
+      const value = getContextValue(this._original, key);
       if (value !== undefined) {
         return scope;
       }
@@ -148,23 +146,6 @@ export class EvalContext {
       const obj = this._original as Record<string, unknown>;
       obj[key as string | number] = value;
     }
-  }
-
-  private getFromRegistry(registry: Registry<unknown, unknown>, key: unknown): unknown | undefined {
-    return registry.get(key);
-  }
-
-  private getFromObject(obj: Record<string, unknown>, key: string): unknown | undefined{
-    if (!this._options.caseInsensitive) {
-      return obj[key as string];
-    }
-    for (const [k, value] of Object.entries(obj)) {
-      const found = key.localeCompare(k, 'en', { sensitivity: 'base' }) === 0;
-      if (found) {
-        return value;
-      }
-    }
-    return undefined;
   }
 
 }

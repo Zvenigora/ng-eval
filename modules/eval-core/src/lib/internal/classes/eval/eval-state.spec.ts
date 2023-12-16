@@ -20,7 +20,7 @@ describe('EvalState', () => {
     expression = 'a + b';
     ast = doParse(expression, defaultOptions);
     original = new Registry<unknown, unknown>();
-    options = new EvalOptions();
+    options = {} as EvalOptions;
     context = new EvalContext(original, options);
     result = new EvalResult(expression, context);
   });

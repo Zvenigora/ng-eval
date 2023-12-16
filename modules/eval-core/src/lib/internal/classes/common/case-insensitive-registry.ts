@@ -1,4 +1,4 @@
-import { CaseInsensitiveRegistryType, RegistryType } from "../../interfaces";
+import { RegistryEntries, RegistryType } from "../../interfaces";
 
 // some code here:
 // https://stackoverflow.com/questions/50019920/javascript-map-key-value-pairs-case-insensitive-search
@@ -6,7 +6,7 @@ import { CaseInsensitiveRegistryType, RegistryType } from "../../interfaces";
 /**
  * Represents a case-insensitive registry that maps keys to values.
  */
-export class CaseInsensitiveRegistry<TKey, TValue> implements CaseInsensitiveRegistryType<TKey, TValue> {
+export class CaseInsensitiveRegistry<TKey, TValue> implements RegistryType<TKey, TValue> {
 
   private readonly registry: Map<TKey, TValue> = new Map();
   private keysMap = new Map<TKey, TKey>();
@@ -24,10 +24,14 @@ export class CaseInsensitiveRegistry<TKey, TValue> implements CaseInsensitiveReg
    * Creates a new instance of CaseInsensitiveRegistry.
    * @param entries - Optional initial entries to populate the registry.
    */
-  constructor(entries?: readonly (readonly [TKey, TValue])[] | null) {
-    if (entries) {
+  constructor(entries?: RegistryEntries<TKey, TValue> | null) {
+    if (entries && Array.isArray(entries)) {
       for (const [key, value] of entries) {
         this.set(key, value);
+      }
+    } else if (entries && typeof entries === 'object') {
+      for (const [key, value] of Object.entries(entries)) {
+        this.set(key as TKey, value as TValue);
       }
     }
   }
@@ -37,7 +41,7 @@ export class CaseInsensitiveRegistry<TKey, TValue> implements CaseInsensitiveReg
    * @param object - The object containing key-value pairs.
    * @returns A new CaseInsensitiveRegistry instance.
    */
-  public static fromObject<TKey extends string | number | symbol, TValue>(object: Record<TKey, TValue>): RegistryType<TKey, TValue> {
+  public static fromObject<TKey extends string | number | symbol, TValue>(object: Record<TKey, TValue>): CaseInsensitiveRegistry<TKey, TValue> {
     const registry = new CaseInsensitiveRegistry<TKey, TValue>();
     for (const [key, value] of Object.entries(object)) {
       registry.set(key as TKey, value as TValue);

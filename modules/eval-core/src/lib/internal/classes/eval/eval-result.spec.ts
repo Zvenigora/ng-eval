@@ -6,7 +6,7 @@ describe('EvalResult', () => {
   let evalResult: EvalResult;
 
   beforeEach(() => {
-    const options = new EvalOptions(true);
+    const options = {} as EvalOptions;
     const context = new EvalContext({}, options);
     const expression = '1 + 1';
     evalResult = new EvalResult(expression, context);

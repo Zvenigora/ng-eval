@@ -56,4 +56,13 @@ export class Stack<T> implements StackType<T> {
     this._stack[length - 2] = temp;
   }
 
+  /**
+   * Returns the elements of the stack as an array in reverse order.
+   *
+   * @returns An array containing the elements of the stack in reverse order.
+   */
+  public asArray(): T[] {
+    return [...this._stack].reverse();
+  }
+
 }

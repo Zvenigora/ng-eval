@@ -2,11 +2,12 @@ import { WalkerCallback } from 'acorn-walk';
 import * as acorn from 'acorn';
 import { StackType } from './stack-type';
 import { AnyNode } from 'acorn';
-import { BaseRegistryType, RegistryType, ScopeRegistryType } from './registry-type';
+import { RegistryType } from './registry-type';
 import { AnyNodeTypes } from './parser-types';
+import { BaseRegistry, Registry } from '../public-api';
 
 export interface RecursiveVisitorState {
-  scope: ScopeRegistryType<unknown, unknown>,
+  scope: Registry<unknown, unknown>,
   result: RecursiveVisitorResult<unknown | undefined>,
   option: RecursiveVisitorOptions,
   beforeVisitors?: RegistryType<AnyNodeTypes, (node: AnyNode, st: RecursiveVisitorState) => number | undefined>,
@@ -35,7 +36,7 @@ export interface RecursiveVisitorStackResult<TValue> {
 
 export interface RecursiveVisitorRegistryResult<TValue> {
   type: 'registry',
-  registry: BaseRegistryType<AnyNode, TValue>
+  registry: BaseRegistry<AnyNode, TValue>
 }
 
 type AggregateType = {

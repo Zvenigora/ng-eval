@@ -78,27 +78,27 @@ export interface RegistryType<TKey, TValue> extends Iterable<[TKey, TValue]> {
   [Symbol.iterator](): IterableIterator<[TKey, TValue]>;
 }
 
-export interface BaseRegistryType<TKey, TValue> extends RegistryType<TKey, TValue> {
-  type: Readonly<'BaseRegistry' | string>;
+// export interface BaseRegistryType<TKey, TValue> extends RegistryType<TKey, TValue> {
+//   type: Readonly<'BaseRegistry' | string>;
 
-  options: Readonly<{
-    caseInsensitive: false;
-  } | Record<string, unknown>>;
-}
+//   options: Readonly<{
+//     caseInsensitive: false;
+//   } | Record<string, unknown>>;
+// }
 
-export interface CaseInsensitiveRegistryType<TKey, TValue> extends RegistryType<TKey, TValue> {
-  type: 'CaseInsensitiveRegistry' | string;
+// export interface CaseInsensitiveRegistryType<TKey, TValue> extends RegistryType<TKey, TValue> {
+//   type: 'CaseInsensitiveRegistry' | string;
 
-  options: {
-    caseInsensitive: true;
-  } | Record<string, unknown>;
-}
+//   options: {
+//     caseInsensitive: true;
+//   } | Record<string, unknown>;
+// }
 
-export interface ScopeRegistryType<TKey, TValue> extends RegistryType<TKey, TValue> {
-  type: 'ScopeRegistry' | string;
+// export interface ScopeRegistryType<TKey, TValue> extends RegistryType<TKey, TValue> {
+//   type: 'ScopeRegistry' | string;
 
-  options: Record<string, unknown> | ScopeRegistryOptions;
-}
+//   options: Record<string, unknown> | ScopeRegistryOptions;
+// }
 
 export interface ScopeRegistryOptions {
   caseInsensitive: boolean;
@@ -107,3 +107,4 @@ export interface ScopeRegistryOptions {
   thisArg: unknown;
 }
 
+export type RegistryEntries<TKey, TValue> = [TKey, TValue][] | Record<string | number | symbol, TValue>;
