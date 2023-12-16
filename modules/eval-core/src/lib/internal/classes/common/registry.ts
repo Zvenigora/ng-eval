@@ -1,4 +1,4 @@
-import { RegistryType } from "../../interfaces";
+import { RegistryEntries, RegistryType } from "../../interfaces";
 import { BaseRegistry } from "./base-registry";
 import { CaseInsensitiveRegistry } from "./case-insensitive-registry";
 
@@ -18,7 +18,7 @@ export class Registry<TKey, TValue> implements RegistryType<TKey, TValue> {
    * Creates a new Registry instance.
    * @param entries - Optional array of key-value pairs to initialize the registry.
    */
-  constructor(entries?: readonly (readonly [TKey, TValue])[] | null,
+  constructor(entries?: RegistryEntries<TKey, TValue> | null,
               options: Record<string, unknown> = { caseInsensitive: false }) {
     this.options = options;
     const caseInsensitive = typeof options?.['caseInsensitive'] === 'boolean' ? options['caseInsensitive'] : false;
@@ -33,12 +33,10 @@ export class Registry<TKey, TValue> implements RegistryType<TKey, TValue> {
    * @returns A new Registry instance.
    */
   public static fromObject<TKey extends string | number | symbol, TValue>(object: Record<TKey, TValue>,
-    options: Record<string, unknown> = { caseInsensitive: false }): RegistryType<TKey, TValue> {
+    options: Record<string, unknown> = { caseInsensitive: false }): Registry<TKey, TValue> {
 
-    const caseInsensitive = typeof options?.['caseInsensitive'] === 'boolean' ? options['caseInsensitive'] : false;
-    const registry: RegistryType<TKey, TValue> = caseInsensitive
-      ? CaseInsensitiveRegistry.fromObject(object)
-      : BaseRegistry.fromObject(object);
+    const entries = Object.entries(object) as [TKey, TValue][];
+    const registry = new Registry<TKey, TValue>(entries, options);
 
     return registry;
   }

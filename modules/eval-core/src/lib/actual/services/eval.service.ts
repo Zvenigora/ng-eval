@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { BaseEval } from './base-eval';
 import { ParserService } from './parser.service';
 import { AnyNode, defaultOptions } from 'acorn';
-import { Registry } from '../../internal/classes/common';
+import { Context, Registry } from '../../internal/classes/common';
 import { EvalContext, EvalOptions, EvalResult, EvalState } from '../../internal/classes/eval';
 import { doEval } from '../../internal/functions/do-eval';
 
@@ -34,8 +34,11 @@ export class EvalService extends BaseEval {
     }
   }
 
-  public createContext(context?: EvalContext | Record<string, unknown> | Registry<string, unknown> | undefined,
+  public createContext(context?: EvalContext | Context | undefined,
                         options?: EvalOptions): EvalContext {
+    if (context instanceof EvalContext) {
+      return context;
+    }
     const ctx = EvalContext.toContext(context, options);
     return ctx;
   }

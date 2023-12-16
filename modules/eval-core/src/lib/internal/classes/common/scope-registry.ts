@@ -1,4 +1,4 @@
-import { RegistryType, ScopeRegistryOptions, ScopeRegistryType } from "../../interfaces";
+import { RegistryType, ScopeRegistryOptions } from "../../interfaces";
 import { Registry } from "./registry";
 
 const defaultOptions: ScopeRegistryOptions = {
@@ -15,7 +15,7 @@ type RegistryScopeOptionType = Readonly<Record<string, unknown> | ScopeRegistryO
  * @template TKey The type of the keys in the registry.
  * @template TValue The type of the values in the registry.
  */
-export class ScopeRegistry<TKey, TValue> implements ScopeRegistryType<TKey, TValue> {
+export class ScopeRegistry<TKey, TValue> implements RegistryType<TKey, TValue> {
   private readonly _registry: RegistryType<TKey, TValue>
 
   type: Readonly<string> = 'ScopeRegistry';
@@ -30,7 +30,7 @@ export class ScopeRegistry<TKey, TValue> implements ScopeRegistryType<TKey, TVal
    * @param entries Optional. An array of key-value pairs to initialize the registry.
    * @param options Optional. Options for the registry.
    */
-  constructor(entries?: readonly (readonly [TKey, TValue])[] | null,
+  constructor(entries?: [TKey, TValue][] | null,
               options: RegistryScopeOptionType = defaultOptions) {
     this.options = {...defaultOptions, ...options};
     this._registry = new Registry<TKey, TValue>(entries, options);
@@ -43,7 +43,7 @@ export class ScopeRegistry<TKey, TValue> implements ScopeRegistryType<TKey, TVal
    * @returns A new ScopeRegistry instance.
    */
   public static fromObject<TKey extends string | number | symbol, TValue>(object: Record<TKey, TValue>,
-    options: RegistryScopeOptionType = defaultOptions): ScopeRegistryType<TKey, TValue> {
+    options: RegistryScopeOptionType = defaultOptions): RegistryType<TKey, TValue> {
 
     const registry = Registry.fromObject(object, options);
     return registry;

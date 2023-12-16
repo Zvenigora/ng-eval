@@ -8,13 +8,13 @@ describe('EvalContext', () => {
 
   beforeEach(() => {
     original = new Registry<unknown, unknown>();
-    options = new EvalOptions();
+    options = {};
   });
 
   it('should create an instance with original registry', () => {
     const evalContext = new EvalContext(original, options);
     expect(evalContext.original).toBe(original);
-    expect(evalContext.scopes).toEqual([]);
+    expect(evalContext.priorScopes).toEqual([]);
     expect(evalContext.options).toBe(options);
   });
 
@@ -22,7 +22,7 @@ describe('EvalContext', () => {
     const object = { testKey: 'value' };
     const evalContext = new EvalContext(object, options);
     // expect(evalContext.original.get).toEqual(Registry.fromObject(object));
-    expect(evalContext.scopes).toEqual([]);
+    expect(evalContext.priorScopes).toEqual([]);
     expect(evalContext.options).toBe(options);
   });
 
@@ -48,7 +48,7 @@ describe('EvalContext', () => {
     const scope = new Registry<unknown, unknown>();
     scope.set(key, value);
     const evalContext = new EvalContext(original, options);
-    (evalContext.scopes as Registry<unknown, unknown>[]).push(scope);
+    (evalContext.priorScopes as Registry<unknown, unknown>[]).push(scope);
     expect(evalContext.get(key)).toBe(value);
   });
 

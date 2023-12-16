@@ -1,9 +1,9 @@
-import { BaseRegistryType, RegistryType } from "../../interfaces";
+import { RegistryEntries, RegistryType } from "../../interfaces";
 
 /**
  * Represents a registry that stores key-value pairs.
  */
-export class BaseRegistry<TKey, TValue> implements BaseRegistryType<TKey, TValue> {
+export class BaseRegistry<TKey, TValue> implements RegistryType<TKey, TValue> {
   private readonly _registry: Map<TKey, TValue> = new Map();
 
   type: Readonly<string> = 'BaseRegistry';
@@ -19,10 +19,14 @@ export class BaseRegistry<TKey, TValue> implements BaseRegistryType<TKey, TValue
    * Creates a new Registry instance.
    * @param entries - Optional array of key-value pairs to initialize the registry.
    */
-  constructor(entries?: readonly (readonly [TKey, TValue])[] | null) {
-    if (entries) {
+  constructor(entries?: RegistryEntries<TKey, TValue> | null) {
+    if (entries && Array.isArray(entries)) {
       for (const [key, value] of entries) {
         this.set(key, value);
+      }
+    } else if (entries && typeof entries === 'object') {
+      for (const [key, value] of Object.entries(entries)) {
+        this.set(key as TKey, value as TValue);
       }
     }
   }
@@ -32,7 +36,7 @@ export class BaseRegistry<TKey, TValue> implements BaseRegistryType<TKey, TValue
    * @param object - The object containing key-value pairs.
    * @returns A new Registry instance.
    */
-  public static fromObject<TKey extends string | number | symbol, TValue>(object: Record<TKey, TValue>): RegistryType<TKey, TValue> {
+  public static fromObject<TKey extends string | number | symbol, TValue>(object: Record<TKey, TValue>): BaseRegistry<TKey, TValue> {
     const registry = new BaseRegistry<TKey, TValue>();
     for (const [key, value] of Object.entries(object)) {
       registry.set(key as TKey, value as TValue);
