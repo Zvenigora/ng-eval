@@ -1,4 +1,4 @@
-import { QueueType } from '../interfaces';
+import { QueueType } from '../../interfaces';
 
 /**
  * Represents a generic queue data structure.

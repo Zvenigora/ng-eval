@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { BaseEval } from './base-eval';
 import { CacheType, ParserOptions } from '../../internal/interfaces';
-import { Cache } from '../../internal/classes';
-import { Expression, ModuleDeclaration, Program, Statement,
-  defaultOptions, version as acornVersion, parse, AnyNode } from 'acorn';
+import { Cache } from '../../internal/classes/common';
+import { Expression, Program,
+  defaultOptions, version as acornVersion, AnyNode } from 'acorn';
+import { doParse } from '../../internal/functions';
 
 
 @Injectable({
@@ -55,7 +56,7 @@ export class ParserService extends BaseEval {
         const isCache = this.parserOptions.cacheSize && this._cache;
         const ast = isCache
           ? this.doCacheParse(expr, parserOptions)
-          : this.doParse(expr, parserOptions);
+          : doParse(expr, parserOptions);
         return ast;
       } catch (error) {
         if (error instanceof Error) {
@@ -74,45 +75,12 @@ export class ParserService extends BaseEval {
       const hashKey = this._cache.getHashKey('', expr);
       let ast = this._cache.get(hashKey);
       if (!ast) {
-        ast = this.doParse(expr, options);
+        ast = doParse(expr, options);
         this._cache.set(hashKey, ast);
       }
       return ast;
     }
     return undefined;
   }
-
-  /**
- * @description
- * Parses expression and returns ES6/ES2020 AST.
- * @param expr expression to parse
- * @param options parser options
- */
-  private doParse(expr: string, options: ParserOptions)
-        : Program | AnyNode | undefined {
-    const program: Program = parse(expr, options);
-    if (!options.extractExpressions) {
-      return program;
-    }
-    return this.extractExpression(program);
-  }
-
-  /**
-   * @description
-   * Walks through the AST and extracts first expression.
-   * @param expr expression to parse
-   */
-  private extractExpression(program: Program)
-          : Expression | undefined {
-
-    if (program.body.length === 1) {
-      const expression: Statement | ModuleDeclaration = program.body[0];
-      if (expression.type === 'ExpressionStatement') {
-        return expression.expression as Expression;
-      }
-    }
-
-    return undefined;
-  }
-
+  //#endregion
 }

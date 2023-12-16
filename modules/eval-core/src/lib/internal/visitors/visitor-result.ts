@@ -1,5 +1,5 @@
 import { AnyNode } from 'acorn';
-import { EvalState } from '../../actual/classes';
+import { EvalState } from '../classes/eval';
 
 export const pushVisitorResult = (node: AnyNode, st: EvalState, value: unknown) => {
   const key = getKey(node);

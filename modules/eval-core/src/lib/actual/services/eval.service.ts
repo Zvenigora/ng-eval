@@ -2,9 +2,9 @@ import { Injectable } from '@angular/core';
 import { BaseEval } from './base-eval';
 import { ParserService } from './parser.service';
 import { AnyNode, defaultOptions } from 'acorn';
-import { Registry } from '../../internal/classes';
-import { EvalContext, EvalOptions, EvalResult, EvalState } from '../classes';
-import { doEval } from '../../internal/visitors';
+import { Registry } from '../../internal/classes/common';
+import { EvalContext, EvalOptions, EvalResult, EvalState } from '../../internal/classes/eval';
+import { doEval } from '../../internal/functions/do-eval';
 
 @Injectable({
   providedIn: 'root'

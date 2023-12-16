@@ -2,10 +2,10 @@ import { EvalContext } from './eval-context';
 import { EvalResult } from './eval-result';
 import { EvalState } from './eval-state';
 import { EvalOptions } from './eval-options'; // Add missing import
-import { Registry } from '../../internal/classes';
-import { ParserService } from '../services';
+import { Registry } from '../common';
 import { TestBed } from '@angular/core/testing';
-import { AnyNode } from 'acorn';
+import { AnyNode, defaultOptions } from 'acorn';
+import { doParse } from '../../functions';
 
 describe('EvalState', () => {
   let original: Registry<unknown, unknown>;
@@ -14,13 +14,11 @@ describe('EvalState', () => {
   let result: EvalResult;
   let expression: string;
   let ast: AnyNode | undefined;
-  let parser: ParserService;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
-    parser = TestBed.inject(ParserService);
     expression = 'a + b';
-    ast = parser.parse(expression);
+    ast = doParse(expression, defaultOptions);
     original = new Registry<unknown, unknown>();
     options = new EvalOptions();
     context = new EvalContext(original, options);

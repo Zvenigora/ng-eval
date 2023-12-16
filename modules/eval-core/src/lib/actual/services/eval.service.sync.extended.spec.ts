@@ -56,7 +56,7 @@ describe('EvalService - extended', () => {
     ['list.find(() => false)', undefined],
     ['list.findIndex(v => v === 3)', 2],
     ['[1].map(() => ({ a: 1 }))', [{ a: 1 }]],
-    ['[[1, 2]].map([a, b] => a + b)', [3]],
+    ['[[1, 2]].map(([a, b]) => a + b)', [3]],
     ['[[1, 2]].map(([a, b] = []) => a+b)', [3]],
     ['[[1,],undefined].map(([a=2, b=5]=[]) => a+b)', [6, 7]],
     ['[{a:1}].map(({a}) => a)', [1]],

@@ -2,7 +2,7 @@ import { Literal } from 'acorn';
 import { beforeVisitor } from './before-visitor';
 import { afterVisitor } from './after-visitor';
 import { pushVisitorResult } from './visitor-result';
-import { EvalState } from '../../actual/classes';
+import { EvalState } from '../classes/eval';
 
 export const literalVisitor = (node: Literal, st: EvalState) => {
 

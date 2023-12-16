@@ -1,4 +1,4 @@
-import { RegistryType } from "../interfaces";
+import { RegistryType } from "../../interfaces";
 import { BaseRegistry } from "./base-registry";
 import { CaseInsensitiveRegistry } from "./case-insensitive-registry";
 

@@ -1,5 +1,5 @@
 import { AnyNode } from 'acorn';
-import { EvalState } from '../../actual/classes';
+import { EvalState } from '../classes/eval';
 
 export const beforeVisitor = (node: AnyNode, st: EvalState) => {
   if (st.options?.trackTime) {

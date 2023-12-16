@@ -3,7 +3,7 @@ import * as walk from 'acorn-walk';
 import { beforeVisitor } from './before-visitor';
 import { afterVisitor } from './after-visitor';
 import { popVisitorResult, pushVisitorResult } from './visitor-result';
-import { EvalState } from '../../actual/classes';
+import { EvalState } from '../classes/eval';
 
 export const taggedTemplateExpressionVisitor = (node: TaggedTemplateExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
 
