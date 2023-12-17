@@ -85,15 +85,16 @@ export class EvalContext {
    * @returns The value associated with the key, or undefined if not found.
    */
   public get(key: unknown): unknown | undefined {
-    if (this._original) {
-      const value = getContextValue(this._original, key);
+
+    for (const scope of this._scopes.asArray()) {
+      const value = getContextValue(scope, key);
       if (value !== undefined) {
         return value;
       }
     }
 
-    for (const scope of this._scopes.asArray()) {
-      const value = getContextValue(scope, key);
+    if (this._original) {
+      const value = getContextValue(this._original, key);
       if (value !== undefined) {
         return value;
       }
