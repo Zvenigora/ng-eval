@@ -9,6 +9,9 @@ import { ParserOptions } from "../interfaces";
 */
 export const doParse = (expr: string, options: ParserOptions)
   : Program | AnyNode | undefined => {
+  if (options.ecmaVersion === undefined) {
+    options.ecmaVersion = 2020;
+  }
   const program: Program = parse(expr, options);
   if (!options.extractExpressions) {
     return program;

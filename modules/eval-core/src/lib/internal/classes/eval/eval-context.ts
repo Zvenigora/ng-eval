@@ -12,7 +12,7 @@ export class EvalContext {
 
   private _original: Readonly<Context>;
   private _priorScopes: Readonly<Context[]>;
-  private _scopes: Readonly<Stack<Context>>;
+  private _scopes: Stack<Context>;
   private _lookups: Readonly<Registry<unknown, EvalLookup>>;
   private _options: Readonly<EvalOptions>;
 
@@ -30,12 +30,12 @@ export class EvalContext {
     return this._priorScopes;
   }
 
-    /**
+  /**
    * Gets the scopes registry.
    */
-    public get scopes(): Readonly<Stack<Context>> {
-      return this._scopes;
-    }
+  public get scopes(): Readonly<Stack<Context>> {
+    return this._scopes;
+  }
 
   /**
    * Gets the lookups registry.
@@ -74,7 +74,7 @@ export class EvalContext {
    * @returns The converted EvalContext instance.
    */
   public static toContext(context?: Context,
-                          options?: EvalOptions): EvalContext {
+    options?: EvalOptions): EvalContext {
     const ctx = fromContext(context ?? {}, options);
     return new EvalContext(ctx, options ?? {});
   }
@@ -115,6 +115,12 @@ export class EvalContext {
     return undefined;
   }
 
+  /**
+   * Retrieves the `this` value of the specified key from the evaluation context.
+   * The value is searched in the original context, prior scopes, and lookup functions.
+   * @param key - The key to retrieve the value for.
+   * @returns The `this` value associated with the key, or undefined if not found.
+   */
   public getThis(key: unknown): unknown | undefined {
     if (this._original) {
       const value = getContextValue(this._original, key);
@@ -137,7 +143,13 @@ export class EvalContext {
     return undefined;
   }
 
-
+  /**
+   * Sets a key-value pair in the context.
+   * If the original context is a Registry, the key-value pair is set using the Registry's set method.
+   * If the original context is an Object, the key-value pair is set directly on the object.
+   * @param key - The key of the pair.
+   * @param value - The value of the pair.
+   */
   public set(key: unknown, value: unknown): void {
     if (this._original && this._original instanceof Registry) {
       const registry = this._original as Registry<unknown, unknown>;
@@ -146,6 +158,23 @@ export class EvalContext {
       const obj = this._original as Record<string, unknown>;
       obj[key as string | number] = value;
     }
+  }
+
+  /**
+   * Pushes a context to the scope stack.
+   * @param context - The context to push.
+   * @param options - The evaluation options.
+   */
+  public push(context: Context, options?: EvalOptions): void {
+    const ctx = fromContext(context, options);
+    this._scopes.push(ctx);
+  }
+
+  /**
+   * Pops a context from the scope stack.
+   */
+  public pop(): void {
+    this._scopes.pop();
   }
 
 }
