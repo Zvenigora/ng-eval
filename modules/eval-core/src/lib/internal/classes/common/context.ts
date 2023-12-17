@@ -1,7 +1,9 @@
 import { Registry } from '../common';
 import { EvalOptions } from '../eval';
 
-export type Context = Registry<unknown, unknown> | Record<string | number | symbol, unknown>;
+export type BaseContext = Record<string | number | symbol, unknown>;
+
+export type Context = Registry<unknown, unknown> | BaseContext;
 
 /**
  * Converts a context object to a Context instance.

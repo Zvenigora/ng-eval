@@ -4,7 +4,7 @@ import { ParserService } from './parser.service';
 import { AnyNode, defaultOptions } from 'acorn';
 import { Context, Registry } from '../../internal/classes/common';
 import { EvalContext, EvalOptions, EvalResult, EvalState } from '../../internal/classes/eval';
-import { doEval } from '../../internal/functions/do-eval';
+import { doEval, doEvalAsync } from '../../internal/functions';
 
 @Injectable({
   providedIn: 'root'
@@ -68,7 +68,7 @@ export class EvalService extends BaseEval {
       const ctx = this.createContext(context, options);
       const result = this.createResult(expression, ctx);
       const state = this.createState(expression, ast, ctx, result, options);
-      const value = doEval(state);
+      const value = doEval(ast, state);
       return value;
     } catch (error) {
       if (error instanceof Error) {
@@ -88,7 +88,7 @@ export class EvalService extends BaseEval {
       const ctx = this.createContext(context, options);
       const result = this.createResult(expression, ctx);
       const state = this.createState(expression, ast, ctx, result, options, true);
-      const promise = this.doEvalAsync(state);
+      const promise = doEvalAsync(ast, state);
       return promise;
     } catch (error) {
       if (error instanceof Error) {
@@ -97,14 +97,6 @@ export class EvalService extends BaseEval {
         throw error;
       }
     }
-  }
-
-  private doEvalAsync(state: EvalState): Promise<unknown | undefined> {
-    const promise = new Promise<unknown | undefined>((resolve) => {
-      const value = doEval(state);
-      resolve(value);
-    });
-    return promise;
   }
 
 }
