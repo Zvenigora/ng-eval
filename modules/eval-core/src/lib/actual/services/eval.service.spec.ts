@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { EvalService } from './eval.service';
+import { AnyNode } from 'acorn';
 
 describe('EvalService', () => {
   let service: EvalService;
@@ -38,14 +39,27 @@ describe('EvalService', () => {
     expect(value).toBe(1 + 2);
   });
 
-  // it('should evaluate an AST expression', () => {
-  //   const expression = { type: 'BinaryExpression', operator: '+', left: 2, right: 2 };
-  //   const result = service.eval(expression);
-  //   expect(result).toEqual(4);
-  // });
+  it('should evaluate an AST expression', () => {
+    const expression = {
+      type: "BinaryExpression",
+      left: {
+        raw: "2",
+        type: "Literal",
+        value: 2
+      },
+      operator: "+",
+      right: {
+        raw: "2",
+        type: "Literal",
+        value: 2
+      }
+    } as unknown as AnyNode;
+    const result = service.eval(expression);
+    expect(result).toEqual(4);
+  });
 
   // it('should throw an error if evaluation fails', () => {
   //   const expression = '2 / 0';
-  //   expect(() => service.eval(expression)).toThrowError();
+  //   expect(() => service.eval(expression)).toThrowError(); // 2 / 0 returns Infinity
   // });
 });

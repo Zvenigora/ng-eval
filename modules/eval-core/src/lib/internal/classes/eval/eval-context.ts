@@ -73,8 +73,13 @@ export class EvalContext {
    * @param options - The evaluation options.
    * @returns The converted EvalContext instance.
    */
-  public static toContext(context?: Context,
+  public static fromContext(context?: EvalContext | Context | undefined,
     options?: EvalOptions): EvalContext {
+
+    if (context instanceof EvalContext) {
+      return context;
+    }
+
     const ctx = fromContext(context ?? {}, options);
     return new EvalContext(ctx, options ?? {});
   }
