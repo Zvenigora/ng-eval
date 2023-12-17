@@ -21,3 +21,4 @@ export {getDefaultVisitors} from './recursive-visitors';
 export {assignmentExpressionVisitor} from './assignment-expression';
 export {updateExpressionVisitor} from './update-expression';
 export {arrowFunctionExpressionVisitor} from './arrow-function-expression';
+export {evaluatePattern, evaluatePatterns} from './pattern';
