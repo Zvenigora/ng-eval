@@ -13,6 +13,10 @@ import * as walk from 'acorn-walk';
 })
 export class DiscoveryService extends BaseEval {
 
+  /**
+   * Creates a new instance of the DiscoveryService class.
+   * @param parserService The parser service to be used.
+   */
   constructor(
     public parserService: ParserService
   ) {
@@ -36,7 +40,7 @@ export class DiscoveryService extends BaseEval {
   findAll(expression: string | AnyNode | undefined,
     searchType: AnyNodeTypes): AnyNode[] | undefined {
     try {
-      const ast = this.toAst(expression);
+      const ast = this.parse(expression);
       const value = this.doFindAll(ast, searchType);
       return value;
     } catch (error) {
@@ -48,7 +52,14 @@ export class DiscoveryService extends BaseEval {
     }
   }
 
-  private toAst(expression: string | AnyNode | undefined): AnyNode | undefined {
+  //#region Private methods
+
+  /**
+   * Parses the given expression into an abstract syntax tree (AST).
+   * @param expression The expression to parse.
+   * @returns The AST representing the expression.
+   */
+  private parse(expression: string | AnyNode | undefined): AnyNode | undefined {
     if (!expression) {
       return undefined;
     } else if (typeof expression === 'string') {
@@ -59,6 +70,13 @@ export class DiscoveryService extends BaseEval {
     }
   }
 
+  /**
+   * Finds all nodes of a specific type in the given AST.
+   *
+   * @param ast The AST to search in.
+   * @param searchType The type of nodes to search for.
+   * @returns An array of nodes of the specified type if found, otherwise undefined.
+   */
   private doFindAll(ast: AnyNode | undefined,
     searchType: AnyNodeTypes): AnyNode[] | undefined {
     if (ast) {
@@ -75,5 +93,7 @@ export class DiscoveryService extends BaseEval {
     }
     return undefined;
   }
+
+  //#endregion
 
 }

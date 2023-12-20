@@ -7,6 +7,10 @@ import { Expression, Program,
 import { doParse } from '../../internal/functions';
 
 
+/**
+ * @description
+ * Service for parsing expressions and returning ES6/ES2020 AST.
+ */
 @Injectable({
   providedIn: 'root'
 })
@@ -14,6 +18,9 @@ export class ParserService extends BaseEval {
 
   private _cache?: CacheType<Program | AnyNode | Expression | undefined>;
 
+  /**
+   * Constructs a new instance of the ParserService class.
+   */
   constructor() {
     super();
     this.parserOptions = {
@@ -47,6 +54,8 @@ export class ParserService extends BaseEval {
    * @description
    * Parses expression and returns ES6/ES2020 AST.
    * @param expr expression to parse
+   * @param options optional parser options
+   * @returns The parsed AST (Abstract Syntax Tree).
    */
   public parse(expr: string, options?: ParserOptions)
       : Program | AnyNode | Expression | undefined {

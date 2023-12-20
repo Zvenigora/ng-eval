@@ -8,8 +8,7 @@ describe('EvalResult', () => {
   beforeEach(() => {
     const options = {} as EvalOptions;
     const context = new EvalContext({}, options);
-    const expression = '1 + 1';
-    evalResult = new EvalResult(expression, context);
+    evalResult = new EvalResult(context);
   });
 
   it('should create an instance', () => {
@@ -26,8 +25,6 @@ describe('EvalResult', () => {
     expect(evalResult.isUndefined).toBeUndefined();
     expect(evalResult.trace).toBeDefined();
     expect(evalResult.context).toBeDefined();
-    expect(evalResult.expression).toBeDefined();
-    expect(evalResult.ast).toBeUndefined();
     expect(evalResult.options).toBeDefined();
   });
 
