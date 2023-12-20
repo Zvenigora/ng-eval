@@ -3,7 +3,7 @@ import { BaseEval } from './base-eval';
 import { ParserService } from './parser.service';
 import { AnyNode, defaultOptions } from 'acorn';
 import { Context } from '../../internal/classes/common';
-import { EvalContext, EvalOptions, EvalResult, EvalState } from '../../internal/classes/eval';
+import { EvalContext, EvalOptions, EvalState } from '../../internal/classes/eval';
 import { doEval, doEvalAsync } from '../../internal/functions';
 
 /**
@@ -14,6 +14,10 @@ import { doEval, doEvalAsync } from '../../internal/functions';
 })
 export class EvalService extends BaseEval {
 
+  /**
+   * Constructs a new instance of the EvalService class.
+   * @param parserService The parser service used for parsing expressions.
+   */
   constructor(
     public parserService: ParserService
   ) {
@@ -31,7 +35,7 @@ export class EvalService extends BaseEval {
    * @param expression The expression to parse.
    * @returns The AST representing the expression.
    */
-  parse(expression: string | AnyNode | undefined): AnyNode | undefined {
+  private parse(expression: string | AnyNode | undefined): AnyNode | undefined {
     if (!expression) {
       return undefined;
     } else if (typeof expression === 'string') {
@@ -55,9 +59,7 @@ export class EvalService extends BaseEval {
   ): unknown | undefined {
     try {
       const ast = this.parse(expression);
-      const ctx = EvalContext.fromContext(context, options);
-      const result = new EvalResult(expression, ctx);
-      const state = new EvalState(expression, ast, ctx, result, options);
+      const state = EvalState.fromContext(context, options);
       const value = doEval(ast, state);
       return value;
     } catch (error) {
@@ -82,9 +84,7 @@ export class EvalService extends BaseEval {
   ): Promise<unknown | undefined> {
     try {
       const ast = this.parse(expression);
-      const ctx = EvalContext.fromContext(context, options);
-      const result = new EvalResult(expression, ctx);
-      const state = new EvalState(expression, ast, ctx, result, options, true);
+      const state = EvalState.fromContext(context, options);
       const promise = doEvalAsync(ast, state);
       return promise;
     } catch (error) {

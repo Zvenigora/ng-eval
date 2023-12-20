@@ -1,14 +1,23 @@
 import { ParserOptions } from "../../internal/interfaces";
 
+/**
+ * Base class for evaluation.
+ */
 export abstract class BaseEval {
-
   private _parserOptions!: ParserOptions;
 
-  get parserOptions (): ParserOptions {
+  /**
+   * Gets the parser options.
+   */
+  get parserOptions(): ParserOptions {
     return this._parserOptions;
   }
 
-  set parserOptions (value: ParserOptions) {
+  /**
+   * Sets the parser options.
+   * @param value The parser options to set.
+   */
+  set parserOptions(value: ParserOptions) {
     this._parserOptions = value;
   }
 }

@@ -1,4 +1,3 @@
-import { AnyNode } from "acorn";
 import { Registry, Stack } from "../common";
 import { EvalContext } from "./eval-context";
 import { EvalOptions } from "./eval-options";
@@ -19,8 +18,6 @@ export class EvalResult {
   private _isUndefined?: boolean;
   private _trace: Readonly<Registry<unknown, UnknownValue>>;
   private _context: EvalContext;
-  private _expression?: string;
-  private _ast?: AnyNode;
   private _startDate?: number;
   private _endDate?: number;
 
@@ -30,66 +27,63 @@ export class EvalResult {
   public get stack(): Readonly<Stack<UnknownValue>> {
     return this._stack;
   }
+
   /**
    * Gets the evaluated value.
    */
   public get value(): UnknownValue | undefined {
     return this._value;
   }
+
   /**
    * Gets the error that occurred during evaluation.
    */
   public get error(): unknown | undefined {
     return this._error;
   }
+
   /**
    * Gets the error message associated with the evaluation error.
    */
   public get errorMessage(): string | undefined {
     return this._errorMessage;
   }
+
   /**
    * Gets whether the evaluation resulted in an error.
    */
   public get isError(): boolean | undefined {
     return this._isError;
   }
+
   /**
    * Gets whether the evaluation was successful.
    */
   public get isSuccess(): boolean | undefined {
     return this._isSuccess;
   }
+
   /**
    * Gets whether the evaluated value is undefined.
    */
   public get isUndefined(): boolean | undefined {
     return this._isUndefined;
   }
+
   /**
    * Gets the trace of evaluated values.
    */
   public get trace(): Readonly<Registry<unknown, UnknownValue>> {
     return this._trace;
   }
+
   /**
    * Gets the evaluation context.
    */
   public get context(): EvalContext {
     return this._context;
   }
-  /**
-   * Gets the expression that was evaluated.
-   */
-  public get expression(): string | undefined {
-    return this._expression;
-  }
-  /**
-   * Gets the abstract syntax tree (AST) of the evaluated expression.
-   */
-  public get ast(): AnyNode | undefined {
-    return this._ast;
-  }
+
   /**
    * Gets the evaluation options.
    */
@@ -113,15 +107,8 @@ export class EvalResult {
    * @param trace The trace of evaluated values.
    * @param context The evaluation context.
    */
-  constructor(
-    expression: string | AnyNode | undefined,
-    context: EvalContext
-  ) {
-    if (typeof expression === 'string') {
-      this._expression = expression;
-    } else {
-      this._ast = expression;
-    }
+  constructor(context: EvalContext) {
+
     this._stack = new Stack<UnknownValue>();
     this._trace = new Registry<unknown, UnknownValue>;
     this._context = context;
