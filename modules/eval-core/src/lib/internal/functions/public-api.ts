@@ -1,5 +1,6 @@
-export {doParse, extractExpression} from './do-parse';
-export {doEval, doEvalAsync} from './do-eval';
-export {doCompile, doCompileAsync,
+export {parse, extractExpression} from './parse';
+export {evaluate, evaluateAsync} from './evaluate';
+export {compile, compileAsync,
   stateCallback, stateCallbackAsync,
-  doCall, doCallAsync} from './do-compile';
+  call, callAsync} from './compile';
+export {discoveryFindAll} from './discovery-find-all';

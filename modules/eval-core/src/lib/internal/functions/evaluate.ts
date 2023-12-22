@@ -10,7 +10,7 @@ import { AnyNode } from 'acorn';
  * @param state The evaluation state.
  * @returns The result of the evaluation.
  */
-export const doEval = (node: AnyNode | undefined, state: EvalState)
+export const evaluate = (node: AnyNode | undefined, state: EvalState)
   : unknown | undefined => {
 
   if (node) {
@@ -33,11 +33,11 @@ export const doEval = (node: AnyNode | undefined, state: EvalState)
  * @param state The evaluation state.
  * @returns A promise that resolves to the evaluated value or undefined.
  */
-export const doEvalAsync = (ast: AnyNode | undefined, state: EvalState)
+export const evaluateAsync = (ast: AnyNode | undefined, state: EvalState)
   : Promise<unknown | undefined> => {
 
   const promise = new Promise<unknown | undefined>((resolve) => {
-    const value = doEval(ast, state);
+    const value = evaluate(ast, state);
     resolve(value);
   });
   return promise;

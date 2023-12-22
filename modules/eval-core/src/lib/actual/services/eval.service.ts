@@ -4,7 +4,7 @@ import { ParserService } from './parser.service';
 import { AnyNode, defaultOptions } from 'acorn';
 import { Context } from '../../internal/classes/common';
 import { EvalContext, EvalOptions, EvalState } from '../../internal/classes/eval';
-import { doEval, doEvalAsync } from '../../internal/functions';
+import { evaluate, evaluateAsync } from '../../internal/functions';
 
 /**
  * Service for evaluating and parsing expressions.
@@ -60,7 +60,7 @@ export class EvalService extends BaseEval {
     try {
       const ast = this.parse(expression);
       const state = EvalState.fromContext(context, options);
-      const value = doEval(ast, state);
+      const value = evaluate(ast, state);
       return value;
     } catch (error) {
       if (error instanceof Error) {
@@ -85,7 +85,7 @@ export class EvalService extends BaseEval {
     try {
       const ast = this.parse(expression);
       const state = EvalState.fromContext(context, options);
-      const promise = doEvalAsync(ast, state);
+      const promise = evaluateAsync(ast, state);
       return promise;
     } catch (error) {
       if (error instanceof Error) {

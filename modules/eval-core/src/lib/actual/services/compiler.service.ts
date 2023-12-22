@@ -5,7 +5,8 @@ import { EvalService } from './eval.service';
 import { EvalContext, EvalOptions, EvalState } from '../../internal/classes/eval';
 import { Context } from '../../internal/classes/common';
 import { AnyNode, defaultOptions } from 'acorn';
-import { doCall, doCallAsync, doCompile, doCompileAsync,
+import { call as _call, callAsync as _callAsync,
+  compile as _compile, compileAsync as _compileAsync,
   stateCallback, stateCallbackAsync } from '../../internal/functions';
 
 /**
@@ -55,7 +56,7 @@ export class CompilerService extends BaseEval {
   compile(expression: string | AnyNode | undefined): stateCallback | undefined {
     try {
       const ast = this.parse(expression);
-      const fn = doCompile(ast);
+      const fn = _compile(ast);
       return fn;
     } catch (error) {
       if (error instanceof Error) {
@@ -77,7 +78,7 @@ export class CompilerService extends BaseEval {
     if (fn) {
       try {
         const state = EvalState.fromContext(context, options);
-        const value = doCall(fn, state);
+        const value = _call(fn, state);
         return value;
       } catch (error) {
         if (error instanceof Error) {
@@ -102,7 +103,7 @@ export class CompilerService extends BaseEval {
     if (fn) {
       try {
         const state = EvalState.fromContext(context, options);
-        const promise = doCallAsync(fn, state);
+        const promise = _callAsync(fn, state);
         const value = await promise;
         return value;
       } catch (error) {
@@ -124,7 +125,7 @@ export class CompilerService extends BaseEval {
   compileAsync(expression: string | AnyNode | undefined): stateCallbackAsync | undefined {
     try {
       const ast = this.parse(expression);
-      const fn = doCompileAsync(ast);
+      const fn = _compileAsync(ast);
       return fn;
     } catch (error) {
       if (error instanceof Error) {

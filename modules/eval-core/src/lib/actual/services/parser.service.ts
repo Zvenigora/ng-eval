@@ -4,7 +4,7 @@ import { CacheType, ParserOptions } from '../../internal/interfaces';
 import { Cache } from '../../internal/classes/common';
 import { Expression, Program,
   defaultOptions, version as acornVersion, AnyNode } from 'acorn';
-import { doParse } from '../../internal/functions';
+import { parse as _parse } from '../../internal/functions';
 
 
 /**
@@ -64,8 +64,8 @@ export class ParserService extends BaseEval {
         const parserOptions = { ...this.parserOptions, ...options };
         const isCache = this.parserOptions.cacheSize && this._cache;
         const ast = isCache
-          ? this.doCacheParse(expr, parserOptions)
-          : doParse(expr, parserOptions);
+          ? this.fromCacheOrParse(expr, parserOptions)
+          : _parse(expr, parserOptions);
         return ast;
       } catch (error) {
         if (error instanceof Error) {
@@ -79,12 +79,12 @@ export class ParserService extends BaseEval {
   }
 
   //#region Private methods
-  private doCacheParse(expr: string, options: ParserOptions) {
+  private fromCacheOrParse(expr: string, options: ParserOptions) {
     if (this._cache) {
       const hashKey = this._cache.getHashKey('', expr);
       let ast = this._cache.get(hashKey);
       if (!ast) {
-        ast = doParse(expr, options);
+        ast = _parse(expr, options);
         this._cache.set(hashKey, ast);
       }
       return ast;

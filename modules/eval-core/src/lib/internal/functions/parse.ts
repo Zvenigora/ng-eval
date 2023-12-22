@@ -1,4 +1,5 @@
-import { AnyNode, Expression, ModuleDeclaration, Program, Statement, parse } from "acorn";
+import { AnyNode, Expression, ModuleDeclaration,
+  Program, Statement, parse as _parse } from "acorn";
 import { ParserOptions } from "../interfaces";
 
 /**
@@ -7,12 +8,12 @@ import { ParserOptions } from "../interfaces";
 * @param expr expression to parse
 * @param options parser options
 */
-export const doParse = (expr: string, options: ParserOptions)
+export const parse = (expr: string, options: ParserOptions)
   : Program | AnyNode | undefined => {
   if (options.ecmaVersion === undefined) {
     options.ecmaVersion = 2020;
   }
-  const program: Program = parse(expr, options);
+  const program: Program = _parse(expr, options);
   if (!options.extractExpressions) {
     return program;
   }
