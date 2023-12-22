@@ -1,21 +1,21 @@
 import { AnyNode } from 'acorn';
 import { EvalState } from '../classes/eval';
-import { doEval } from './do-eval';
+import { evaluate } from './evaluate';
 
 
-describe('doEval', () => {
+describe('evaluate', () => {
   let state: EvalState;
 
   beforeEach(() => {
     state = {} as EvalState;
   });
 
-  it('should return undefined if node is undefined', () => {
-    const result = doEval(undefined, state);
+  it('evaluate: should return undefined if node is undefined', () => {
+    const result = evaluate(undefined, state);
     expect(result).toBeUndefined();
   });
 
-  it('should evaluate the node and return the value', () => {
+  it('evaluate: should evaluate the node and return the value', () => {
     const node: AnyNode = {
       "type": "Literal",
       "start": 0,
@@ -24,7 +24,7 @@ describe('doEval', () => {
       "raw": "1"
     };
     const state = EvalState.fromContext({});
-    const result = doEval(node, state);
+    const result = evaluate(node, state);
     expect(result).toBeDefined(); // Replace with your expected value
   });
 
