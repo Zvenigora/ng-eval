@@ -2,7 +2,11 @@
   "name": "@zvenigora/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "build": "nx run eval-core:build:production",
+    "test": "nx run eval-core:test",
+    "lint": "nx run eval-core:lint"
+  },
   "private": true,
   "devDependencies": {
     "@angular-devkit/build-angular": "~17.0.0",
