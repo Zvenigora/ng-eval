@@ -20,7 +20,7 @@ describe('DiscoveryService', () => {
   it('should find all binary expressions in a program', () => {
     const program = '1 + 2 * a';
     const searchType = 'BinaryExpression';
-    const expressions = service.findAll(program, searchType);
+    const expressions = service.extract(program, searchType);
     expect(expressions).toBeDefined();
     expect(expressions?.length).toBe(2);
     expect(expressions?.[0].type).toBe('BinaryExpression');
@@ -29,7 +29,7 @@ describe('DiscoveryService', () => {
   it('should find all identifier expressions in a program', () => {
     const program = 'a + 2 * b + c';
     const searchType = 'Identifier';
-    const expressions = service.findAll(program, searchType);
+    const expressions = service.extract(program, searchType);
     expect(expressions).toBeDefined();
     expect(expressions?.length).toBe(3);
     expect(expressions?.[0].type).toBe('Identifier');
@@ -39,7 +39,7 @@ describe('DiscoveryService', () => {
   it('should find all binary expressions expressions in an expression', () => {
     const expression: AnyNode | undefined = parser.parse('1 + 2 * a');
     const searchType = 'BinaryExpression';
-    const expressions = service.findAll(expression, searchType);
+    const expressions = service.extract(expression, searchType);
     expect(expressions).toBeDefined();
     expect(expressions?.length).toBe(2);
     expect(expressions?.[0].type).toBe('BinaryExpression');
@@ -48,7 +48,7 @@ describe('DiscoveryService', () => {
   it('should return undefined if no expressions are found', () => {
     const program = '1 + 2';
     const searchType = 'Identifier';
-    const expressions = service.findAll(program, searchType);
+    const expressions = service.extract(program, searchType);
     expect(expressions).toBeUndefined();
   });
 
@@ -56,7 +56,7 @@ describe('DiscoveryService', () => {
     const program = '1 +';
     const searchType = 'BinaryExpression';
     expect(() => {
-      service.findAll(program, searchType);
+      service.extract(program, searchType);
     }).toThrow('Unexpected token (1:3)');
   });
 

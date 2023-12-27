@@ -9,7 +9,7 @@ import { AnyNodeTypes } from '../interfaces';
  * @param searchType The type of nodes to search for.
  * @returns An array of nodes of the specified type if found, otherwise undefined.
  */
-export const discoveryFindAll = (node: AnyNode | undefined,
+export const extract = (node: AnyNode | undefined,
   searchType: AnyNodeTypes): AnyNode[] | undefined => {
   if (node) {
 
