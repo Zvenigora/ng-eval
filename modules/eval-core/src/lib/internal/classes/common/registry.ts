@@ -1,9 +1,14 @@
+/**
+ * Represents a generic registry that stores key-value pairs.
+ * @template TKey The type of the keys in the registry.
+ * @template TValue The type of the values in the registry.
+ */
 import { RegistryEntries, RegistryType } from "../../interfaces";
 import { BaseRegistry } from "./base-registry";
 import { CaseInsensitiveRegistry } from "./case-insensitive-registry";
 
 export class Registry<TKey, TValue> implements RegistryType<TKey, TValue> {
-  private readonly _registry: RegistryType<TKey, TValue>
+  private readonly _registry: CaseInsensitiveRegistry<TKey, TValue> | BaseRegistry<TKey, TValue>;
 
   type: Readonly<string> = 'Registry';
 

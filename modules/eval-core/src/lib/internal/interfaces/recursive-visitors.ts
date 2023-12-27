@@ -39,7 +39,7 @@ export interface RecursiveVisitorRegistryResult<TValue> {
   registry: BaseRegistry<AnyNode, TValue>
 }
 
-type AggregateType = {
+export type AggregateType = {
   Expression: acorn.Expression,
   Statement: acorn.Statement,
   Function: acorn.Function,

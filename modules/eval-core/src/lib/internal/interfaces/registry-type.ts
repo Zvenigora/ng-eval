@@ -78,28 +78,6 @@ export interface RegistryType<TKey, TValue> extends Iterable<[TKey, TValue]> {
   [Symbol.iterator](): IterableIterator<[TKey, TValue]>;
 }
 
-// export interface BaseRegistryType<TKey, TValue> extends RegistryType<TKey, TValue> {
-//   type: Readonly<'BaseRegistry' | string>;
-
-//   options: Readonly<{
-//     caseInsensitive: false;
-//   } | Record<string, unknown>>;
-// }
-
-// export interface CaseInsensitiveRegistryType<TKey, TValue> extends RegistryType<TKey, TValue> {
-//   type: 'CaseInsensitiveRegistry' | string;
-
-//   options: {
-//     caseInsensitive: true;
-//   } | Record<string, unknown>;
-// }
-
-// export interface ScopeRegistryType<TKey, TValue> extends RegistryType<TKey, TValue> {
-//   type: 'ScopeRegistry' | string;
-
-//   options: Record<string, unknown> | ScopeRegistryOptions;
-// }
-
 export interface ScopeRegistryOptions {
   caseInsensitive: boolean;
   global: boolean;
