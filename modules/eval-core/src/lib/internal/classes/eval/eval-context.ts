@@ -112,7 +112,7 @@ export class EvalContext {
       }
     }
 
-    for (const lookup of this._lookups.values) {
+    for (const lookup of Array.from(this._lookups.values)) {
       const value = lookup(key, this, this._options);
       if (value !== undefined) {
         return value;
@@ -140,7 +140,7 @@ export class EvalContext {
         return scope;
       }
     }
-    for (const lookup of this._lookups.values) {
+    for (const lookup of Array.from(this._lookups.values)) {
       const value = lookup(key, this, this._options);
       if (value !== undefined) {
         return lookup;

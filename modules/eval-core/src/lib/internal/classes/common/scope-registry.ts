@@ -8,7 +8,7 @@ const defaultOptions: ScopeRegistryOptions = {
   thisArg: undefined
 };
 
-type RegistryScopeOptionType = Readonly<Record<string, unknown> | ScopeRegistryOptions>
+export type RegistryScopeOptionType = Readonly<Record<string, unknown> | ScopeRegistryOptions>
 
 /**
  * Represents a registry that stores key-value pairs within a specific scope.
