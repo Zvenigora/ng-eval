@@ -3,7 +3,7 @@ import { BaseEval } from './base-eval';
 import { ParserService } from './parser.service';
 import { AnyNode, defaultOptions } from 'acorn';
 import { AnyNodeTypes } from '../../internal/interfaces';
-import { discoveryFindAll } from '../../internal/functions';
+import { extract } from '../../internal/functions';
 
 /**
  * Service responsible for discovering nodes in an abstract syntax tree (AST).
@@ -37,11 +37,11 @@ export class DiscoveryService extends BaseEval {
    * @returns An array of nodes that match the search criteria, or undefined if no nodes are found.
    * @throws If an error occurs during the search process.
    */
-  findAll(expression: string | AnyNode | undefined,
+  extract(expression: string | AnyNode | undefined,
     searchType: AnyNodeTypes): AnyNode[] | undefined {
     try {
       const ast = this.parse(expression);
-      const value = discoveryFindAll(ast, searchType);
+      const value = extract(ast, searchType);
       return value;
     } catch (error) {
       if (error instanceof Error) {
