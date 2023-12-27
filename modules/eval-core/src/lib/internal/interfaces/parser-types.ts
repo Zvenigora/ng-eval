@@ -1,8 +1,9 @@
 import * as acorn from 'acorn';
 
-export type ParserOptions = acorn.Options & {
+export type ParserOptions = Partial<acorn.Options> & {
   extractExpressions?: boolean,
   cacheSize?: number,
+  ecmaVersion?: acorn.ecmaVersion,
 };
 
 export type ExpressionTypes = acorn.Expression['type'];
