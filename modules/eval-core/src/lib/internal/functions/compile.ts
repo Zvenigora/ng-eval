@@ -27,12 +27,24 @@ export const compileAsync = (node: AnyNode | undefined): stateCallbackAsync => {
   return evaluateAsync.bind(null, node);
 }
 
-
+/**
+ * Calls the provided function with the given state and returns the result.
+ *
+ * @param fn The function to be called.
+ * @param state The state to be passed to the function.
+ * @returns The result of calling the function.
+ */
 export const call = (fn: stateCallback, state: EvalState): unknown | undefined => {
   const value = fn(state);
   return value;
 }
 
+/**
+ * Calls an asynchronous function with the given state and returns a promise that resolves to the result.
+ * @param fn The asynchronous function to call.
+ * @param state The state to pass to the function.
+ * @returns A promise that resolves to the result of the function.
+ */
 export const callAsync = (fn: stateCallbackAsync, state: EvalState): Promise<unknown | undefined> => {
   const promise = fn(state);
   return promise;
