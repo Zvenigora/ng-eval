@@ -13,6 +13,10 @@ import * as walk from 'acorn-walk';
 
 
 
+/**
+ * Returns the default visitors for the recursive traversal of an abstract syntax tree.
+ * @returns The default visitors object.
+ */
 export const getDefaultVisitors = () => {
 
   const visitors: walk.RecursiveVisitors<EvalState> = {};
