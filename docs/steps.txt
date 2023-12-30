@@ -83,7 +83,17 @@ nx g @schematics/angular:class --name=EvalResult --project=eval-core --path=modu
 nx g @schematics/angular:class --name=EvalState --project=eval-core --path=modules/eval-core/src/lib/actual/classes
 
 11. started visitors:
-  before, after, literal, identifier, binaryExpression
+  before, after, literal, identifier, binaryExpression,
   recursive, results
 
+12 started Eval service
 
+   added support for call expression
+   added async evaluation
+   added visitors: conditional, array, unary, member
+   added visitors: logic, this, new, template literal
+   added visitors: object, update
+
+13. added compiler service
+
+14. added documentation.

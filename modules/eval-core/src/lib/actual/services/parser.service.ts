@@ -52,7 +52,7 @@ export class ParserService extends BaseEval {
 
   /**
    * @description
-   * Parses expression and returns ES6/ES2020 AST.
+   * Parses expression and returns ES6/ES2023 AST.
    * @param expr expression to parse
    * @param options optional parser options
    * @returns The parsed AST (Abstract Syntax Tree).
