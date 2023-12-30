@@ -15,13 +15,25 @@ export const evaluate = (node: AnyNode | undefined, state: EvalState)
 
   if (node) {
 
-    const visitors: walk.RecursiveVisitors<EvalState> = getDefaultVisitors();
+    state.result.start();
 
-    walk.recursive(node, state, visitors);
+    try {
+      const visitors: walk.RecursiveVisitors<EvalState> = getDefaultVisitors();
 
-    const value = popVisitorResult(node, state)
+      walk.recursive(node, state, visitors);
 
-    return value;
+      const value = popVisitorResult(node, state)
+
+      state.result.stop();
+
+      state.result.setSuccess(value);
+
+      return value;
+    } catch (error) {
+      state.result.stop();
+      state.result.setFailure(error);
+      throw error;
+    }
   }
 
   return undefined;

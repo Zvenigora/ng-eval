@@ -128,4 +128,31 @@ export class EvalResult {
     this._endDate = performance.now();
     return this.duration;
   }
+
+  /**
+   * Sets the success value of the evaluation result.
+   *
+   * @param value The value to set as the success value.
+   * @returns void
+   */
+  public setSuccess(value: UnknownValue): void {
+    this._value = value;
+    this._isSuccess = true;
+    this._isError = false;
+    this._isUndefined = false;
+  }
+
+  /**
+   * Sets the failure state of the evaluation result.
+   * @param error The error object associated with the failure.
+   */
+  public setFailure(error: unknown): void {
+    this._error = error;
+    if (error instanceof Error) {
+      this._errorMessage = error.message;
+    }
+    this._isSuccess = false;
+    this._isError = true;
+    this._isUndefined = false;
+  }
 }
