@@ -1,5 +1,5 @@
 {
-  "name": "@zvenigora/source",
+  "name": "@zvenigora/ng-eval",
   "version": "0.1.0",
   "license": "MIT",
   "scripts": {
@@ -7,7 +7,7 @@
     "test": "nx run eval-core:test",
     "lint": "nx run eval-core:lint"
   },
-  "private": true,
+  "private": false,
   "devDependencies": {
     "@angular-devkit/build-angular": "~17.0.0",
     "@angular-devkit/core": "~17.0.0",
