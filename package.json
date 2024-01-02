@@ -1,6 +1,6 @@
 {
   "name": "@zvenigora/ng-eval",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "scripts": {
     "build": "nx run eval-core:build:production",
@@ -63,5 +63,9 @@
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.14.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Zvenigora/ng-eval.git"
   }
 }
