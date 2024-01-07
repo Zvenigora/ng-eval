@@ -109,4 +109,12 @@ describe('BaseRegistry', () => {
     expect(iterator.next().value).toEqual(['foo', 'bar']);
     expect(iterator.next().value).toEqual(['bar', 'baz']);
   });
+
+  it('should convert registry to object', () => {
+    const registry = new BaseRegistry();
+    registry.set('foo', 'bar');
+    registry.set('bar', 'baz');
+    const object = registry.toObject();
+    expect(object).toEqual({ foo: 'bar', bar: 'baz' });
+  });
 });
