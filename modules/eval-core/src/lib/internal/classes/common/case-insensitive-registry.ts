@@ -154,4 +154,16 @@ export class CaseInsensitiveRegistry<TKey, TValue> implements RegistryType<TKey,
     return keyLowerCase;
   }
 
+  /**
+   * Converts a BaseRegistry instance to an object.
+   * @param registry The BaseRegistry instance to convert.
+   * @returns An object representing the key-value pairs in the registry.
+   */
+  public toObject(): Record<string | number | symbol, TValue> {
+
+    const object = Object.fromEntries(this.entries);
+
+    return object as Record<string | number | symbol, TValue>;
+  }
+
 }

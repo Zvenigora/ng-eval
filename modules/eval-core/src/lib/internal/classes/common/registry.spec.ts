@@ -81,4 +81,12 @@ describe('Registry', () => {
     expect(Array.from(registry.entries)).toEqual([['Key1', 'value1'], ['Key2', 'value2']]);
   });
 
+  it('should convert registry to object', () => {
+    const registry = new Registry<string, unknown>([], {caseInsensitive: true});
+    registry.set('foo', 'bar');
+    registry.set('bar', 'baz');
+    const object = registry.toObject();
+    expect(object).toEqual({ foo: 'bar', bar: 'baz' });
+  });
+
 });

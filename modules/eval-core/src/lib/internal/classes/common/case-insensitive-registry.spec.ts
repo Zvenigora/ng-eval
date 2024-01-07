@@ -77,5 +77,11 @@ describe('CaseInsensitiveRegistry', () => {
     expect(Array.from(registry.entries)).toEqual([['Key1', 'value1'], ['Key2', 'value2']]);
   });
 
-
+  it('should convert registry to object', () => {
+    const registry = new CaseInsensitiveRegistry();
+    registry.set('Foo', 'bar');
+    registry.set('Bar', 'baz');
+    const object = registry.toObject();
+    expect(object).toEqual({ Foo: 'bar', Bar: 'baz' });
+  });
 });
