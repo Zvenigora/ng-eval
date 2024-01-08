@@ -38,14 +38,14 @@ Evaluates an [estree](https://github.com/estree/estree) expression from [acorn](
 
 Install:
 ```
-npm install --save ng-eval
+npm install --save @zvenigora/ng-eval-core
 ```
 
 Import:
 
 ```javascript
 import { ParserService, EvalService, 
-  CompilerService, DiscoveryService } from 'ng-eval';
+  CompilerService, DiscoveryService } from '@zvenigora/ng-eval-core';
 ```
 
 ## API
@@ -53,7 +53,7 @@ import { ParserService, EvalService,
 ### Parsing
 
 ```javascript
-import { ParserService } from 'ng-eval';
+import { ParserService } from '@zvenigora/ng-eval-core';
 
 private service: ParserService;
 ...
@@ -88,7 +88,7 @@ The result of the parse is an AST (abstract syntax tree), like:
 Evaluation executes the AST using the given context `eval(ast, context)`. By default, the context is empty.
 
 ```javascript
-import { EvalService } from 'ng-eval';
+import { EvalService } from '@zvenigora/ng-eval-core';
 
 private service: EvalService;
 ...
@@ -120,7 +120,7 @@ const context = {
 ### Compilation
 
 ```javascript
-import { CompilerService } from 'ng-eval';
+import { CompilerService } from '@zvenigora/ng-eval-core';
 
 private service: CompilerService;
 ...
@@ -135,7 +135,7 @@ const value = service.call(fn, context, options); // 3
 Ng-eval has a limited support for asynchronous expression based on JavaScript promises.
 
 ```javascript
-import { EvalService } from 'ng-eval';
+import { EvalService } from '@zvenigora/ng-eval-core';
 
 private service: EvalService;
 ...
@@ -149,7 +149,7 @@ const value = await service.evalAsync(expr, context); // 3
 ```
 
 ```javascript
-import { CompilerService } from 'ng-eval';
+import { CompilerService } from '@zvenigora/ng-eval-core';
 
 private service: CompilerService;
 ...
@@ -173,11 +173,11 @@ const result = await service.callAsync(fn, context); // 3
 Discovery service finds all nodes for the given node type.
 
 ```javascript
-import { EvalService } from 'ng-eval';
+import { DiscoveryService } from '@zvenigora/ng-eval-core';
 
 private service: DiscoveryService;
 ...
-const expressions = service.findAll('1 + 2 * a', 'BinaryExpression'); // 2 nodes
+const expressions = service.extract('1 + 2 * a', 'BinaryExpression'); // 2 nodes
 ```
 
 ### ESTree nodes supported:
@@ -201,11 +201,30 @@ The project has been tested with the following node types:
  - `UpdateExpression`
  - `ArrowFunctionExpression` *potentially unsafe* (AssignmentPattern is not implemented)
 
+## Options
+To change the default behavior of the evaluator, use `options`. Options may be provided as an argument to the function call of `eval`.
+
+### Case-insensitive evaluation
+
+While JavaScript is a case-sensitive language, some may find it hard to use. To provide case-insensitive evaluation, set `caseInsensitive` to `true`. 
+
+```javascript
+import { EvalService } from '@zvenigora/ng-eval-core';
+
+private service: EvalService;
+...
+const options = {caseInsensitive: true};
+...
+const expression = '2 + 3 * A';
+const context = { a: 10 };
+const result = service.eval(expression, context); // 32
+```
 
 ## Related Packages
 Depending on your specific use-case, there are other
 related packages available, including:
 - [jsep](https://github.com/EricSmekens/jsep)
+- [jse-eval](https://github.com/6utt3rfly)
 - [expression-eval](https://github.com/donmccurdy/expression-eval)
 - [eval-estree-expression](https://github.com/jonschlinkert/eval-estree-expression)
 - [es-tree-walker](https://github.com/Rich-Harris/estree-walker)
