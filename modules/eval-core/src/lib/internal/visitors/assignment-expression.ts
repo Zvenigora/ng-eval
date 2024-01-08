@@ -45,7 +45,9 @@ export const assignmentExpressionVisitor = (node: AssignmentExpression, st: Eval
   } else if (!st.context) {
     throw new Error(`Context is not set.`);
   } else if (node.left.type === 'Identifier') {
-    const key = node.left.name;
+    const key = st.options?.caseInsensitive
+      ? st.context.getKey(node.left.name)
+      : node.left.name;
     const value = func(left, right);
     st.context.set(key, value);
     pushVisitorResult(node, st, value);

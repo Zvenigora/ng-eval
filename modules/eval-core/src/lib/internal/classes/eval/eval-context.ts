@@ -1,5 +1,5 @@
 import { Context, Registry, Stack, fromContext } from '../common';
-import { getContextValue } from '../common/context';
+import { getContextKey, getContextValue } from '../common/context';
 import { EvalLookup } from './eval-lookup';
 import { EvalOptions } from './eval-options';
 
@@ -146,6 +146,40 @@ export class EvalContext {
         return lookup;
       }
     }
+    return undefined;
+  }
+
+  /**
+   * Retrieves the value associated with the specified key from the evaluation context.
+   *
+   * @param key - The key to retrieve the value for.
+   * @returns The value associated with the key, or undefined if the key is not found.
+   */
+  public getKey(key: string | number | symbol): string | number | symbol | undefined {
+
+    const caseInsensitive = !!this._options.caseInsensitive;
+
+    for (const scope of this._scopes.asArray()) {
+      const foundKey = getContextKey(scope, key, caseInsensitive);
+      if (foundKey !== undefined) {
+        return foundKey;
+      }
+    }
+
+    if (this._original) {
+      const foundKey = getContextKey(this._original, key, caseInsensitive);
+      if (foundKey !== undefined) {
+        return foundKey;
+      }
+    }
+
+    for (const scope of this._priorScopes) {
+      const foundKey = getContextKey(scope, key, caseInsensitive);
+      if (foundKey !== undefined) {
+        return foundKey;
+      }
+    }
+
     return undefined;
   }
 

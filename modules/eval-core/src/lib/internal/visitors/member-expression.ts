@@ -4,6 +4,8 @@ import { beforeVisitor } from './before-visitor';
 import { pushVisitorResult, popVisitorResult } from './visitor-result';
 import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
+import { getKeyValue } from './utils';
+import { BaseContext } from '../classes/common';
 
 export const memberExpressionVisitor = (node: MemberExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
 
@@ -18,26 +20,35 @@ export const memberExpressionVisitor = (node: MemberExpression, st: EvalState, c
 
 export const evaluateMember = (node: MemberExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
 
+  // Get the object
   callback(node.object, st);
   const obj = popVisitorResult(node, st) as object;
   const object = (node.optional ? (obj || {}) : obj);
 
+  // Get the property
+  let key: string | number | symbol;
   if (node.property.type === 'Identifier') {
-    if (object === st.context) {
-      const value = st.context.get(node.property.name);
-      const thisValue = st.context.getThis(node.property.name);
-      return [thisValue ?? object, node.property.name, value];
-    } else if ((object as Record<string, unknown>)[node.property.name]) {
-      const value = (object as Record<string, unknown>)[node.property.name];
-      return [object, node.property.name, value];
+    key = node.property.name;
+  } else if (node.property.type === 'Literal') {
+    key = node.property.value as string | number | symbol;
+  } else {
+    callback(node.property, st);
+    key = popVisitorResult(node, st) as (string | number | symbol);
+  }
+
+  // Get the value
+  if (object === st.context) {
+    const value = st.context.get(key);
+    const thisValue = st.context.getThis(key);
+    return [thisValue ?? object, key, value];
+  } else {
+    const caseInsesitive = !!(st.options?.caseInsensitive);
+    const pair = getKeyValue(object as BaseContext, key, caseInsesitive);
+    if (pair) {
+      const [key, value] = pair;
+      return [object, key, value];
     }
   }
 
-  callback(node.property, st);
-  const prop = popVisitorResult(node, st) as string | number | symbol;
-  const property = typeof prop !== 'undefined' ? prop
-    : node.property.type === 'Identifier' ? node.property.name : prop;
-
-  const value = (object as Record<string | number | symbol, unknown>)[property];
-  return [object, property, value];
+  return [object, key, undefined];
 }
