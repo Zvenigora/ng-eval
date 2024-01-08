@@ -217,7 +217,7 @@ const options = {caseInsensitive: true};
 ...
 const expression = '2 + 3 * A';
 const context = { a: 10 };
-const result = service.eval(expression, context); // 32
+const result = service.eval(expression, context, options); // 32
 ```
 
 ## Related Packages
