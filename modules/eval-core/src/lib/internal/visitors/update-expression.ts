@@ -15,10 +15,15 @@ export const updateExpressionVisitor = (node: UpdateExpression, st: EvalState, c
 
   beforeVisitor(node, st);
 
-  if (node.argument.type === 'Identifier') {
-    const value = st.context?.get(node.argument.name);
+  if (!st.context) {
+    throw new Error(`Context is not set.`);
+  } else if (node.argument.type === 'Identifier') {
+    const key = st.options?.caseInsensitive
+    ? st.context.getKey(node.argument.name)
+    : node.argument.name;
+    const value = st.context?.get(key);
     const newValue = updateOperators[node.operator](value as number);
-    st.context?.set(node.argument.name, newValue);
+    st.context?.set(key, newValue);
     pushVisitorResult(node, st, node.prefix ? newValue : value);
   } else if (node.argument.type === 'MemberExpression') {
     callback(node.argument, st);

@@ -6,4 +6,5 @@ export { Queue } from './queue';
 export { Stack } from './stack';
 export { Scope } from './scope';
 export { Cache } from './cache';
-export { BaseContext, Context, fromContext, getContextValue as get } from './context';
+export { BaseContext, Context,
+  isRegistryContext, fromContext, getContextValue, getContextKey} from './context';
