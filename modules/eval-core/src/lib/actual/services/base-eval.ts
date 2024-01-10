@@ -1,4 +1,6 @@
+import { AnyNode } from "acorn";
 import { ParserOptions } from "../../internal/interfaces";
+import { ParserService } from "./parser.service";
 
 /**
  * Base class for evaluation.
@@ -6,10 +8,14 @@ import { ParserOptions } from "../../internal/interfaces";
 export abstract class BaseEval {
   private _parserOptions!: ParserOptions;
 
+  constructor(
+    protected parserService: ParserService
+  ) {}
+
   /**
    * Gets the parser options.
    */
-  get parserOptions(): ParserOptions {
+  protected get parserOptions(): ParserOptions {
     return this._parserOptions;
   }
 
@@ -17,7 +23,23 @@ export abstract class BaseEval {
    * Sets the parser options.
    * @param value The parser options to set.
    */
-  set parserOptions(value: ParserOptions) {
+  protected set parserOptions(value: ParserOptions) {
     this._parserOptions = value;
+  }
+
+  /**
+   * Parses the given expression into an abstract syntax tree (AST).
+   * @param expression - The expression to parse.
+   * @returns The parsed AST.
+   */
+  protected parse(expression: string | AnyNode | undefined): AnyNode | undefined {
+    if (!expression) {
+      return undefined;
+    } else if (typeof expression === 'string') {
+      const ast = this.parserService.parse(expression, this.parserOptions);
+      return ast;
+    } else {
+      return expression as AnyNode;
+    }
   }
 }
