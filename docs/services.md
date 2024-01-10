@@ -39,7 +39,7 @@ constructor(private evalService: EvalService) {}
 
 const expression = '2 + 3 * a';
 const context = { a: 10 };
-const result = evalService.eval(expression, context); // 32
+const result = evalservice.simpleEval(expression, context); // 32
 ```
 
 The service provides a limited support for asynchronous expressions. It executes `evaluateAsync` function and returns a promise that resolves to the result of the expression. If the expression is invalid, the function throws an error.
@@ -56,7 +56,7 @@ const context = {
   asyncFunc: async (a: number, b: number) => { return await (a+b); }
 };
 const expr = 'asyncFunc(one, two)';
-const value = await evalService.evalAsync(expr, context); // 3
+const value = await evalservice.simpleEvalAsync(expr, context); // 3
 ```
 
 ## `CompilerService`

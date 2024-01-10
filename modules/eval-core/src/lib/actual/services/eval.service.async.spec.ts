@@ -28,7 +28,7 @@ describe('EvalService - async', () => {
     };
     const expr = 'asyncFunc(one, two)';
     const testValue = await context.asyncFunc(context.one, context.two);
-    const value = await service.evalAsync(expr, context);
+    const value = await service.simpleEvalAsync(expr, context);
     expect(value).toBe(1 + 2);
     expect(value).toBe(testValue);
   });
@@ -42,7 +42,7 @@ describe('EvalService - async', () => {
     // ['await asyncFunc(1, 2)',   3 ], // SyntaxError: await is only valid in async function
     ['asyncFunc(1, 2)',         3 ],
   ])("21. sync expression: when the input is '%s', value is %p", async (expr: string, expected: unknown) => {
-    const actual = await service.eval(expr, context);
+    const actual = await service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
   });
 
@@ -55,7 +55,7 @@ describe('EvalService - async', () => {
     // ['await asyncFunc(1, 2)',   3 ], // SyntaxError: await is only valid in async function
     ['asyncFunc(1, 2)',         3 ],
   ])("22. async expression: when the input is '%s', value is %p", async (expr: string, expected: unknown) => {
-    const actual = await service.evalAsync(expr, context);
+    const actual = await service.simpleEvalAsync(expr, context);
     expect(actual).toEqual(expected);
   });
 

@@ -94,7 +94,7 @@ private service: EvalService;
 ...
 const expression = '2 + 3 * a';
 const context = { a: 10 };
-const result = service.eval(expression, context); // 32
+const result = service.simpleEval(expression, context); // 32
 ```
 
 Since the default context is empty, it prevents using built-in JS functions.
@@ -145,7 +145,7 @@ const context = {
   asyncFunc: async (a: number, b: number) => { return await (a+b); }
 };
 const expr = 'asyncFunc(one, two)';
-const value = await service.evalAsync(expr, context); // 3
+const value = await service.simpleEvalAsync(expr, context); // 3
 ```
 
 ```javascript
@@ -217,7 +217,7 @@ const options = {caseInsensitive: true};
 ...
 const expression = '2 + 3 * A';
 const context = { a: 10 };
-const result = service.eval(expression, context, options); // 32
+const result = service.simpleEval(expression, context, options); // 32
 ```
 
 ## Related Packages

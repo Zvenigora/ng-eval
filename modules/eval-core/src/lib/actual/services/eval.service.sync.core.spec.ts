@@ -41,7 +41,7 @@ describe('EvalService Core', () => {
   it('#eval a + b / c should be 2.4 for (a=2, b=2, c=5)', () => {
     const context = {a: 2, b: 2, c: 5};
     const expr = 'a + b / c';
-    const value = service.eval(expr, context);
+    const value = service.simpleEval(expr, context);
     expect(value).toBe(2 + 2 / 5);
   });
 
@@ -52,14 +52,14 @@ describe('EvalService Core', () => {
       asyncFunc: async (a: number, b: number) => { return await (a+b); }
     };
     const expr = 'asyncFunc(one, two)';
-    const value = await service.evalAsync(expr, context);
+    const value = await service.simpleEvalAsync(expr, context);
     expect(value).toBe(1 + 2);
   });
 
   it('#eval a > 2 ? b : c should be 100 for (a=3, b=100, c=200)', () => {
     const context = {"a": 3, "b": 100, "c": 200};
     const expr = 'a > 2 ? b : c';
-    const value = service.eval(expr, context);
+    const value = service.simpleEval(expr, context);
     expect(value).toBe(context.a > 2 ? context.b : context.c);
   });
 
@@ -73,7 +73,7 @@ describe('EvalService Core', () => {
     ['list[3]',                     4     ],
     ['numMap[1 + two]',             'three'],
   ])("01. array expression: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
   });
 
@@ -93,7 +93,7 @@ describe('EvalService Core', () => {
     ['"a"+"b"', 'ab'],
     ['one + three', 4],
   ])("02. binary expression: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
   });
 
@@ -102,7 +102,7 @@ describe('EvalService Core', () => {
     ['func(5)',   6],
     ['func(1+2)', 4],
   ])("03. call expression: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
   });
 
@@ -113,7 +113,7 @@ describe('EvalService Core', () => {
     ['( true ? ( 123*456 ) : "false")',         123*456],
     ['( false ? "true" : one + two )',          3],
   ])("04. Conditional expression: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
   });
 
@@ -123,7 +123,7 @@ describe('EvalService Core', () => {
     ['number',  123],
     ['bool',    true],
   ])("05. identifier expression: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
   });
 
@@ -134,7 +134,7 @@ describe('EvalService Core', () => {
     ['123',   123],
     ['true',  true],
   ])("06. literal expression: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
   });
 
@@ -151,7 +151,7 @@ describe('EvalService Core', () => {
     ['2 <= 2',          true],
     ['1 >= 2',          false],
   ])("07. logical expression: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
   });
 
@@ -162,7 +162,7 @@ describe('EvalService Core', () => {
     ['false && throwFunc()',  false],
     ['true && false',     false],
   ])("08. logical expression lazy evaluation: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
   });
 
@@ -176,7 +176,7 @@ describe('EvalService Core', () => {
     ['unknown?.x',    undefined],
     ['("foo").substr(0,1)', 'f'],
   ])("09. member expression: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
   });
 
@@ -186,7 +186,7 @@ describe('EvalService Core', () => {
     ['foo?.func("bar")',  'baz'],
     ['xxx?.func("bar")',  undefined],
   ])("10. call expression with member: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
   });
 
@@ -199,7 +199,7 @@ describe('EvalService Core', () => {
     ['~15',     -16],
     ['+[]',     0],
   ])("11. unary expression: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
   });
 
@@ -214,7 +214,7 @@ describe('EvalService Core', () => {
     ['undefined && true',   undefined],
     ['undefined && false',  undefined],
   ])("12. three-valued logic expression: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
   });
 
@@ -230,7 +230,7 @@ describe('EvalService Core', () => {
       increment: function() {return ++this.counter;},
       getcounter: function() {return this.counter;}
     }
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
   });
 

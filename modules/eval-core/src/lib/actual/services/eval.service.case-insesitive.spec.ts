@@ -137,7 +137,7 @@ describe('EvalService - case-insensitive options', () => {
     ['tag`hi ${LiSt[0]} and ${LIst[3]}`', 'hi , and ,,=>,1,4' ],
 
   ])("Case-insensitive: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-    const actual = service.eval(expr, context, options);
+    const actual = service.simpleEval(expr, context, options);
     expect(actual).toEqual(expected);
   });
 
@@ -156,7 +156,7 @@ describe('EvalService - case-insensitive options', () => {
   ])("16. Assignment/update: when the input is '%s', value is %p, context is %p, expected is %p",
         (expr: string, expected: unknown, context: Record<string, unknown>, expObj: object) => {
     const registryContext = Registry.fromObject(context, options);
-    const actual = service.eval(expr, registryContext, options);
+    const actual = service.simpleEval(expr, registryContext, options);
     const resultContext = registryContext.toObject();
     expect(actual).toEqual(expected);
     expect(resultContext).toMatchObject(expObj);
