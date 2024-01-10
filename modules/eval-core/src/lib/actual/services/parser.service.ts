@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { BaseEval } from './base-eval';
 import { CacheType, ParserOptions } from '../../internal/interfaces';
 import { Cache } from '../../internal/classes/common';
 import { Expression, Program,
@@ -15,18 +14,34 @@ import { defaultParserOptions } from '../../internal/classes/eval';
 @Injectable({
   providedIn: 'root'
 })
-export class ParserService extends BaseEval {
+export class ParserService {
 
+  private _parserOptions!: ParserOptions;
   private _cache?: CacheType<Program | AnyNode | Expression | undefined>;
+
+  /**
+   * Gets the parser options.
+   */
+  get parserOptions(): ParserOptions {
+    return this._parserOptions;
+  }
+
+  /**
+   * Sets the parser options.
+   * @param value The parser options to set.
+   */
+  set parserOptions(value: ParserOptions) {
+    this._parserOptions = value;
+  }
 
   /**
    * Constructs a new instance of the ParserService class.
    */
   constructor() {
-    super();
     this.parserOptions = {
       ...defaultParserOptions,
-    extractExpressions: true};
+      extractExpressions: true
+    };
     if (this.parserOptions.cacheSize) {
       this._cache = new Cache<AnyNode>(this.parserOptions.cacheSize);
     }

@@ -18,7 +18,6 @@ describe('CompilerService', () => {
     const expression = '1 + 2';
     const ast = service['parse'](expression);
     expect(ast).toBeDefined();
-    // Add more assertions for the parsed AST if needed
   });
 
   it('should compile the expression into a state callback function', () => {

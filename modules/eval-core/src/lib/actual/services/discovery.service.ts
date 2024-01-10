@@ -19,13 +19,14 @@ export class DiscoveryService extends BaseEval {
    * @param parserService The parser service to be used.
    */
   constructor(
-    public parserService: ParserService
+    protected override parserService: ParserService
   ) {
-    super();
+    super(parserService);
 
     this.parserOptions = {
       ...defaultParserOptions,
-      cacheSize: undefined};
+      cacheSize: undefined
+    };
   }
 
   /**
@@ -50,23 +51,5 @@ export class DiscoveryService extends BaseEval {
       }
     }
   }
-
-  /**
-   * Parses the given expression into an abstract syntax tree (AST).
-   * @param expression The expression to parse.
-   * @returns The AST representing the expression.
-   */
-  private parse(expression: string | AnyNode | undefined): AnyNode | undefined {
-    if (!expression) {
-      return undefined;
-    } else if (typeof expression === 'string') {
-      const ast = this.parserService.parse(expression, this.parserOptions);
-      return ast;
-    } else {
-      return expression as AnyNode;
-    }
-  }
-
-  //#endregion
 
 }
