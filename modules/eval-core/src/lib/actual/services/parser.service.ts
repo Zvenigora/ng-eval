@@ -3,8 +3,9 @@ import { BaseEval } from './base-eval';
 import { CacheType, ParserOptions } from '../../internal/interfaces';
 import { Cache } from '../../internal/classes/common';
 import { Expression, Program,
-  defaultOptions, version as acornVersion, AnyNode } from 'acorn';
+  version as acornVersion, AnyNode } from 'acorn';
 import { parse as _parse } from '../../internal/functions';
+import { defaultParserOptions } from '../../internal/classes/eval';
 
 
 /**
@@ -24,11 +25,8 @@ export class ParserService extends BaseEval {
   constructor() {
     super();
     this.parserOptions = {
-      ...defaultOptions,
-      ecmaVersion: 2020,
-      extractExpressions: true,
-      cacheSize: 100
-    };
+      ...defaultParserOptions,
+    extractExpressions: true};
     if (this.parserOptions.cacheSize) {
       this._cache = new Cache<AnyNode>(this.parserOptions.cacheSize);
     }
