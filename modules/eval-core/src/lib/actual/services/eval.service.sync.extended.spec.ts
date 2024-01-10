@@ -65,7 +65,7 @@ describe('EvalService - extended', () => {
     // ['[{a:1,b:2,c:3}].map(({a, ...b}) => [a, b])', [[1, {b:2,c:3}]]],
     ['[{a:1}].map(({...foo}) => foo.a)', [1]],
   ])("15. Arrow Functions: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toStrictEqual(expected);
   });
 
@@ -82,7 +82,7 @@ describe('EvalService - extended', () => {
     ['1 + a++', 2, {a: 1}, {a: 2}],
   ])("16. Assignment/update: when the input is '%s', value is %p, context is %p, expected is %p",
           (expr: string, expected: unknown, context: Record<string, unknown>, expObj: object) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
     expect(context).toMatchObject(expObj);
   });
@@ -92,7 +92,7 @@ describe('EvalService - extended', () => {
     ['a=1; b=a; c=a+b;',   2, {}, {a: 1, b: 1, c: 2}],
   ])("17. compound: when the input is '%s', value is %p, context is %p, expected is %p",
           (expr: string, expected: unknown, context: Record<string, unknown>, expObj: object) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
     expect(context).toMatchObject(expObj);
   });
@@ -104,7 +104,7 @@ describe('EvalService - extended', () => {
     ['(new this.Date(2021, 8)).getFullYear()', 2021],        // ToDo: fix error
     ['new Date(2021, 8)', new Date(2021, 8)],
   ])("18. new operator: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
   });
 
@@ -119,7 +119,7 @@ describe('EvalService - extended', () => {
     ['(func(1, ...list))', 17],
   ])("19. object, spread: when the input is '%s', expected is %p",
           (expr: string, expObj: object | unknown) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toBeTruthy();
     if (typeof expObj == 'object' && expObj) {
       expect(actual).toMatchObject(expObj);
@@ -133,7 +133,7 @@ describe('EvalService - extended', () => {
     ['/123/', /123/],
     ['/a/ig', /a/ig],
   ])("20. regex: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
   });
 
@@ -144,7 +144,7 @@ describe('EvalService - extended', () => {
     ['tag`hi ${list[0]} and ${list[3]}`', 'hi , and ,,=>,1,4'],
     ['myTag`That ${person} is a ${age}.`', 'That Mike is a youngster.'],
   ])("20. template literals: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
-    const actual = service.eval(expr, context);
+    const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
   });
 

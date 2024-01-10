@@ -53,9 +53,9 @@ export class EvalService extends BaseEval {
    * @param options The evaluation options.
    * @returns The result of the evaluation.
    */
-  eval(expression: string | AnyNode | undefined,
-       context?: EvalContext | Context,
-       options?: EvalOptions
+  simpleEval(expression: string | AnyNode | undefined,
+             context?: EvalContext | Context,
+             options?: EvalOptions
   ): unknown | undefined {
     try {
       const ast = this.parse(expression);
@@ -78,9 +78,9 @@ export class EvalService extends BaseEval {
    * @param options The evaluation options.
    * @returns A promise that resolves to the result of the evaluation.
    */
-  evalAsync(expression: string | AnyNode | undefined,
-       context?: EvalContext | Context,
-       options?: EvalOptions
+  simpleEvalAsync(expression: string | AnyNode | undefined,
+                  context?: EvalContext | Context,
+                  options?: EvalOptions
   ): Promise<unknown | undefined> {
     try {
       const ast = this.parse(expression);
