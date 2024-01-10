@@ -31,7 +31,7 @@ describe('CompilerService', () => {
     const fn = service.compile(expression);
     const context = { x: 1, y: 2 };
     const options = { debug: true };
-    const result = service.call(fn, context, options);
+    const result = service.simpleCall(fn, context, options);
     expect(result).toBeDefined();
     expect(result).toBe(3);
   });
@@ -51,7 +51,7 @@ describe('CompilerService', () => {
     const expr = 'promiseFunc(one, two)';
     const fn = service.compileAsync(expr);
     const options = { debug: true };
-    const result = await service.callAsync(fn, context, options);
+    const result = await service.simpleCallAsync(fn, context, options);
     expect(result).toBeDefined();
     expect(result).toBe(3);
   });

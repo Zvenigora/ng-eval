@@ -53,7 +53,9 @@ export class CompilerService extends BaseEval {
    * @returns The result of the evaluation.
    * @throws Error if there is an error during the evaluation.
    */
-  call(fn: stateCallback | undefined, context?: EvalContext | Context, options?: EvalOptions) {
+  simpleCall(fn: stateCallback | undefined,
+             context?: EvalContext | Context,
+             options?: EvalOptions) {
     if (fn) {
       try {
         const state = EvalState.fromContext(context, options);
@@ -78,7 +80,9 @@ export class CompilerService extends BaseEval {
    * @returns A promise that resolves to the result of the evaluation.
    * @throws Error if there is an error during the evaluation.
    */
-  async callAsync(fn: stateCallbackAsync | undefined, context?: EvalContext | Context, options?: EvalOptions) {
+  async simpleCallAsync(fn: stateCallbackAsync | undefined,
+                        context?: EvalContext | Context,
+                        options?: EvalOptions) {
     if (fn) {
       try {
         const state = EvalState.fromContext(context, options);
