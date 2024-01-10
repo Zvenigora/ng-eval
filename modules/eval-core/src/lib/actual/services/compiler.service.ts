@@ -2,9 +2,9 @@ import { Injectable } from '@angular/core';
 import { BaseEval } from './base-eval';
 import { ParserService } from './parser.service';
 import { EvalService } from './eval.service';
-import { EvalContext, EvalOptions, EvalState } from '../../internal/classes/eval';
+import { EvalContext, EvalOptions, EvalState, defaultParserOptions } from '../../internal/classes/eval';
 import { Context } from '../../internal/classes/common';
-import { AnyNode, defaultOptions } from 'acorn';
+import { AnyNode } from 'acorn';
 import { call as _call, callAsync as _callAsync,
   compile as _compile, compileAsync as _compileAsync,
   stateCallback, stateCallbackAsync } from '../../internal/functions';
@@ -23,12 +23,7 @@ export class CompilerService extends BaseEval {
     public evalService: EvalService
   ) {
     super();
-    this.parserOptions = {
-      ...defaultOptions,
-      ecmaVersion: 2020,
-      extractExpressions: false,
-      cacheSize: 100
-    };
+    this.parserOptions = defaultParserOptions;
   }
 
   /**

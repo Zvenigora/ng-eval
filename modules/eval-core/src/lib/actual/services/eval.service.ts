@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
 import { BaseEval } from './base-eval';
 import { ParserService } from './parser.service';
-import { AnyNode, defaultOptions } from 'acorn';
+import { AnyNode } from 'acorn';
 import { Context } from '../../internal/classes/common';
-import { EvalContext, EvalOptions, EvalState } from '../../internal/classes/eval';
+import { EvalContext, EvalOptions, EvalState, defaultParserOptions } from '../../internal/classes/eval';
 import { evaluate, evaluateAsync } from '../../internal/functions';
 
 /**
@@ -22,12 +22,7 @@ export class EvalService extends BaseEval {
     public parserService: ParserService
   ) {
     super();
-    this.parserOptions = {
-      ...defaultOptions,
-      ecmaVersion: 2020,
-      extractExpressions: false,
-      cacheSize: 100
-    };
+    this.parserOptions = defaultParserOptions;
   }
 
   /**

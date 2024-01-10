@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { BaseEval } from './base-eval';
 import { ParserService } from './parser.service';
-import { AnyNode, defaultOptions } from 'acorn';
+import { AnyNode } from 'acorn';
 import { AnyNodeTypes } from '../../internal/interfaces';
 import { extract } from '../../internal/functions';
+import { defaultParserOptions } from '../../internal/classes/eval';
 
 /**
  * Service responsible for discovering nodes in an abstract syntax tree (AST).
@@ -21,12 +22,10 @@ export class DiscoveryService extends BaseEval {
     public parserService: ParserService
   ) {
     super();
+
     this.parserOptions = {
-      ...defaultOptions,
-      ecmaVersion: 2020,
-      extractExpressions: false,
-      cacheSize: undefined
-    };
+      ...defaultParserOptions,
+      cacheSize: undefined};
   }
 
   /**
