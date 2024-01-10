@@ -126,7 +126,7 @@ private service: CompilerService;
 ...
 const fn = service.compile('x + y');
 const context = { x: 1, y: 2 };
-const value = service.call(fn, context, options); // 3
+const value = service.simpleCall(fn, context, options); // 3
 ```
 
 
@@ -166,7 +166,7 @@ const context = {
 };
 const expr = 'promiseFunc(one, two)';
 const fn = service.compileAsync(expr);
-const result = await service.callAsync(fn, context); // 3
+const result = await service.simpleCallAsync(fn, context); // 3
 ```
 
 ### Discovery
