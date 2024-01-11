@@ -23,6 +23,10 @@ I wanted an evaluator to be included in one of my other projects. I found some g
   * [Compilation](#compilation)
   * [Async Evaluation and Compilation](#async-evaluation-and-compilation)
   * [Discovery](#discovery)
+  * [Options](#options)
+    + [Case-insensitive evaluation](#case-insensitive-evaluation)
+  * [Evaluation with state](#evaluation-with-state)
+
 - [ESTree Nodes Supported](#estree-nodes-supported)
 - [Related Packages](#related-packages)
 - [Security](#security)
@@ -85,7 +89,7 @@ The result of the parse is an AST (abstract syntax tree), like:
 ```
 
 ### Evaluation
-Evaluation executes the AST using the given context `eval(ast, context)`. By default, the context is empty.
+Evaluation executes the AST using the given context `simpleEval(ast, context)`. By default, the context is empty.
 
 ```javascript
 import { EvalService } from '@zvenigora/ng-eval-core';
@@ -98,7 +102,7 @@ const result = service.simpleEval(expression, context); // 32
 ```
 
 Since the default context is empty, it prevents using built-in JS functions.
-To allow those functions, they can be added to the `context` argument passed into the `eval` method:
+To allow those functions, they can be added to the `context` argument passed into the `simpleEval` method:
 ```javascript
 const context = {
   Date,
@@ -202,7 +206,7 @@ The project has been tested with the following node types:
  - `ArrowFunctionExpression` *potentially unsafe* (AssignmentPattern is not implemented)
 
 ## Options
-To change the default behavior of the evaluator, use `options`. Options may be provided as an argument to the function call of `eval`.
+To change the default behavior of the evaluator, use `options`. Options may be provided as an argument to the function call of `simpleEval`.
 
 ### Case-insensitive evaluation
 
@@ -218,6 +222,29 @@ const options = {caseInsensitive: true};
 const expression = '2 + 3 * A';
 const context = { a: 10 };
 const result = service.simpleEval(expression, context, options); // 32
+```
+
+### Evaluation with state
+Evaluation executes the AST using the given state `eval(ast, state)`. The `state` object includes the context, result, and options. It is in use by visitors functions behind the scene. It could be used to extend the functionality of the evaluator. For example, it can provide the execution history and the time of execution. 
+
+```javascript
+import { EvalService } from '@zvenigora/ng-eval-core';
+
+private service: EvalService;
+...
+const expression = '2 + 3 * a';
+const context = { a: 10 };
+const options = { caseInsensitive: false };
+const state = service.createState(context, options);
+... 
+// update the state if required
+...
+
+const result = service.eval(expression, state); // 32
+...
+// read the state if required
+...
+
 ```
 
 ## Related Packages

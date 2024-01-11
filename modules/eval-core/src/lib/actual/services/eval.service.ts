@@ -38,7 +38,31 @@ export class EvalService extends BaseEval {
   ): unknown | undefined {
     try {
       const ast = this.parse(expression);
-      const state = EvalState.fromContext(context, options);
+      const state = this.createState(context, options);
+      const value = evaluate(ast, state);
+      return value;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(error.message);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Evaluates an expression using the provided state.
+   *
+   * @param expression - The expression to evaluate.
+   * @param state - The state object containing variables and functions used in the evaluation.
+   * @returns The result of the evaluation.
+   * @throws If an error occurs during evaluation.
+   */
+  eval(expression: string | AnyNode | undefined,
+       state: EvalState
+  ): unknown | undefined {
+    try {
+      const ast = this.parse(expression);
       const value = evaluate(ast, state);
       return value;
     } catch (error) {
@@ -63,7 +87,31 @@ export class EvalService extends BaseEval {
   ): Promise<unknown | undefined> {
     try {
       const ast = this.parse(expression);
-      const state = EvalState.fromContext(context, options);
+      const state = this.createState(context, options);
+      const promise = evaluateAsync(ast, state);
+      return promise;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(error.message);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Asynchronously evaluates an expression using the provided state.
+   *
+   * @param expression - The expression to evaluate. Can be a string or an AST node.
+   * @param state - The evaluation state.
+   * @returns A promise that resolves to the result of the evaluation.
+   * @throws If an error occurs during evaluation.
+   */
+  evalAsync(expression: string | AnyNode | undefined,
+            state: EvalState
+  ): Promise<unknown | undefined> {
+    try {
+      const ast = this.parse(expression);
       const promise = evaluateAsync(ast, state);
       return promise;
     } catch (error) {

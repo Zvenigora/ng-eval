@@ -1,6 +1,8 @@
 import { AnyNode } from "acorn";
 import { ParserOptions } from "../../internal/interfaces";
 import { ParserService } from "./parser.service";
+import { EvalContext, EvalOptions, EvalState } from "../../internal/classes/eval";
+import { Context } from "../../internal/public-api";
 
 /**
  * Base class for evaluation.
@@ -41,5 +43,17 @@ export abstract class BaseEval {
     } else {
       return expression as AnyNode;
     }
+  }
+
+  /**
+   * Creates an instance of EvalState.
+   * @param context - The evaluation context or context object.
+   * @param options - The evaluation options.
+   * @returns The created EvalState instance.
+   */
+  createState(context?: EvalContext | Context,
+              options?: EvalOptions): EvalState {
+    const state = EvalState.fromContext(context, options);
+    return state;
   }
 }
