@@ -7,36 +7,36 @@ import { Context } from '../common';
  * Represents the evaluation state, which includes the context, result, and options.
  */
 export class EvalState {
-  private _context: Readonly<EvalContext | undefined>;
-  private _result: Readonly<EvalResult>;
-  private _options: Readonly<EvalOptions | undefined>;
-  private _isAsync: Readonly<boolean | undefined>;
+  private _context: EvalContext | undefined;
+  private _result: EvalResult;
+  private _options: EvalOptions | undefined;
+  private _isAsync: boolean | undefined;
 
   /**
    * Gets the evaluation context.
    */
-  public get context(): Readonly<EvalContext | undefined> {
+  public get context(): EvalContext | undefined {
     return this._context;
   }
 
   /**
    * Gets the evaluation result.
    */
-  public get result(): Readonly<EvalResult> {
+  public get result(): EvalResult {
     return this._result;
   }
 
   /**
    * Gets the evaluation options.
    */
-  public get options(): Readonly<EvalOptions | undefined> {
+  public get options(): EvalOptions | undefined {
     return this._options;
   }
 
   /**
    * Gets whether the evaluation is asynchronous.
    */
-  public get isAsync(): Readonly<boolean | undefined> {
+  public get isAsync(): boolean | undefined {
     return this._isAsync;
   }
 
