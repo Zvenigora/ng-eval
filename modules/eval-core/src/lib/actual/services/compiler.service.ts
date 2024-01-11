@@ -58,7 +58,7 @@ export class CompilerService extends BaseEval {
              options?: EvalOptions) {
     if (fn) {
       try {
-        const state = EvalState.fromContext(context, options);
+        const state = this.createState(context, options);
         const value = _call(fn, state);
         return value;
       } catch (error) {
@@ -72,28 +72,27 @@ export class CompilerService extends BaseEval {
     return undefined;
   }
 
+
   /**
-   * Calls the given asynchronous state callback function with the specified context and options.
-   * @param fn - The asynchronous state callback function to call.
-   * @param context - The evaluation context or context object.
-   * @param options - The evaluation options.
-   * @returns A promise that resolves to the result of the evaluation.
-   * @throws Error if there is an error during the evaluation.
+   * Calls the provided function with the given state.
+   *
+   * @param fn - The function to be called.
+   * @param state - The state to be passed to the function.
+   * @returns The value returned by the function.
+   * @throws If an error occurs during the function call.
    */
-  async simpleCallAsync(fn: stateCallbackAsync | undefined,
-                        context?: EvalContext | Context,
-                        options?: EvalOptions) {
+  call(fn: stateCallback | undefined,
+       state: EvalState) {
     if (fn) {
       try {
-        const state = EvalState.fromContext(context, options);
-        const promise = _callAsync(fn, state);
-        const value = await promise;
+        const value = _call(fn, state);
         return value;
       } catch (error) {
         if (error instanceof Error) {
           throw new Error(error.message);
+        } else {
+          throw new Error('call');
         }
-        throw new Error('error in callAsync');
       }
     }
     return undefined;
@@ -116,6 +115,59 @@ export class CompilerService extends BaseEval {
       }
       throw new Error('error in compileAsync');
     }
+  }
+
+  /**
+   * Calls the given asynchronous state callback function with the specified context and options.
+   * @param fn - The asynchronous state callback function to call.
+   * @param context - The evaluation context or context object.
+   * @param options - The evaluation options.
+   * @returns A promise that resolves to the result of the evaluation.
+   * @throws Error if there is an error during the evaluation.
+   */
+  async simpleCallAsync(fn: stateCallbackAsync | undefined,
+                        context?: EvalContext | Context,
+                        options?: EvalOptions) {
+    if (fn) {
+      try {
+        const state = this.createState(context, options);
+        const promise = _callAsync(fn, state);
+        const value = await promise;
+        return value;
+      } catch (error) {
+        if (error instanceof Error) {
+          throw new Error(error.message);
+        }
+        throw new Error('error in callAsync');
+      }
+    }
+    return undefined;
+  }
+
+
+  /**
+   * Calls the provided asynchronous function with the given state.
+   *
+   * @param fn - The asynchronous function to call.
+   * @param state - The state to pass to the function.
+   * @returns A promise that resolves to the value returned by the function.
+   * @throws If an error occurs during the function call.
+   */
+  async callAsync(fn: stateCallbackAsync | undefined,
+                  state: EvalState) {
+    if (fn) {
+      try {
+        const promise = _callAsync(fn, state);
+        const value = await promise;
+        return value;
+      } catch (error) {
+        if (error instanceof Error) {
+          throw new Error(error.message);
+        }
+        throw new Error('error in callAsync');
+      }
+    }
+    return undefined;
   }
 
 }
