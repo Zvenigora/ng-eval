@@ -217,4 +217,25 @@ export class EvalContext {
     this._scopes.pop();
   }
 
+
+  /**
+   * Converts the EvalContext instance to an object representation.
+   * If the original value is an instance of Registry, it converts it to an object using the toObject method of the registry.
+   * If the original value is an object, it returns the original object.
+   * @returns The object representation of the EvalContext instance.
+   */
+  public toObject(): Record<string | number | symbol, unknown> | undefined{
+
+    if (this._original && this._original instanceof Registry) {
+      const registry = this._original as Registry<unknown, unknown>;
+      const object = registry.toObject();
+      return object;
+    } else if (this._original && this._original instanceof Object) {
+      const obj = this._original as Record<string, unknown>;
+      return obj;
+    }
+
+    return undefined;
+  }
+
 }
