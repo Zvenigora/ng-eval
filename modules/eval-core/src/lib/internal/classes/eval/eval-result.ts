@@ -1,6 +1,7 @@
-import { Registry, Stack } from "../common";
+import { Stack } from "../common";
 import { EvalContext } from "./eval-context";
 import { EvalOptions } from "./eval-options";
+import { EvalTrace } from "./eval-trace";
 
 type UnknownValue = unknown | Promise<unknown>;
 
@@ -9,22 +10,23 @@ type UnknownValue = unknown | Promise<unknown>;
  */
 export class EvalResult {
 
-  private _stack: Readonly<Stack<UnknownValue>>;
+  private _stack: Stack<UnknownValue>;
   private _value?: UnknownValue;
   private _error?: unknown;
   private _errorMessage?: string;
   private _isError?: boolean;
   private _isSuccess?: boolean;
   private _isUndefined?: boolean;
-  private _trace: Readonly<Registry<unknown, UnknownValue>>;
+  private _trace: EvalTrace;
   private _context: EvalContext;
   private _startDate?: number;
   private _endDate?: number;
+  private _expression?: string;
 
   /**
    * Gets the stack of evaluated values.
    */
-  public get stack(): Readonly<Stack<UnknownValue>> {
+  public get stack(): Stack<UnknownValue> {
     return this._stack;
   }
 
@@ -73,7 +75,7 @@ export class EvalResult {
   /**
    * Gets the trace of evaluated values.
    */
-  public get trace(): Readonly<Registry<unknown, UnknownValue>> {
+  public get trace(): EvalTrace {
     return this._trace;
   }
 
@@ -103,6 +105,23 @@ export class EvalResult {
   }
 
   /**
+   * Gets the expression associated with the evaluation result.
+   * @returns The expression as a string, or undefined if no expression is associated.
+   */
+  public get expression(): string | undefined {
+    return this._expression;
+  }
+
+  /**
+   * Sets the expression for the evaluation result.
+   *
+   * @param value - The expression to be set.
+   */
+  public set expression(value: string | undefined) {
+    this._expression = value;
+  }
+
+  /**
    * Creates a new instance of EvalResult.
    * @param trace The trace of evaluated values.
    * @param context The evaluation context.
@@ -110,7 +129,7 @@ export class EvalResult {
   constructor(context: EvalContext) {
 
     this._stack = new Stack<UnknownValue>();
-    this._trace = new Registry<unknown, UnknownValue>;
+    this._trace = new EvalTrace();
     this._context = context;
   }
 
