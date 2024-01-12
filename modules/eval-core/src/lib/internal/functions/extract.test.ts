@@ -63,8 +63,6 @@ describe('extract', () => {
     // Act
     const result = extract(node, searchType);
 
-    console.log(result);
-
     // Assert
     expect(result).toEqual([
       { type: 'ExpressionStatement', expression: { type: 'Literal', value: 1, start: 0, end: 1 }, start: 0, end: 1 },

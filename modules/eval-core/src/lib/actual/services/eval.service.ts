@@ -39,6 +39,9 @@ export class EvalService extends BaseEval {
     try {
       const ast = this.parse(expression);
       const state = this.createState(context, options);
+      if (state?.result && typeof expression === 'string') {
+        state.result.expression = expression;
+      }
       const value = evaluate(ast, state);
       return value;
     } catch (error) {
@@ -63,6 +66,9 @@ export class EvalService extends BaseEval {
   ): unknown | undefined {
     try {
       const ast = this.parse(expression);
+      if (state?.result && typeof expression === 'string') {
+        state.result.expression = expression;
+      }
       const value = evaluate(ast, state);
       return value;
     } catch (error) {
@@ -88,6 +94,9 @@ export class EvalService extends BaseEval {
     try {
       const ast = this.parse(expression);
       const state = this.createState(context, options);
+      if (state?.result && typeof expression === 'string') {
+        state.result.expression = expression;
+      }
       const promise = evaluateAsync(ast, state);
       return promise;
     } catch (error) {
@@ -112,6 +121,9 @@ export class EvalService extends BaseEval {
   ): Promise<unknown | undefined> {
     try {
       const ast = this.parse(expression);
+      if (state?.result && typeof expression === 'string') {
+        state.result.expression = expression;
+      }
       const promise = evaluateAsync(ast, state);
       return promise;
     } catch (error) {
