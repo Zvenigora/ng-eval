@@ -2,7 +2,7 @@ import { MemberExpression } from 'acorn';
 import * as walk from 'acorn-walk';
 import { beforeVisitor } from './before-visitor';
 import { pushVisitorResult, popVisitorResult } from './visitor-result';
-import { EvalState } from '../classes/eval';
+import { EvalScope, EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 import { getKeyValue } from './utils';
 import { BaseContext } from '../classes/common';
@@ -40,6 +40,10 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
   if (object === st.context) {
     const value = st.context.get(key);
     const thisValue = st.context.getThis(key);
+    return [thisValue ?? object, key, value];
+  } else if (object instanceof EvalScope) {
+    const value = object.get(key);
+    const thisValue = object;
     return [thisValue ?? object, key, value];
   } else {
     const caseInsesitive = !!(st.options?.caseInsensitive);

@@ -2,6 +2,7 @@ import { Context, Registry, Stack, fromContext } from '../common';
 import { getContextKey, getContextValue } from '../common/context';
 import { EvalLookup } from './eval-lookup';
 import { EvalOptions } from './eval-options';
+import { EvalScope } from './eval-scope';
 
 /**
  * Represents the evaluation context for the code execution.
@@ -11,7 +12,7 @@ export class EvalContext {
   type = 'EvalContext';
 
   private _original: Readonly<Context>;
-  private _priorScopes: Readonly<Context[]>;
+  private _priorScopes: EvalScope[];
   private _scopes: Stack<Context>;
   private _lookups: Readonly<Registry<unknown, EvalLookup>>;
   private _options: Readonly<EvalOptions>;
@@ -26,7 +27,7 @@ export class EvalContext {
   /**
    * Gets the scopes registry.
    */
-  public get priorScopes(): Readonly<Context[]> {
+  public get priorScopes(): EvalScope[] {
     return this._priorScopes;
   }
 
@@ -106,7 +107,7 @@ export class EvalContext {
     }
 
     for (const scope of this._priorScopes) {
-      const value = getContextValue(scope, key);
+      const value = scope.get(key);
       if (value !== undefined) {
         return value;
       }
@@ -174,7 +175,7 @@ export class EvalContext {
     }
 
     for (const scope of this._priorScopes) {
-      const foundKey = getContextKey(scope, key, caseInsensitive);
+      const foundKey = getContextKey(scope.context, key, caseInsensitive);
       if (foundKey !== undefined) {
         return foundKey;
       }

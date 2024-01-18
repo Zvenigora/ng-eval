@@ -1,3 +1,4 @@
+import { EvalScope } from '.';
 import { Registry } from '../common';
 import { EvalContext } from './eval-context';
 import { EvalOptions } from './eval-options';
@@ -42,13 +43,13 @@ describe('EvalContext', () => {
     expect(evalContext.get(key)).toBe(value);
   });
 
-  it('should get value from scope registry', () => {
+  it('should get value from prior scopes', () => {
     const key = 'key';
     const value = 'value';
-    const scope = new Registry<unknown, unknown>();
+    const scope = new EvalScope();
     scope.set(key, value);
     const evalContext = new EvalContext(original, options);
-    (evalContext.priorScopes as Registry<unknown, unknown>[]).push(scope);
+    evalContext.priorScopes.push(scope);
     expect(evalContext.get(key)).toBe(value);
   });
 
