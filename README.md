@@ -26,7 +26,7 @@ I wanted an evaluator to be included in one of my other projects. I found some g
   * [Options](#options)
     + [Case-insensitive evaluation](#case-insensitive-evaluation)
   * [Evaluation with state](#evaluation-with-state)
-
+  * [Evaluation with scope](#evaluation-with-scope)
 - [ESTree Nodes Supported](#estree-nodes-supported)
 - [Related Packages](#related-packages)
 - [Security](#security)
@@ -243,7 +243,43 @@ const state = service.createState(context, options);
 const result = service.eval(expression, state); // 32
 ...
 // read the state if required
+
+console.table(state.result.trace); // display execution history
+
 ...
+
+```
+
+### Evaluation with scope
+Evaluation context may include prior scopes. Evaluation scopes may contain variables and functions.
+
+```javascript
+import { EvalService } from '@zvenigora/ng-eval-core';
+
+private service: EvalService;
+...
+
+const args = ['says', 'meow'];
+
+const cat = {
+  type: 'Cat',
+  name: 'Miss Kitty',
+  num: 3,
+  action: function(args: string[], n: number, t: string) {
+    return this.name + ' ' + args.join(' ') + ' ' + n + ' ' + t;
+  }
+}
+
+const catOptions: EvalScopeOptions = {
+  global: false,
+  caseInsensitive: false,
+  namespace: 'cat',
+  thisArg: cat
+};
+evalContext.priorScopes.push(EvalScope.fromObject(cat, catOptions));
+
+const expression = 'cat.action(args, cat.num, "times")';
+const result = service.simpleEval(expression, evalContext); // 'Miss Kitty says meow 3 times'
 
 ```
 

@@ -18,9 +18,9 @@ The `EvalLookup` is a callback function is used to lookup variables and function
 `EvalContext` is used to evaluate expressions by `EvalService`. It has the following properties:
  - `original`: The original `Context`,
  - `priorScopes`: The prior scopes used to evaluate the expression,
-  - `scopes`: The stack of current scopes used to evaluate the expression,
-  - `lookups`: The registry of lookup functions used to lookup variables and functions,
-  - `options`: The options used to evaluate the expression.
+ - `scopes`: The stack of current scopes used to evaluate the expression,
+ - `lookups`: The registry of lookup functions used to lookup variables and functions,
+ - `options`: The options used to evaluate the expression.
 
 ## EvalResult
 The `EvalResult` is the result of evaluating an expression. It has the following properties:
@@ -45,3 +45,7 @@ The `EvalState` is the state of the evaluation. It has the following properties:
  - `result`: The result of evaluating the expression,
  - `isAsync`: True if the evaluation is asynchronous.
 
+## EvalScope
+The `EvalScope` is the used to extend context. It has the following properties:
+ - `context`: The context used to evaluate the expression,
+ - `options`: The options used to evaluate the expression.
