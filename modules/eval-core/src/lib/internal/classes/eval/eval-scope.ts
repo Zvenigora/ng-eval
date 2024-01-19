@@ -58,7 +58,7 @@ export class EvalScope {
    * @param options - The options object.
    * @returns An instance of EvalScope.
    */
-  public static fromContext(
+  public static fromObject(
     context?: Context,
     options?: EvalScopeOptions): EvalScope {
 
