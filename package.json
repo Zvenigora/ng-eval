@@ -1,6 +1,6 @@
 {
   "name": "@zvenigora/ng-eval",
-  "version": "0.1.105",
+  "version": "0.1.106",
   "license": "MIT",
   "scripts": {
     "build": "nx run eval-core:build:production",

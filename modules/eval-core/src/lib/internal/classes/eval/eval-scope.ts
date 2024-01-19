@@ -15,6 +15,9 @@ const defaultEvalScopeOptions: EvalScopeOptions = {
   thisArg: undefined
 };
 
+/**
+ * Represents an evaluation scope.
+ */
 export class EvalScope {
 
   type: string = 'EvalScope';
