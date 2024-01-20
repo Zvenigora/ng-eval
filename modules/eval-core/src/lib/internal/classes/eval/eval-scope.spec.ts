@@ -4,7 +4,7 @@ describe('EvalScope', () => {
   let evalScope: EvalScope;
 
   beforeEach(() => {
-    evalScope = new EvalScope();
+    evalScope = new EvalScope({}, {global: true});
   });
 
   it('should create an instance', () => {
