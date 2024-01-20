@@ -46,7 +46,7 @@ describe('EvalContext', () => {
   it('should get value from prior scopes', () => {
     const key = 'key';
     const value = 'value';
-    const scope = new EvalScope();
+    const scope = new EvalScope({}, {global: true});
     scope.set(key, value);
     const evalContext = new EvalContext(original, options);
     evalContext.priorScopes.push(scope);

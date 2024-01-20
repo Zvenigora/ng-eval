@@ -74,7 +74,7 @@ export class EvalScope {
    * @returns The value of the specified key, or undefined if the key is not found.
    */
   public get(key: unknown): unknown | undefined {
-    const { caseInsensitive, namespace } = this._options;
+    const { caseInsensitive, namespace, global } = this._options;
     const { context } = this;
 
     if (typeof key === 'string' && namespace) {
@@ -86,8 +86,12 @@ export class EvalScope {
       }
     }
 
-    const value = getContextValue(context, key);
-    return value;
+    if (global) {
+      const value = getContextValue(context, key);
+      return value;
+    }
+
+    return undefined;
   }
 
   /**
