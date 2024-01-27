@@ -1,6 +1,6 @@
 export * from './parser-types';
 
-export { RegistryType, ScopeRegistryOptions, RegistryEntries } from './registry-type';
+export { RegistryType, RegistryEntries } from './registry-type';
 export { StackType } from './stack-type';
 export { QueueType } from './queue-type';
 export { ScopeType, RegistryOptionType, ScopeOptions } from './scope-type';

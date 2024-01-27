@@ -78,11 +78,4 @@ export interface RegistryType<TKey, TValue> extends Iterable<[TKey, TValue]> {
   [Symbol.iterator](): IterableIterator<[TKey, TValue]>;
 }
 
-export interface ScopeRegistryOptions {
-  caseInsensitive: boolean;
-  global: boolean;
-  namespace: string;
-  thisArg: unknown;
-}
-
 export type RegistryEntries<TKey, TValue> = [TKey, TValue][] | Record<string | number | symbol, TValue>;
