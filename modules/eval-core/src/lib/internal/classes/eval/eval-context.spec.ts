@@ -58,7 +58,7 @@ describe('EvalContext', () => {
     const value = 'value';
     const lookup = jest.fn().mockReturnValue(value);
     const evalContext = new EvalContext(original, options);
-    evalContext['lookups'].set(key, lookup);
+    evalContext['lookups'].push(lookup);
     expect(evalContext.get(key)).toBe(value);
     expect(lookup).toHaveBeenCalledWith(key, evalContext, options);
   });

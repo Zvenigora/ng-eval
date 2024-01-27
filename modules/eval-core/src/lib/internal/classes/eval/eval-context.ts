@@ -14,7 +14,7 @@ export class EvalContext {
   private _original: Readonly<Context>;
   private _priorScopes: EvalScope[];
   private _scopes: Stack<Context>;
-  private _lookups: Readonly<Registry<unknown, EvalLookup>>;
+  private _lookups: EvalLookup[];
   private _options: Readonly<EvalOptions>;
 
   /**
@@ -41,7 +41,7 @@ export class EvalContext {
   /**
    * Gets the lookups registry.
    */
-  public get lookups(): Readonly<Registry<unknown, EvalLookup>> {
+  public get lookups(): EvalLookup[] {
     return this._lookups;
   }
 
@@ -65,7 +65,7 @@ export class EvalContext {
     this._priorScopes = [];
     this._scopes = new Stack<Context>();
     this._options = options;
-    this._lookups = new Registry<unknown, EvalLookup>();
+    this._lookups = [];
   }
 
   /**
@@ -113,7 +113,7 @@ export class EvalContext {
       }
     }
 
-    for (const lookup of Array.from(this._lookups.values)) {
+    for (const lookup of this._lookups) {
       const value = lookup(key, this, this._options);
       if (value !== undefined) {
         return value;
@@ -141,7 +141,7 @@ export class EvalContext {
         return scope;
       }
     }
-    for (const lookup of Array.from(this._lookups.values)) {
+    for (const lookup of this._lookups) {
       const value = lookup(key, this, this._options);
       if (value !== undefined) {
         return lookup;
