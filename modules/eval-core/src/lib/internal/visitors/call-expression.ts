@@ -14,11 +14,55 @@ const DANGEROUS_FUNCTIONS = new Set([
   'Function',
   'eval',
   'setTimeout',
-  'setInterval',
+  'setInterval',  
+  'setImmediate',
   'require',
   'import',
-  'importScripts'
+  'importScripts',
+  'XMLHttpRequest',
+  'fetch',
+  'WebSocket',
+  'Worker',
+  'SharedWorker',
+  'ServiceWorker',
 ]);
+
+/**
+ * Security: List of dangerous patterns in function code
+ * Only the most dangerous patterns that could lead to code injection
+ */
+const DANGEROUS_PATTERNS = [
+  /\beval\s*\(/i,
+  /\bFunction\s*\(/,  // Look for Function constructor (capital F only)
+  /new\s+Function\s*\(/i,
+  /\.__proto__\b/,
+  /\.prototype\s*\.\s*constructor\b/,
+  /\bglobalThis\b/,
+];
+
+/**
+ * Security: Check if a function name is dangerous
+ */
+const isDangerousFunctionName = (fnName: string): boolean => {
+  return DANGEROUS_FUNCTIONS.has(fnName);
+};
+
+/**
+ * Security: Check if function code contains dangerous patterns
+ * Only check user-defined functions, not native ones
+ */
+const hasDangerousPatterns = (fnString: string): boolean => {
+  // If it's a native function ([native code]), allow it
+  if (fnString.includes('[native code]')) {
+    return false;
+  }
+  
+  // For user-defined functions, only check for truly dangerous patterns
+  // that could lead to code injection or security bypass
+  const result = DANGEROUS_PATTERNS.some(pattern => pattern.test(fnString));
+  
+  return result;
+};
 
 /**
  * Security: Check if a function is safe to call
@@ -29,16 +73,23 @@ const isFunctionSafe = (fn: unknown, fnName?: string): boolean => {
   }
 
   // Check if it's a dangerous function by name
-  if (fnName && DANGEROUS_FUNCTIONS.has(fnName)) {
+  if (fnName && isDangerousFunctionName(fnName)) {
     return false;
   }
 
-  // Check function string for dangerous patterns
-  const fnString = fn.toString();
-  if (fnString.includes('eval') || 
-      fnString.includes('Function(') ||
-      fnString.includes('constructor') ||
-      fnString.includes('__proto__')) {
+  // Special check for Function constructor
+  if (fn === Function) {
+    return false;
+  }
+
+  try {
+    // Check function string for dangerous patterns
+    const fnString = fn.toString();
+    if (hasDangerousPatterns(fnString)) {
+      return false;
+    }
+  } catch {
+    // If we can't get the function string, be cautious
     return false;
   }
 
