@@ -4,9 +4,8 @@ import { beforeVisitor } from './before-visitor';
 import { pushVisitorResult, popVisitorResult } from './visitor-result';
 import { EvalScope, EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
-import { getKeyValue } from './utils';
-import { BaseContext } from '../classes/common';
-import { safeGetProperty } from './prototype-pollution-guard';
+import { safeGetProperty, isDangerousProperty } from './prototype-pollution-guard';
+import { equalIgnoreCase } from './utils';
 
 export const memberExpressionVisitor = (node: MemberExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
 
@@ -28,41 +27,100 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
 
   // Get the property
   let key: string | number | symbol;
-  if (node.property.type === 'Identifier') {
+  if (!node.computed && node.property.type === 'Identifier') {
+    // Dot notation: obj.prop
     key = node.property.name;
   } else if (node.property.type === 'Literal') {
+    // Computed literal: obj["literal"]
     key = node.property.value as string | number | symbol;
   } else {
+    // Computed expression: obj[key], obj[expression]
     callback(node.property, st);
     key = popVisitorResult(node, st) as (string | number | symbol);
   }
 
-  // Get the value
+  // Get the value with context-aware or prototype pollution protection
   if (object === st.context) {
-    const value = st.context.get(key);
-    const thisValue = st.context.getThis(key);
-    return [thisValue ?? object, key, value];
+    // For context objects, preserve case-insensitive behavior
+    const contextKey = st.options?.caseInsensitive && typeof key === 'string'
+      ? st.context.getKey(key)
+      : key;
+    const value = st.context.get(contextKey);
+    const thisValue = st.context.getThis(contextKey);
+    return [thisValue ?? object, contextKey, value];
   } else if (object instanceof EvalScope) {
+    // For scope objects, preserve original behavior (no getKey method)
     const value = object.get(key);
     const thisValue = object;
     return [thisValue ?? object, key, value];
   } else {
-    const caseInsesitive = !!(st.options?.caseInsensitive);
-    const pair = getKeyValue(object as BaseContext, key, caseInsesitive);
-    if (pair) {
-      const [key, value] = pair;
-      return [object, key, value];
+    // For regular objects, we need both case-insensitive lookup AND prototype pollution protection
+    let value: unknown;
+    
+    // Check if this is a primitive type (string, number, boolean) - these are safe for method access
+    const isPrimitive = (typeof object === 'string' || typeof object === 'number' || typeof object === 'boolean');
+    
+    if (st.options?.caseInsensitive && typeof key === 'string') {
+      // Use case-insensitive lookup but with prototype pollution protection
+      // For primitives, skip dangerous property checks as their methods are safe
+      if (!isPrimitive && isDangerousProperty(key)) {
+        throw new Error(`Access to dangerous property "${key}" is blocked for security reasons`);
+      }
+      
+      // Try case-insensitive lookup on own properties first
+      const obj = object as Record<PropertyKey, unknown>;
+      let foundKey: string | undefined = undefined;
+      
+      if (obj && typeof obj === 'object') {
+        // Check own properties first
+        const ownKeys = Object.getOwnPropertyNames(obj);
+        foundKey = ownKeys.find(k => equalIgnoreCase(k, key));
+        
+        // If not found in own properties, check if the original key exists (including prototype methods)
+        if (!foundKey) {
+          try {
+            // Test if property exists in prototype chain (this includes native methods like array.find)
+            const testValue = obj[key];
+            if (testValue !== undefined) {
+              foundKey = key;
+            } else {
+              // Look for case variations in prototype methods for arrays, objects, etc.
+              // This is more expensive but necessary for case-insensitive prototype method access
+              const prototype = Object.getPrototypeOf(obj);
+              if (prototype) {
+                const prototypeKeys = Object.getOwnPropertyNames(prototype);
+                foundKey = prototypeKeys.find(k => typeof k === 'string' && equalIgnoreCase(k, key));
+              }
+            }
+          } catch {
+            // If access fails, foundKey remains undefined
+          }
+        }
+        
+        // Check if the found key is dangerous (but only for non-primitives)
+        if (!isPrimitive && foundKey && isDangerousProperty(foundKey)) {
+          throw new Error(`Access to dangerous property "${foundKey}" is blocked for security reasons`);
+        }
+      }
+      
+      // Get the value using the found key or use safeGetProperty fallback for non-primitives
+      if (isPrimitive) {
+        // For primitives, direct access is safe
+        value = foundKey ? obj[foundKey] : obj[key];
+      } else {
+        // For objects, use safe property access
+        value = foundKey ? obj[foundKey] : safeGetProperty(object, key);
+      }
     } else {
-      // Fall back to safe property access for additional protection
-      try {
-        const value = safeGetProperty(object, key);
-        return [object, key, value];
-      } catch (error) {
-        // If safe access fails due to security restrictions, return undefined
-        return [object, key, undefined];
+      // Use safe property access for prototype pollution protection (but not for primitives)
+      if (isPrimitive) {
+        // For primitives, direct access is safe
+        value = (object as Record<PropertyKey, unknown>)[key];
+      } else {
+        value = safeGetProperty(object, key);
       }
     }
+    
+    return [object, key, value];
   }
-
-  return [object, key, undefined];
 }

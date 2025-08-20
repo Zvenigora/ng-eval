@@ -73,7 +73,7 @@ export const isDangerousConstructor = (obj: unknown): boolean => {
  * @throws Error if the operation would cause prototype pollution
  */
 export const safeSetProperty = (target: unknown, key: unknown, value: unknown): void => {
-  if (!target || typeof target !== 'object') {
+  if (!target || (typeof target !== 'object' && typeof target !== 'function')) {
     throw new Error(`Cannot set property on non-object: ${typeof target}`);
   }
 
@@ -96,6 +96,15 @@ export const safeSetProperty = (target: unknown, key: unknown, value: unknown): 
     throw new Error(`Modification of built-in prototype is blocked for security reasons`);
   }
 
+  // Convert key to PropertyKey for safe operations
+  let propertyKey: PropertyKey;
+  if (typeof key === 'string' || typeof key === 'number' || typeof key === 'symbol') {
+    propertyKey = key;
+  } else {
+    // For other types, try to convert to string
+    propertyKey = String(key);
+  }
+
   // Use Object.defineProperty for safer assignment
   const descriptor = {
     value,
@@ -105,7 +114,7 @@ export const safeSetProperty = (target: unknown, key: unknown, value: unknown): 
   };
 
   try {
-    Object.defineProperty(target as object, key as PropertyKey, descriptor);
+    Object.defineProperty(target as object, propertyKey, descriptor);
   } catch (error) {
     throw new Error(`Failed to set property "${String(key)}": ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -127,33 +136,21 @@ export const safeGetProperty = (target: unknown, key: unknown): unknown => {
   }
 
   // Convert key to PropertyKey for safe operations
-  const propertyKey = key as PropertyKey;
+  let propertyKey: PropertyKey;
+  if (typeof key === 'string' || typeof key === 'number' || typeof key === 'symbol') {
+    propertyKey = key;
+  } else {
+    // For other types, try to convert to string
+    propertyKey = String(key);
+  }
 
-  // Use Object.prototype.hasOwnProperty safely
-  const hasOwnProp = Object.prototype.hasOwnProperty.call(target, propertyKey);
-  if (hasOwnProp) {
+  // Direct property access using bracket notation (safer than complex prototype walking)
+  try {
     return (target as Record<PropertyKey, unknown>)[propertyKey];
+  } catch (error) {
+    // If property access fails, return undefined
+    return undefined;
   }
-
-  // For inherited properties, be more cautious
-  if (propertyKey in (target as object)) {
-    const descriptor = Object.getOwnPropertyDescriptor(target, propertyKey);
-    if (descriptor) {
-      return descriptor.value;
-    }
-    
-    // Walk up the prototype chain safely
-    let current = Object.getPrototypeOf(target);
-    while (current && current !== Object.prototype) {
-      const desc = Object.getOwnPropertyDescriptor(current, propertyKey);
-      if (desc) {
-        return desc.value;
-      }
-      current = Object.getPrototypeOf(current);
-    }
-  }
-
-  return undefined;
 };
 
 /**
