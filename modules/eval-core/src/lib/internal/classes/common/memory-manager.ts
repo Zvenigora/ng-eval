@@ -34,7 +34,9 @@ class ResourceTracker {
   }
 
   cleanup(): void {
-    for (const resource of this.resources) {
+    const resourceArray = Array.from(this.resources);
+    for (let i = 0; i < resourceArray.length; i++) {
+      const resource = resourceArray[i];
       if (!this.disposedResources.has(resource) && !resource.isDisposed()) {
         try {
           resource.dispose();
@@ -51,8 +53,9 @@ class ResourceTracker {
 
   getActiveResourceCount(): number {
     let count = 0;
-    for (const resource of this.resources) {
-      if (!resource.isDisposed()) {
+    const resourceArray = Array.from(this.resources);
+    for (let i = 0; i < resourceArray.length; i++) {
+      if (!resourceArray[i].isDisposed()) {
         count++;
       }
     }
@@ -315,12 +318,12 @@ export class MemoryManager {
       const cloned = new Map();
       visited.set(obj, cloned);
       
-      for (const [key, value] of obj.entries()) {
+      obj.forEach((value, key) => {
         cloned.set(
           this.deepCloneRecursive(key, visited, maxDepth - 1),
           this.deepCloneRecursive(value, visited, maxDepth - 1)
         );
-      }
+      });
       return cloned;
     }
 
@@ -328,9 +331,9 @@ export class MemoryManager {
       const cloned = new Set();
       visited.set(obj, cloned);
       
-      for (const value of obj.values()) {
+      obj.forEach((value) => {
         cloned.add(this.deepCloneRecursive(value, visited, maxDepth - 1));
-      }
+      });
       return cloned;
     }
 
@@ -366,15 +369,17 @@ export class MemoryManager {
       heapTotal: undefined as number | undefined
     };
 
-    // Add Node.js memory usage if available
-    if (typeof process !== 'undefined' && process.memoryUsage) {
-      try {
-        const memUsage = process.memoryUsage();
+    // Add Node.js memory usage if available (browser-safe check)
+    try {
+      if (typeof globalThis !== 'undefined' && 
+          (globalThis as { process?: { memoryUsage?: () => { heapUsed: number; heapTotal: number } } }).process &&
+          typeof (globalThis as { process: { memoryUsage?: () => { heapUsed: number; heapTotal: number } } }).process.memoryUsage === 'function') {
+        const memUsage = (globalThis as { process: { memoryUsage: () => { heapUsed: number; heapTotal: number } } }).process.memoryUsage();
         stats.heapUsed = memUsage.heapUsed;
         stats.heapTotal = memUsage.heapTotal;
-      } catch {
-        // Ignore errors in browser environments
       }
+    } catch {
+      // Ignore errors in browser environments or when process is not available
     }
 
     return stats;
