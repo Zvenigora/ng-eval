@@ -5,6 +5,7 @@ import { pushVisitorResult, popVisitorResult } from './visitor-result';
 import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 import { evaluateMember } from './member-expression';
+import { safeSetProperty } from './prototype-pollution-guard';
 
 const assignmentOperators = {
   '=': (left: number, value: number) => { return left = value; },
@@ -54,7 +55,10 @@ export const assignmentExpressionVisitor = (node: AssignmentExpression, st: Eval
   } else if (node.left.type === 'MemberExpression') {
     const [object, key, ] = evaluateMember(node.left, st, callback);
     const value = func(left, right);
-    (object as Record<string, unknown>)[key as string | number] = value;
+    
+    // Use safe property assignment to prevent prototype pollution
+    safeSetProperty(object, key, value);
+    
     pushVisitorResult(node, st, value);
   }
 

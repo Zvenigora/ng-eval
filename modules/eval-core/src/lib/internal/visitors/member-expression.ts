@@ -6,6 +6,7 @@ import { EvalScope, EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 import { getKeyValue } from './utils';
 import { BaseContext } from '../classes/common';
+import { safeGetProperty } from './prototype-pollution-guard';
 
 export const memberExpressionVisitor = (node: MemberExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
 
@@ -51,6 +52,15 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
     if (pair) {
       const [key, value] = pair;
       return [object, key, value];
+    } else {
+      // Fall back to safe property access for additional protection
+      try {
+        const value = safeGetProperty(object, key);
+        return [object, key, value];
+      } catch (error) {
+        // If safe access fails due to security restrictions, return undefined
+        return [object, key, undefined];
+      }
     }
   }
 

@@ -4,6 +4,7 @@ import { beforeVisitor } from './before-visitor';
 import { pushVisitorResult, popVisitorResult } from './visitor-result';
 import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
+import { createSafeObject, validateSafeObject } from './prototype-pollution-guard';
 
 type KeyValuePair = {key: unknown; value: unknown};
 
@@ -11,23 +12,36 @@ export const objectExpressionVisitor = (node: ObjectExpression, st: EvalState, c
 
   beforeVisitor(node, st);
 
-  const map = new Map();
+  const entries: Array<[unknown, unknown]> = [];
+  
   for (const property of node.properties) {
     if (property.type === 'SpreadElement') {
       callback(property.argument, st);
       const value = popVisitorResult(property, st) as object;
+      
+      // Validate spread object for safety
+      try {
+        validateSafeObject(value);
+      } catch (error) {
+        throw new Error(`Spread operation blocked: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      
       for (const [key, val] of Object.entries(value)) {
-        map.set(key, val);
+        entries.push([key, val]);
       }
     } else {
       const pair = evalProperty(property, st, callback);
-      map.set(pair.key, pair.value);
+      entries.push([pair.key, pair.value]);
     }
   }
 
-  const obj = Object.fromEntries(map);
-
-  pushVisitorResult(node, st, obj);
+  // Create safe object with prototype pollution protection
+  try {
+    const obj = createSafeObject(entries);
+    pushVisitorResult(node, st, obj);
+  } catch (error) {
+    throw new Error(`Object creation blocked: ${error instanceof Error ? error.message : String(error)}`);
+  }
 
   afterVisitor(node, st);
 }
