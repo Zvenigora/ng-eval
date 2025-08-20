@@ -12,9 +12,13 @@ export const objectExpressionVisitor = (node: ObjectExpression, st: EvalState, c
 
   beforeVisitor(node, st);
 
+  // Pre-allocate entries array for better performance
+  const propertyCount = node.properties.length;
   const entries: Array<[unknown, unknown]> = [];
   
-  for (const property of node.properties) {
+  for (let i = 0; i < propertyCount; i++) {
+    const property = node.properties[i];
+    
     if (property.type === 'SpreadElement') {
       callback(property.argument, st);
       const value = popVisitorResult(property, st) as object;
@@ -26,7 +30,10 @@ export const objectExpressionVisitor = (node: ObjectExpression, st: EvalState, c
         throw new Error(`Spread operation blocked: ${error instanceof Error ? error.message : String(error)}`);
       }
       
-      for (const [key, val] of Object.entries(value)) {
+      // Use Object.entries() once and cache the result
+      const spreadEntries = Object.entries(value);
+      for (let j = 0; j < spreadEntries.length; j++) {
+        const [key, val] = spreadEntries[j];
         entries.push([key, val]);
       }
     } else {

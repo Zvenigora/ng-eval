@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, OnDestroy } from '@angular/core';
 import { BaseEval } from './base-eval';
 import { ParserService } from './parser.service';
 import { EvalService } from './eval.service';
@@ -10,13 +10,31 @@ import { call as _call, callAsync as _callAsync,
   stateCallback, stateCallbackAsync } from '../../internal/functions';
 
 /**
+ * Interface for cached compilation result
+ */
+interface CachedCompilation {
+  sync?: stateCallback;
+  async?: stateCallbackAsync;
+  timestamp: number;
+  accessCount: number;
+}
+
+/**
  * CompilerService class that extends BaseEval.
- * Provides methods for compiling and evaluating expressions.
+ * Provides methods for compiling and evaluating expressions with performance caching.
  */
 @Injectable({
   providedIn: 'root'
 })
-export class CompilerService extends BaseEval {
+export class CompilerService extends BaseEval implements OnDestroy {
+  
+  // Compilation cache with LRU eviction
+  private readonly _compilationCache = new Map<string, CachedCompilation>();
+  private readonly _maxCacheSize = 200;
+  private readonly _cacheTTL = 10 * 60 * 1000; // 10 minutes
+  private readonly _accessOrder = new Set<string>();
+  private _cacheCleanupInterval?: ReturnType<typeof setInterval>;
+  private _isDestroyed = false;
 
   constructor(
     protected override parserService: ParserService,
@@ -24,18 +42,139 @@ export class CompilerService extends BaseEval {
   ) {
     super(parserService);
     this.parserOptions = defaultParserOptions;
+    this.setupCacheCleanup();
   }
 
   /**
-   * Compiles the given expression into a state callback function.
+   * OnDestroy lifecycle hook for cleanup
+   */
+  ngOnDestroy(): void {
+    this._isDestroyed = true;
+    if (this._cacheCleanupInterval) {
+      clearInterval(this._cacheCleanupInterval);
+    }
+    this._compilationCache.clear();
+    this._accessOrder.clear();
+  }
+
+  /**
+   * Setup periodic cache cleanup to prevent memory leaks and stale entries
+   */
+  private setupCacheCleanup(): void {
+    if (typeof setInterval !== 'undefined') {
+      this._cacheCleanupInterval = setInterval(() => {
+        if (!this._isDestroyed) {
+          this.cleanupCache();
+        }
+      }, 5 * 60 * 1000); // Clean every 5 minutes
+    }
+  }
+
+  /**
+   * Clean expired entries and enforce cache size limits
+   */
+  private cleanupCache(): void {
+    const now = performance.now();
+    const toDelete: string[] = [];
+    
+    // Remove expired entries
+    for (const [key, cached] of this._compilationCache) {
+      if (now - cached.timestamp > this._cacheTTL) {
+        toDelete.push(key);
+      }
+    }
+    
+    // Remove expired entries
+    toDelete.forEach(key => {
+      this._compilationCache.delete(key);
+      this._accessOrder.delete(key);
+    });
+    
+    // Enforce cache size limit using LRU
+    while (this._compilationCache.size > this._maxCacheSize) {
+      const oldestKey = Array.from(this._accessOrder)[0];
+      if (oldestKey) {
+        this._compilationCache.delete(oldestKey);
+        this._accessOrder.delete(oldestKey);
+      } else {
+        break;
+      }
+    }
+  }
+
+  /**
+   * Generate cache key for expression
+   */
+  private generateCacheKey(expression: string | AnyNode | undefined): string {
+    if (typeof expression === 'string') {
+      return `str:${expression}`;
+    } else if (expression && typeof expression === 'object') {
+      // Use a simplified hash for AST nodes to avoid deep serialization overhead
+      return `ast:${expression.type}:${JSON.stringify({
+        type: expression.type,
+        start: expression.start,
+        end: expression.end
+      })}:${expression.toString()}`;
+    }
+    return 'undefined';
+  }
+
+  /**
+   * Update access order for LRU cache
+   */
+  private updateAccessOrder(key: string): void {
+    this._accessOrder.delete(key);
+    this._accessOrder.add(key);
+  }
+
+  /**
+   * Compiles the given expression into a state callback function with caching.
    * @param expression - The expression to compile.
    * @returns The compiled state callback function.
    * @throws Error if there is an error during compilation.
    */
   compile(expression: string | AnyNode | undefined): stateCallback | undefined {
     try {
+      const cacheKey = this.generateCacheKey(expression);
+      
+      // Check cache first
+      const cached = this._compilationCache.get(cacheKey);
+      if (cached?.sync) {
+        // Update access order for LRU
+        this.updateAccessOrder(cacheKey);
+        cached.accessCount++;
+        
+        // Check if entry is still fresh
+        const age = performance.now() - cached.timestamp;
+        if (age < this._cacheTTL) {
+          return cached.sync;
+        }
+      }
+      
+      // Compile fresh
       const ast = this.parse(expression);
       const fn = _compile(ast);
+      
+      if (fn) {
+        // Cache the result
+        const existingCache = this._compilationCache.get(cacheKey) || {
+          timestamp: performance.now(),
+          accessCount: 0
+        };
+        
+        existingCache.sync = fn;
+        existingCache.timestamp = performance.now();
+        existingCache.accessCount++;
+        
+        this._compilationCache.set(cacheKey, existingCache);
+        this.updateAccessOrder(cacheKey);
+        
+        // Cleanup if cache is getting too large
+        if (this._compilationCache.size > this._maxCacheSize * 1.2) {
+          this.cleanupCache();
+        }
+      }
+      
       return fn;
     } catch (error) {
       if (error instanceof Error) {
@@ -99,15 +238,53 @@ export class CompilerService extends BaseEval {
   }
 
   /**
-   * Compiles the given expression into an asynchronous state callback function.
+   * Compiles the given expression into an asynchronous state callback function with caching.
    * @param expression - The expression to compile.
    * @returns The compiled asynchronous state callback function.
    * @throws Error if there is an error during compilation.
    */
   compileAsync(expression: string | AnyNode | undefined): stateCallbackAsync | undefined {
     try {
+      const cacheKey = this.generateCacheKey(expression);
+      
+      // Check cache first
+      const cached = this._compilationCache.get(cacheKey);
+      if (cached?.async) {
+        // Update access order for LRU
+        this.updateAccessOrder(cacheKey);
+        cached.accessCount++;
+        
+        // Check if entry is still fresh
+        const age = performance.now() - cached.timestamp;
+        if (age < this._cacheTTL) {
+          return cached.async;
+        }
+      }
+      
+      // Compile fresh
       const ast = this.parse(expression);
       const fn = _compileAsync(ast);
+      
+      if (fn) {
+        // Cache the result
+        const existingCache = this._compilationCache.get(cacheKey) || {
+          timestamp: performance.now(),
+          accessCount: 0
+        };
+        
+        existingCache.async = fn;
+        existingCache.timestamp = performance.now();
+        existingCache.accessCount++;
+        
+        this._compilationCache.set(cacheKey, existingCache);
+        this.updateAccessOrder(cacheKey);
+        
+        // Cleanup if cache is getting too large
+        if (this._compilationCache.size > this._maxCacheSize * 1.2) {
+          this.cleanupCache();
+        }
+      }
+      
       return fn;
     } catch (error) {
       if (error instanceof Error) {

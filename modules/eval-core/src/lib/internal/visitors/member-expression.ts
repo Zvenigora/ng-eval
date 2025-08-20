@@ -6,12 +6,25 @@ import { EvalScope, EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 import { safeGetProperty, isDangerousProperty } from './prototype-pollution-guard';
 import { equalIgnoreCase } from './utils';
+import { getCachedCaseInsensitiveProperty } from './property-lookup-cache';
+// import { getCachedVisitorResult, setCachedVisitorResult } from './visitor-result-cache';
 
 export const memberExpressionVisitor = (node: MemberExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
 
   beforeVisitor(node, st);
 
+  // Disable visitor result caching for now due to context sensitivity issues
+  // const cachedResult = getCachedVisitorResult(node, st.context);
+  // if (cachedResult !== undefined) {
+  //   pushVisitorResult(node, st, cachedResult);
+  //   afterVisitor(node, st);
+  //   return;
+  // }
+
   const [, , value] = evaluateMember(node, st, callback);
+
+  // Disable visitor result caching for now
+  // setCachedVisitorResult(node, st.context, value);
 
   pushVisitorResult(node, st, value);
 
@@ -72,9 +85,15 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
       let foundKey: string | undefined = undefined;
       
       if (obj && typeof obj === 'object') {
-        // Check own properties first
-        const ownKeys = Object.getOwnPropertyNames(obj);
-        foundKey = ownKeys.find(k => equalIgnoreCase(k, key));
+        // Create wrapper function for cache compatibility
+        const compareIgnoreCase = (a: string, b: string): boolean => {
+          const result = equalIgnoreCase(a, b);
+          return result === true;
+        };
+        
+        // Use cached case-insensitive property lookup for own properties (optimization)
+        const cachedFoundKey = getCachedCaseInsensitiveProperty(obj, key, compareIgnoreCase);
+        foundKey = cachedFoundKey || undefined;
         
         // If not found in own properties, check if the original key exists (including prototype methods)
         if (!foundKey) {

@@ -20,20 +20,36 @@ export const evaluateArray = (node: AnyNode,
   items: Array<Expression | SpreadElement | null>,
   st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
 
-  const elements = [];
+  // Pre-allocate array with known length for better performance
+  const itemCount = items.length;
+  const elements: unknown[] = new Array(itemCount);
+  let actualLength = 0;
 
-  for (const element of items) {
+  for (let i = 0; i < itemCount; i++) {
+    const element = items[i];
+    
     if (element === null || typeof element === 'undefined') {
-      elements.push(element);
+      elements[actualLength++] = element;
     } else if (element.type === 'SpreadElement') {
       callback(element, st);
       const values = popVisitorResult(node, st) as unknown[];
-      elements.push(...values);
+      
+      // Expand the array if needed for spread elements
+      if (values && Array.isArray(values)) {
+        for (const value of values) {
+          elements[actualLength++] = value;
+        }
+      }
     } else {
       callback(element, st);
       const value = popVisitorResult(node, st);
-      elements.push(value);
+      elements[actualLength++] = value;
     }
+  }
+
+  // Trim array to actual size if it changed due to spread elements
+  if (actualLength !== itemCount) {
+    elements.length = actualLength;
   }
 
   return elements;
