@@ -6,6 +6,7 @@ export {identifierVisitor} from './identifier';
 export {literalVisitor} from './literal';
 export {binaryExpressionVisitor} from './binary-expression';
 export {callExpressionVisitor} from './call-expression';
+export {importExpressionVisitor} from './import-expression';
 export {awaitVisitor} from './await-expression';
 export {conditionalExpressionVisitor} from './conditional-expression';
 export {memberExpressionVisitor, evaluateMember} from './member-expression';
