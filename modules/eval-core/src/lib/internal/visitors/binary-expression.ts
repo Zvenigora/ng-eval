@@ -4,6 +4,7 @@ import { beforeVisitor } from './before-visitor';
 import { pushVisitorResult, popVisitorResult } from './visitor-result';
 import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
+// import { getCachedVisitorResult, setCachedVisitorResult } from './visitor-result-cache';
 
 /**
  * Converts value to primitive for comparison operations
@@ -158,6 +159,14 @@ export const binaryExpressionVisitor = (node: BinaryExpression, st: EvalState, c
 
   beforeVisitor(node, st);
 
+  // Disable visitor result caching for now due to context sensitivity issues
+  // const cachedResult = getCachedVisitorResult(node, st.context);
+  // if (cachedResult !== undefined) {
+  //   pushVisitorResult(node, st, cachedResult);
+  //   afterVisitor(node, st);
+  //   return;
+  // }
+
   callback(node.left, st);
   const left = popVisitorResult(node, st);
 
@@ -165,6 +174,9 @@ export const binaryExpressionVisitor = (node: BinaryExpression, st: EvalState, c
   const right = popVisitorResult(node, st);
 
   const value = evaluateBinaryOperation(node.operator, left, right);
+
+  // Disable visitor result caching for now
+  // setCachedVisitorResult(node, st.context, value);
 
   pushVisitorResult(node, st, value);
 
