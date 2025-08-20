@@ -5,6 +5,7 @@ import { pushVisitorResult } from './visitor-result';
 import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 import { evaluateMember } from './member-expression';
+import { safeSetProperty } from './prototype-pollution-guard';
 
 const updateOperators = {
   '++': (value: number) => { return value + 1; },
@@ -26,10 +27,12 @@ export const updateExpressionVisitor = (node: UpdateExpression, st: EvalState, c
     st.context?.set(key, newValue);
     pushVisitorResult(node, st, node.prefix ? newValue : value);
   } else if (node.argument.type === 'MemberExpression') {
-    callback(node.argument, st);
-    const [ , property, value] = evaluateMember(node.argument, st, callback);
+    const [object, property, value] = evaluateMember(node.argument, st, callback);
     const newValue = updateOperators[node.operator](value as number);
-    st.context?.set(property, newValue);
+    
+    // Use safe property assignment to prevent prototype pollution
+    safeSetProperty(object, property, newValue);
+    
     pushVisitorResult(node, st, node.prefix ? newValue : value);
   }
 
