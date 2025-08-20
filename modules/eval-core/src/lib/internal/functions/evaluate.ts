@@ -45,12 +45,40 @@ export const evaluate = (node: AnyNode | undefined, state: EvalState)
  * @param state The evaluation state.
  * @returns A promise that resolves to the evaluated value or undefined.
  */
-export const evaluateAsync = (ast: AnyNode | undefined, state: EvalState)
+export const evaluateAsync = async (ast: AnyNode | undefined, state: EvalState)
   : Promise<unknown | undefined> => {
 
-  const promise = new Promise<unknown | undefined>((resolve) => {
-    const value = evaluate(ast, state);
-    resolve(value);
-  });
-  return promise;
+  if (!ast) {
+    return undefined;
+  }
+
+  state.result.start();
+
+  try {
+    const visitors: walk.RecursiveVisitors<EvalState> = getDefaultVisitors();
+
+    walk.recursive(ast, state, visitors);
+
+    let value = popVisitorResult(ast, state);
+
+    // If the result is a promise, await it
+    if (value && typeof value === 'object' && 'then' in value) {
+      try {
+        value = await (value as Promise<unknown>);
+      } catch (promiseError) {
+        state.result.stop();
+        state.result.setFailure(promiseError);
+        throw promiseError;
+      }
+    }
+
+    state.result.stop();
+    state.result.setSuccess(value);
+    
+    return value;
+  } catch (error) {
+    state.result.stop();
+    state.result.setFailure(error);
+    throw error;
+  }
 }
