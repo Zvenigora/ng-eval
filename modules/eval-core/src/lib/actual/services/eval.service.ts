@@ -1,18 +1,21 @@
-import { Injectable } from '@angular/core';
+import { Injectable, OnDestroy } from '@angular/core';
 import { BaseEval } from './base-eval';
 import { ParserService } from './parser.service';
 import { AnyNode } from 'acorn';
-import { Context } from '../../internal/classes/common';
+import { Context, Registry } from '../../internal/classes/common';
 import { EvalContext, EvalOptions, EvalState, defaultParserOptions } from '../../internal/classes/eval';
 import { evaluate, evaluateAsync } from '../../internal/functions';
 
 /**
- * Service for evaluating and parsing expressions.
+ * Service for evaluating and parsing expressions with proper memory management.
  */
 @Injectable({
   providedIn: 'root'
 })
-export class EvalService extends BaseEval {
+export class EvalService extends BaseEval implements OnDestroy {
+  private _isDestroyed = false;
+  private _activeContexts = new Set<Context>();
+  private _activeStates = new Set<EvalState>();
 
   /**
    * Constructs a new instance of the EvalService class.
@@ -23,6 +26,73 @@ export class EvalService extends BaseEval {
   ) {
     super(parserService);
     this.parserOptions = defaultParserOptions;
+  }
+
+  /**
+   * Override createState to track active contexts and states for cleanup
+   */
+  override createState(context?: EvalContext | Context, options?: EvalOptions): EvalState {
+    if (this._isDestroyed) {
+      throw new Error('EvalService has been destroyed and cannot be used');
+    }
+    
+    const state = super.createState(context, options);
+    
+    // Track active states for cleanup
+    this._activeStates.add(state);
+    
+    // Track active contexts
+    if (context && typeof context === 'object') {
+      // Check if it's a Registry-based context (has type property)
+      if ('type' in context) {
+        this._activeContexts.add(context as Registry<unknown, unknown>);
+      }
+      // For EvalContext, check if it has a nested context using bracket notation
+      if ('context' in context) {
+        const nestedContext = (context as Record<string, unknown>)['context'];
+        if (nestedContext && typeof nestedContext === 'object' && 'type' in nestedContext) {
+          this._activeContexts.add(nestedContext as Registry<unknown, unknown>);
+        }
+      }
+    }
+    
+    return state;
+  }
+
+  /**
+   * Clean up resources to prevent memory leaks
+   */
+  ngOnDestroy(): void {
+    this._isDestroyed = true;
+    
+    // Clean up all active states
+    for (const state of this._activeStates) {
+      try {
+        // Clear the stack in the result
+        if (state.result?.stack) {
+          state.result.stack.clear();
+        }
+        // Clear context if it has a clear method
+        if (state.context && typeof state.context === 'object' && 'clear' in state.context && typeof state.context.clear === 'function') {
+          (state.context as unknown as { clear(): void }).clear();
+        }
+      } catch (error) {
+        console.warn('Error cleaning up EvalState:', error);
+      }
+    }
+    this._activeStates.clear();
+    
+    // Clean up all active contexts
+    for (const context of this._activeContexts) {
+      try {
+        if (context && typeof context.clear === 'function') {
+          context.clear();
+        }
+      } catch (error) {
+        console.warn('Error cleaning up Context:', error);
+      }
+    }
+    this._activeContexts.clear();
   }
 
   /**

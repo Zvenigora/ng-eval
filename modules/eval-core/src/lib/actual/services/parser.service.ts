@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, OnDestroy } from '@angular/core';
 import { CacheType, ParserOptions } from '../../internal/interfaces';
 import { Cache } from '../../internal/classes/common';
 import { Expression, Program,
@@ -10,14 +10,17 @@ import { defaultParserOptions } from '../../internal/classes/eval';
 /**
  * @description
  * Service for parsing expressions and returning ES6/ES2020 AST.
+ * Implements OnDestroy for proper memory cleanup.
  */
 @Injectable({
   providedIn: 'root'
 })
-export class ParserService {
+export class ParserService implements OnDestroy {
 
   private _parserOptions!: ParserOptions;
   private _cache?: CacheType<Program | AnyNode | Expression | undefined>;
+  private _cacheCleanupInterval?: ReturnType<typeof setInterval>;
+  private _isDestroyed = false;
 
   /**
    * Gets the parser options.
@@ -44,6 +47,44 @@ export class ParserService {
     };
     if (this.parserOptions.cacheSize) {
       this._cache = new Cache<AnyNode>(this.parserOptions.cacheSize);
+      
+      // Set up periodic cache cleanup to prevent memory leaks
+      this.setupCacheCleanup();
+    }
+  }
+
+  /**
+   * Setup periodic cache cleanup to prevent memory leaks
+   */
+  private setupCacheCleanup(): void {
+    if (this._cache && typeof setInterval !== 'undefined') {
+      // Clean up cache every 5 minutes to prevent unbounded growth
+      this._cacheCleanupInterval = setInterval(() => {
+        if (!this._isDestroyed && this._cache) {
+          // Keep cache size within bounds by clearing if it gets too large
+          if (this._cache.size > this._cache.maxCacheSize * 0.8) {
+            this._cache.clear();
+            console.debug('Parser cache cleared to prevent memory leaks');
+          }
+        }
+      }, 5 * 60 * 1000); // 5 minutes
+    }
+  }
+
+  /**
+   * Clean up resources to prevent memory leaks
+   */
+  ngOnDestroy(): void {
+    this._isDestroyed = true;
+    
+    if (this._cacheCleanupInterval) {
+      clearInterval(this._cacheCleanupInterval);
+      this._cacheCleanupInterval = undefined;
+    }
+    
+    if (this._cache) {
+      this._cache.clear();
+      this._cache = undefined;
     }
   }
 
@@ -72,6 +113,10 @@ export class ParserService {
    */
   public parse(expr: string, options?: ParserOptions)
       : Program | AnyNode | Expression | undefined {
+    if (this._isDestroyed) {
+      throw new Error('ParserService has been destroyed and cannot be used');
+    }
+    
     if (expr) {
       try {
         const parserOptions = { ...this.parserOptions, ...options };
