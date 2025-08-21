@@ -39,6 +39,8 @@ testem.log
 Thumbs.db
 
 .nx/cache
+.nx/workspace-data
+.nx
 .angular
 
 .cursor\rules\nx-rules.mdc

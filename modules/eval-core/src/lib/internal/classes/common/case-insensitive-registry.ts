@@ -126,7 +126,11 @@ export class CaseInsensitiveRegistry<TKey, TValue> implements RegistryType<TKey,
     const values = this.registry.values();
     const entries = new Array<[TKey, TValue]> ;
     for (let i = 0; i < this.registry.size; i++) {
-      entries.push([keys.next().value, values.next().value]);
+      const keyResult = keys.next();
+      const valueResult = values.next();
+      if (!keyResult.done && !valueResult.done) {
+        entries.push([keyResult.value, valueResult.value]);
+      }
     }
     return entries.values();
   }
