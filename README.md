@@ -365,3 +365,7 @@ the [Code of Conduct](CODE_OF_CONDUCT.md).
 ## License
 
 MIT License.
+
+---
+
+*Recent major improvements and documentation updates completed with assistance from GitHub Copilot on August 20, 2025.

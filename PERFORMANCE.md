@@ -270,3 +270,7 @@ We welcome performance-focused contributions! Areas of interest:
 The performance optimizations in ng-eval provide significant improvements in evaluation speed and memory efficiency while maintaining backward compatibility and security. The comprehensive test suite ensures these optimizations work correctly across different environments and use cases.
 
 For questions about performance optimizations or to report performance issues, please open an issue on our [GitHub repository](https://github.com/Zvenigora/ng-eval).
+
+---
+
+*Performance optimizations and documentation created with assistance from GitHub Copilot on August 20, 2025.
