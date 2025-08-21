@@ -36,7 +36,7 @@ const isConstructorSafe = (constructor: unknown, constructorName?: string): bool
   }
 
   // Special check for Function constructor and its variants
-  if (constructor === Function || 
+  if (constructor === Function ||
       constructor === (async function(){ /* async function constructor test */ }).constructor ||
       constructor === (function*(){ /* generator function constructor test */ }).constructor ||
       constructor === (async function*(){ /* async generator function constructor test */ }).constructor) {
@@ -46,7 +46,7 @@ const isConstructorSafe = (constructor: unknown, constructorName?: string): bool
   try {
     // Check constructor string for dangerous patterns
     const constructorString = constructor.toString();
-    if (constructorString.includes('eval') || 
+    if (constructorString.includes('eval') ||
         constructorString.includes('Function(') ||
         constructorString.includes('constructor(')) {
       return false;

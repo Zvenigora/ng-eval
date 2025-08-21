@@ -1,6 +1,6 @@
 /**
  * Prototype Pollution Prevention Utilities
- * 
+ *
  * This module provides safeguards against prototype pollution attacks
  * by controlling access to dangerous property names and ensuring safe
  * object operations.
@@ -87,8 +87,8 @@ export const safeSetProperty = (target: unknown, key: unknown, value: unknown): 
   }
 
   // Check if we're trying to modify prototype chain
-  if (target === Object.prototype || 
-      target === Function.prototype || 
+  if (target === Object.prototype ||
+      target === Function.prototype ||
       target === Array.prototype ||
       target === String.prototype ||
       target === Number.prototype ||
@@ -161,12 +161,12 @@ export const safeGetProperty = (target: unknown, key: unknown): unknown => {
 export const createSafeObject = (entries: Array<[unknown, unknown]> = []): Record<string, unknown> => {
   // Create object with normal prototype for compatibility, but validate contents
   const obj: Record<string, unknown> = {};
-  
+
   for (const [key, value] of entries) {
     if (isDangerousProperty(key)) {
       throw new Error(`Cannot create object with dangerous property "${String(key)}"`);
     }
-    
+
     // Safely set the property
     if (typeof key === 'string' || typeof key === 'number') {
       obj[key] = value;
@@ -174,7 +174,7 @@ export const createSafeObject = (entries: Array<[unknown, unknown]> = []): Recor
       (obj as Record<symbol, unknown>)[key] = value;
     }
   }
-  
+
   return obj;
 };
 
