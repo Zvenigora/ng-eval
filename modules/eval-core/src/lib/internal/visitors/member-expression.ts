@@ -82,7 +82,7 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
       
       // Try case-insensitive lookup on own properties first
       const obj = object as Record<PropertyKey, unknown>;
-      let foundKey: string | undefined = undefined;
+      let foundKey: string | null | undefined = undefined;
       
       if (obj && typeof obj === 'object') {
         // Create wrapper function for cache compatibility
@@ -93,10 +93,13 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
         
         // Use cached case-insensitive property lookup for own properties (optimization)
         const cachedFoundKey = getCachedCaseInsensitiveProperty(obj, key, compareIgnoreCase);
-        foundKey = cachedFoundKey || undefined;
+        if (cachedFoundKey !== undefined) {
+          // Cache hit: cachedFoundKey is either the found key (string) or null (no match)
+          foundKey = cachedFoundKey;
+        }
         
-        // If not found in own properties, check if the original key exists (including prototype methods)
-        if (!foundKey) {
+        // If cache miss or not found in own properties, check if the original key exists (including prototype methods)
+        if (cachedFoundKey === undefined || !foundKey) {
           try {
             // Test if property exists in prototype chain (this includes native methods like array.find)
             const testValue = obj[key];

@@ -371,12 +371,13 @@ export class MemoryManager {
 
     // Add Node.js memory usage if available (browser-safe check)
     try {
-      if (typeof globalThis !== 'undefined' && 
-          (globalThis as { process?: { memoryUsage?: () => { heapUsed: number; heapTotal: number } } }).process &&
-          typeof (globalThis as { process: { memoryUsage?: () => { heapUsed: number; heapTotal: number } } }).process.memoryUsage === 'function') {
-        const memUsage = (globalThis as { process: { memoryUsage: () => { heapUsed: number; heapTotal: number } } }).process.memoryUsage();
-        stats.heapUsed = memUsage.heapUsed;
-        stats.heapTotal = memUsage.heapTotal;
+      if (typeof globalThis !== 'undefined') {
+        const process = (globalThis as { process?: { memoryUsage?: () => { heapUsed: number; heapTotal: number } } }).process;
+        if (process && typeof process.memoryUsage === 'function') {
+          const memUsage = process.memoryUsage();
+          stats.heapUsed = memUsage.heapUsed;
+          stats.heapTotal = memUsage.heapTotal;
+        }
       }
     } catch {
       // Ignore errors in browser environments or when process is not available
