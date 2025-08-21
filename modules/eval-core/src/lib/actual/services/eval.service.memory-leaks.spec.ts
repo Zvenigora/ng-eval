@@ -18,7 +18,7 @@ describe('EvalService - Memory Leak Prevention', () => {
     // Clean up after each test
     try {
       service.ngOnDestroy();
-    } catch (error) {
+    } catch {
       // Ignore cleanup errors for destroyed services
     }
   });

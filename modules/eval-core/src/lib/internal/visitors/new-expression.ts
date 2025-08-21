@@ -37,9 +37,9 @@ const isConstructorSafe = (constructor: unknown, constructorName?: string): bool
 
   // Special check for Function constructor and its variants
   if (constructor === Function || 
-      constructor === (async function(){}).constructor ||
-      constructor === (function*(){}).constructor ||
-      constructor === (async function*(){}).constructor) {
+      constructor === (async function(){ /* async function constructor test */ }).constructor ||
+      constructor === (function*(){ /* generator function constructor test */ }).constructor ||
+      constructor === (async function*(){ /* async generator function constructor test */ }).constructor) {
     return false;
   }
 

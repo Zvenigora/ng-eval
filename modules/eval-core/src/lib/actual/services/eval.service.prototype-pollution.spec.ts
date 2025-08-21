@@ -24,7 +24,7 @@ describe('EvalService - Prototype Pollution Prevention', () => {
 
     it('should block access to prototype property', () => {
       expect(() => {
-        service.simpleEval('func.prototype', { func: function() {} });
+        service.simpleEval('func.prototype', { func: function() { /* empty for testing */ } });
       }).toThrow(/Access to dangerous property "prototype" is blocked for security reasons/);
     });
 
@@ -58,14 +58,14 @@ describe('EvalService - Prototype Pollution Prevention', () => {
       expect(() => {
         service.simpleEval('obj.constructor = malicious', { 
           obj: {}, 
-          malicious: function() {} 
+          malicious: function() { /* empty for testing */ } 
         });
       }).toThrow(/Access to dangerous property "constructor" is blocked for security reasons/);
     });
 
     it('should block prototype assignment', () => {
       // Functions are objects in JavaScript and can have properties set
-      const func = function() {};
+      const func = function() { /* empty for testing */ };
       expect(() => {
         service.simpleEval('func.prototype = malicious', { 
           func,
@@ -97,7 +97,7 @@ describe('EvalService - Prototype Pollution Prevention', () => {
     it('should block object literals with constructor', () => {
       expect(() => {
         service.simpleEval('({ "constructor": malicious })', { 
-          malicious: function() {} 
+          malicious: function() { /* empty for testing */ } 
         });
       }).toThrow(/Cannot create object with dangerous property "constructor"/);
     });
@@ -189,7 +189,7 @@ describe('EvalService - Prototype Pollution Prevention', () => {
       // Create object with dangerous property as actual property
       const dangerous = {};
       Object.defineProperty(dangerous, 'constructor', { 
-        value: function() {}, 
+        value: function() { /* constructor override for prototype pollution test */ }, 
         enumerable: true, 
         configurable: true,
         writable: true
