@@ -20,7 +20,7 @@ const defaultEvalScopeOptions: EvalScopeOptions = {
  */
 export class EvalScope {
 
-  type: string = 'EvalScope';
+  type = 'EvalScope';
 
   private _context!: Context;
   private _options!: EvalScopeOptions;

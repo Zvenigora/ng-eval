@@ -14,8 +14,8 @@
   "license": "MIT",
   "homepage": "https://github.com/Zvenigora/ng-eval#readme",
   "peerDependencies": {
-    "@angular/common": "^17.0.0",
-    "@angular/core": "^17.0.0",
+    "@angular/common": "^19.0.0",
+    "@angular/core": "^19.0.0",
     "acorn": "^8.11.2",
     "acorn-walk": "^8.3.0",
     "js-sha256": "^0.10.1"

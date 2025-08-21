@@ -147,7 +147,7 @@ export const safeGetProperty = (target: unknown, key: unknown): unknown => {
   // Direct property access using bracket notation (safer than complex prototype walking)
   try {
     return (target as Record<PropertyKey, unknown>)[propertyKey];
-  } catch (error) {
+  } catch {
     // If property access fails, return undefined
     return undefined;
   }

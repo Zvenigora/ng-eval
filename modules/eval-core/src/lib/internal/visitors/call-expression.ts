@@ -103,7 +103,7 @@ const safeCall = (
   caller: unknown, 
   thisArg: unknown, 
   args: unknown[], 
-  optional: boolean = false,
+  optional = false,
   fnName?: string
 ): unknown => {
   if (!caller) {

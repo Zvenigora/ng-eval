@@ -18,6 +18,7 @@ export interface RecursiveVisitorOptions {
   resultType?: 'stack' | 'registry';
 }
 export interface RecursiveVisitorContext {
+  placeholder?: unknown; // Placeholder for future context data
 }
 
 export enum RecursiveVisitorResultType {
