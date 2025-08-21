@@ -47,18 +47,18 @@ describe('EvalService - Prototype Pollution Prevention', () => {
   describe('Property Assignment Attacks', () => {
     it('should block __proto__ assignment', () => {
       expect(() => {
-        service.simpleEval('obj.__proto__ = malicious', { 
-          obj: {}, 
-          malicious: { evil: true } 
+        service.simpleEval('obj.__proto__ = malicious', {
+          obj: {},
+          malicious: { evil: true }
         });
       }).toThrow(/Access to dangerous property "__proto__" is blocked for security reasons/);
     });
 
     it('should block constructor assignment', () => {
       expect(() => {
-        service.simpleEval('obj.constructor = malicious', { 
-          obj: {}, 
-          malicious: function() { /* empty for testing */ } 
+        service.simpleEval('obj.constructor = malicious', {
+          obj: {},
+          malicious: function() { /* empty for testing */ }
         });
       }).toThrow(/Access to dangerous property "constructor" is blocked for security reasons/);
     });
@@ -67,7 +67,7 @@ describe('EvalService - Prototype Pollution Prevention', () => {
       // Functions are objects in JavaScript and can have properties set
       const func = function() { /* empty for testing */ };
       expect(() => {
-        service.simpleEval('func.prototype = malicious', { 
+        service.simpleEval('func.prototype = malicious', {
           func,
           malicious: { evil: true }
         });
@@ -88,16 +88,16 @@ describe('EvalService - Prototype Pollution Prevention', () => {
   describe('Object Creation Pollution Attacks', () => {
     it('should block object literals with __proto__', () => {
       expect(() => {
-        service.simpleEval('({ "__proto__": malicious })', { 
-          malicious: { evil: true } 
+        service.simpleEval('({ "__proto__": malicious })', {
+          malicious: { evil: true }
         });
       }).toThrow(/Cannot create object with dangerous property "__proto__"/);
     });
 
     it('should block object literals with constructor', () => {
       expect(() => {
-        service.simpleEval('({ "constructor": malicious })', { 
-          malicious: function() { /* empty for testing */ } 
+        service.simpleEval('({ "constructor": malicious })', {
+          malicious: function() { /* empty for testing */ }
         });
       }).toThrow(/Cannot create object with dangerous property "constructor"/);
     });
@@ -173,13 +173,13 @@ describe('EvalService - Prototype Pollution Prevention', () => {
     it('should block spreading objects with dangerous properties', () => {
       // Create object with dangerous property as actual property (not prototype setter)
       const dangerous = {};
-      Object.defineProperty(dangerous, '__proto__', { 
-        value: { evil: true }, 
-        enumerable: true, 
+      Object.defineProperty(dangerous, '__proto__', {
+        value: { evil: true },
+        enumerable: true,
         configurable: true,
         writable: true
       });
-      
+
       expect(() => {
         service.simpleEval('({ ...dangerous })', { dangerous });
       }).toThrow(/Spread operation blocked: Object contains dangerous property "__proto__"/);
@@ -188,13 +188,13 @@ describe('EvalService - Prototype Pollution Prevention', () => {
     it('should block spreading objects with constructor pollution', () => {
       // Create object with dangerous property as actual property
       const dangerous = {};
-      Object.defineProperty(dangerous, 'constructor', { 
-        value: function() { /* constructor override for prototype pollution test */ }, 
-        enumerable: true, 
+      Object.defineProperty(dangerous, 'constructor', {
+        value: function() { /* constructor override for prototype pollution test */ },
+        enumerable: true,
         configurable: true,
         writable: true
       });
-      
+
       expect(() => {
         service.simpleEval('({ ...dangerous })', { dangerous });
       }).toThrow(/Spread operation blocked: Object contains dangerous property "constructor"/);
@@ -218,18 +218,18 @@ describe('EvalService - Prototype Pollution Prevention', () => {
   describe('Assignment Operator Protection', () => {
     it('should block compound assignment to __proto__', () => {
       expect(() => {
-        service.simpleEval('obj.__proto__ += value', { 
-          obj: {}, 
-          value: 'polluted' 
+        service.simpleEval('obj.__proto__ += value', {
+          obj: {},
+          value: 'polluted'
         });
       }).toThrow(/Access to dangerous property "__proto__" is blocked for security reasons/);
     });
 
     it('should block compound assignment to constructor', () => {
       expect(() => {
-        service.simpleEval('obj.constructor *= value', { 
-          obj: {}, 
-          value: 2 
+        service.simpleEval('obj.constructor *= value', {
+          obj: {},
+          value: 2
         });
       }).toThrow(/Access to dangerous property "constructor" is blocked for security reasons/);
     });

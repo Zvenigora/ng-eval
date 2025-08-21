@@ -14,7 +14,7 @@ const DANGEROUS_FUNCTIONS = new Set([
   'Function',
   'eval',
   'setTimeout',
-  'setInterval',  
+  'setInterval',
   'setImmediate',
   'require',
   'import',
@@ -56,11 +56,11 @@ const hasDangerousPatterns = (fnString: string): boolean => {
   if (fnString.includes('[native code]')) {
     return false;
   }
-  
+
   // For user-defined functions, only check for truly dangerous patterns
   // that could lead to code injection or security bypass
   const result = DANGEROUS_PATTERNS.some(pattern => pattern.test(fnString));
-  
+
   return result;
 };
 
@@ -100,9 +100,9 @@ const isFunctionSafe = (fn: unknown, fnName?: string): boolean => {
  * Safely calls a function with proper error handling and security checks
  */
 const safeCall = (
-  caller: unknown, 
-  thisArg: unknown, 
-  args: unknown[], 
+  caller: unknown,
+  thisArg: unknown,
+  args: unknown[],
   optional = false,
   fnName?: string
 ): unknown => {
@@ -148,13 +148,13 @@ export const callExpressionVisitor = (node: CallExpression, st: EvalState, callb
   } else {
     callback(node.callee, st);
     const caller = popVisitorResult(node, st);
-    
+
     // Try to get function name for security checks
     let functionName: string | undefined;
     if (node.callee.type === 'Identifier') {
       functionName = node.callee.name;
     }
-    
+
     const value = safeCall(caller, st.context, args, node.optional, functionName);
     pushVisitorResult(node, st, value);
   }
