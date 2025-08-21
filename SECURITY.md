@@ -464,3 +464,7 @@ If you discover a security vulnerability in ng-eval:
 The security enhancements in ng-eval provide comprehensive protection against common JavaScript evaluation vulnerabilities while maintaining performance and usability. The systematic approach ensures thorough coverage with extensive testing validating all security measures.
 
 For security-related questions or to report security issues, please follow our responsible disclosure process.
+
+---
+
+*Security enhancements and documentation created with assistance from GitHub Copilot on August 20, 2025.
