@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 
 import * as acorn from "acorn";
 
@@ -11,7 +11,7 @@ export function ngEval(): string {
 @Component({
   selector: 'zvenigora-eval-core',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './eval-core.component.html',
   styleUrl: './eval-core.component.scss',
 })
