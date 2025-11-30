@@ -1,6 +1,6 @@
 # ng-eval
 
-An expression evaluator for Angular with enterprise-grade security and performance optimizations.
+A secure and performant expression evaluator for Angular applications.
 
 ## 🚀 Recent Major Improvements (2025)
 
