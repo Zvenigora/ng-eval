@@ -4,7 +4,7 @@
   "description": "An expression evaluator for Angular",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zvenigora/ng-eval.git"
+    "url": "git+https://github.com/zvenigora/ng-eval.git"
   },
   "keywords": [
     "Angular",
