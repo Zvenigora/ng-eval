@@ -1,0 +1,1 @@
+"%ProgramFiles%\7-Zip\7z.exe" a -t7z ng-eval.7z .\ -mx1 -xr!bin -xr!obj -xr!node_modules -xr!.angular -xr!.nx -xr!.vscode -xr!dist -xr!.vs -xr!.logs -xr!tmp
