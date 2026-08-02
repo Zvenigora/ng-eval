@@ -172,9 +172,9 @@ After applying the fixes, execute the following full verification pipeline:
 | :--- | :--- | :---: |
 | **Phase 1** | Repository Audit & Issue Identification | ✅ **COMPLETED** |
 | **Phase 2** | Remediation Plan Updated (`docs/remediation-plan.md`) | ✅ **COMPLETED** |
-| **Phase 3** | Code Remediation (Package dependencies & `inject()` refactoring) | ⏳ **READY TO EXECUTE** |
-| **Phase 4** | Repository Hygiene Cleanup (Debug scripts & docs) | ⏳ **READY TO EXECUTE** |
-| **Phase 5** | Final Verification (Lint, Test, Build) | ⏳ **PENDING** |
+| **Phase 3** | Code Remediation (Package dependencies & `inject()` refactoring) | ✅ **COMPLETED** |
+| **Phase 4** | Repository Hygiene Cleanup (Debug scripts & docs) | ✅ **COMPLETED** |
+| **Phase 5** | Final Verification (Lint, Test, Build) | ✅ **COMPLETED** |
 
 ---
 

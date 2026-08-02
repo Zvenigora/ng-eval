@@ -3,7 +3,7 @@
 **Date**: July 31, 2026  
 **Repository**: [Zvenigora/ng-eval](https://github.com/Zvenigora/ng-eval)  
 **Package**: `@zvenigora/ng-eval` (`@zvenigora/ng-eval-core`)  
-**Version**: `0.2.3`  
+**Version**: `0.2.4`  
 **Framework**: Angular v20, Nx v22, TypeScript v5.9  
 
 ---

@@ -1,6 +1,6 @@
 {
   "name": "@zvenigora/ng-eval-core",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "An expression evaluator for Angular",
   "repository": {
     "type": "git",
@@ -14,7 +14,6 @@
   "license": "MIT",
   "homepage": "https://github.com/Zvenigora/ng-eval#readme",
   "peerDependencies": {
-    "@angular/common": ">=19.0.0",
     "@angular/core": ">=19.0.0",
     "acorn": "^8.11.2",
     "acorn-walk": "^8.3.0",

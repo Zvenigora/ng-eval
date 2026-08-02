@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BaseEval } from './base-eval';
 import { ParserService } from './parser.service';
 import { AnyNode } from 'acorn';
@@ -14,14 +14,13 @@ import { defaultParserOptions } from '../../internal/classes/eval';
 })
 export class DiscoveryService extends BaseEval {
 
+  protected override parserService = inject(ParserService);
+
   /**
    * Creates a new instance of the DiscoveryService class.
-   * @param parserService The parser service to be used.
    */
-  constructor(
-    protected override parserService: ParserService
-  ) {
-    super(parserService);
+  constructor() {
+    super(inject(ParserService));
 
     this.parserOptions = {
       ...defaultParserOptions,

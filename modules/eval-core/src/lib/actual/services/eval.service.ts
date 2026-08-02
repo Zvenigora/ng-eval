@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy } from '@angular/core';
+import { Injectable, OnDestroy, inject } from '@angular/core';
 import { BaseEval } from './base-eval';
 import { ParserService } from './parser.service';
 import { AnyNode } from 'acorn';
@@ -17,14 +17,13 @@ export class EvalService extends BaseEval implements OnDestroy {
   private _activeContexts = new Set<Context>();
   private _activeStates = new Set<EvalState>();
 
+  protected override parserService = inject(ParserService);
+
   /**
    * Constructs a new instance of the EvalService class.
-   * @param parserService The parser service used for parsing expressions.
    */
-  constructor(
-    protected override parserService: ParserService
-  ) {
-    super(parserService);
+  constructor() {
+    super(inject(ParserService));
     this.parserOptions = defaultParserOptions;
   }
 

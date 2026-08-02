@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy } from '@angular/core';
+import { Injectable, OnDestroy, inject } from '@angular/core';
 import { BaseEval } from './base-eval';
 import { ParserService } from './parser.service';
 import { EvalService } from './eval.service';
@@ -36,11 +36,11 @@ export class CompilerService extends BaseEval implements OnDestroy {
   private _cacheCleanupInterval?: ReturnType<typeof setInterval>;
   private _isDestroyed = false;
 
-  constructor(
-    protected override parserService: ParserService,
-    protected evalService: EvalService
-  ) {
-    super(parserService);
+  protected override parserService = inject(ParserService);
+  protected evalService = inject(EvalService);
+
+  constructor() {
+    super(inject(ParserService));
     this.parserOptions = defaultParserOptions;
     this.setupCacheCleanup();
   }
