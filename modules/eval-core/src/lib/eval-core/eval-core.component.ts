@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 
 
 import * as acorn from "acorn";
@@ -13,6 +13,7 @@ export function ngEval(): string {
   standalone: true,
   imports: [],
   templateUrl: './eval-core.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './eval-core.component.scss',
 })
 export class EvalCoreComponent {
