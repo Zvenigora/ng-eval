@@ -38,7 +38,7 @@ export type Unsubscribe = () => void;
 /**
  * What to do with an error raised by a hook.
  *
- * - `collect` (default) - wrap it, append it to `hooks.errors`, keep evaluating.
+ * - `collect` (default) - wrap it, append it to `state.hookErrors`, keep evaluating.
  * - `throw` - rethrow it into the visitor, failing the evaluation.
  * - `ignore` - swallow it silently.
  */
@@ -51,6 +51,23 @@ export interface EvalHookError {
   readonly phase: EvalHookPhase;
   readonly nodeType: AnyNodeTypes;
   readonly error: unknown;
+}
+
+/**
+ * The bookkeeping an `EvalHooks` accumulates over a single evaluation.
+ *
+ * It is grouped behind one accessor on `EvalState` rather than spread across
+ * several members, and it lives on the state rather than on the registry: an
+ * `EvalHooks` is consumer-owned and may be handed to several evaluations, so
+ * anything whose lifetime is one run belongs to the run.
+ *
+ * @internal Not part of the published API; `EvalHooks` is its only writer.
+ */
+export interface EvalHookBookkeeping {
+  /** Nodes whose 'before' has fired but whose 'after' has not, outermost first. */
+  readonly open: AnyNode[];
+  /** Hook errors recorded under the 'collect' policy. */
+  readonly errors: EvalHookError[];
 }
 
 const DEFAULT_POLICY: EvalHookErrorPolicy = 'collect';
@@ -78,9 +95,13 @@ const isPromiseLike = (value: unknown): boolean =>
   typeof (value as PromiseLike<unknown>).then === 'function';
 
 /**
- * A per-evaluation registry of node hooks, keyed by node type with wildcard
- * support, plus the open-node stack that keeps `before` and `after` balanced
- * when a visitor throws.
+ * A registry of node hooks, keyed by node type with wildcard support, and the
+ * dispatcher that keeps `before` and `after` balanced when a visitor throws.
+ *
+ * It holds *registration* only. Everything whose lifetime is a single
+ * evaluation - the open-node stack and the collected errors - lives on the
+ * `EvalState` instead, because a consumer may hand one `EvalHooks` to several
+ * evaluations and expect each to observe both.
  *
  * Hooks are synchronous by design: the walk in `evaluate` is synchronous even
  * under `evaluateAsync`, so there is no point at which a hook could be awaited.
@@ -88,10 +109,9 @@ const isPromiseLike = (value: unknown): boolean =>
 export class EvalHooks {
   private readonly _before = new Map<string, EvalNodeHook[]>();
   private readonly _after = new Map<string, EvalNodeHook[]>();
-  private readonly _open: { node: AnyNode; state: EvalState }[] = [];
-  private readonly _errors: EvalHookError[] = [];
   private readonly _policy: EvalHookErrorPolicy;
   private _size = 0;
+  private _active = false;
 
   /**
    * @param options The evaluation options; `onHookError` selects the error policy.
@@ -101,18 +121,26 @@ export class EvalHooks {
   }
 
   /**
-   * Errors raised by hooks and collected under the 'collect' policy.
-   */
-  public get errors(): readonly EvalHookError[] {
-    return this._errors;
-  }
-
-  /**
    * True while no hook is registered. Read on the hot path, so it is a counter
    * rather than a walk of the registries.
    */
   public get isEmpty(): boolean {
     return this._size === 0;
+  }
+
+  /**
+   * The dispatch guard, behind `EvalState.hasHooks`.
+   *
+   * Unlike {@link isEmpty} this *latches*: it turns true on the first
+   * registration and only `clear` turns it off again. The guard wraps the
+   * open-node stack as well as the hooks themselves, so a value that changed
+   * mid-walk would leave `enter` and `exit` unpaired - which is exactly what
+   * one-shot and self-unsubscribing hooks would otherwise cause.
+   *
+   * Calling `clear` during a walk is therefore unsupported.
+   */
+  public get isActive(): boolean {
+    return this._active;
   }
 
   /**
@@ -132,6 +160,7 @@ export class EvalHooks {
       registry.set(type, [hook]);
     }
     this._size++;
+    this._active = true;
 
     let unsubscribed = false;
     return () => {
@@ -173,14 +202,17 @@ export class EvalHooks {
   }
 
   /**
-   * Removes every hook from both phases and discards the open-node stack.
-   * Collected errors are kept - they are a record of what already happened.
+   * Removes every hook from both phases and unlatches {@link isActive}.
+   *
+   * Per-run bookkeeping is untouched: the open-node stack and the collected
+   * errors belong to the `EvalState`, not to this registry. Errors in
+   * particular are a record of what already happened.
    */
   public clear(): void {
     this._before.clear();
     this._after.clear();
-    this._open.length = 0;
     this._size = 0;
+    this._active = false;
   }
 
   /**
@@ -194,7 +226,7 @@ export class EvalHooks {
    */
   public dispatch(phase: EvalHookPhase, node: AnyNode, state: EvalState, value?: unknown): void {
     if (phase === 'after') {
-      this.exit();
+      this.exit(state);
       this.emit({ phase, node, state, value, completed: true }, false);
       return;
     }
@@ -204,24 +236,41 @@ export class EvalHooks {
   }
 
   /**
-   * Records a node as open. Called by the 'before' dispatcher after its hooks fire.
+   * Records a node as open on the state. Called by the 'before' dispatcher
+   * after its hooks fire.
    */
   public enter(node: AnyNode, state: EvalState): void {
-    this._open.push({ node, state });
+    state.hookBookkeeping.open.push(node);
   }
 
   /**
    * Closes the innermost open node. Called by the 'after' dispatcher before its
    * hooks fire.
    */
-  public exit(): void {
-    this._open.pop();
+  public exit(state: EvalState): void {
+    state.hookBookkeeping.open.pop();
   }
 
   /**
-   * Fires 'after' for every node still open, innermost first, marked incomplete.
-   * Invoked from the catch in `evaluate`, so that a visitor which throws still
-   * leaves every 'before' matched by exactly one 'after'.
+   * How many nodes the state has open. Captured as a mark before a walk, since
+   * `evaluate` is re-entered with the same state from an arrow-function body.
+   *
+   * This is a method rather than a getter because the stack it measures lives
+   * on the state, not on this registry.
+   */
+  public depth(state: EvalState): number {
+    return state.hookBookkeeping.open.length;
+  }
+
+  /**
+   * Fires 'after' for every node the state has open above `mark`, innermost
+   * first, marked incomplete. Invoked from the catch in `evaluate`, so that a
+   * visitor which throws still leaves every 'before' matched by exactly one
+   * 'after'.
+   *
+   * Unwinding to a mark rather than to the bottom is what keeps a nested
+   * `evaluate` from draining the enclosing walk's open nodes when a host
+   * function swallows the nested throw.
    *
    * Idempotent, so the sync and async entry points can both call it.
    *
@@ -229,17 +278,24 @@ export class EvalHooks {
    * policy is downgraded to 'collect' - evaluation has already failed, and the
    * original error is the one worth propagating.
    */
-  public unwind(error: unknown): void {
-    while (this._open.length > 0) {
-      const open = this._open.pop();
-      if (!open) {
+  public unwindTo(mark: number, error: unknown, state: EvalState): void {
+    const open = state.hookBookkeeping.open;
+
+    while (open.length > mark) {
+      const node = open.pop();
+      if (!node) {
         break;
       }
-      this.emit(
-        { phase: 'after', node: open.node, state: open.state, completed: false, error },
-        true
-      );
+      this.emit({ phase: 'after', node, state, completed: false, error }, true);
     }
+  }
+
+  /**
+   * Drains the state's whole open-node stack. Equivalent to `unwindTo(0, ...)`,
+   * for callers that own the entire walk.
+   */
+  public unwind(error: unknown, state: EvalState): void {
+    this.unwindTo(0, error, state);
   }
 
   private registry(phase: EvalHookPhase): Map<string, EvalNodeHook[]> {
@@ -290,6 +346,10 @@ export class EvalHooks {
     if (this._policy === 'throw' && !unwinding) {
       throw error;
     }
-    this._errors.push({ phase: event.phase, nodeType: event.node.type, error });
+    event.state.hookBookkeeping.errors.push({
+      phase: event.phase,
+      nodeType: event.node.type,
+      error
+    });
   }
 }

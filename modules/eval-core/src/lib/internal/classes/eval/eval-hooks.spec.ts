@@ -28,7 +28,8 @@ describe('EvalHooks', () => {
 
     expect(hooks).toBeTruthy();
     expect(hooks.isEmpty).toBe(true);
-    expect(hooks.errors).toEqual([]);
+    expect(hooks.isActive).toBe(false);
+    expect(state.hookErrors).toEqual([]);
   });
 
   describe('registration', () => {
@@ -230,7 +231,83 @@ describe('EvalHooks', () => {
 
       hooks.clear();
 
-      expect(hooks.errors).toHaveLength(1);
+      expect(state.hookErrors).toHaveLength(1);
+    });
+
+    it('should leave the open-node stack alone on clear', () => {
+      const hooks = new EvalHooks();
+      hooks.on('before', '*', () => undefined);
+
+      hooks.dispatch('before', binary, state);
+      hooks.clear();
+
+      // the stack belongs to the state, not to the registry that was cleared
+      expect(hooks.depth(state)).toBe(1);
+    });
+  });
+
+  describe('isActive latch', () => {
+
+    it('should be false on a fresh instance', () => {
+      const hooks = new EvalHooks();
+
+      expect(hooks.isActive).toBe(false);
+    });
+
+    it('should latch true on the first registration', () => {
+      const hooks = new EvalHooks();
+
+      hooks.on('before', '*', () => undefined);
+
+      expect(hooks.isActive).toBe(true);
+    });
+
+    it('should stay true after the last hook is unsubscribed', () => {
+      const hooks = new EvalHooks();
+      const unsubscribe = hooks.on('before', '*', () => undefined);
+
+      unsubscribe();
+
+      expect(hooks.isEmpty).toBe(true);
+      expect(hooks.isActive).toBe(true);
+    });
+
+    it('should stay true after the last hook is removed via off', () => {
+      const hooks = new EvalHooks();
+      const hook = () => undefined;
+      hooks.on('after', 'Identifier', hook);
+
+      hooks.off('after', 'Identifier', hook);
+
+      expect(hooks.isEmpty).toBe(true);
+      expect(hooks.isActive).toBe(true);
+    });
+
+    it('should reset to false on clear', () => {
+      const hooks = new EvalHooks();
+      hooks.on('before', '*', () => undefined);
+
+      hooks.clear();
+
+      expect(hooks.isActive).toBe(false);
+    });
+
+    it('should track isEmpty independently of isActive', () => {
+      const hooks = new EvalHooks();
+      const unsubscribe = hooks.on('before', '*', () => undefined);
+
+      expect(hooks.isEmpty).toBe(false);
+      expect(hooks.isActive).toBe(true);
+
+      unsubscribe();
+
+      expect(hooks.isEmpty).toBe(true);
+      expect(hooks.isActive).toBe(true);
+
+      hooks.on('before', '*', () => undefined);
+
+      expect(hooks.isEmpty).toBe(false);
+      expect(hooks.isActive).toBe(true);
     });
   });
 
@@ -248,10 +325,10 @@ describe('EvalHooks', () => {
       expect(() => hooks.dispatch('before', binary, state)).not.toThrow();
 
       expect(seen).toEqual([1]);
-      expect(hooks.errors).toHaveLength(1);
-      expect(hooks.errors[0].phase).toBe('before');
-      expect(hooks.errors[0].nodeType).toBe('BinaryExpression');
-      expect(hooks.errors[0].error).toBe(boom);
+      expect(state.hookErrors).toHaveLength(1);
+      expect(state.hookErrors[0].phase).toBe('before');
+      expect(state.hookErrors[0].nodeType).toBe('BinaryExpression');
+      expect(state.hookErrors[0].error).toBe(boom);
     });
 
     it('should collect by default when the policy is unrecognised', () => {
@@ -261,7 +338,7 @@ describe('EvalHooks', () => {
       });
 
       expect(() => hooks.dispatch('before', binary, state)).not.toThrow();
-      expect(hooks.errors).toHaveLength(1);
+      expect(state.hookErrors).toHaveLength(1);
     });
 
     it('should rethrow a hook error under the throw policy', () => {
@@ -271,7 +348,7 @@ describe('EvalHooks', () => {
       });
 
       expect(() => hooks.dispatch('before', binary, state)).toThrow('boom');
-      expect(hooks.errors).toHaveLength(0);
+      expect(state.hookErrors).toHaveLength(0);
     });
 
     it('should swallow a hook error under the ignore policy', () => {
@@ -285,7 +362,7 @@ describe('EvalHooks', () => {
       expect(() => hooks.dispatch('before', binary, state)).not.toThrow();
 
       expect(seen).toEqual([1]);
-      expect(hooks.errors).toHaveLength(0);
+      expect(state.hookErrors).toHaveLength(0);
     });
 
     it('should record the after phase and node type of a failing hook', () => {
@@ -296,8 +373,8 @@ describe('EvalHooks', () => {
 
       hooks.dispatch('after', identifier, state, 'a');
 
-      expect(hooks.errors[0].phase).toBe('after');
-      expect(hooks.errors[0].nodeType).toBe('Identifier');
+      expect(state.hookErrors[0].phase).toBe('after');
+      expect(state.hookErrors[0].nodeType).toBe('Identifier');
     });
   });
 
@@ -309,9 +386,9 @@ describe('EvalHooks', () => {
 
       hooks.dispatch('after', identifier, state, 'a');
 
-      expect(hooks.errors).toHaveLength(1);
-      expect((hooks.errors[0].error as Error).message).toContain('will not be awaited');
-      expect(hooks.errors[0].nodeType).toBe('Identifier');
+      expect(state.hookErrors).toHaveLength(1);
+      expect((state.hookErrors[0].error as Error).message).toContain('will not be awaited');
+      expect(state.hookErrors[0].nodeType).toBe('Identifier');
     });
 
     it('should keep dispatching the remaining hooks after a returned promise', () => {
@@ -338,7 +415,7 @@ describe('EvalHooks', () => {
 
       hooks.dispatch('before', binary, state);
 
-      expect(hooks.errors).toHaveLength(0);
+      expect(state.hookErrors).toHaveLength(0);
     });
   });
 
@@ -352,7 +429,7 @@ describe('EvalHooks', () => {
 
       hooks.dispatch('before', binary, state);
       hooks.dispatch('before', identifier, state);
-      hooks.unwind(boom);
+      hooks.unwind(boom, state);
 
       expect(events.map((e) => e.node.type)).toEqual(['Identifier', 'BinaryExpression']);
       expect(events.every((e) => e.completed === false)).toBe(true);
@@ -369,7 +446,7 @@ describe('EvalHooks', () => {
       hooks.dispatch('before', binary, state);
       hooks.dispatch('before', identifier, state);
       hooks.dispatch('after', identifier, state, 'a');
-      hooks.unwind(new Error('boom'));
+      hooks.unwind(new Error('boom'), state);
 
       expect(events.map((e) => e.node.type)).toEqual(['Identifier', 'BinaryExpression']);
       expect(events.map((e) => e.completed)).toEqual([true, false]);
@@ -380,7 +457,7 @@ describe('EvalHooks', () => {
       const events: EvalNodeHookEvent[] = [];
       hooks.on('after', '*', (e) => events.push(e));
 
-      hooks.unwind(new Error('boom'));
+      hooks.unwind(new Error('boom'), state);
 
       expect(events).toEqual([]);
     });
@@ -391,8 +468,8 @@ describe('EvalHooks', () => {
       hooks.on('after', '*', (e) => events.push(e));
 
       hooks.dispatch('before', binary, state);
-      hooks.unwind(new Error('boom'));
-      hooks.unwind(new Error('boom'));
+      hooks.unwind(new Error('boom'), state);
+      hooks.unwind(new Error('boom'), state);
 
       expect(events).toHaveLength(1);
     });
@@ -408,17 +485,17 @@ describe('EvalHooks', () => {
       hooks.dispatch('before', binary, state);
       hooks.dispatch('before', identifier, state);
 
-      expect(() => hooks.unwind(new Error('boom'))).not.toThrow();
+      expect(() => hooks.unwind(new Error('boom'), state)).not.toThrow();
 
       expect(seen).toEqual(['Identifier', 'BinaryExpression']);
-      expect(hooks.errors).toHaveLength(2);
+      expect(state.hookErrors).toHaveLength(2);
 
       // the throwing hook is still registered, so a stack that had not drained
       // would fire it again here
-      hooks.unwind(new Error('boom'));
+      hooks.unwind(new Error('boom'), state);
 
       expect(seen).toEqual(['Identifier', 'BinaryExpression']);
-      expect(hooks.errors).toHaveLength(2);
+      expect(state.hookErrors).toHaveLength(2);
     });
 
     it('should collect rather than rethrow while unwinding under the throw policy', () => {
@@ -432,10 +509,10 @@ describe('EvalHooks', () => {
       hooks.dispatch('before', binary, state);
       hooks.dispatch('before', identifier, state);
 
-      expect(() => hooks.unwind(new Error('boom'))).not.toThrow();
+      expect(() => hooks.unwind(new Error('boom'), state)).not.toThrow();
 
       expect(seen).toEqual(['Identifier', 'BinaryExpression']);
-      expect(hooks.errors).toHaveLength(2);
+      expect(state.hookErrors).toHaveLength(2);
     });
 
     it('should balance every before with exactly one after across dispatch and unwind', () => {
@@ -447,9 +524,132 @@ describe('EvalHooks', () => {
       hooks.dispatch('before', binary, state);
       hooks.dispatch('before', identifier, state);
       hooks.dispatch('after', identifier, state, 'a');
-      hooks.unwind(new Error('boom'));
+      hooks.unwind(new Error('boom'), state);
 
       expect(depth).toBe(0);
+    });
+  });
+
+  describe('depth and unwindTo', () => {
+
+    it('should report zero open nodes on a fresh state', () => {
+      const hooks = new EvalHooks();
+
+      expect(hooks.depth(state)).toBe(0);
+    });
+
+    it('should count the nodes opened but not yet closed', () => {
+      const hooks = new EvalHooks();
+
+      hooks.dispatch('before', binary, state);
+      expect(hooks.depth(state)).toBe(1);
+
+      hooks.dispatch('before', identifier, state);
+      expect(hooks.depth(state)).toBe(2);
+
+      hooks.dispatch('after', identifier, state, 'a');
+      expect(hooks.depth(state)).toBe(1);
+    });
+
+    it('should unwind only the nodes opened above the mark', () => {
+      const hooks = new EvalHooks();
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('after', '*', (e) => events.push(e));
+
+      hooks.dispatch('before', binary, state);
+      const mark = hooks.depth(state);
+      hooks.dispatch('before', identifier, state);
+
+      hooks.unwindTo(mark, new Error('boom'), state);
+
+      expect(events.map((e) => e.node.type)).toEqual(['Identifier']);
+      expect(hooks.depth(state)).toBe(mark);
+    });
+
+    it('should leave the marked nodes open for their own after dispatch', () => {
+      const hooks = new EvalHooks();
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('after', '*', (e) => events.push(e));
+
+      hooks.dispatch('before', binary, state);
+      const mark = hooks.depth(state);
+      hooks.dispatch('before', identifier, state);
+      hooks.unwindTo(mark, new Error('boom'), state);
+      hooks.dispatch('after', binary, state, 3);
+
+      expect(events.map((e) => e.node.type)).toEqual(['Identifier', 'BinaryExpression']);
+      expect(events.map((e) => e.completed)).toEqual([false, true]);
+      expect(hooks.depth(state)).toBe(0);
+    });
+
+    it('should be idempotent at a mark', () => {
+      const hooks = new EvalHooks();
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('after', '*', (e) => events.push(e));
+
+      hooks.dispatch('before', binary, state);
+      hooks.dispatch('before', identifier, state);
+      hooks.unwindTo(1, new Error('boom'), state);
+      hooks.unwindTo(1, new Error('boom'), state);
+
+      expect(events).toHaveLength(1);
+    });
+
+    it('should treat unwind as unwindTo zero', () => {
+      const hooks = new EvalHooks();
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('after', '*', (e) => events.push(e));
+
+      hooks.dispatch('before', binary, state);
+      hooks.dispatch('before', identifier, state);
+      hooks.unwind(new Error('boom'), state);
+
+      expect(events).toHaveLength(2);
+      expect(hooks.depth(state)).toBe(0);
+    });
+
+    it('should do nothing when the mark is at or above the current depth', () => {
+      const hooks = new EvalHooks();
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('after', '*', (e) => events.push(e));
+
+      hooks.dispatch('before', binary, state);
+      hooks.unwindTo(5, new Error('boom'), state);
+
+      expect(events).toEqual([]);
+      expect(hooks.depth(state)).toBe(1);
+    });
+  });
+
+  describe('per-state isolation', () => {
+
+    it('should keep the open-node stacks of two states separate', () => {
+      const hooks = new EvalHooks();
+      const other = EvalState.fromContext({}, {});
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('after', '*', (e) => events.push(e));
+
+      hooks.dispatch('before', binary, state);
+      hooks.dispatch('before', identifier, other);
+      hooks.unwind(new Error('boom'), other);
+
+      expect(events.map((e) => e.node.type)).toEqual(['Identifier']);
+      expect(events.map((e) => e.state)).toEqual([other]);
+      expect(hooks.depth(other)).toBe(0);
+      expect(hooks.depth(state)).toBe(1);
+    });
+
+    it('should keep the collected errors of two states separate', () => {
+      const hooks = new EvalHooks();
+      const other = EvalState.fromContext({}, {});
+      hooks.on('before', '*', () => {
+        throw new Error('boom');
+      });
+
+      hooks.dispatch('before', binary, state);
+
+      expect(state.hookErrors).toHaveLength(1);
+      expect(other.hookErrors).toHaveLength(0);
     });
   });
 });

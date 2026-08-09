@@ -289,8 +289,23 @@ Three ways in, matching the three existing usage styles:
    so carrying `options.hooks` needs no type change, but the union does **not** index
    directly: a read must go through the same `as Record<string, unknown>` cast that
    `before-visitor.ts:6` already performs. `BaseEval.createState` → `EvalState.fromContext`
-   casts, then reads `options['hooks']` and adopts it if it is an `EvalHooks`. Also reads
-   `options['onHookError']` for the § 3.4 policy.
+   → the `EvalState` **constructor** casts, then reads `options['hooks']` and adopts it if
+   it is an `EvalHooks`. The read sits in the constructor rather than in `fromContext`
+   because the constructor is public and takes `options` directly, so putting it there
+   makes both construction paths behave identically for one line of code.
+
+   **`options['onHookError']` is honoured only when no registry is adopted.** The policy is
+   registration-side state: `EvalHooks` reads it in its own constructor, so an adopted
+   registry carries whatever policy the caller built it with. `EvalState` must not
+   retro-fit a different one onto an object it does not own.
+
+   *Failure mode to document, not to defend against*: passing **both** `hooks` and
+   `onHookError` in the same options object silently ignores the latter. The caller's
+   registry keeps its own policy — most often the `'collect'` default — so a consumer who
+   asked for `'throw'` gets collection instead, and only notices because their evaluation
+   did not fail. The fix is to pass the policy where it belongs,
+   `new EvalHooks({ onHookError: 'throw' })`. Step 6's README hooks section must name this
+   pairing explicitly.
 3. **Built-ins**: `options.trackTime` registers the timing hook pair (§ 4, step 5).
 
 Because `compile()` binds only the node (`evaluate.bind(null, node)`) and takes the state at
@@ -333,6 +348,29 @@ Mechanically the errors move is the cheaper of the two: every `handleError` call
 already receives the event, and `EvalNodeHookEvent.state` is required, so the write can be
 redirected to `event.state` with no signature change. The stack move is what forces
 `enter` / `exit` / `unwindTo` to take the state.
+
+**Decision — the two moved members live behind one `@internal` accessor, and the state owns
+the storage.** `EvalState` exposes a single `hookBookkeeping` getter returning
+`{ open: AnyNode[]; errors: EvalHookError[] }`, lazily created, rather than two separate
+members. One accessor keeps the additions to `EvalState`'s surface to a single name, and
+groups the two things that share a lifetime — a run — so that any later per-run field has
+an obvious home.
+
+The alternative was to keep both in a module-private `WeakMap<EvalState, …>` inside
+`eval-hooks.ts`, leaving `EvalState` untouched. **Rejected: it inverts the import graph into
+a runtime cycle.** `eval-state.ts` already needs a *value* import of `eval-hooks.ts` — the
+lazy `hooks` getter calls `new EvalHooks(...)` and adoption does an `instanceof` check. If
+the storage moved into `eval-hooks.ts`, then `EvalState.hookErrors` would have to call into
+that module to read the map, making the return edge a value import too, while
+`eval-hooks.ts` imports `EvalState`. Today that second edge is `import type` and erases
+completely. Turning it into a real one gives ng-packagr a genuine circular dependency
+between two modules in the same entry point — the class of defect that shows up as an
+`undefined` at class-evaluation time depending on which module the bundler reaches first,
+not as a build error.
+
+So: **the state owns the storage; the hooks type-import the state.** Keep the import graph
+acyclic. This is also why `depth` is a method taking the state rather than the getter § 3.8
+sketches — the stack it measures is no longer the registry's to read.
 
 **Known limitation this creates.** With errors on the state, the options-first style
 (`simpleEval(expr, ctx, { hooks })`) has no way to read them: the consumer holds the
@@ -490,7 +528,9 @@ Each step is independently reviewable and leaves the suite green.
 
 ### Step 2 — Attach hooks to `EvalState`
 - **Edit**: `eval-state.ts` — lazy `_hooks`, `hooks` getter, `hasHooks` getter; adopt
-  `options['hooks']` / `options['onHookError']` in `fromContext`. `EvalOptions` is a union
+  `options['hooks']` in the **constructor**, which `fromContext` delegates to, so both
+  construction paths behave alike (§ 3.6). `options['onHookError']` is honoured only on the
+  lazy path — an adopted registry keeps the policy it was constructed with. `EvalOptions` is a union
   (§ 3.6), so both reads go through an `as Record<string, unknown>` cast — the same one
   `before-visitor.ts:6` performs — not a direct index on `EvalOptions`.
 - **Edit**: `eval-hooks.ts` — add the latching `isActive` getter settled in § 3.6: a private
@@ -503,7 +543,14 @@ Each step is independently reviewable and leaves the suite green.
   - `_open` moves to `EvalState`. `enter` / `exit` / `depth` / `unwindTo` / `unwind` read
     and write the state's stack, so `exit` and `unwind` regain a state parameter; `enter`
     no longer needs to store one per entry, because the stack it pushes onto is already the
-    state's.
+    state's. `depth` and `unwindTo` do not exist yet — step 1 shipped only
+    `enter` / `exit` / `unwind`, and § 3.8's mark-based form was settled after that step's
+    review — so **this step adds them**; step 3 is their first caller. `depth` lands as a
+    method `depth(state)`, not the getter § 3.8 sketches, because a getter cannot take the
+    state whose stack it measures. Parameter order is state-last throughout, matching the
+    `enter(node, state)` step 1 shipped.
+  - Both moved members sit behind the single `@internal` `hookBookkeeping` accessor settled
+    in § 3.6, which also records why the module-private `WeakMap` alternative was rejected.
   - `_errors` moves to `EvalState`, exposed as `hookErrors`. `EvalHooks.errors` is removed.
     This one is nearly free: every `handleError` call site already receives the event, and
     `EvalNodeHookEvent.state` is required, so the write redirects to `event.state` with no
@@ -630,7 +677,15 @@ Each step is independently reviewable and leaves the suite green.
   step 1; see `step-1-summary.md` § 4.3.
 - **Edit**: `README.md` — new `### Evaluation hooks` subsection under `## Options`
   (after `### Evaluation with scope`), plus a line in `### ESTree nodes supported:`' vicinity
-  is *not* needed — hooks are node-agnostic.
+  is *not* needed — hooks are node-agnostic. This subsection is the only place the following
+  are written down for consumers, so none of them may be dropped:
+  - the sync-only contract and the promise-return warning (§ 3.3);
+  - `completed: false` unwound events, with a worked example (§ 3.8);
+  - that reading `hookErrors` requires the state-first style (§ 3.6);
+  - that passing **both** `hooks` and `onHookError` silently ignores `onHookError`, because
+    an adopted registry keeps the policy it was constructed with — pass it to
+    `new EvalHooks({ onHookError: … })` instead (§ 3.6). Step 2 settled and implemented this
+    behaviour but could not document it here: the subsection does not exist until this step.
 - **Edit**: `ROADMAP.md` — mark Phase 1 done, link this document.
 - **Edit**: `modules/eval-core/package.json` — bump `0.2.5` → `0.3.0` (additive public API).
 - **Edit**: `internal/interfaces/recursive-visitors.ts` — mark `RecursiveVisitorState` and
@@ -658,6 +713,9 @@ export { EvalHooks, type EvalHookPhase, type EvalNodeHook, type EvalNodeHookEven
 
 Everything else stays internal. No existing exported symbol changes shape; `EvalState` gains
 `hooks`, `hasHooks` and `hookErrors` getters plus `clearHookErrors()` (§ 3.6, step 6).
+`EvalState.hookBookkeeping` and its `EvalHookBookkeeping` type are `@internal` (§ 3.6): the
+type is declared in the emitted `.d.ts` but deliberately absent from the barrel's export
+list, so it is not part of this surface.
 **This is a purely additive release** — `EvalHooks.errors`, shipped in step 1, is moved
 rather than deprecated, which is free because nothing between step 1 and the `0.3.0` bump
 is published.
