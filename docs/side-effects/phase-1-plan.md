@@ -154,12 +154,16 @@ export class EvalHooks {
   off(phase: EvalHookPhase, type: AnyNodeTypes | '*', hook?: EvalNodeHook): void;
   clear(): void;
 
-  /** Errors collected under the 'collect' policy (§ 3.4). */
-  readonly errors: readonly EvalHookError[];
-
   get isEmpty(): boolean;
+
+  /** Dispatch guard; latches on first registration (§ 3.6). */
+  get isActive(): boolean;
 }
 ```
+
+Errors collected under the 'collect' policy (§ 3.4) are **not** held here. Step 1 shipped
+them as `EvalHooks.errors`; § 3.6 moves them to `EvalState`, because an `EvalHooks` may be
+shared across evaluations and errors belong to one run.
 
 `on()` returns an unsubscribe closure (idiomatic Angular/RxJS-adjacent, and it makes
 `ngOnDestroy` cleanup trivial for consumers) **and** `off()` exists for symmetry with
@@ -189,7 +193,8 @@ export type EvalHookErrorPolicy = 'collect' | 'throw' | 'ignore';   // default: 
 ```
 
 - `'collect'` (default) — the hook's throw is caught, wrapped as
-  `{ phase, nodeType, error }`, appended to `hooks.errors`, and evaluation continues.
+  `{ phase, nodeType, error }`, appended to `state.hookErrors` (§ 3.6 — the list lives on
+  the state, not on the shareable hooks object), and evaluation continues.
 - `'throw'` — rethrown; it propagates out of the visitor into `evaluate()`'s catch, which
   already calls `state.result.setFailure(error)`. Opt-in for strict consumers.
 - `'ignore'` — swallowed silently. For hot paths where even collecting is unwanted.
@@ -291,6 +296,60 @@ Three ways in, matching the three existing usage styles:
 Because `compile()` binds only the node (`evaluate.bind(null, node)`) and takes the state at
 call time, compiled expressions get hooks for free — no change to `compile.ts`.
 
+**Decision — `options['hooks']` is adopted as-is. It is not cloned.**
+
+Cloning was considered and rejected:
+
+- It would **break the unsubscribe closures returned by `on()`**. The consumer registers
+  against their own object and holds the returned closure; dispatch would run from a copy.
+  Calling the closure would remove the hook from the original registry and silently leave
+  the live copy firing. A cleanup function that appears to work and does nothing is worse
+  than no cleanup function, and it defeats the `ngOnDestroy` ergonomic that § 3.2 is built
+  around.
+- It would **override the caller's intent**. Passing the same `EvalHooks` to two
+  evaluations is an explicit request for the same callbacks to observe both. Silently
+  giving each run a private copy answers a question the caller did not ask.
+
+**The principle that makes adoption safe: `EvalHooks` holds *registration*; `EvalState`
+holds *per-run bookkeeping*.** An `EvalHooks` is a consumer-owned object that lives as long
+as the consumer wants it to — across many evaluations, if they say so. It therefore may
+hold only things whose lifetime is the consumer's: the listener registries and the error
+policy. Anything whose lifetime is a single evaluation belongs on the state.
+
+By that rule, **two things move off `EvalHooks` and onto `EvalState`**:
+
+1. **The open-node stack** (`_open`). Shared across two evaluations it is outright
+   corrupting — interleaved runs push and pop each other's frames, and § 3.8's
+   every-`before`-matched invariant fails. This is the concrete form of the cross-talk
+   hazard finding § 1.2.6 exists to prevent, arriving through the options object rather
+   than through a module-level global.
+2. **The collected errors** (`_errors`). Less dramatic, but the same category: a shared
+   hooks object would accumulate one evaluation's errors into the next one's list, so a
+   consumer could not tell which run produced what, and the list would grow for the
+   lifetime of their object rather than the run. Errors describe what happened during *an
+   evaluation*, so they belong to the evaluation.
+
+Mechanically the errors move is the cheaper of the two: every `handleError` call site
+already receives the event, and `EvalNodeHookEvent.state` is required, so the write can be
+redirected to `event.state` with no signature change. The stack move is what forces
+`enter` / `exit` / `unwindTo` to take the state.
+
+**Known limitation this creates.** With errors on the state, the options-first style
+(`simpleEval(expr, ctx, { hooks })`) has no way to read them: the consumer holds the
+`EvalHooks` but never sees the `EvalState` that `BaseEval.createState` built. The
+state-first style is unaffected — `state.hookErrors` is right there. Recorded rather than
+solved: it argues for an `onHookError` *callback* form of the option, or for
+`simpleEval` to surface the state, and neither is worth designing before Phase 3 shows
+which style consumers actually use. Step 6's README section must say plainly that reading
+hook errors requires the state-first style.
+
+**This is orthogonal to the mark-based `unwindTo` of § 3.8, and neither subsumes the
+other.** Per-state isolation handles *sharing across evaluations* — two runs that must not
+see each other's bookkeeping. Marks handle *nested walks within one evaluation* — the
+re-entrant `evaluate()` call in `arrow-function-expression.ts:17`, which uses the very same
+state and so is invisible to per-state isolation by construction. Fixing either one alone
+leaves the other's failure mode intact.
+
 ### 3.7 Zero-cost when unused
 
 The dispatcher must not regress `internal/performance.spec.ts`. New `beforeVisitor`:
@@ -378,6 +437,15 @@ A mark is one integer read per `evaluate()` call, costs nothing on the no-hooks 
 sits inside the same guard), and makes each `evaluate()` responsible for exactly the nodes
 it opened.
 
+**Marks are orthogonal to the per-state isolation settled in § 3.6.** That decision moves
+the open-node stack onto `EvalState`, so two evaluations sharing one `EvalHooks` cannot
+corrupt each other's frames. It does nothing here: the re-entrant call at
+`arrow-function-expression.ts:17` passes the **same state**, so both walks address the same
+stack no matter where that stack lives. Isolation is about *sharing across evaluations*;
+marks are about *nesting within one*. Both are required — neither substitutes for the
+other. Note also that once the stack lives on the state, `depth` and `unwindTo` read and
+write the state's stack rather than the hooks object's; the mark semantics are unchanged.
+
 `EvalNodeHookEvent` gains two fields so consumers can distinguish the paths:
 
 ```ts
@@ -428,16 +496,39 @@ Each step is independently reviewable and leaves the suite green.
 - **Edit**: `eval-hooks.ts` — add the latching `isActive` getter settled in § 3.6: a private
   flag set by `on()`, reset only by `clear()`. `isEmpty` is unchanged and keeps its shipped
   meaning. `hasHooks` reads `isActive`, **not** `!isEmpty`.
+- **Edit**: `eval-hooks.ts` — **move per-run bookkeeping onto `EvalState`** per § 3.6, since
+  an adopted `EvalHooks` may be shared across evaluations. This reopens step 1's file and
+  spec; that is expected, and it is why the move is worth doing before step 3 wires
+  anything up.
+  - `_open` moves to `EvalState`. `enter` / `exit` / `depth` / `unwindTo` / `unwind` read
+    and write the state's stack, so `exit` and `unwind` regain a state parameter; `enter`
+    no longer needs to store one per entry, because the stack it pushes onto is already the
+    state's.
+  - `_errors` moves to `EvalState`, exposed as `hookErrors`. `EvalHooks.errors` is removed.
+    This one is nearly free: every `handleError` call site already receives the event, and
+    `EvalNodeHookEvent.state` is required, so the write redirects to `event.state` with no
+    signature change.
+  - What stays on `EvalHooks`: the two registries, the latch flag, and the error policy —
+    registration only.
+- **Edit**: `eval-state.ts` — `hookErrors` getter backed by a lazily created array, plus the
+  open-node stack the hook methods now operate on.
 - **Edit**: `eval-hooks.spec.ts` — `isActive` false on a fresh instance, true after `on()`,
   still true after the last hook is removed via unsubscribe / `off` (the latch), false again
-  after `clear()`; `isEmpty` still tracks live registrations independently.
+  after `clear()`; `isEmpty` still tracks live registrations independently. Existing cases
+  are rewritten to read errors from the state and to pass a state to `unwind`; **assertions
+  are relocated, not weakened** — every case step 1 covers must still be covered.
+  - **New case**: one `EvalHooks` driving two `EvalState`s does not mix their open stacks or
+    their errors — the § 3.6 isolation property, asserted directly.
 - **Edit**: `internal/classes/eval/public-api.ts` — nothing new to export; `isActive` is a
-  getter on the already-exported `EvalHooks`.
+  getter on the already-exported `EvalHooks`, and `hookErrors` is a getter on the already-
+  exported `EvalState`.
 - **Edit**: `eval-state.spec.ts` — hooks default absent, `hasHooks === false` until a hook is
   registered, `hasHooks` stays true once a hook has been registered and then removed
-  (the § 3.6 latch), adoption from options, isolation between two states from the same
-  service.
-- **Exit**: existing `eval-state.spec.ts` untouched-and-passing plus new cases.
+  (the § 3.6 latch), adoption from options **by reference** (the same object the caller
+  passed, not a copy — a hook registered on the caller's object after `fromContext` still
+  fires), and isolation between two states from the same service.
+- **Exit**: existing `eval-state.spec.ts` untouched-and-passing plus new cases; step 1's
+  `eval-hooks.spec.ts` coverage preserved after the relocation.
 
 ### Step 3 — Convert `beforeVisitor` / `afterVisitor` into dispatchers
 - **Edit**: `visitors/before-visitor.ts`, `visitors/after-visitor.ts` — bodies replaced per
@@ -524,18 +615,18 @@ Each step is independently reviewable and leaves the suite green.
 - **Edit**: `eval.service.ts` `ngOnDestroy` — call `state.hooks.clear()` alongside the
   existing stack/context cleanup, so a long-lived hook closure cannot pin a destroyed state.
 - **Edit**: `eval.service.memory-leaks.spec.ts` — assert hooks are cleared on destroy, and
-  that `clearErrors()` releases the collected errors.
-- **Edit**: `internal/classes/eval/eval-hooks.ts` — add `clearErrors()`. `clear()`
-  deliberately retains `errors` (they record what already happened), so under the
-  state-first style — `compile()` plus repeated `call()` on one state — the array grows
-  without bound, and a thrown value can close over consumer objects that `ngOnDestroy`
-  therefore cannot release. Carried over from step 1; see `step-1-summary.md` § 4.3 for the
-  reasoning behind `clear()`'s retention.
+  that `clearHookErrors()` releases the collected errors.
+- **Edit**: `eval-state.ts` — add `clearHookErrors()`. Step 2 moves the error list onto the
+  state (§ 3.6), and `hooks.clear()` cannot reach it: under the state-first style —
+  `compile()` plus repeated `call()` on one state — the list grows for the life of the
+  state, and a thrown value can close over consumer objects that `ngOnDestroy` therefore
+  cannot release. Carried over from step 1, where the list lived on `EvalHooks` and
+  `clear()` deliberately retained it; see `step-1-summary.md` § 4.3 for that reasoning.
 - **Edit**: `internal/classes/eval/eval-hooks.ts` / `public-api.ts` — resolve
   `ASYNC_HOOK_MESSAGE`: it is exported from the module and referenced by an `{@link}` in the
   class docs, but is not re-exported from the barrel, so the link dangles for consumers.
   Either export it (additive, and matching on it is what a consumer inspecting
-  `hooks.errors` would want — add it to § 5) or drop the `{@link}`. Carried over from
+  `state.hookErrors` would want — add it to § 5) or drop the `{@link}`. Carried over from
   step 1; see `step-1-summary.md` § 4.3.
 - **Edit**: `README.md` — new `### Evaluation hooks` subsection under `## Options`
   (after `### Evaluation with scope`), plus a line in `### ESTree nodes supported:`' vicinity
@@ -566,7 +657,10 @@ export { EvalHooks, type EvalHookPhase, type EvalNodeHook, type EvalNodeHookEven
 ```
 
 Everything else stays internal. No existing exported symbol changes shape; `EvalState` gains
-two getters. **This is a purely additive release.**
+`hooks`, `hasHooks` and `hookErrors` getters plus `clearHookErrors()` (§ 3.6, step 6).
+**This is a purely additive release** — `EvalHooks.errors`, shipped in step 1, is moved
+rather than deprecated, which is free because nothing between step 1 and the `0.3.0` bump
+is published.
 
 ---
 
