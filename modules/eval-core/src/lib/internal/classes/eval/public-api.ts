@@ -6,3 +6,5 @@ export { EvalLookup } from './eval-lookup';
 export { defaultParserOptions } from './parser-options';
 export { EvalTraceItem, EvalTrace } from './eval-trace';
 export { EvalScope, EvalScopeOptions } from './eval-scope';
+export { EvalHooks, EvalHookPhase, EvalNodeHook, EvalNodeHookEvent,
+         EvalHookError, EvalHookErrorPolicy, Unsubscribe } from './eval-hooks';
