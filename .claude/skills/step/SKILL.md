@@ -87,6 +87,8 @@ Report it; do not edit the spec to match the new behaviour.
 
 ### 5. Report
 
+Before writing your report, invoke the `code-reviewer` subagent on this step's changes. Include its findings in your report. If it raises anything Critical, stop and surface it rather than closing out the step.
+
 Finish with:
 
 - Each exit criterion from the plan, marked met or not met, with the evidence.
