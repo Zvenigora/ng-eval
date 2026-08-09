@@ -246,8 +246,30 @@ Hooks live on `EvalState`, created lazily:
 // eval-state.ts
 private _hooks?: EvalHooks;
 public get hooks(): EvalHooks { return (this._hooks ??= new EvalHooks(this._options)); }
-public get hasHooks(): boolean { return !!this._hooks && !this._hooks.isEmpty; }
+public get hasHooks(): boolean { return !!this._hooks && this._hooks.isActive; }
 ```
+
+**Decision — `hasHooks` latches; it is not `!isEmpty`.** `EvalHooks` gains an `isActive`
+getter, backed by a flag that `on()` sets and only `clear()` resets. `isEmpty` stays as
+shipped and keeps its literal meaning (no hook registered *right now*); `isActive` is the
+dispatch guard.
+
+Rationale: § 3.7 makes `hasHooks` the guard on both dispatchers, and § 3.8 puts `enter` and
+`exit` inside that guard. A guard that changes value mid-walk therefore desynchronizes the
+open-node stack, in both directions:
+
+- the last hook unsubscribes inside a `before` handler → the node was entered, but
+  `afterVisitor` now returns early and never calls `exit()`; every ancestor's `exit()` is
+  skipped too, and the stack never drains;
+- the first hook is registered mid-walk → `before` was skipped, so no `enter` ran, but the
+  matching `after` calls `exit()` and pops an *ancestor's* entry.
+
+Neither is exotic: self-unsubscribing and one-shot hooks are ordinary consumer idioms, and
+step 1's spec already exercises a hook that unsubscribes itself mid-dispatch. Latching costs
+one boolean and keeps the default path untouched — a state on which no hook was ever
+registered still reads `false`. The residual case, `clear()` called *during* a walk, is
+documented as unsupported rather than defended against: it is the one way to unlatch, and
+step 6 only calls it from `ngOnDestroy`.
 
 Three ways in, matching the three existing usage styles:
 
@@ -284,6 +306,10 @@ This is *cheaper* than today's body, which does an options cast plus a
 `options['trackTime']` property lookup on every node. Inside `dispatch`, the keyed lookup
 runs only when at least one hook is registered.
 
+`hasHooks` here is the **latching** form settled in § 3.6, not `!hooks.isEmpty`. The guard
+wraps `enter`/`exit` as well as the hooks themselves, so it has to hold the same value for
+the whole walk or the open-node stack desynchronizes.
+
 ### 3.8 Balanced dispatch across throws
 
 Per finding 1.2.7, a visitor that throws skips its `afterVisitor` call. Adding
@@ -292,21 +318,65 @@ step 3 a safe refactor — that no visitor body changes. Instead, the dispatcher
 depth itself and reconciles at the one place the error is already caught.
 
 ```ts
-// eval-hooks.ts
-private readonly _open: AnyNode[] = [];
+// eval-hooks.ts  — signatures as shipped in step 1
+private readonly _open: { node: AnyNode; state: EvalState }[] = [];
 
 /** Called by beforeVisitor's dispatcher, after the hooks fire. */
-enter(node: AnyNode): void { this._open.push(node); }
+enter(node: AnyNode, state: EvalState): void { this._open.push({ node, state }); }
 
 /** Called by afterVisitor's dispatcher, before the hooks fire. */
-exit(node: AnyNode): void { this._open.pop(); }
+exit(): void { this._open.pop(); }
+
+/** Depth of the open-node stack; captured as a mark before a walk. */
+get depth(): number { return this._open.length; }
 
 /**
- * Fire `after` for every node still open, innermost first, marked incomplete.
- * Invoked from evaluate()'s existing catch. Idempotent.
+ * Fire `after` for every node open above `mark`, innermost first, marked
+ * incomplete. Invoked from evaluate()'s existing catch. Idempotent.
  */
-unwind(error: unknown): void { … }
+unwindTo(mark: number, error: unknown): void { … }
+
+/** Drains the whole stack. Equivalent to unwindTo(0, error). */
+unwind(error: unknown): void { this.unwindTo(0, error); }
 ```
+
+`enter` takes the state because `EvalNodeHookEvent.state` is required and `unwind` has no
+state parameter, so each open node carries its own. `exit` takes no node: the pop is
+positional, and the popped entry already carries the node an unwound event needs.
+
+**Decision — unwinding is mark-based, not absolute.** `evaluate()` captures
+`const mark = state.hooks.depth` before `walk.recursive` and its catch calls
+`state.hooks.unwindTo(mark, error)`. `unwind(error)` stays as the drain-everything form for
+callers that own the whole walk.
+
+Rationale: `evaluate()` is re-entrant, and the re-entry is *deferred*.
+`arrow-function-expression.ts:17` calls `evaluate(node.body, st)` with the **same state**,
+inside the closure it pushes as the arrow function's value:
+
+```ts
+const fn = (...arrowArgs: unknown[]) => {
+  …
+  const value = evaluate(node.body, st);   // same st, its own try/catch
+  …
+};
+```
+
+That closure runs whenever the arrow function is *called* — during the outer walk, after it
+has finished, many times, or never. It is the only such re-entry in any visitor, and it has
+its own `try`/`catch`. So an absolute `unwind(error)` from the nested `evaluate` drains the
+outer walk's open nodes too.
+
+Usually that is invisible, because the nested throw propagates and the outer nodes really
+are abandoned — and the second `unwind` is a no-op, which is what idempotency buys. It goes
+wrong when a host function **swallows** the throw: a context-supplied `safeMap(x => x.foo)`
+catches, the outer walk continues, and every enclosing node now receives a synthesised
+`completed: false` event followed later by its real `completed: true` one — while the stack
+is left empty, so a genuinely fatal error later unwinds nothing. That is precisely the
+invariant this section exists to guarantee, so the fix belongs here rather than in a caller.
+
+A mark is one integer read per `evaluate()` call, costs nothing on the no-hooks path (it
+sits inside the same guard), and makes each `evaluate()` responsible for exactly the nodes
+it opened.
 
 `EvalNodeHookEvent` gains two fields so consumers can distinguish the paths:
 
@@ -322,7 +392,8 @@ readonly error?: unknown;
 Properties this gives us:
 
 - Every `before` is matched by exactly one `after`, on every path.
-- No visitor body changes; the only new call site is `evaluate()`'s existing catch.
+- No visitor body changes. The new call sites are both in `evaluate()`: the mark capture
+  before `walk.recursive`, and `unwindTo(mark, error)` in its existing catch.
 - Cost on the no-hooks path is unchanged, because `enter`/`exit` run inside the
   `if (!st.hasHooks) return;` guard already specified in § 3.7.
 - `unwind` is idempotent, so the sync and async entry points can both call it without
@@ -354,8 +425,18 @@ Each step is independently reviewable and leaves the suite green.
   `options['hooks']` / `options['onHookError']` in `fromContext`. `EvalOptions` is a union
   (§ 3.6), so both reads go through an `as Record<string, unknown>` cast — the same one
   `before-visitor.ts:6` performs — not a direct index on `EvalOptions`.
+- **Edit**: `eval-hooks.ts` — add the latching `isActive` getter settled in § 3.6: a private
+  flag set by `on()`, reset only by `clear()`. `isEmpty` is unchanged and keeps its shipped
+  meaning. `hasHooks` reads `isActive`, **not** `!isEmpty`.
+- **Edit**: `eval-hooks.spec.ts` — `isActive` false on a fresh instance, true after `on()`,
+  still true after the last hook is removed via unsubscribe / `off` (the latch), false again
+  after `clear()`; `isEmpty` still tracks live registrations independently.
+- **Edit**: `internal/classes/eval/public-api.ts` — nothing new to export; `isActive` is a
+  getter on the already-exported `EvalHooks`.
 - **Edit**: `eval-state.spec.ts` — hooks default absent, `hasHooks === false` until a hook is
-  registered, adoption from options, isolation between two states from the same service.
+  registered, `hasHooks` stays true once a hook has been registered and then removed
+  (the § 3.6 latch), adoption from options, isolation between two states from the same
+  service.
 - **Exit**: existing `eval-state.spec.ts` untouched-and-passing plus new cases.
 
 ### Step 3 — Convert `beforeVisitor` / `afterVisitor` into dispatchers
@@ -365,9 +446,18 @@ Each step is independently reviewable and leaves the suite green.
   emits to consumers stop here rather than in step 5.
 - **Signature change**: return type `number | undefined` → `void`. Safe per finding 1.2.2;
   all 19 call sites already discard the value, so **no visitor body changes**.
-- **Edit**: `internal/functions/evaluate.ts` — the existing catch calls
-  `state.hooks.unwind(error)` before `state.result.setFailure(error)`. One new call site;
-  this is what keeps finding 1.2.7 out of the visitors.
+- **Edit**: `internal/functions/evaluate.ts` — capture `const mark = state.hooks.depth`
+  before `walk.recursive`, and have the existing catch call
+  `state.hooks.unwindTo(mark, error)` before `state.result.setFailure(error)`. Two new call
+  sites in one function; this is what keeps finding 1.2.7 out of the visitors. Both sit
+  behind the `hasHooks` guard, so the no-hooks path is untouched. The mark is **not**
+  optional: `evaluate()` is re-entered with the same state from
+  `arrow-function-expression.ts:17`, and an absolute `unwind` there drains the outer walk's
+  open nodes (§ 3.8).
+- **Edit**: `eval-hooks.ts` — add `depth` and `unwindTo(mark, error)` per § 3.8; `unwind`
+  becomes `unwindTo(0, error)`.
+- **Edit**: `eval-hooks.spec.ts` — `unwindTo` leaves nodes below the mark open, and a
+  nested drain to a mark does not disturb the outer frame.
 - **`after` phase value**: `afterVisitor` is called after `pushVisitorResult`, so the pushed
   value is `st.result.stack.peek()` (`internal/classes/common/stack.ts:39`, non-destructive)
   — read it there to populate `event.value` rather than changing 19 call signatures. Guard
@@ -380,12 +470,24 @@ Each step is independently reviewable and leaves the suite green.
   - the same balance holds when evaluation throws — drive this with an expression that trips
     `evaluateBinaryOperation` (e.g. `'x' in null`) and with a prototype-pollution guard
     rejection, asserting the unwound events carry `completed: false`;
-  - `logical-expression.ts`'s four exit paths each produce exactly one `after`.
+  - `logical-expression.ts`'s four exit paths each produce exactly one `after`;
+  - the mark holds under re-entry: an arrow function whose body throws, invoked by a
+    context-supplied host function that **swallows** the throw, leaves the enclosing nodes
+    open and still balanced — no enclosing node receives both a `completed: false` and a
+    `completed: true` event (§ 3.8).
 - **Exit**: full existing suite green (the load-bearing regression gate for this step);
   before/after counts balanced on both the success and throw paths; `trackTime: true` no
   longer writes to `console`.
 
 ### Step 4 — Read hooks
+- **Edit**: `internal/classes/eval/eval-hooks.ts` — add `EvalReadKind`, `EvalReadEvent`,
+  `EvalReadHook` (§ 3.5), the read-hook registry, `onRead()`, and the emit method the
+  visitors call. Step 1 deliberately shipped node hooks only, so this step is where the
+  read side of `EvalHooks` is built.
+- **Edit**: `internal/classes/eval/public-api.ts` — export `EvalReadHook`, `EvalReadEvent`,
+  `EvalReadKind` (§ 5). Read hooks reach the barrel here, not in step 1.
+- **Edit**: `internal/classes/eval/eval-hooks.spec.ts` — `onRead` registration,
+  unsubscribe, and error policy, matching the node-hook cases.
 - **Edit**: `visitors/identifier.ts` (2 branches), `visitors/member-expression.ts`
   (3 return branches in `evaluateMember`) — emit `EvalReadEvent`; guard each with
   `if (st.hasHooks)` so the non-hook path is a single boolean check.
@@ -421,7 +523,20 @@ Each step is independently reviewable and leaves the suite green.
 ### Step 6 — Lifecycle & docs
 - **Edit**: `eval.service.ts` `ngOnDestroy` — call `state.hooks.clear()` alongside the
   existing stack/context cleanup, so a long-lived hook closure cannot pin a destroyed state.
-- **Edit**: `eval.service.memory-leaks.spec.ts` — assert hooks are cleared on destroy.
+- **Edit**: `eval.service.memory-leaks.spec.ts` — assert hooks are cleared on destroy, and
+  that `clearErrors()` releases the collected errors.
+- **Edit**: `internal/classes/eval/eval-hooks.ts` — add `clearErrors()`. `clear()`
+  deliberately retains `errors` (they record what already happened), so under the
+  state-first style — `compile()` plus repeated `call()` on one state — the array grows
+  without bound, and a thrown value can close over consumer objects that `ngOnDestroy`
+  therefore cannot release. Carried over from step 1; see `step-1-summary.md` § 4.3 for the
+  reasoning behind `clear()`'s retention.
+- **Edit**: `internal/classes/eval/eval-hooks.ts` / `public-api.ts` — resolve
+  `ASYNC_HOOK_MESSAGE`: it is exported from the module and referenced by an `{@link}` in the
+  class docs, but is not re-exported from the barrel, so the link dangles for consumers.
+  Either export it (additive, and matching on it is what a consumer inspecting
+  `hooks.errors` would want — add it to § 5) or drop the `{@link}`. Carried over from
+  step 1; see `step-1-summary.md` § 4.3.
 - **Edit**: `README.md` — new `### Evaluation hooks` subsection under `## Options`
   (after `### Evaluation with scope`), plus a line in `### ESTree nodes supported:`' vicinity
   is *not* needed — hooks are node-agnostic.

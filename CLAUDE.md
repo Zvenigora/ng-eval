@@ -90,6 +90,15 @@ only awaits at the end, via `awaitAllPromises` which recursively resolves promis
 in the result. There is no `await` point inside any visitor. Any feature that needs to
 suspend mid-traversal requires redesigning the walker, not just the visitor.
 
+`evaluate()` is also **re-entrant, and the re-entry is deferred**.
+`arrow-function-expression.ts:17` calls `evaluate(node.body, st)` with the *same state*,
+from inside the closure it pushes as the arrow function's value — so that nested walk runs
+whenever the arrow function is called: during the outer walk, after it has returned, many
+times, or never. It is the only such re-entry in any visitor, and it has its own
+`try`/`catch`. Anything that accumulates per-walk state on `EvalState` therefore cannot
+assume one `evaluate()` call means one walk, and cannot reset that state unconditionally in
+a catch — a nested call would clobber the outer walk's.
+
 ### Context resolution
 
 `EvalState` (per-evaluation, never global — `EvalService` is `providedIn: 'root'`) holds
@@ -144,8 +153,10 @@ regress.
   one of `build | ci | docs | feat | fix | perf | refactor | test`. The type drives
   semantic versioning on merge (`CONTRIBUTING.md`).
 - Prettier config exists but the codebase is not formatted to it; match the surrounding file's style.
-- `tsconfig.base.json` sets `strict: false`, but library code leans on `unknown` +
-  explicit narrowing rather than `any`.
+- `tsconfig.base.json` sets `strict: false`, but `modules/eval-core/tsconfig.json` overrides
+  it to `strict: true` — library code compiles under strict, so narrow `T | undefined` for
+  real rather than assuming the loose base config applies. Library code also leans on
+  `unknown` + explicit narrowing rather than `any`.
 - Angular 22 / TypeScript 6 / Nx 23. `@zvenigora/ng-eval-core` declares Angular `>=19` as a
   peer dep, so avoid APIs newer than that in shipped code.
 - No `console.*` in library code.
