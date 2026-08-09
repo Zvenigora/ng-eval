@@ -143,7 +143,7 @@ regress.
 - Commit messages follow the Angular format: `<type>(<scope>): <summary>` with `<type>`
   one of `build | ci | docs | feat | fix | perf | refactor | test`. The type drives
   semantic versioning on merge (`CONTRIBUTING.md`).
-- Prettier with `singleQuote: true`; the codebase is heavily JSDoc'd — match it.
+- Prettier config exists but the codebase is not formatted to it; match the surrounding file's style.
 - `tsconfig.base.json` sets `strict: false`, but library code leans on `unknown` +
   explicit narrowing rather than `any`.
 - Angular 22 / TypeScript 6 / Nx 23. `@zvenigora/ng-eval-core` declares Angular `>=19` as a
@@ -152,6 +152,11 @@ regress.
 - New evaluator features generally need: the visitor, its registration in
   `recursive-visitors.ts`, a co-located spec, and an entry in the README's
   "ESTree Nodes Supported" list.
+- Modify files with the Edit and Write tools only. Do not edit files via shell
+  commands (`sed -i`, `>` redirection, `Set-Content`, etc.) — those bypass
+  formatting and lint automation.
+- Do not add `eslint-disable` comments to make lint pass. Fix the code, or raise
+  the rule for discussion.
 
 ## Git
 
