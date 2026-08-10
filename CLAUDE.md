@@ -78,6 +78,11 @@ A new visitor must push exactly one value on **every** exit path and pop exactly
 wrong operand. `logical-expression.ts` (short-circuiting, 4 exits) is the reference for
 multi-exit handling.
 
+**Traversal order is not source order.** `callExpressionVisitor` evaluates the arguments
+*before* the callee, so a method call's own reads and events arrive last. Check the visitor
+before predicting an event sequence; assuming left-to-right costs a test-fix cycle every
+time.
+
 Every visitor brackets its body with `beforeVisitor` / `afterVisitor` — 19 visitor files,
 20 `beforeVisitor` and 23 `afterVisitor` calls (`identifier.ts` holds two visitor
 functions, `logical-expression.ts` has four `after` exits). Both are **hook dispatchers**:
@@ -157,6 +162,15 @@ regress.
   suite is the regression gate, and new specs are added once the refactor is green.
 - Never weaken or delete an existing assertion to make a change pass. If an existing test
   genuinely encodes wrong behaviour, flag it and ask.
+- **A test that would pass without the code it tests is worse than no test** — it reports
+  coverage it does not have. For any assertion covering an invariant, break the
+  implementation and confirm the test fails. Step 3's identity-checked `exit` is the
+  pattern: it was confirmed load-bearing by forcing `exit` back to a positional pop and
+  observing **7 failures**. Without that probe, "the suite is green" would have been equally
+  true of the broken version.
+  Common ways an assertion goes vacuous here: asserting on a hook that was never registered,
+  a no-op guard whose absence changes nothing for a singly-registered callback, or
+  `expect(x).not.toThrow()` standing in for a behavioural claim.
 
 ## Public API discipline
 

@@ -225,6 +225,12 @@ export interface EvalReadEvent {
   /** Dotted path when statically reconstructible (`a.b.c`), else undefined. */
   readonly path?: string;
   readonly value: unknown;
+  /**
+   * True when the key resolved from a scope pushed *during this evaluation* —
+   * an arrow-function parameter binding. Such a read is not a dependency.
+   * Added in step 5; see § 3.5.1.
+   */
+  readonly scoped?: boolean;
 }
 
 export type EvalReadHook = (event: EvalReadEvent) => void;
@@ -297,6 +303,46 @@ whenever the caller passes a plain object rather than reusing an `EvalContext`. 
 therefore cannot key a dependency on `(target, key)` alone for bare identifiers across runs;
 it needs the key (plus the caller's own context identity), or it needs callers to reuse one
 `EvalContext`. Asserted both ways in `read-hooks.spec.ts`.
+
+#### 3.5.1 `scoped` — decided here, not handed to Phase 3
+
+Step 4 shipped without a way to tell an arrow-function parameter from a real context read.
+`arrow-function-expression.ts:16` pushes the parameters as a scope on the *same*
+`EvalContext`, so a read of `item` inside `list.map(item => item.name)` arrives as
+`kind: 'identifier'`, `target: st.context`, `path: 'item'` — **shape-identical** to a read
+of a genuine context key. Step 4's summary handed the filtering to Phase 3. That was the
+wrong call and is reversed here.
+
+**Decision: `eval-core` emits `scoped: true`. Step 5.**
+
+- **Only `eval-core` can compute it.** A tracker downstream sees two events it cannot tell
+  apart; the walker knows which scope frame answered the lookup. Pushing this to Phase 3
+  means every consumer re-derives it by re-parsing the expression for bound names —
+  duplicated, and wrong in exactly the cases that are hard to parse.
+- **It is cheapest now.** `EvalReadEvent` is unpublished until step 6, so adding a field
+  costs nothing; after that it is a shape change to an exported type. Step 5 already
+  reopens `eval-hooks.ts` for `hasReadHooks`, so this rides along.
+- **Optional field, so no emission site is obliged to set it.** Absent reads as "not
+  scoped", which is right for every member branch.
+
+**The definition is narrow, and the narrowness is the point.**
+
+> `scoped` means **the key resolved from a scope pushed during this evaluation** —
+> `EvalContext.scopes`, the `Stack<Context>` that `arrow-function-expression.ts` pushes and
+> pops around a call. It does **not** mean "came from an `EvalScope`".
+
+`priorScopes` are `EvalScope` instances **registered by the caller** before evaluation
+(§ "Context resolution"). They hold exactly the long-lived objects a signal should track —
+`cat`, `dog`, a global `Math` namespace — and are as much a real dependency as `original`
+is. Flagging them would delete the dependencies Phase 3 exists to find, which is a worse
+failure than the one this field fixes. The two are easy to conflate because both are called
+"scopes" and one of them is literally class `EvalScope`; the discriminator is *lifetime*,
+not type: pushed during the walk versus registered before it.
+
+Concretely, in `EvalContext.get`'s four-step resolution order: step 1 (`scopes`) sets
+`scoped: true`; steps 2, 3 and 4 (`original`, `priorScopes`, `lookups`) do not. The spec
+must assert a `priorScopes` read is **not** flagged, or the field will be implemented as
+`instanceof EvalScope` by whoever touches it next.
 
 ### 3.6 Attachment to an evaluation
 
@@ -861,10 +907,15 @@ Each step is independently reviewable and leaves the suite green.
 
 ### Step 5 — Built-in hooks
 
-**Do this first.** The read guard has to be narrowed *before* the timing hook lands, not
-after: `trackTime` is what turns step 4's over-broad guard from harmless into a measurable
-regression, and § 3.7's promise is that work added to a per-node path stays off the paths
-that cannot use it.
+**Three pieces, in this order: `hasReadHooks`, then `scoped`, then the timing hook.** The
+order is load-bearing, not stylistic. The read guard must be narrowed *before* the timing
+hook lands, because `trackTime` is what turns step 4's over-broad guard from harmless into
+a measurable regression, and § 3.7's promise is that work added to a per-node path stays
+off the paths that cannot use it. `scoped` goes before the timing hook too, because it
+changes `EvalReadEvent` and the dependency tracker built later in this step consumes it —
+building the tracker first would mean writing its scope-filtering twice.
+
+#### 5a. `hasReadHooks`
 
 - **Edit**: `internal/classes/eval/eval-hooks.ts` — add `hasReadHooks`:
 
@@ -891,12 +942,44 @@ that cannot use it.
   per scope and scans it linearly, once per identifier node. A spy on a read hook cannot
   see this — the cost is incurred before any read hook would be called — so assert it
   against the walk's timing or by counting `getKey` invocations, not by counting events.
+
+#### 5b. `scoped` on `EvalReadEvent`
+
+Settled in § 3.5.1. `eval-core` emits the flag rather than leaving Phase 3 to re-derive it,
+because only the walker can distinguish an arrow-parameter binding from a real context read.
+
+- **Edit**: `internal/classes/eval/eval-hooks.ts` — add the optional `scoped?: boolean` to
+  `EvalReadEvent`. Optional, so member emission sites are unaffected and absent reads as
+  "not scoped".
+- **Edit**: `visitors/identifier.ts` — set `scoped: true` when the key resolved from
+  `EvalContext.scopes`, the stack `arrow-function-expression.ts:16` pushes and pops around
+  a call. **Not** when it resolved from `priorScopes`: those are caller-registered
+  `EvalScope`s holding long-lived objects, and they are real dependencies (§ 3.5.1). The
+  discriminator is lifetime — pushed during this walk — not `instanceof EvalScope`.
+  `EvalContext.get` already walks `scopes` first, so the determination is available where
+  the read resolves; whether it is exposed as a new `EvalContext` query or computed in the
+  visitor is an implementation call for the step, but it must not become a second, diverging
+  copy of `get`'s resolution order (the `getKey` divergence in `ROADMAP.md` is what that
+  looks like when it goes wrong).
+- **Edit**: `visitors/read-hooks.spec.ts` — three cases, and the second is the one that
+  stops this being implemented as `instanceof EvalScope`:
+  - `list.map(item => item.name)` — the `item` read carries `scoped: true`;
+  - a `priorScopes` read (`cat.num` from `eval.service.scope.spec.ts`'s context) carries
+    **no** `scoped` flag, asserted explicitly rather than by omission;
+  - an ordinary `original` context read carries no flag.
+- **Edit**: § 9.1's arrow-function row — Phase 3 filters on `scoped`, and no longer needs to
+  know how arrow parameters are represented.
+
+#### 5c. The timing hook and the dependency tracker
+
 - **New**: `internal/classes/eval/hooks/timing-hook.ts` — replaces `trackTime`, fixing the
   `console.time`/`console.timeEnd` mismatch and actually using the `performance.now()`
   readings (per-node-type totals on the returned handle instead of raw `console` output).
 - **New**: `internal/classes/eval/hooks/dependency-tracker.ts` —
   `createDependencyTracker()` returning `{ install(hooks): Unsubscribe, dependencies: ReadonlySet<string>, reads: EvalReadEvent[], reset() }`.
-  This is the roadmap's named exit criterion and Phase 3's input.
+  This is the roadmap's named exit criterion and Phase 3's input. It **skips `scoped` reads**
+  when building `dependencies` — that is the first consumer of 5b, and the reason 5b comes
+  first. `reads` keeps them, so a consumer that wants the raw stream still has it.
 - **Edit**: `internal/classes/eval/eval-options.ts` — restore the typed
   `trackTime?: boolean` declaration, currently commented out (`eval-options.ts:11`,
   `23-27`). There is no existing contract to preserve: **step 3 deleted the only reads**
@@ -928,10 +1011,13 @@ that cannot use it.
   registered, per-node-type totals are produced on the returned handle, and nothing is
   written to `console`.
 - **New**: specs for both; the tracker spec asserts `a.b + c` yields `{a, a.b, c}` and that a
-  re-evaluation after `reset()` reproduces the same set.
+  re-evaluation after `reset()` reproduces the same set. It must also assert that
+  `list.map(item => item.name)` yields `{list}` — **not** `{list, item, item.name}` — which
+  is 5b's payoff stated as a dependency set rather than as a flag.
 - **Exit**: `trackTime: true` no longer leaks unclosed `console.time` labels; tracker specs
   green; `internal/performance.spec.ts` green **including** the new node-hooks-only case —
-  registering `before`/`after` hooks must not run a single `getKey` or `readPath`.
+  registering `before`/`after` hooks must not run a single `getKey` or `readPath`; a
+  `priorScopes` read is **not** flagged `scoped`.
 
 ### Step 6 — Lifecycle & docs
 - **Edit**: `eval.service.ts` `ngOnDestroy` — call `state.hooks.clear()` alongside the
@@ -1102,14 +1188,14 @@ Step 4's implementation showed the original flat promise — "the target object 
 to be false in three of four cases. It is restated here as four separate guarantees rather
 than patched, because Phase 3 has to build different machinery for each.
 
-**Two of these Phase 3 must solve. Two it can accept.**
+**One of these Phase 3 must solve, two it can accept, and one `eval-core` solves for it.**
 
 | Read shape | `target` | Stable across evaluations? | Verdict |
 | :--- | :--- | :--- | :--- |
 | Member against a caller-owned object (`foo.bar`) | the object the key was read from | **Yes** | Rely on it |
 | Bare identifier (`foo`) | `st.context` | **No** — unless the caller reuses an `EvalContext` | **Must solve** |
 | Optional member on a nullish base (`unknown?.x`) | a synthetic `{}` | **No** — fresh every time | Acceptable |
-| Arrow-function parameter (`item` in `list.map(item => …)`) | `st.context` | n/a — it is not a dependency at all | **Must solve** |
+| Arrow-function parameter (`item` in `list.map(item => …)`) | `st.context` | n/a — it is not a dependency at all | Solved in `eval-core`: filter on `scoped` |
 
 **Member reads against caller-owned objects — rely on it.** A plain context is copied into a
 fresh `Registry` per evaluation under `caseInsensitive`, but the entries still reference the
@@ -1133,15 +1219,25 @@ differs on every run. Tracking cannot match it — and does not need to: the rea
 invalidate it. `path` still reconstructs (`'unknown.x'`), so a path-keyed tracker degrades
 gracefully. Worth documenting to consumers, not worth engineering around.
 
-**Arrow-function parameters — Phase 3 must filter these.** `arrow-function-expression.ts:16`
-pushes the parameters as a scope on the *same* `EvalContext`, so a read of `item` inside
-`list.map(item => item.name)` is **shape-identical** to a read of a real context key:
-`kind: 'identifier'`, `target: st.context`, `path: 'item'`. A tracker that does not filter
-will register loop variables as dependencies, and `path` strings from different arrow
-bodies collide with each other and with same-named context keys. Nothing in the event marks
-a read as scope-local today. Phase 3 either filters on its own knowledge of which names are
-bound (it parses the expression anyway), or a later `eval-core` step adds a `scoped: true`
-flag to `EvalReadEvent` — additive, and the cheaper fix if more than one consumer needs it.
+**Arrow-function parameters — `eval-core` flags these; Phase 3 filters on the flag.**
+`arrow-function-expression.ts:16` pushes the parameters as a scope on the *same*
+`EvalContext`, so a read of `item` inside `list.map(item => item.name)` is
+**shape-identical** to a read of a real context key: `kind: 'identifier'`,
+`target: st.context`, `path: 'item'`. A tracker that did not filter would register loop
+variables as dependencies, and `path` strings from different arrow bodies collide with each
+other and with same-named context keys.
+
+Step 4 shipped without a discriminator and handed the filtering downstream. **That is
+reversed**: step 5 adds `scoped?: boolean` to `EvalReadEvent` (§ 3.5.1), because only the
+walker can tell a scope frame from a context read — a consumer sees two identical events —
+and because the field is free while `EvalReadEvent` is unpublished. Phase 3 therefore
+filters on `event.scoped` and does not need to know how arrow parameters are represented,
+or to re-parse expressions for bound names. `createDependencyTracker()` does this filtering
+already, so a consumer using it inherits the behaviour.
+
+Note the flag's definition is **lifetime, not type**: `scoped` marks a scope pushed *during
+this evaluation*. Caller-registered `priorScopes` — `EvalScope` instances holding
+long-lived objects — are real dependencies and are never flagged.
 
 One further limit, orthogonal to identity: **a namespace identifier is not case-corrected.**
 `EvalContext.getKey` searches inside each prior scope's context but never its `namespace`,
