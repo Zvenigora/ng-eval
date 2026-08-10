@@ -422,7 +422,7 @@ private readonly _open: { node: AnyNode; state: EvalState }[] = [];
 enter(node: AnyNode, state: EvalState): void { this._open.push({ node, state }); }
 
 /** Called by afterVisitor's dispatcher, before the hooks fire. */
-exit(): void { this._open.pop(); }
+exit(): void { this._open.pop(); }   // step 3 replaces this with exit(state, node) — see below
 
 /** Depth of the open-node stack; captured as a mark before a walk. */
 get depth(): number { return this._open.length; }
@@ -438,13 +438,95 @@ unwind(error: unknown): void { this.unwindTo(0, error); }
 ```
 
 `enter` takes the state because `EvalNodeHookEvent.state` is required and `unwind` has no
-state parameter, so each open node carries its own. `exit` takes no node: the pop is
-positional, and the popped entry already carries the node an unwound event needs.
+state parameter, so each open node carries its own.
+
+**Decision — `exit` pops by identity, not by position.** `exit(state, node)` takes the node
+the visitor is closing and reconciles the stack against it. Three cases, all three
+specified:
+
+| Case | Stack | Action |
+| :--- | :--- | :--- |
+| 1 | top **is** `node` | Pop it. The ordinary path; one array `pop`. |
+| 2 | `node` is present *below* the top | Synthesise an `after` with `completed: false` for each frame above `node`, innermost first, then pop `node` itself. |
+| 3 | `node` is **not on the stack** | Pop nothing. Return without touching the stack or emitting. |
+
+Case 3 is not defensive padding — it is what stops a stray `exit` from draining the whole
+stack. Without it the natural implementation ("pop until you find it") walks to the bottom
+when the node is absent, synthesising a `completed: false` event for every genuinely-open
+enclosing frame and leaving the state empty, so a later real failure unwinds nothing. An
+`exit` for a node that was never entered is a no-op, because the only honest answer to
+"close this node" when the node was never opened is to do nothing. The case is reachable
+whenever the `hasHooks` guard flips mid-walk, and cheap to hold: it is the not-found branch
+of the same scan case 2 already needs.
+
+Note what case 3 does *not* suppress: `exit` declines to pop, but `dispatch` still emits
+the node's own `completed: true` event afterwards. The guarantee this section makes is
+therefore **one-directional** — every `before` gets exactly one `after`, but an `after` can
+arrive with no `before`. Consumers that pair events must key on the node, not assume a
+matched sequence.
+
+**The scan takes the innermost occurrence — `lastIndexOf`, not `indexOf`.** The same AST
+node can legitimately be open more than once on one state: an arrow-function body is
+re-walked on every call, so a recursive arrow has each body node open once per live
+recursion level. Taking the outermost match would flush every enclosing level as
+`completed: false` on the first case-2 hit. The innermost match is the frame the visitor
+currently returning actually opened.
+
+Residual limit, recorded rather than fixed: `exit` has no mark, so it cannot tell "absent
+from this walk" from "absent from the stack". A node open only in an *enclosing* walk falls
+into case 2, and the flush crosses the walk boundary. That needs an `afterVisitor` with no
+matching `beforeVisitor` in the same frame, which no visitor does today — but step 4 adds
+emission points to `identifier.ts` and `member-expression.ts`, so it is worth not making
+reachable by accident.
+
+The synthesised events from case 2 carry **no `value`** — the node never pushed one that
+`afterVisitor` could read — and **no `error`**, because there is no error: nothing threw,
+the frames are being closed because an enclosing visitor moved on without them. `error` is
+therefore genuinely optional on the unwound path, not merely typed as optional, and
+`EvalNodeHookEvent.error` keeps its documented meaning of "the error that aborted
+evaluation" rather than being stuffed with a synthetic placeholder. Consumers distinguish
+the two unwind sources by whether `error` is present: `unwindTo` supplies one, `exit` does
+not.
+
+Rationale for identity over position: a positional pop is only correct if every visitor
+brackets its body exactly — one `afterVisitor` per `beforeVisitor`, on every path. Most do.
+`await-expression.ts:37-78` does not: it catches a child's *synchronous* throw, converts it
+to a promise rejection, and continues to its own `pushVisitorResult`/`afterVisitor`, so the
+child is still open when the parent closes. Under a positional pop the parent's `exit` then
+closes the *child's* frame, the child never receives an `after` at all, and one frame leaks
+onto the `EvalState` permanently — surviving into every later evaluation on that state, so
+a subsequent genuine failure unwinds a node from an earlier successful walk. Measured on
+`call(async () => await obj.__proto__)`: six `before` events, five `after` events, and
+`depth(state) === 1` after a walk that *succeeded*.
+
+That is the general shape of the hazard, not a single bug: positional popping is what turns
+one badly-bracketed visitor into a silent, cascading misattribution across every node
+around it. Identity checking is what makes this section's guarantee hold *for* visitors
+that do not follow the convention, instead of assuming they all do — which is the weaker
+claim the positional form was actually making. It costs one reference comparison against
+the top of the stack on the ordinary path, inside the `hasHooks` guard, and it converts a
+silent desync into a `completed: false` event a consumer can see.
 
 **Decision — unwinding is mark-based, not absolute.** `evaluate()` captures
-`const mark = state.hooks.depth` before `walk.recursive` and its catch calls
-`state.hooks.unwindTo(mark, error)`. `unwind(error)` stays as the drain-everything form for
-callers that own the whole walk.
+`const mark = state.hooks.depth(state)` before `walk.recursive` and its catch calls
+`state.hooks.unwindTo(mark, error, state)`. `unwind(error, state)` stays as the
+drain-everything form for callers that own the whole walk.
+
+**Both entry points do this, not just the sync one.** `evaluateAsync` performs the same
+synchronous `walk.recursive` inside its own `try`/`catch`, so it captures its own mark and
+unwinds to it in its catch. Omitting it would leave a throw under `evalAsync` with the
+walk's open nodes stranded on the state — unmatched `before` events, and a stack that a
+later evaluation on the same state would inherit.
+
+`evaluateAsync` has a *second* failure mode the sync path does not: `awaitAllPromises` can
+reject after the walk itself completed successfully. By then every node the walk opened has
+already been closed by its own `afterVisitor`, so `depth(state)` is back at the mark and
+`unwindTo` finds nothing above it. **`unwindTo` is a no-op whenever depth is already at (or
+below) the mark** — its loop condition is `open.length > mark` — so that path synthesises
+zero events rather than inventing `completed: false` events for nodes that genuinely
+completed. This is the reason the guard is a depth comparison and not a "did we fail?"
+flag, and it is asserted directly rather than inferred from before/after balance, which
+would also hold if a spurious pair were emitted.
 
 Rationale: `evaluate()` is re-entrant, and the re-entry is *deferred*.
 `arrow-function-expression.ts:17` calls `evaluate(node.body, st)` with the **same state**,
@@ -510,7 +592,7 @@ open-node stack *first* and calls `emit` *second*, on `before` and on `after` al
 
 ```ts
 // before: enter, then emit          // after: exit, then emit
-this.enter(node, state);             this.exit(state);
+this.enter(node, state);             this.exit(state, node);
 this.emit({ phase: 'before', … });   this.emit({ phase: 'after', … });
 ```
 
@@ -616,15 +698,24 @@ Each step is independently reviewable and leaves the suite green.
   mismatched `console.time` calls, so the duplicate-label warnings the library currently
   emits to consumers stop here rather than in step 5.
 - **Signature change**: return type `number | undefined` → `void`. Safe per finding 1.2.2;
-  all 19 call sites already discard the value, so **no visitor body changes**.
-- **Edit**: `internal/functions/evaluate.ts` — capture `const mark = state.hooks.depth`
+  the value is already discarded everywhere, so **no visitor body changes**. The count is
+  19 visitor *files* — 20 `beforeVisitor` and 23 `afterVisitor` calls, because
+  `identifier.ts` holds two visitor functions and `logical-expression.ts` has four `after`
+  exits.
+- **Edit**: `internal/functions/evaluate.ts` — capture `const mark = state.hooks.depth(state)`
   before `walk.recursive`, and have the existing catch call
-  `state.hooks.unwindTo(mark, error)` before `state.result.setFailure(error)`. Two new call
-  sites in one function; this is what keeps finding 1.2.7 out of the visitors. Both sit
-  behind the `hasHooks` guard, so the no-hooks path is untouched. The mark is **not**
+  `state.hooks.unwindTo(mark, error, state)` before `state.result.setFailure(error)`. This
+  applies to **both** entry points in the file, `evaluate` and `evaluateAsync` — four new
+  call sites in one file. `evaluateAsync` runs the same synchronous walk inside its own
+  `try`/`catch`, so leaving it out would let a throw under `evalAsync` strand the open-node
+  stack, and this step's "balanced on the throw path" exit criterion would hold only for the
+  sync entry point (§ 3.8). This is what keeps finding 1.2.7 out of the visitors. All four
+  sit behind the `hasHooks` guard, so the no-hooks path is untouched. The mark is **not**
   optional: `evaluate()` is re-entered with the same state from
   `arrow-function-expression.ts:17`, and an absolute `unwind` there drains the outer walk's
-  open nodes (§ 3.8).
+  open nodes (§ 3.8). The capture goes **inside** the existing `if (node)` block, not at the
+  top of the function: `evaluate.test.ts` drives the `node === undefined` case with a bare
+  `{} as EvalState`, which has no `hasHooks` to read.
 - **Edit**: `eval-hooks.ts` — reorder the `before` edge of `dispatch` to `enter` *then*
   `emit`, mirroring the `after` edge, per § 3.8's bookkeeping-before-user-code rule. Without
   it a `before` hook that throws under `onHookError: 'throw'` leaves its node off the open
@@ -633,6 +724,20 @@ Each step is independently reviewable and leaves the suite green.
   (`depth` and `unwindTo(mark, error, state)` are **already done** — step 2 added them along
   with the move of the open-node stack onto `EvalState`; `unwind` is already
   `unwindTo(0, error, state)`.)
+- **Edit**: `eval-hooks.ts` — change `exit(state)` to `exit(state, node)` and pop by
+  **identity** per the three-case table in § 3.8, so a visitor that does not bracket its
+  body exactly cannot make the parent close the child's frame. `await-expression.ts` is
+  such a visitor and the reason this is in step 3 rather than deferred: without it the
+  step's own "every before matched by exactly one after" exit criterion is false on
+  `call(async () => await obj.__proto__)`. `dispatch`'s `after` edge is the only caller.
+- **Edit**: `ROADMAP.md` — new "Deferred defects in the visitor layer" section recording,
+  without fixing, the three visitor-layer defects this step surfaced but is not scoped to
+  change (§ 3.8's rationale names the first of them). Behavioral fixes, so they need their
+  own steps.
+- **Edit**: `eval-hooks.spec.ts` — one case per row of the § 3.8 table: top-is-node pops
+  and emits nothing extra; a node below the top flushes the frames above it as
+  `completed: false` with **no `value` and no `error`** before popping; a node absent from
+  the stack pops nothing and leaves the enclosing frames open.
 - **Edit**: `eval-hooks.spec.ts` — `unwindTo` leaves nodes below the mark open, and a
   nested drain to a mark does not disturb the outer frame. Plus the ordering fix above: a
   `before` hook that throws under the `'throw'` policy still leaves its node open
@@ -655,7 +760,12 @@ Each step is independently reviewable and leaves the suite green.
   - the mark holds under re-entry: an arrow function whose body throws, invoked by a
     context-supplied host function that **swallows** the throw, leaves the enclosing nodes
     open and still balanced — no enclosing node receives both a `completed: false` and a
-    `completed: true` event (§ 3.8).
+    `completed: true` event (§ 3.8);
+  - identity-checked `exit` under a visitor that swallows a child's throw:
+    `call(async () => await obj.__proto__)` ends with `depth(state) === 0`, every `before`
+    matched, and the `MemberExpression`'s `after` carrying `completed: false`. This is the
+    case a positional pop got wrong, so it is asserted end-to-end and not only at the
+    `EvalHooks` unit level.
 - **Exit**: full existing suite green (the load-bearing regression gate for this step);
   before/after counts balanced on both the success and throw paths; `trackTime: true` no
   longer writes to `console`.
@@ -753,6 +863,13 @@ Each step is independently reviewable and leaves the suite green.
   entries are typed to return `number | undefined`, while `EvalNodeHook` mandates `void`
   (§ 3.3, § 8). Shipping both would publish two incompatible hook shapes from one barrel
   export.
+
+  **The deprecation note must say what those two lines now are.** Step 3 widened the real
+  `beforeVisitor` / `afterVisitor` to `void`, so `recursive-visitors.ts:13-14` is the *last
+  published trace* of the timing-stub return type that step deleted — a signature no
+  function in the library has any more. Nothing implements `RecursiveVisitorState`, so a
+  reader who finds it has no way to discover that from the code; the `@deprecated` text is
+  the only place it can be recorded. Raised by the step-3 review.
 - **Edit**: `CHANGELOG.md` — entry describing the new hook API and the `trackTime` fix, and
   noting the deprecation.
 

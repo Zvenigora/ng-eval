@@ -17,6 +17,10 @@ export const evaluate = (node: AnyNode | undefined, state: EvalState)
 
     state.result.start();
 
+    // Captured inside the `if (node)` block on purpose: callers reach the early
+    // return above with a bare state that has no hooks to read. Do not hoist.
+    const mark = state.hasHooks ? state.hooks.depth(state) : 0;
+
     try {
       const visitors: walk.RecursiveVisitors<EvalState> = getDefaultVisitors();
 
@@ -31,6 +35,13 @@ export const evaluate = (node: AnyNode | undefined, state: EvalState)
       return value;
     } catch (error) {
       state.result.stop();
+      // A visitor that throws skips its afterVisitor, so close whatever this
+      // walk left open. Unwinding to the mark rather than to the bottom is what
+      // stops a nested evaluate - the arrow-function body runs on this same
+      // state - from draining the enclosing walk's open nodes.
+      if (state.hasHooks) {
+        state.hooks.unwindTo(mark, error, state);
+      }
       state.result.setFailure(error);
       throw error;
     }
@@ -116,6 +127,10 @@ export const evaluateAsync = async (ast: AnyNode | undefined, state: EvalState)
 
   state.result.start();
 
+  // Captured after the `!ast` early return above, for the same reason the sync
+  // entry point captures inside its `if (node)` block. Do not hoist.
+  const mark = state.hasHooks ? state.hooks.depth(state) : 0;
+
   try {
     const visitors: walk.RecursiveVisitors<EvalState> = getDefaultVisitors();
 
@@ -140,6 +155,14 @@ export const evaluateAsync = async (ast: AnyNode | undefined, state: EvalState)
     return value;
   } catch (error) {
     state.result.stop();
+    // The walk here is synchronous too, so it strands open nodes on a throw
+    // exactly as the sync entry point does. This catch also receives the
+    // rethrow from the awaitAllPromises handler above; in that case the walk
+    // had already closed every node it opened, the depth is back at the mark,
+    // and unwindTo correctly synthesises nothing.
+    if (state.hasHooks) {
+      state.hooks.unwindTo(mark, error, state);
+    }
     state.result.setFailure(error);
     throw error;
   }

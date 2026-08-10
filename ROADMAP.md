@@ -131,6 +131,45 @@ Key design questions:
 Exit criteria: schema shape for a dynamic field, `visible`/`text` support wired to
 Reactive Forms, a worked example, tests, README.
 
+## Deferred defects in the visitor layer
+
+Surfaced by the Phase 1 hook work (`docs/side-effects/phase-1-plan.md`) and recorded
+rather than fixed: each is a **behavioral** change, and Phase 1 is scoped to be additive.
+Identity-checked `exit` (§ 3.8 of the plan) means the hook layer now stays balanced in
+spite of all three, so none of them is urgent — but none of them is gone either.
+
+- **`await-expression.ts` downgrades a synchronous throw to a promise rejection.**
+  `awaitVisitor` wraps `callback(node.argument, st)` in a `try`/`catch` inside a `Promise`
+  executor, so a child that throws synchronously — a prototype-pollution guard rejection,
+  for instance — does not propagate. It becomes a rejected promise that only surfaces when
+  something awaits it, and the visitor continues to its own `pushVisitorResult`. In the
+  async path a security rejection therefore arrives as a rejected value rather than a
+  throw, and in the sync path it may never be observed at all. Fixing it means moving the
+  `callback` out of the executor, which changes what `evalAsync` throws and when — a
+  breaking change for anyone catching the current shape, so it needs its own step and a
+  version bump.
+
+- **`update-expression.ts` desynchronizes the value stack under `preserveParens`.**
+  `updateExpressionVisitor`'s `if`/`else if` chain handles `Identifier` and
+  `MemberExpression` arguments and falls through silently for anything else — pushing
+  nothing, but still calling `afterVisitor`. `ParserOptions` is
+  `Partial<acorn.Options> & {…}` (`internal/interfaces/parser-types.ts:3`), so a consumer
+  may pass `preserveParens: true`, and `(a)++` then parses with
+  `argument.type === 'ParenthesizedExpression'` (verified against the acorn in this repo).
+  The result is a wrong value for every node downstream of it, not merely an untidy
+  bracket. This one is a real defect with a real route to it and deserves a proper fix —
+  a `ParenthesizedExpression` visitor, or unwrapping the argument here — rather than
+  triage. It is listed here only because it is out of Phase 1's scope.
+
+- **`import-expression.ts` has a dead `afterVisitor`.** `importExpressionVisitor` calls it
+  after an unconditional throw, so the line can never run. Cosmetic; tidy when that visitor
+  is next touched.
+
+  For both: under identity-checked `exit` (§ 3.8 of the Phase 1 plan) a violation of the
+  bracketing convention now produces a visible `completed: false` event instead of a silent
+  stack desync, so the *hook* layer stays balanced either way. That is containment, not a
+  fix — the value stack is a separate stack and is not protected by it.
+
 ## Suggested order
 
 1. Phase 1 (hooks) — unblocks 3 and 4, useful standalone (e.g. tracing/logging use cases).

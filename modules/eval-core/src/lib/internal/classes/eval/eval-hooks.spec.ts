@@ -16,11 +16,13 @@ describe('EvalHooks', () => {
   let state: EvalState;
   let binary: AnyNode;
   let identifier: AnyNode;
+  let member: AnyNode;
 
   beforeEach(() => {
     state = EvalState.fromContext({}, {});
     binary = nodeOf('a + b');
     identifier = nodeOf('a');
+    member = nodeOf('a.b');
   });
 
   it('should create an instance', () => {
@@ -618,6 +620,168 @@ describe('EvalHooks', () => {
 
       expect(events).toEqual([]);
       expect(hooks.depth(state)).toBe(1);
+    });
+
+    it('should emit nothing when the depth is already back at the mark', () => {
+      const hooks = new EvalHooks();
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('after', '*', (e) => events.push(e));
+
+      const mark = hooks.depth(state);
+      hooks.dispatch('before', binary, state);
+      hooks.dispatch('after', binary, state, 3);
+      events.length = 0;
+
+      hooks.unwindTo(mark, new Error('boom'), state);
+
+      expect(events).toEqual([]);
+      expect(hooks.depth(state)).toBe(mark);
+    });
+
+    it('should leave the outer frame untouched when a nested drain unwinds to its own mark', () => {
+      const hooks = new EvalHooks();
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('after', '*', (e) => events.push(e));
+
+      // Outer walk opens one node, then a nested walk opens two of its own.
+      hooks.dispatch('before', binary, state);
+      const nestedMark = hooks.depth(state);
+      hooks.dispatch('before', identifier, state);
+      hooks.dispatch('before', member, state);
+
+      hooks.unwindTo(nestedMark, new Error('boom'), state);
+
+      expect(events.map((e) => e.node.type)).toEqual(['MemberExpression', 'Identifier']);
+      expect(events.every((e) => e.completed === false)).toBe(true);
+      expect(hooks.depth(state)).toBe(nestedMark);
+
+      // The outer frame is still open and still closes normally.
+      events.length = 0;
+      hooks.dispatch('after', binary, state, 3);
+
+      expect(events.map((e) => e.node.type)).toEqual(['BinaryExpression']);
+      expect(events[0].completed).toBe(true);
+      expect(hooks.depth(state)).toBe(0);
+    });
+  });
+
+  describe('identity-checked exit', () => {
+
+    it('should pop the node when it is already on top', () => {
+      const hooks = new EvalHooks();
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('after', '*', (e) => events.push(e));
+
+      hooks.dispatch('before', binary, state);
+      hooks.dispatch('after', binary, state, 3);
+
+      expect(events.map((e) => e.node.type)).toEqual(['BinaryExpression']);
+      expect(events[0].completed).toBe(true);
+      expect(hooks.depth(state)).toBe(0);
+    });
+
+    it('should flush the frames above a node before popping it', () => {
+      const hooks = new EvalHooks();
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('after', '*', (e) => events.push(e));
+
+      // A visitor that swallowed its child's throw leaves the child open.
+      hooks.dispatch('before', binary, state);
+      hooks.dispatch('before', identifier, state);
+      hooks.dispatch('before', member, state);
+
+      hooks.dispatch('after', binary, state, 3);
+
+      expect(events.map((e) => e.node.type))
+        .toEqual(['MemberExpression', 'Identifier', 'BinaryExpression']);
+      expect(events.map((e) => e.completed)).toEqual([false, false, true]);
+      expect(hooks.depth(state)).toBe(0);
+    });
+
+    it('should synthesise the flushed events without a value or an error', () => {
+      const hooks = new EvalHooks();
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('after', '*', (e) => events.push(e));
+
+      hooks.dispatch('before', binary, state);
+      hooks.dispatch('before', identifier, state);
+
+      hooks.dispatch('after', binary, state, 3);
+
+      const flushed = events.filter((e) => e.completed === false);
+      expect(flushed).toHaveLength(1);
+      expect(flushed[0].value).toBeUndefined();
+      expect(flushed[0].error).toBeUndefined();
+      expect('error' in flushed[0]).toBe(false);
+    });
+
+    it('should pop nothing when the node is not on the stack', () => {
+      const hooks = new EvalHooks();
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('after', '*', (e) => events.push(e));
+
+      hooks.dispatch('before', binary, state);
+      hooks.dispatch('before', identifier, state);
+
+      // `member` was never entered - closing it must not drain the stack.
+      hooks.dispatch('after', member, state, 'x');
+
+      expect(events.map((e) => e.node.type)).toEqual(['MemberExpression']);
+      expect(events[0].completed).toBe(true);
+      expect(hooks.depth(state)).toBe(2);
+      expect(state.hookBookkeeping.open.map((n) => n.type))
+        .toEqual(['BinaryExpression', 'Identifier']);
+    });
+
+    it('should leave an empty stack empty when an unknown node is closed', () => {
+      const hooks = new EvalHooks();
+      hooks.on('after', '*', () => undefined);
+
+      hooks.dispatch('after', binary, state, 3);
+
+      expect(hooks.depth(state)).toBe(0);
+    });
+  });
+
+  describe('bookkeeping ordering', () => {
+
+    it('should open the node before running before hooks, so a throwing hook cannot omit it', () => {
+      const hooks = new EvalHooks({ onHookError: 'throw' } as EvalOptions);
+      hooks.on('before', '*', () => {
+        throw new Error('boom');
+      });
+
+      expect(() => hooks.dispatch('before', binary, state)).toThrow('boom');
+      expect(hooks.depth(state)).toBe(1);
+    });
+
+    it('should unwind a node whose before hook threw under the throw policy', () => {
+      const hooks = new EvalHooks({ onHookError: 'throw' } as EvalOptions);
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('before', '*', () => {
+        throw new Error('boom');
+      });
+      hooks.on('after', '*', (e) => events.push(e));
+
+      const mark = hooks.depth(state);
+      expect(() => hooks.dispatch('before', binary, state)).toThrow('boom');
+      hooks.unwindTo(mark, new Error('boom'), state);
+
+      expect(events).toHaveLength(1);
+      expect(events[0].node.type).toBe('BinaryExpression');
+      expect(events[0].completed).toBe(false);
+      expect(hooks.depth(state)).toBe(mark);
+    });
+
+    it('should close the node before running after hooks, so a throwing hook cannot corrupt the stack', () => {
+      const hooks = new EvalHooks({ onHookError: 'throw' } as EvalOptions);
+      hooks.on('after', '*', () => {
+        throw new Error('boom');
+      });
+
+      hooks.dispatch('before', binary, state);
+      expect(() => hooks.dispatch('after', binary, state, 3)).toThrow('boom');
+      expect(hooks.depth(state)).toBe(0);
     });
   });
 

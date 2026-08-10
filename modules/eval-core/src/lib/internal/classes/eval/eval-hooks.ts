@@ -17,9 +17,17 @@ export interface EvalNodeHookEvent {
   readonly state: EvalState;
   /** Value pushed by the visitor; only present on 'after'. */
   readonly value?: unknown;
-  /** False when this 'after' event was synthesised during error unwinding. */
+  /** False when this 'after' event was synthesised rather than dispatched by a visitor. */
   readonly completed: boolean;
-  /** The error that aborted evaluation; only present when `completed` is false. */
+  /**
+   * The error that aborted evaluation.
+   *
+   * Present only on events synthesised by `unwindTo`, where evaluation really
+   * did fail. Frames closed by `exit` - because an enclosing visitor moved on
+   * without them - also carry `completed: false`, but no error: nothing threw,
+   * and the evaluation may well succeed. Test for the property rather than
+   * assuming `completed: false` implies one.
+   */
   readonly error?: unknown;
 }
 
@@ -218,37 +226,92 @@ export class EvalHooks {
   /**
    * Fires the hooks registered for a node, keyed first and wildcard second.
    *
-   * On 'before' the node is pushed onto the open-node stack *after* the hooks
-   * run; on 'after' it is popped *before* they run, so a hook that throws cannot
-   * corrupt the stack.
+   * Bookkeeping runs before user code on both edges: 'before' pushes the node
+   * onto the open-node stack and *then* emits, 'after' pops and *then* emits.
+   * The shared rule is that hook code only ever runs once the stack already
+   * tells the truth about this node, because `emit` can throw - under the
+   * 'throw' policy a hook's error propagates out of it. Emitting first on the
+   * 'before' edge would leave a node that some hooks had already been told
+   * about missing from the stack, and therefore invisible to `unwindTo`.
    *
    * @param value The value the visitor pushed; meaningful on 'after' only.
    */
   public dispatch(phase: EvalHookPhase, node: AnyNode, state: EvalState, value?: unknown): void {
     if (phase === 'after') {
-      this.exit(state);
+      this.exit(state, node);
       this.emit({ phase, node, state, value, completed: true }, false);
       return;
     }
 
-    this.emit({ phase, node, state, completed: true }, false);
     this.enter(node, state);
+    this.emit({ phase, node, state, completed: true }, false);
   }
 
   /**
    * Records a node as open on the state. Called by the 'before' dispatcher
-   * after its hooks fire.
+   * before its hooks fire.
    */
   public enter(node: AnyNode, state: EvalState): void {
     state.hookBookkeeping.open.push(node);
   }
 
   /**
-   * Closes the innermost open node. Called by the 'after' dispatcher before its
-   * hooks fire.
+   * Closes `node`, matching it by **identity** rather than by position. Called
+   * by the 'after' dispatcher before its hooks fire.
+   *
+   * Three cases:
+   *
+   * 1. `node` is on top - pop it. The ordinary path, one reference comparison.
+   * 2. `node` is open but not on top - some visitor between here and there
+   *    never closed itself. Flush those frames innermost-first as
+   *    `completed: false`, then pop `node`.
+   * 3. `node` is not open at all - pop nothing and emit nothing.
+   *
+   * Case 3 is what keeps a stray `exit` from draining the stack: the naive
+   * "pop until you find it" would walk to the bottom, synthesise an event for
+   * every genuinely-open enclosing frame, and leave a later real failure with
+   * nothing to unwind.
+   *
+   * Popping positionally instead would be correct only if every visitor
+   * bracketed its body exactly. `await-expression.ts` does not - it catches a
+   * child's synchronous throw and continues to its own `afterVisitor` - so a
+   * positional pop closes the child's frame under the parent's name, drops the
+   * child's `after` entirely, and leaks one frame onto the state for good.
+   *
+   * The synthesised events carry no `value` (the node never pushed one) and no
+   * `error` (nothing threw; the frames are being closed because an enclosing
+   * visitor moved on without them).
+   *
+   * They are emitted under the collect policy even when the consumer chose
+   * 'throw'. That is required, not merely lenient: a rethrow here would escape
+   * the flush loop before it finished popping, re-creating the leak this
+   * identity check exists to prevent. A 'throw'-policy consumer sees these in
+   * `state.hookErrors` instead.
    */
-  public exit(state: EvalState): void {
-    state.hookBookkeeping.open.pop();
+  public exit(state: EvalState, node: AnyNode): void {
+    const open = state.hookBookkeeping.open;
+
+    if (open.length > 0 && open[open.length - 1] === node) {
+      open.pop();
+      return;
+    }
+
+    // The innermost occurrence is the one being closed: a node can legitimately
+    // be open twice, since an arrow-function body is re-walked on every call.
+    const index = open.lastIndexOf(node);
+    if (index < 0) {
+      return;
+    }
+
+    while (open.length > index + 1) {
+      const stranded = open.pop();
+      if (!stranded) {
+        break;
+      }
+      this.emit({ phase: 'after', node: stranded, state, completed: false }, true);
+    }
+
+    open.pop();
   }
 
   /**

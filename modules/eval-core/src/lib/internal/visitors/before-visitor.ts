@@ -1,13 +1,19 @@
 import { AnyNode } from 'acorn';
 import { EvalState } from '../classes/eval';
 
-export const beforeVisitor = (node: AnyNode, st: EvalState) => {
+/**
+ * Opens a node: records it as open and fires the registered 'before' hooks.
+ *
+ * Called at the top of every visitor body. The guard is a single boolean field
+ * read - no options lookup - so an evaluation with no hooks pays almost
+ * nothing, and it wraps the open-node bookkeeping as well as the hooks
+ * themselves so `enter` and `exit` cannot become unpaired mid-walk.
+ */
+export const beforeVisitor = (node: AnyNode, st: EvalState): void => {
 
-  const options = st.options as Record<string, unknown>;
-  if (options?.['trackTime']) {
-    const t = performance.now();
-    console.time('before: ' + node.type);
-    return t;
+  if (!st.hasHooks) {
+    return;
   }
-  return undefined;
+
+  st.hooks.dispatch('before', node, st);
 }
