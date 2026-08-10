@@ -78,10 +78,28 @@ A new visitor must push exactly one value on **every** exit path and pop exactly
 wrong operand. `logical-expression.ts` (short-circuiting, 4 exits) is the reference for
 multi-exit handling.
 
-Every visitor brackets its body with `beforeVisitor` / `afterVisitor`. These are currently
-timing-only stubs gated on `options.trackTime`, and are the designated dispatch point for
-the Phase 1 user-registerable hook API — 19 call sites already exist, so the hook work
-changes those two functions, not the visitors.
+Every visitor brackets its body with `beforeVisitor` / `afterVisitor` — 19 visitor files,
+20 `beforeVisitor` and 23 `afterVisitor` calls (`identifier.ts` holds two visitor
+functions, `logical-expression.ts` has four `after` exits). Both are **hook dispatchers**:
+each returns immediately unless `st.hasHooks`, then fires the registered `EvalHooks`
+callbacks for that node. They return `void`.
+
+So there are **two** stack invariants, not one, and a new visitor must satisfy both:
+
+- the value stack above — push exactly one, pop exactly one per child;
+- the open-node stack — exactly one `afterVisitor` per `beforeVisitor`, on every exit path
+  including the ones an exception takes.
+
+The second one has a safety net and the first does not, which is the trap. `EvalHooks.exit`
+matches the closing node by **identity** and flushes any frames still open above it, and
+`evaluate` / `evaluateAsync` unwind to a depth mark in their `catch`. A visitor that
+swallows a child's throw between its own `beforeVisitor` and `afterVisitor` — which
+`await-expression.ts` does — therefore looks perfectly healthy to the hook layer while the
+*value* stack is silently one entry out, and every downstream node reads the wrong operand.
+Making the hook stack self-correcting made value-stack corruption quieter, not louder: do
+not read balanced hook events as evidence that a visitor is correctly bracketed. See
+`docs/side-effects/phase-1-plan.md` § 3.8 and the "Deferred defects in the visitor layer"
+section of `ROADMAP.md`.
 
 ### Sync vs. async
 

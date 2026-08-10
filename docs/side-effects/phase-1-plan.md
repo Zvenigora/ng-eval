@@ -488,6 +488,15 @@ evaluation" rather than being stuffed with a synthetic placeholder. Consumers di
 the two unwind sources by whether `error` is present: `unwindTo` supplies one, `exit` does
 not.
 
+**Case 2's events are emitted under the collect policy even for a consumer who chose
+`'throw'`.** That is required, not lenient: `handleError` rethrows out of `emit`, so a
+throwing hook would escape the flush loop before it finished popping — abandoning the
+frames it had not reached yet and re-creating the exact leak the identity check exists to
+prevent. A `'throw'`-policy consumer sees these in `state.hookErrors` instead. Note this is
+a *different* justification from the same downgrade inside `unwindTo`: there the argument is
+that evaluation has already failed and the original error is the one worth propagating,
+which is not true here — nothing threw, and the evaluation may well succeed.
+
 Rationale for identity over position: a positional pop is only correct if every visitor
 brackets its body exactly — one `afterVisitor` per `beforeVisitor`, on every path. Most do.
 `await-expression.ts:37-78` does not: it catches a child's *synchronous* throw, converts it
@@ -797,11 +806,25 @@ Each step is independently reviewable and leaves the suite green.
   This is the roadmap's named exit criterion and Phase 3's input.
 - **Edit**: `internal/classes/eval/eval-options.ts` — restore the typed
   `trackTime?: boolean` declaration, currently commented out (`eval-options.ts:11`,
-  `23-27`). There is no existing contract to preserve: the live read is an untyped string
-  index and the only in-repo setter sets it to `false` (finding 1.2.3), so this step
-  **defines** the option rather than porting it.
+  `23-27`). There is no existing contract to preserve: **step 3 deleted the only reads**
+  (they were untyped string indexes in `before-visitor.ts` / `after-visitor.ts`), and the
+  one in-repo setter sets it to `false` (finding 1.2.3). So between step 3 and this step the
+  option is inert, and this step **defines** it rather than porting it.
 - **Edit**: `eval-state.ts` / `EvalHooks` construction — register the timing hook when
   `options.trackTime` is truthy, reading it through the restored declaration.
+
+  **Decision — `trackTime: true` opts into full-walk dispatch, and that cost is accepted.**
+  Registering from options means the registry is constructed **eagerly** in the `EvalState`
+  constructor, not lazily on first access; `isActive` latches on that registration, so
+  `hasHooks` is true before the walk starts and stays true for its whole duration. Every
+  node therefore dispatches. This is not the § 3.7 guarantee being eroded — § 3.7 protects
+  the *default* path, and a caller who asks to time every node has asked for per-node work.
+  There is no cheaper shape that keeps the feature: per-node-type totals cannot be derived
+  without visiting each node, and the one genuinely cheaper measurement — a single
+  walk-level total — already exists for free as `EvalResult.duration`
+  (`eval-result.ts:97-104`), on every evaluation, hooks or not. `trackTime` is therefore
+  only worth shipping as the per-node-type breakdown, and the README must say plainly that
+  turning it on makes the walk dispatch-per-node.
 - **Edit**: `README.md` — document `trackTime` under `## Options`; it appears in no README
   section today.
 - **New**: the first test that exercises `trackTime: true` — the timing hook pair is
@@ -847,7 +870,15 @@ Each step is independently reviewable and leaves the suite green.
   is *not* needed — hooks are node-agnostic. This subsection is the only place the following
   are written down for consumers, so none of them may be dropped:
   - the sync-only contract and the promise-return warning (§ 3.3);
-  - `completed: false` unwound events, with a worked example (§ 3.8);
+  - `completed: false` events, with a worked example — and **both** of their sources, which
+    step 3 made distinct (§ 3.8). `unwindTo` synthesises them when evaluation actually
+    failed, and supplies the `error`. `exit` synthesises them when an enclosing visitor
+    closed without its child having closed, and supplies **no** `error` — on an evaluation
+    that may well succeed, as `call(async () => await obj.__proto__)` does. Presence of
+    `error` is the discriminator, and a consumer that treats `completed: false` as "this
+    evaluation failed" will be wrong on the second kind;
+  - that `trackTime: true` registers a hook and so makes the walk dispatch per node
+    (step 5);
   - that reading `hookErrors` requires the state-first style (§ 3.6);
   - that passing **both** `hooks` and `onHookError` silently ignores `onHookError`, because
     an adopted registry keeps the policy it was constructed with — pass it to
