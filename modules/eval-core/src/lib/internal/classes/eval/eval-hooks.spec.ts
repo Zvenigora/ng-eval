@@ -1,5 +1,5 @@
 import { AnyNode, ExpressionStatement, parse } from 'acorn';
-import { EvalHooks, EvalNodeHookEvent } from './eval-hooks';
+import { EvalHooks, EvalNodeHookEvent, EvalReadEvent } from './eval-hooks';
 import { EvalOptions } from './eval-options';
 import { EvalState } from './eval-state';
 
@@ -814,6 +814,331 @@ describe('EvalHooks', () => {
 
       expect(state.hookErrors).toHaveLength(1);
       expect(other.hookErrors).toHaveLength(0);
+    });
+  });
+
+  describe('read hooks', () => {
+
+    const target = { a: 1 };
+
+    /**
+     * A read event with sensible defaults; `identifier` and `state` are read at
+     * call time so the per-test instances from `beforeEach` are the ones used.
+     */
+    const readEvent = (over: Partial<EvalReadEvent> = {}): EvalReadEvent => ({
+      kind: 'identifier',
+      node: identifier,
+      state,
+      key: 'a',
+      target,
+      value: 1,
+      ...over
+    });
+
+    describe('registration', () => {
+
+      it('should fire a registered read hook with the event', () => {
+        const hooks = new EvalHooks();
+        const seen: EvalReadEvent[] = [];
+        hooks.onRead((e) => seen.push(e));
+        const event = readEvent();
+
+        hooks.dispatchRead(event);
+
+        expect(seen).toEqual([event]);
+      });
+
+      it('should fire every registered read hook in registration order', () => {
+        const hooks = new EvalHooks();
+        const seen: number[] = [];
+        hooks.onRead(() => seen.push(1));
+        hooks.onRead(() => seen.push(2));
+
+        hooks.dispatchRead(readEvent());
+
+        expect(seen).toEqual([1, 2]);
+      });
+
+      it('should carry the member fields through untouched', () => {
+        const hooks = new EvalHooks();
+        const seen: EvalReadEvent[] = [];
+        hooks.onRead((e) => seen.push(e));
+
+        hooks.dispatchRead(readEvent({
+          kind: 'member',
+          node: member,
+          key: 'b',
+          path: 'a.b',
+          value: 2
+        }));
+
+        expect(seen[0].kind).toBe('member');
+        expect(seen[0].key).toBe('b');
+        expect(seen[0].path).toBe('a.b');
+        expect(seen[0].value).toBe(2);
+        expect(seen[0].target).toBe(target);
+        expect(seen[0].state).toBe(state);
+      });
+
+      it('should not fire node hooks on a read dispatch', () => {
+        const hooks = new EvalHooks();
+        const nodeEvents: EvalNodeHookEvent[] = [];
+        hooks.on('before', '*', (e) => nodeEvents.push(e));
+        hooks.on('after', '*', (e) => nodeEvents.push(e));
+        hooks.onRead(() => undefined);
+
+        hooks.dispatchRead(readEvent());
+
+        expect(nodeEvents).toEqual([]);
+      });
+
+      it('should not fire read hooks on a node dispatch', () => {
+        const hooks = new EvalHooks();
+        const seen: EvalReadEvent[] = [];
+        hooks.onRead((e) => seen.push(e));
+
+        hooks.dispatch('before', binary, state);
+        hooks.dispatch('after', binary, state, 3);
+
+        expect(seen).toEqual([]);
+      });
+
+      it('should leave the open-node stack alone on a read dispatch', () => {
+        const hooks = new EvalHooks();
+        hooks.onRead(() => undefined);
+
+        hooks.dispatchRead(readEvent());
+
+        expect(hooks.depth(state)).toBe(0);
+      });
+
+      it('should let a read hook unregister itself mid-dispatch without skipping the next', () => {
+        const hooks = new EvalHooks();
+        const seen: number[] = [];
+        const off = hooks.onRead(() => {
+          seen.push(1);
+          off();
+        });
+        hooks.onRead(() => seen.push(2));
+
+        hooks.dispatchRead(readEvent());
+
+        expect(seen).toEqual([1, 2]);
+      });
+    });
+
+    describe('unsubscribe, offRead and clear', () => {
+
+      it('should stop firing a read hook after its unsubscribe is called', () => {
+        const hooks = new EvalHooks();
+        const seen: number[] = [];
+        const off = hooks.onRead(() => seen.push(1));
+
+        hooks.dispatchRead(readEvent());
+        off();
+        hooks.dispatchRead(readEvent());
+
+        expect(seen).toEqual([1]);
+      });
+
+      it('should treat a repeated read unsubscribe as a no-op', () => {
+        const hooks = new EvalHooks();
+        const seen: number[] = [];
+        // Registered twice, so a missing guard would consume the second
+        // registration on the repeated call rather than doing nothing.
+        const hook = () => seen.push(1);
+        const off = hooks.onRead(hook);
+        hooks.onRead(hook);
+
+        off();
+        off();
+        hooks.dispatchRead(readEvent());
+
+        expect(seen).toEqual([1]);
+        expect(hooks.isEmpty).toBe(false);
+      });
+
+      it('should remove a single hook via offRead', () => {
+        const hooks = new EvalHooks();
+        const seen: number[] = [];
+        const first = () => seen.push(1);
+        hooks.onRead(first);
+        hooks.onRead(() => seen.push(2));
+
+        hooks.offRead(first);
+        hooks.dispatchRead(readEvent());
+
+        expect(seen).toEqual([2]);
+      });
+
+      it('should remove every read hook when offRead is called without a hook', () => {
+        const hooks = new EvalHooks();
+        const seen: number[] = [];
+        hooks.onRead(() => seen.push(1));
+        hooks.onRead(() => seen.push(2));
+
+        hooks.offRead();
+        hooks.dispatchRead(readEvent());
+
+        expect(seen).toEqual([]);
+        expect(hooks.isEmpty).toBe(true);
+      });
+
+      it('should ignore offRead for a hook that was never registered', () => {
+        const hooks = new EvalHooks();
+        hooks.onRead(() => undefined);
+
+        expect(() => hooks.offRead(() => undefined)).not.toThrow();
+        expect(hooks.isEmpty).toBe(false);
+      });
+
+      it('should remove read hooks on clear', () => {
+        const hooks = new EvalHooks();
+        const seen: number[] = [];
+        hooks.onRead(() => seen.push(1));
+
+        hooks.clear();
+        hooks.dispatchRead(readEvent());
+
+        expect(seen).toEqual([]);
+        expect(hooks.isEmpty).toBe(true);
+        expect(hooks.isActive).toBe(false);
+      });
+    });
+
+    describe('isEmpty and the isActive latch', () => {
+
+      it('should count a read hook towards isEmpty', () => {
+        const hooks = new EvalHooks();
+
+        expect(hooks.isEmpty).toBe(true);
+        const off = hooks.onRead(() => undefined);
+        expect(hooks.isEmpty).toBe(false);
+
+        off();
+        expect(hooks.isEmpty).toBe(true);
+      });
+
+      it('should latch isActive on the first read registration', () => {
+        const hooks = new EvalHooks();
+
+        expect(hooks.isActive).toBe(false);
+        hooks.onRead(() => undefined);
+
+        expect(hooks.isActive).toBe(true);
+      });
+
+      it('should keep isActive latched after the last read hook is removed', () => {
+        const hooks = new EvalHooks();
+        const off = hooks.onRead(() => undefined);
+
+        off();
+
+        expect(hooks.isEmpty).toBe(true);
+        expect(hooks.isActive).toBe(true);
+      });
+    });
+
+    describe('error policy', () => {
+
+      it('should collect a read hook error by default and keep dispatching', () => {
+        const hooks = new EvalHooks();
+        const boom = new Error('boom');
+        const seen: number[] = [];
+        hooks.onRead(() => {
+          throw boom;
+        });
+        hooks.onRead(() => seen.push(1));
+
+        expect(() => hooks.dispatchRead(readEvent())).not.toThrow();
+
+        expect(seen).toEqual([1]);
+        expect(state.hookErrors).toHaveLength(1);
+        expect(state.hookErrors[0].phase).toBe('read');
+        expect(state.hookErrors[0].nodeType).toBe('Identifier');
+        expect(state.hookErrors[0].error).toBe(boom);
+      });
+
+      it('should record the node type of the read that failed', () => {
+        const hooks = new EvalHooks();
+        hooks.onRead(() => {
+          throw new Error('boom');
+        });
+
+        hooks.dispatchRead(readEvent({ kind: 'member', node: member }));
+
+        expect(state.hookErrors[0].phase).toBe('read');
+        expect(state.hookErrors[0].nodeType).toBe('MemberExpression');
+      });
+
+      it('should rethrow a read hook error under the throw policy', () => {
+        const hooks = new EvalHooks({ onHookError: 'throw' } as EvalOptions);
+        hooks.onRead(() => {
+          throw new Error('boom');
+        });
+
+        expect(() => hooks.dispatchRead(readEvent())).toThrow('boom');
+        expect(state.hookErrors).toHaveLength(0);
+      });
+
+      it('should swallow a read hook error under the ignore policy', () => {
+        const hooks = new EvalHooks({ onHookError: 'ignore' } as EvalOptions);
+        const seen: number[] = [];
+        hooks.onRead(() => {
+          throw new Error('boom');
+        });
+        hooks.onRead(() => seen.push(1));
+
+        expect(() => hooks.dispatchRead(readEvent())).not.toThrow();
+
+        expect(seen).toEqual([1]);
+        expect(state.hookErrors).toHaveLength(0);
+      });
+
+      it('should record the errors of two states separately', () => {
+        const hooks = new EvalHooks();
+        const other = EvalState.fromContext({}, {});
+        hooks.onRead(() => {
+          throw new Error('boom');
+        });
+
+        hooks.dispatchRead(readEvent());
+
+        expect(state.hookErrors).toHaveLength(1);
+        expect(other.hookErrors).toHaveLength(0);
+      });
+    });
+
+    describe('promise-returning read hooks', () => {
+
+      it('should record a returned promise as an error rather than awaiting it', () => {
+        const hooks = new EvalHooks();
+        hooks.onRead(() => Promise.resolve('ignored'));
+
+        hooks.dispatchRead(readEvent());
+
+        expect(state.hookErrors).toHaveLength(1);
+        expect(state.hookErrors[0].phase).toBe('read');
+        expect((state.hookErrors[0].error as Error).message).toContain('will not be awaited');
+      });
+
+      it('should keep dispatching the remaining read hooks after a returned promise', () => {
+        const hooks = new EvalHooks();
+        const seen: number[] = [];
+        hooks.onRead(() => Promise.resolve());
+        hooks.onRead(() => seen.push(1));
+
+        hooks.dispatchRead(readEvent());
+
+        expect(seen).toEqual([1]);
+      });
+
+      it('should throw on a returned promise under the throw policy', () => {
+        const hooks = new EvalHooks({ onHookError: 'throw' } as EvalOptions);
+        hooks.onRead(() => Promise.resolve());
+
+        expect(() => hooks.dispatchRead(readEvent())).toThrow('will not be awaited');
+      });
     });
   });
 });

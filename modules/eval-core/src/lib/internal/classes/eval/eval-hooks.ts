@@ -39,6 +39,43 @@ export interface EvalNodeHookEvent {
 export type EvalNodeHook = (event: EvalNodeHookEvent) => void;
 
 /**
+ * Which resolution produced a read event.
+ */
+export type EvalReadKind = 'identifier' | 'member';
+
+/**
+ * Payload handed to a read hook: one resolved context read.
+ *
+ * Node hooks cannot report *which key* an expression read - the AST node alone
+ * is not enough once case correction and computed members are in play - so this
+ * is the event a dependency tracker actually needs.
+ */
+export interface EvalReadEvent {
+  readonly kind: EvalReadKind;
+  readonly node: AnyNode;
+  readonly state: EvalState;
+  /** The key as resolved against the context (case-corrected when caseInsensitive). */
+  readonly key: string | number | symbol;
+  /** The object the key was read from - the context, an EvalScope, or a plain object. */
+  readonly target: unknown;
+  /**
+   * Dotted path when statically reconstructible (`a.b.c`), else undefined.
+   *
+   * Reconstructed from the source spelling, so it is *not* case-corrected even
+   * when {@link key} is. Computed members (`obj[expr]`) yield undefined; their
+   * `key` is still exact.
+   */
+  readonly path?: string;
+  readonly value: unknown;
+}
+
+/**
+ * A read hook. Like a node hook it is an observer: its return value is
+ * discarded and a returned promise is not awaited.
+ */
+export type EvalReadHook = (event: EvalReadEvent) => void;
+
+/**
  * Removes the hook that returned it. Calling it more than once is a no-op.
  */
 export type Unsubscribe = () => void;
@@ -54,9 +91,13 @@ export type EvalHookErrorPolicy = 'collect' | 'throw' | 'ignore';
 
 /**
  * An error raised by a hook, recorded under the 'collect' policy.
+ *
+ * `phase` is `'read'` for an error raised by a read hook: a read is neither of
+ * the two node phases, and reporting one as 'before' or 'after' would mislead a
+ * consumer reading the log.
  */
 export interface EvalHookError {
-  readonly phase: EvalHookPhase;
+  readonly phase: EvalHookPhase | 'read';
   readonly nodeType: AnyNodeTypes;
   readonly error: unknown;
 }
@@ -117,6 +158,7 @@ const isPromiseLike = (value: unknown): boolean =>
 export class EvalHooks {
   private readonly _before = new Map<string, EvalNodeHook[]>();
   private readonly _after = new Map<string, EvalNodeHook[]>();
+  private _read: EvalReadHook[] = [];
   private readonly _policy: EvalHookErrorPolicy;
   private _size = 0;
   private _active = false;
@@ -181,6 +223,53 @@ export class EvalHooks {
   }
 
   /**
+   * Registers a read hook, fired once per resolved context read.
+   *
+   * Read hooks are not keyed by node type: there are only two emission points
+   * and a consumer filters on {@link EvalReadEvent.kind} if it cares.
+   *
+   * Registration latches {@link isActive} exactly as {@link on} does, because
+   * the visitors reach their emission points through the same
+   * `EvalState.hasHooks` guard.
+   *
+   * @param hook The hook to register.
+   * @returns A function that removes this hook.
+   */
+  public onRead(hook: EvalReadHook): Unsubscribe {
+    this._read.push(hook);
+    this._size++;
+    this._active = true;
+
+    let unsubscribed = false;
+    return () => {
+      if (unsubscribed) {
+        return;
+      }
+      unsubscribed = true;
+      this.offRead(hook);
+    };
+  }
+
+  /**
+   * Removes one read hook, or every read hook when `hook` is omitted.
+   */
+  public offRead(hook?: EvalReadHook): void {
+    if (hook === undefined) {
+      this._size -= this._read.length;
+      this._read = [];
+      return;
+    }
+
+    const index = this._read.indexOf(hook);
+    if (index < 0) {
+      return;
+    }
+
+    this._read.splice(index, 1);
+    this._size--;
+  }
+
+  /**
    * Removes one hook, or every hook registered for a key when `hook` is omitted.
    */
   public off(phase: EvalHookPhase, type: AnyNodeTypes | '*', hook?: EvalNodeHook): void {
@@ -219,6 +308,7 @@ export class EvalHooks {
   public clear(): void {
     this._before.clear();
     this._after.clear();
+    this._read = [];
     this._size = 0;
     this._active = false;
   }
@@ -245,6 +335,27 @@ export class EvalHooks {
 
     this.enter(node, state);
     this.emit({ phase, node, state, completed: true }, false);
+  }
+
+  /**
+   * Fires the read hooks for one resolved context read.
+   *
+   * The event is built by the caller rather than assembled from positional
+   * arguments here, so the visitors allocate nothing on the no-hooks path: the
+   * whole construction sits inside their `st.hasHooks` guard.
+   *
+   * Touches no bookkeeping. A read is not a frame - it happens *within* a
+   * node's before/after pair, so the open-node stack is none of its business.
+   */
+  public dispatchRead(event: EvalReadEvent): void {
+    if (this._read.length === 0) {
+      return;
+    }
+    // Iterated as a copy so a hook that unsubscribes itself does not shift the
+    // list out from under the loop.
+    for (const hook of this._read.slice()) {
+      this.invokeRead(hook, event);
+    }
   }
 
   /**
@@ -393,26 +504,49 @@ export class EvalHooks {
     try {
       result = hook(event);
     } catch (error) {
-      this.handleError(event, error, unwinding);
+      this.handleError(event.state, event.phase, event.node.type, error, unwinding);
       return;
     }
 
     if (isPromiseLike(result)) {
-      this.handleError(event, new Error(ASYNC_HOOK_MESSAGE), unwinding);
+      this.handleError(event.state, event.phase, event.node.type,
+        new Error(ASYNC_HOOK_MESSAGE), unwinding);
     }
   }
 
-  private handleError(event: EvalNodeHookEvent, error: unknown, unwinding: boolean): void {
+  /**
+   * The read counterpart of {@link invoke}. There is no unwinding equivalent
+   * for reads - a read never opens a frame - so the policy always applies in
+   * full.
+   */
+  private invokeRead(hook: EvalReadHook, event: EvalReadEvent): void {
+    let result: unknown;
+
+    try {
+      result = hook(event);
+    } catch (error) {
+      this.handleError(event.state, 'read', event.node.type, error, false);
+      return;
+    }
+
+    if (isPromiseLike(result)) {
+      this.handleError(event.state, 'read', event.node.type,
+        new Error(ASYNC_HOOK_MESSAGE), false);
+    }
+  }
+
+  private handleError(state: EvalState,
+    phase: EvalHookPhase | 'read',
+    nodeType: AnyNodeTypes,
+    error: unknown,
+    unwinding: boolean): void {
+
     if (this._policy === 'ignore') {
       return;
     }
     if (this._policy === 'throw' && !unwinding) {
       throw error;
     }
-    event.state.hookBookkeeping.errors.push({
-      phase: event.phase,
-      nodeType: event.node.type,
-      error
-    });
+    state.hookBookkeeping.errors.push({ phase, nodeType, error });
   }
 }

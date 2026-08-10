@@ -234,14 +234,69 @@ Emission points (exactly two, both already isolated):
 
 | Point | File / line | Emits |
 | :--- | :--- | :--- |
-| Identifier resolution | `visitors/identifier.ts` — both the sensitive and case-insensitive branches | `kind: 'identifier'`, `key: node.name`, `target: st.context` |
-| Member resolution | `visitors/member-expression.ts` `evaluateMember` — at each of the three `return` branches (context / `EvalScope` / plain object) | `kind: 'member'`, the resolved `contextKey`/`key`, `target: object` |
+| Identifier resolution | `visitors/identifier.ts` — both the sensitive and case-insensitive branches | `kind: 'identifier'`, `key: st.context.getKey(node.name) ?? node.name`, `target: st.context` |
+| Member resolution | `visitors/member-expression.ts` `evaluateMember` — at each of the three `return` branches (context / `EvalScope` / plain object) | `kind: 'member'`, the resolved `contextKey` / `foundKey` / `key`, `target: object` |
+
+The identifier key is the **corrected** one, not `node.name`: § 9.1 is the contract Phase 3
+builds against and it promises the post-case-correction key. `getKey` returns `undefined`
+for a name the context does not hold, and the source spelling stands in — see the
+literal-registry and namespace notes below. The member branches follow the same rule: the
+context branch reports `contextKey`, and the plain-object branch reports the `foundKey` its
+case-insensitive lookup matched. `evaluateMember`'s **return tuple is unchanged** — only the
+event carries the corrected key, so no caller of `evaluateMember` shifts behaviour.
 
 `path` is reconstructed statically by walking `node.object` while it is a non-computed
 `MemberExpression`/`Identifier` chain; for computed members (`obj[expr]`) the *resolved* key
 is still exact, so `path` is emitted as `undefined` and consumers fall back to
 `target` + `key` identity. This limitation is documented, not hidden — Phase 3 will need to
-decide whether identity-based tracking is enough or whether it wants path strings.
+decide whether identity-based tracking is enough or whether it wants path strings. `path`
+is the **source spelling** and is therefore not case-corrected even when `key` is.
+
+Four consequences of these emission points, all intended:
+
+- **`this` emits nothing.** An identifier that resolves to the context object itself
+  (`node.name === 'this'`, or any case-variant under `caseInsensitive` — `This.Three` is a
+  live parse, since acorn only produces a `ThisExpression` for the lowercase keyword) is not
+  a read *of a key*. Emitting `key: 'this'`, `value: st.context` would have a tracker record
+  a dependency on the whole context and re-fire on every change to it. `This.Three` still
+  yields a member event with key `three`, which is the real dependency.
+- **Literal-registry resolutions do emit.** Under `caseInsensitive`, `TrUe` / `Undefined` /
+  `null` resolve off the module-private `literals` registry rather than the context. They
+  are still reported, with the source spelling as the key, because `getKey` cannot correct a
+  name the context does not hold. Under-reporting a read is the worse failure mode; a
+  consumer that does not want constants can filter them.
+- **Assignment and update targets emit read events.** `evaluateMember` is called from
+  `call-expression.ts`, `assignment-expression.ts` and `update-expression.ts` as well as
+  from `memberExpressionVisitor`, so `a.b = 1` reports a read of `a.b`. This is correct
+  rather than a wart: resolving the assignment target genuinely reads `a` from the context,
+  and a tracker that filtered it would miss a real dependency on the object being written
+  to. Emitting inside `evaluateMember` is also what makes the step's exit criterion
+  reachable — `eval.service.scope.spec.ts`'s `cat.action(args, cat.num, "times")` resolves
+  its callee through the call-expression path, not through the member visitor.
+- **A namespace identifier is not case-corrected.** `EvalContext.getKey` searches *inside*
+  each prior scope's context, never its `namespace`, so `Dog.Says()` reports `key: 'Dog'`
+  while the member hop reports the corrected `says`. Fixing this means teaching `getKey`
+  about namespaces, which is a behavioural change to an exported method and out of scope
+  here. Pinned by `read-hooks.spec.ts`; it wants its own step and a `ROADMAP.md` entry
+  alongside step 3's deferred visitor defects.
+
+**Reachability of the `EvalScope` branch.** `evaluateMember`'s second branch
+(`object instanceof EvalScope`) is *not* reachable from `eval.service.scope.spec.ts` or
+`eval.service.global-scope.spec.ts`: a namespaced `EvalScope.get` returns its wrapped
+`context` object, never the scope itself, so those expressions land in the plain-object
+branch. The branch is reached only when a context *value* is itself an `EvalScope`.
+`visitors/read-hooks.spec.ts` hand-builds such a context to cover it, and carries a comment
+saying so, since the namespaced cases would otherwise look like redundant duplicates of it.
+
+**Target identity is stable only for caller-owned objects.** § 9.1 promises "the target
+object identity", and that holds for member reads: a plain context is re-wrapped into a
+fresh `Registry` per evaluation under `caseInsensitive`, but the entries still reference the
+caller's objects, so `foo.bar` reports the same `context.foo` on every run. It does **not**
+hold for identifier reads, whose target is `st.context` — a new `EvalContext` per evaluation
+whenever the caller passes a plain object rather than reusing an `EvalContext`. Phase 3
+therefore cannot key a dependency on `(target, key)` alone for bare identifiers across runs;
+it needs the key (plus the caller's own context identity), or it needs callers to reuse one
+`EvalContext`. Asserted both ways in `read-hooks.spec.ts`.
 
 ### 3.6 Attachment to an evaluation
 

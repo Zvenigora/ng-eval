@@ -9,6 +9,37 @@ import { equalIgnoreCase } from './utils';
 import { getCachedCaseInsensitiveProperty } from './property-lookup-cache';
 // import { getCachedVisitorResult, setCachedVisitorResult } from './visitor-result-cache';
 
+/**
+ * Reconstructs the dotted source path of a member chain (`a.b.c`).
+ *
+ * Static only: a computed hop (`a[expr]`, `a["b"]`) leaves the path
+ * unreconstructible and yields undefined, and a consumer falls back to
+ * `target` + `key` identity - which is exact either way. The parts are source
+ * spellings, so under `caseInsensitive` the path is not corrected even though
+ * the reported key is; optional markers are not represented either, so `a?.b`
+ * reconstructs as `a.b`. A chain rooted at anything but an `Identifier` - a
+ * `this`, a call, a `super` - yields undefined.
+ */
+const readPath = (node: MemberExpression): string | undefined => {
+  const parts: string[] = [];
+  let current: MemberExpression['object'] = node;
+
+  while (current.type === 'MemberExpression') {
+    if (current.computed || current.property.type !== 'Identifier') {
+      return undefined;
+    }
+    parts.unshift(current.property.name);
+    current = current.object;
+  }
+
+  if (current.type !== 'Identifier') {
+    return undefined;
+  }
+
+  parts.unshift(current.name);
+  return parts.join('.');
+}
+
 export const memberExpressionVisitor = (node: MemberExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
 
   beforeVisitor(node, st);
@@ -60,16 +91,46 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
       : key;
     const value = st.context.get(contextKey);
     const thisValue = st.context.getThis(contextKey);
+
+    if (st.hasHooks) {
+      st.hooks.dispatchRead({
+        kind: 'member',
+        node,
+        state: st,
+        key: contextKey ?? key,
+        target: st.context,
+        path: readPath(node),
+        value
+      });
+    }
+
     return [thisValue ?? object, contextKey, value];
   } else if (object instanceof EvalScope) {
     // For scope objects, preserve original behavior (no getKey method)
     const value = object.get(key);
     const thisValue = object;
+
+    if (st.hasHooks) {
+      st.hooks.dispatchRead({
+        kind: 'member',
+        node,
+        state: st,
+        key,
+        target: object,
+        path: readPath(node),
+        value
+      });
+    }
+
     return [thisValue ?? object, key, value];
   } else {
     // For regular objects, we need both case-insensitive lookup AND prototype pollution protection
     let value: unknown;
-    
+
+    // The key the lookup actually matched, reported to the read hooks. The
+    // returned tuple keeps the original `key`; only the event is corrected.
+    let resolvedKey: string | number | symbol = key;
+
     // Check if this is a primitive type (string, number, boolean) - these are safe for method access
     const isPrimitive = (typeof object === 'string' || typeof object === 'number' || typeof object === 'boolean');
     
@@ -133,6 +194,10 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
         // For objects, use safe property access
         value = foundKey ? obj[foundKey] : safeGetProperty(object, key);
       }
+
+      if (foundKey) {
+        resolvedKey = foundKey;
+      }
     } else {
       // Use safe property access for prototype pollution protection (but not for primitives)
       if (isPrimitive) {
@@ -142,7 +207,19 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
         value = safeGetProperty(object, key);
       }
     }
-    
+
+    if (st.hasHooks) {
+      st.hooks.dispatchRead({
+        kind: 'member',
+        node,
+        state: st,
+        key: resolvedKey,
+        target: object,
+        path: readPath(node),
+        value
+      });
+    }
+
     return [object, key, value];
   }
 }
