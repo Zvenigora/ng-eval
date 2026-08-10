@@ -846,6 +846,13 @@ Each step is independently reviewable and leaves the suite green.
 - **Edit**: `visitors/identifier.ts` (2 branches), `visitors/member-expression.ts`
   (3 return branches in `evaluateMember`) — emit `EvalReadEvent`; guard each with
   `if (st.hasHooks)` so the non-hook path is a single boolean check.
+
+  **Superseded by step 5's `hasReadHooks`.** `hasHooks` is true when *any* hook is
+  registered, so this guard makes a consumer with only `before`/`after` hooks pay
+  `getKey()` per identifier and `readPath()` plus an object literal per member — work whose
+  result it can never observe. Harmless while nothing registers hooks from options; a live
+  regression the moment step 5's `trackTime` latches `hasHooks` for the whole walk. Step 5
+  narrows all five guards to `st.hasHooks && st.hooks.hasReadHooks`.
 - **New**: `visitors/read-hooks.spec.ts` — identifier reads, dotted member paths, computed
   members (`path === undefined`, `key` exact), case-insensitive key correction reported as
   the *corrected* key, scope reads via `EvalScope`, global-scope reads.
@@ -853,6 +860,37 @@ Each step is independently reviewable and leaves the suite green.
   `eval.service.case-insesitive.spec.ts`.
 
 ### Step 5 — Built-in hooks
+
+**Do this first.** The read guard has to be narrowed *before* the timing hook lands, not
+after: `trackTime` is what turns step 4's over-broad guard from harmless into a measurable
+regression, and § 3.7's promise is that work added to a per-node path stays off the paths
+that cannot use it.
+
+- **Edit**: `internal/classes/eval/eval-hooks.ts` — add `hasReadHooks`:
+
+  ```ts
+  public get hasReadHooks(): boolean {
+    return this._read.length > 0;
+  }
+  ```
+
+  **Non-latching, unlike `isActive`.** § 3.6 latches the node guard because it wraps the
+  open-node stack, so a value that changed mid-walk would leave `enter` and `exit`
+  unpaired. That argument does not transfer: `dispatchRead` touches no bookkeeping, so a
+  read guard that flips mid-walk can only drop read events — it can never unbalance
+  anything. A one-shot or self-unsubscribing read hook is therefore safe, and the guard can
+  tell the truth about the current registration count instead of about history.
+- **Edit**: `visitors/identifier.ts`, `visitors/member-expression.ts` — narrow all five
+  emission guards from `if (st.hasHooks)` to `if (st.hasHooks && st.hooks.hasReadHooks)`.
+  Reading `st.hooks` is safe behind `st.hasHooks`, which is false whenever the lazy
+  registry has not been constructed, so the accessor cannot construct one.
+- **Edit**: `internal/performance.spec.ts` — **the gate for the above.** Step 4 pinned only
+  the `hasHooks === false` case, so nothing currently catches the expensive one. Add a case
+  that registers node hooks *only* and asserts the read path stays off: under
+  `caseInsensitive`, `getKey` reaches `getContextKey`, which materialises the whole key set
+  per scope and scans it linearly, once per identifier node. A spy on a read hook cannot
+  see this — the cost is incurred before any read hook would be called — so assert it
+  against the walk's timing or by counting `getKey` invocations, not by counting events.
 - **New**: `internal/classes/eval/hooks/timing-hook.ts` — replaces `trackTime`, fixing the
   `console.time`/`console.timeEnd` mismatch and actually using the `performance.now()`
   readings (per-node-type totals on the returned handle instead of raw `console` output).
@@ -880,6 +918,10 @@ Each step is independently reviewable and leaves the suite green.
   (`eval-result.ts:97-104`), on every evaluation, hooks or not. `trackTime` is therefore
   only worth shipping as the per-node-type breakdown, and the README must say plainly that
   turning it on makes the walk dispatch-per-node.
+
+  What that caller has *not* asked for is read-event construction. `hasReadHooks` is what
+  keeps the accepted cost to the thing actually requested: with only the timing hook
+  registered, `hasHooks` is true for the whole walk but no `getKey` or `readPath` runs.
 - **Edit**: `README.md` — document `trackTime` under `## Options`; it appears in no README
   section today.
 - **New**: the first test that exercises `trackTime: true` — the timing hook pair is
@@ -887,7 +929,9 @@ Each step is independently reviewable and leaves the suite green.
   written to `console`.
 - **New**: specs for both; the tracker spec asserts `a.b + c` yields `{a, a.b, c}` and that a
   re-evaluation after `reset()` reproduces the same set.
-- **Exit**: `trackTime: true` no longer leaks unclosed `console.time` labels; tracker specs green.
+- **Exit**: `trackTime: true` no longer leaks unclosed `console.time` labels; tracker specs
+  green; `internal/performance.spec.ts` green **including** the new node-hooks-only case —
+  registering `before`/`after` hooks must not run a single `getKey` or `readPath`.
 
 ### Step 6 — Lifecycle & docs
 - **Edit**: `eval.service.ts` `ngOnDestroy` — call `state.hooks.clear()` alongside the
@@ -957,7 +1001,13 @@ Each step is independently reviewable and leaves the suite green.
   reader who finds it has no way to discover that from the code; the `@deprecated` text is
   the only place it can be recorded. Raised by the step-3 review.
 - **Edit**: `CHANGELOG.md` — entry describing the new hook API and the `trackTime` fix, and
-  noting the deprecation.
+  noting the deprecation. It must also record the **one non-additive change in the
+  release**: step 4 widened `EvalHookError.phase` from `EvalHookPhase` to
+  `EvalHookPhase | 'read'`. Free at the time — nothing ships before the `0.3.0` bump, so
+  there is no released shape to break — but the entry is what stops it being discovered
+  later by a consumer whose `switch (e.phase)` over `'before' | 'after'` silently stops
+  being exhaustive. Everything else in § 5 is purely additive; this is the exception, and
+  it is the reason the release notes cannot just say "additive".
 
 ---
 
@@ -971,14 +1021,19 @@ export { EvalHooks, type EvalHookPhase, type EvalNodeHook, type EvalNodeHookEven
          createDependencyTracker, createTimingHook };
 ```
 
-Everything else stays internal. No existing exported symbol changes shape; `EvalState` gains
-`hooks`, `hasHooks` and `hookErrors` getters plus `clearHookErrors()` (§ 3.6, step 6).
-`EvalState.hookBookkeeping` and its `EvalHookBookkeeping` type are `@internal` (§ 3.6): the
-type is declared in the emitted `.d.ts` but deliberately absent from the barrel's export
-list, so it is not part of this surface.
-**This is a purely additive release** — `EvalHooks.errors`, shipped in step 1, is moved
-rather than deprecated, which is free because nothing between step 1 and the `0.3.0` bump
-is published.
+Everything else stays internal. `EvalState` gains `hooks`, `hasHooks` and `hookErrors`
+getters plus `clearHookErrors()` (§ 3.6, step 6). `EvalState.hookBookkeeping` and its
+`EvalHookBookkeeping` type are `@internal` (§ 3.6): the type is declared in the emitted
+`.d.ts` but deliberately absent from the barrel's export list, so it is not part of this
+surface.
+
+**Additive with one exception, both free at `0.3.0`.** `EvalHooks.errors`, shipped in step 1,
+is *moved* rather than deprecated; and step 4 *widened* `EvalHookError.phase` from
+`EvalHookPhase` to `EvalHookPhase | 'read'`, since a read is neither node phase and
+reporting one as `'before'`/`'after'` would mislead the error log. Both are free because
+nothing between step 1 and the `0.3.0` bump is published — but the widening is the one
+change in this release that would be breaking against a shipped version, so it is called
+out in the step 6 `CHANGELOG.md` entry rather than left to be discovered.
 
 ---
 
@@ -1028,7 +1083,7 @@ point, without touching `EvalNodeHook`'s signature or any existing consumer.
 What Phase 3 (`@zvenigora/ng-eval-signals`) can rely on after this lands:
 
 1. `EvalState.hooks.onRead(cb)` fires once per resolved context read, with the
-   **post-case-correction** key and the target object identity.
+   **post-case-correction** key. See § 9.1 for exactly what `target` is and is not.
 2. `createDependencyTracker()` yields a stable dependency set per evaluation, resettable
    between runs.
 3. Hooks are sync, so a tracker can be installed, an expression evaluated, and the dependency
@@ -1040,6 +1095,58 @@ What Phase 3 (`@zvenigora/ng-eval-signals`) can rely on after this lands:
 Open question handed to Phase 3 (not resolvable here): whether identity-based dependency keys
 (`target` + `key`) are sufficient, or whether computed-member expressions need full path
 strings. § 3.5 provides the former exactly and the latter best-effort.
+
+### 9.1 What `target` is, and what it is not
+
+Step 4's implementation showed the original flat promise — "the target object identity" —
+to be false in three of four cases. It is restated here as four separate guarantees rather
+than patched, because Phase 3 has to build different machinery for each.
+
+**Two of these Phase 3 must solve. Two it can accept.**
+
+| Read shape | `target` | Stable across evaluations? | Verdict |
+| :--- | :--- | :--- | :--- |
+| Member against a caller-owned object (`foo.bar`) | the object the key was read from | **Yes** | Rely on it |
+| Bare identifier (`foo`) | `st.context` | **No** — unless the caller reuses an `EvalContext` | **Must solve** |
+| Optional member on a nullish base (`unknown?.x`) | a synthetic `{}` | **No** — fresh every time | Acceptable |
+| Arrow-function parameter (`item` in `list.map(item => …)`) | `st.context` | n/a — it is not a dependency at all | **Must solve** |
+
+**Member reads against caller-owned objects — rely on it.** A plain context is copied into a
+fresh `Registry` per evaluation under `caseInsensitive`, but the entries still reference the
+caller's objects, so `foo.bar` reports the same `context.foo` on every run. This is the case
+identity-based keying was designed for and it holds.
+
+**Bare identifiers — Phase 3 must solve this.** Their target is `st.context`, and
+`EvalContext.fromContext` builds a *new* `EvalContext` per evaluation whenever the caller
+passes a plain object; it returns the same instance only when the caller passes an
+`EvalContext`. So `(target, key)` is not a usable dependency key for `a` across two
+evaluations of the same expression. Two ways out, and Phase 3 picks one:
+either key identifier reads on `key` alone plus the *caller's* context identity (which
+Phase 3 owns, since it is the thing wrapping `computed()`), or require an `EvalContext` be
+constructed once per signal and reused — which it will likely want anyway to hold
+`priorScopes`. **This is the single most load-bearing correction in § 9.**
+
+**Optional chaining on a nullish base — acceptable.** `evaluateMember` substitutes
+`obj || {}`, so the event carries an object that never existed in the caller's data and
+differs on every run. Tracking cannot match it — and does not need to: the read resolved to
+`undefined` off a base that was itself absent, so there is no object whose change could
+invalidate it. `path` still reconstructs (`'unknown.x'`), so a path-keyed tracker degrades
+gracefully. Worth documenting to consumers, not worth engineering around.
+
+**Arrow-function parameters — Phase 3 must filter these.** `arrow-function-expression.ts:16`
+pushes the parameters as a scope on the *same* `EvalContext`, so a read of `item` inside
+`list.map(item => item.name)` is **shape-identical** to a read of a real context key:
+`kind: 'identifier'`, `target: st.context`, `path: 'item'`. A tracker that does not filter
+will register loop variables as dependencies, and `path` strings from different arrow
+bodies collide with each other and with same-named context keys. Nothing in the event marks
+a read as scope-local today. Phase 3 either filters on its own knowledge of which names are
+bound (it parses the expression anyway), or a later `eval-core` step adds a `scoped: true`
+flag to `EvalReadEvent` — additive, and the cheaper fix if more than one consumer needs it.
+
+One further limit, orthogonal to identity: **a namespace identifier is not case-corrected.**
+`EvalContext.getKey` searches inside each prior scope's context but never its `namespace`,
+so `Dog.Says()` reports `key: 'Dog'` while the member hop reports the corrected `says`.
+Logged in `ROADMAP.md`.
 
 Not resolved here, logged to `ROADMAP.md` rather than absorbed into Phase 1:
 `popVisitorResult` cannot detect stack underflow, because `Stack.pop()` returns `undefined`

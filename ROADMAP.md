@@ -131,12 +131,14 @@ Key design questions:
 Exit criteria: schema shape for a dynamic field, `visible`/`text` support wired to
 Reactive Forms, a worked example, tests, README.
 
-## Deferred defects in the visitor layer
+## Deferred defects in the visitor and context layers
 
 Surfaced by the Phase 1 hook work (`docs/side-effects/phase-1-plan.md`) and recorded
 rather than fixed: each is a **behavioral** change, and Phase 1 is scoped to be additive.
 Identity-checked `exit` (§ 3.8 of the plan) means the hook layer now stays balanced in
-spite of all three, so none of them is urgent — but none of them is gone either.
+spite of the three visitor defects below, so none of them is urgent — but none of them is
+gone either. The fourth entry is in `EvalContext` rather than the visitors, and was
+surfaced by step 4's read hooks.
 
 - **`await-expression.ts` downgrades a synchronous throw to a promise rejection.**
   `awaitVisitor` wraps `callback(node.argument, st)` in a `try`/`catch` inside a `Promise`
@@ -169,6 +171,31 @@ spite of all three, so none of them is urgent — but none of them is gone eithe
   bracketing convention now produces a visible `completed: false` event instead of a silent
   stack desync, so the *hook* layer stays balanced either way. That is containment, not a
   fix — the value stack is a separate stack and is not protected by it.
+
+- **`EvalContext.getKey` cannot case-correct a namespace, and does not resolve through the
+  same chain as `get`.** Two related gaps in one method
+  (`internal/classes/eval/eval-context.ts:159`), both surfaced by step 4's read hooks, which
+  report `getKey`'s answer as the key that was read.
+
+  *The namespace gap.* `getKey` searches `scopes`, then `original`, then **inside** each
+  prior scope's `context` — but never a scope's `namespace`. An `EvalScope` resolves its
+  namespace in `EvalScope.get`, which `getKey` has no counterpart for. So with a scope
+  namespaced `dog`, the expression `Dog.Says()` reports an uncorrected `'Dog'` for the
+  identifier while the member hop correctly reports `says`. Pinned as current behaviour by
+  `internal/visitors/read-hooks.spec.ts`; a fix must update that spec deliberately.
+
+  *The divergence from `get`.* `getKey` omits the `lookups` loop that `get` runs, so a key
+  resolved by an `EvalLookup` reports its spelling uncorrected. And the two disagree about
+  absent values: `get` treats `undefined` as "not found" and continues to prior scopes and
+  lookups, while `getKey` returns the first spelling it finds. Under `caseInsensitive` the
+  reported key can therefore come from a *different source* than the value did — a context
+  key whose value is `undefined` shadows the spelling of a prior scope's key that actually
+  supplied the value.
+
+  Both are behavioral changes to an exported method, so they are out of Phase 1's additive
+  scope. They matter most to Phase 3: dependency tracking keys on what `getKey` returns, and
+  § 9.1 of the Phase 1 plan already tells Phase 3 not to trust `target` identity for bare
+  identifiers. An uncorrected or mis-sourced key compounds that.
 
 ## Suggested order
 
