@@ -6,6 +6,9 @@ import { TestBed } from '@angular/core/testing';
 import { EvalService } from '../actual/services/eval.service';
 import { clearVisitorResultCache, getVisitorResultCacheStats } from './visitors/visitor-result-cache';
 import { clearPropertyLookupCache, getPropertyLookupCacheStats } from './visitors/property-lookup-cache';
+import { EvalContext, EvalHooks, EvalState } from './classes/eval';
+import { evaluate, parse } from './functions';
+import { AnyNode } from 'acorn';
 
 describe('Performance Optimizations', () => {
   let service: EvalService;
@@ -208,6 +211,95 @@ describe('Performance Optimizations', () => {
       
       expect(visitorStats.size).toBe(0); // Disabled
       expect(propertyStats.size).toBeGreaterThan(0); // Should have cached case-insensitive lookups
+    });
+  });
+
+  /**
+   * The gate on the read-emission guard.
+   *
+   * `hasHooks` is true whenever *any* hook is registered, so guarding the read
+   * emission on it alone makes a consumer with only node hooks pay `getKey` per
+   * identifier and `readPath` plus an object literal per member - work whose
+   * result no registered hook can observe. The guard is
+   * `st.hasHooks && st.hooks.hasReadHooks`; these tests are what keeps it that
+   * way.
+   *
+   * Both halves are asserted through `dispatchRead`, not through a read hook: a
+   * spy on a read hook cannot see this, because the whole cost is incurred
+   * *building the argument* before any read hook would be called.
+   */
+  describe('Read Emission Guard', () => {
+
+    const nodeOf = (source: string): AnyNode =>
+      parse(source, { ecmaVersion: 2020, extractExpressions: true }) as AnyNode;
+
+    /** Case-insensitive, so `getKey` reaches the linear scan this guards. */
+    const options = { caseInsensitive: true };
+
+    let getKey: jest.SpyInstance;
+
+    beforeEach(() => {
+      getKey = jest.spyOn(EvalContext.prototype, 'getKey');
+    });
+
+    afterEach(() => {
+      getKey.mockRestore();
+    });
+
+    it('should not build a read event when only node hooks are registered', () => {
+      const hooks = new EvalHooks();
+      hooks.on('before', '*', () => undefined);
+      hooks.on('after', '*', () => undefined);
+
+      const state = EvalState.fromContext({ a: 1, b: { c: 2 } }, { hooks, ...options });
+      const dispatchRead = jest.spyOn(hooks, 'dispatchRead');
+
+      expect(evaluate(nodeOf('A + b.C'), state)).toBe(3);
+
+      // The walk really did dispatch - otherwise this proves nothing about the
+      // read path in particular.
+      expect(state.hasHooks).toBe(true);
+      expect(hooks.hasReadHooks).toBe(false);
+
+      // Never called, so neither `readPath` nor the event literal ran either:
+      // both are evaluated to build this call's argument.
+      expect(dispatchRead).not.toHaveBeenCalled();
+      // `getKey` still runs for the context member hop, which is ordinary
+      // evaluation - but not the extra call `emitRead` would add per identifier.
+      expect(getKey).not.toHaveBeenCalledWith('A');
+    });
+
+    it('should build read events once a read hook is registered', () => {
+      const hooks = new EvalHooks();
+      hooks.on('before', '*', () => undefined);
+      hooks.onRead(() => undefined);
+
+      const state = EvalState.fromContext({ a: 1, b: { c: 2 } }, { hooks, ...options });
+      const dispatchRead = jest.spyOn(hooks, 'dispatchRead');
+
+      expect(evaluate(nodeOf('A + b.C'), state)).toBe(3);
+
+      expect(hooks.hasReadHooks).toBe(true);
+      expect(dispatchRead).toHaveBeenCalled();
+      expect(getKey).toHaveBeenCalledWith('A');
+    });
+
+    it('should stop building read events when the last read hook unsubscribes', () => {
+      const hooks = new EvalHooks();
+      hooks.on('after', '*', () => undefined);
+      const off = hooks.onRead(() => undefined);
+      off();
+
+      const state = EvalState.fromContext({ a: 1 }, { hooks, ...options });
+      const dispatchRead = jest.spyOn(hooks, 'dispatchRead');
+
+      expect(evaluate(nodeOf('A'), state)).toBe(1);
+
+      // `hasReadHooks` does not latch, so unsubscribing really turns the read
+      // path back off - unlike `isActive`, which stays true for the walk.
+      expect(state.hasHooks).toBe(true);
+      expect(hooks.hasReadHooks).toBe(false);
+      expect(dispatchRead).not.toHaveBeenCalled();
     });
   });
 });

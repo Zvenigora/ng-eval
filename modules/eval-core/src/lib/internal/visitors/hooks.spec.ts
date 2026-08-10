@@ -420,6 +420,20 @@ describe('visitor hooks', () => {
       expect(state.hasHooks).toBe(false);
       expect(state.hookBookkeeping.open).toEqual([]);
     });
+  });
+
+  /**
+   * `trackTime` used to be read here, in the visitor bracket itself, as an
+   * untyped string index that emitted a `console.time` whose `timeEnd` label
+   * never matched. Step 3 deleted the reads; step 5 gave the option a real
+   * implementation as a hook. What survives of the original behaviour is this
+   * one guarantee, which is a property of the *dispatchers*: whatever
+   * `trackTime` does now, it does not do it through the console.
+   *
+   * It sat under 'the no-hooks path' until step 5, which stopped being true -
+   * `trackTime` installs the timing hook, so the walk does dispatch.
+   */
+  describe('the trackTime option', () => {
 
     it('should not write to the console under trackTime', () => {
       const time = jest.spyOn(console, 'time').mockImplementation(() => undefined);

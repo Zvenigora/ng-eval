@@ -67,6 +67,18 @@ export interface EvalReadEvent {
    */
   readonly path?: string;
   readonly value: unknown;
+  /**
+   * True when the key resolved from a scope pushed *during this evaluation* -
+   * `EvalContext.scopes`, the stack `arrow-function-expression.ts` pushes and
+   * pops around a call. Such a read is an arrow-function parameter binding,
+   * not a dependency, and a tracker should skip it.
+   *
+   * The definition is **lifetime, not type**: caller-registered `priorScopes`
+   * are `EvalScope` instances holding long-lived objects and are real
+   * dependencies, so they are never flagged. Absent reads as "not scoped",
+   * which is right for every member emission site.
+   */
+  readonly scoped?: boolean;
 }
 
 /**
@@ -103,6 +115,22 @@ export interface EvalHookError {
 }
 
 /**
+ * How long one node type took over an evaluation, accumulated by the timing
+ * hook and read back as `EvalState.nodeTimings`.
+ *
+ * `total` is *inclusive*: a node's children are counted in its own elapsed
+ * time, so the totals of nested types overlap and summing them exceeds the
+ * walk's duration. Per-type comparison is what this supports; a breakdown that
+ * adds up is not.
+ */
+export interface EvalNodeTiming {
+  /** How many nodes of this type were visited. */
+  readonly count: number;
+  /** Inclusive elapsed milliseconds across all of them. */
+  readonly total: number;
+}
+
+/**
  * The bookkeeping an `EvalHooks` accumulates over a single evaluation.
  *
  * It is grouped behind one accessor on `EvalState` rather than spread across
@@ -117,6 +145,18 @@ export interface EvalHookBookkeeping {
   readonly open: AnyNode[];
   /** Hook errors recorded under the 'collect' policy. */
   readonly errors: EvalHookError[];
+  /**
+   * Per-node-type timings, written by the timing hook when one is installed and
+   * left empty otherwise.
+   *
+   * It lives here rather than on the handle `createTimingHook` returns for two
+   * reasons. A registry may be shared across evaluations, so totals held on the
+   * handle would bleed one run into the next - the same argument that moved the
+   * error list here. And `trackTime` installs the hook from inside the
+   * `EvalState` constructor, where no caller ever sees the handle: totals on it
+   * would be unreachable, which is a dead option rather than a feature.
+   */
+  readonly timings: Map<AnyNodeTypes, EvalNodeTiming>;
 }
 
 const DEFAULT_POLICY: EvalHookErrorPolicy = 'collect';
@@ -191,6 +231,27 @@ export class EvalHooks {
    */
   public get isActive(): boolean {
     return this._active;
+  }
+
+  /**
+   * True while at least one read hook is registered.
+   *
+   * The second half of the read-emission guard: `st.hasHooks` says a registry
+   * exists and has been used, this says a *read* hook is there to observe the
+   * event. Without it a consumer that registered only 'before'/'after' hooks
+   * would pay `getKey` per identifier and `readPath` plus an object literal per
+   * member for events it can never see - which the timing hook turns from
+   * theoretical into routine, since it latches `hasHooks` for a whole walk.
+   *
+   * **Non-latching, unlike {@link isActive}.** That getter latches because it
+   * wraps the open-node stack, so a value changing mid-walk would leave `enter`
+   * and `exit` unpaired. `dispatchRead` touches no bookkeeping, so a read guard
+   * that flips mid-walk can only drop read events - never unbalance anything.
+   * A one-shot or self-unsubscribing read hook is therefore safe here, and the
+   * guard can report the current registration count rather than history.
+   */
+  public get hasReadHooks(): boolean {
+    return this._read.length > 0;
   }
 
   /**

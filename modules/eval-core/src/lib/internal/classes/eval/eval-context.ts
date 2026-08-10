@@ -5,6 +5,23 @@ import { EvalOptions } from './eval-options';
 import { EvalScope } from './eval-scope';
 
 /**
+ * Whether a context holds a key at all, regardless of the value bound to it.
+ *
+ * There is no `getContextValue` counterpart for this: that helper cannot
+ * distinguish an absent key from one bound to `undefined`, and `getContextKey`
+ * with `caseInsensitive: false` reports every key as present for a plain
+ * object. Own properties only - the scopes this is used on are object literals
+ * built by `evaluatePatterns`, and inherited names are not bindings.
+ */
+const hasContextKey = (context: Context, key: unknown): boolean => {
+  if (context instanceof Registry) {
+    return context.has(key);
+  }
+  return context instanceof Object
+    && Object.prototype.hasOwnProperty.call(context, key as PropertyKey);
+};
+
+/**
  * Represents the evaluation context for the code execution.
  */
 export class EvalContext {
@@ -92,11 +109,9 @@ export class EvalContext {
    */
   public get(key: unknown): unknown | undefined {
 
-    for (const scope of this._scopes.asArray()) {
-      const value = getContextValue(scope, key);
-      if (value !== undefined) {
-        return value;
-      }
+    const scoped = this.getFromScopes(key);
+    if (scoped !== undefined) {
+      return scoped;
     }
 
     if (this._original) {
@@ -120,6 +135,65 @@ export class EvalContext {
       }
     }
     return undefined;
+  }
+
+  /**
+   * Step 1 of {@link get}'s resolution order on its own: the scopes pushed
+   * during this evaluation, innermost first.
+   *
+   * {@link get} calls this rather than inlining the loop, so that the read
+   * hooks' `scoped` flag and the resolution it describes are the *same*
+   * implementation. A second copy of the order would drift - `getKey` already
+   * shows what that looks like when it does.
+   *
+   * A binding whose value is `undefined` reads as absent here, exactly as it
+   * does in {@link get}, which falls through to the original context for it.
+   *
+   * @param key - The key to retrieve the value for.
+   * @returns The value bound by the innermost scope holding the key, or
+   *   undefined when no pushed scope holds it.
+   */
+  public getFromScopes(key: unknown): unknown | undefined {
+
+    for (const scope of this._scopes.asArray()) {
+      const value = getContextValue(scope, key);
+      if (value !== undefined) {
+        return value;
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Whether any scope pushed during this evaluation *binds* the key - the
+   * question the read hooks' `scoped` flag asks.
+   *
+   * Deliberately about binding rather than about value, which is where it parts
+   * company with {@link getFromScopes}: a parameter bound to `undefined` is
+   * still a parameter, but `get` falls through past it to the original context.
+   * Reading the flag off the value would make it depend on the *data* - the
+   * same arrow function over `[{ name: 'a' }]` and over `[undefined]` would
+   * report different bindings, and a dependency tracker's output would vary
+   * between two recomputes of one expression. That is the failure this flag
+   * exists to prevent, so presence is the correct predicate.
+   *
+   * Both queries iterate the same stack in the same direction, so neither is a
+   * second copy of the four-step resolution order; they answer two different
+   * questions about its first step.
+   *
+   * @param key - The key to look for.
+   * @returns True when a pushed scope holds the key, whatever its value.
+   */
+  public hasInScopes(key: unknown): boolean {
+
+    for (const scope of this._scopes.asArray()) {
+      if (hasContextKey(scope, key)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**

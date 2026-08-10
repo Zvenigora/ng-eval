@@ -953,7 +953,20 @@ because only the walker can distinguish an arrow-parameter binding from a real c
   "not scoped".
 - **Edit**: `visitors/identifier.ts` — set `scoped: true` when the key resolved from
   `EvalContext.scopes`, the stack `arrow-function-expression.ts:16` pushes and pops around
-  a call. **Not** when it resolved from `priorScopes`: those are caller-registered
+  a call.
+
+  **Decision — the flag tests for the *binding*, not for the resolved value.** Written the
+  literal way ("the key resolved from `scopes`") it reads off `get`'s step 1, which skips a
+  parameter bound to `undefined` and falls through to the original context. The read then
+  arrives unflagged, and a tracker records the loop variable — so `list.map(item => …)`
+  reports a different dependency set over `[{…}]` than over `[undefined, {…}]`. **A
+  dependency set that varies with the data rather than with the expression is the exact
+  failure this flag exists to prevent**, and it is worse than the one it fixes because it is
+  intermittent. A parameter bound to `undefined` is still a parameter, so `EvalContext` gets
+  a second first-step query, `hasInScopes(key)`, asking about presence. The two queries
+  iterate the same stack in the same direction and neither reimplements steps 2–4, so the
+  no-diverging-copy-of-the-order constraint holds; they answer two different questions about
+  step 1, and the difference between them is documented on both. **Not** when it resolved from `priorScopes`: those are caller-registered
   `EvalScope`s holding long-lived objects, and they are real dependencies (§ 3.5.1). The
   discriminator is lifetime — pushed during this walk — not `instanceof EvalScope`.
   `EvalContext.get` already walks `scopes` first, so the determination is available where
@@ -980,14 +993,57 @@ because only the walker can distinguish an arrow-parameter binding from a real c
   This is the roadmap's named exit criterion and Phase 3's input. It **skips `scoped` reads**
   when building `dependencies` — that is the first consumer of 5b, and the reason 5b comes
   first. `reads` keeps them, so a consumer that wants the raw stream still has it.
-- **Edit**: `internal/classes/eval/eval-options.ts` — restore the typed
-  `trackTime?: boolean` declaration, currently commented out (`eval-options.ts:11`,
-  `23-27`). There is no existing contract to preserve: **step 3 deleted the only reads**
-  (they were untyped string indexes in `before-visitor.ts` / `after-visitor.ts`), and the
-  one in-repo setter sets it to `false` (finding 1.2.3). So between step 3 and this step the
-  option is inert, and this step **defines** it rather than porting it.
+
+  **Two further filters, found while writing it.** Skipping `scoped` reads alone does *not*
+  produce `{list}` for `list.map(item => item.name)`, which this step's own exit criterion
+  demands: (a) `item.name` carries no flag — `scoped` is set at identifier resolution and
+  the member hop resolves against the bound object — so the tracker remembers the flagged
+  names and drops any path rooted at one; and (b) `list.map` resolves to
+  `Array.prototype.map`, so a member read whose value is a function is treated as a call
+  target rather than data. Bare identifiers are exempt from (b): a context-level callable
+  was named directly, and no already-recorded object stands in for it. Both rules are keyed
+  on path strings and inherit that keying's limits — a computed member contributes nothing
+  to `dependencies`, and a name that was ever an arrow parameter is dropped everywhere in
+  the expression (`list.map(item => item.y).length + item.x` yields `{list}`, missing a real
+  dependency on `item.x`). Documented on the module and asserted in its spec, so both limits
+  are decisions rather than downstream surprises. They are the paths half of the
+  identity-versus-paths question § 9 hands to Phase 3.
+- **Edit**: `internal/classes/eval/eval-options.ts` — declare `trackTime?: boolean`. There is
+  no existing contract to preserve: **step 3 deleted the only reads** (they were untyped
+  string indexes in `before-visitor.ts` / `after-visitor.ts`), and the one in-repo setter
+  sets it to `false` (finding 1.2.3). So between step 3 and this step the option is inert,
+  and this step **defines** it rather than porting it.
+
+  **Correction — "restore the typed declaration" was not achievable as written.** The lines
+  this bullet cited (`eval-options.ts:11`, `23-27`) are inside a commented-out `EvalOptions`
+  *class*; the live `EvalOptions` is the type alias
+  `Record<string, unknown> | { caseInsensitive: false }`, and § 3.6 depends on it staying
+  permissive. Adding the field to it by intersection breaks every caller holding a
+  `Record<string, unknown>`, because `unknown` is not assignable to `boolean | undefined`.
+  Step 5 therefore declared the recognised keys — `caseInsensitive`, `trackTime`, `hooks`,
+  `onHookError` — on a separate exported `EvalKnownOptions` interface, and kept reading them
+  through the existing cast. It is documentation with types attached, not a constraint:
+  nothing validates against it, and a caller who wants checking opts in by annotating with
+  it. `EvalKnownOptions` is an addition to § 5's surface list.
 - **Edit**: `eval-state.ts` / `EvalHooks` construction — register the timing hook when
-  `options.trackTime` is truthy, reading it through the restored declaration.
+  `options.trackTime` is truthy, reading it through the same cast `hooks` and `onHookError`
+  use.
+
+  **Decision — options configure the lazy registry, never an adopted one.** `trackTime` is
+  honoured only when `options.hooks` supplied no registry, exactly as `onHookError` already
+  is (§ 3.6), and for a sharper reason: an adopted `EvalHooks` is consumer-owned and may
+  outlive this evaluation, so installing into it would leave the timing hook firing on every
+  later run through it, with the unsubscribe this call discards as the only way off. State
+  the shared principle once rather than as two coincidences.
+
+  **Decision — the totals live on the state, not on the handle (`hookBookkeeping.timings`,
+  read back as `EvalState.nodeTimings`).** Options-registration happens inside the
+  `EvalState` constructor, which hands the handle to nobody; totals held there would be
+  unreachable for every `trackTime` caller, which is the same dead-option defect this piece
+  exists to fix. Putting them on the state also gets the § 3.6 lifetime rule for free — a
+  registry shared across two evaluations accumulates into each state separately instead of
+  bleeding one run into the next. `createTimingHook()` therefore returns only `install`.
+  This adds `nodeTimings` to § 5's list of getters `EvalState` gains.
 
   **Decision — `trackTime: true` opts into full-walk dispatch, and that cost is accepted.**
   Registering from options means the registry is constructed **eagerly** in the `EvalState`
@@ -1104,11 +1160,21 @@ because only the walker can distinguish an arrow-parameter binding from a real c
 export { EvalHooks, type EvalHookPhase, type EvalNodeHook, type EvalNodeHookEvent,
          type EvalReadHook, type EvalReadEvent, type EvalReadKind,
          type EvalHookError, type EvalHookErrorPolicy, type Unsubscribe,
-         createDependencyTracker, createTimingHook };
+         type EvalKnownOptions, type EvalNodeTiming,
+         createDependencyTracker, type EvalTimingHook,
+         createTimingHook, type EvalDependencyTracker };
 ```
 
-Everything else stays internal. `EvalState` gains `hooks`, `hasHooks` and `hookErrors`
-getters plus `clearHookErrors()` (§ 3.6, step 6). `EvalState.hookBookkeeping` and its
+Everything else stays internal. `EvalState` gains `hooks`, `hasHooks`, `hookErrors` and
+`nodeTimings` getters plus `clearHookErrors()` (§ 3.6, step 6). `EvalContext` gains two
+queries over step 1 of `get`'s resolution order: `getFromScopes()`, extracted so `get`'s own
+first step is an addressable unit rather than an inline loop, and `hasInScopes()`, the
+presence test the read hooks' `scoped` flag uses (§ 3.5.1).
+
+`EvalKnownOptions` is a **type alias, not an interface**, and that is load-bearing rather
+than stylistic: an interface gets no implicit index signature, so it is not assignable to
+`EvalOptions`'s `Record<string, unknown>` arm and the annotated form that is its only reason
+to exist would not compile. Pinned by a spec that annotates a variable with it. `EvalState.hookBookkeeping` and its
 `EvalHookBookkeeping` type are `@internal` (§ 3.6): the type is declared in the emitted
 `.d.ts` but deliberately absent from the barrel's export list, so it is not part of this
 surface.
@@ -1195,7 +1261,7 @@ than patched, because Phase 3 has to build different machinery for each.
 | Member against a caller-owned object (`foo.bar`) | the object the key was read from | **Yes** | Rely on it |
 | Bare identifier (`foo`) | `st.context` | **No** — unless the caller reuses an `EvalContext` | **Must solve** |
 | Optional member on a nullish base (`unknown?.x`) | a synthetic `{}` | **No** — fresh every time | Acceptable |
-| Arrow-function parameter (`item` in `list.map(item => …)`) | `st.context` | n/a — it is not a dependency at all | Solved in `eval-core`: filter on `scoped` |
+| Arrow-function parameter (`item` in `list.map(item => …)`) | `st.context` | n/a — it is not a dependency at all | **Solved in `eval-core` (step 5)**: `event.scoped === true` |
 
 **Member reads against caller-owned objects — rely on it.** A plain context is copied into a
 fresh `Registry` per evaluation under `caseInsensitive`, but the entries still reference the
@@ -1234,6 +1300,15 @@ and because the field is free while `EvalReadEvent` is unpublished. Phase 3 ther
 filters on `event.scoped` and does not need to know how arrow parameters are represented,
 or to re-parse expressions for bound names. `createDependencyTracker()` does this filtering
 already, so a consumer using it inherits the behaviour.
+
+**The flag alone is not sufficient, and step 5 found the gap.** `scoped` is set where an
+*identifier* resolves, so `item` carries it but `item.name` does not: the member hop
+resolves against the bound object, not against a scope, and no member emission site can
+know its base came from one. A consumer that filtered on the flag alone would still record
+`item.name`. `createDependencyTracker()` therefore also remembers the flagged *names* and
+drops any path rooted at one — the rule is in that module's doc comment. Phase 3 gets this
+for free through the tracker; a consumer working from raw `onRead` events must do the same,
+and the tracker is the reference implementation.
 
 Note the flag's definition is **lifetime, not type**: `scoped` marks a scope pushed *during
 this evaluation*. Caller-registered `priorScopes` — `EvalScope` instances holding

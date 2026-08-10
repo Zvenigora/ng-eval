@@ -466,19 +466,21 @@ describe('read hooks', () => {
       expect(member.value).toBe(Array.prototype.find);
     });
 
-    it('should report an arrow-function parameter as an ordinary context read', () => {
+    it('should flag an arrow-function parameter as scoped', () => {
       const recorder = new ReadRecorder();
       const state = recorder.run('list.FIND(v => v === 3)', context, options);
 
       // An arrow function pushes its parameters as a scope on the *same*
-      // EvalContext, so a read of `v` is indistinguishable in shape from a read
-      // of a real context key. A dependency tracker will therefore record
-      // loop-local bindings unless it filters them; Phase 3 needs to know.
+      // EvalContext, so a read of `v` is otherwise indistinguishable in shape
+      // from a read of a real context key - same kind, same target, and a path
+      // that collides with a same-named context key. `scoped` is the only thing
+      // separating them, and only the walker can supply it.
       const scopeRead = recorder.reads.filter((e) => e.key === 'v');
       expect(scopeRead.length).toBeGreaterThan(0);
       expect(scopeRead[0].kind).toBe('identifier');
       expect(scopeRead[0].target).toBe(state.context);
       expect(scopeRead[0].path).toBe('v');
+      expect(scopeRead[0].scoped).toBe(true);
     });
 
     it('should emit a read through an optional member on a present object', () => {
@@ -509,6 +511,96 @@ describe('read hooks', () => {
       expect(member.target).toEqual({});
       expect(member.target).not.toBe(context);
       expect(member.path).toBe('UnKnown.x');
+    });
+  });
+
+  /**
+   * `scoped` separates an arrow-function parameter binding from a real context
+   * read. Its definition is **lifetime, not type**: the scopes stack that
+   * `arrow-function-expression.ts` pushes and pops around a call, *not*
+   * "came from an EvalScope". The priorScopes case below is the one that stops
+   * this being reimplemented as `instanceof EvalScope` by whoever touches it
+   * next - doing so would delete the very dependencies Phase 3 exists to find.
+   */
+  describe('the scoped flag', () => {
+
+    it('should flag a read that resolved from a scope pushed during the walk', () => {
+      const recorder = new ReadRecorder();
+
+      recorder.run('list.map(item => item.name)',
+        { list: [{ name: 'a' }, { name: 'b' }] });
+
+      const bindings = recorder.reads.filter((e) => e.path === 'item');
+      expect(bindings).toHaveLength(2);
+      for (const binding of bindings) {
+        expect(binding.kind).toBe('identifier');
+        expect(binding.scoped).toBe(true);
+      }
+    });
+
+    it('should not flag a read that resolved from a caller-registered prior scope', () => {
+      const cat = { name: 'Miss Kitty', num: 3 };
+
+      const evalContext = new EvalContext({}, {});
+      const catOptions: EvalScopeOptions = {
+        global: false, caseInsensitive: false, namespace: 'cat', thisArg: cat
+      };
+      evalContext.priorScopes.push(EvalScope.fromObject(cat, catOptions));
+
+      const recorder = new ReadRecorder();
+      recorder.run('cat.num', evalContext);
+
+      // `cat` resolves at step 3 of EvalContext.get's order - priorScopes -
+      // which holds long-lived caller objects registered *before* the walk.
+      // That is a real dependency, so it carries no flag even though the thing
+      // that answered the lookup is literally an EvalScope.
+      const [identifier, member] = recorder.reads;
+      expect(identifier.kind).toBe('identifier');
+      expect(identifier.path).toBe('cat');
+      expect(identifier.scoped).toBeUndefined();
+
+      expect(member.kind).toBe('member');
+      expect(member.value).toBe(3);
+      expect(member.scoped).toBeUndefined();
+    });
+
+    it('should not flag an ordinary read of the original context', () => {
+      const recorder = new ReadRecorder();
+
+      recorder.run('a + b.c', { a: 1, b: { c: 2 } });
+
+      expect(recorder.reads).toHaveLength(3);
+      for (const read of recorder.reads) {
+        expect(read.scoped).toBeUndefined();
+      }
+    });
+
+    it('should flag a parameter bound to undefined', () => {
+      const recorder = new ReadRecorder();
+
+      recorder.run('list.map(item => item)', { list: [undefined, 1] });
+
+      // The flag is read off the binding, not off the resolved value. `get`
+      // does fall through past an undefined binding to the original context,
+      // but a parameter bound to undefined is still a parameter - and reading
+      // the flag off the value would make it depend on the data rather than on
+      // the expression.
+      const reads = recorder.reads.filter((e) => e.path === 'item');
+      expect(reads.map((e) => e.value)).toEqual([undefined, 1]);
+      expect(reads.map((e) => e.scoped)).toEqual([true, true]);
+    });
+
+    it('should stop flagging once the scope has been popped', () => {
+      const recorder = new ReadRecorder();
+
+      // The same name is both an arrow parameter and a real context key. Only
+      // the reads made while the parameter scope is on the stack are bindings;
+      // the trailing one is a genuine dependency on the context.
+      recorder.run('list.map(item => item) && item', { list: [1], item: 'ctx' });
+
+      const reads = recorder.reads.filter((e) => e.path === 'item');
+      expect(reads.map((e) => e.value)).toEqual([1, 'ctx']);
+      expect(reads.map((e) => e.scoped)).toEqual([true, undefined]);
     });
   });
 

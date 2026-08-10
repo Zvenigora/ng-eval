@@ -19,6 +19,10 @@ import { getCachedCaseInsensitiveProperty } from './property-lookup-cache';
  * the reported key is; optional markers are not represented either, so `a?.b`
  * reconstructs as `a.b`. A chain rooted at anything but an `Identifier` - a
  * `this`, a call, a `super` - yields undefined.
+ *
+ * Walks the chain once per member read, so every call site sits behind
+ * `st.hasHooks && st.hooks.hasReadHooks`: a consumer that registered only node
+ * hooks must not pay for a path it can never observe.
  */
 const readPath = (node: MemberExpression): string | undefined => {
   const parts: string[] = [];
@@ -92,7 +96,7 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
     const value = st.context.get(contextKey);
     const thisValue = st.context.getThis(contextKey);
 
-    if (st.hasHooks) {
+    if (st.hasHooks && st.hooks.hasReadHooks) {
       st.hooks.dispatchRead({
         kind: 'member',
         node,
@@ -110,7 +114,7 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
     const value = object.get(key);
     const thisValue = object;
 
-    if (st.hasHooks) {
+    if (st.hasHooks && st.hooks.hasReadHooks) {
       st.hooks.dispatchRead({
         kind: 'member',
         node,
@@ -208,7 +212,7 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
       }
     }
 
-    if (st.hasHooks) {
+    if (st.hasHooks && st.hooks.hasReadHooks) {
       st.hooks.dispatchRead({
         kind: 'member',
         node,

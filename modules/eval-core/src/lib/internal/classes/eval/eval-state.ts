@@ -2,7 +2,9 @@ import { EvalContext } from './eval-context';
 import { EvalOptions } from './eval-options';
 import { EvalResult } from './eval-result';
 import { EvalHooks } from './eval-hooks';
-import type { EvalHookBookkeeping, EvalHookError } from './eval-hooks';
+import type { AnyNodeTypes } from '../../interfaces';
+import type { EvalHookBookkeeping, EvalHookError, EvalNodeTiming } from './eval-hooks';
+import { createTimingHook } from './hooks/timing-hook';
 import { Context } from '../common';
 
 /**
@@ -18,6 +20,12 @@ const adoptHooks = (options?: EvalOptions): EvalHooks | undefined => {
   const value = (options as Record<string, unknown>)?.['hooks'];
   return value instanceof EvalHooks ? value : undefined;
 };
+
+/**
+ * Whether the caller asked for per-node timings. Same cast, same reason.
+ */
+const readTrackTime = (options?: EvalOptions): boolean =>
+  !!(options as Record<string, unknown>)?.['trackTime'];
 
 /**
  * Represents the evaluation state, which includes the context, result, and options.
@@ -93,6 +101,28 @@ export class EvalState {
   }
 
   /**
+   * Per-node-type timings for **this state**, keyed by node type. Empty unless
+   * a timing hook was installed - by `options.trackTime`, or by the caller
+   * through `createTimingHook().install(state.hooks)`.
+   *
+   * Accumulates for the life of the state, not per `evaluate` call: under the
+   * `createState` + repeated `eval` style the counts are the running totals
+   * across every run on this state, which is what makes them comparable. There
+   * is no reset; a caller who wants per-run figures uses a fresh state.
+   *
+   * Here rather than on the handle `createTimingHook` returns for the same
+   * reason {@link hookErrors} is: timings describe one run, and an `EvalHooks`
+   * may be handed to several. It is also the only place a `trackTime` caller
+   * could reach them, since that installation happens in this constructor and
+   * hands the handle to nobody.
+   *
+   * Totals are inclusive of child nodes; see `EvalNodeTiming`.
+   */
+  public get nodeTimings(): ReadonlyMap<AnyNodeTypes, EvalNodeTiming> {
+    return this.hookBookkeeping.timings;
+  }
+
+  /**
    * The per-run bookkeeping `EvalHooks` reads and writes: the open-node stack
    * and the collected errors, grouped behind a single accessor.
    *
@@ -106,7 +136,7 @@ export class EvalState {
    * @internal Not part of the published API.
    */
   public get hookBookkeeping(): EvalHookBookkeeping {
-    return (this._hookBookkeeping ??= { open: [], errors: [] });
+    return (this._hookBookkeeping ??= { open: [], errors: [], timings: new Map() });
   }
 
   /**
@@ -126,6 +156,21 @@ export class EvalState {
     this._options = options;
     this._isAsync = isAsync;
     this._hooks = adoptHooks(options);
+
+    // Options configure the registry this state owns, never an adopted one -
+    // the same rule `onHookError` follows, and for the same reason: an adopted
+    // `EvalHooks` belongs to the caller, and installing into it would leave a
+    // hook firing on every later evaluation they run through it, with the
+    // unsubscribe this call discards as the only way off. A caller who wants
+    // both passes their own registry and installs the hook on it themselves.
+    if (!this._hooks && readTrackTime(options)) {
+      // Registering here rather than lazily means `isActive` has latched before
+      // the walk starts, so every node dispatches for its whole duration. That
+      // is what was asked for: per-node-type totals cannot be had without
+      // visiting each node, and `EvalResult.duration` already covers the
+      // cheaper walk-level question.
+      createTimingHook().install(this.hooks);
+    }
   }
 
   /**

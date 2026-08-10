@@ -21,9 +21,27 @@ const literals: Registry<string, unknown>= Registry.fromObject({
  * the context does not hold - a literal-registry resolution, or a miss - and
  * the source name stands in. The path is always the source spelling, since it
  * is reconstructed statically.
+ *
+ * `scoped` marks a read of a name bound by a scope pushed *during this walk* -
+ * an arrow-function parameter. It is asked of `EvalContext.hasInScopes`, which
+ * tests for the binding rather than for its value: a parameter bound to
+ * `undefined` is still a parameter, and reading the flag off the resolved value
+ * would make it vary with the data rather than with the expression.
+ *
+ * It is deliberately *not* set for `priorScopes`: those hold caller-registered,
+ * long-lived objects and are real dependencies, so the discriminator is
+ * lifetime rather than `instanceof EvalScope`. The property is omitted rather
+ * than set to false, so absent reads as "not scoped" the same way it does at
+ * the member emission sites.
+ *
+ * The scope stack is empty for any expression without an arrow function, and
+ * `Stack.asArray` allocates, so the common case is short-circuited on length.
  */
 const emitRead = (node: Identifier, st: EvalState, value: unknown) => {
   const key = st.context?.getKey(node.name) ?? node.name;
+  const scoped = !!st.context
+    && st.context.scopes.length > 0
+    && st.context.hasInScopes(node.name);
 
   st.hooks.dispatchRead({
     kind: 'identifier',
@@ -32,7 +50,8 @@ const emitRead = (node: Identifier, st: EvalState, value: unknown) => {
     key,
     target: st.context,
     path: node.name,
-    value
+    value,
+    ...(scoped ? { scoped: true } : {})
   });
 }
 
@@ -55,7 +74,7 @@ export const identifierVisitor = (node: Identifier, st: EvalState) => {
   // `this` resolves to the context object itself rather than to a key within
   // it, so it is not a read: reporting it would have a dependency tracker
   // record the whole context and re-fire on every change to it.
-  if (st.hasHooks && !isThis) {
+  if (st.hasHooks && st.hooks.hasReadHooks && !isThis) {
     emitRead(node, st, value);
   }
 
@@ -76,7 +95,7 @@ const identifierVisitorCaseInsensitive = (node: Identifier, st: EvalState) => {
     ? st.context
     : context?.get(node.name) ?? literals.get(node.name);
 
-  if (st.hasHooks && !isThis) {
+  if (st.hasHooks && st.hooks.hasReadHooks && !isThis) {
     emitRead(node, st, value);
   }
 
