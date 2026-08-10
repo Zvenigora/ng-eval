@@ -154,6 +154,7 @@ private service: CompilerService;
 ...
 const fn = service.compile('x + y');
 const context = { x: 1, y: 2 };
+const options = { caseInsensitive: false };
 const value = service.simpleCall(fn, context, options); // 3
 ```
 
@@ -250,33 +251,7 @@ const result = service.simpleEval(expression, context, options); // 32
 
 ### Per-node timing
 
-Set `trackTime` to `true` to accumulate per-node-type timings for an evaluation. They are read back from the state as `nodeTimings`, so this option needs the state-first style — `simpleEval` builds its state internally and never hands it back.
-
-```javascript
-import { EvalService } from '@zvenigora/ng-eval-core';
-
-private service: EvalService;
-...
-const context = { a: 2, b: 3, c: 4 };
-const state = service.createState(context, { trackTime: true });
-
-const result = service.eval('a + b * c', state); // 14
-
-state.nodeTimings.get('BinaryExpression'); // { count: 2, total: 0.081 }
-state.nodeTimings.get('Identifier');       // { count: 3, total: 0.014 }
-```
-
-Totals are in milliseconds and **inclusive** of child nodes, so nested node types overlap and summing them exceeds the walk's duration — the figures are for comparing node types against each other, not for a breakdown that adds up.
-
-**Turning this on makes the walk dispatch a hook on every node.** That is inherent to the feature rather than an oversight: per-node-type totals cannot be produced without visiting each node. If a single walk-level total is all you need, `state.result.duration` already provides one on every evaluation, at no cost, whether or not `trackTime` is set.
-
-`trackTime` configures the hook registry the state creates for itself. If you pass your own registry through `options.hooks`, that registry is yours and options never configure it — install the hook explicitly instead:
-
-```javascript
-import { createTimingHook } from '@zvenigora/ng-eval-core';
-
-const off = createTimingHook().install(state.hooks);
-```
+Set `trackTime` to `true` to accumulate per-node-type timings, read back from the state as `nodeTimings`. Documented in the [package README](modules/eval-core/README.md#per-node-timing) — that file is what ships in the npm tarball, so it is the copy that has to be right, and it is not duplicated here.
 
 ### Evaluation with state
 Evaluation executes the AST using the given state `eval(ast, state)`. The `state` object includes the context, result, and options. It is in use by visitors functions behind the scene. It could be used to extend the functionality of the evaluator. For example, it can provide the execution history and the time of execution. 
@@ -308,7 +283,8 @@ console.table(state.result.trace); // display execution history
 Evaluation context may include prior scopes. Evaluation scopes may contain variables and functions.
 
 ```javascript
-import { EvalService } from '@zvenigora/ng-eval-core';
+import { EvalContext, EvalScope, EvalScopeOptions,
+  EvalService } from '@zvenigora/ng-eval-core';
 
 private service: EvalService;
 ...
@@ -323,6 +299,10 @@ const cat = {
     return this.name + ' ' + args.join(' ') + ' ' + n + ' ' + t;
   }
 }
+
+// `args` is read as a bare identifier, so it belongs to the context itself
+// rather than to the scope.
+const evalContext = new EvalContext({ args }, {});
 
 const catOptions: EvalScopeOptions = {
   global: false,

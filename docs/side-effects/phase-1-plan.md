@@ -1106,10 +1106,25 @@ because only the walker can distinguish an arrow-parameter binding from a real c
   Either export it (additive, and matching on it is what a consumer inspecting
   `state.hookErrors` would want — add it to § 5) or drop the `{@link}`. Carried over from
   step 1; see `step-1-summary.md` § 4.3.
-- **Edit**: `README.md` — new `### Evaluation hooks` subsection under `## Options`
-  (after `### Evaluation with scope`), plus a line in `### ESTree nodes supported:`' vicinity
-  is *not* needed — hooks are node-agnostic. This subsection is the only place the following
-  are written down for consumers, so none of them may be dropped:
+- **Edit**: `modules/eval-core/README.md` — new `### Evaluation hooks` subsection, plus a
+  line in `### ESTree nodes supported:`' vicinity is *not* needed — hooks are node-agnostic.
+
+  **The published README is `modules/eval-core/README.md`, not the root one.** ng-packagr
+  copies it into `dist/modules/eval-core`, so it is what ships in the npm tarball and what
+  renders on the package page; the root `README.md` ships nowhere. This bullet said only
+  "README.md" and step 5 read it as the root one, which put the `trackTime` documentation
+  in the single place a consumer installing the package cannot see it. Corrected in the
+  step-5 retrospective: the consumer-facing material lives in the **published** README, and
+  the root README carries a link to it rather than a copy, so the two cannot drift.
+
+  The published README is a seven-line stub today, so this step also gives it the minimum
+  frame the hooks material needs to make sense — an `## Options` heading and the `trackTime`
+  section moved out of the root README. It is not a wholesale copy of the root README:
+  duplicating the parsing/compilation/scope tour would recreate exactly the drift this
+  correction exists to prevent.
+
+  This subsection is the only place the following are written down for consumers, so none of
+  them may be dropped:
   - the sync-only contract and the promise-return warning (§ 3.3);
   - `completed: false` events, with a worked example — and **both** of their sources, which
     step 3 made distinct (§ 3.8). `unwindTo` synthesises them when evaluation actually
@@ -1125,6 +1140,19 @@ because only the walker can distinguish an arrow-parameter binding from a real c
     an adopted registry keeps the policy it was constructed with — pass it to
     `new EvalHooks({ onHookError: … })` instead (§ 3.6). Step 2 settled and implemented this
     behaviour but could not document it here: the subsection does not exist until this step.
+- **Edit**: `README.md` (root) — two pre-existing snippets do not run as printed, and they
+  sit directly alongside the new hook material. Found by executing every documented example
+  in the step-5 retrospective; both are one-line additions:
+  - `### Compilation` passes an `options` argument that the snippet never declares;
+  - `### Evaluation with scope` calls `evalContext.priorScopes.push(…)` and
+    `simpleEval(expression, evalContext)` without ever constructing `evalContext` — and it
+    cannot simply be `{}`, since `args` has to reach the context for
+    `cat.action(args, cat.num, "times")` to resolve.
+
+  Not scope creep into unrelated docs: shipping a hooks section next to examples that throw
+  on paste undercuts the new material, and the docs step is where a documentation defect is
+  cheapest to fix. The root README also gains the pointer to the published README described
+  above.
 - **Edit**: `ROADMAP.md` — mark Phase 1 done, link this document.
 - **Edit**: `modules/eval-core/package.json` — bump `0.2.5` → `0.3.0` (additive public API).
 - **Edit**: `internal/interfaces/recursive-visitors.ts` — mark `RecursiveVisitorState` and
