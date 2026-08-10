@@ -505,8 +505,41 @@ Properties this gives us:
 - `unwind` is idempotent, so the sync and async entry points can both call it without
   coordinating.
 
-Ordering note: `exit` pops *before* the `after` hooks fire, so a hook that itself throws
-cannot corrupt the open stack. Hook errors continue to be handled by the § 3.4 policy.
+**Decision — bookkeeping mutates before user code on both edges.** `dispatch` updates the
+open-node stack *first* and calls `emit` *second*, on `before` and on `after` alike:
+
+```ts
+// before: enter, then emit          // after: exit, then emit
+this.enter(node, state);             this.exit(state);
+this.emit({ phase: 'before', … });   this.emit({ phase: 'after', … });
+```
+
+The reason is that **`emit` can throw**. Under `onHookError: 'throw'` (§ 3.4) a hook's
+error is rethrown out of `emit`, so anything sequenced after it does not run. On the
+`before` edge that means `enter` is skipped: hooks registered ahead of the throwing one have
+already been told the node was entered, but the node is not on the open stack, so the
+`unwindTo(mark, error)` in `evaluate()`'s catch has nothing to synthesise a matching
+`completed: false` event from. The result is one unmatched `before` per throwing-hook node —
+on precisely the error path this section exists to guarantee. A node that is missing from
+the open stack cannot be unwound, so it must be on the stack before any user code gets a
+chance to prevent it from getting there.
+
+Step 1 shipped the `before` edge in the other order (`emit` then `enter`) and step 2 left it
+alone; nothing dispatched yet, so it was unreachable. Step 3 makes it live and must correct
+it.
+
+**This makes the two edges consistent, not asymmetric** — the shared rule is
+*bookkeeping first, user code second*. That is worth stating explicitly because the two
+edges look like they are justified differently, and the earlier text here justified only
+one of them: `exit` pops first so that a throwing `after` hook cannot corrupt the stack,
+whereas `enter` pushes first so that a throwing `before` hook cannot leave the stack
+incomplete. Those read as two different arguments — "don't corrupt" and "don't omit" — but
+they are the same argument seen from either side of the stack: hook code runs only once the
+stack already tells the truth about this node. Anyone re-deriving the ordering from the
+`after` edge alone would conclude that `before` should emit first, which is the mistake step
+1 made.
+
+Hook errors continue to be handled by the § 3.4 policy in both cases.
 
 ---
 
@@ -592,10 +625,20 @@ Each step is independently reviewable and leaves the suite green.
   optional: `evaluate()` is re-entered with the same state from
   `arrow-function-expression.ts:17`, and an absolute `unwind` there drains the outer walk's
   open nodes (§ 3.8).
-- **Edit**: `eval-hooks.ts` — add `depth` and `unwindTo(mark, error)` per § 3.8; `unwind`
-  becomes `unwindTo(0, error)`.
+- **Edit**: `eval-hooks.ts` — reorder the `before` edge of `dispatch` to `enter` *then*
+  `emit`, mirroring the `after` edge, per § 3.8's bookkeeping-before-user-code rule. Without
+  it a `before` hook that throws under `onHookError: 'throw'` leaves its node off the open
+  stack and therefore unmatchable by `unwindTo`. This is the step that makes the defect
+  reachable, because it is the step that starts dispatching.
+  (`depth` and `unwindTo(mark, error, state)` are **already done** — step 2 added them along
+  with the move of the open-node stack onto `EvalState`; `unwind` is already
+  `unwindTo(0, error, state)`.)
 - **Edit**: `eval-hooks.spec.ts` — `unwindTo` leaves nodes below the mark open, and a
-  nested drain to a mark does not disturb the outer frame.
+  nested drain to a mark does not disturb the outer frame. Plus the ordering fix above: a
+  `before` hook that throws under the `'throw'` policy still leaves its node open
+  (`depth(state)` incremented), so a following `unwindTo` emits its `completed: false`
+  event — the assertion step 2's `should rethrow a hook error under the throw policy` case
+  does not currently pin.
 - **`after` phase value**: `afterVisitor` is called after `pushVisitorResult`, so the pushed
   value is `st.result.stack.peek()` (`internal/classes/common/stack.ts:39`, non-destructive)
   — read it there to populate `event.value` rather than changing 19 call signatures. Guard
@@ -662,13 +705,27 @@ Each step is independently reviewable and leaves the suite green.
 - **Edit**: `eval.service.ts` `ngOnDestroy` — call `state.hooks.clear()` alongside the
   existing stack/context cleanup, so a long-lived hook closure cannot pin a destroyed state.
 - **Edit**: `eval.service.memory-leaks.spec.ts` — assert hooks are cleared on destroy, and
-  that `clearHookErrors()` releases the collected errors.
+  that `clearHookErrors()` releases the collected errors **and the open-node stack**.
 - **Edit**: `eval-state.ts` — add `clearHookErrors()`. Step 2 moves the error list onto the
   state (§ 3.6), and `hooks.clear()` cannot reach it: under the state-first style —
   `compile()` plus repeated `call()` on one state — the list grows for the life of the
   state, and a thrown value can close over consumer objects that `ngOnDestroy` therefore
   cannot release. Carried over from step 1, where the list lived on `EvalHooks` and
   `clear()` deliberately retained it; see `step-1-summary.md` § 4.3 for that reasoning.
+
+  **It must reset the whole bookkeeping record, not just the errors** — both fields of
+  `hookBookkeeping`, so the open-node stack is dropped too. Step 1's `clear()` did drain
+  the stack; step 2 moved the stack onto the state, so `clear()` can no longer reach it and
+  *nothing* drains it any more. A `clear()` mid-walk — the case § 3.6 documents as
+  unsupported, and the one `ngOnDestroy` performs — therefore abandons frames on the state
+  permanently. `EvalService._activeStates` (`eval.service.ts:18`) is a strong `Set`, so
+  those frames keep their AST nodes alive for the life of the service, which is exactly the
+  retention `ngOnDestroy` is called to prevent. A caller who later uses the drain-everything
+  `unwind(error, state)` also gets `completed: false` events for nodes belonging to a walk
+  that ended long ago.
+
+  Given that, `clearHookErrors()` is the wrong name for what it has to do; consider
+  `resetHookBookkeeping()` and adjust § 5 to match. Raised by the step-2 review.
 - **Edit**: `internal/classes/eval/eval-hooks.ts` / `public-api.ts` — resolve
   `ASYNC_HOOK_MESSAGE`: it is exported from the module and referenced by an `{@link}` in the
   class docs, but is not re-exported from the barrel, so the link dangles for consumers.
