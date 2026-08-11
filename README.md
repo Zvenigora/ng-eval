@@ -253,6 +253,10 @@ const result = service.simpleEval(expression, context, options); // 32
 
 Set `trackTime` to `true` to accumulate per-node-type timings, read back from the state as `nodeTimings`. Documented in the [package README](modules/eval-core/README.md#per-node-timing) — that file is what ships in the npm tarball, so it is the copy that has to be right, and it is not duplicated here.
 
+### Evaluation hooks
+
+Register callbacks that fire per AST node (`state.hooks.on`) and per resolved context read (`state.hooks.onRead`) — the basis for dependency tracking. Documented in the [package README](modules/eval-core/README.md#evaluation-hooks), for the same reason as above.
+
 ### Evaluation with state
 Evaluation executes the AST using the given state `eval(ast, state)`. The `state` object includes the context, result, and options. It is in use by visitors functions behind the scene. It could be used to extend the functionality of the evaluator. For example, it can provide the execution history and the time of execution. 
 

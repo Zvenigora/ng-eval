@@ -75,6 +75,23 @@ export class EvalService extends BaseEval implements OnDestroy {
         if (state.context && typeof state.context === 'object' && 'clear' in state.context && typeof state.context.clear === 'function') {
           (state.context as unknown as { clear(): void }).clear();
         }
+        // Drop hook registrations so a long-lived closure cannot pin a
+        // destroyed state. This matters most for a registry the caller passed
+        // through `options.hooks` and still holds: one that outlives the
+        // service keeps every state its closures captured reachable. A
+        // state-owned registry would die with its state regardless.
+        //
+        // Guarded on `hasHooks` rather than reading `state.hooks`, because that
+        // getter builds a registry on first access - allocating inside the
+        // method whose job is releasing memory. The guard is exact for this
+        // purpose: it is false only when no hook is registered, and clearing an
+        // empty registry does nothing.
+        if (state.hasHooks) {
+          state.hooks.clear();
+        }
+        // Bookkeeping lives on the state and `clear` cannot reach it, so the
+        // open-node stack and collected errors need dropping separately.
+        state.resetHookBookkeeping();
       } catch (error) {
         console.warn('Error cleaning up EvalState:', error);
       }

@@ -42,7 +42,23 @@ shared workspace. None of that applies yet.
 
 ## Phases
 
-### Phase 1 — Generic evaluation hooks / side effects (`eval-core`)
+### ✅ Phase 1 — Generic evaluation hooks / side effects (`eval-core`) — **done**
+
+Shipped in `@zvenigora/ng-eval-core` **0.3.0**. Design, findings, and the step-by-step
+execution record are in [`docs/side-effects/phase-1-plan.md`](docs/side-effects/phase-1-plan.md);
+§ 9 of that document is the contract Phase 3 and 4 build on, and § 9.1 is required reading
+before treating a read event's `target` as a dependency key. Consumer documentation is the
+"Evaluation hooks" section of the [package README](modules/eval-core/README.md#evaluation-hooks).
+
+What landed: `EvalHooks`, a node-type-keyed registry with wildcard support, reached through
+`EvalState.hooks`; `before`/`after` node hooks dispatched by every visitor; `onRead` hooks
+carrying the *resolved* (case-corrected) key, which is what dependency tracking needs;
+`createDependencyTracker()` and `createTimingHook()` as built-ins; a collect-by-default hook
+error policy read back from `EvalState.hookErrors`. Hooks are synchronous by contract — the
+walk is synchronous even under `evaluateAsync` — and observers only: § 8 records why
+short-circuiting hooks were deliberately deferred.
+
+The original plan for this phase follows, for the record.
 
 Generalize the existing (currently timing-only) `beforeVisitor`/`afterVisitor` hooks
 in `modules/eval-core/src/lib/internal/visitors/{before,after}-visitor.ts` into a
@@ -197,10 +213,58 @@ surfaced by step 4's read hooks.
   § 9.1 of the Phase 1 plan already tells Phase 3 not to trust `target` identity for bare
   identifiers. An uncorrected or mis-sourced key compounds that.
 
+## Deferred tooling — documented-symbol drift gate
+
+Not a defect in shipped behaviour; a gap in what the suite can catch. Raised while closing
+Phase 1 step 6, after the step-5 retrospective had found two documented snippets that did
+not run as printed.
+
+**Assert that every symbol a README imports from `@zvenigora/ng-eval-core` is actually
+exported from it.** Scan the fenced code blocks
+in **both** `README.md` and `modules/eval-core/README.md`, collect the identifiers named in
+`import { … } from '@zvenigora/ng-eval-core'`, and assert each resolves against the public
+API.
+
+Scanning both is the point, not thoroughness for its own sake. The divergence this step had
+to correct was exactly a published/unpublished split: `trackTime` was documented only in the
+root `README.md`, which ships nowhere, so the one file a consumer installing the package can
+read was the one file the documentation was not in. A symbol documented only in the
+unpublished README is a gap, and comparing the two sets surfaces it structurally instead of
+depending on someone noticing. It also catches the higher-frequency case: a public symbol
+renamed or removed while a README goes on naming it.
+
+This is an **export-surface** assertion, so a `public-api.spec.ts` beside `src/public-api.ts`
+is its natural home. No such spec exists yet, so this creates one; the published surface has
+no direct test today, which is a second reason to add it.
+
+Deliberately excluded: a **block-count assertion** ("the README contains N snippets; update
+this spec if that changes"). It fires on every legitimate addition, so its steady-state
+behaviour is to train people to bump the number rather than investigate the failure, which
+costs more than the one gap it closes.
+
+### Considered and rejected: executing transcribed snippets
+
+The larger version of this — mirroring each documented snippet as a test and asserting the
+output the README prints — was written and run during step 6 (eight tests, all green) and
+then deleted rather than kept.
+
+A transcription is a **copy, not a reader**. It gates "the API behaves as documented", and
+the 711-test suite already does that; what it cannot gate is what the README actually says,
+because nothing connects the two. It would report a documentation guarantee it does not
+have — the failure mode CLAUDE.md names, arrived at from the documentation side.
+
+The decisive evidence is that **neither defect step 5 found would have been caught by it.**
+Both were missing declarations in fragments — `### Compilation` passing an `options` it never
+declared, `### Evaluation with scope` using an unconstructed `evalContext` — and a
+transcription is written to work. Anyone turning those fragments into a runnable test
+declares the missing bindings without noticing, and the test passes on code the README
+cannot. The two defects were found by executing the documented examples *by hand*, which is
+a review practice rather than a gate, and it stays that way.
+
 ## Suggested order
 
-1. Phase 1 (hooks) — unblocks 3 and 4, useful standalone (e.g. tracing/logging use cases).
-2. Phase 3 (signals) — depends only on Phase 1.
+1. ~~Phase 1 (hooks)~~ — **done**, shipped in 0.3.0; unblocks 3 and 4.
+2. Phase 3 (signals) — depends only on Phase 1, so it is now unblocked and is next.
 3. Phase 4 (forms) — depends on Phase 3.
 4. Phase 2 (statements) — independent track, can run in parallel with 1/3/4 since
    nothing else in this roadmap depends on `let`/`if`/`for`.

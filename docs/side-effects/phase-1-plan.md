@@ -1100,6 +1100,12 @@ because only the walker can distinguish an arrow-parameter binding from a real c
 
   Given that, `clearHookErrors()` is the wrong name for what it has to do; consider
   `resetHookBookkeeping()` and adjust § 5 to match. Raised by the step-2 review.
+
+  **Settled in step 6: it ships as `resetHookBookkeeping()`**, and § 5 is updated. It also
+  replaces the bookkeeping record rather than emptying the arrays in place — `hookErrors`
+  hands out the live array by design (§ 3.6), so emptying in place would clear a collection
+  a consumer may be holding a reference to, which is a mutation of someone else's data
+  rather than a reset of ours.
 - **Edit**: `internal/classes/eval/eval-hooks.ts` / `public-api.ts` — resolve
   `ASYNC_HOOK_MESSAGE`: it is exported from the module and referenced by an `{@link}` in the
   class docs, but is not re-exported from the barrel, so the link dangles for consumers.
@@ -1155,6 +1161,10 @@ because only the walker can distinguish an arrow-parameter binding from a real c
   above.
 - **Edit**: `ROADMAP.md` — mark Phase 1 done, link this document.
 - **Edit**: `modules/eval-core/package.json` — bump `0.2.5` → `0.3.0` (additive public API).
+  **And the root `package.json` with it.** The bullet named only the library file, but this
+  repo bumps both in lockstep — `a0fd823` for 0.2.5, `1c4bb30` for 0.2.3 — so following the
+  bullet literally would leave the workspace version trailing the package it builds. Raised
+  by the step-6 review.
 - **Edit**: `internal/interfaces/recursive-visitors.ts` — mark `RecursiveVisitorState` and
   `RecursiveVisitorResult` `@deprecated`, pointing at `EvalHooks`. They stay exported, so
   the release remains purely additive; removal is a follow-up for the next breaking version.
@@ -1178,6 +1188,22 @@ because only the walker can distinguish an arrow-parameter binding from a real c
   later by a consumer whose `switch (e.phase)` over `'before' | 'after'` silently stops
   being exhaustive. Everything else in § 5 is purely additive; this is the exception, and
   it is the reason the release notes cannot just say "additive".
+- **Exit**: `ngOnDestroy` releases both hook registrations and hook bookkeeping, and does so
+  **without allocating a registry** for a state that never used hooks — `EvalState.hooks`
+  builds one on first access, so an unguarded `state.hooks.clear()` would allocate inside
+  the method whose job is releasing memory; the guard is `state.hasHooks`, which is false
+  only when nothing is registered and clearing would be a no-op anyway. A caller-owned
+  registry passed through `options.hooks` **is** cleared: that is the case the bullet exists
+  for, since a registry outliving the service is what keeps captured states reachable.
+  `resetHookBookkeeping()` replaces the record rather than emptying it in place, so an array
+  a consumer took from `hookErrors` is not mutated under them. The published README
+  documents all five mandated points. Version bumped to `0.3.0` with a `CHANGELOG.md` entry
+  that names the one non-additive change. Lint, the full suite, and the production build are
+  clean.
+
+  Written down during step 6 rather than in advance: this was the only step in the plan with
+  no `**Exit**` bullet, which left "done" a judgement call where every other step made it
+  checkable.
 
 ---
 
@@ -1188,13 +1214,21 @@ because only the walker can distinguish an arrow-parameter binding from a real c
 export { EvalHooks, type EvalHookPhase, type EvalNodeHook, type EvalNodeHookEvent,
          type EvalReadHook, type EvalReadEvent, type EvalReadKind,
          type EvalHookError, type EvalHookErrorPolicy, type Unsubscribe,
-         type EvalKnownOptions, type EvalNodeTiming,
+         type EvalKnownOptions, type EvalNodeTiming, ASYNC_HOOK_MESSAGE,
          createDependencyTracker, type EvalTimingHook,
          createTimingHook, type EvalDependencyTracker };
 ```
 
+`ASYNC_HOOK_MESSAGE` was added to this list in step 6, resolving the dangling `{@link}` the
+step-1 review recorded: a consumer inspecting `state.hookErrors` needs it to tell the
+un-awaited-promise diagnostic apart from an error its own hook threw, and the alternative
+was matching on message text it would have to keep in sync by hand.
+
 Everything else stays internal. `EvalState` gains `hooks`, `hasHooks`, `hookErrors` and
-`nodeTimings` getters plus `clearHookErrors()` (§ 3.6, step 6). `EvalContext` gains two
+`nodeTimings` getters plus `resetHookBookkeeping()` (§ 3.6, step 6) — renamed from the
+`clearHookErrors()` this document originally proposed, because it resets the whole
+bookkeeping record (errors, the open-node stack, and the timings) and a name promising only
+the errors would understate what it drops. `EvalContext` gains two
 queries over step 1 of `get`'s resolution order: `getFromScopes()`, extracted so `get`'s own
 first step is an addressable unit rather than an inline loop, and `hasInScopes()`, the
 presence test the read hooks' `scoped` flag uses (§ 3.5.1).

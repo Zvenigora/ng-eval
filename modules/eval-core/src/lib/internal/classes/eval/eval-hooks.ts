@@ -163,6 +163,20 @@ const DEFAULT_POLICY: EvalHookErrorPolicy = 'collect';
 
 const POLICIES: readonly EvalHookErrorPolicy[] = ['collect', 'throw', 'ignore'];
 
+/**
+ * The message carried by the error raised when a hook returns a promise.
+ *
+ * Hooks are synchronous by contract (§ 3.3): the walk is synchronous even under
+ * `evaluateAsync`, so a returned promise is never awaited and whatever the hook
+ * meant to do lands after the evaluation finished. The dispatcher reports it as
+ * an error carrying this message, routed through the configured policy like any
+ * other hook error - collected by default, and thrown into the visitor under
+ * `'throw'`, which does fail the evaluation.
+ *
+ * Exported so a consumer inspecting `EvalState.hookErrors` can tell this
+ * diagnostic apart from an error its own hook threw, without matching on
+ * message text it would have to keep in sync by hand.
+ */
 export const ASYNC_HOOK_MESSAGE =
   'async hook returned a promise; it will not be awaited';
 

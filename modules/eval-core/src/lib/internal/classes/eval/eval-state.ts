@@ -107,8 +107,9 @@ export class EvalState {
    *
    * Accumulates for the life of the state, not per `evaluate` call: under the
    * `createState` + repeated `eval` style the counts are the running totals
-   * across every run on this state, which is what makes them comparable. There
-   * is no reset; a caller who wants per-run figures uses a fresh state.
+   * across every run on this state, which is what makes them comparable. A
+   * caller who wants per-run figures uses a fresh state, or drops these along
+   * with the rest of the run record via {@link resetHookBookkeeping}.
    *
    * Here rather than on the handle `createTimingHook` returns for the same
    * reason {@link hookErrors} is: timings describe one run, and an `EvalHooks`
@@ -137,6 +138,33 @@ export class EvalState {
    */
   public get hookBookkeeping(): EvalHookBookkeeping {
     return (this._hookBookkeeping ??= { open: [], errors: [], timings: new Map() });
+  }
+
+  /**
+   * Drops every per-run record this state holds: the collected hook errors, the
+   * open-node stack, and the accumulated timings.
+   *
+   * It resets the whole record rather than only the errors, which is why it is
+   * not named for them. `EvalHooks.clear` cannot reach any of this - the
+   * bookkeeping belongs to the state - so without this method nothing drains
+   * the open-node stack at all. Frames left on it keep their AST nodes
+   * reachable for as long as the state is, and `EvalService` holds its states
+   * in a strong `Set`.
+   *
+   * The errors matter for the same reason under the state-first style:
+   * `createState` plus repeated `eval` on one state accumulates them for the
+   * life of that state, and a thrown value can close over consumer objects.
+   *
+   * The record is replaced rather than emptied in place, so a caller still
+   * holding the array {@link hookErrors} handed out keeps its own contents and
+   * simply stops tracking - the alternative would mutate a collection the
+   * caller owns a reference to.
+   *
+   * Calling this mid-walk is unsupported for the same reason `EvalHooks.clear`
+   * is: it abandons frames the dispatcher expects to close.
+   */
+  public resetHookBookkeeping(): void {
+    this._hookBookkeeping = undefined;
   }
 
   /**

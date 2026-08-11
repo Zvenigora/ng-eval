@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { EvalService } from './eval.service';
 import { ParserService } from './parser.service';
 import { Registry, Cache } from '../../internal/classes/common';
+import { EvalHooks, EvalState } from '../../internal/classes/eval';
 import { AnyNode } from 'acorn';
 
 describe('EvalService - Memory Leak Prevention', () => {
@@ -199,6 +200,114 @@ describe('EvalService - Memory Leak Prevention', () => {
 
       // Should clean up without issues
       service.ngOnDestroy();
+    });
+  });
+
+  describe('Hook Lifecycle Cleanup', () => {
+    // `_hooks` is private and the getter that would reveal it allocates, which
+    // is the thing these tests are checking does not happen. Reaching for the
+    // field is the only non-destructive observation available.
+    const registryOf = (state: EvalState): EvalHooks | undefined =>
+      (state as unknown as { _hooks?: EvalHooks })._hooks;
+
+    it('should release collected hook errors and the open-node stack on reset', () => {
+      const state = service.createState({ a: 1 });
+      state.hooks.on('before', 'Identifier', () => {
+        throw new Error('boom');
+      });
+
+      service.eval('a', state);
+      // A frame the walk never closed - the case § 3.6 documents as unsupported
+      // and the one `ngOnDestroy` performs. Seeded directly because reaching it
+      // through a visitor would depend on a defect rather than on this method.
+      state.hookBookkeeping.open.push(parserService.parse('a') as AnyNode);
+
+      expect(state.hookErrors.length).toBeGreaterThan(0);
+      expect(state.hookBookkeeping.open.length).toBeGreaterThan(0);
+
+      state.resetHookBookkeeping();
+
+      expect(state.hookErrors.length).toBe(0);
+      expect(state.hookBookkeeping.open.length).toBe(0);
+    });
+
+    it('should drop hook errors rather than keep the array alive after reset', () => {
+      const state = service.createState({ a: 1 });
+      state.hooks.on('before', 'Identifier', () => {
+        throw new Error('boom');
+      });
+      service.eval('a', state);
+
+      // The getter hands back the live array, so a consumer may be holding the
+      // pre-reset one. Reset must not empty that array in place - a caller
+      // reading `hookErrors` after a reset should see a new, empty record.
+      const collected = state.hookErrors;
+      expect(collected.length).toBeGreaterThan(0);
+
+      state.resetHookBookkeeping();
+
+      expect(collected.length).toBeGreaterThan(0);
+      expect(state.hookErrors).not.toBe(collected);
+      expect(state.hookErrors.length).toBe(0);
+    });
+
+    it('should clear registered hooks on destruction', () => {
+      const state = service.createState({ a: 1 });
+      const hooks = state.hooks;
+      hooks.on('before', '*', () => undefined);
+      hooks.onRead(() => undefined);
+
+      expect(hooks.isActive).toBe(true);
+      expect(hooks.hasReadHooks).toBe(true);
+
+      service.ngOnDestroy();
+
+      expect(hooks.isActive).toBe(false);
+      expect(hooks.isEmpty).toBe(true);
+      expect(hooks.hasReadHooks).toBe(false);
+    });
+
+    it('should clear a caller-owned registry that outlives the service', () => {
+      // The retention `ngOnDestroy` exists to prevent: a long-lived registry
+      // whose closure captures the state keeps that state reachable after the
+      // service is gone. A state-owned registry dies with its state anyway.
+      const hooks = new EvalHooks();
+      const state = service.createState({ a: 1 }, { hooks });
+      hooks.on('after', '*', () => state);
+
+      service.ngOnDestroy();
+
+      expect(hooks.isEmpty).toBe(true);
+      expect(hooks.isActive).toBe(false);
+    });
+
+    it('should reset hook bookkeeping on destruction', () => {
+      const state = service.createState({ a: 1 });
+      state.hooks.on('before', 'Identifier', () => {
+        throw new Error('boom');
+      });
+      service.eval('a', state);
+      state.hookBookkeeping.open.push(parserService.parse('a') as AnyNode);
+
+      expect(state.hookErrors.length).toBeGreaterThan(0);
+
+      service.ngOnDestroy();
+
+      expect(state.hookErrors.length).toBe(0);
+      expect(state.hookBookkeeping.open.length).toBe(0);
+    });
+
+    it('should not build a hook registry for a state that never used hooks', () => {
+      const state = service.createState({ a: 1 });
+      service.eval('a', state);
+
+      expect(registryOf(state)).toBeUndefined();
+
+      service.ngOnDestroy();
+
+      // Touching `state.hooks` during teardown would allocate a registry inside
+      // the method whose job is releasing memory.
+      expect(registryOf(state)).toBeUndefined();
     });
   });
 });
