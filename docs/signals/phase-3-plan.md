@@ -554,21 +554,27 @@ Finding 1.2.11: CI runs `npm run build` and `npm test`, both aliases for `eval-c
 so the workflow is blind to `eval-signals` today. Landing that fix on its own means a
 workflow failure afterwards is unambiguously the script change and not the first real code.
 
-- **Edit**: root `package.json` — `test` and `lint` become `nx run-many -t test` /
-  `nx run-many -t lint`.
-- **Exit**: the GitHub workflow passes, having run both projects' `test` targets.
+- **Edit**: root `package.json` — `test` becomes `nx run-many -t test`.
+- **Edit**: `.claude/skills/step/SKILL.md` — § 4's "all must be clean" gets the same
+  until-step-1 exception § 1 already carries, so the per-step procedure stops contradicting
+  the § 1.1 baseline it is measured against.
+- **Exit**: the GitHub workflow passes, having run both projects' `test` targets, and the
+  step leaves every root script green.
 
-**One deviation from "the `build|test|lint` scripts become `run-many`, and nothing else",
-and it is forced by the baseline.** `eval-signals:build:production` fails today (§ 1.1,
-empty entry point), so flipping `build` in this step turns the workflow **red** on `master`
-until step 1 lands — and the step's own exit criterion, that the workflow passes, could not
-be met. The `build` script therefore stays `eval-core`-scoped here and step 1 flips it, in
-the same step that gives the entry point something to export. Isolation is preserved where
-it matters: `run-many` is proven in CI by this step, on the target that can already pass.
+**Only `test` moves here, and the other two are held back for the same reason.**
+`eval-signals:build:production` and `eval-signals:lint` both fail today (§ 1.1 — empty
+entry point, and two `@nx/dependency-checks` errors), so flipping either script in this step
+would leave it red until step 1 lands. For `build` that would turn the workflow red on
+`master` and the step's own exit criterion could not be met; for `lint` the workflow is
+indifferent — CI runs `npm run build --if-present` and `npm test`, not `npm run lint` — but
+it would still land a knowingly-red root script, which CLAUDE.md's Git section forbids
+committing on. Step 1 flips both, in the same step that gives the entry point something to
+export and puts the real peers in the manifest.
 
-A green step 0 needs no `lint` caveat for the same reason — `lint` is not in the workflow.
-It is moved here anyway so that the three scripts converge, and `npm run lint` is red
-locally until step 1, which is the same information the § 1.1 baseline already gives.
+That costs this step nothing. Its objective is CI coverage of `eval-signals`, and the `test`
+flip achieves all of it: `test` is the only one of the three that CI runs *and* that can
+already pass on both projects. `run-many` is proven in CI here, on that target, and the
+scripts converge in step 1.
 
 ### Step 1 — Package skeleton and the signal-aware context
 
@@ -591,8 +597,9 @@ locally until step 1, which is the same information the § 1.1 baseline already 
   without building a context.
 - **New**: `modules/eval-signals/src/lib/signal-context.spec.ts` and
   `nested-signal-check.spec.ts` — test-first.
-- **Edit**: root `package.json` — `build` becomes `nx run-many -t build`, the flip step 0
-  deferred until the entry point could satisfy it.
+- **Edit**: root `package.json` — `build` and `lint` become `nx run-many -t build` /
+  `nx run-many -t lint`, the two flips step 0 deferred until the entry point and the
+  manifest could satisfy them. All three root scripts are `run-many` from here on.
 - **Edit**: `modules/eval-signals/README.md` — replace the generator placeholder with a
   minimal real one; the full README is step 6.
 - **Exit**:

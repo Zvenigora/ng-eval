@@ -87,8 +87,11 @@ npx nx run eval-signals:build:production
 
 All must be clean. The build target is not optional here the way it was for `eval-core`:
 this library's entry point is new, and ng-packagr is the only gate that catches an empty or
-type-only barrel. The `eval-core` rows are the regression gate for § 2 — if they move, the
-step touched core.
+type-only barrel. § 1's exception applies to both commands above until step 1 lands:
+`eval-signals:lint` is expected red on its two `@nx/dependency-checks` errors, and
+`eval-signals:build:production` on `failed to get symbol for entrypoint` — both for the
+no-source-yet reason recorded in the plan's § 1.1. The `eval-core` rows are the
+regression gate for § 2 — if they move, the step touched core.
 
 If a pre-existing spec now fails, that is a regression in this step, not a stale test.
 Report it; do not edit the spec to match the new behaviour.
