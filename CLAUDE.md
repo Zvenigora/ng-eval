@@ -29,9 +29,6 @@ Root `npm run build|test|lint` are thin aliases for the three `eval-core` target
 (`nx.json` `plugins`); only `build` and target-level overrides live in
 `modules/eval-core/project.json`.
 
-Tests are matched as both `*.spec.ts` and `*.test.ts` — both conventions are in use and
-live next to the code they cover.
-
 ## Working from a plan
 
 - Active work is driven by a plan document under `docs/` (currently
