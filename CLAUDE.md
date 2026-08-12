@@ -188,7 +188,10 @@ regress.
   `unknown` + explicit narrowing rather than `any`.
 - Angular 22 / TypeScript 6 / Nx 23. `@zvenigora/ng-eval-core` declares Angular `>=19` as a
   peer dep, so avoid APIs newer than that in shipped code.
-- No `console.*` in library code.
+- No `console.*` in library code. One carve-out: a dev-mode-only diagnostic behind
+  `isDevMode()`, for a misuse that fails silently and would otherwise be undiagnosable.
+  Anything reachable in production, or that a consumer could have caught another way, does
+  not qualify.
 - New evaluator features generally need: the visitor, its registration in
   `recursive-visitors.ts`, a co-located spec, and an entry in the README's
   "ESTree Nodes Supported" list.

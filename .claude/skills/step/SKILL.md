@@ -8,8 +8,14 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: `docs/side-effects/phase-1-plan.md`
+Plan document: `docs/signals/phase-3-plan.md`
+Target library: `@zvenigora/ng-eval-signals` (`modules/eval-signals`)
 Requested step: $ARGUMENTS
+
+`eval-core` is a **dependency, not a work area**: the plan is scoped to add nothing to it
+(§ 2). Its lint and test targets run below as the regression gate that catches a step which
+reached into it anyway. If a step genuinely needs a core change, that is a stop-and-replan
+condition, not a wider step.
 
 ## Current state
 
@@ -37,11 +43,14 @@ start work on top of unrelated changes.
 Then run:
 
 ```sh
-npx nx run eval-core:lint
-npx nx run eval-core:test
+npx nx run-many -t lint test -p eval-signals eval-core
 ```
 
-If either fails before you have changed anything, stop and report. A pre-existing
+If a target fails before you have changed anything, stop and report — with one
+exception, recorded in the plan's § 1.1: until step 1 lands, `eval-signals:lint` fails on
+two `@nx/dependency-checks` errors and `eval-signals:build:production` fails with
+`failed to get symbol for entrypoint`, both because the library has no source yet. Those two
+are the baseline for step 1 and are expected to be red *only* then. Any other pre-existing
 failure must be understood before it is buried under new work.
 
 ### 2. Read and restate
@@ -72,15 +81,14 @@ After I confirm:
 ### 4. Verify
 
 ```sh
-npx nx run eval-core:lint
-npx nx run eval-core:test
+npx nx run-many -t lint test -p eval-signals eval-core
+npx nx run eval-signals:build:production
 ```
 
-Both must be clean. For any step that changes the published API surface, also run:
-
-```sh
-npx nx run eval-core:build:production
-```
+All must be clean. The build target is not optional here the way it was for `eval-core`:
+this library's entry point is new, and ng-packagr is the only gate that catches an empty or
+type-only barrel. The `eval-core` rows are the regression gate for § 2 — if they move, the
+step touched core.
 
 If a pre-existing spec now fails, that is a regression in this step, not a stale test.
 Report it; do not edit the spec to match the new behaviour.
@@ -88,6 +96,11 @@ Report it; do not edit the spec to match the new behaviour.
 ### 5. Report
 
 Before writing your report, invoke the `code-reviewer` subagent on this step's changes. Include its findings in your report. If it raises anything Critical, stop and surface it rather than closing out the step.
+
+Note its checklist is `eval-core`-shaped — the visitor stack invariants at the top of it
+apply to no file in `modules/eval-signals`. What still applies, and what you should weigh
+its findings on, is the lower half: test vacuity, public API discipline, and the CLAUDE.md
+rules it has in context.
 
 Finish with:
 
