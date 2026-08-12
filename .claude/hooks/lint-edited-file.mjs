@@ -54,8 +54,10 @@ function main() {
   const rel = path.relative(projectDir, abs).split(path.sep).join('/');
 
   // Only care about library source. Skip node_modules, dist, and files
-  // outside the workspace.
-  if (rel.startsWith('..')) process.exit(0);
+  // outside the workspace. On Windows a target on another drive has no
+  // relative path from the project, so path.relative hands back the absolute
+  // one — that escapes the '..' check and must be rejected separately.
+  if (rel.startsWith('..') || path.isAbsolute(rel)) process.exit(0);
   if (/(^|\/)(node_modules|dist|\.nx|coverage)\//.test(rel)) process.exit(0);
   if (!existsSync(abs)) process.exit(0);
 
