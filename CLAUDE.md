@@ -4,11 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-An Nx monorepo containing a single publishable Angular library, `@zvenigora/ng-eval-core`
-(`modules/eval-core`) — a JavaScript expression parser/evaluator built on `acorn` +
-`acorn-walk`, exposed as Angular DI services. `ROADMAP.md` plans two further libraries
-under `modules/` (`eval-signals`, `eval-forms`); see `docs/side-effects/phase-1-plan.md`
-for the in-progress hook API design that unblocks them.
+An Nx monorepo containing two publishable Angular libraries under `modules/`:
+
+- **`@zvenigora/ng-eval-core`** (`modules/eval-core`) — a JavaScript expression
+  parser/evaluator built on `acorn` + `acorn-walk`, exposed as Angular DI services. At
+  0.3.0, not yet published to npm. This is where nearly all the code is.
+- **`@zvenigora/ng-eval-signals`** (`modules/eval-signals`) — expression → Angular
+  `Signal`. Scaffolded at 0.0.1 and **in progress**: Phase 3 is being built into it now.
+
+Phase 1 (the generic evaluation hook API that unblocked the second library) is **complete**,
+shipped in `eval-core` 0.3.0; `docs/side-effects/phase-1-plan.md` is its design record, kept
+as reference rather than as active work. `ROADMAP.md` plans a third library,
+`eval-forms` (Phase 4), and statement support in `eval-core` (Phase 2).
 
 ## Commands
 
@@ -19,21 +26,34 @@ npx nx run eval-core:build:production   # ng-packagr build → dist/modules/eval
 npx nx run eval-core:test               # jest (jest-preset-angular)
 npx nx run eval-core:lint               # eslint flat config
 
+npx nx run eval-signals:build:production   # → dist/modules/eval-signals
+npx nx run eval-signals:test
+npx nx run eval-signals:lint
+
+npx nx run-many -t lint test -p eval-signals eval-core   # both projects at once
+
 # single test file / pattern — Jest 30, so the flag is plural
 npx nx test eval-core --testPathPatterns=queue.spec
 npx nx test eval-core --testNamePattern="case insensitive"   # note: singular here
 ```
 
-Root `npm run build|test|lint` are thin aliases for the three `eval-core` targets.
+Root scripts: `npm test` is `nx run-many -t test` and covers both projects. `npm run build`
+and `npm run lint` are still aliases for the single `eval-core` target — they move to
+`run-many` in Phase 3 step 1, which is when `eval-signals`' build and lint first pass
+(today its entry point is empty and its manifest fails `@nx/dependency-checks`).
+
 `lint` and `test` targets are *inferred* by the `@nx/eslint` / `@nx/jest` plugins
-(`nx.json` `plugins`); only `build` and target-level overrides live in
-`modules/eval-core/project.json`.
+(`nx.json` `plugins`); only `build` and target-level overrides live in each project's
+`project.json`.
 
 ## Working from a plan
 
-- Active work is driven by a plan document under `docs/` (currently
-  `docs/side-effects/phase-1-plan.md`). Read the plan before proposing changes; it records
-  findings about this codebase that are not obvious from reading files in isolation.
+- Active work is driven by a plan document under `docs/`. **The active plan is
+  `docs/signals/phase-3-plan.md`** — read it before proposing changes; it records findings
+  about this codebase that are not obvious from reading files in isolation.
+  `docs/side-effects/phase-1-plan.md` is the **completed** Phase 1 plan: still worth reading
+  for the hook contract Phase 3 consumes (its § 9 and § 9.1), but it is not the work in
+  progress and its open questions are settled.
 - **Execute one numbered step per session.** Do not begin step N+1 in the same session.
 - Run lint and the full test suite after **every** step, not only at the end.
 - A step is done when its stated exit criteria are met, not when the code looks finished.
