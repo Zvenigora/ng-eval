@@ -13,8 +13,12 @@ export default [
           allow: [],
           depConstraints: [
             {
-              sourceTag: '*',
-              onlyDependOnLibsWithTags: ['*'],
+              sourceTag: 'scope:core',
+              onlyDependOnLibsWithTags: ['scope:core'],
+            },
+            {
+              sourceTag: 'scope:signals',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:signals'],
             },
           ],
         },
