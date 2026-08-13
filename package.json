@@ -7,9 +7,9 @@
     "npm": ">=11"
   },
   "scripts": {
-    "build": "nx run eval-core:build:production",
+    "build": "nx run-many -t build",
     "test": "nx run-many -t test",
-    "lint": "nx run eval-core:lint"
+    "lint": "nx run-many -t lint"
   },
   "private": false,
   "devDependencies": {

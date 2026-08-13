@@ -600,6 +600,15 @@ scripts converge in step 1.
 - **Edit**: root `package.json` — `build` and `lint` become `nx run-many -t build` /
   `nx run-many -t lint`, the two flips step 0 deferred until the entry point and the
   manifest could satisfy them. All three root scripts are `run-many` from here on.
+  **Note that `build` stops naming a configuration.** It was
+  `nx run eval-core:build:production`; `nx run-many -t build` runs each project's
+  *default* configuration instead. Both `project.json`s currently set
+  `defaultConfiguration: "production"`, so the behaviour is unchanged — but that is now a
+  coincidence the root script depends on rather than intent it states. A project added
+  later without that key, or one that changes it, silently downgrades what CI builds.
+  Accepted for now because `run-many` cannot take a per-project configuration; the fix if
+  it ever bites is to make the default explicit in each `project.json`, not to unwind the
+  `run-many`.
 - **Edit**: `modules/eval-signals/README.md` — replace the generator placeholder with a
   minimal real one; the full README is step 6.
 - **Exit**:
@@ -723,6 +732,15 @@ Nothing is added to `@zvenigora/ng-eval-core`. Its 0.3.0 surface is consumed as 
 calls, and the one thing it wanted `EvalService` for — `createState` with `ngOnDestroy`
 cleanup — is the thing § 3.8 now rejects. If step 2 finds it needs `EvalService` after all,
 that is a signal to re-read § 3.3.1 rather than to add the import quietly.
+
+**This section governs what `src/lib/` imports, not what specs import.** Recorded in step 1,
+where the distinction first bites: step 1's reactivity spec drives the walk through
+`EvalService.simpleEval` because `createEvalSignal` does not exist yet, and § 3.1's own
+diagram is written in those terms. A spec exercising the integration § 3.1 describes puts
+nothing in the published surface — `dist/`'s `.d.ts` and `package.json` peers are what this
+section constrains. Step 2 should not re-litigate this: the rule to enforce is "no
+`EvalService` import under `src/lib/`", and the lint gate that would catch a violation is
+`@nx/dependency-checks` on the manifest, which specs do not affect.
 
 ---
 

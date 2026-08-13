@@ -1,9 +1,22 @@
 {
   "name": "@zvenigora/ng-eval-signals",
   "version": "0.0.1",
+  "description": "Angular signals for ng-eval expressions",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zvenigora/ng-eval.git"
+  },
+  "keywords": [
+    "Angular",
+    "Eval",
+    "Signals"
+  ],
+  "author": "Zvenigora (https://github.com/zvenigora)",
+  "license": "MIT",
+  "homepage": "https://github.com/Zvenigora/ng-eval#readme",
   "peerDependencies": {
-    "@angular/common": "^22.0.0",
-    "@angular/core": "^22.0.0"
+    "@angular/core": ">=19.0.0",
+    "@zvenigora/ng-eval-core": "^0.3.0"
   },
   "sideEffects": false
 }
