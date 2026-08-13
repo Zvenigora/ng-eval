@@ -106,11 +106,27 @@ functions, `logical-expression.ts` has four `after` exits). Both are **hook disp
 each returns immediately unless `st.hasHooks`, then fires the registered `EvalHooks`
 callbacks for that node. They return `void`.
 
-So there are **two** stack invariants, not one, and a new visitor must satisfy both:
+So there are **three** stack invariants, not one, and a new visitor must satisfy all three:
 
 - the value stack above — push exactly one, pop exactly one per child;
 - the open-node stack — exactly one `afterVisitor` per `beforeVisitor`, on every exit path
-  including the ones an exception takes.
+  including the ones an exception takes;
+- the **scope stack** — exactly one `st.context.pop()` per `st.context.push()`, again on
+  every exit path. Only two visitors push scopes (`arrow-function-expression.ts:14-19` and
+  `pattern.ts:110-113`) and **neither uses `try`/`finally`**, so a body that throws skips
+  the pop.
+
+The third differs from the other two in *where it lives*, which is what makes it the
+longest-lived of the three. The value stack and the open-node stack are on `EvalState`,
+which `evaluate` builds per walk and discards after — so corruption there dies with the
+walk that caused it. The scope stack is on `EvalContext`, and a caller may hand the **same**
+`EvalContext` to any number of evaluations (see "Context resolution" below). A leaked scope
+therefore outlives the walk and every later evaluation on that context reads it first, since
+scopes are step 1 of `EvalContext.get`'s resolution order. Nothing drains it.
+
+This is latent in `eval-core` only because the usual call builds a fresh context per
+evaluation. It is not latent for a caller that reuses one — `@zvenigora/ng-eval-signals`
+does, by design.
 
 The second one has a safety net and the first does not, which is the trap. `EvalHooks.exit`
 matches the closing node by **identity** and flushes any frames still open above it, and
@@ -154,6 +170,23 @@ a catch — a nested call would clobber the outer walk's.
 Consumers that need to know what an expression actually read (dependency tracking for
 signals/forms) need the resolved key from here — the AST node alone is not enough, since
 computed members and case correction change it.
+
+**`EvalState` is per-evaluation, but `EvalContext` need not be.** `EvalState.fromContext`
+calls `EvalContext.fromContext`, which **short-circuits on identity**: hand it something
+that is already an `EvalContext` and you get that same instance back, unwrapped and
+unmodified; hand it a plain object or `Registry` and it builds a fresh one. So one
+`EvalContext` can back any number of `EvalState`s. Three consequences, none of them
+obvious from `get`'s resolution order:
+
+- It is what makes "construct the context once, evaluate many times" possible at all —
+  the pattern `@zvenigora/ng-eval-signals` is built on.
+- The context's own `options` are **not** the walk's options. Visitors read
+  `st.options`, which `createState` builds from the options passed to *it* — so
+  `caseInsensitive` set only on the `EvalContext` corrects lookup-resolved identifiers
+  (the resolver sees the raw key) while `member-expression.ts` still compares property
+  names case-sensitively. It has to be passed to both.
+- It is what makes a leaked scope durable rather than per-walk — see the third stack
+  invariant above.
 
 ### Security-relevant code
 
@@ -202,10 +235,17 @@ regress.
   one of `build | ci | docs | feat | fix | perf | refactor | test`. The type drives
   semantic versioning on merge (`CONTRIBUTING.md`).
 - Prettier config exists but the codebase is not formatted to it; match the surrounding file's style.
-- `tsconfig.base.json` sets `strict: false`, but `modules/eval-core/tsconfig.json` overrides
-  it to `strict: true` — library code compiles under strict, so narrow `T | undefined` for
-  real rather than assuming the loose base config applies. Library code also leans on
-  `unknown` + explicit narrowing rather than `any`.
+- `tsconfig.base.json` sets `strict: false`, but both libraries override it — so library
+  code compiles under strict, and you should narrow `T | undefined` for real rather than
+  assuming the loose base config applies. Library code also leans on `unknown` + explicit
+  narrowing rather than `any`. **The two libraries are not equally strict**:
+  `modules/eval-core/tsconfig.json` sets `strict: true`, while
+  `modules/eval-signals/tsconfig.json` adds `noPropertyAccessFromIndexSignature`,
+  `noImplicitReturns`, `noFallthroughCasesInSwitch` and `isolatedModules` on top. The first
+  of those is why `eval-signals` reads options as `options?.['caseInsensitive']` and not
+  `options?.caseInsensitive` — `EvalOptions` is
+  `Record<string, unknown> | { caseInsensitive: false }`, and dotted access into an index
+  signature is an error there. That is required, not a style slip; don't "tidy" it.
 - Angular 22 / TypeScript 6 / Nx 23. `@zvenigora/ng-eval-core` declares Angular `>=19` as a
   peer dep, so avoid APIs newer than that in shipped code.
 - No `console.*` in library code. One carve-out: a dev-mode-only diagnostic behind
