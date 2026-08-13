@@ -225,6 +225,43 @@ describe('createSignalContext', () => {
 
   });
 
+  describe('a throwing arrow function and the reused context', () => {
+
+    /**
+     * KNOWN LIMITATION - pinned as current behaviour, not endorsed.
+     *
+     * This asserts the leak rather than the correct answer, so that a fix has
+     * to update this spec deliberately (the `read-hooks.spec.ts` precedent in
+     * `eval-core` for the `getKey` gaps). See the plan's S 3.2 and S 7.
+     */
+    it('should leak the arrow parameter scope into every later evaluation', () => {
+      const context = createSignalContext({
+        x: signal('from source'),
+        items: signal([1, 2, 3]),
+        explode: () => { throw new Error('boom'); },
+      });
+
+      expect(service.simpleEval('x', context)).toEqual('from source');
+
+      // `arrow-function-expression.ts:14-19` pushes the parameter scope, calls
+      // `evaluate`, then pops - with no `try`/`finally`. `evaluate` rethrows
+      // (`evaluate.ts:46`), so the pop never runs and `{ x: 1 }` stays on
+      // `EvalContext._scopes`.
+      expect(() => service.simpleEval('items.map(x => explode(x))', context)).toThrow();
+
+      // A *fresh* EvalState, the same EvalContext - the shape this library is
+      // built on: one context per signal (S 3.2), one state per recompute
+      // (S 3.3.1). Scopes are step 1 of `get`'s resolution order, so the leaked
+      // binding shadows the source from here on.
+      expect(service.simpleEval('x', context)).toEqual(1);
+
+      // ...and it does not drain: the context is poisoned for its whole life,
+      // which for this library is the life of the signal.
+      expect(service.simpleEval('x', context)).toEqual(1);
+    });
+
+  });
+
   describe('the nested-signal diagnostic', () => {
 
     let warn: jest.SpyInstance;

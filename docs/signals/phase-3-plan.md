@@ -1,6 +1,21 @@
 # Phase 3 Plan — `@zvenigora/ng-eval-signals` (new module)
 
 **Date**: August 12, 2026
+**Revision**: 3 — amended after step 1 landed (`fac0f59`). Docs only, no design reversal.
+Six changes, all findings from step 1's implementation and review: § 3.2's `getThis`
+bullet **corrected** (the bare-call `this` is the `EvalContext`, not the resolver); § 3.2
+gains the `Object.prototype` collision as a shape, with `Object.create(null)` recorded as a
+plan-level decision rather than a step-time fix; § 3.2 gains the **demonstrated**
+arrow-function scope leak, with a § 7 risk row and step 4 owning the containment; § 3.3
+decides that `createEvalSignal` forwards `options.eval` to both the context and the
+evaluation, removing the set-it-in-two-places wart; step 2's bullets are brought in line
+with that decision, including the `SignalContextSource | EvalContext` fork; and a new § 6.1
+requiring specs to assert end-to-end.
+
+The scope leak is the one that changes work rather than wording: it is a consequence of
+§ 3.2's construct-once decision, it is reproduced by a spec rather than projected, and
+§ 3.3.1's fresh-state-per-recompute does not cover it.
+
 **Revision**: 2 — amended before step 1. Four changes: per-recompute state lifetime settled
 (§ 3.3.1, reversing a § 3.8 bullet); the tracker never touches a consumer-owned hook registry
 (§ 3.4); a **step 0** that puts `eval-signals` in front of CI on its own; and § 8's first
@@ -237,21 +252,90 @@ than as extra machinery.
 **Three properties of `lookups` that have to be accepted with it:**
 
 - **Lookups run last.** A key present in `original` never reaches the resolver. The adapter
-  therefore owns the whole context: `original` is `{}` and *everything* — signals and plain
-  values alike — resolves through the lookup. A consumer mixing a pre-built `EvalContext`
-  with signal keys must know that a name present in both resolves to the plain one. The
-  adapter documents this and the spec pins it.
+  therefore owns *almost* the whole context: `original` is `{}` and everything — signals and
+  plain values alike — resolves through the lookup, **except the names `{}` inherits**. A
+  consumer mixing a pre-built `EvalContext` with signal keys must know that a name present
+  in both resolves to the plain one. The adapter documents this and the spec pins it.
+- **An empty `original` is not an absent one: every `Object.prototype` name shadows the
+  source.** Found in step 1's review and verified against the built bundle.
+  `getContextValue` reads a plain-object context as a bare property access
+  (`context[key]`) with no own-property check, and `get` treats any non-`undefined` result
+  as a hit — so `original = {}` resolves the whole prototype chain before the resolver is
+  ever reached.
+
+  This is a **shape, not four special cases**: any source key colliding with
+  `Object.prototype` is unreachable through the adapter. `constructor`, `valueOf`,
+  `toString`, `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable`, `toLocaleString`
+  and `__proto__` are the members, and the resolver's own `hasOwnProperty` guard is dead
+  code for exactly those names. `createSignalContext({ toString: signal(x) })` evaluates
+  `'toString'` to `Object.prototype.toString`.
+
+  The mechanism is pre-existing `eval-core` behaviour — `simpleEval('constructor', {})`
+  does the same today — and it is **not** a sandbox escape: `call-expression.ts` still
+  blocks `Function`, and the pollution guard still blocks `constructor.constructor`. What is
+  new is the consequence for a context this library tells consumers it owns.
+
+  **The known fix is `original = Object.create(null)`**, which removes the prototype and
+  routes every name to the resolver. It is not free: `EvalContext.set`, `toObject`, and
+  `getContextValue`/`setContextValue` all branch on `instanceof Object`, which a
+  null-prototype object fails, so the swap changes those paths and needs its own analysis.
+  **Revisiting it is a plan decision, not a step-time one** — a step that hits this should
+  stop and amend § 3.2, per § 2. Until then it is a documented limitation in the package
+  README, pinned by a spec.
+- **A throwing arrow function poisons the reused context permanently.**
+  **Demonstrated in step 1**, by a spec in `signal-context.spec.ts`, after the mechanism was
+  found by reading `arrow-function-expression.ts:14-19`, `pattern.ts:110-113` and
+  `evaluate.ts:46`. Those are the only two scope pushes in the evaluator and neither uses
+  `try`/`finally`; `evaluate` rethrows, so an arrow body that throws skips its
+  `st.context.pop()` and the parameter binding stays on `EvalContext._scopes`.
+
+  Scopes are step 1 of `get`'s resolution order, so from that point the leaked binding
+  shadows the source for **every later evaluation on that context**. The repro:
+  `items.map(x => explode(x))` throws, and `'x'` — which read `'from source'` a moment
+  earlier — resolves to `1` on the next evaluation and on every one after it. Nothing
+  drains the stack.
+
+  **This is a consequence of this section's construct-once decision, not a pre-existing
+  `eval-core` bug that happened to surface.** § 3.3.1's fresh-`EvalState`-per-recompute
+  does not help: the state is new, the context is the shared one, and that is exactly the
+  shape the repro uses. `eval-core` is unharmed in ordinary use because
+  `EvalContext.fromContext` builds a fresh context per evaluation for a plain-object caller,
+  so a leaked scope dies with the walk that made it.
+
+  One precision worth keeping, because it decides where a fix would live: the missing
+  `try`/`finally` *is* pre-existing `eval-core` code, and a core consumer who reuses an
+  `EvalContext` would hit the same thing today. What is new here is that reuse stops being
+  a thing a caller might do and becomes the design — so Phase 3 converts a latent wart into
+  a structural one. Fixing it properly is a `try`/`finally` in two core visitors, which § 2
+  puts out of scope; the options open to *this* library are containment, and they belong to
+  step 4 (§ 3.8).
 - **`getKey` does not consult lookups.** This is a known `eval-core` defect
   (`ROADMAP.md` § "Deferred defects"), and its consequence here is bounded: `EvalReadEvent.key`
   reports the source spelling rather than the corrected one for lookup-resolved keys under
   `caseInsensitive`. That degrades the *diagnostic* dependency set (§ 3.4) and nothing else —
   tracking is Angular's and does not read `key`. Recorded in the README's limitations, not
   fixed here (§ 2, out of scope).
-- **`getThis` returns the lookup function** as the `this` argument for a lookup-resolved
-  key. Pre-existing `eval-core` behaviour, and it means a *bare* context function called as
-  `f()` sees the resolver as `this`. Methods called as `obj.m()` are unaffected — the member
-  path supplies the object. Step 1 asserts the bare-call case so the behaviour is pinned
-  rather than discovered.
+- **`getThis` returns the lookup function** for a lookup-resolved key — but that value
+  never reaches a bare call. **Corrected in step 1**, which asserted the behaviour rather
+  than assuming it. `getThis` has exactly one call site in the whole evaluator,
+  `member-expression.ts:97`; `call-expression.ts` never consults it, and for a non-member
+  callee it passes **`st.context`** as `thisArg`. So a *bare* context function called as
+  `f()` sees the **`EvalContext`** as `this`, not the resolver. Methods called as `obj.m()`
+  are unaffected either way — the member path supplies the object.
+
+  The revision this bullet replaces claimed the resolver was the bare-call `this`. Two
+  step-1 assertions pin the real behaviour, and they are deliberately separate because they
+  test different things:
+
+  - `simpleEval('probe()', context)` captures `this` inside the callee and asserts it is
+    the `EvalContext` — the bare-call path, which does not involve `getThis` at all;
+  - `context.getThis('one')` asserts it is `context.lookups[0]` — `getThis`'s own contract,
+    which matters for the member path.
+
+  The second needed guarding against vacuity: both sides of that identity are `undefined`
+  when no lookup is registered, so it is preceded by `expect(context.lookups).toHaveLength(1)`
+  and a `getThis('missing')` check. Without those it passed against an adapter that
+  registered no resolver at all.
 
 #### 3.2.1 The nested-signal shape — dev-mode detection
 
@@ -363,6 +447,31 @@ Shape decisions, each with its reason:
 - **`dependencies` is a plain getter, not a `Signal`.** Making it reactive would tempt a
   consumer to read it inside another `computed()`, subscribing to the *introspection* of a
   computation. It is a debugging surface; it reads what the last recompute recorded.
+- **`options.eval` is forwarded to *both* the context and the evaluation — decided.**
+  Step 1 found that `caseInsensitive` is honoured in two unrelated places: the adapter's
+  resolver corrects *identifier* keys, because lookups receive the raw key, while *property*
+  names are corrected by `member-expression.ts` off `state.options`, which is built from the
+  options handed to `createState`/`simpleEval`. A consumer who sets it once therefore gets
+  `PRICE` working and `user.NAME` silently returning `undefined` — the exact failure this
+  library exists to prevent, since a signal that silently never updates is indistinguishable
+  from one whose expression is wrong.
+
+  This is a wart to remove at the factory, not to document. `createEvalSignal` is the one
+  place that owns both halves, so **when it builds the context it passes `options.eval` to
+  `createSignalContext` *and* to `CompilerService.createState`.** Setting it once is then
+  correct everywhere, and no consumer has to know the option is read twice.
+
+  **The one case where the two-place requirement survives** is `source` given as an
+  already-built `EvalContext`: that context was constructed by the caller, with whatever
+  options they chose, and the factory must not retroactively rewrite them. There the
+  forwarding covers the evaluation only, and the caller owns the context half. That
+  asymmetry is inherent to accepting a pre-built context and is documented rather than
+  engineered around.
+
+  Step 2 asserts this **end-to-end through the factory**, not through `context.get()`:
+  `createEvalSignal('user.NAME', { user: signal({ name: 'Ada' }) }, { eval: { caseInsensitive: true } })`
+  resolves `'Ada'`. Step 1's four case-sensitivity specs all called `context.get()` directly
+  and were blind to the whole defect — see § 6.1.
 
 #### 3.3.1 One `EvalState` per recompute — decided
 
@@ -636,17 +745,37 @@ scripts converge in step 1.
   Compiles once through `CompilerService.compile` (finding 1.2.9); builds a **fresh state per
   recompute** through `CompilerService.createState` (§ 3.3.1, § 3.8); `computed()` calls
   `CompilerService.call`.
-- **New**: `src/lib/eval-signal.spec.ts` — test-first. Recompute on change; **no** recompute
+- **Forward `options.eval` to both halves** (§ 3.3, last shape decision). `caseInsensitive`
+  is read in two unrelated places — the adapter's resolver for identifiers, `state.options`
+  for property names — and a consumer setting it once must not get one working and the other
+  silently not.
+  - When `source` is a `SignalContextSource`, the factory builds the context, so it passes
+    `options.eval` to **`createSignalContext` and `createState` both**.
+  - When `source` is already an `EvalContext`, **the factory must not rewrite it.** That
+    context was constructed by the caller with the options they chose; forwarding covers the
+    evaluation half only, and the caller owns the context half. Pass it straight through —
+    `EvalContext.fromContext` short-circuits on identity, so it survives to the walk intact.
+  - The union fork is the whole of the difference between the two paths; everything else in
+    the factory is shared.
+- **New**: `src/lib/eval-signal.spec.ts` — test-first, and **end-to-end through the factory**
+  rather than through `context.get()` (§ 6.1). Recompute on change; **no** recompute
   when an unread signal changes; **no** recompute on a second read with nothing changed
   (memoization); `compile` called once across N recomputes; a distinct state per recompute
   (§ 3.3.1) — assert it directly here, since step 4 asserts only its consequence; `equal`
   honoured; each `onError` mode.
+- **New spec case — the forwarding, proved on the half that fails without it.**
+  `createEvalSignal('user.NAME', { user: signal({ name: 'Ada' }) }, { eval: { caseInsensitive: true } })`
+  resolves `'Ada'`. The *identifier* half passes with no forwarding at all — step 1's four
+  case-sensitivity specs did — so a test that only reads `'PRICE'` is vacuous here. Pair it
+  with the pre-built-`EvalContext` case: a caller-built context keeps its own options, and
+  the factory does not mutate them.
 - **Edit**: `src/public-api.ts` — export the factory and its types.
 - **Also in this step**: the read-only write policy of § 3.6, with its own spec case — this
   is the first step where an evaluation runs inside a `computed()`, so it is the first step
   where the failure is reachable.
 - **Exit**: the above spec green; a signal built over a 3-key context and an expression
-  naming 1 key recomputes for that key alone.
+  naming 1 key recomputes for that key alone; and `caseInsensitive` set once on
+  `options.eval` corrects a **property** name, not only an identifier.
 
 ### Step 3 — DI surface and the non-signal fallback
 
@@ -682,8 +811,28 @@ scripts converge in step 1.
   assert the same run yields **N distinct** states. Both halves are needed: the trace bound
   alone would also pass on a reused state whose trace someone truncates, and the distinctness
   alone says nothing about growth.
+- **Decide the containment for the leaked arrow-function scope** (§ 3.2, last bullet;
+  § 7). The leak is demonstrated, not hypothetical, and the shared context is this
+  library's own decision, so this step owns the answer even though the defect is in
+  `eval-core`. Write the choice into § 3.8 before implementing it. The options, none yet
+  chosen:
+  - **Snapshot and restore the scope depth around each recompute.** `EvalContext.scopes` is
+    a public getter returning a `Stack`, so the depth is readable; restoring it after every
+    evaluation makes a leak last one recompute instead of forever. Contains the damage
+    without touching core, and does not need the throw to be observable.
+  - **Rebuild the context per recompute.** Removes the leak entirely, and costs the
+    construct-once property § 3.2 chose deliberately — including the stable `target` that
+    § 3.4's introspection gets for free. A reversal of § 3.2, so it needs that section
+    amended rather than a step-time decision.
+  - **Document it and do nothing**, on the grounds that an expression whose arrow function
+    throws is already broken. Weakest of the three: the leak is silent, it corrupts
+    *unrelated* keys, and the symptom (`x` is suddenly `1`) points nowhere near the cause.
+  - **Fix it in `eval-core`** — two `try`/`finally`s. Correct, out of scope per § 2, and a
+    stop-and-replan if chosen.
 - **Exit**: destroying a signal releases its hook registration; `destroy()` is idempotent;
-  N recomputes leave N short-lived states, none of them retained and none of them grown.
+  N recomputes leave N short-lived states, none of them retained and none of them grown;
+  and the § 3.2 scope-leak containment is decided in § 3.8, implemented, and covered by a
+  spec that supersedes step 1's pinned-limitation one.
 
 ### Step 5 — Async (or a recorded deferral)
 
@@ -759,6 +908,32 @@ section constrains. Step 2 should not re-litigate this: the rule to enforce is "
 Run **all** of these after every step, not just the new project's. The `eval-core` rows are
 what catch a step that quietly reached into core against § 2.
 
+### 6.1 Specs go through the end-to-end path — steps 2–6
+
+**Default to asserting through the path a consumer actually uses** — `service.simpleEval` /
+`CompilerService.call`, and from step 2 onward `createEvalSignal` itself — rather than
+through the adapter's own API. Reach for `context.get()` and friends only to pin a
+resolution detail that has no end-to-end expression, and pair it with an end-to-end case.
+
+This is not a style preference; it is the lesson of step 1. The `caseInsensitive` split above
+was invisible to **four** specs that all called `context.get('FOO')` directly, because the
+resolver is exactly the half that works. One `simpleEval('user.NAME', context)` exposed it
+immediately. The adapter's API is the *inside* of the unit; an assertion that never leaves it
+cannot see a defect that lives in how the evaluator consumes what the adapter produced — and
+in this library, that seam is where the interesting failures are, because the whole design
+(§ 3.1) is about placing someone else's walk inside a reactive context.
+
+Two corollaries, both of which cost step 1 a review round:
+
+- **Reactivity is asserted by recompute counts around a real evaluation**, never by
+  inspecting the adapter. A resolver that reads every signal on every lookup passes every
+  positive tracking assertion; only the *negative* one — an unread signal changing must
+  **not** recompute — catches it.
+- **A wiring call is not covered by testing what it calls.** Step 1 tested
+  `warnOnNestedSignals` thoroughly and still left the `createSignalContext` call site
+  deletable with the suite green. If a step adds a call, one assertion goes through the
+  caller.
+
 ---
 
 ## 7. Risks
@@ -773,6 +948,7 @@ what catch a step that quietly reached into core against § 2.
 | CI keeps passing while `eval-signals` is broken | Medium | Root scripts move to `run-many` in **step 0** — before any code lands, so a workflow failure afterwards is the script change and nothing else |
 | A reused `EvalState` accumulates trace entries across recomputes, retaining every intermediate value | **High if not designed for** | § 3.3.1: a fresh state per recompute, through the untracked `CompilerService.createState`. Step 4 asserts both halves — N distinct states, none grown |
 | The tracker is installed on a registry the consumer owns | Medium | § 3.4: the combination throws at construction; step 3 asserts the caller's registry comes back with no read hook |
+| **A throwing arrow function leaks its parameter scope onto the shared `EvalContext`, shadowing the source for the life of the signal** | **Demonstrated** — not a projection; reproduced end-to-end by a step-1 spec | § 3.2, last bullet. A direct consequence of construct-once, and *not* covered by § 3.3.1's fresh state per recompute. The clean fix is a `try`/`finally` in two `eval-core` visitors, which § 2 puts out of scope — so **step 4 decides the containment**, and § 3.8 is where the options get written down. Until then it is pinned as current behaviour by `signal-context.spec.ts`, asserting the leak rather than the right answer so a fix has to update it deliberately |
 | Scope creep into `eval-core` | Medium | § 2 makes it a stop-and-replan condition; the § 6 core rows detect it |
 
 ---
