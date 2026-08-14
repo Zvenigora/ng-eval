@@ -4,8 +4,9 @@ Angular `Signal`s for [`@zvenigora/ng-eval-core`](../eval-core/README.md) expres
 evaluate an expression over a context of signals and let Angular track exactly the keys the
 expression read.
 
-> **Status: in progress.** Only `createSignalContext` has landed so far; `createEvalSignal`
-> and the DI surface follow. See [`docs/signals/phase-3-plan.md`](../../docs/signals/phase-3-plan.md).
+> **Status: in progress.** `createSignalContext` and `createEvalSignal` have landed; the DI
+> surface, dependency introspection and cleanup follow, and the usage docs arrive with them.
+> See [`docs/signals/phase-3-plan.md`](../../docs/signals/phase-3-plan.md).
 
 ## Install
 

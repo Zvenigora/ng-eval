@@ -1,7 +1,7 @@
 import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { EvalService } from '@zvenigora/ng-eval-core';
-import { createSignalContext } from './signal-context';
+import { SignalContextWriteError, createSignalContext } from './signal-context';
 
 describe('createSignalContext', () => {
 
@@ -258,6 +258,130 @@ describe('createSignalContext', () => {
       // ...and it does not drain: the context is poisoned for its whole life,
       // which for this library is the life of the signal.
       expect(service.simpleEval('x', context)).toEqual(1);
+    });
+
+  });
+
+  describe('the read-only write policy', () => {
+
+    /**
+     * The keys of a signal context are read-only (plan S 3.6). The
+     * interception point is `EvalContext.set`, which both evaluator write
+     * branches route through - `assignment-expression.ts:53` and
+     * `update-expression.ts:27` - and which nothing else in `eval-core`
+     * calls.
+     */
+
+    it('should reject an assignment made by the evaluator', () => {
+      const context = createSignalContext({ count: signal(1) });
+
+      // `EvalService.simpleEval` rethrows `new Error(error.message)`, so the
+      // error *type* does not survive this path. The message does, and the
+      // type is pinned on the adapter's own API below. S 3.6.3 is why
+      // `createEvalSignal` calls the free `call` instead of the service's.
+      expect(() => service.simpleEval('count = 5', context))
+        .toThrow(/Cannot assign to 'count'/);
+    });
+
+    it('should reject an update expression, which writes through the same point', () => {
+      const context = createSignalContext({ count: signal(1) });
+
+      expect(() => service.simpleEval('count++', context))
+        .toThrow(/Cannot assign to 'count'/);
+    });
+
+    it('should raise a keyed error naming no expression when used standalone', () => {
+      const context = createSignalContext({ count: signal(1) });
+
+      let caught: unknown;
+      try {
+        context.set('count', 5);
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(SignalContextWriteError);
+      expect((caught as SignalContextWriteError).key).toEqual('count');
+      expect((caught as SignalContextWriteError).message)
+        .toEqual("Cannot assign to 'count': the keys of a signal context are read-only.");
+
+      // The adapter has no expression to name - `createSignalContext` is
+      // public and callable without one. `createEvalSignal` adds that half
+      // and is asserted in `eval-signal.spec.ts`; without this case the
+      // standalone shape goes untested and enrichment could silently become
+      // the only path.
+      expect((caught as SignalContextWriteError).expression).toBeUndefined();
+      expect((caught as SignalContextWriteError).cause).toBeUndefined();
+    });
+
+    it('should leave the source resolving after a rejected write', () => {
+      const context = createSignalContext({ count: signal(1) });
+
+      expect(() => service.simpleEval('count = 5', context)).toThrow();
+
+      // The assertion that pins "no write landed" - the throw alone does not.
+      // A guard that threw *after* writing would put `count` in `original`,
+      // which is step 2 of `get`'s resolution order against the resolver's
+      // step 4, so the stale 5 would shadow the source for the life of the
+      // context. On a construct-once context that is the life of the signal
+      // (S 3.2.2).
+      expect(service.simpleEval('count', context)).toEqual(1);
+      expect(context.original).toEqual({});
+    });
+
+    /**
+     * KNOWN GAP - pinned as current behaviour, not endorsed. Same treatment as
+     * the arrow-scope leak above, and for the same reason: a fix has to update
+     * this spec deliberately. See the plan's S 3.6.4 and S 8 q6.
+     */
+    it('should NOT reject a write whose target is a member of a signal value', () => {
+      const user = signal({ name: 'Ada' });
+      const context = createSignalContext({ user });
+
+      // The policy covers a write *to* a context key. This is a write
+      // *through* one: `assignment-expression.ts` takes its MemberExpression
+      // branch, which writes with `safeSetProperty` straight into the object
+      // the signal holds and never touches the context. No guard on the
+      // `EvalContext` can see it - the data is the consumer's, not ours.
+      expect(service.simpleEval('user.name = "Bob"', context)).toEqual('Bob');
+
+      expect(user()).toEqual({ name: 'Bob' });
+    });
+
+    it('should NOT reject an update whose target is a member either', () => {
+      const counter = signal({ n: 1 });
+      const context = createSignalContext({ counter });
+
+      expect(service.simpleEval('counter.n++', context)).toEqual(1);
+
+      expect(counter()).toEqual({ n: 2 });
+    });
+
+    /**
+     * KNOWN GAP - pinned as current behaviour. See the plan's S 3.6.4.
+     */
+    it('should lose the key under caseInsensitive, which getKey cannot resolve', () => {
+      const context = createSignalContext({ count: signal(1) }, { caseInsensitive: true });
+
+      let caught: unknown;
+      try {
+        service.simpleEval('COUNT = 5', context, { caseInsensitive: true });
+      } catch (error) {
+        caught = error;
+      }
+
+      // Under `caseInsensitive` the visitors resolve the key through
+      // `EvalContext.getKey` before calling `set`, and `getKey` consults
+      // scopes, `original` and `priorScopes` but never `lookups` - so a
+      // signal-backed key, which lives only in `lookups`, comes back
+      // unresolved. The guard still fires, which is what matters; the
+      // diagnostic half of the error is what degrades.
+      expect((caught as Error).message)
+        .toEqual("Cannot assign to 'undefined': the keys of a signal context are read-only.");
+
+      // Still no write, which is the property the policy actually owes.
+      expect(service.simpleEval('count', context)).toEqual(1);
+      expect(context.original).toEqual({});
     });
 
   });

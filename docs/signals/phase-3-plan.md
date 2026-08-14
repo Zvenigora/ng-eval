@@ -394,6 +394,33 @@ Two requirements on step 1's implementation:
   Testing that dev mode warns leaves a warning that fires unconditionally — the more likely
   defect of the two — indistinguishable from a correct implementation.
 
+#### 3.2.2 The general property behind § 3.2's last three bullets
+
+The scope leak above is not a one-off, and neither is the write shadowing settled in § 3.6.
+They are two instances of one failure mode, and a third will look like them:
+
+> **Construct-once converts a bounded `eval-core` wart into permanent per-signal
+> corruption.** Anything `eval-core` leaves in a bad state on an `EvalContext` is, for a core
+> consumer, discarded with the walk — `EvalContext.fromContext` builds a fresh context per
+> evaluation for a plain-object caller, so the damage lives exactly as long as the mistake.
+> This library reuses one context for the life of the signal by design (§ 3.3.1 keeps the
+> *state* fresh, and deliberately does **not** keep the context fresh — reuse is the point of
+> it). So the same defect becomes durable: every later recompute reads the corruption first,
+> because both channels — `scopes` and `original` — sit *ahead* of `lookups` in
+> `EvalContext.get`'s resolution order, ahead of the adapter's own resolver.
+
+Two consequences for how this phase reads a core defect:
+
+- **Severity does not carry over from `eval-core`.** A defect core can honestly describe as
+  latent, bounded, or a no-op may be none of those here. § 3.6's write fall-through was
+  written up in revision 1 as "a property nobody reads"; on a construct-once context it is a
+  permanent shadow of the signal source for that key, for the life of the signal. Re-derive
+  the blast radius against reuse rather than inheriting the core assessment.
+- **The containment lives at the adapter, not in core.** § 2 keeps `eval-core` out of scope,
+  so each instance is closed where this library owns the seam — the `EvalContext` it
+  constructs, which it is free to subclass. § 3.6 does that for writes; step 4 decides it for
+  the scope leak.
+
 ### 3.3 `createEvalSignal` — the primary API
 
 ```ts
@@ -586,21 +613,166 @@ make, and all three are expensive per recompute.
 ### 3.6 Writes and assignment — decided: read-only
 
 The adapter's resolver has no write path. `AssignmentExpression` / `UpdateExpression`
-against a lookup-resolved key currently falls through `setContextValue` to the empty
-`original`, which would write a property nobody reads — a silent no-op, the worst of the
-options.
+against a lookup-resolved key falls through to the empty `original`.
 
-**Decision: the adapter detects a write to a signal-backed key and throws** a library-owned
-error naming the expression and the key. Reasons, in order:
+**Corrected in step 2** — revision 1 called that "a property nobody reads, a silent no-op".
+It is not a no-op. `original` is **step 2** of `EvalContext.get`'s resolution order and
+`lookups` is step 4, so on a construct-once context `count = 5` writes `original.count = 5`
+and then permanently shadows the signal source for `count`, for the life of the signal.
+Every later recompute reads the frozen written value and no longer tracks the signal, so the
+signal stops updating and nothing reports why. This is § 3.2.2's general property, and it
+raises the priority of the decision below rather than changing it.
+
+**Decision: the adapter's keys are read-only, and a write throws** a library-owned error.
+Reasons, in order:
 
 1. Inside a `computed()` a successful signal write is illegal anyway (finding 1.2.6): the
    consumer would trade a clear library error for `NG0600`.
 2. A write from inside a derivation is a design error in the consumer's code regardless of
    Angular — a derived value that mutates its own inputs does not have a stable value.
-3. A silent no-op is undiagnosable; the current fall-through gives exactly that.
+3. The fall-through is undiagnosable *and*, per the correction above, corrupting.
 
 Step 2 owns this, because it is the step where an evaluation is first run inside a
 `computed()` and therefore the first step where the failure is reachable.
+
+#### 3.6.1 Mechanism — an `EvalContext` subclass, not a `Proxy`
+
+Revision 1 said "the adapter detects a write", which reads as a guard on the `original`
+object — a `Proxy` with a throwing `set` trap. **Rejected in step 2, on three findings:**
+
+- **A `set` trap sits at the wrong layer and cannot tell the two writers apart.** It sees
+  the evaluator's write and a consumer's `context.original['k'] = v` identically. Step 1's
+  `signal-context.spec.ts` performs the latter deliberately, to pin end-to-end that
+  `original` shadows `lookups`; a trap forbids that documented act in order to catch the
+  evaluator's, and would require weakening a working assertion to accommodate an
+  implementation choice.
+- **A `set` trap cannot name the expression**, which this section requires — it receives
+  only target, key and value.
+- **`EvalContext.set` is the actual interception point, and it is exact for the writes this
+  policy claims** — those whose target is a bare **identifier**. Both identifier-write
+  branches route through it — `assignment-expression.ts:53` and `update-expression.ts:27` —
+  and *nothing else in `eval-core` calls `set` at all*. Verified in step 2 across the whole
+  library: scope handling uses `push`/`pop` (`arrow-function-expression.ts:16-19`,
+  `pattern.ts:110-113`), never `set`, and `priorScopes` is populated by the caller. So the
+  override needs no way to distinguish a legitimate internal caller, because there is none.
+  **It does not follow that every write is covered** — see § 3.6.4, which records the
+  member-target branch this misses. Revision 2 of this bullet said "both evaluator write
+  branches", which read as covering all assignment forms; each of those two visitors in fact
+  has two target branches, and only one of them is a context write.
+
+So `createSignalContext` returns an **`EvalContext` subclass whose `set()` throws**. The
+subclass is **internal**: `createSignalContext`'s declared return type stays `EvalContext`,
+and the subclass is not exported. It grants a consumer no capability — nobody needs to name
+the type — and exporting it would freeze a shape that exists only to close one seam.
+`EvalContext.fromContext`'s identity short-circuit is `instanceof EvalContext`, which a
+subclass satisfies, so reuse across recomputes is unaffected.
+
+The `Proxy` check was still worth running and its result is recorded so it is not redone:
+`EvalContext`'s own handling of `original` *is* proxy-safe — `get`/`getThis` read through
+`getContextValue`, `getKey` iterates with `Object.getOwnPropertyNames` +
+`Object.getPrototypeOf` (both forward untrapped), `toObject` returns it unmodified, and the
+`caseInsensitive` `Registry.fromObject` copy path is unreachable because the adapter
+constructs `new EvalContext({}, options)` directly and never routes `original` through
+`fromContext`. The `Proxy` loses on layering and on the spec it would break, not on
+compatibility.
+
+#### 3.6.2 The error — a distinct exported type, and where each half of the message comes from
+
+**`SignalContextWriteError`, exported.** Distinct so the factory selects it *by type* rather
+than by matching a message, and so a consumer can `catch` it specifically. It carries the
+attempted **`key` as a property** — programmatically readable rather than parsed out of the
+message — and preserves `cause` when re-thrown. Added to § 5.
+
+**The message is assembled by two layers, because neither knows both halves.** The adapter
+knows the key; only the factory knows the expression, and `createSignalContext` is public and
+callable with no expression at all. So the adapter throws key-only, and `createEvalSignal`
+catches its own error type, adds the expression, and rethrows with `cause` set:
+
+```
+adapter:  Cannot assign to 'count': the keys of a signal context are read-only.
+factory:  Cannot assign to 'count' in expression 'count = count + 1':
+          the keys of a signal context are read-only.
+```
+
+The consumer case decides it: someone with several signals over similar expressions — a form
+field's `visible`, `disabled` and `required` all touching `count` — gets a key-only error
+that names the symptom without locating it. The cost is near zero, since the distinct type is
+already required by § 3.6.3.
+
+**Both shapes are asserted in step 2**: the key-only error from `createSignalContext` used
+directly, and the enriched one through `createEvalSignal`. Without the first, the standalone
+path goes untested and enrichment could silently become the only path.
+
+#### 3.6.3 A write violation bypasses `onError`
+
+**Decided in step 2: it is re-thrown past the `onError` handler, always.**
+
+The two error kinds are categorically different. An evaluation error is a *runtime*
+condition, and `onError: 'undefined'` exists so a template renders a blank instead of
+breaking. A write violation is a *static* property of the expression — `count = 5` is illegal
+on every recompute, with every dataset. Routing it through `onError` would give a consumer
+who set `'undefined'` for the ordinary reason a silent blank for a bug in their own code,
+which is precisely the undiagnosable failure this section exists to remove.
+
+**This forces one change to § 3.3.1's call path.** `CompilerService.call` catches and rethrows
+`new Error(error.message)`, which **destroys the error type** — `SignalContextWriteError`
+would arrive at the factory as a plain `Error`, leaving only the message match the decision
+above rejects. So the factory calls the **free `call(fn, state)` exported from
+`@zvenigora/ng-eval-core`** instead: `CompilerService.call` is a pure pass-through *plus* that
+lossy wrapper, and the free function is what it wraps. `evaluate` itself rethrows the original
+error untouched, so identity, `cause` and stack all survive. `CompilerService` is still
+injected and still used for `compile` (finding 1.2.9's memoization) and `createState`
+(§ 3.3.1); only `call` moves. No `eval-core` change — both symbols are published from
+`src/public-api.ts` — so § 2 stands. § 5 is amended to match.
+
+#### 3.6.4 What the policy does *not* cover — two gaps, both found in step 2's review
+
+Both were reproduced end-to-end before being recorded, and both are **pinned by specs that
+assert current behaviour** rather than the right answer, on the `signal-context.spec.ts`
+arrow-scope-leak precedent: a fix has to update them deliberately.
+
+**Gap 1 — a member target is not intercepted, and the corruption escapes the context.**
+`assignment-expression.ts` and `update-expression.ts` each have a second branch,
+`node.left.type === 'MemberExpression'`, which writes with `safeSetProperty(object, key,
+value)` and never touches the `EvalContext`. Reproduced:
+
+```ts
+createEvalSignal('user.name = "Bob"', { user: signal({ name: 'Ada' }) })
+// no throw, returns 'Bob', and user() is now { name: 'Bob' }
+createEvalSignal('user.n++', { user: signal({ n: 1 }) })
+// no throw, and user() is now { n: 2 }
+```
+
+This is a write *through* a signal-backed key rather than *to* one, which is why § 3.6's
+wording ("a write to a signal-backed key") does not reach it. Two things make it a genuine
+open problem rather than a wording nicety: it is a mutation performed from inside a
+`computed()`, and it lands in **data this library does not own** — the object the consumer's
+signal holds — so it is not containable at the `EvalContext` the way gap 2 and § 3.6's own
+case are. Any fix is a new mechanism (freezing the resolved value, wrapping it, or a
+static AST check), which is a design decision. **§ 8 q6** carries it; step 2 deliberately
+does not improvise a guard.
+
+**Gap 2 — under `caseInsensitive` the error names `'undefined'` instead of the key.** Both
+visitors resolve the key through `EvalContext.getKey` before calling `set`, and `getKey`
+consults scopes, `original` and `priorScopes` but **never `lookups`** — the known `eval-core`
+defect § 3.2 already records. A signal-backed key lives only in `lookups`, so it comes back
+unresolved:
+
+```
+Cannot assign to 'undefined' in expression 'COUNT = 5': the keys of a signal context are read-only.
+```
+
+**This narrows § 3.2's assessment of that defect**, which said its consequence here "is
+bounded: it degrades the *diagnostic* dependency set and nothing else". It also degrades this
+error — in exactly the mode this step added forwarding for, so the two features collide. The
+property the policy *owes* is intact: the write still throws and still does not land, both
+asserted. What degrades is the diagnostic half.
+
+A containment exists entirely inside this library — override `getKey` on the adapter's
+subclass to fall back to the source, reusing `resolve()`. It is **not** taken in step 2,
+because `getKey` also feeds `EvalReadEvent.key`, which is what step 3's `dependencies` set
+reports; changing it here would silently change step 3's output. **§ 8 q3 is reopened** on
+this evidence and decided in step 3.
 
 ### 3.7 Async — its own step, possibly its own phase
 
@@ -743,8 +915,22 @@ scripts converge in step 1.
 
 - **New**: `src/lib/eval-signal.ts` — the factory, `EvalSignal`, `EvalSignalOptions` (§ 3.3).
   Compiles once through `CompilerService.compile` (finding 1.2.9); builds a **fresh state per
-  recompute** through `CompilerService.createState` (§ 3.3.1, § 3.8); `computed()` calls
-  `CompilerService.call`.
+  recompute** through `CompilerService.createState` (§ 3.3.1, § 3.8); `computed()` calls the
+  free `call(fn, state)` from `@zvenigora/ng-eval-core` — **not** `CompilerService.call`,
+  which destroys the error type § 3.6.3 depends on.
+  - **Declare only what this step implements.** § 3.3's interface block also lists
+    `dependencies` and `invalidate()`, and step 3 lists both as its own work; shipping them
+    now would mean two type members with no implementation behind them. So step 2 declares
+    `destroy()` on `EvalSignal`, and `eval` / `equal` / `onError` / `injector` on
+    `EvalSignalOptions`. `injector` is load-bearing from this step, not step 3: the factory
+    calls `inject(CompilerService)`.
+  - **`destroy()` is minimal here and completed in step 4**, which owns § 3.8. This step
+    drops the compiled callback and the context reference; there are no hook registrations to
+    unsubscribe until step 3 and no `DestroyRef` wiring until step 4. Its doc comment says so,
+    and **step 2 asserts idempotence** — the property most likely to break when step 4
+    extends it.
+  - **The factory is not generic.** § 3.3's signature returns `EvalSignal<unknown>` with no
+    type parameter on the function. Widening it later is additive.
 - **Forward `options.eval` to both halves** (§ 3.3, last shape decision). `caseInsensitive`
   is read in two unrelated places — the adapter's resolver for identifiers, `state.options`
   for property names — and a consumer setting it once must not get one working and the other
@@ -773,9 +959,28 @@ scripts converge in step 1.
 - **Also in this step**: the read-only write policy of § 3.6, with its own spec case — this
   is the first step where an evaluation runs inside a `computed()`, so it is the first step
   where the failure is reachable.
+  - **This adds two files to the step's list, agreed before work started.** § 3.6.1 puts the
+    mechanism on the `EvalContext` subclass that `createSignalContext` returns, so it lands in
+    the adapter, not the factory. Deferring it was rejected: § 3.6's correction shows the
+    fall-through silently poisons the factory's own context, so shipping the factory without
+    it ships the corruption.
+  - **Edit**: `src/lib/signal-context.ts` — `SignalContextWriteError` and the internal
+    subclass whose `set()` throws it (§ 3.6.1, § 3.6.2).
+  - **Edit**: `src/lib/signal-context.spec.ts` — the standalone key-only error shape, and an
+    end-to-end `simpleEval('count = 5', context)` that reaches it through the evaluator's own
+    write path rather than by calling `set` directly.
+  - Step 1's existing assertion at `signal-context.spec.ts:46` — a consumer write to
+    `context.original` — **stays as written**. Under § 3.6.1's mechanism it is untouched;
+    under the rejected `Proxy` it would have had to be weakened, which is what decided the
+    mechanism.
 - **Exit**: the above spec green; a signal built over a 3-key context and an expression
   naming 1 key recomputes for that key alone; and `caseInsensitive` set once on
   `options.eval` corrects a **property** name, not only an identifier.
+- **Exit, added with the write policy**: an assignment to a signal-backed key throws
+  `SignalContextWriteError` rather than writing, the error names the key standalone and the
+  expression through the factory, `onError: 'undefined'` does **not** swallow it, and the
+  source key still resolves afterwards — the assertion that pins "no write landed", which the
+  throw alone does not.
 
 ### Step 3 — DI surface and the non-signal fallback
 
@@ -868,14 +1073,29 @@ scripts converge in step 1.
 ```ts
 // from @zvenigora/ng-eval-signals
 export { createSignalContext, type SignalContextSource,
+         SignalContextWriteError,
          createEvalSignal, type EvalSignal, type EvalSignalOptions,
          EvalSignalService };
 // + createEvalSignalAsync, pending step 5
 ```
 
+`SignalContextWriteError` (§ 3.6.2) is a **class**, not a type-only export: the factory
+selects it with `instanceof` and consumers catch it the same way. It carries `key` and, when
+raised through `createEvalSignal`, `expression` and `cause`.
+
+The `EvalContext` subclass that raises it (§ 3.6.1) is deliberately **not** on this list.
+`createSignalContext` declares `EvalContext` as its return type and the subclass stays
+internal — it grants a consumer no capability, and exporting it would freeze a shape that
+exists only to close one seam.
+
 Nothing is added to `@zvenigora/ng-eval-core`. Its 0.3.0 surface is consumed as published:
-`CompilerService` (`compile`, `createState`, `call`), `EvalContext`, `EvalOptions`,
-`EvalState`, `EvalHooks`, `createDependencyTracker`, and the `EvalReadEvent` types.
+`CompilerService` (`compile`, `createState`), the free `call` from `internal/functions`,
+`EvalContext`, `EvalOptions`, `EvalState`, `EvalHooks`, `createDependencyTracker`, and the
+`EvalReadEvent` types.
+
+**`CompilerService.call` is deliberately *not* on that list** — see § 3.6.3. It wraps every
+throw in `new Error(error.message)`, which destroys `SignalContextWriteError`'s type and
+leaves only a message match. The free `call` is exactly what it wraps, minus the wrapper.
 
 `EvalService` is deliberately **not** on that list after § 3.3.1: this library compiles and
 calls, and the one thing it wanted `EvalService` for — `createState` with `ngOnDestroy`
@@ -962,12 +1182,42 @@ Two corollaries, both of which cost step 1 a review round:
 2. **Should `dependencies` include non-signal keys?** They are read but can never invalidate.
    Reporting them is honest about what the expression touched; omitting them is honest about
    what the signal depends on. Decide in step 3, and say which in the README.
-3. **Does anything here justify fixing `EvalContext.getKey`?** (`ROADMAP.md` deferred
-   defect.) On this design, **no** — see § 3.2's second bullet; it degrades a diagnostic and
-   nothing else. Recorded so that the question is answered rather than rediscovered.
+3. **Does anything here justify working around `EvalContext.getKey`?** (`ROADMAP.md`
+   deferred defect.) Revision 2 answered **no** — it degrades a diagnostic and nothing else.
+   **Reopened in step 2 on new evidence** (§ 3.6.4 gap 2): it also strips the key off
+   `SignalContextWriteError`, in the `caseInsensitive` mode this phase added forwarding for,
+   so "a diagnostic" is now two diagnostics and one of them is a public error's documented
+   property. A containment exists inside this library — override `getKey` on the adapter's
+   subclass to fall back to the source — and it is **not** taken in step 2 because `getKey`
+   also feeds `EvalReadEvent.key`, which is what step 3's `dependencies` reports. **Decide in
+   step 3**, with the two consumers on the table together. Fixing core itself remains out of
+   scope (§ 2).
 4. **`EvalSignalService` vs. free function — is the service earning its place?** It exists
    for the DI-first style and to avoid `options.injector` boilerplate. If step 3 finds it is
    a one-line pass-through with no state, say so and drop it rather than shipping a wrapper.
+5. **Should a write violation be detected at construction rather than at first recompute?**
+   Raised in step 2, and deliberately not step 2's work. Because the violation is *static*
+   (§ 3.6.3 — `count = 5` is illegal on every recompute with every dataset), it could be
+   found by inspecting the AST for `AssignmentExpression` / `UpdateExpression` nodes at
+   `createEvalSignal` time and failing there, instead of on the first read. That is strictly
+   earlier and strictly more informative. It is not a replacement for the runtime throw: the
+   `EvalContext.set` override is the correctness guarantee and covers a context reached by
+   any route, including `createSignalContext` used standalone with `EvalService`. Costs: it
+   needs the AST, and § 5 currently admits only `CompilerService.compile`, which returns a
+   `stateCallback` closed over the AST rather than the AST itself. Recorded so it is not
+   lost.
+6. **What, if anything, should stop a write to a member of a signal's value?** (§ 3.6.4
+   gap 1.) `user.name = 'Bob'` takes the visitors' `MemberExpression` branch, writes with
+   `safeSetProperty` into the object the consumer's signal holds, and never touches the
+   `EvalContext` — so it does not throw, and it mutates consumer-owned data from inside a
+   `computed()`. Unlike every other instance of § 3.2.2 this one is **not containable at the
+   `EvalContext`**, because the corruption lands outside it. Three candidate mechanisms, none
+   costed yet: a static AST check at `createEvalSignal` (shares its cost with q5, and catches
+   it before the first read, but the guard then does not exist for `createSignalContext` used
+   standalone); freezing or wrapping the resolved value (per-read cost, and it changes what an
+   expression observes); or documenting it as a limitation the way finding 1.2.7's escaping
+   closure is. Deliberately **not** decided in step 2 — the runtime behaviour is pinned by
+   spec, so whichever way this goes, the change is visible.
 
 ---
 
