@@ -136,8 +136,8 @@ swallows a child's throw between its own `beforeVisitor` and `afterVisitor` — 
 *value* stack is silently one entry out, and every downstream node reads the wrong operand.
 Making the hook stack self-correcting made value-stack corruption quieter, not louder: do
 not read balanced hook events as evidence that a visitor is correctly bracketed. See
-`docs/side-effects/phase-1-plan.md` § 3.8 and the "Deferred defects in the visitor layer"
-section of `ROADMAP.md`.
+`docs/side-effects/phase-1-plan.md` § 3.8 and the "Deferred defects in the visitor, context
+and service layers" section of `ROADMAP.md`.
 
 ### Sync vs. async
 
@@ -246,6 +246,16 @@ regress.
   `options?.caseInsensitive` — `EvalOptions` is
   `Record<string, unknown> | { caseInsensitive: false }`, and dotted access into an index
   signature is an error there. That is required, not a style slip; don't "tidy" it.
+- **`target` and `lib` disagree: both libraries target `es2022`, but `tsconfig.base.json`
+  pins `lib: ["es2020", "dom"]` and neither overrides it.** So an ES2021+ API is available
+  at *runtime* and absent from the *type system* — `ErrorOptions`, `Error.cause`,
+  `Object.hasOwn`, `Array.prototype.at`, `String.replaceAll` and friends all fail to
+  compile, usually with a "change your `lib`" hint that is not a licence to change it. The
+  fix at the call site is to declare what you need rather than widen the workspace: e.g.
+  `SignalContextWriteError` (`eval-signals`) declares its own `cause` property instead of
+  passing `ErrorOptions` to `super`. If `lib` is ever raised, that member starts shadowing
+  `Error.cause` and `noImplicitOverride` will ask for `override` — the one place a widening
+  would surface.
 - Angular 22 / TypeScript 6 / Nx 23. `@zvenigora/ng-eval-core` declares Angular `>=19` as a
   peer dep, so avoid APIs newer than that in shipped code.
 - No `console.*` in library code. One carve-out: a dev-mode-only diagnostic behind

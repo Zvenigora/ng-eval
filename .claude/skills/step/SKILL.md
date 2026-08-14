@@ -100,11 +100,6 @@ Report it; do not edit the spec to match the new behaviour.
 
 Before writing your report, invoke the `code-reviewer` subagent on this step's changes. Include its findings in your report. If it raises anything Critical, stop and surface it rather than closing out the step.
 
-Note its checklist is `eval-core`-shaped — the visitor stack invariants at the top of it
-apply to no file in `modules/eval-signals`. What still applies, and what you should weigh
-its findings on, is the lower half: test vacuity, public API discipline, and the CLAUDE.md
-rules it has in context.
-
 Finish with:
 
 - Each exit criterion from the plan, marked met or not met, with the evidence.

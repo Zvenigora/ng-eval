@@ -147,14 +147,19 @@ Key design questions:
 Exit criteria: schema shape for a dynamic field, `visible`/`text` support wired to
 Reactive Forms, a worked example, tests, README.
 
-## Deferred defects in the visitor and context layers
+## Deferred defects in the visitor, context and service layers
 
-Surfaced by the Phase 1 hook work (`docs/side-effects/phase-1-plan.md`) and recorded
-rather than fixed: each is a **behavioral** change, and Phase 1 is scoped to be additive.
-Identity-checked `exit` (§ 3.8 of the plan) means the hook layer now stays balanced in
-spite of the three visitor defects below, so none of them is urgent — but none of them is
-gone either. The fourth entry is in `EvalContext` rather than the visitors, and was
-surfaced by step 4's read hooks.
+Recorded rather than fixed: each is a **behavioral** change, and the phase that surfaced it
+was scoped to be additive. Identity-checked `exit` (§ 3.8 of the Phase 1 plan) means the
+hook layer now stays balanced in spite of the three visitor defects below, so none of them
+is urgent — but none of them is gone either.
+
+The first three came out of the Phase 1 hook work (`docs/side-effects/phase-1-plan.md`) and
+are in the visitors. The remaining three are not: `getKey` is in `EvalContext` and was
+surfaced by Phase 1 step 4's read hooks, while the service-layer error wrapper and
+`getThis` were surfaced by Phase 3 step 2 (`docs/signals/phase-3-plan.md`) — the first
+consumer to reuse one `EvalContext` across many evaluations, which is what makes several of
+these visible at all.
 
 - **`await-expression.ts` downgrades a synchronous throw to a promise rejection.**
   `awaitVisitor` wraps `callback(node.argument, st)` in a `try`/`catch` inside a `Promise`
@@ -212,6 +217,59 @@ surfaced by step 4's read hooks.
   scope. They matter most to Phase 3: dependency tracking keys on what `getKey` returns, and
   § 9.1 of the Phase 1 plan already tells Phase 3 not to trust `target` identity for bare
   identifiers. An uncorrected or mis-sourced key compounds that.
+
+  *Confirmed to reach further than "a diagnostic" — Phase 3 step 2.* The `lookups`
+  divergence also strips the key off a library-owned error. `assignment-expression.ts:49`
+  and `update-expression.ts:22` resolve their target through `getKey` **before** writing, so
+  under `caseInsensitive` a key that lives only in `lookups` — which is every key of a
+  `@zvenigora/ng-eval-signals` context — comes back `undefined`, and any error raised from
+  the write names `'undefined'` instead of the key. See `docs/signals/phase-3-plan.md`
+  § 3.6.4.
+
+- **Every service-layer entry point discards the error it caught.** `EvalService.simpleEval`,
+  `EvalService.eval`, and `CompilerService.call` / `simpleCall` / `callAsync` /
+  `simpleCallAsync` all catch and `throw new Error(error.message)`. That replaces the thrown
+  object: its **type**, its `cause`, its stack and any property it carried are gone, and the
+  caller receives a bare `Error` whose only surviving information is the message string.
+
+  `evaluate` / `evaluateAsync` do not do this — they rethrow the original untouched — so the
+  loss is entirely in the service wrapper, and the free `call` / `callAsync` from
+  `internal/functions` are the same functions without it.
+
+  Consequences, in order of how quietly they fail:
+
+  - A caller cannot select an error by type. `instanceof` against any custom error class is
+    false after one of these calls, so the only discriminator left is matching the message —
+    which couples the caller to wording and breaks silently when it changes.
+  - A `catch` block cannot re-raise with context, because `cause` is already gone.
+  - Stack traces point at the service method rather than at the visitor that threw.
+
+  Fixing it is a behavioural change to six exported methods — anything catching the current
+  bare `Error` keeps working, but code that branches on the message would want revisiting —
+  so it needs its own step and a version bump. Rethrowing the original object, or wrapping it
+  with `cause` set, are both candidates; the second preserves the current type for callers
+  who already depend on getting an `Error`.
+
+  Phase 3 routes around it rather than waiting: `createEvalSignal` calls the free
+  `call(fn, state)` so `SignalContextWriteError` survives to the factory
+  (`docs/signals/phase-3-plan.md` § 3.6.3). **Phase 3 step 3 hits it again immediately** —
+  `EvalSignalService` is the DI-first face of that same factory — and Phase 4 will inherit
+  the constraint wholesale.
+
+- **`EvalContext.getThis` reads the wrong object in its `priorScopes` loop.**
+  `internal/classes/eval/eval-context.ts:203` calls
+  `getContextValue(this._original, key)` inside the loop over `this._priorScopes`, where it
+  should read `scope`. So the loop re-tests the original context on every iteration: it can
+  only ever succeed for a key `_original` already holds — in which case the preceding block
+  has returned — and it therefore returns a prior scope's `thisArg` for no key, and never
+  returns one for a key a prior scope actually supplies.
+
+  Bounded today because `getThis` has exactly one call site in the evaluator,
+  `member-expression.ts:97`, and a bare call takes a different path — `call-expression.ts`
+  passes `st.context` as `thisArg` and never consults `getThis` at all (pinned by
+  `modules/eval-signals/src/lib/signal-context.spec.ts`). Surfaced incidentally while
+  auditing `set`'s callers in Phase 3 step 2. Cosmetic to fix, behavioural in effect; it
+  needs a spec written against the corrected behaviour rather than the current one.
 
 ## Deferred tooling — documented-symbol drift gate
 
