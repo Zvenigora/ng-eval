@@ -552,8 +552,18 @@ read site for the whole walk. A consumer who does not read `dependencies` should
 
 When on, the signal installs a `createDependencyTracker()` on the state's `hooks` and
 exposes the resulting set. Under § 3.3.1 each recompute has its own state and therefore its
-own registry, so the tracker is installed per recompute and **no `reset()` is needed** — a
-fresh registry cannot carry the previous run's reads.
+own registry, so the tracker is installed per recompute and **no `reset()` is needed**.
+
+**The operative half is the fresh *tracker*, not the fresh registry.** Corrected in the
+step-3 session; this paragraph read "a fresh registry cannot carry the previous run's
+reads", which is true and is not the reason. The accumulation lives in the tracker: it owns
+`dependencies`, `reads` and the scope-binding names, and a tracker hoisted out of the
+recompute to save an allocation would keep filling all three across however many fresh
+registries it was installed on. The distinction is load-bearing rather than pedantic,
+because the hoist is the plausible optimisation and the wrong reason makes it look safe.
+The assertion that catches it is the one requiring `dependencies` to *shrink* — an
+expression whose branches read different keys, checked after a recompute that took the
+other branch.
 
 **The registry the tracker goes on is always one this library owns.** A caller's `EvalHooks`
 passed through `options.eval.hooks` is theirs, and it never receives the tracker. This is
@@ -1037,6 +1047,27 @@ scripts converge in step 1.
   assert the same run yields **N distinct** states. Both halves are needed: the trace bound
   alone would also pass on a reused state whose trace someone truncates, and the distinctness
   alone says nothing about growth.
+- **`invalidate()` after `destroy()` is a no-op — decided here rather than left to fall
+  out of the implementation.** Added after step 3's review. It does not bump the version,
+  does not recompute, and does not change the value.
+  - **Not a throw.** `destroy()` is idempotent by design, and teardown order is not
+    something a consumer controls — a subscription callback or a timer can fire after the
+    component holding the signal is gone. A throw turns a benign race into an error at a
+    point where nothing can be done about it.
+  - **Not the fall-through either**, which is what step 3 shipped and what this bullet
+    changes: today the version bump dirties the `computed`, `evaluate()` finds the compiled
+    callback dropped, and the signal flips from its last good value to `undefined`. So the
+    one method whose entire meaning is "re-evaluate" is the thing that changes a destroyed
+    signal's value, while proving it cannot evaluate.
+  - **The coupled half step 4 must settle with it**: a *dependency* change on a destroyed
+    signal flips it to `undefined` too, per the rule step 2 pinned ("a read that would have
+    recomputed yields `undefined`"). Making `invalidate()` inert without touching that
+    leaves the destroyed value dependent on *which* producer moved. Step 4 owns `destroy()`,
+    so it decides once for both producers and asserts them in the same shape — either both
+    inert (the signal keeps its last value, which needs the last value cached) or both
+    `undefined`. **If it chooses "both `undefined`", this bullet is what gets reversed, in
+    writing, and the reason recorded** — the no-op is the default because it is the one that
+    cannot surprise a consumer mid-teardown, not because the alternative is incoherent.
 - **Decide the containment for the leaked arrow-function scope** (§ 3.2, last bullet;
   § 7). The leak is demonstrated, not hypothetical, and the shared context is this
   library's own decision, so this step owns the answer even though the defect is in
@@ -1057,8 +1088,10 @@ scripts converge in step 1.
     stop-and-replan if chosen.
 - **Exit**: destroying a signal releases its hook registration; `destroy()` is idempotent;
   N recomputes leave N short-lived states, none of them retained and none of them grown;
-  and the § 3.2 scope-leak containment is decided in § 3.8, implemented, and covered by a
-  spec that supersedes step 1's pinned-limitation one.
+  **`invalidate()` on a destroyed signal is asserted inert — no recompute (a `createState`
+  count that does not move) and no change to the value, paired with the dependency-change
+  case so the two agree**; and the § 3.2 scope-leak containment is decided in § 3.8,
+  implemented, and covered by a spec that supersedes step 1's pinned-limitation one.
 
 ### Step 5 — Async (or a recorded deferral)
 
@@ -1075,6 +1108,16 @@ scripts converge in step 1.
   structure; a worked example; a limitations section carrying, in the consumer's words: the
   deferred-arrow-call gap (finding 1.2.7), the `caseInsensitive` key-spelling limit (§ 3.2),
   the `dependencies` limits (§ 3.4), and the read-only write policy (§ 3.6).
+  - **`dependencies` returning empty is ambiguous across three states, and the README must
+    say which** — added after step 3's review. Empty means (a) `trackDependencies` was never
+    set, (b) it was set but the `computed` has not run yet, since it is lazy and reading
+    `dependencies` does not trigger it, or (c) it ran and read nothing. A consumer
+    debugging "my signal never updates" reaches for `dependencies` first and gets the same
+    empty set in all three, one of which is their own missing option. It stays a
+    documentation fix rather than a dev-mode diagnostic: every branch is diagnosable from
+    the option the consumer themselves passed, which is exactly what CLAUDE.md's
+    `isDevMode()` carve-out excludes. The README's phrasing must name the lazy case
+    explicitly — it is the one nothing in the type or the option name hints at.
 - **Edit**: root `README.md` § "Related Packages" — add the new library.
 - **Edit**: `CHANGELOG.md` — a `0.1.0` entry for `@zvenigora/ng-eval-signals`.
 - **Edit**: `ROADMAP.md` — Phase 3 marked done, pointing here; § "Suggested order" updated.

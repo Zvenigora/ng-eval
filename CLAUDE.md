@@ -42,6 +42,11 @@ and `npm run lint` are still aliases for the single `eval-core` target — they 
 `run-many` in Phase 3 step 1, which is when `eval-signals`' build and lint first pass
 (today its entry point is empty and its manifest fails `@nx/dependency-checks`).
 
+**A green `test` run is not a type-check.** Jest compiles per file through `tsconfig.spec`
+and is more permissive than `tsconfig.lib` — Phase 3 step 3 shipped an `EvalOptions` index
+read that the whole suite accepted and `build:production` rejected (`TS7053`), so run the
+build before believing a type is sound.
+
 `lint` and `test` targets are *inferred* by the `@nx/eslint` / `@nx/jest` plugins
 (`nx.json` `plugins`); only `build` and target-level overrides live in each project's
 `project.json`.
