@@ -126,6 +126,10 @@ Key design questions:
 Exit criteria: public factory API, a worked example, tests, and a README for the
 new package following the existing `modules/eval-core/README.md` pattern.
 
+**Async evaluation as a signal is not part of this phase** — its step 5 deferred it
+to Phase 5 below, on the evidence in
+[`docs/signals/phase-3-plan.md`](docs/signals/phase-3-plan.md) § 3.7.
+
 ### Phase 4 — `@zvenigora/ng-eval-forms` (new module)
 
 Expression-driven dynamic form metadata: field properties like `visible`, `text`,
@@ -146,6 +150,54 @@ Key design questions:
 
 Exit criteria: schema shape for a dynamic field, `visible`/`text` support wired to
 Reactive Forms, a worked example, tests, README.
+
+### Phase 5 — Async expression signals (`eval-signals`)
+
+Deferred out of Phase 3 by its step 5, with the reasoning and the evidence in
+[`docs/signals/phase-3-plan.md`](docs/signals/phase-3-plan.md) § 3.7. `eval-core` has had an
+async evaluation path since before Phase 1 (`evaluateAsync` / `compileAsync` / `callAsync`)
+that Phase 3 does not surface as a signal: it returns a `Promise`, so an **unwrapped** async
+signal cannot be a `computed()` (Phase 3, finding 1.2.8), and a driver that is not a
+`computed()` reopens the tracking model the whole signals library rests on.
+
+**Nothing is blocked on it.** Phase 4's field properties are derived state, not async work.
+And a consumer who only needs the promise already has it: for a promise-returning expression
+the sync `createEvalSignal` carries the promise as its value, to unwrap in their own
+application at their own Angular floor rather than one this library imposes. The working
+composition is `resource({ params: () => evalSig(), loader: ({ params }) => params })` — the
+signal is read in `params`, because a `resource`'s loader body runs `untracked` and a read
+there yields a resource that never reloads; `toSignal` and `rxResource` take an `Observable`
+and need `from(promise)` first. Three gaps remain, and they are why this is an escape hatch
+rather than the feature: no `await` inside an expression, no resolution of promises nested in
+a result, and `onError` never sees a rejection.
+
+Key design questions, all inherited from § 3.7 and none costed:
+
+- Shape: `resource()` / `rxResource()` versus `signal()` plus an `effect`. The first is
+  idiomatic and pins the peer range to `resource`'s stable floor, above the `>=19` that
+  `eval-signals` deliberately shares with `eval-core`; the second is manual and carries no
+  such cost.
+- Whether per-key tracking survives the shape at all. Angular tracks the *synchronous* walk,
+  and `resource`'s loader runs outside the reactive context by design.
+- First-read value; staleness and out-of-order resolution; how a rejection reaches
+  `onError`, whose current contract is a `computed`'s rethrow-on-read; cancellation at
+  `destroy()`; and what `dependencies` reports with more than one run in flight.
+- **Where the arrow-scope containment goes.** `eval-signals` restores the context's scope
+  depth in a `finally` around a *synchronous* `call` (phase-3 plan § 3.8.3); under `callAsync`
+  the correct restore point depends on where the walk ends relative to the promise. This is
+  the one open question with a correctness consequence — the context is reused for the life of
+  the signal, so an uncontained leak permanently shadows a source key.
+- The spec harness: every reactivity assertion in `eval-signals` is a recompute count around a
+  synchronous read, and effects are scheduled.
+- Three gaps the sync path leaves for it to close: an expression cannot use `await`, promises
+  nested inside a result are resolved only by `evaluateAsync`, and a rejection bypasses
+  `onError`. The first is a parser-options question rather than evaluator work — `awaitVisitor`
+  is written and registered, and what throws is `defaultParserOptions`' `ecmaVersion: 2020`
+  with acorn's `allowAwaitOutsideFunction` off below 2022.
+
+Depends on Phase 3. Exit criteria: those questions answered in a plan document of its own,
+then either the primitive with tests, README and CHANGELOG entries, or a second recorded
+decision not to ship it.
 
 ## Deferred defects in the visitor, context and service layers
 
@@ -326,3 +378,6 @@ a review practice rather than a gate, and it stays that way.
 3. Phase 4 (forms) — depends on Phase 3.
 4. Phase 2 (statements) — independent track, can run in parallel with 1/3/4 since
    nothing else in this roadmap depends on `let`/`if`/`for`.
+5. Phase 5 (async signals) — depends on Phase 3, and nothing depends on it. Deferred
+   out of Phase 3 deliberately rather than left undone; it is ordered last because
+   the sync primitive already composes with `resource` for the promise case.

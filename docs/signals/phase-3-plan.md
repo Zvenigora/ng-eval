@@ -171,8 +171,9 @@ stays red and the plan has no green baseline to measure later steps against.
 - **Any change to `eval-core`.** Phase 1 shipped the contract this phase consumes, and § 3.1
   needs nothing further from it. **If a step turns out to require a core change, that is a
   signal to stop and revise this plan, not to widen the step** — see § 8, open question 3.
-- **Async evaluation as a `Signal`** — finding 1.2.8. Scoped to step 5, which may conclude
-  "defer to Phase 5" rather than ship a primitive.
+- **Async evaluation as a `Signal`** — finding 1.2.8. Scoped to step 5, which **concluded
+  "defer"**: it is Phase 5 in `ROADMAP.md`, and § 3.7 carries the two questions that settled
+  it and the eight design questions Phase 5 inherits.
 - **Forms integration** (Phase 4), statements (Phase 2).
 - **Writing back through the context** — § 3.6.
 - **A signal-per-property deep adapter** for nested objects. `a.b.c` tracks at whichever
@@ -784,10 +785,10 @@ because `getKey` also feeds `EvalReadEvent.key`, which is what step 3's `depende
 reports; changing it here would silently change step 3's output. **§ 8 q3 is reopened** on
 this evidence and decided in step 3.
 
-### 3.7 Async — its own step, possibly its own phase
+### 3.7 Async — decided in step 5: deferred to Phase 5
 
-`createEvalSignalAsync` is **not** a `computed()` (finding 1.2.8). Two candidate shapes, to
-be decided in step 5 with a spike rather than here:
+`createEvalSignalAsync` is **not** a `computed()` (finding 1.2.8). Two candidate shapes were
+on the table, to be decided in step 5 with a spike rather than here:
 
 | Shape | Fits Angular | Peer-dep cost | Note |
 | :--- | :--- | :--- | :--- |
@@ -804,6 +805,112 @@ conclusion changes.
 Step 5 is allowed to conclude **"defer"**, recording the decision in this document and in
 `ROADMAP.md`, and Phase 3 ships sync-only. That is a legitimate outcome, not a failure of
 the step.
+
+**Step 5 concluded exactly that, and this is the record.** Async evaluation as a `Signal`
+leaves Phase 3 and becomes **Phase 5** in `ROADMAP.md` — a phase of its own rather than a
+carve-out under a Phase 3 that step 6 marks done, because a deferral hiding inside a
+completed phase is one nobody finds. Neither shape above was built: the spike was scoped to
+the decision rather than to either implementation, on the reasoning that a spike which has
+written half a primitive tends to conclude it should ship. It asked two questions.
+
+**1. Is anything downstream blocked? No.** § 9's contract to Phase 4 says nothing about
+async, and `ROADMAP.md`'s Phase 4 is `visible` / `text` / `disabled` / `required` — derived
+state over form state, with `visible` and `text` named in its exit criteria. Async validators
+are the one plausible async consumer, and that roadmap entry already places validators after
+the first shipment. More to the point, **the sync primitive already hands the consumer the
+promise**: `evaluate` returns the walk's value untouched and only `evaluateAsync` runs
+`awaitAllPromises`, so `createEvalSignal('asyncFunc(one, two)', …)` carries a promise as its
+value today.
+
+**That is established by reading, and it is deliberately not cited to a spec.** The obvious
+citation — `eval.service.async.spec.ts` table 21, which runs promise-returning expressions
+through the **sync** entry point — does `await service.simpleEval(…)`, and `await 3` is `3`
+just as `await Promise.resolve(3)` is. The assertion passes whether the sync path returns the
+promise or resolves it, so it pins that such an expression evaluates without error and nothing
+more. Raised by this step's review, and recorded rather than quietly re-cited: no spec in the
+repo would fail if the sync path started resolving promises. **Step 6 must not put the
+pass-through in the README on this footing** — a public claim needs a spec that discriminates,
+and writing one is a step-6 item, not a licence to reach into `modules/` here.
+
+A consumer composes on it in their own application, at the Angular floor they are already on,
+which is where that cost belongs — and the composition has to be written down correctly,
+because the natural spelling is broken in the way this library exists to prevent:
+
+- **`resource` reads the signal in `params`, never in `loader`.** The loader body runs inside
+  `untracked()` (Angular's own `_resource-chunk`), which is the same fact § 3.7 lists below as
+  an open question for the `resource` *shape*. So `resource({ loader: () => evalSig() })`
+  computes once and never reloads when a dependency moves — a signal that silently stops
+  updating. The working spelling is
+  `resource({ params: () => evalSig(), loader: ({ params }) => params })`.
+- **`toSignal` does not take a promise.** Every overload is
+  `Observable<T> | Subscribable<T>`; the rxjs routes (`toSignal`, `rxResource`) need
+  `from(promise)` first. `resource` is the only direct one.
+- **The promise is a runtime shape, not a declared type.** `createEvalSignal` returns
+  `EvalSignal<unknown>` unconditionally, so the consumer narrows before handing it on.
+
+Three limits, so the composition is not oversold. An expression cannot use `await` — a
+`SyntaxError` at parse, and worth costing correctly for Phase 5: `awaitVisitor` exists and is
+registered, so this is `defaultParserOptions`' `ecmaVersion: 2020` plus acorn's
+`allowAwaitOutsideFunction`, not a missing visitor. The sync path does not resolve promises
+nested *inside* a result. And **`onError` never sees a rejection**: `compute`'s `catch` is
+synchronous, so a rejecting promise returns normally through the signal and surfaces as an
+unhandled rejection — a consumer who set `onError: 'undefined'` to get a blank instead of a
+break gets neither that nor the documented rethrow-on-read. That third one is the largest of
+the three and the first a consumer meets. All three are Phase 5's to close.
+
+**2. How much of the primitive is new design rather than reuse from steps 2–4? Mostly new.**
+Four mechanisms transfer nearly unchanged: compile-once (`CompilerService.compileAsync`
+exists, with the same LRU/TTL cache as `compile`); a fresh `EvalState` per recompute
+(§ 3.3.1, shape-independent); the read-only write policy (§ 3.6 — it lives in the context,
+not in the driver); and per-key tracking *of the synchronous portion*, since `evaluateAsync`
+runs the same sync walk before its first `await`. What has no sync analogue is the longer
+list, and every item is a decision rather than a coding task:
+
+- **The driver is not a `computed()`, so § 3.1's central finding has to be re-established for
+  whatever replaces it.** `resource`'s loader runs *outside* the reactive context by design —
+  its `params` are tracked, its loader body is not — so on that shape the tracking model this
+  whole library rests on does not simply carry over.
+- **First-read semantics**: what the signal holds before the first resolution, and whether
+  that is `undefined` or a status.
+- **Staleness and out-of-order resolution**: two dependency changes, the first promise
+  landing last.
+- **Rejection surfacing.** `onError: 'throw'` is *defined* in `EvalSignalOptions` as Angular's
+  own `computed` behaviour — the error cached and rethrown on each read. A `signal` + `effect`
+  cannot rethrow on read without a wrapper, so the option's contract does not transfer.
+- **In-flight cancellation at `destroy()`**, and what a resolution landing after teardown does
+  to § 3.8.2's rule that a destroyed signal reads `undefined` and neither producer can move
+  it afterwards.
+- **`dependencies` with more than one run in flight.** § 3.4 reports "the last recompute",
+  which stops being a single thing.
+- **Where § 3.8.3's scope-depth guard goes.** Today it restores in a `finally` around a
+  synchronous `call`. Under `callAsync` the correct restore point depends on where the walk
+  ends relative to the promise — an internal property of `evaluateAsync`, and precisely the
+  "there is no `await` point inside any visitor" property CLAUDE.md frames as a design
+  invariant of the current walker rather than a guarantee.
+- **The spec harness.** Every reactivity assertion in this library is a recompute count around
+  a synchronous read (§ 6.1). Effects are scheduled, so the async equivalents need flushing,
+  and § 6.1's vacuity discipline has to be re-derived for assertions that can pass by
+  resolving late.
+
+**The two shapes are ruled out by different arguments, and conflating them would overstate
+the case.** `resource()` reaches stable above this library's `>=19` floor, so that shape costs
+a bump to `>=20` — narrowing the audience relative to `eval-core`'s `>=19`, which step 1
+widened *deliberately* on finding 1.2.12, and paying it for a feature whose design questions
+are all still open is not defensible. The `signal` + `effect` shape carries no such cost by the
+table's own row; what rules *it* out is the list above — eight decisions, none of them made.
+Deferring keeps the peer range, keeps every question open, and leaves the shape choice free,
+including `resource()` at whatever its stable floor is when Phase 5 actually happens. The table
+is Phase 5's starting point, not a decision it inherits.
+
+**No decision is reversed here** — this section already named "defer" a legitimate outcome and
+§ 2 already scoped async out of Phase 3; what step 5 adds is the evidence and the phase that
+owns the work. One *rating* does move, and saying so is cheaper than letting a future reader
+find the tension: finding 1.2.8 calls a `Signal<Promise<unknown>>` "not what a consumer wants",
+and the paragraph above offers exactly that as the interim answer. Both hold, because they
+answer different questions. It is not what a consumer wants from an async *primitive* — which
+is why Phase 5 exists rather than being closed as unnecessary — and it is an adequate escape
+hatch for the consumer who has a promise and a `resource` to hand it to, which is what makes
+the deferral cost nothing downstream.
 
 ### 3.8 Lifetime and cleanup
 
@@ -1268,6 +1375,29 @@ scripts converge in step 1.
 - If deferred: § 3.7 records why, `ROADMAP.md` gains the entry, and this step's commit is
   documentation only.
 - **Exit**: either the primitive with tests, or the deferral recorded in both documents.
+- **Outcome: deferred.** § 3.7 carries the decision and its evidence; `ROADMAP.md` gains a
+  **Phase 5** section and a line in § "Suggested order". The commit is documentation only —
+  no file under `modules/` changed, so `eval-signals`' surface, manifest and peer range are
+  exactly what step 4 left. Three things about how the step was run, since none of them are
+  visible in the diff:
+  - **The spike was scoped to the decision, and asked two questions rather than building
+    either shape** — is anything downstream blocked, and how much of the primitive is new
+    design rather than reuse. Both are answered in § 3.7 with pointers to the code and specs
+    that settle them. A spike that has written half a primitive tends to conclude it should
+    ship, and neither shape was written.
+  - **The peer range was the tiebreak, and it cuts toward deferring rather than toward
+    picking the manual shape.** Shifting `>=19` → `>=20` for a stable `resource()` would be
+    defensible for a feature whose design was settled; it is not for one whose questions are
+    all open. Deferring keeps the floor *and* keeps `resource()` available to Phase 5 at
+    whatever its stable version is by then.
+  - **A "ship" conclusion would have stopped here rather than proceeding**, because § 5's
+    allowed-import list admits no async *entry point* — `compileAsync` and `callAsync` are
+    published by core and absent from it — and amending it is a plan change to argue on its
+    own rather than fold into an implementation step. The argument is narrower than it first
+    looks, which the step's review caught: `stateCallbackAsync` would **not** have needed the
+    amendment, because its sync twin `stateCallback` is equally absent from that list and has
+    been a type-only import in `eval-signal.ts` since step 2. The list governs entry points,
+    and the precedent for type-only imports is already set.
 
 ### Step 6 — Docs, example, and release
 
@@ -1295,6 +1425,24 @@ scripts converge in step 1.
     the guard lives at the recompute boundary — and so does an arrow function that escapes
     the walk and throws when the consumer later calls it, since its push happens after the
     recompute returned. One line: build through `createEvalSignal` if you want the guard.
+  - **One more, from step 5: there is no async primitive, and what to do instead** (§ 3.7).
+    An expression that calls an async function carries a promise as its value — the sync walk
+    returns it untouched — which the consumer unwraps in their own application, at their own
+    Angular floor. The README says so positively rather than listing the absence. Three things
+    it must get right, all of them review findings rather than polish:
+    - **The composition, spelled out.** `resource({ params: () => evalSig(), loader:
+      ({ params }) => params })` — the read goes in `params`, because a `resource`'s loader
+      runs untracked and reading the signal there produces one that never reloads. `toSignal`
+      and `rxResource` take an `Observable`, so they need `from(promise)` first. A README that
+      says "unwrap it with `resource`, `rxResource` or `toSignal`" without this ships advice
+      that either does not compile or silently stops updating.
+    - **Three limits, not two**: no `await` in an expression, no resolution of promises nested
+      inside a result, and `onError` does not see a rejection — the catch is synchronous, so a
+      rejecting promise passes through the signal and surfaces unhandled.
+    - **The type does not say `Promise`.** The return is `EvalSignal<unknown>`; the promise is
+      a runtime shape the consumer narrows to.
+
+    Async as a first-class signal is Phase 5.
 - **Edit**: root `README.md` § "Related Packages" — add the new library.
 - **Edit**: `CHANGELOG.md` — a `0.1.0` entry for `@zvenigora/ng-eval-signals`.
 - **Edit**: `ROADMAP.md` — Phase 3 marked done, pointing here; § "Suggested order" updated.
@@ -1317,7 +1465,7 @@ export { createSignalContext, type SignalContextSource,
          SignalContextWriteError,
          createEvalSignal, type EvalSignal, type EvalSignalOptions,
          EvalSignalService };
-// + createEvalSignalAsync, pending step 5
+// no async symbol: step 5 deferred createEvalSignalAsync to Phase 5 (§ 3.7)
 ```
 
 `SignalContextWriteError` (§ 3.6.2) is a **class**, not a type-only export: the factory
@@ -1404,7 +1552,7 @@ Two corollaries, both of which cost step 1 a review round:
 | Tracking silently does not work — the spec passes because the assertion would pass without reactivity | **High** | Step 1's exit criteria require the negative case (an unread signal changing does **not** recompute) and a break-the-implementation probe. This is the single most likely way this phase ships something that looks finished and is not |
 | `lookups` running last surprises a consumer who also populates `original` | Medium | The adapter owns the whole context; documented in § 3.2, asserted in step 1 |
 | A consumer's expression calls a closure after the evaluation returns and expects tracking (finding 1.2.7) | Medium | Documented as a limitation in step 6's README; inherent to Angular's model |
-| `resource()` pins the peer range above `>=19` (§ 3.7) | Medium | Step 5 may defer; the sync API carries no such constraint |
+| ~~`resource()` pins the peer range above `>=19`~~ (§ 3.7) | **Retired** | Step 5 deferred async to Phase 5, so nothing in this phase depends on `resource()` and the `>=19` floor step 1 widened to stands. The risk transfers to Phase 5 whole |
 | `@nx/dependency-checks` fails on a transitive `acorn` type leaking through `EvalState` into the emitted `.d.ts` | Medium | Surfaces at step 1's build gate; resolve by declaring the peer, not by loosening the rule |
 | CI keeps passing while `eval-signals` is broken | Medium | Root scripts move to `run-many` in **step 0** — before any code lands, so a workflow failure afterwards is the script change and nothing else |
 | A reused `EvalState` accumulates trace entries across recomputes, retaining every intermediate value | **High if not designed for** | § 3.3.1: a fresh state per recompute, through the untracked `CompilerService.createState`. Step 4 asserts both halves — N distinct states, none grown |
