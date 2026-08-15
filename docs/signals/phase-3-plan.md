@@ -832,6 +832,133 @@ Three things can outlive a signal and must not:
 Step 4 owns this and mirrors `eval.service.memory-leaks.spec.ts`, which is the existing
 pattern for asserting it.
 
+#### 3.8.1 `DestroyRef` — decided: only from an ambient injection context
+
+**The rule that generalises, and the reason this section exists: `options.injector` is for
+*resolving services*, not for *scoping lifetime*.** Step 3's confirmation conflated the two,
+and this is the consequence.
+
+`EvalSignalService.create()` defaults `options.injector` to the service's own — the root
+injector — so the factory can resolve `CompilerService` outside an injection context. That is
+a *resolution* concern. Reading the same injector as the signal's *lifetime* scope would
+register a teardown callback on the **root** `DestroyRef`, retained for the life of the
+application, once per signal ever created through the service. Unbounded retention of destroy
+closures, arriving through the door marked "cleanup".
+
+**That makes it the fourth instance of § 3.2.2's accumulator pattern** — a long-lived holder
+retaining something per-signal. The first three, so the count is checkable: `EvalService`'s
+strong `Set<EvalState>`, drained only in `ngOnDestroy` (§ 3.3.1); `EvalResult.trace`, drained
+by nothing (§ 3.3.1); and the arrow parameter scope on the shared `EvalContext` (§ 3.2),
+where the long-lived holder is the context itself. The pattern is worth naming because each
+instance looked like the *cleanup* mechanism right up to the point it was measured.
+
+**How the ambient context is detected, and the constraint that decides it.** Angular 22
+exposes no non-throwing predicate: `isInInjectionContext` is **not** in the public typings
+(verified against `@angular/core` 22.0.8 — only `assertInInjectionContext`, which throws, and
+`runInInjectionContext` are exported). So the factory infers it from what it already does:
+when `options.injector` is absent it calls `inject(CompilerService)`, which means an ambient
+context exists or that call has already thrown. **That branch, and only that branch, also
+takes `inject(DestroyRef, { optional: true })`.**
+
+Two alternatives rejected. `try { inject(DestroyRef) } catch {}` would swallow unrelated
+errors, and would auto-register in exactly the case the rule above says the consumer has
+taken ownership. Comparing the injector against the root injector is a fragile identity
+check, and a consumer may legitimately pass a root injector.
+
+`destroy()` calls the unregister function `DestroyRef.onDestroy` returns, so a manually
+destroyed signal stops being retained by its injector at once rather than at the injector's
+own teardown.
+
+**Consequence for step 6's README**: a signal created through `EvalSignalService.create()`,
+or through `createEvalSignal` with an explicit `options.injector`, has **no auto-teardown** —
+calling `destroy()` is the consumer's responsibility. The free function called from a
+component field initializer, which is the common case, needs nothing.
+
+#### 3.8.2 `invalidate()` after `destroy()` — the no-op stands, and it is not a live choice
+
+Step 3 left this as a decision step 4 had to make, paired with the dependency-change case so
+the two producers agree. **They already agree, and writing down why removes the choice.**
+
+A destroyed signal reads `undefined` — step 2 pinned that and step 3 asserts it. So:
+`invalidate()` as a no-op does not bump the version, the `computed` is not dirtied, and the
+value stays `undefined`; a *dependency* change does dirty the `computed`, but `evaluate()`
+returns before `createState` because the compiled callback is gone, so the value is
+`undefined` too. Both producers leave a destroyed signal `undefined` and neither evaluates.
+Nothing in § 3.8's default is reversed, and no existing assertion is touched — the passing
+assertion in step 3's `describe('destroy')` is what makes the alternative ("both inert,
+keeping the last value") a spec rewrite rather than an implementation choice.
+
+**One observable side effect of the destroy-time bump, for the record.** Destroying a signal
+dirties it, so a *still-live* consumer — a parent that was handed the signal, a sibling
+`computed` reading it — sees it flip to `undefined` at teardown rather than keeping the last
+value. That is the designed semantics of "a destroyed signal reads `undefined`" reaching a
+second reader, and it is the price of the two producers agreeing; it is worth knowing about
+because the teardown that triggers it is usually a component's, not the second reader's.
+
+**Step 4's stated probe for this is vacuous and is replaced.** The exit criterion asked for
+"a `createState` count that does not move" — but after `destroy()` that count does not move
+under *either* design, so it cannot tell the no-op from step 3's fall-through. The observable
+difference is whether the `computed` re-runs at all. The assertion therefore goes on a channel
+that fires only on a real re-run: an `equal` comparator spy, which `computed` invokes only
+when it recomputes. Probed by removing the inertness.
+
+#### 3.8.3 The arrow-scope containment — decided: snapshot and restore at the recompute boundary
+
+**The surface question first, because it decides which options exist.** 0.3.0 *does* expose a
+public way to read and truncate the scope stack: `EvalContext.scopes` is a public getter
+returning the live `Stack<Context>` (`eval-context.ts:54`), `Stack.length` is a public getter
+(`stack.ts:30`), and `EvalContext.pop()` is public and takes no arguments
+(`eval-context.ts:291`). All three are on the published surface. So snapshot/restore is
+available, and the choice is not forced down to rebuild-per-recompute or accept-it.
+
+**Decision: read `context.scopes.length` before each recompute and pop back down to it in a
+`finally`.** No `eval-core` change, so § 2 stands. A leaked scope lasts one recompute instead
+of the life of the signal, and the guard needs no cooperation from the throw — it runs
+whether the walk returned or threw.
+
+**Where it lives — resolving the conflict between § 3.2.2 and the option's own wording.**
+§ 3.2.2 says the containment lives "at the adapter, not in core… the `EvalContext` it
+constructs, which it is free to subclass". That worked for writes (§ 3.6) because `set` **is**
+the seam. There is no equivalent seam here: the leak is the *absence* of a `pop`, and a
+context subclass gets no signal for "the walk ended". The only code that knows the walk
+boundary is the caller of `call()` — the recompute. § 3.2.2's "at the adapter" is a claim
+about *which library owns the fix*, not about which file; the option's own wording ("around
+each recompute") already located it. **Resolved: `eval-signal.ts`'s `evaluate()`, using only
+the public `EvalContext` surface above** — so it covers both source forms, the context this
+library built and a caller-supplied one, without a cast or a subclass method.
+
+**What it does not cover — two paths, stated rather than papered over.**
+
+- **A signal context driven directly through `EvalService.simpleEval`** — the shape
+  `createSignalContext`'s own doc comment shows — happens outside any recompute this library
+  owns, so the leak stands there unchanged. Step 1's pinned spec therefore **keeps every
+  assertion it has**; what changes is its claim, from "the context is poisoned for its whole
+  life" to "…on this path, and contained at the recompute boundary on the one
+  `createEvalSignal` drives". The containment gets its own end-to-end case.
+- **An arrow function that escapes the walk.** Added after step 4's review, which caught the
+  first draft of this section claiming more than the guard delivers.
+  `arrow-function-expression.ts` pushes its parameter scope **when the closure is called**,
+  not when it is visited — CLAUDE.md's "the re-entry is deferred". So
+  `createEvalSignal('x => x.foo()', ctx)` hands the consumer a function whose push, and whose
+  skipped pop, happen after `evaluate()`'s `finally` has already run. That leak is permanent
+  on the shared context, exactly as before the guard. It is the same shape as § 7's
+  "closure called after the evaluation returns" risk row, and it is not separately
+  containable at the recompute boundary by construction: there is no recompute in progress
+  when it happens.
+
+Step 6's README carries the consumer-facing form of both: build through `createEvalSignal`
+for the guard, and an expression whose arrow function both escapes *and* throws is outside
+it.
+
+**Why not the other two.** Rebuild-per-recompute removes the leak entirely and reverses
+§ 3.2's construct-once, costing the stable `target` § 3.4's introspection reads for free — a
+design reversal to close a containable defect. Document-and-accept is the weakest of the
+four: the leak is silent, it corrupts *unrelated* keys, and the symptom points nowhere near
+the cause. Fixing it in `eval-core` is correct and is § 2's stop-and-replan.
+
+**Cost**: one integer read and one comparison per recompute against a walk that allocates per
+node; the loop body runs only when a leak actually happened.
+
 ---
 
 ## 4. Work breakdown
@@ -1036,11 +1163,38 @@ scripts converge in step 1.
 
 ### Step 4 — Lifetime and cleanup
 
-- **Edit**: `src/lib/eval-signal.ts` — `destroy()`; `DestroyRef` registration when an
-  injector is available (§ 3.8).
+- **Edit**: `src/lib/eval-signal.ts` — `destroy()`; `DestroyRef` registration **from an
+  ambient injection context only**, never from `options.injector` (§ 3.8.1); the scope-depth
+  guard (§ 3.8.3).
 - **New**: `src/lib/eval-signal.memory.spec.ts` — mirroring
-  `eval-core`'s `eval.service.memory-leaks.spec.ts`: after `destroy()`, the read hook is
-  unregistered, hook bookkeeping is reset, and a destroyed signal does not re-evaluate.
+  `eval-core`'s `eval.service.memory-leaks.spec.ts`: a destroyed signal does not re-evaluate,
+  and the per-recompute tracker unsubscribe is taken and called.
+  - **This bullet's first clause was written against a design step 3 replaced, and is
+    corrected here.** It read "after `destroy()`, the read hook is unregistered, hook
+    bookkeeping is reset". Neither is observable at `destroy()`: step 3 unsubscribes the
+    tracker in a `finally` **inside** each recompute, and § 3.8's first bullet already
+    concedes there is nothing left to unsubscribe by the time `destroy()` runs. An assertion
+    on it would pass against an implementation that does nothing — CLAUDE.md's vacuity trap.
+    What is real, and what step 4 asserts instead: the unsubscribe happens **per recompute**,
+    and `destroy()` drops the retained set (already covered in step 3) and the `DestroyRef`
+    registration (new here, and the only teardown that can outlive a recompute).
+- **Extended file list, agreed before work started.** Four files beyond the two above, each
+  following from this step's own text: `docs/signals/phase-3-plan.md` (§ 3.8 records the two
+  decisions *before* they are implemented); `src/lib/signal-context.spec.ts` (the pinned
+  limitation this step's containment supersedes lives there); `src/lib/eval-signal.spec.ts`
+  (the existing `describe('destroy')` block is where the `invalidate()`-after-`destroy()`
+  cases belong); and `src/lib/signal-context.ts` **only if** the containment had landed on the
+  subclass — § 3.8.3 decided it does not, so that file is untouched.
+- **A fifth file, added after the step's review: `src/lib/eval-signal.service.ts`, doc comment
+  only.** A sanctioned deviation rather than scope creep, on the same reasoning step 2 used
+  for `README.md`: § 3.8.1 is *this* step's decision, and it is what falsified the text. The
+  class doc claimed the two styles "differ in where the injector comes from and in nothing
+  else" and `create()`'s that it "adds one thing… which is the injector"; both are now wrong,
+  because `create()` always supplies an injector and a supplied injector takes no `DestroyRef`.
+  The class doc's own worked example — a component field initializer through the service — is
+  exactly the case that silently loses auto-teardown, so it gains an `ngOnDestroy`. Deferring
+  it to step 6 was rejected: this text ships in `dist/`'s `.d.ts` and is what a consumer reads
+  on IDE hover, which a README never reaches.
 - **New spec case — nothing accumulates across recomputes** (§ 3.3.1). Recompute N times
   and assert that no state's `result.trace` holds more than one walk's worth of entries.
   Reach the states through a read hook's `event.state` under `trackDependencies: true`, and
@@ -1068,15 +1222,22 @@ scripts converge in step 1.
     `undefined`. **If it chooses "both `undefined`", this bullet is what gets reversed, in
     writing, and the reason recorded** — the no-op is the default because it is the one that
     cannot surprise a consumer mid-teardown, not because the alternative is incoherent.
+  - **Settled in the step, and nothing is reversed: § 3.8.2.** The two producers already
+    agree — a destroyed signal reads `undefined`, so the no-op leaves it `undefined` and a
+    dependency change recomputes to `undefined`, and neither evaluates. The stated probe (a
+    `createState` count) is vacuous, because that count does not move under either design;
+    § 3.8.2 replaces it with an `equal` comparator spy, which fires only on a real re-run.
 - **Decide the containment for the leaked arrow-function scope** (§ 3.2, last bullet;
   § 7). The leak is demonstrated, not hypothetical, and the shared context is this
   library's own decision, so this step owns the answer even though the defect is in
-  `eval-core`. Write the choice into § 3.8 before implementing it. The options, none yet
-  chosen:
-  - **Snapshot and restore the scope depth around each recompute.** `EvalContext.scopes` is
-    a public getter returning a `Stack`, so the depth is readable; restoring it after every
-    evaluation makes a leak last one recompute instead of forever. Contains the damage
-    without touching core, and does not need the throw to be observable.
+  `eval-core`. Write the choice into § 3.8 before implementing it. **Decided in § 3.8.3: the
+  first option, at the recompute boundary in `eval-signal.ts`.** The options as they stood:
+  - **Snapshot and restore the scope depth around each recompute.** ← **chosen**.
+    `EvalContext.scopes` is a public getter returning a `Stack`, so the depth is readable;
+    restoring it after every evaluation makes a leak last one recompute instead of forever.
+    Contains the damage without touching core, and does not need the throw to be observable.
+    The surface question § 3.8.3 had to answer first — whether 0.3.0 exposes a public read
+    *and* truncate — came back yes on both counts.
   - **Rebuild the context per recompute.** Removes the leak entirely, and costs the
     construct-once property § 3.2 chose deliberately — including the stable `target` that
     § 3.4's introspection gets for free. A reversal of § 3.2, so it needs that section
@@ -1086,12 +1247,18 @@ scripts converge in step 1.
     *unrelated* keys, and the symptom (`x` is suddenly `1`) points nowhere near the cause.
   - **Fix it in `eval-core`** — two `try`/`finally`s. Correct, out of scope per § 2, and a
     stop-and-replan if chosen.
-- **Exit**: destroying a signal releases its hook registration; `destroy()` is idempotent;
-  N recomputes leave N short-lived states, none of them retained and none of them grown;
-  **`invalidate()` on a destroyed signal is asserted inert — no recompute (a `createState`
-  count that does not move) and no change to the value, paired with the dependency-change
-  case so the two agree**; and the § 3.2 scope-leak containment is decided in § 3.8,
-  implemented, and covered by a spec that supersedes step 1's pinned-limitation one.
+- **Exit**: the per-recompute tracker unsubscribe is asserted taken and called, and
+  `destroy()` releases the one registration that *can* outlive a recompute — its `DestroyRef`
+  callback (the original wording, "destroying a signal releases its hook registration", is
+  corrected above rather than satisfied literally); `destroy()` is idempotent; N recomputes
+  leave N short-lived states, none of them retained and none of them grown;
+  **`invalidate()` on a destroyed signal is asserted inert — no re-run of the computation, on
+  a channel that fires only when it re-runs (§ 3.8.2, *not* the `createState` count this line
+  first named), and no change to the value, paired with the dependency-change case so the two
+  agree**; `DestroyRef` auto-teardown fires from an ambient injection context and provably
+  does **not** register when `options.injector` is supplied (§ 3.8.1); and the § 3.2
+  scope-leak containment is decided in § 3.8, implemented, and covered by a spec that
+  supersedes step 1's pinned-limitation one.
 
 ### Step 5 — Async (or a recorded deferral)
 
@@ -1118,6 +1285,16 @@ scripts converge in step 1.
     the option the consumer themselves passed, which is exactly what CLAUDE.md's
     `isDevMode()` carve-out excludes. The README's phrasing must name the lazy case
     explicitly — it is the one nothing in the type or the option name hints at.
+  - **Two more limitations, both from step 4.** (a) **Auto-teardown is not universal**
+    (§ 3.8.1): a signal created through `EvalSignalService.create()`, or through
+    `createEvalSignal` with an explicit `options.injector`, registers no `DestroyRef`
+    callback and must be `destroy()`ed by the consumer. `options.injector` resolves services;
+    it does not scope lifetime. The free function called from a component field initializer
+    needs nothing. (b) **The arrow-scope guard covers `createEvalSignal`, not a raw context**
+    (§ 3.8.3): a signal context driven directly through `EvalService` keeps the leak, because
+    the guard lives at the recompute boundary — and so does an arrow function that escapes
+    the walk and throws when the consumer later calls it, since its push happens after the
+    recompute returned. One line: build through `createEvalSignal` if you want the guard.
 - **Edit**: root `README.md` § "Related Packages" — add the new library.
 - **Edit**: `CHANGELOG.md` — a `0.1.0` entry for `@zvenigora/ng-eval-signals`.
 - **Edit**: `ROADMAP.md` — Phase 3 marked done, pointing here; § "Suggested order" updated.

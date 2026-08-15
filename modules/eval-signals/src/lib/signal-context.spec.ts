@@ -228,11 +228,22 @@ describe('createSignalContext', () => {
   describe('a throwing arrow function and the reused context', () => {
 
     /**
-     * KNOWN LIMITATION - pinned as current behaviour, not endorsed.
+     * KNOWN LIMITATION - pinned as current behaviour, not endorsed. Every
+     * assertion below is unchanged from step 1; what step 4 narrowed is the
+     * claim they make.
      *
-     * This asserts the leak rather than the correct answer, so that a fix has
-     * to update this spec deliberately (the `read-hooks.spec.ts` precedent in
-     * `eval-core` for the `getKey` gaps). See the plan's S 3.2 and S 7.
+     * The containment landed at the *recompute boundary* rather than on the
+     * context (plan S 3.8.3): the leak is the absence of a `pop`, and a
+     * context subclass gets no signal for "the walk ended", so only the
+     * caller of `call()` can restore the depth. A signal context driven
+     * straight through `EvalService` - what this case does, and what
+     * `createSignalContext`'s own doc comment shows - is outside any
+     * recompute this library owns, so the leak is still exactly this here.
+     *
+     * `eval-signal.memory.spec.ts` holds the other half: the same expression
+     * through `createEvalSignal` leaves the scope stack empty and the source
+     * key intact. A fix in `eval-core` has to update both deliberately (the
+     * `read-hooks.spec.ts` precedent for the `getKey` gaps). See S 3.2, S 7.
      */
     it('should leak the arrow parameter scope into every later evaluation', () => {
       const context = createSignalContext({
@@ -255,8 +266,9 @@ describe('createSignalContext', () => {
       // binding shadows the source from here on.
       expect(service.simpleEval('x', context)).toEqual(1);
 
-      // ...and it does not drain: the context is poisoned for its whole life,
-      // which for this library is the life of the signal.
+      // ...and nothing on this path drains it: the context stays poisoned for
+      // its whole life. Under `createEvalSignal` that life is the signal's,
+      // which is why the guard is there and not here.
       expect(service.simpleEval('x', context)).toEqual(1);
     });
 

@@ -681,6 +681,76 @@ describe('createEvalSignal', () => {
       expect(states).toHaveBeenCalledTimes(1);
     });
 
+    it('should read undefined from the moment it is destroyed', () => {
+      const c = signal(1);
+      const value = create('c + 1', { c });
+
+      expect(value()).toEqual(2);
+
+      value.destroy();
+
+      // No producer has moved here, so the `computed` is not dirty and would
+      // keep serving its cached 2 - which is what makes the destroyed value
+      // depend on *which* producer happens to move next. `destroy()` bumps
+      // the version once itself so that it does not (plan S 3.8.2).
+      expect(value()).toBeUndefined();
+    });
+
+    it('should make invalidate() inert once destroyed', () => {
+      const equal = jest.fn((a: unknown, b: unknown) => Object.is(a, b));
+      const states = jest.spyOn(compiler, 'createState');
+      const value = create('c + 1', { c: signal(1) }, { equal });
+
+      expect(value()).toEqual(2);
+
+      value.destroy();
+
+      expect(value()).toBeUndefined();
+
+      equal.mockClear();
+      const before = states.mock.calls.length;
+
+      value.invalidate();
+      value.invalidate();
+
+      expect(value()).toBeUndefined();
+
+      // `createState` cannot tell the no-op from step 3's fall-through: after
+      // `destroy()` the compiled callback is gone, so `evaluate()` returns
+      // before building a state either way, and the count is flat under both
+      // (S 3.8.2). `equal` is the channel that can - a `computed` invokes it
+      // only when it has actually re-run and produced a value to compare.
+      expect(equal).not.toHaveBeenCalled();
+      expect(states).toHaveBeenCalledTimes(before);
+    });
+
+    it('should leave the same value whichever producer moves after destroy', () => {
+      // Deliberately two sources rather than one shared signal: over a shared
+      // `c`, `c.set` would dirty *both* computeds and drive both signals down
+      // the dependency-change arm, so the case would pass without the
+      // producers ever having been compared. Each signal here is moved by one
+      // producer and one only.
+      const a = signal(1);
+      const b = signal(1);
+      const invalidated = create('a + 1', { a });
+      const changed = create('b + 1', { b });
+
+      expect(invalidated()).toEqual(2);
+      expect(changed()).toEqual(2);
+
+      invalidated.destroy();
+      changed.destroy();
+
+      invalidated.invalidate();
+      b.set(10);
+
+      // The pairing S 3.8.2 owes: an inert `invalidate()` would otherwise
+      // leave a destroyed signal reporting its last good value while a
+      // destroyed signal whose dependency moved reports `undefined`.
+      expect(invalidated()).toEqual(changed());
+      expect(invalidated()).toBeUndefined();
+    });
+
   });
 
 });

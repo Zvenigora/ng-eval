@@ -6,19 +6,33 @@ import { SignalContextSource } from './signal-context';
 /**
  * The DI-first entry point to {@link createEvalSignal}.
  *
- * The two styles differ in where the injector comes from and in nothing else -
  * `create` forwards its arguments unchanged, and every behaviour documented on
- * the factory holds here.
+ * the factory holds here - with **one exception, and it is the reason to read
+ * this paragraph**: a signal created through this service takes no
+ * `DestroyRef` registration and must be destroyed by hand.
  *
  * ```ts
- * export class PriceComponent {
+ * export class PriceComponent implements OnDestroy {
  *   private readonly signals = inject(EvalSignalService);
  *   readonly total = this.signals.create('price * quantity', {
  *     price: this.price,
  *     quantity: this.quantity,
  *   });
+ *
+ *   ngOnDestroy(): void {
+ *     this.total.destroy();
+ *   }
  * }
  * ```
+ *
+ * The `ngOnDestroy` above is not decoration. `create` always supplies an
+ * `injector` - that is its whole job - and {@link EvalSignal.destroy} takes
+ * its lifetime from the *ambient* injection context rather than from a
+ * supplied injector, because the injector a service has to hand is a
+ * long-lived one and a teardown callback registered there is retained for its
+ * whole life, once per signal ever created. So the same expression written as
+ * a free `createEvalSignal` in a field initializer tears itself down and this
+ * one does not.
  *
  * **Why the service exists.** `createEvalSignal` calls `inject(CompilerService)`
  * unless handed an `injector`, so calling it outside an injection context -
@@ -45,8 +59,11 @@ export class EvalSignalService {
   /**
    * Creates a `Signal` that evaluates `expression` over `source`.
    *
-   * See {@link createEvalSignal} for the full contract; this method adds one
-   * thing to it, which is the injector.
+   * See {@link createEvalSignal} for the full contract. This method adds the
+   * injector - and because it always adds one, the signal it returns has **no
+   * auto-teardown**: see {@link EvalSignal.destroy} and this class's own
+   * example. That is the one place the DI-first style and the free function
+   * differ in behaviour rather than in ergonomics.
    *
    * @param expression - A JavaScript expression.
    * @param source - A record whose values may be signals, or a pre-built

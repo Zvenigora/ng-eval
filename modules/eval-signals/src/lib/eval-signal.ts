@@ -1,4 +1,4 @@
-import { Injector, Signal, ValueEqualityFn, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injector, Signal, ValueEqualityFn, computed, inject, signal } from '@angular/core';
 import { CompilerService, EvalContext, EvalHooks, EvalOptions,
   call, createDependencyTracker } from '@zvenigora/ng-eval-core';
 import type { stateCallback } from '@zvenigora/ng-eval-core';
@@ -42,21 +42,36 @@ export interface EvalSignal<T> extends Signal<T> {
    * Calls collapse: three between two reads produce one recompute, since what
    * they bump is a signal the computation reads rather than a queue it
    * replays.
+   *
+   * **A no-op once {@link destroy} has run** - it does not recompute, and it
+   * does not change the value. Not a throw: `destroy()` is idempotent by
+   * design and teardown order is not something a consumer controls, so a
+   * subscription callback firing after the component is gone is a benign race
+   * rather than an error anyone can act on.
    */
   invalidate(): void;
 
   /**
-   * Drops the compiled callback, the context and the recorded
-   * {@link dependencies}.
+   * Ends the signal: drops the compiled callback, the context and the
+   * recorded {@link dependencies}, and releases the `DestroyRef` registration
+   * below if one was taken.
    *
-   * **Incomplete until step 4**, which owns lifetime and cleanup. There are
-   * still no hook registrations to unsubscribe: `trackDependencies` installs
-   * its tracker on the state built for one recompute and removes it before
-   * that recompute returns, so nothing outlives the walk. `DestroyRef`
-   * integration is step 4's. It is idempotent now and must stay so.
+   * Called automatically when the **ambient injection context** that created
+   * the signal is destroyed. A signal built with an explicit
+   * `options.injector` - which every `EvalSignalService.create` call is -
+   * takes no registration and must be destroyed by hand: that option resolves
+   * services, and reading it as a lifetime scope would register a teardown
+   * callback on whatever injector it names, for as long as that injector
+   * lives.
    *
-   * A destroyed signal does not evaluate again; a read that would have
-   * recomputed yields `undefined`.
+   * There is nothing to unsubscribe on the hook side: `trackDependencies`
+   * installs its tracker on the state built for one recompute and removes it
+   * before that recompute returns, so nothing there outlives the walk.
+   *
+   * Idempotent. A destroyed signal does not evaluate again and reads
+   * `undefined` from the moment it is destroyed - not from the next time a
+   * dependency happens to move, which would make the value depend on which
+   * producer got there first.
    */
   destroy(): void;
 }
@@ -119,7 +134,19 @@ export interface EvalSignalOptions {
    */
   trackDependencies?: boolean;
 
-  /** For use outside an injection context, like `toSignal`'s. */
+  /**
+   * For use outside an injection context, like `toSignal`'s.
+   *
+   * **It resolves services; it does not scope lifetime.** The factory reads
+   * `CompilerService` off it and nothing else - in particular it takes no
+   * `DestroyRef` from it, because the injector a consumer has to hand is
+   * routinely a long-lived one (`EvalSignalService` passes the root
+   * injector), and a teardown callback registered there is retained for that
+   * injector's whole life, once per signal ever created. So a signal built
+   * with this option has no auto-teardown and {@link EvalSignal.destroy} is
+   * the consumer's to call. Omit it - inside an injection context - and the
+   * ambient `DestroyRef` does it.
+   */
   injector?: Injector;
 }
 
@@ -171,9 +198,27 @@ export function createEvalSignal(
   options?: EvalSignalOptions
 ): EvalSignal<unknown> {
 
-  const compiler = options?.injector
-    ? options.injector.get(CompilerService)
-    : inject(CompilerService);
+  let compiler: CompilerService;
+
+  // Lifetime comes from the *ambient* injection context and never from
+  // `options.injector`, so the two are resolved in one fork rather than
+  // separately. When the option is absent, `inject(CompilerService)` has
+  // already proved an ambient context exists - it would have thrown NG0203
+  // otherwise - which is what makes the `inject(DestroyRef)` below safe.
+  //
+  // Angular exposes no non-throwing predicate for "am I in an injection
+  // context": `isInInjectionContext` is not in its public typings, and
+  // `assertInInjectionContext` throws. Inferring it from the call the factory
+  // already makes is what avoids a `try`/`catch` around `inject`, which would
+  // swallow unrelated errors.
+  let destroyRef: DestroyRef | null = null;
+
+  if (options?.injector) {
+    compiler = options.injector.get(CompilerService);
+  } else {
+    compiler = inject(CompilerService);
+    destroyRef = inject(DestroyRef, { optional: true });
+  }
 
   const evalOptions = options?.eval;
   const onError = options?.onError ?? 'throw';
@@ -229,39 +274,70 @@ export function createEvalSignal(
       return undefined;
     }
 
+    const fn = compiled;
+    const ctx = context;
+
     // `EvalContext.fromContext` short-circuits on identity, so the context -
     // with its lookup, its priorScopes and its stable identity - survives
     // this untouched. What is rebuilt is an `EvalResult`, a `Stack` and an
     // `EvalTrace`, against a walk that allocates per node anyway.
-    const state = compiler.createState(context, evalOptions);
+    const state = compiler.createState(ctx, evalOptions);
 
-    // The free `call`, deliberately, and not `CompilerService.call`: that one
-    // catches and rethrows `new Error(error.message)`, which would destroy
-    // the `SignalContextWriteError` type the branch below selects on and
-    // leave nothing but a message to match.
-    if (!trackDependencies) {
-      return call(compiled, state);
-    }
-
-    // Per recompute, on a registry this state owns and nobody else sees.
-    // That is also why no `reset()` is needed - and the operative half is the
-    // fresh *tracker*, not the fresh registry: a tracker hoisted out of this
-    // closure to save an allocation would accumulate across recomputes on
-    // however many registries.
-    const tracker = createDependencyTracker();
-    const off = tracker.install(state.hooks);
+    // The scope-stack depth, restored below. `arrow-function-expression.ts`
+    // and `pattern.ts` push a scope and pop it without a `try`/`finally`, so
+    // an arrow function whose body throws leaves its parameter binding on the
+    // context - and scopes are step 1 of `EvalContext.get`'s resolution
+    // order, ahead of the adapter's own resolver. On a context rebuilt per
+    // evaluation that dies with the walk; on this one, built once and reused
+    // for the life of the signal, it would shadow the source key of the same
+    // name for every later recompute (S 3.8.3).
+    const depth = ctx.scopes.length;
 
     try {
-      return call(compiled, state);
+      // The free `call`, deliberately, and not `CompilerService.call`: that
+      // one catches and rethrows `new Error(error.message)`, which would
+      // destroy the `SignalContextWriteError` type the caller selects on and
+      // leave nothing but a message to match.
+      if (!trackDependencies) {
+        return call(fn, state);
+      }
+
+      // Per recompute, on a registry this state owns and nobody else sees.
+      // That is also why no `reset()` is needed - and the operative half is
+      // the fresh *tracker*, not the fresh registry: a tracker hoisted out of
+      // this closure to save an allocation would accumulate across recomputes
+      // on however many registries.
+      const tracker = createDependencyTracker();
+      const off = tracker.install(state.hooks);
+
+      try {
+        return call(fn, state);
+      } finally {
+        // Taken and called even though the state is unreachable from here on:
+        // "the registration dies with the state" is a property of the current
+        // design rather than a guarantee, and an unsubscribe that is never
+        // needed costs a closure. Recorded in `finally` so a failed recompute
+        // still reports what it managed to read before it threw - the case a
+        // consumer is most likely to be debugging.
+        off();
+        dependencies = tracker.dependencies;
+      }
     } finally {
-      // Taken and called even though the state is unreachable from here on:
-      // "the registration dies with the state" is a property of the current
-      // design rather than a guarantee, and an unsubscribe that is never
-      // needed costs a closure. Recorded in `finally` so a failed recompute
-      // still reports what it managed to read before it threw - the case a
-      // consumer is most likely to be debugging.
-      off();
-      dependencies = tracker.dependencies;
+      // Containment, not a fix: the missing `try`/`finally` is `eval-core`'s
+      // and stays there (S 2). This bounds a leak *made during the walk* to
+      // the recompute that made it, using only the published surface -
+      // `scopes` and `pop` are both public - and it covers a caller-supplied
+      // `EvalContext` as readily as one this factory built. The loop body
+      // runs only when a leak happened.
+      //
+      // Two leaks it does not reach, both recorded in S 3.8.3: a signal
+      // context driven straight through `EvalService`, which is outside any
+      // recompute; and an arrow function that *escapes* the walk, whose push
+      // and missing pop happen when the consumer calls it, long after this
+      // frame returned.
+      while (ctx.scopes.length > depth) {
+        ctx.pop();
+      }
     }
   };
 
@@ -291,15 +367,51 @@ export function createEvalSignal(
     ? computed(compute, { equal: options.equal })
     : computed(compute);
 
+  let destroyed = false;
+  let unregisterDestroy: (() => void) | undefined;
+
   const invalidate = (): void => {
+    if (destroyed) {
+      return;
+    }
+
     version.update((current) => current + 1);
   };
 
   const destroy = (): void => {
+    if (destroyed) {
+      return;
+    }
+
+    destroyed = true;
     compiled = undefined;
     context = undefined;
     dependencies = new Set<string>();
+
+    // Bumped here, once, and this is the whole of why the two producers
+    // agree. Without it the `computed` is not dirty at this point and keeps
+    // serving its last good value until some dependency happens to move - at
+    // which point it flips to `undefined`. So the destroyed value would
+    // depend on which producer got there first. With it, a destroyed signal
+    // reads `undefined` from now on and neither producer can change that,
+    // which is what lets `invalidate` above be genuinely inert (S 3.8.2).
+    version.update((current) => current + 1);
+
+    // The one registration that can outlive a recompute. Releasing it stops
+    // the injector retaining this closure - and through it the signal - until
+    // its own teardown, which for the root injector is the life of the
+    // application.
+    unregisterDestroy?.();
+    unregisterDestroy = undefined;
   };
+
+  // The wrapper clears the handle before calling `destroy`, so a teardown
+  // driven *by* the injector does not turn around and mutate the hook list
+  // the injector is iterating.
+  unregisterDestroy = destroyRef?.onDestroy(() => {
+    unregisterDestroy = undefined;
+    destroy();
+  });
 
   const evalSignal = Object.assign(value, { invalidate, destroy }) as EvalSignal<unknown>;
 
