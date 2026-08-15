@@ -1,6 +1,6 @@
-import { Injector, computed, signal } from '@angular/core';
+import { Injector, WritableSignal, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { CompilerService, EvalContext, EvalState } from '@zvenigora/ng-eval-core';
+import { CompilerService, EvalContext, EvalHooks, EvalState } from '@zvenigora/ng-eval-core';
 import { EvalSignal, EvalSignalOptions, createEvalSignal } from './eval-signal';
 import { SignalContextSource, SignalContextWriteError, createSignalContext } from './signal-context';
 
@@ -356,6 +356,303 @@ describe('createEvalSignal', () => {
       c.set(4);
 
       expect(value()).toEqual(5);
+    });
+
+  });
+
+  describe('invalidate', () => {
+
+    it('should force exactly one recompute over a source with no reactive surface', () => {
+      const source = { count: 1 };
+      const states = jest.spyOn(compiler, 'createState');
+
+      const value = create('count + 1', source);
+
+      expect(value()).toEqual(2);
+      expect(states).toHaveBeenCalledTimes(1);
+
+      source.count = 10;
+
+      // Nothing told the signal anything changed, and nothing could: a plain
+      // object has no reactive surface to subscribe to. That is the honest
+      // trade of S 3.5's fallback, and it is what makes the assertion below
+      // load-bearing rather than a value that would have refreshed anyway.
+      expect(value()).toEqual(2);
+      expect(states).toHaveBeenCalledTimes(1);
+
+      value.invalidate();
+
+      expect(value()).toEqual(11);
+      expect(states).toHaveBeenCalledTimes(2);
+
+      // "and no more" - the version bump is one write, not a switch that
+      // leaves the signal re-evaluating on every read from then on.
+      expect(value()).toEqual(11);
+      expect(value()).toEqual(11);
+      expect(states).toHaveBeenCalledTimes(2);
+    });
+
+    it('should recompute once per call, not once per read', () => {
+      const source = { count: 1 };
+      const states = jest.spyOn(compiler, 'createState');
+      const value = create('count + 1', source);
+
+      expect(value()).toEqual(2);
+
+      source.count = 2;
+      value.invalidate();
+      value.invalidate();
+      value.invalidate();
+
+      // Three bumps between two reads collapse into one recompute, because
+      // what they change is a signal `computed` reads - not a counter it
+      // replays. The value is the current one either way; the call count is
+      // what distinguishes the two.
+      expect(value()).toEqual(3);
+      expect(states).toHaveBeenCalledTimes(2);
+    });
+
+    it('should recover a signal whose last recompute threw', () => {
+      const source: Record<string, unknown> = {
+        read: () => { throw new Error('bad data'); },
+      };
+      const value = create('read()', source);
+
+      expect(() => value()).toThrow('bad data');
+
+      source['read'] = () => 'fixed';
+
+      // A `computed` caches the error and re-throws it on every read until
+      // one of the producers *that run recorded* changes. Nothing here is
+      // signal-backed, so without the version read there is no such producer
+      // and this signal is permanently poisoned.
+      expect(() => value()).toThrow('bad data');
+
+      value.invalidate();
+
+      // Which makes this the case that pins where `version()` sits: move it
+      // below `evaluate()` and it is skipped on exactly the runs that most
+      // need it - the ones that threw.
+      expect(value()).toEqual('fixed');
+    });
+
+    it('should leave signal-backed tracking alone', () => {
+      const c = signal(1);
+      const d = signal(100);
+      const states = jest.spyOn(compiler, 'createState');
+      const value = create('c + 1', { c, d });
+
+      expect(value()).toEqual(2);
+
+      value.invalidate();
+
+      expect(value()).toEqual(2);
+      expect(states).toHaveBeenCalledTimes(2);
+
+      // The version signal is an *additional* producer, not a replacement:
+      // reading it must not make the signal depend on keys the expression
+      // never named.
+      d.set(200);
+
+      expect(value()).toEqual(2);
+      expect(states).toHaveBeenCalledTimes(2);
+    });
+
+  });
+
+  describe('trackDependencies', () => {
+
+    const source = (): SignalContextSource =>
+      ({ a: signal({ b: 1 }), c: signal(2), d: signal(99) });
+
+    it('should register no read hook by default', () => {
+      const states = jest.spyOn(compiler, 'createState');
+
+      const value = create('a.b + c', source());
+
+      expect(value()).toEqual(3);
+
+      const [state] = statesBuilt(states);
+
+      // Asserted on the state the factory actually built, rather than on a
+      // registry handed in from outside - that weaker form would only prove
+      // nothing was installed on *that* registry, not that the factory built
+      // none of its own. `hasHooks` is checked *before* `state.hooks`, whose
+      // getter constructs an empty registry on first access and would leave
+      // the second assertion true for the wrong reason.
+      expect(state.hasHooks).toBe(false);
+      expect(state.hooks.hasReadHooks).toBe(false);
+    });
+
+    it('should report an empty dependency set by default', () => {
+      const value = create('a.b + c', source());
+
+      expect(value()).toEqual(3);
+
+      // The consumer-visible half of the case above, and deliberately not a
+      // substitute for it: an empty set is also what a registered tracker
+      // returns when nothing was read.
+      expect([...value.dependencies]).toEqual([]);
+    });
+
+    it('should register the read hook on the state it owns, and remove it again', () => {
+      const onRead = jest.spyOn(EvalHooks.prototype, 'onRead');
+      const states = jest.spyOn(compiler, 'createState');
+
+      const value = create('a.b + c', source(), { trackDependencies: true });
+
+      expect(value()).toEqual(3);
+
+      const [state] = statesBuilt(states);
+
+      // Registered, and on the registry this state built for itself rather
+      // than on any other: `isActive` latches on the first registration, and
+      // the spy names the instance it happened on.
+      expect(state.hasHooks).toBe(true);
+      expect(onRead).toHaveBeenCalledTimes(1);
+      expect(onRead.mock.instances[0]).toBe(state.hooks);
+
+      // ...and gone again by the time the recompute returned. The unsubscribe
+      // is taken and called even though the state is unreachable from here -
+      // "it dies with the state" is a property of the current design rather
+      // than a guarantee (S 3.8). This is also why `hasReadHooks` is not the
+      // assertion for *registration*: it reads false after the walk either
+      // way.
+      expect(state.hooks.hasReadHooks).toBe(false);
+
+      // The only global mutation in this file, and `restoreMocks` is not
+      // configured - the `createState` spies elsewhere are on a per-test
+      // TestBed instance, this one is on a shared prototype.
+      onRead.mockRestore();
+    });
+
+    it('should collect the keys the expression named, and no others', () => {
+      const value = create('a.b + c', source(), { trackDependencies: true });
+
+      expect(value()).toEqual(3);
+
+      // `d` is in the context and is not read, so it is not a dependency -
+      // the same distinction the recompute assertions make, reported rather
+      // than acted on.
+      expect([...value.dependencies].sort()).toEqual(['a', 'a.b', 'c']);
+    });
+
+    it('should not broaden what the signal subscribes to', () => {
+      const context = source();
+      const states = jest.spyOn(compiler, 'createState');
+
+      const value = create('a.b + c', context, { trackDependencies: true });
+
+      expect(value()).toEqual(3);
+      expect(states).toHaveBeenCalledTimes(1);
+
+      (context['d'] as WritableSignal<number>).set(100);
+
+      // The negative case for the *tracking* path specifically. Every other
+      // assertion in this block reads a value or a reported set, and all of
+      // them stay green if turning tracking on made the walk touch signals
+      // the expression never named - the read hook turns on key resolution
+      // and path reconstruction at every read site, which is exactly the
+      // machinery that could reach further than the expression did.
+      expect(value()).toEqual(3);
+      expect(states).toHaveBeenCalledTimes(1);
+    });
+
+    it('should report the last recompute rather than accumulating', () => {
+      const flag = signal(true);
+      const value = create('flag ? a : b', {
+        flag,
+        a: signal(1),
+        b: signal(2),
+      }, { trackDependencies: true });
+
+      expect(value()).toEqual(1);
+      expect([...value.dependencies].sort()).toEqual(['a', 'flag']);
+
+      flag.set(false);
+
+      expect(value()).toEqual(2);
+
+      // `a` is gone rather than joined by `b`. Each recompute has its own
+      // state and therefore its own registry and its own tracker (S 3.4), so
+      // no reset is needed - and this is the assertion that would fail if the
+      // tracker were hoisted out of the recompute to save an allocation.
+      expect([...value.dependencies].sort()).toEqual(['b', 'flag']);
+    });
+
+    it('should drop the recorded set on destroy', () => {
+      const value = create('a.b + c', source(), { trackDependencies: true });
+
+      expect(value()).toEqual(3);
+      expect(value.dependencies.size).toEqual(3);
+
+      value.destroy();
+
+      expect([...value.dependencies]).toEqual([]);
+    });
+
+  });
+
+  describe('the registry-ownership rule', () => {
+
+    it('should throw when trackDependencies meets a caller-supplied registry', () => {
+      const hooks = new EvalHooks();
+
+      let raised: unknown;
+      try {
+        create('c + 1', { c: signal(1) }, { trackDependencies: true, eval: { hooks } });
+      } catch (error) {
+        raised = error;
+      }
+
+      // Named rather than matched loosely: the escape hatch only helps a
+      // consumer who can tell which two options collided.
+      expect(raised).toBeInstanceOf(Error);
+      expect((raised as Error).message).toContain('trackDependencies');
+      expect((raised as Error).message).toContain('eval.hooks');
+
+      // The assertion that actually pins the rule. A throw alone is
+      // compatible with having installed the tracker first and thrown
+      // afterwards, which would leave a hook firing on every later
+      // evaluation the consumer runs through this registry, with an
+      // unsubscribe they were never handed.
+      expect(hooks.hasReadHooks).toBe(false);
+    });
+
+    it('should throw at createEvalSignal rather than at the first recompute', () => {
+      const hooks = new EvalHooks();
+
+      // No read of the returned signal anywhere in this case: the failure
+      // has to surface where it was written, not on whatever line first
+      // happens to touch the value.
+      expect(() =>
+        create('c + 1', { c: signal(1) }, { trackDependencies: true, eval: { hooks } })
+      ).toThrow(/trackDependencies/);
+    });
+
+    it('should accept trackDependencies alone', () => {
+      const value = create('c + 1', { c: signal(1) }, { trackDependencies: true });
+
+      expect(value()).toEqual(2);
+      expect([...value.dependencies]).toEqual(['c']);
+    });
+
+    it('should accept a caller-supplied registry alone, and leave it untouched', () => {
+      const hooks = new EvalHooks();
+      const seen: string[] = [];
+      hooks.on('before', 'Identifier', (event) => seen.push(event.node.type));
+      const states = jest.spyOn(compiler, 'createState');
+
+      const value = create('c + 1', { c: signal(1) }, { eval: { hooks } });
+
+      expect(value()).toEqual(2);
+
+      // The registry is adopted by reference, so this is the factory's own
+      // state reporting on the consumer's registry: their hook ran, and no
+      // read hook of ours joined it.
+      expect(seen).toEqual(['Identifier']);
+      expect(statesBuilt(states)[0].hooks).toBe(hooks);
+      expect(hooks.hasReadHooks).toBe(false);
     });
 
   });

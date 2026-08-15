@@ -985,15 +985,36 @@ scripts converge in step 1.
 ### Step 3 — DI surface and the non-signal fallback
 
 - **New**: `src/lib/eval-signal.service.ts` — `EvalSignalService`, `providedIn: 'root'`,
-  injecting `EvalService` / `CompilerService` and exposing `create(...)` for the DI-first
-  style. The free function keeps working outside an injection context via
-  `options.injector`.
+  injecting `Injector` and exposing `create(...)` for the DI-first style. The free function
+  keeps working outside an injection context via `options.injector`.
+  - **Corrected in the step-3 session: this bullet said "injecting `EvalService` /
+    `CompilerService`" and now says neither.** It predates § 3.3.1's finding that
+    `EvalService.createState` is the accumulator leak, and § 5 — the later text — states the
+    enforceable rule: **no `EvalService` import under `src/lib/`**. `CompilerService` goes
+    with it for a different reason: the service's whole job is to supply the injection
+    context the factory needs, and the factory resolves `CompilerService` off the injector it
+    is handed. A second injection here would be a field nothing reads.
+  - **`create()` defaults `injector` to the service's own `inject(Injector)`.** A method on a
+    root-provided service is routinely called outside an injection context — a lifecycle
+    hook, a subscription callback — which is the exact case this service exists to serve and
+    the exact case that throws `NG0203` without the default. A caller-supplied
+    `options.injector` still wins.
 - **Edit**: `src/lib/eval-signal.ts` — `invalidate()` and the private version signal (§ 3.5);
   `trackDependencies` and the `dependencies` getter (§ 3.4).
+- **Edit**: `src/public-api.ts` — export `EvalSignalService`. Not on the original list, and
+  required: § 5 names the service as public surface, and the barrel re-exports named modules
+  rather than a directory, so a symbol it does not reach is not public whatever § 5 says.
 - **New / Edit**: specs — `invalidate()` forces exactly one recompute and no more;
   `dependencies` matches the keys the expression names; `trackDependencies: false` registers
   **no** read hook (assert on `state.hasHooks` / the absence of read dispatch, not on an
   empty set — an empty set is what a registered-but-unread tracker also returns).
+  - **The states are reachable from the spec**, so `state.hasHooks` is asserted literally
+    rather than by proxy: step 2's `createState` spy already returns every state the factory
+    built, and `hasHooks` is `_hooks && isActive` — false until something registers. Assert
+    it *before* touching `state.hooks`, which constructs an empty registry on first access.
+    A caller-registry assertion (`hooks.hasReadHooks === false` on a registry passed through
+    `options.eval.hooks`) is the weaker form: it proves nothing was installed on *that*
+    registry, not that the factory built none of its own.
 - **New spec case — the registry-ownership rule of § 3.4**, three assertions:
   `trackDependencies: true` plus `options.eval.hooks` **throws at `createEvalSignal`**, with
   a message naming both options; either one alone does not throw; and after the throw the

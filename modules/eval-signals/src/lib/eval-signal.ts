@@ -1,5 +1,6 @@
-import { Injector, Signal, ValueEqualityFn, computed, inject } from '@angular/core';
-import { CompilerService, EvalContext, EvalOptions, call } from '@zvenigora/ng-eval-core';
+import { Injector, Signal, ValueEqualityFn, computed, inject, signal } from '@angular/core';
+import { CompilerService, EvalContext, EvalHooks, EvalOptions,
+  call, createDependencyTracker } from '@zvenigora/ng-eval-core';
 import type { stateCallback } from '@zvenigora/ng-eval-core';
 import { SignalContextSource, SignalContextWriteError, createSignalContext } from './signal-context';
 
@@ -9,11 +10,49 @@ import { SignalContextSource, SignalContextWriteError, createSignalContext } fro
 export interface EvalSignal<T> extends Signal<T> {
 
   /**
-   * Drops the compiled callback and the context.
+   * The dotted paths the **last recompute** read; empty unless
+   * `trackDependencies` was set.
    *
-   * **Incomplete until step 4**, which owns lifetime and cleanup. Today there
-   * is nothing else to release - the hook registrations that will need
-   * unsubscribing arrive with `trackDependencies` in step 3, and `DestroyRef`
+   * A plain getter rather than a `Signal`, deliberately: making it reactive
+   * would invite reading it inside another `computed()`, which subscribes a
+   * computation to the *introspection* of a computation. This is a debugging
+   * surface - it reports what the last recompute recorded, and reading it
+   * neither triggers one nor waits for one.
+   *
+   * What it reports is not what the signal recomputes on. Three limits apply,
+   * two inherited from `eval-core`'s tracker - a computed member (`obj[expr]`)
+   * has no reconstructible path and contributes nothing, and a name that has
+   * been an arrow parameter anywhere in the expression is dropped everywhere
+   * in it - plus one this library adds: under `caseInsensitive`, a
+   * lookup-resolved key reports its *source* spelling. None of them affect
+   * reactivity, which is Angular's and is per signal, not per path.
+   */
+  readonly dependencies: ReadonlySet<string>;
+
+  /**
+   * Forces the next read to re-evaluate.
+   *
+   * For a source that is not signal-backed: a plain object the consumer owns
+   * and does not want to convert has no reactive surface, so nothing can tell
+   * the signal it changed. This is coarse by construction - it re-evaluates
+   * regardless of *what* changed, or whether anything did - and that is the
+   * honest trade. {@link dependencies} is what a consumer uses to decide
+   * whether an invalidation was warranted.
+   *
+   * Calls collapse: three between two reads produce one recompute, since what
+   * they bump is a signal the computation reads rather than a queue it
+   * replays.
+   */
+  invalidate(): void;
+
+  /**
+   * Drops the compiled callback, the context and the recorded
+   * {@link dependencies}.
+   *
+   * **Incomplete until step 4**, which owns lifetime and cleanup. There are
+   * still no hook registrations to unsubscribe: `trackDependencies` installs
+   * its tracker on the state built for one recompute and removes it before
+   * that recompute returns, so nothing outlives the walk. `DestroyRef`
    * integration is step 4's. It is idempotent now and must stay so.
    *
    * A destroyed signal does not evaluate again; a read that would have
@@ -60,6 +99,25 @@ export interface EvalSignalOptions {
    * read.
    */
   onError?: 'throw' | 'undefined' | ((error: unknown) => unknown);
+
+  /**
+   * Collect the read-hook dependency set on each recompute, readable as
+   * {@link EvalSignal.dependencies}. Default `false`.
+   *
+   * **The default is not a shrug.** Turning this on registers a read hook,
+   * and a registered read hook turns on key resolution and path
+   * reconstruction at *every* read site for the whole walk - a cost a
+   * consumer who never reads `dependencies` should not pay.
+   *
+   * Setting this together with `eval.hooks` **throws**, at this call rather
+   * than at the first recompute. An `EvalState` dispatches through the
+   * registry it adopted, and a caller's registry is theirs: installing into
+   * it would leave a hook firing on every later evaluation they run through
+   * it, with an unsubscribe they were never handed. The escape hatch is the
+   * same tracker this library would have used - install
+   * `createDependencyTracker()` on your own registry and read it yourself.
+   */
+  trackDependencies?: boolean;
 
   /** For use outside an injection context, like `toSignal`'s. */
   injector?: Injector;
@@ -119,6 +177,31 @@ export function createEvalSignal(
 
   const evalOptions = options?.eval;
   const onError = options?.onError ?? 'throw';
+  const trackDependencies = options?.trackDependencies ?? false;
+
+  // Checked against `EvalState`'s own rule rather than against presence: it
+  // adopts `hooks` only when the value is an `EvalHooks`, so anything else
+  // leaves the state building a registry of its own and there is no conflict
+  // to report. Raised here, at the call the consumer wrote, because at the
+  // first recompute it would surface on whatever line happens to read the
+  // signal.
+  //
+  // Cast for the read, as `EvalState.adoptHooks` does and for its reason:
+  // `EvalOptions` is a union, and `hooks` exists on neither arm by name - the
+  // `caseInsensitive` arm has no index signature to reach it through. The
+  // `instanceof` immediately after is what narrows the `unknown` back.
+  const adoptedHooks = (evalOptions as Record<string, unknown> | undefined)?.['hooks'];
+
+  if (trackDependencies && adoptedHooks instanceof EvalHooks) {
+    throw new Error(
+      `Cannot combine 'trackDependencies' with 'eval.hooks': an EvalState `
+      + `dispatches through the registry it adopted, so tracking would have to `
+      + `install a read hook on a registry this library does not own - one that `
+      + `would keep firing on every later evaluation you run through it. `
+      + `Install createDependencyTracker() on your own registry and read it `
+      + `from there instead; it is the same tracker this option would have used.`
+    );
+  }
 
   // The union fork is the whole of the difference between the two paths. A
   // pre-built context was constructed by the caller with the options they
@@ -129,6 +212,17 @@ export function createEvalSignal(
     : createSignalContext(source, evalOptions);
 
   let compiled: stateCallback | undefined = compiler.compile(expression);
+  // Per signal rather than one shared module-level empty set: `ReadonlySet` is
+  // a compile-time claim only, and that set would be handed out through the
+  // public getter by every signal that has not recomputed yet and every
+  // destroyed one - so a single cast-and-mutate from any consumer would
+  // corrupt what all of them report, for the life of the process.
+  let dependencies: ReadonlySet<string> = new Set<string>();
+
+  // The escape hatch for a source with no reactive surface (S 3.5). Read at
+  // the top of every recompute, so `invalidate` is a producer alongside
+  // whatever signals the expression itself touched.
+  const version = signal(0);
 
   const evaluate = (): unknown => {
     if (!compiled || !context) {
@@ -145,10 +239,38 @@ export function createEvalSignal(
     // catches and rethrows `new Error(error.message)`, which would destroy
     // the `SignalContextWriteError` type the branch below selects on and
     // leave nothing but a message to match.
-    return call(compiled, state);
+    if (!trackDependencies) {
+      return call(compiled, state);
+    }
+
+    // Per recompute, on a registry this state owns and nobody else sees.
+    // That is also why no `reset()` is needed - and the operative half is the
+    // fresh *tracker*, not the fresh registry: a tracker hoisted out of this
+    // closure to save an allocation would accumulate across recomputes on
+    // however many registries.
+    const tracker = createDependencyTracker();
+    const off = tracker.install(state.hooks);
+
+    try {
+      return call(compiled, state);
+    } finally {
+      // Taken and called even though the state is unreachable from here on:
+      // "the registration dies with the state" is a property of the current
+      // design rather than a guarantee, and an unsubscribe that is never
+      // needed costs a closure. Recorded in `finally` so a failed recompute
+      // still reports what it managed to read before it threw - the case a
+      // consumer is most likely to be debugging.
+      off();
+      dependencies = tracker.dependencies;
+    }
   };
 
   const compute = (): unknown => {
+    // Unconditionally, and before the guard in `evaluate`: a version read
+    // that happened only on some paths would leave `invalidate()` working
+    // for some expressions and silently not for others.
+    version();
+
     try {
       return evaluate();
     } catch (error) {
@@ -169,10 +291,26 @@ export function createEvalSignal(
     ? computed(compute, { equal: options.equal })
     : computed(compute);
 
+  const invalidate = (): void => {
+    version.update((current) => current + 1);
+  };
+
   const destroy = (): void => {
     compiled = undefined;
     context = undefined;
+    dependencies = new Set<string>();
   };
 
-  return Object.assign(value, { destroy });
+  const evalSignal = Object.assign(value, { invalidate, destroy }) as EvalSignal<unknown>;
+
+  // `defineProperty` rather than a member of the object above: `Object.assign`
+  // copies a getter's *current value*, which would freeze `dependencies` at
+  // the empty set it holds before the first recompute.
+  Object.defineProperty(evalSignal, 'dependencies', {
+    get: () => dependencies,
+    enumerable: true,
+    configurable: true,
+  });
+
+  return evalSignal;
 }
