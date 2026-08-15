@@ -224,8 +224,17 @@ regress.
   observing **7 failures**. Without that probe, "the suite is green" would have been equally
   true of the broken version.
   Common ways an assertion goes vacuous here: asserting on a hook that was never registered,
-  a no-op guard whose absence changes nothing for a singly-registered callback, or
-  `expect(x).not.toThrow()` standing in for a behavioural claim.
+  a no-op guard whose absence changes nothing for a singly-registered callback,
+  `expect(x).not.toThrow()` standing in for a behavioural claim, or a fixture shared between
+  the two arms of a comparison, so one producer moves both.
+- **The probe checks the assertion. Check the setup separately.** The failure is usually the
+  setup, not the assertion: a fixture in which the discriminating condition cannot arise.
+  Step 4's pairing case gave both signals one shared source, so the "a dependency changed"
+  producer moved *both* of them and the two arms it existed to compare were never distinct.
+  So before writing the assertion, describe what the setup would look like if the invariant
+  were false, and confirm that setup is reachable from the fixture you have. Then, when you
+  break the implementation, read **which** tests went red rather than that the suite did —
+  step 4's pairing case survived a probe that produced three failures, none of them it.
 
 ## Public API discipline
 
