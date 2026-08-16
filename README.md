@@ -52,6 +52,7 @@ I wanted an evaluator to be included in one of my other projects. I found some g
   * [Evaluation with state](#evaluation-with-state)
   * [Evaluation with scope](#evaluation-with-scope)
 - [ESTree Nodes Supported](#estree-nodes-supported)
+- [Packages in This Repo](#packages-in-this-repo)
 - [Related Packages](#related-packages)
 - [Security](#security)
 - [Contributing](#contributing)
@@ -320,6 +321,21 @@ const expression = 'cat.action(args, cat.num, "times")';
 const result = service.simpleEval(expression, evalContext); // 'Miss Kitty says meow 3 times'
 
 ```
+
+## Packages in This Repo
+
+This repository publishes two libraries. Everything above documents the first.
+
+- **[`@zvenigora/ng-eval-core`](modules/eval-core/README.md)** — the expression parser and
+  evaluator this README describes.
+- **[`@zvenigora/ng-eval-signals`](modules/eval-signals/README.md)** — Angular `Signal`s for
+  those expressions. `createEvalSignal('price * quantity', { price, quantity })` returns a
+  `Signal` that recomputes exactly when a key the expression read changes, using Angular's own
+  dependency tracking. Built on `ng-eval-core`; see its
+  [README](modules/eval-signals/README.md) for the factory, the DI service, dependency
+  introspection, lifetime and limitations.
+
+A third, `@zvenigora/ng-eval-forms`, is planned — see the [roadmap](ROADMAP.md).
 
 ## Related Packages
 Depending on your specific use-case, there are other

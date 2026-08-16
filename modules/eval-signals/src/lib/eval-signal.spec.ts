@@ -753,4 +753,112 @@ describe('createEvalSignal', () => {
 
   });
 
+  /**
+   * The two claims step 6's README makes about async, pinned here because it
+   * makes them publicly (S 3.7). Step 5 deferred the async primitive to Phase
+   * 5 partly on the grounds that a consumer already has the promise, and
+   * found the citation it first offered for that vacuous: `eval-core`'s
+   * `eval.service.async.spec.ts` table 21 `await`s the sync entry point's
+   * result, and `await 3` is `3`, so it passes whether the sync path returns
+   * the promise or resolves it. Nothing in the repo discriminated.
+   *
+   * Both cases below therefore avoid `await` on the assertion path: they
+   * compare against the promise object the context function returned. If the
+   * walk ever started resolving promises - which is what `evaluateAsync`
+   * does, and the sync path deliberately does not - the identity comparison
+   * fails rather than silently agreeing.
+   */
+  describe('a promise-valued expression', () => {
+
+    it('should carry the promise itself as the value, unresolved', () => {
+      const id = signal(1);
+      const returned: Promise<string>[] = [];
+      const load = (n: number) => {
+        const promise = Promise.resolve(`user-${n}`);
+        returned.push(promise);
+        return promise;
+      };
+
+      const user = create('load(id)', { id, load });
+
+      // Identity, not `toBeInstanceOf`: a path that resolved and re-wrapped
+      // would still be a Promise.
+      expect(user()).toBe(returned[0]);
+      expect(returned).toHaveLength(1);
+
+      id.set(2);
+
+      // And a recompute produces the next call's promise rather than reusing
+      // the first, which is what makes the `resource({ params })` composition
+      // in the README reload. This line carries that claim on its own: the
+      // fixture allocates a fresh promise per call, so a `returned[1] !==
+      // returned[0]` assertion beside it would hold against any
+      // implementation, including one that never recomputed.
+      expect(user()).toBe(returned[1]);
+
+      return Promise.all(returned).then((values) =>
+        expect(values).toEqual(['user-1', 'user-2'])
+      );
+    });
+
+    it('should keep a promise nested in a result unresolved', () => {
+      const load = () => Promise.resolve('user-1');
+      const returned: unknown[] = [];
+      const value = create('[load(), 2]', { load: () => {
+        const promise = load();
+        returned.push(promise);
+        return promise;
+      } });
+
+      // The README's second async limit. `evaluateAsync` walks a result
+      // resolving promises inside it; the sync path this library uses does
+      // not, so the array holds the promise itself.
+      const result = value() as unknown[];
+      expect(result[0]).toBe(returned[0]);
+      expect(result[1]).toEqual(2);
+
+      return Promise.all(returned);
+    });
+
+    it('should evaluate an async arrow, which is how await reaches an expression', async () => {
+      const load = (n: number) => Promise.resolve(`user-${n}`);
+
+      // Top-level `await` is a parse error at the parser's `ecmaVersion:
+      // 2020`, and the README offers this form instead - so the offer is
+      // asserted rather than assumed. It is `eval-core`'s parser and visitor
+      // doing the work; the case is here because this library's README is
+      // what promises it.
+      const value = create('(async () => await load(id))()', { id: signal(1), load });
+
+      expect(value()).toBeInstanceOf(Promise);
+      await expect(value()).resolves.toEqual('user-1');
+
+      expect(() => create('await load(id)', { id: signal(1), load })).toThrow();
+    });
+
+    it('should not route a rejection through onError', async () => {
+      const onError = jest.fn(() => 'mapped');
+      const rejected = Promise.reject(new Error('boom'));
+      const value = create('fail()', { fail: () => rejected }, { onError });
+
+      // The limitation the README states as the largest of the three: the
+      // factory's catch is synchronous, so a rejecting promise passes through
+      // untouched and it is the consumer who must handle it.
+      expect(value()).toBe(rejected);
+
+      // Settled first, and this is what makes the assertion below
+      // discriminating rather than a restatement of the line above. An
+      // implementation that attached `.catch(onError)` inside the recompute
+      // would call the mapper a microtask later, so a check made only in the
+      // synchronous instant agrees with it. Awaiting here also handles the
+      // rejection, rather than leaving the runtime to report it - the very
+      // hazard being documented.
+      await expect(rejected).rejects.toThrow('boom');
+
+      expect(onError).not.toHaveBeenCalled();
+      expect(value()).toBe(rejected);
+    });
+
+  });
+
 });

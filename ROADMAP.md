@@ -106,7 +106,27 @@ Exit criteria: `VariableDeclaration` (`let`/`const`), `IfStatement`, `BlockState
 classic `ForStatement` visitors; multi-statement `Program` evaluation; tests mirroring
 the existing per-visitor test style; README "ESTree Nodes Supported" updated.
 
-### Phase 3 — `@zvenigora/ng-eval-signals` (new module)
+### ✅ Phase 3 — `@zvenigora/ng-eval-signals` (new module) — **done**
+
+Shipped as `@zvenigora/ng-eval-signals` **0.1.0**. Design, findings and the step-by-step
+execution record are in [`docs/signals/phase-3-plan.md`](docs/signals/phase-3-plan.md);
+consumer documentation is the [package README](modules/eval-signals/README.md).
+
+What landed: `createEvalSignal(expression, source, options?)`, which compiles once and
+returns a `Signal` recomputing exactly when a signal-backed key the expression **read**
+changes; `createSignalContext`, the context adapter that resolves reads through signals via
+`lookups`; `EvalSignalService` for callers outside an injection context; `EvalSignal`'s
+`dependencies` introspection (built on Phase 1's `createDependencyTracker`), `invalidate()`
+for sources with no reactive surface, and `destroy()` with ambient-only `DestroyRef`
+teardown; and `SignalContextWriteError`, the read-only write policy. Nothing was added to
+`eval-core`, which is consumed at its published 0.3.0 surface.
+
+The design finding worth carrying forward: **Angular already does the dependency tracking**.
+The walk is synchronous, so an evaluation driven from inside a `computed()` records each
+context read natively, per key — this library never computes a dependency set to decide when
+to recompute, and the tracker is introspection only.
+
+The original framing follows, unchanged.
 
 Wrap compiled expressions as Angular `signal()`/`computed()` values that
 automatically re-evaluate when their tracked dependencies (per Phase 1) change,
@@ -323,6 +343,26 @@ these visible at all.
   auditing `set`'s callers in Phase 3 step 2. Cosmetic to fix, behavioural in effect; it
   needs a spec written against the corrected behaviour rather than the current one.
 
+## Deferred tooling — `eval-signals` has no CI test configuration
+
+Surfaced in Phase 3 step 6, while settling the `project.json` divergence between the two
+libraries. That step decided the **release** blocks deliberately (`eval-signals` keeps its
+`release.version` + `nx-release-publish` config, `eval-core` is left alone — see the phase-3
+plan's step 6). This is the other divergence, and it is a real gap rather than a style
+difference.
+
+`modules/eval-core/project.json` gives its `test` target a `configurations.ci` block
+(`ci: true`, `coverage: true`); `modules/eval-signals/project.json` gives its `test` target no
+`configurations` at all (its `build` target has the usual two). So
+`nx test eval-signals --configuration=ci` does not exist, and any CI job that
+starts asking for coverage per project gets it from one library and not the other. Today's
+workflow runs `npm test` — plain `nx run-many -t test` — so nothing is red and nothing is
+missing coverage that was previously reported; that is why it was logged rather than fixed
+inside a documentation step.
+
+Fixing it is a few lines of `project.json` plus a decision about whether coverage thresholds
+should gate CI for either library, which is the part worth deciding rather than copying.
+
 ## Deferred tooling — documented-symbol drift gate
 
 Not a defect in shipped behaviour; a gap in what the suite can catch. Raised while closing
@@ -374,8 +414,8 @@ a review practice rather than a gate, and it stays that way.
 ## Suggested order
 
 1. ~~Phase 1 (hooks)~~ — **done**, shipped in 0.3.0; unblocks 3 and 4.
-2. Phase 3 (signals) — depends only on Phase 1, so it is now unblocked and is next.
-3. Phase 4 (forms) — depends on Phase 3.
+2. ~~Phase 3 (signals)~~ — **done**, shipped in `eval-signals` 0.1.0; unblocks 4.
+3. Phase 4 (forms) — depends on Phase 3, which is now in place, so it is next.
 4. Phase 2 (statements) — independent track, can run in parallel with 1/3/4 since
    nothing else in this roadmap depends on `let`/`if`/`for`.
 5. Phase 5 (async signals) — depends on Phase 3, and nothing depends on it. Deferred

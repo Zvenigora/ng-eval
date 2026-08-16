@@ -1454,6 +1454,37 @@ scripts converge in step 1.
 - **Exit**: `npx nx run-many -t lint test build` green across both projects; every symbol the
   new README imports is exported from the package (checked by hand — the automated version
   of this check is the deferred tooling item in `ROADMAP.md`).
+- **Extended file list, agreed before work started.** Three files beyond the five above.
+  `modules/eval-signals/src/lib/eval-signal.spec.ts` — **the only source file this step
+  touches**, and step 5 booked it in writing: the README states the promise pass-through, and
+  step 5 recorded that a public claim needs a spec that discriminates, because the citation it
+  first offered did not. `CLAUDE.md` — its root-scripts paragraph was stale (all three scripts
+  have been `run-many` since step 1) and its package line said 0.0.1 / in progress, which
+  *this step's own version bump* falsifies; same reasoning step 4 used for
+  `eval-signal.service.ts`. And this document, for the record below.
+- **The `project.json` decision: `eval-signals` keeps its release block, `eval-core` is left
+  alone.** The block (`release.version` with a git-tag resolver and `manifestRootsToUpdate`,
+  plus an `nx-release-publish` target pointing at `dist/`) is the newer and more correct shape
+  — it versions the *built* manifest, which is what `nx release` publishes — and `eval-core`
+  has no equivalent only because it predates the convention. Converging by *deleting* the
+  block would trade a working configuration for a matching one; converging by copying it onto
+  `eval-core` is a change to how the already-released library versions, made in a
+  documentation step, with publishing out of this plan's scope (§ 2). So the inconsistency is
+  recorded as intentional, with the direction of the eventual convergence named: `eval-core`
+  grows the block when someone next touches its release path, not the reverse.
+  - **A second divergence, found while deciding the first and deliberately not fixed here.**
+    `eval-core`'s `test` target has a `configurations.ci` block (`ci: true`, `coverage: true`)
+    and `eval-signals` has none, so `nx test eval-signals --configuration=ci` does not exist.
+    Unlike the release block this is a gap rather than a style difference, but it is a
+    `project.json` change plus a coverage-gating decision, which is not what a docs step should
+    settle. Logged in `ROADMAP.md` under deferred tooling so it is not lost.
+- **Outcome.** All exit criteria met; see the step-6 report. The README departs from two of
+  this step's literal instructions, both agreed first: the limitations are **grouped** ("Before
+  you use it" — the four that decide whether the library fits — versus "Edge cases you may
+  hit") rather than listed flat, because ten flat bullets read as ten equal risks; and the
+  root `README.md` gains a **"Packages in This Repo"** section instead of an entry under
+  "Related Packages", which is a list of third-party alternatives (jsep, acorn, astring) where
+  filing our own sibling library would misrepresent it.
 
 ---
 

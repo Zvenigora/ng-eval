@@ -10,7 +10,8 @@ An Nx monorepo containing two publishable Angular libraries under `modules/`:
   parser/evaluator built on `acorn` + `acorn-walk`, exposed as Angular DI services. At
   0.3.0, not yet published to npm. This is where nearly all the code is.
 - **`@zvenigora/ng-eval-signals`** (`modules/eval-signals`) — expression → Angular
-  `Signal`. Scaffolded at 0.0.1 and **in progress**: Phase 3 is being built into it now.
+  `Signal`, built on the first library's published surface. At 0.1.0, not yet published to
+  npm; Phase 3 built it and is complete.
 
 Phase 1 (the generic evaluation hook API that unblocked the second library) is **complete**,
 shipped in `eval-core` 0.3.0; `docs/side-effects/phase-1-plan.md` is its design record, kept
@@ -37,10 +38,11 @@ npx nx test eval-core --testPathPatterns=queue.spec
 npx nx test eval-core --testNamePattern="case insensitive"   # note: singular here
 ```
 
-Root scripts: `npm test` is `nx run-many -t test` and covers both projects. `npm run build`
-and `npm run lint` are still aliases for the single `eval-core` target — they move to
-`run-many` in Phase 3 step 1, which is when `eval-signals`' build and lint first pass
-(today its entry point is empty and its manifest fails `@nx/dependency-checks`).
+Root scripts: `npm test`, `npm run build` and `npm run lint` are all `nx run-many` and cover
+both projects. `test` moved in Phase 3 step 0, `build` and `lint` in step 1 — which is when
+`eval-signals`' build and lint first passed. CI (`.github/workflows/node.js.yml`) runs
+`npm run build --if-present` and `npm test`, so it covers both projects' build and test
+targets and neither project's lint.
 
 **A green `test` run is not a type-check.** Jest compiles per file through `tsconfig.spec`
 and is more permissive than `tsconfig.lib` — Phase 3 step 3 shipped an `EvalOptions` index

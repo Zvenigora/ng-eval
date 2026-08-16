@@ -1,6 +1,6 @@
 {
   "name": "@zvenigora/ng-eval-signals",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Angular signals for ng-eval expressions",
   "repository": {
     "type": "git",
