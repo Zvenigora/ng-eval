@@ -20,6 +20,14 @@ export default [
               sourceTag: 'scope:signals',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:signals'],
             },
+            {
+              sourceTag: 'scope:forms',
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:signals',
+                'scope:forms',
+              ],
+            },
           ],
         },
       ],

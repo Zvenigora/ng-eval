@@ -16,7 +16,8 @@
     "baseUrl": ".",
     "paths": {
       "@zvenigora/ng-eval-core": ["modules/eval-core/src/index.ts"],
-      "@zvenigora/ng-eval-signals": ["./modules/eval-signals/src/index.ts"]
+      "@zvenigora/ng-eval-signals": ["./modules/eval-signals/src/index.ts"],
+      "@zvenigora/ng-eval-forms": ["./modules/eval-forms/src/index.ts"]
     },
     "strict": false,
     "noUncheckedSideEffectImports": false,
