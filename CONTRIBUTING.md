@@ -1,5 +1,21 @@
 # Contributing Guide
 
+## Prerequisites
+
+This project requires **npm >= 11**. Node 24 and 26 ship npm 11 and 12 respectively and work out of the box.
+
+Node 22 is supported at runtime but bundles npm 10, which cannot read the lockfile. If you are using Node 22, upgrade npm first:
+
+```bash
+npm i -g npm@11
+```
+
+Without this upgrade, `npm ci` will fail with `EUSAGE`, reporting missing dependencies:
+```
+npm ERR! eusage
+npm ERR! The "engines" field in your package.json requires npm >= 11
+```
+
 ## Set Up
 
 Run `npm install`

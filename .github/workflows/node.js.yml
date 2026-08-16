@@ -16,12 +16,11 @@ jobs:
 
     strategy:
       matrix:
-        # Node 24 and 26 ship npm 11 and 12. npm 10 cannot read this
-        # lockfile - it reports @types/node, yaml and undici-types as
-        # missing and fails `npm ci` with EUSAGE - so Node 22, which
-        # bundles npm 10, is excluded even though Angular 22 supports it.
-        # A Node 22 contributor needs `npm i -g npm@11` first; see the
-        # "engines" field in package.json.
+        # Node 24 and 26 ship npm 11 and 12 respectively and are tested here.
+        # Node 22 is supported at runtime but bundles npm 10, which cannot read
+        # this lockfile and fails `npm ci` with EUSAGE. Therefore Node 22 is
+        # excluded from CI testing; contributors using Node 22 must upgrade npm
+        # first with `npm i -g npm@11`. See CONTRIBUTING.md Prerequisites.
         node-version: [24.x, 26.x]
 
     steps:
