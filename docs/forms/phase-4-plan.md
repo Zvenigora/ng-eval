@@ -1,12 +1,27 @@
 # Phase 4 Plan — `@zvenigora/ng-eval-forms` (new module)
 
 **Date**: August 16, 2026
+**Revision**: 2 — amended after review, before step 1. Eleven changes, none of them a
+design reversal, all from a review of revision 1 against the sources it cites. Three
+are load-bearing: § 3.4.2's live key set is now **two lookups** rather than a joined
+record, because a joined record is a third object and mutating the form source would
+not have reached it — the mechanism did not deliver the property the section claimed
+(and § 3.4.3's precedence rule changes shape with it); `applyErrorPolicy` is **deferred**
+to the `/signals` phase, since `createEvalSignal` owns the whole policy internally and
+the helper had no caller on the `/reactive` path at all, which is § 9.1's own
+unexercised-path rule applied consistently; and § 3.5 gains a **fifth mirroring trap** —
+a control *instance* swapped under an existing key by `setControl` / `addControl` leaves
+the mirror subscribed to the dead control, which is the operation this library's § 0
+premise is built on and which step 5's exit criterion sat directly on.
+
 **Revision**: 1 — initial plan, written against the scaffold commit `898cd00`.
 **Target package**: `@zvenigora/ng-eval-forms` (`modules/eval-forms`, v0.0.1 scaffold)
 **Depends on**: `@zvenigora/ng-eval-core` 0.3.0 (Phase 1 hooks) and
 `@zvenigora/ng-eval-signals` 0.1.0 (Phase 3) — see
-[`phase-3-plan.md`](../signals/phase-3-plan.md) § 9, the four-clause contract this
-library is entitled to rely on, and nothing beyond it.
+[`phase-3-plan.md`](../signals/phase-3-plan.md) § 9, the four-clause contract, **plus the
+six published-but-unpromised behaviours enumerated in § 1.3**. Revision 1 claimed § 9
+"and nothing beyond it" and then depended on six things beyond it; § 1.3 is that claim
+replaced by an honest list.
 **Source**: [`ROADMAP.md`](../../ROADMAP.md) § Phase 4
 **Objective**: Ship a third publishable library that turns **runtime string expressions**
 into reactive form field state, for Angular Reactive Forms in this phase and for Angular
@@ -97,7 +112,11 @@ Measured from the installed package rather than from documentation:
 `form`, `schema`, `apply`/`applyWhen`/`applyEach`, `disabled`, `hidden`, `readonly`,
 `required`, `validate`, `validateAsync`/`validateHttp`/`validateTree`, the limit
 validators, `debounce`, `submit`, and `metadata` / `createMetadataKey` /
-`createManagedMetadataKey`. None of it is marked experimental.
+`createManagedMetadataKey`. None of it is marked experimental — the only `@experimental`
+tags in that entry point are on WebMCP members, none of which this plan names. (The tags
+themselves live in `types/_structure-chunk.d.ts`; `types/signals.d.ts` is largely a
+re-export barrel. Citations below name the chunk where that is where the symbol is
+declared.)
 
 [`ROADMAP.md:165`](../../ROADMAP.md) frames the integration question as "Angular Reactive
 Forms (`FormGroup`/`FormControl`) vs. a standalone schema-driven renderer". That is now a
@@ -139,13 +158,14 @@ appears. § 3.4.2 takes the live view and pairs it with an explicit invalidation
 requirement; the reviewer checklist item is narrowed rather than dismissed.
 
 **1.2.5 — `toSignal(control.valueChanges, { initialValue: control.value })` type-checks,
-and has four traps that each produce a silent freeze.**
+and has five traps that each produce a silent freeze.**
 `AbstractControl.valueChanges: Observable<TValue>`
 (`node_modules/@angular/forms/types/forms.d.ts:2703`); the `initialValue` overload of
-`toSignal` returns `Signal<T>` (`node_modules/@angular/core/types/rxjs-interop.d.ts:153`).
+`toSignal` returns `Signal<T | U>` where `U extends T`
+(`node_modules/@angular/core/types/rxjs-interop.d.ts:157-161`).
 So mirroring is available and is the answer to reviewer item 1; `invalidate()` reverts to
 being the escape hatch for plain objects — and, per trap 3, for one Reactive Forms case
-too. All four traps are § 3.5, in the design section rather than a footnote, because each
+too. All five traps are § 3.5, in the design section rather than a footnote, because each
 one fails the way this reviewer checklist is built around: a property that simply stops
 updating, with no error.
 
@@ -174,6 +194,30 @@ its own exit criteria rather than being folded into the first adapter.
 [`ROADMAP.md:155`](../../ROADMAP.md) names the property `visible`; Angular's rule is
 `hidden(path, logic)`. The `/signals` adapter negates. Trivial, and exactly the sort of
 thing that ships inverted if it is not written down before either side exists.
+
+### 1.3 What this plan relies on beyond `phase-3-plan.md` § 9
+
+Revision 1's header said § 9 "and nothing beyond it", and then this plan depended on six
+things beyond it. Each is real published behaviour, verified against the source; the
+exposure is that § 9 is the *stated* contract, so anything not in it is one refactor away
+from silent breakage — and § 2 forbids fixing that from here.
+
+| Relied on | Where | Verified at | Pinned upstream? |
+| :--- | :--- | :--- | :--- |
+| `createEvalSignal` accepts a pre-built `EvalContext` as `source` | § 3.4.1, step 4 — the whole design | `eval-signal.ts:197` | Yes, by `eval-signals` specs |
+| `invalidate()` and its collapse-and-no-op-after-destroy semantics | § 3.4.2, § 3.5.3 | `eval-signal.ts` | Yes |
+| `SignalContextWriteError` bypasses `onError` in every mode | § 3.4.4 | `eval-signal.ts:353-355` | Yes |
+| An explicit `injector` ⇒ **no** `DestroyRef` registration | § 3.7 | `eval-signal.ts:216-221` | Yes |
+| `createEvalSignal`'s scope-leak snapshot-and-restore | § 7, § 9.1 | `eval-signal.ts:294, 325-341` | Yes |
+| **`createSignalContext` resolves against a live source** | § 1.2.4, § 3.4.2 | `signal-context.ts:198-201`, `:127-144` | **No** |
+
+Only the last is unpinned: liveness is not in § 9, not in `createSignalContext`'s JSDoc,
+and not asserted by any eval-signals spec — there is no mutate-after-construction case
+there at all. A future upstream change that memoized `Object.keys` for the
+case-insensitive path would break a documented README rule of this library with no red
+test in either project. **Step 2 therefore carries a characterization spec for it**, in
+eval-forms, labelled as characterizing undocumented upstream behaviour. That is the
+available substitute for amending someone else's contract from inside § 2's scope rule.
 
 ---
 
@@ -205,7 +249,7 @@ thing that ships inverted if it is not written down before either side exists.
 - **Validators.** [`ROADMAP.md:169`](../../ROADMAP.md) already defers them: they affect
   form validity, not presentation.
 - **Form *state* keys** (`touched`, `dirty`, `valid`, `status`) in the expression context.
-  § 3.5.5 records the mechanism and why values-only is enough for this phase.
+  § 3.5.6 records the mechanism and why values-only is enough for this phase.
 - **`FormArray` and nested `FormGroup`.** Flat forms only — settled in open question 8.5
   before step 1, because § 3.4.1's context count assumes it and step 4 would otherwise have
   to improvise a third level of scope for per-row names.
@@ -341,7 +385,7 @@ Two smaller manifest notes, both consequences of the same rule:
   independence from `@angular/forms` is *not* enforced by the manifest and needs the
   import check in step 2's exit criteria instead.
 - **No `rxjs` peer.** `toSignal(control.valueChanges, …)` needs no rxjs operator import,
-  only the `Observable` `@angular/forms` already returns. § 3.5.5's deferral of state keys
+  only the `Observable` `@angular/forms` already returns. § 3.5.6's deferral of state keys
   is what keeps it that way — filtering `control.events` would introduce `filter` and with
   it an rxjs peer.
 
@@ -378,13 +422,36 @@ number and why.
 
 #### 3.4.2 The key set is live, and reactivity is what needs the escape hatch
 
-Per finding 1.2.4, the composition is a **single mutable joined record** that the core
-owns and keeps a reference to, not a `{...form, ...field}` snapshot. A key added to the
-form source afterwards resolves on the next read.
+**The mechanism is two lookups, not a joined record.** Revision 1 said "a single mutable
+joined record that the core owns"; that does not work, and the reason is worth keeping
+because it is easy to re-derive wrongly. A joined record is a **third object**. Mutating
+`formSource` afterwards does not reach it, so liveness would need a write-through — to
+**N** records, since § 3.4.1 mandates one context per field — and `createFieldContext`
+returns an `EvalContext` and retains no handle any caller could write through.
 
-What that does **not** do is trigger a recompute: an expression that read a then-missing
-key subscribed to nothing, so nothing tells it the key now exists. The stated rule is
-therefore two-part, and both halves go in the README:
+What actually delivers it:
+
+```ts
+const context = createSignalContext(fieldSource, options);  // field half — live already
+context.lookups.push((key) => resolveFrom(formSource, key)); // form half — also live
+```
+
+`EvalContext.lookups` is a public mutable array and `EvalContext.get` walks it in order,
+first non-`undefined` winning — which is exactly how `createSignalContext` installs its
+own resolver in the first place. Both halves close over their source and read it at
+resolve time, so neither needs a write-through and there is nothing to keep in sync.
+
+Finding 1.2.4's liveness is what makes this work, and § 1.3 records that it is
+published-but-unpromised: it is not in
+[`phase-3-plan.md`](../signals/phase-3-plan.md) § 9, not in `createSignalContext`'s
+JSDoc, and not pinned by any eval-signals spec. Step 2 therefore carries a
+**characterization spec** for it — an eval-forms spec asserting the upstream behaviour
+directly, labelled as characterizing undocumented behaviour rather than as testing our
+own. § 2 forbids fixing that upstream; a red test here is the available substitute.
+
+What liveness does **not** do is trigger a recompute: an expression that read a
+then-missing key subscribed to nothing, so nothing tells it the key now exists. The
+stated rule is therefore two-part, and both halves go in the README:
 
 1. **Resolution is live.** A field registered later is visible to contexts already built.
 2. **Appearance is not reactive.** The owner of the form source calls `invalidate()` on
@@ -402,12 +469,45 @@ exception in § 3.5.4.
 When a field-local key and a form key share a name, **the field wins**. It is the more
 specific scope, and the collision that actually occurs — a field named `value`, `name` or
 `index` against a form-level key of the same name — is one where the local meaning is what
-the expression author intended.
+the expression author intended. Under § 3.4.2's two lookups this falls out of installation
+order: the field resolver is pushed first and `get` takes the first non-`undefined`.
 
-This is a decision with a spec, per reviewer item 2, and not a consequence of argument
-order in a spread. The spec asserts the collision resolves to the field's value **and**
-that removing the field key makes the form key visible again — the second half is what
-distinguishes "field wins" from "form source was never consulted".
+**Which forces a decision revision 1 did not make: `undefined` is not "field wins".**
+`EvalContext.get` treats `undefined` as absent at every step, and `createSignalContext`'s
+`resolve` returns `undefined` both for "no such key" and for "key bound to `undefined`".
+So a field key holding `undefined` — **an empty `FormControl`, which is the common case,
+not an exotic one** — falls through to the form lookup and the *form* value wins. Under
+the rejected joined-record mechanism it would have shadowed the form value instead. The
+two mechanisms disagree, so this is stated rather than inherited:
+
+> A field key resolves the field's value whenever that value is not `undefined`. A field
+> key holding `undefined` is indistinguishable from an absent one, and the form value
+> shows through.
+
+Documented as a limitation rather than fixed. Fixing it means distinguishing "absent" from
+"present and `undefined`" through a resolver whose only channel is a return value, which
+would need a sentinel threaded through `EvalContext.get` — `eval-core`'s, and out of scope
+(§ 2).
+
+Step 2's spec asserts **three** things, not the two revision 1 listed: the collision
+resolves to the field; removing the field key makes the form key visible again (which is
+what distinguishes "field wins" from "the form source was never consulted"); and a field
+key bound to `undefined` resolves the *form* value, which is the only half that
+discriminates between the two candidate mechanisms.
+
+**A third precedence layer sits above both, and it is not ours.** `createSignalContext`
+builds its context on an empty `original`, and `EvalContext.get` consults `original`
+*before* `lookups`. `getContextValue` reads a plain object as a bare property access, so
+`toString`, `valueOf`, `constructor` and `hasOwnProperty` resolve off `Object.prototype`
+and shadow **both** sources. `signal-context.ts` documents this for `eval-signals`, where
+it is a curiosity because a developer wrote the key names.
+
+Here it is not a curiosity. § 0's whole premise is that field names arrive from an API or
+a form-builder UI, so a server-supplied schema containing a field named `constructor`
+resolves to `Object` and every rule reading it is silently wrong. This is the strongest
+argument for validating schemas at construction (open question 3) and is recorded there as
+such: reject prototype-shadowing field names with a real error, at the point the schema
+arrives, where the diagnostic can name the field.
 
 #### 3.4.4 Error policy
 
@@ -416,9 +516,24 @@ type ExpressionErrorPolicy = 'throw' | 'undefined' | ((error: unknown) => unknow
 ```
 
 Structurally identical to `EvalSignalOptions['onError']`, deliberately: `/reactive`
-forwards the value straight through to `createEvalSignal` with no mapping layer, and
-`/signals` implements the same three cases in its own `try`/`catch`. A mapping layer
-between two identical unions is a place for them to drift.
+resolves the default here and then forwards the value to `createEvalSignal` with no
+mapping between the unions, which is a place two identical types would drift apart.
+
+**The type ships; the helper does not.** Revision 1 also had the core export an
+`applyErrorPolicy`. It has no caller: `createEvalSignal` applies `'throw'` /
+`'undefined'` / the function itself, internally, and bypasses for
+`SignalContextWriteError` on its own — so on the `/reactive` path, the only path this
+phase ships, the helper would never run. Its sole consumer is § 9's unshipped `/signals`
+sketch. That is exactly the case § 9.1 declines to build the scope containment for, and
+the rule applies to both or to neither: **`applyErrorPolicy` is deferred to the `/signals`
+phase**, and the core ships `ExpressionErrorPolicy` as a type. `/signals` will implement
+the three cases in its own `try`/`catch` against that type.
+
+**Resolving the default is a real step, not a formality.** `createEvalSignal` does
+`options?.onError ?? 'throw'`, so forwarding an *absent* policy verbatim yields `'throw'`
+— the opposite of this section's `'undefined'`. `/reactive` substitutes its own default
+before the call. Step 4's error criterion is what catches a binding that forwards
+`undefined` and inherits `eval-signals`' default by accident.
 
 Default `'undefined'` here, not `'throw'` — the opposite of `eval-signals`' default, and
 the reason is the consumer. An expression that fails in `eval-signals` was written by the
@@ -434,20 +549,28 @@ is illegal on every recompute with every dataset — and swallowing it under a d
 
 #### 3.4.5 The constraint, stated as a rule
 
-**The core contains no `computed()`, no `destroy()`, no `DestroyRef`, and no import of
-`@angular/forms` or of `createEvalSignal`.**
+**The core imports nothing from `@angular/core`, nothing from `@angular/forms`, and
+`createSignalContext` / `SignalContextSource` / `SignalContextWriteError` and nothing else
+from `@zvenigora/ng-eval-signals`.**
+
+Stated as an **import list, not as a list of forbidden identifiers**. Revision 1 said "no
+`computed()`, no `destroy()`, no `DestroyRef`" and made that a grep, which is porous: a
+core that memoized its resolvers in a `signal()` and recomputed in an `effect()` passes
+that grep, passes an import check that does not constrain `@angular/core`, and passes the
+`LogicFn`-shaped spec. `linkedSignal`, `toSignal` and `resource` are the same hole. The
+enforceable form of "the core owns no reactivity" is that **its `@angular/core` import
+list is empty** — one line of a diff, and it admits no near-misses.
 
 It is a rule and not a preference because of finding 1.2.3: `/signals` needs the core with
 none of those, and `/reactive` being built first makes every one of them locally
-convenient. Step 2 turns it into an exit criterion that a reviewer can check from the
-diff (§ 4, step 2).
+convenient. Step 2 turns it into an exit criterion a reviewer checks from the diff.
 
-### 3.5 The `/reactive` adapter — mirroring, and the four traps
+### 3.5 The `/reactive` adapter — mirroring, and the five traps
 
 ```ts
 createControlSource(
-  controls: Record<string, AbstractControl>,
-  options: { injector?: Injector }
+  group: FormGroup,
+  options: { injector: Injector }
 ): SignalContextSource
 ```
 
@@ -455,8 +578,13 @@ One `toSignal` **per control**, producing a flat record of `Signal<value>` under
 names, which is exactly the `SignalContextSource` shape
 [`phase-3-plan.md`](../signals/phase-3-plan.md) § 9.2 promises is cheap to compose.
 
-Three of the following four are specs in step 3; trap 2 is a second reason for trap 1's
-decision and § 3.5.2 says why it gets no spec of its own. All four are in the design
+**It takes the `FormGroup`, not a `Record<string, AbstractControl>`** — trap 5 is why, and
+the signature ships in that shape from step 1 even though the diffing behind it does not
+arrive until step 3. A step 1 that shipped the `Record` would have step 3 rewrite the
+symbol and its spec, and the rewrite is the kind that leaves a stale caller behind.
+
+Four of the following five are specs in step 3; trap 2 is a second reason for trap 1's
+decision and § 3.5.2 says why it gets no spec of its own. All five are in the design
 section because each one, left unhandled, produces a property frozen at its first value —
 the failure mode [`.claude/agents/code-reviewer.md`](../../.claude/agents/code-reviewer.md)
 is built around.
@@ -475,7 +603,7 @@ property we compute, so the moment our own rule disables a field, that field's v
 control's own `valueChanges` keeps emitting regardless of its enabled state, so per-control
 mirroring does not have this failure.
 
-This is the subtlest of the four and it survives `disabled` being deferred (§ 3.6): a
+This is the subtlest of the five and it survives `disabled` being deferred (§ 3.6): a
 consumer may disable a control themselves for any reason.
 
 #### 3.5.2 Trap 2 — the parent's value lags its children
@@ -504,7 +632,7 @@ is still the mechanism, and `invalidate()` covers the one hole mirroring cannot 
 
 `toSignal` takes its `DestroyRef` from the ambient injection context unless given
 `injector` or `manualCleanup`
-(`node_modules/@angular/core/types/rxjs-interop.d.ts:118-131`). A form built outside an
+(`node_modules/@angular/core/types/rxjs-interop.d.ts:124` and `:132`). A form built outside an
 injection context — which is routine, since form construction often happens in a service —
 throws NG0203 with no explanation pointing at this library.
 
@@ -512,7 +640,39 @@ throws NG0203 with no explanation pointing at this library.
 subscription's lifetime is the form binding's. This makes the mirror a **second** teardown
 path alongside the per-property `EvalSignal.destroy()`, and § 3.7 counts both.
 
-#### 3.5.5 Form state keys are deferred, and the mechanism is recorded
+#### 3.5.5 Trap 5 — a control *instance* replaced under an existing key
+
+`FormGroup.setControl`, `addControl` and `removeControl` replace the control **object**.
+A mirror that subscribed to instances holds a subscription to the *dead* control: its
+signal freezes at that control's last value, nothing throws, and every property reading
+that field is stale for the life of the binding.
+
+This is the trap that matters most for this library specifically. § 0's premise is
+server-driven and runtime-authored form definitions, so adding and removing controls is
+not an edge case — it is the operation the library exists to serve. And step 5's exit
+criterion is literally "a field removed and re-added works", which sits directly on it.
+
+**The decision is to listen, not to hand out a hatch.** `createControlSource` takes the
+`FormGroup`, holds a key → instance map, and on each `group.events` emission diffs the map
+against `group.controls`: for every key whose instance changed or vanished it releases the
+old subscription and subscribes the new one, leaving untouched keys' subscriptions
+untouched.
+
+The consistency argument is what settles it against a `rebind()` the consumer calls:
+
+> Every other escape hatch in this design exists because **Angular gives us no signal**.
+> `{ emitEvent: false }` genuinely does not emit (trap 3). A plain-object key-set change
+> genuinely has no observer (§ 3.4.2). Here `group.events` *does* fire. A manual hatch
+> would be the first one in this design that exists because we chose not to listen — and
+> it would put the headline use case behind a call the consumer will forget, producing
+> exactly the silent freeze this catalogue exists to prevent.
+
+Two consequences carried forward. § 3.7's subscription count stops being a constant: it is
+N *live* subscriptions with churn over the binding's life, and the discriminating
+assertion is the churn, not the total. And step 5's "removed and re-added" criterion is
+replaced by one that can fail — see step 5.
+
+#### 3.5.6 Form state keys are deferred, and the mechanism is recorded
 
 Expressions in this phase name **field values only**. `touched` / `dirty` / `pristine`
 need `control.events` with a `TouchedChangeEvent` / `PristineChangeEvent` filter
@@ -527,6 +687,13 @@ one `signal({...})`, which destroys the per-key tracking the whole design rests 
 Second, real conditional-visibility rules read sibling *values*
 (`country === 'US'`), not touched state, so values-only meets § 0's use case in full.
 Recorded as open question 8.2 rather than designed here.
+
+One cost of § 3.4.2's liveness lands here and is inherited rather than introduced:
+`warnOnNestedSignals` runs **once**, at construction. A nested-signal value added to a
+source afterwards gets no dev-mode diagnostic, so the one misuse `eval-signals` detects
+for us goes undetected on exactly the path this plan chose. Small — the shape is a
+developer mistake in the *source*, not in a server-supplied schema — but it is a direct
+consequence of choosing a live source and belongs on the record.
 
 ### 3.6 Which properties ship — `visible` and `text`
 
@@ -548,8 +715,16 @@ README; `text` coerces via `String(value)` with `null`/`undefined` mapping to `'
    library would be shipping a loop whose termination is the consumer's problem.
 3. It removes the value from the parent aggregate — trap 1, now triggered by us.
 
-Under Signal Forms none of the three exists: `disabled` is declarative there and Angular
-owns the semantics. So `disabled` is a good candidate for the `/signals` entry point in a
+A fourth constraint applies to `/reactive` whenever it does arrive, and is recorded now so
+the later phase inherits it rather than rediscovering it: **a `control.disable()` driven by
+a reactive read belongs in an `effect`, never in a `computed` body.** It is a write to
+state outside the reactive graph, which is exactly what `effect` is for and what a
+`computed` forbids — and the current per-property shape (§ 3.7) is `computed`-backed
+throughout, so `disabled` is not merely one more entry in the property list. It is the
+first property that changes the shape.
+
+Under Signal Forms none of the three problems above exists: `disabled` is declarative there
+and Angular owns the semantics. So `disabled` is a good candidate for the `/signals` entry point in a
 later phase **even though it is deferred here**, and § 9 lists it. That asymmetry is
 another instance of § 3.2 and is fine.
 
@@ -563,12 +738,21 @@ A form of N fields with M properties each creates:
 - **N × M** `EvalSignal`s, each holding either a `DestroyRef` registration or — under the
   explicit `injector` option, which every one of these takes — **none at all**, in which
   case `destroy()` is ours to call (`eval-signal.ts`, `EvalSignal.destroy` docs),
-- **N** `toSignal` subscriptions (§ 3.5.4).
+- **N live** `toSignal` subscriptions (§ 3.5.4) — a *live* count, not a total, because
+  trap 5 churns them: one release and one subscribe per control instance replaced, over
+  the binding's whole life.
 
 So there are two teardown paths, both owned by the form binding, and reviewer item 4's
 questions are the exit criteria of step 5: exactly one destroy per signal created;
 teardown reaches every property of every field, not only the rendered ones; and it
-survives a field removed and re-added, and a form destroyed twice.
+survives a form destroyed twice.
+
+**The churn is the assertion, and "a field removed and re-added works" is not.** That
+criterion — revision 1's — passes against a binding that tears down and re-subscribes
+*everything* on every group event, which is both wasteful and a different design from the
+one § 3.5.5 specifies. The discriminating form is per-instance: replacing one control
+produces **exactly one** unsubscribe and **exactly one** subscribe, and every untouched
+control's subscription object is the same object it was before. Step 5 states it that way.
 
 The `injector`-means-no-auto-teardown behaviour is the trap here. Every `EvalSignal` this
 library creates is created outside a component's injection context (a form binding is
@@ -602,15 +786,29 @@ CI (finding 1.2.1).
   "src/public-api.ts" } }` against `ng-entrypoint.schema.json`.
 - **New**: `modules/eval-forms/reactive/src/public-api.ts`.
 - **Edit**: `modules/eval-forms/tsconfig.lib.json` and `tsconfig.spec.json` — widen
-  `include` to reach `reactive/` (finding 1.2.6).
+  `include` to reach `reactive/` (finding 1.2.6), **and widen `tsconfig.lib.json`'s
+  `exclude` in the same edit** with `reactive/**/*.spec.ts` and `reactive/**/*.test.ts`.
+  Finding 1.2.6 spotted the `include` half only. `include` widened alone pulls the
+  secondary entry point's specs into the *library* compilation, where `types: []` leaves
+  `describe` and `it` undeclared — a build failure that reads as unrelated to the
+  entry-point work this step exists to prove.
 - **Edit**: `tsconfig.base.json` — add
   `"@zvenigora/ng-eval-forms/reactive": ["./modules/eval-forms/reactive/src/public-api.ts"]`.
 - **New**: the smallest real runtime symbol at each entry point, because a type-only
   barrel does not satisfy ng-packagr — `src/lib/field-context.ts` exports
-  `createFieldContext` as a **composition-only** stub (form source + field source,
-  field-wins, no policy and no live-key handling yet, both of which are step 2);
-  `reactive/src/lib/control-source.ts` exports `createControlSource` for a flat record of
-  controls, value only.
+  `createFieldContext` as a **composition-only** stub (the two lookups of § 3.4.2, no
+  `undefined`-precedence rule and no characterization spec yet, both of which are step 2);
+  `reactive/src/lib/control-source.ts` exports `createControlSource`, value only.
+
+  **`createControlSource` ships its final signature here — `(group: FormGroup, { injector })`
+  — with the trap 5 diffing deferred to step 3.** Shipping the `Record<string,
+  AbstractControl>` shape now would have step 3 rewrite the symbol *and* its spec, and a
+  signature rewrite is the kind that leaves a stale caller behind. Taking the group and
+  reading `group.controls` once costs this step nothing.
+
+  The stub must genuinely **import from `@zvenigora/ng-eval-signals`** — the boundary probe
+  below has nothing to fail on otherwise, and a probe with nothing to fail on is the
+  vacuity this plan's own § 1.1 memory warns about.
 - **New**: co-located specs for both, test-first.
 - **Edit**: `modules/eval-forms/README.md` — minimal real content; the full README is
   step 6.
@@ -639,28 +837,41 @@ CI (finding 1.2.1).
 `createFieldContext` gets its real behaviour, and the core acquires the property that
 makes § 9 possible.
 
-- **Edit**: `src/lib/field-context.ts` — the live joined record (§ 3.4.2), field-wins
-  precedence (§ 3.4.3), one context per field (§ 3.4.1).
-- **New**: `src/lib/error-policy.ts` — `ExpressionErrorPolicy` and the shared
-  `applyErrorPolicy` helper (§ 3.4.4), plus the `SignalContextWriteError` bypass.
+- **Edit**: `src/lib/field-context.ts` — the **two lookups** of § 3.4.2 (not a joined
+  record), the precedence rule of § 3.4.3 including its `undefined` clause, one context
+  per field (§ 3.4.1).
+- **New**: `src/lib/error-policy.ts` — `ExpressionErrorPolicy`, **the type only**.
+  `applyErrorPolicy` is deferred to the `/signals` phase (§ 3.4.4): `createEvalSignal`
+  owns the policy on the `/reactive` path, so the helper would ship with no caller —
+  § 9.1's own rule, applied to both helpers rather than one.
 - **New**: `src/lib/coercion.ts` — the `visible` / `text` coercion rules of § 3.6, in the
   core because both adapters need identical semantics.
 - **Exit**:
-  - the precedence spec asserts **both** halves of § 3.4.3 — the collision resolves to the
-    field, *and* removing the field key makes the form key visible again. The second is
-    what distinguishes the decision from "the form source was never consulted at all";
+  - the precedence spec asserts **three** things (§ 3.4.3): the collision resolves to the
+    field; removing the field key makes the form key visible again — which distinguishes
+    the decision from "the form source was never consulted at all"; and a field key bound
+    to `undefined` resolves the **form** value. The third is the only one that
+    discriminates between the two-lookup mechanism and the rejected joined record, and an
+    empty `FormControl` is the common case that hits it;
   - the live-key-set spec asserts a key added to the form source after construction
     **resolves**, and — the load-bearing half — that an expression which already read it as
     missing **does not recompute** until `invalidate()`. Both, or § 3.4.2's two-part rule
-    is only half-tested;
-  - **the constraint of § 3.4.5, checked three ways, because no one of them is
-    sufficient:**
-    - `modules/eval-forms/src/lib/` contains no `computed(`, no `destroy(`, no
-      `DestroyRef` — a grep a reviewer runs from the diff;
-    - the core imports from `@zvenigora/ng-eval-signals` **exactly**
-      `createSignalContext` and `SignalContextSource`, and **not** `createEvalSignal`;
-      and imports nothing at all from `@angular/forms`. The manifest cannot enforce this
-      (§ 3.3.1), so the import list is the enforcement;
+    is only half-tested. The first half is also what would catch a regression to a
+    copy-based join;
+  - a **characterization spec** pins the upstream liveness § 1.3 records as unpinned:
+    `createSignalContext` over a record mutated after construction resolves the new key.
+    Labelled in the file as characterizing `eval-signals` behaviour that its own contract
+    does not promise, so a future reader knows why an eval-forms spec is asserting
+    somebody else's implementation;
+  - **the constraint of § 3.4.5, checked two ways, because neither is sufficient alone:**
+    - **the core's `@angular/core` import list is empty**, and its
+      `@zvenigora/ng-eval-signals` imports are exactly `createSignalContext`,
+      `SignalContextSource` and `SignalContextWriteError`, and nothing from
+      `@angular/forms` — all readable from the diff. An import list rather than a grep for
+      `computed(` / `destroy(` / `DestroyRef`: that grep passes on a core that memoizes in
+      a `signal()` and recomputes in an `effect()`, and on `linkedSignal`, `toSignal` and
+      `resource` besides. The manifest cannot enforce any of this (§ 3.3.1), so the import
+      list is the whole enforcement;
     - a spec exercises the core through a **`LogicFn`-shaped call** — a plain function the
       spec invokes inside a `computed()` the *spec* owns — and asserts per-key tracking:
       recompute when a read key changes, **no recompute when an unread key changes**. This
@@ -669,22 +880,29 @@ makes § 9 possible.
     Which check catches what, stated so neither is trusted for the other's job: the spec
     proves the `/signals` shape *works*; it would still pass if the core wrapped things in
     its own `computed()`, because the spec's outer `computed()` would track through it. The
-    **grep** is the only thing that catches that. Conversely the grep would pass on a core
-    that is unusable from a `LogicFn` for some other reason.
+    **import list** is the only thing that catches that. Conversely the import list would
+    pass on a core that is unusable from a `LogicFn` for some other reason.
+
+    Neither catches what § 7 records separately: a core that satisfies both can still be
+    *unsafe* on the `/signals` path, because the scope-leak containment does not exist
+    there (§ 9.1). That is a precondition written down, not a check.
   - all three projects green.
 
-### Step 3 — The mirror, and the four traps
+### Step 3 — The mirror, and the five traps
 
-- **Edit**: `reactive/src/lib/control-source.ts` — `createControlSource` with the explicit
-  `injector` (§ 3.5.4).
-- **Exit**: a spec for traps 1, 3 and 4 — trap 2 folds into trap 1, for the reason given
+- **Edit**: `reactive/src/lib/control-source.ts` — the real behaviour behind step 1's
+  signature: per-control `toSignal` with the explicit `injector` (§ 3.5.4), and the
+  key → instance map with `group.events` diffing of § 3.5.5.
+- **Exit**: a spec for traps 1, 3, 4 and 5 — trap 2 folds into trap 1, for the reason given
   below — and the setups are where these go vacuous, not the assertions —
   - **trap 1**: a real `FormGroup` with two controls; `controls.country.disable()`; assert
     an expression naming `country` — evaluated for a *different* field — still resolves
     `country`'s value. This discriminates on its own: a group-backed mirror reads
     `group.value`, from which the disabled control has vanished, and fails it. Confirm that
-    by building the mirror the group way once and watching this assertion, and only this
-    one, go red;
+    by building the mirror the group way once and watching it go red. Expect the negative
+    reactivity assertion below to go red alongside it — a group mirror collapses every
+    field into one signal, so an unnamed control's change does cause a recompute. Two
+    failures is the correct result of this probe, not a sign it misfired;
   - **trap 2 has no separate spec, deliberately.** It is a second reason for the same
     decision trap 1 already forces, and a spec for it would be asserting Angular's
     documented parent-update ordering rather than anything this library does. Recorded in
@@ -692,9 +910,21 @@ makes § 9 possible.
     reason that fix reintroduces a different failure;
   - **trap 3**: `setValue(v, { emitEvent: false })` leaves the property stale — asserted
     as **current behaviour**, with the `invalidate()` call then restoring it. Pinning the
-    limitation is the point; a spec asserting the right answer would have to fail;
+    limitation is the point; a spec asserting the right answer would have to fail.
+    Note this spec runs a step early relative to what it needs: `invalidate()` lives on the
+    property signals, which `bindFieldProperties` does not create until step 4, so this
+    spec hand-builds one `createEvalSignal` over the mirror to have something to
+    invalidate. Workable, and cheaper than deferring the trap;
   - **trap 4**: constructing outside an injection context with no `injector` throws, and
     with one does not — and the subscription is released when that injector is destroyed;
+  - **trap 5**: `group.setControl('country', new FormControl('CA'))` on a group whose
+    `country` was `'US'`; assert an expression naming `country` now reads `'CA'`. The
+    vacuity-resistant half is the churn, not the value: **exactly one** unsubscribe and
+    **one** subscribe, and every untouched control's subscription object is identity-equal
+    to what it was before. A binding that tears down and rebuilds everything on each
+    `group.events` emission passes the value assertion and fails this one, which is the
+    whole point — and `addControl` / `removeControl` are the same assertion in their other
+    two shapes;
   - reactivity is asserted by **recompute counts across a control change**, plus the
     negative case (a control the expression never named must not cause a recompute), per
     [`phase-3-plan.md`](../signals/phase-3-plan.md) § 6.1.
@@ -714,23 +944,39 @@ makes § 9 possible.
   `user` is absent raises a `TypeError`, where a rule merely *naming* a missing field
   resolves `undefined` on its own and would pass with no error policy at all; and a
   `SignalContextWriteError` (`count = 5`) asserted to bypass that default rather than
-  becoming a silent blank; all three projects green.
+  becoming a silent blank — and note the default is *resolved here* before forwarding
+  (§ 3.4.4), since `createEvalSignal` would otherwise supply `'throw'`;
+  **the context count of § 3.4.1 asserted directly**: N fields produce N *distinct*
+  `EvalContext` instances, and a scope pushed onto field A's context is not visible from
+  field B's. Without it, a binding that shares one context across every field passes every
+  other criterion in steps 4 and 5 — and § 3.4.1's own argument, that field A's leaked
+  arrow scope shadows field B's key of the same name because `scopes` precedes `lookups`
+  in `get`, is exactly what a shared context produces;
+  `bindFieldProperties`' `injector` is required, per § 5;
+  all three projects green.
 
 ### Step 5 — Lifetime and teardown at form scale
 
 - **Edit**: the binding from step 4 gains its teardown.
 - **Exit**: the counts of § 3.7 asserted — **N × M** destroys for N × M signals, not "the
-  form's destroy ran"; teardown reaches unrendered fields; a field removed and re-added
-  works; a form destroyed twice does not throw; the `toSignal` subscriptions are released
-  on the same path. Break the loop bound (destroy only the first field) and confirm the
-  count assertion fails.
+  form's destroy ran"; teardown reaches unrendered fields; a form destroyed twice does not
+  throw; the live `toSignal` subscriptions are released on the same path. Break the loop
+  bound (destroy only the first field) and confirm the count assertion fails.
+
+  **"A field removed and re-added works" is replaced**, not kept. It passes against a
+  binding that tears down and re-subscribes everything on every group event, which is a
+  different design from § 3.5.5's. The criterion is the churn: replacing one control's
+  instance produces **exactly one** unsubscribe and **one** subscribe, and the untouched
+  controls' subscription objects are unchanged — the same assertion trap 5 makes in step 3,
+  here carried across a full teardown so a churned-then-destroyed binding leaks nothing.
 
 ### Step 6 — Docs, worked example, and release
 
 - **Edit**: `modules/eval-forms/README.md` — following `modules/eval-core/README.md`'s
   pattern. Must contain § 0's "when not to use this library" paragraph, § 3.3.1's version
   story (one peer range; `/signals` needs Angular 22), § 3.4.2's two-part live-key rule,
-  and § 3.5.3's `{ emitEvent: false }` limitation.
+  § 3.4.3's `undefined`-field-key clause and its prototype-name warning, and § 3.5.3's
+  `{ emitEvent: false }` limitation.
 - **New**: a worked example.
 - **Edit**: `CHANGELOG.md`, version to 0.1.0, and `ROADMAP.md` — Phase 4 marked done, the
   `/signals` entry point added as a new phase carrying § 9 and its § 9.1 precondition.
@@ -742,7 +988,7 @@ makes § 9 possible.
     paragraph lists among the field properties — decisive reason: `disable()` emits on
     `valueChanges` by default, so a rule naming its own field re-enters its own input, and
     whether that converges depends on the expression.
-  - § 3.5.5 narrows the expression context to **field values only**; form state
+  - § 3.5.6 narrows the expression context to **field values only**; form state
     (`touched` / `dirty` / `valid`) is not addressable. ROADMAP does not promise it, but
     "expressions over form state" in the phase's opening sentence reads wider than what
     ships.
@@ -761,26 +1007,40 @@ makes § 9 possible.
 ```ts
 // from @zvenigora/ng-eval-forms  (primary — the core)
 export { createFieldContext,
-         type ExpressionErrorPolicy, applyErrorPolicy,
-         toVisible, toText };
+         type ExpressionErrorPolicy,     // a type only — applyErrorPolicy is deferred
+         toVisible, toText };            // to the /signals phase, § 3.4.4
 
 // from @zvenigora/ng-eval-forms/reactive
-export { createControlSource,
+export { createControlSource,            // takes a FormGroup, § 3.5
          type FieldSchema, type FieldProperties,
          bindFieldProperties };
 ```
 
+`FieldProperties` maps each property name to an **`EvalSignal<unknown>`, not a plain
+`Signal`.** Both extra members are load-bearing on this path and neither is optional:
+`invalidate()` is trap 3's hatch and § 3.4.2's key-set hatch, and `destroy()` is what
+step 5 counts. Typing it as `Signal` would make both unreachable through the published
+surface.
+
+`bindFieldProperties` takes `{ injector: Injector }` **required**, not optional. § 3.7's
+whole argument is that every `EvalSignal` here is built with an explicit injector and
+therefore has no auto-teardown; an optional one means a call inside an injection context
+silently gets auto-teardown instead, and step 5 would then be counting something other
+than what ships. Outside an injection context and without it, `createEvalSignal`'s own
+`inject(CompilerService)` throws NG0203 from a stack that does not name this library.
+
 Nothing is added to `@zvenigora/ng-eval-core` or `@zvenigora/ng-eval-signals`. What this
 library may import from them, under `src/lib/` and `reactive/src/lib/`:
 
-- from `eval-core`: `EvalContext`, `EvalOptions`, `SignalContextWriteError`'s sibling types
-  as needed for narrowing — and **`CompilerService` only in `/signals`**, which is not this
-  phase;
-- from `eval-signals`: `createSignalContext`, `SignalContextSource` in the **core**;
-  `createEvalSignal`, `EvalSignal`, `EvalSignalOptions`, `SignalContextWriteError` in
-  **`/reactive` only** (§ 3.4.5);
+- from `eval-core`: `EvalContext`, `EvalOptions`, and narrowing types — plus
+  **`CompilerService` and the free `call` only in `/signals`**, which is not this phase
+  (§ 9's sketch uses both);
+- from `eval-signals`: `createSignalContext`, `SignalContextSource` and
+  `SignalContextWriteError` in the **core**; `createEvalSignal`, `EvalSignal`,
+  `EvalSignalOptions` and `SignalContextWriteError` in **`/reactive`**;
 - from `@angular/forms`: **`/reactive` only**;
-- from `@angular/core/rxjs-interop`: `toSignal`, **`/reactive` only**.
+- from `@angular/core` and `@angular/core/rxjs-interop`: **`/reactive` only** — the core's
+  `@angular/core` import list is empty, which is § 3.4.5's rule in its enforceable form.
 
 **This section governs `src/lib/` and `reactive/src/lib/`, not specs.** A spec may import
 anything — step 2's `LogicFn`-shaped tracking spec necessarily reaches for `computed()`,
@@ -825,12 +1085,14 @@ restated. Two additions specific to this library:
 
 | Risk | Likelihood | Mitigation |
 | :--- | :---: | :--- |
-| **The core acquires a `computed()` because `/reactive` is built first and it is locally convenient** | **High** — this is the default outcome, not a slip | § 3.4.5 as a rule, step 2's three-way check, and § 9 as the thing it is checked against. The grep is the only one of the three that catches it |
-| A field property silently freezes because a mirroring trap was missed | **High** | § 3.5's four traps, three of them specs, with the vacuity-resistant setups named in step 3 |
+| **The core acquires reactivity of its own because `/reactive` is built first and it is locally convenient** | **High** — this is the default outcome, not a slip | § 3.4.5 as a rule, step 2's two-way check, and § 9 as the thing it is checked against. The **empty `@angular/core` import list** is the only one of the two that catches it — and it replaces revision 1's grep for `computed(` / `destroy(` / `DestroyRef`, which a core memoizing in a `signal()` and recomputing in an `effect()` passed cleanly |
+| A field property silently freezes because a mirroring trap was missed | **High** | § 3.5's five traps, four of them specs, with the vacuity-resistant setups named in step 3. Trap 5 was missed entirely by revision 1 and found in review, which is the honest estimate of how complete this catalogue is |
+| **A server-supplied field name shadows off `Object.prototype`** — `constructor`, `toString`, `valueOf`, `hasOwnProperty` resolve ahead of both sources | Medium, and **silent** | § 3.4.3's third layer. `createSignalContext` builds on an empty `original`, which `EvalContext.get` consults before `lookups`. Not containable from here — it is upstream and § 2 forbids the fix — so the mitigation is schema validation at construction (open question 3), which this makes the decisive argument for |
+| The core's liveness rests on `eval-signals` behaviour nobody promised | Medium | § 1.3's last row, and step 2's characterization spec. A red test in *this* project is the available substitute for a contract this project may not amend |
 | Secondary entry points fight Nx (not ng-packagr — finding 1.2.7) | Medium | Step 1 is exactly this and nothing else. If it fails, the fallback is two packages, and that decision belongs in this document before any adapter is written |
 | Teardown reaches the first field and leaks the rest | Medium | § 3.7: every `EvalSignal` here takes an explicit `injector` and therefore auto-destroys **not at all**. Step 5 asserts a count, not that teardown ran |
 | A leaked arrow-function scope on one field's context shadows a source key for the life of the form | Medium | § 3.4.1's one-context-per-field bounds the blast radius to one field; `createEvalSignal`'s own snapshot-and-restore containment ([`phase-3-plan.md`](../signals/phase-3-plan.md) § 3.8.3) covers `/reactive`'s recomputes |
-| **Step 2's constraint passes on a core that is still unsafe for the entry point it exists to enable** | **Medium, and structurally invisible** | § 3.4.5 asks whether the core is *usable* from a `LogicFn`; it asks nothing about whether it is *safe* there. The scope-leak containment `/reactive` inherits from `createEvalSignal` does not exist on the `/signals` path, and no grep or import check in step 2 can see that. § 9.1 states what containment would require and why it is not built in this phase; the mitigation for Phase 4 is that it is **written down as a precondition of `/signals`**, not that it is solved |
+| **Step 2's constraint passes on a core that is still unsafe for the entry point it exists to enable** | **Medium, and structurally invisible** | § 3.4.5 asks whether the core is *usable* from a `LogicFn`; it asks nothing about whether it is *safe* there. The scope-leak containment `/reactive` inherits from `createEvalSignal` does not exist on the `/signals` path, and neither the import list nor the `LogicFn` spec can see that. § 9.1 states what containment would require and why it is not built in this phase; the mitigation for Phase 4 is that it is **written down as a precondition of `/signals`**, not that it is solved |
 | `@nx/dependency-checks` cannot express two entry points and fails on one manifest | Medium | Surfaces at step 1's lint gate; resolve by declaring the peer, never by an `eslint-disable` (CLAUDE.md) |
 | Someone narrows the peer range to `>=22` to "fix" the per-entry-point problem | Medium | § 3.3.1, stated prominently, and repeated in the README per step 6 |
 | Someone bulks out `/signals` to balance it against `/reactive` | Medium | § 3.2 states the asymmetry is correct and names what "finished" means for `/signals` |
@@ -845,7 +1107,7 @@ restated. Two additions specific to this library:
    it interacts with trap 1: a field the consumer stops rendering may also get disabled,
    and then its value leaves the group aggregate. Decide in step 4 whether the README
    states a recommendation or stays silent.
-2. **What shape do form *state* keys take when they arrive?** (§ 3.5.5.) The two candidates
+2. **What shape do form *state* keys take when they arrive?** (§ 3.5.6.) The two candidates
    — a namespaced flat key per state per field (`email$touched`), or one
    `signal({...})` — trade key-set explosion against loss of per-key tracking. Neither is
    costed. Not this phase.
@@ -854,6 +1116,16 @@ restated. Two additions specific to this library:
    `visible` that is not a string. Currently these surface as a confusing evaluation error
    or silently. A construction-time check is strictly earlier and more informative; it is
    also a validation layer this library would then own. Decide in step 4.
+
+   **§ 3.4.3's third precedence layer is the decisive argument for "yes".** A
+   server-supplied field named `constructor`, `toString`, `valueOf` or `hasOwnProperty`
+   resolves off `Object.prototype` ahead of both sources, and every rule reading it is
+   wrong with no error anywhere. That is not containable at the context — it is upstream,
+   in `createSignalContext`'s empty `original`, and § 2 forbids the fix — so schema
+   validation is the only layer that can catch it, and it is the only layer that can name
+   the offending field in the message. It also subsumes the third half of open question
+   8.5: a nested control passed where a `FormControl` is expected is a schema error of the
+   same kind. If step 4 decides "no", it must say what happens to `constructor` instead.
 4. **Does `dependencies` introspection have a use at form scale?** `EvalSignal` exposes
    it, and a form binding could use it to answer "which fields does this rule depend on"
    for a form-builder UI — plausibly the most valuable thing this library could surface for
@@ -902,23 +1174,26 @@ hidden(p.country, () => !toVisible(
 //   no computed() of ours, no destroy() of ours
 ```
 
-Note which side compiles. The core supplies `createFieldContext`, `applyErrorPolicy` and
-`toVisible` — its whole § 5 surface — and the **adapter** holds the `CompilerService`,
-per § 3.1. `/reactive` reaches the same three through `createEvalSignal`, which compiles
-on its behalf.
+Note which side compiles. The core supplies `createFieldContext` and `toVisible`; the
+**adapter** holds the `CompilerService` and the free `call`, per § 3.1 — both are on
+§ 5's `/signals`-only allowance. `applyErrorPolicy` is written *in this phase's successor*,
+alongside this adapter, for the reason § 3.4.4 gives: it has no caller until this sketch
+becomes code, and § 9.1 declines to build unexercised paths.
 
 Four notes, each of which is a reason this cannot simply be written later without the
 core having been built for it:
 
 - **The source comes from the model signal, not from `ctx.valueOf`.**
   `RootFieldContext.valueOf(p)` takes a `SchemaPath` — a compile-time token
-  (`_structure-chunk.d.ts:786`). A runtime string names a field by *string*, and there is
+  (`_structure-chunk.d.ts:787`). A runtime string names a field by *string*, and there is
   no string → `SchemaPath` mapping. So the adapter builds its `SignalContextSource` from
   the `WritableSignal` model the consumer passed to `form()`, which gives the whole value
   tree reactively and keys it by name. This is why the core must accept a plain
   `SignalContextSource` and not something forms-shaped.
 - **`text` goes through `createMetadataKey`, not a parallel mechanism**
-  (`signals.d.ts:966`). Signal Forms already has arbitrary per-field derived data with a
+  (`_structure-chunk.d.ts:966`, re-exported through the `signals.d.ts` barrel — the
+  `@publicApi 22.0` tags finding 1.2.2 cites live in the chunk, not in the barrel).
+  Signal Forms already has arbitrary per-field derived data with a
   reducer; inventing a second one is § 3.2's failure mode.
 - **`visible` inverts to `hidden`** — finding 1.2.8.
 - **`disabled` is available here and deferred in `/reactive`** — § 3.6. None of that
@@ -946,8 +1221,13 @@ sequence contains no `computed()` and no `destroy()`, so it is admissible in the
 *The requirement is a single choke point.* Containment only works if **every** rule routes
 through one evaluate helper; a rule that reaches for `call(fn, state)` directly bypasses it
 silently. So whichever layer owns it, the shape it forces is the same: one function that
-performs the walk, and no second path to the walk. If it lands in the core, `/reactive`
-gets it twice — harmless, since the inner restore leaves nothing for the outer one to pop.
+performs the walk, and no second path to the walk.
+
+(Revision 1 added "if it lands in the core, `/reactive` gets it twice — harmless". The
+harmlessness is right — an inner restore to a depth at or above the outer snapshot leaves
+the outer loop nothing to pop — but the example is wrong: per § 3.1, `/reactive` never
+calls the core's evaluate helper. It goes through `createEvalSignal` and gets the
+containment **once**.)
 
 *It is deliberately not built in Phase 4.* Nothing on the `/reactive` path needs it —
 `createEvalSignal` already contains it — so building it now would ship an unexercised code
