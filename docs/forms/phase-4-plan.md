@@ -490,6 +490,43 @@ elsewhere in this plan rather than choices:
   deliberately pins neither**, so that whichever step 2 chooses, no assertion has to be
   deleted to get there.
 
+  **This is not a blank fork. Candidate A leads, and the burden is on B.** A costs one
+  line, adds no import, keeps the § 3.4.5 rule intact, keeps one `EvalContext` per field
+  (the second context is discarded and only its closure survives), and keeps the field
+  half first. It also closes four gaps at once that B leaves open — measured, not
+  reasoned, by running both compositions side by side over the same fixtures:
+
+  | Form-half behaviour | A (borrowed) | B (plain read, as shipped in step 1) |
+  | :--- | :--- | :--- |
+  | key holding `signal('CA')` | `'CA'` | the **signal function**, un-called |
+  | key holding `signal(undefined)` | `undefined` | the signal function — and therefore **truthy** |
+  | `caseInsensitive: true`, key `Country`, read as `country` | `'CA'` | `undefined` |
+  | `warnOnNestedSignals` over the form source | runs | never runs |
+
+  Row 2 is the one that decides it. Under B a `visible: "country"` rule on an *empty*
+  mirrored control evaluates a function in boolean position, which is truthy — so the
+  field renders **visible when its value is absent**, silently, on the most ordinary
+  input a form has.
+
+  **What would have to be true for B to win**, stated so step 2 can check it rather than
+  re-argue it. All three, not any one:
+
+  1. **§ 3.5's record holds live plain values, never `Signal`s** — and § 3.5 says *what
+     re-reads them on each recompute*. `createEvalSignal` owns the `computed()` and no
+     `/reactive` code runs inside it, so this needs a named mechanism (a getter-backed
+     record is the only shape that obviously works) and not an assertion that the values
+     "stay fresh".
+  2. **The `/signals` adapter also never puts a `Signal` in the form source.** § 9's
+     sketch has not been written against this constraint, and if it needs signals there,
+     B forces the two adapters apart at the one seam § 3.4.5 exists to keep shared.
+  3. **`caseInsensitive` is either implemented a second time on the form half, or
+     documented as field-only.** § 3.4.3's precedence rule assumes both halves agree on
+     what a key *is*; today they do not, and B has to close that itself.
+
+  If any of the three fails, take A. Note that A does not settle § 3.5's shape for
+  free — it makes both shapes *safe*, which is a different and weaker claim, and § 3.5
+  still owes a decision on whether the record holds signals or values.
+
 Finding 1.2.4's liveness is what makes this work, and § 1.3 records that it is
 published-but-unpromised: it is not in
 [`phase-3-plan.md`](../signals/phase-3-plan.md) § 9, not in `createSignalContext`'s
@@ -543,6 +580,38 @@ resolves to the field; removing the field key makes the form key visible again (
 what distinguishes "field wins" from "the form source was never consulted"); and a field
 key bound to `undefined` resolves the *form* value, which is the only half that
 discriminates between the two candidate mechanisms.
+
+**Checked against § 3.4.2's open decision, because step 2's precedence spec rests on this
+rule and the decision lands in the same step.** Both compositions were run over the same
+fixtures. Three results, and the third changes what step 2 has to write:
+
+1. **The rule survives unchanged under both candidates.** A field key holding plain
+   `undefined` falls through to the form value; so does one holding `signal(undefined)`,
+   because the field half unwraps *before* `get` applies its `!== undefined` test. The
+   quoted rule above needs no amendment, and it does not depend on the § 3.4.2 answer.
+2. **The fall-through is reactive, and that is also independent of § 3.4.2.** A field
+   signal moving `undefined → 'field'` flips precedence back to the field, under both
+   candidates, because the field half *read the signal* on the way to returning
+   `undefined` and so recorded the dependency. Precedence here is therefore
+   **value-dependent and time-varying** — a property the one-line rule does not convey,
+   and worth a README sentence in step 6: a field does not "have" precedence, it has it
+   *while its value is present*.
+3. **The third assertion no longer discriminates the fork that is actually open.** It was
+   written to separate the joined record from the two lookups, and it still does that.
+   It does **not** separate § 3.4.2's A from B — both produce the identical fall-through
+   on all three fixtures. The cases that separate A from B are all on the *form* half, and
+   step 2 needs at least one of them or it will ship whichever it happened to write:
+
+   > a **form** key bound to a signal resolves that signal's *value* — not the signal
+   > function. Under B it comes back un-called, and `signal(undefined)` then reads as
+   > **truthy** in boolean position.
+
+   That is a fourth assertion, not a replacement for the third.
+
+One consequence for coercion (§ 3.6) worth carrying: under A an empty field and a missing
+field are still indistinguishable, so `visible` sees `undefined` from both. `toVisible`'s
+treatment of `undefined` is therefore load-bearing on the most ordinary input a form has,
+not an edge case — and it is the same `undefined` whichever candidate wins.
 
 **A third precedence layer sits above both, and it is not ours.** `createSignalContext`
 builds its context on an empty `original`, and `EvalContext.get` consults `original`
