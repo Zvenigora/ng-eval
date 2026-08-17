@@ -17,7 +17,10 @@
     "paths": {
       "@zvenigora/ng-eval-core": ["modules/eval-core/src/index.ts"],
       "@zvenigora/ng-eval-signals": ["./modules/eval-signals/src/index.ts"],
-      "@zvenigora/ng-eval-forms": ["./modules/eval-forms/src/index.ts"]
+      "@zvenigora/ng-eval-forms": ["./modules/eval-forms/src/index.ts"],
+      "@zvenigora/ng-eval-forms/reactive": [
+        "./modules/eval-forms/reactive/src/public-api.ts"
+      ]
     },
     "strict": false,
     "noUncheckedSideEffectImports": false,

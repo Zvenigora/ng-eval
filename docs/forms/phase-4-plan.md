@@ -441,6 +441,55 @@ first non-`undefined` winning — which is exactly how `createSignalContext` ins
 own resolver in the first place. Both halves close over their source and read it at
 resolve time, so neither needs a write-through and there is nothing to keep in sync.
 
+**`resolveFrom` above is shorthand in the snippet, not a specified function.** Recorded
+during step 1, so step 2 does not inherit a phantom symbol it thinks it must match. What
+step 1 ships is an own-property read on `formSource` — `Object.prototype.hasOwnProperty`,
+returning `undefined` when absent — and that is all. Case-insensitive correction and the
+`undefined`-precedence rule of § 3.4.3 are step 2's, and step 2 is free to name and shape
+the helper however it likes.
+
+Two properties of that read are worth stating, because both are consequences of rules
+elsewhere in this plan rather than choices:
+
+- **Own-property, not a bare read.** A bare `formSource[key]` would resolve a
+  server-supplied field named `constructor` or `toString` off `Object.prototype`. This
+  half is the one place that is containable from here; § 7's risk row covers the `original`
+  half, which is upstream and is not.
+- **The form half does not unwrap signals; the field half does — and this is a step-1
+  limitation, not a settled design.** Both parameters are typed `SignalContextSource`,
+  whose documented contract is that signals unwrap on read, so the form half currently
+  understates its own type.
+
+  **Step 2 must settle it, and it is not free to defer.** Unwrapping needs `isSignal`, and
+  § 3.4.5 makes the core's `@angular/core` import list empty — but that does *not* force
+  the asymmetry, which is what an earlier draft of this note wrongly claimed. The
+  resolver can be borrowed from upstream instead of rewritten:
+
+  ```ts
+  context.lookups.push(...createSignalContext(formSource, options).lookups);
+  ```
+
+  The second context is discarded and only its closure survives, so it is still one
+  `EvalContext` per field (§ 3.4.1) and the field half is still consulted first. It
+  brings unwrapping, `hasOwnProperty` semantics, `caseInsensitive` correction and
+  `warnOnNestedSignals` over the form source — all four of which the hand-written read
+  lacks — with no new import.
+
+  **What makes this urgent is step 3, not tidiness.** If `createControlSource` comes to
+  hold `Signal`s per control (`toSignal(control.valueChanges, …)`, which is § 3.5's
+  wording), a non-unwrapping form half returns the signal *function* un-called:
+  `country === 'US'` compares a function to a string, yields `false` on every recompute,
+  records no dependency, and throws nothing. That is the silent freeze this library's
+  whole review checklist is built around, reaching **every form-wide key of every field**.
+  The alternative — the record holding plain values — needs § 3.5 to say what re-reads
+  those values per recompute, because `createEvalSignal` owns the `computed()` and no
+  adapter code runs inside it.
+
+  Step 2 therefore decides one of: adopt the borrowed resolver above, or keep the plain
+  read and have § 3.5 specify the mechanism that keeps the record's values live. **Step 1
+  deliberately pins neither**, so that whichever step 2 chooses, no assertion has to be
+  deleted to get there.
+
 Finding 1.2.4's liveness is what makes this work, and § 1.3 records that it is
 published-but-unpromised: it is not in
 [`phase-3-plan.md`](../signals/phase-3-plan.md) § 9, not in `createSignalContext`'s
@@ -822,6 +871,40 @@ CI (finding 1.2.1).
   - **a spec imports through `@zvenigora/ng-eval-forms/reactive`**, the consumer subpath,
     not a relative path — this is the only assertion that proves the mapping rather than
     the file;
+
+    **Clarified during step 1, because the obvious attempt fails and the obvious
+    conclusion from that failure is wrong.** `@nx/enforce-module-boundaries` rejects a
+    package-name import that resolves back into the **same entry point** — "Projects
+    should use relative imports to import from other files within the same project" — and
+    the root config's `allow: []` admits no exception. That is not a reason to abandon the
+    criterion: the rule calls `belongsToDifferentEntryPoint`
+    (`@nx/eslint-plugin/dist/src/rules/enforce-module-boundaries.js:262-268`) and exempts a
+    self-import that crosses entry points. Verified all four combinations by probe:
+
+    | Spec location | Import | Result |
+    | :--- | :--- | :--- |
+    | `src/lib/` | `@zvenigora/ng-eval-forms` | error |
+    | `reactive/src/lib/` | `@zvenigora/ng-eval-forms/reactive` | error |
+    | `src/lib/` | `@zvenigora/ng-eval-forms/reactive` | **clean** |
+    | `reactive/src/lib/` | `@zvenigora/ng-eval-forms` | **clean** |
+
+    So each entry point's mapping is proven **from the other entry point's spec folder**,
+    which is what step 1 does. Jest resolves both through the nx preset's
+    `@nx/jest/plugins/resolver`, which reads the root `tsconfig` `paths` — so this
+    exercises the `tsconfig.base.json` entry this step added, which the `dist/` check
+    below does not.
+
+    Consequence for **step 4**: `bindFieldProperties` lives in `/reactive` and needs
+    `createFieldContext` from the primary. It must import it as
+    `@zvenigora/ng-eval-forms`, which row 4 above permits — **not** as
+    `../../../src/lib/field-context`, which would duplicate the core into both FESM
+    bundles. A relative cross-entry import is legitimate in a spec and wrong in lib code.
+  - the built package resolves the way a consumer will:
+    `dist/modules/eval-forms/package.json` carries an `exports` map with a `./reactive`
+    key whose `types` and `default` name emitted files, and
+    `dist/modules/eval-forms/reactive/package.json` points at the same pair. Added in step
+    1 alongside the criterion above, not instead of it: that one proves the `paths`
+    mapping, this one proves the ng-packagr wiring, and neither substitutes for the other;
   - the **boundary-tag probe**: temporarily narrow `scope:forms` in the root
     `eslint.config.mjs` to `['scope:core']`, confirm the `eval-signals` import now fails
     with `A project tagged with "scope:forms" can only depend on libs tagged with
@@ -1074,7 +1157,9 @@ restated. Two additions specific to this library:
 - **Through the published subpath.** From step 1, at least one spec per entry point
   imports via `@zvenigora/ng-eval-forms` / `@zvenigora/ng-eval-forms/reactive` rather than
   a relative path. Relative imports would pass on a package whose entry points are not
-  wired at all, which is precisely what step 1 exists to prove.
+  wired at all, which is precisely what step 1 exists to prove. **The spec must sit in the
+  *other* entry point's folder** — see step 1's exit criteria for why, and for the
+  step-4 consequence.
 - **Through a real `FormGroup`.** Not a stub with a `valueChanges` `Subject`. Traps 1, 2
   and 3 are all behaviours of Angular's own `AbstractControl` implementation; a fake
   emits whatever the spec author believed, which makes the spec a test of the belief.
