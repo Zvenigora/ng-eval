@@ -772,6 +772,16 @@ for **this specific case**, and the README says so next to the mirroring descrip
 is a narrow reopening of the reviewer item 1 correction, not a retreat from it — mirroring
 is still the mechanism, and `invalidate()` covers the one hole mirroring cannot see.
 
+**And it covers a stale *value*, not a suppressed *control-set* change.** Recorded in
+step 3, because the two look like one case and only one of them has a hatch.
+`invalidate()` works above because § 3.5.5's accessor re-reads the control, so re-running
+the walk recovers whatever the control now holds. `setControl` / `addControl` /
+`removeControl` under `{ emitEvent: false }` suppress `group.events` instead, so the diff
+never runs and the channel still points at the *dead instance* — there is nothing for a
+re-run to recover, in the same structural sense that rules out a signal-valued record. A
+suppressed `addControl` leaves the key absent from the record entirely. Pinned as current
+behaviour in `createControlSource`'s JSDoc; step 6's README inherits it.
+
 #### 3.5.4 Trap 4 — `toSignal` has a lifetime, and it must be the form's
 
 `toSignal` takes its `DestroyRef` from the ambient injection context unless given
@@ -815,6 +825,89 @@ Two consequences carried forward. § 3.7's subscription count stops being a cons
 N *live* subscriptions with churn over the binding's life, and the discriminating
 assertion is the churn, not the total. And step 5's "removed and re-added" criterion is
 replaced by one that can fail — see step 5.
+
+**One signal per *key*, not one per control instance — and the naive reading of the
+paragraph above is a defect, not merely a looser spelling.** Amended during step 3, and
+worth stating at length because the two readings are one word apart and only one of them
+works.
+
+§ 3.5.1's "per control, never per group" is about trap 1's *granularity*: one mirrored
+value per field rather than one aggregate for the form. It says nothing about *lifetime*,
+and reading the two as a single requirement produces this: on each instance replacement,
+call `toSignal` again on the new control and write the fresh signal into the record under
+the same key. That passes the value assertion and reintroduces trap 5's own failure one
+layer up. `createEvalSignal` owns a `computed()` that recorded its dependency on the
+signal it read — the *dead* control's. Replacing the record entry does not reach that
+`computed()`, which keeps reading a signal nothing will ever update again. Every property
+that had already evaluated the key is frozen at the dead control's last value, for the
+life of the binding: exactly the silent freeze trap 5 exists to prevent, reintroduced by
+trap 5's own fix, and reaching further than the original because it now survives a
+correctly-implemented diff.
+
+It is also a defect a spec can easily miss, which is why the exit criteria below say what
+they say. A spec that re-evaluates with a bare `simpleEval` reads the record afresh, finds
+the new signal, and passes — the stale `computed()` is the thing that was never asked. The
+**recompute-count** criterion is what catches it, because the count is taken over a signal
+built before the replacement.
+
+So the mechanism is: **one stable entry per key, for the life of that key**, fed by a
+per-key *instance channel* — the current control pushed into a `Subject`, `switchMap`ped to
+that control's value stream, and `toSignal`ed once. The channel is also point 1's
+completion channel, and it is what makes a per-key release possible at all:
+`toSignal(obs, { injector })` takes its cleanup from that injector's `DestroyRef` and hands
+back no per-subscription handle, so releasing one control's subscription while the injector
+lives has to happen *inside* the stream. `switchMap` unsubscribes the previous inner
+subscription when the channel emits the replacement — one unsubscribe and one subscribe per
+replacement, untouched keys untouched, and the record entry never rebuilt. All four of the
+assertions below fall out of that single mechanism rather than being arranged separately.
+
+**Removal needs a second channel, and completing the first one does not do it.** Written
+down because it looks like it should: `switchMap` completes only once its *inner* completes
+too, and `valueChanges` never completes, so a key whose instance channel is merely
+completed keeps its subscriber on a control the group no longer holds. So each key also
+carries a `released` subject with a `takeUntil` at the end of its pipe, and removal emits on
+it. Measured during step 3 — the removal spec's `observers(removed) === 0` is what failed
+against the completing-only version, and it is the assertion that keeps this from being
+re-derived wrongly. A key *added* gets a new channel pair, a new `toSignal` and a new record
+entry; only a genuinely new key ever creates one.
+
+**And the record holds live *values*, not the signals — which § 3.4.2 left to this section
+to settle, and trap 3 is what settles it.** Measured during step 3, both shapes run over
+the same fixture:
+
+| after `setValue('CA', { emitEvent: false })`, then `invalidate()` | property reads |
+| :--- | :--- |
+| record holds the `toSignal` signal | `'US'` — **still stale** |
+| record holds a value behind an accessor that reads the signal, then `control.value` | `'CA'` |
+
+§ 3.5.3 says `invalidate()` is the documented hatch for exactly this case. It is not one
+against a signal-valued record, and the reason is structural rather than incidental: the
+mirrored signal is *itself* the thing that went stale, so a downstream recompute reads the
+same cached value it read before. `invalidate()` on the property re-runs the walk; the walk
+resolves the key to a signal nothing has updated; the answer does not move. No amount of
+invalidating reaches a value the mirror never observed.
+
+The shape that works is § 3.4.2's own words — "a getter-backed record is the only shape
+that obviously works" — with the one addition that makes it *track*: each key is an
+enumerable accessor that **reads the per-key change-signal for the dependency and then
+returns `channel.control.value` for the answer**. The signal read is what a `computed()`
+records, so per-key reactivity is unchanged; reading the control rather than the signal is
+what makes the answer current whenever anything re-runs the walk, `invalidate()` included.
+
+Three consequences worth stating so they are not rediscovered:
+
+- **The signal's own value is never read.** It is a change ticker. Its emissions must still
+  carry the control's value, because `toSignal` dedupes with `Object.is` and a stream that
+  emitted a constant would tick once and never again.
+- **The inner stream needs the control's current value on subscribe** (`startWith`), or a
+  replaced instance produces no emission until its first edit and every property reading
+  that key stays at the dead control's value — trap 5's failure surviving trap 5's fix by a
+  second route.
+- **§ 3.4.2's A/B fork does not reopen.** B's defects were a form key holding
+  `signal(undefined)` resolving truthy, and `caseInsensitive` going uncorrected. The second
+  is untouched by anything here, and the first is not repaired by this record merely
+  happening to hold no signals — the `/signals` adapter's source (§ 9) and step 4's
+  *field* source are both free to. A costs one line and stays.
 
 #### 3.5.6 Form state keys are deferred, and the mechanism is recorded
 
@@ -1081,7 +1174,18 @@ makes § 9 possible.
 
 - **Edit**: `reactive/src/lib/control-source.ts` — the real behaviour behind step 1's
   signature: per-control `toSignal` with the explicit `injector` (§ 3.5.4), and the
-  key → instance map with `group.events` diffing of § 3.5.5.
+  key → instance map with `group.events` diffing of § 3.5.5. Per-control is trap 1's
+  granularity and **one signal per key** is the lifetime — § 3.5.5's amendment says why
+  the other reading reintroduces the freeze.
+- **Edit**: `reactive/src/lib/control-source.spec.ts` — the trap specs below. Listed
+  explicitly because every exit criterion of this step is one, and step 1's three
+  snapshot-shape assertions survive the change to a mirror rather than being replaced.
+- **Edit**: `modules/eval-forms/package.json` — an `rxjs` peer dependency. Added during
+  step 3 and not foreseen by step 1's manifest work: this is the first step in which any
+  of the three libraries imports rxjs *directly* (`Subject` / `switchMap` / `takeUntil` —
+  § 3.5.5's channels), and `@nx/dependency-checks` fails the lint target until the
+  manifest says so. Pinned `^7.8.0`, the version the workspace builds and tests against,
+  rather than Angular's own looser `^7.4.0` floor.
 - **Exit**: a spec for traps 1, 3, 4 and 5 — trap 2 folds into trap 1, for the reason given
   below — and the setups are where these go vacuous, not the assertions —
   - **trap 1**: a real `FormGroup` with two controls; `controls.country.disable()`; assert
@@ -1103,17 +1207,53 @@ makes § 9 possible.
     Note this spec runs a step early relative to what it needs: `invalidate()` lives on the
     property signals, which `bindFieldProperties` does not create until step 4, so this
     spec hand-builds one `createEvalSignal` over the mirror to have something to
-    invalidate. Workable, and cheaper than deferring the trap;
+    invalidate. Workable, and cheaper than deferring the trap. **It is also the criterion
+    that decided § 3.5.5's record shape** — the restoring half is simply false against a
+    signal-valued record, so writing this spec is what forces the accessor;
   - **trap 4**: constructing outside an injection context with no `injector` throws, and
     with one does not — and the subscription is released when that injector is destroyed;
   - **trap 5**: `group.setControl('country', new FormControl('CA'))` on a group whose
-    `country` was `'US'`; assert an expression naming `country` now reads `'CA'`. The
-    vacuity-resistant half is the churn, not the value: **exactly one** unsubscribe and
-    **one** subscribe, and every untouched control's subscription object is identity-equal
-    to what it was before. A binding that tears down and rebuilds everything on each
-    `group.events` emission passes the value assertion and fails this one, which is the
-    whole point — and `addControl` / `removeControl` are the same assertion in their other
-    two shapes;
+    `country` was `'US'`; assert an expression naming `country` now reads `'CA'` — and
+    that a property built **before** the replacement reads it, which is the half § 3.5.5's
+    amendment adds and a bare `simpleEval` cannot see. The vacuity-resistant half is the
+    churn, not the value. Revision 2 wrote that as "every untouched control's subscription
+    object is identity-equal to what it was before", which is not observable:
+    `createControlSource` returns a plain record and hands back no subscription objects.
+    Amended in step 3 to what the record and a real `FormGroup` actually expose, which is
+    strictly more than the original asked for —
+    - the untouched control's `valueChanges` observer count stays at **exactly 1**
+      (RxJS 7.8 `Subject.observers`; a real control, per § 6.1);
+    - the replaced control's drops to **0**, and the new instance's goes **0 → 1** — one
+      release and one subscribe, the churn assertion in its measurable form;
+    - the **untouched key's accessor is identity-equal in the record**
+      (`Object.getOwnPropertyDescriptor(source, key).get`, since § 3.5.5's record holds
+      values behind accessors and hands out no signal objects at all). Under the
+      one-entry-per-key mechanism this *must* hold, which is what makes it a real
+      assertion rather than an incidental one — and the **replaced** key's accessor is
+      identity-equal too, which is the assertion that separates the mechanism from the
+      naive per-instance one.
+
+    A binding that tears down and rebuilds everything on each `group.events` emission
+    passes the value assertion and fails these, which is the whole point — and
+    `addControl` / `removeControl` are the same assertion in their other two shapes.
+
+    Two cases were added during step 3 after a review, both because the diff reads the
+    group by key and § 0's field names come from a server:
+    - **a removed control named off `Object.prototype`.** `FormGroup` keeps the caller's
+      object literal and warns only on keys containing a dot, so `constructor` is a legal
+      field name; after `removeControl` a bare `controls[name]` resolves `Object` rather
+      than `undefined`, and the diff then misreads the removal as a *replacement*. The
+      key is never released. § 3.4.2's own-property rule, applied on this side of the
+      library. Asserted on the record — `EvalContext.get` consults `original` first, so
+      this key is unreadable through an expression whatever the mirror does (§ 3.4.3's
+      third layer);
+    - **the `group.events` subscription's own lifetime.** The source holds two long-lived
+      subscriptions, and the trap 4 teardown criterion reaches only the `toSignal` ones —
+      `toSignal` unregisters itself either way, so dropping `takeUntilDestroyed` leaves
+      every other case in this file green. It must be asserted through a **replacement**
+      after teardown, not an addition: after an addition both implementations look
+      identical, because an unscoped subscriber throws NG0205 off the destroyed injector
+      before subscribing to anything;
   - reactivity is asserted by **recompute counts across a control change**, plus the
     negative case (a control the expression never named must not cause a recompute), per
     [`phase-3-plan.md`](../signals/phase-3-plan.md) § 6.1.
@@ -1228,6 +1368,12 @@ library may import from them, under `src/lib/` and `reactive/src/lib/`:
   `SignalContextWriteError` in the **core**; `createEvalSignal`, `EvalSignal`,
   `EvalSignalOptions` and `SignalContextWriteError` in **`/reactive`**;
 - from `@angular/forms`: **`/reactive` only**;
+- from `rxjs`: **`/reactive` only** — added in step 3, whose per-key channels
+  (§ 3.5.5) are `Subject` / `switchMap` / `startWith` / `takeUntil`. This is the first
+  direct rxjs import in any of the three libraries, and it is what put an `rxjs` peer
+  dependency in the manifest. Also recorded here: `SignalContextSource` is imported in
+  **both** `src/lib/` and `reactive/src/lib/`, the latter as `createControlSource`'s
+  return type since step 1, which the `eval-signals` row above lists under the core only;
 - from `@angular/core` and `@angular/core/rxjs-interop`: **`/reactive` only** — the core's
   `@angular/core` import list is empty, which is § 3.4.5's rule in its enforceable form.
 

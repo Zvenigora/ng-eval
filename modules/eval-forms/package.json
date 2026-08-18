@@ -17,6 +17,7 @@
   "peerDependencies": {
     "@angular/core": ">=19.0.0",
     "@angular/forms": ">=19.0.0",
+    "rxjs": "^7.8.0",
     "@zvenigora/ng-eval-core": "^0.3.0",
     "@zvenigora/ng-eval-signals": "^0.1.0"
   },
