@@ -210,6 +210,7 @@ from silent breakage — and § 2 forbids fixing that from here.
 | An explicit `injector` ⇒ **no** `DestroyRef` registration | § 3.7 | `eval-signal.ts:216-221` | Yes |
 | `createEvalSignal`'s scope-leak snapshot-and-restore | § 7, § 9.1 | `eval-signal.ts:294, 325-341` | Yes |
 | **`createSignalContext` resolves against a live source** | § 1.2.4, § 3.4.2 | `signal-context.ts:198-201`, `:127-144` | **No** |
+| `createSignalContext` installs its resolver into the returned context's public `lookups`, and that resolver is self-contained — it closes over the source and ignores the `context` / `options` arguments `EvalLookup` passes it | § 3.4.2, candidate A — added in step 2 | `signal-context.ts:198-201` | **No upstream**, but pinned by *our* specs: the form-half cases go red if resolution relocates to `original` |
 
 Only the last is unpinned: liveness is not in § 9, not in `createSignalContext`'s JSDoc,
 and not asserted by any eval-signals spec — there is no mutate-after-construction case
@@ -526,6 +527,31 @@ elsewhere in this plan rather than choices:
   If any of the three fails, take A. Note that A does not settle § 3.5's shape for
   free — it makes both shapes *safe*, which is a different and weaker claim, and § 3.5
   still owes a decision on whether the record holds signals or values.
+
+  **Settled in step 2: A, and the reason is row 2 — not condition 1 failing.** The
+  distinction matters because it decides whether the fork can reopen. Condition 1 is
+  *unmet* today (§ 3.5 has not named a liveness mechanism for a plain-value record), and
+  if that were the reason, B would come back the moment step 3 named one. It is not the
+  reason. **B is wrong, not merely unsupported**: a form key holding `signal(undefined)`
+  resolves to the signal *function*, which is truthy, so a `visible: "country"` rule
+  renders its field precisely when the value is absent — and an empty control is every
+  form's first render, on every form. No liveness mechanism § 3.5 could later name repairs
+  that, because the defect is in what the lookup *returns*, not in when it is read. The
+  fork is closed on correctness and stays closed.
+
+  Measured, not reasoned: reverting the form half to B against step 2's shipped specs
+  turns exactly four cases red — the two form-half unwrapping cases, the `caseInsensitive`
+  correction case, and the `LogicFn`-shaped tracking case, which under B compares a
+  function to a string and yields `false` on every recompute. Rows 1–3 of the table above,
+  plus the silent-freeze consequence the table predicts. The precedence and live-key-set
+  cases stay green under both, exactly as § 3.4.3's point 3 says they must.
+
+  One cost comes with A and is recorded so step 4 does not meet it as a mystery:
+  `createSignalContext` runs `warnOnNestedSignals` unconditionally, so **the form source
+  is scanned once per field** — N scans of the same record for a form of N fields, and in
+  dev mode N identical warnings attributed to `createSignalContext`, a function the
+  consumer never called. Construction-time only; nothing per-node or per-recompute, so
+  § 6's perf gate is untouched.
 
 Finding 1.2.4's liveness is what makes this work, and § 1.3 records that it is
 published-but-unpromised: it is not in
@@ -998,6 +1024,17 @@ makes § 9 possible.
   § 9.1's own rule, applied to both helpers rather than one.
 - **New**: `src/lib/coercion.ts` — the `visible` / `text` coercion rules of § 3.6, in the
   core because both adapters need identical semantics.
+- **Edit**: `src/public-api.ts` — the primary barrel gains the two new modules. § 5
+  publishes `toVisible`, `toText` and `ExpressionErrorPolicy` from this entry point, so
+  the barrel edit follows from the deliverable rather than being a deviation from it.
+- **Edit**: `src/lib/field-context.spec.ts` — the precedence, live-key-set, form-half and
+  `LogicFn`-shape cases of the exit criteria below, plus the characterization spec.
+- **New**: `src/lib/coercion.spec.ts` — the § 3.6 rules, including the two cases that
+  separate them from the obvious wrong implementations (`'false'` is visible; `0` is
+  `'0'`).
+- **No spec for `error-policy.ts`.** It exports a type and no runtime symbol, so `tsc` is
+  the whole enforcement and a spec would assert nothing — CLAUDE.md's rule about a test
+  that would pass without the code it tests, in its limiting case.
 - **Exit**:
   - the precedence spec asserts **three** things (§ 3.4.3): the collision resolves to the
     field; removing the field key makes the form key visible again — which distinguishes
