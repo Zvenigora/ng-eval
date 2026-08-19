@@ -421,6 +421,18 @@ field's — and **not** N × M (one per property), because the properties of one
 resolve against the same names. Any step whose diff changes that count states the new
 number and why.
 
+**Measured in step 4: the argument above is narrower on the `/reactive` path than it
+reads.** `createEvalSignal` marks the scope depth before each walk and drains back to it
+in a `finally` ([`phase-3-plan.md`](../signals/phase-3-plan.md) § 3.8.3), so an
+arrow-function leak *made during a recompute* never survives it — however the arrow's body
+fails. The only leak that reaches a sibling field is the one § 3.8.3 names as uncontained:
+an arrow that escapes the walk and is called later, which through this library needs a
+function sitting in the form's own values. The rule stands unchanged, for three reasons
+that do not depend on the leak being common: § 3.8.3 is containment rather than a fix,
+`/signals` need not route through `createEvalSignal` at all, and one object per field is
+not a cost worth trading for. Step 4's spec asserts it through the escaped-arrow case,
+which is the only form that discriminates.
+
 #### 3.4.2 The key set is live, and reactivity is what needs the escape hatch
 
 **The mechanism is two lookups, not a joined record.** Revision 1 said "a single mutable
@@ -678,6 +690,18 @@ the three cases in its own `try`/`catch` against that type.
 — the opposite of this section's `'undefined'`. `/reactive` substitutes its own default
 before the call. Step 4's error criterion is what catches a binding that forwards
 `undefined` and inherits `eval-signals`' default by accident.
+
+**A *parse* error is not covered by this type at all, and it is the likeliest bad rule
+there is.** Measured in step 4: `createEvalSignal` compiles eagerly, so
+`visible: 'country ==='` throws `Error('Unexpected token (1:11)')` from the factory itself
+rather than producing a signal that fails on read — `EvalSignalOptions.onError`'s own docs
+say so. `ExpressionErrorPolicy` therefore cannot reach it in any mode, including
+`'undefined'`. That matters more here than upstream, because § 0's premise is a rule typed
+into a form builder by an end user and a syntax slip is the commonest way such a rule is
+bad: the paragraph below argues for a field that does not render rather than an application
+that throws, and for this one case the library throws. Recorded rather than fixed in this
+phase — the fix belongs with step 5's teardown, since a bind that throws part-way through
+must also release what it already built. § 6's README states it.
 
 Default `'undefined'` here, not `'throw'` — the opposite of `eval-signals`' default, and
 the reason is the consumer. An expression that fails in `eval-signals` was written by the
@@ -997,6 +1021,22 @@ constructed in a service or a factory), so **none of them auto-destroy** and all
 ours. A spec that only checks "the form's `destroy()` runs" would pass on a binding that
 destroys the first field and leaks the rest; the assertion is a count.
 
+**The binding is constructed, not computed, and `toSignal` enforces it.** `toSignal` opens
+with `assertNotInReactiveContext`, so `bindFieldProperties` — which reaches
+`createControlSource`'s `open()` for every control, and again for every control *added*
+later — throws out of that call if it runs inside an `effect()` or a `computed()`. Carried
+here from step 3 because step 4 is where it becomes reachable: `createControlSource` is
+called by the library, `bindFieldProperties` is called by the consumer. It stays a note
+rather than a defect because the binding is built once, in a service or a factory, which
+is the same premise the `injector` requirement above rests on — but a consumer who wires
+it into an `effect()` gets an error naming `toSignal` and nothing naming this library.
+
+**One mirror per form, not per field.** `bindFieldProperties` calls `createControlSource`
+once and hands the same source to all N `createFieldContext` calls. Per field would make
+the live count of the third bullet N², and would run trap 5's O(N) diff N times per
+`group.events` emission — on a signal that already fires several times per interaction
+(§ 3.5.5). The N contexts of § 3.4.1 are per field; the mirror underneath them is not.
+
 ---
 
 ## 4. Work breakdown
@@ -1257,6 +1297,13 @@ makes § 9 possible.
   - reactivity is asserted by **recompute counts across a control change**, plus the
     negative case (a control the expression never named must not cause a recompute), per
     [`phase-3-plan.md`](../signals/phase-3-plan.md) § 6.1.
+
+    **This is the only layer where the negative case is observable**, recorded during
+    step 4 because the obvious place to ask for it again is step 4's spec and it cannot be
+    written there: `bindFieldProperties` puts two `computed` layers in front of the source,
+    both deduping on `Object.is`, so an inner over-subscription that recomputes without
+    changing the value never reaches the signal a consumer holds. The *positive* direction
+    is asserted at both layers;
   - all three projects green.
 
 ### Step 4 — The field schema and `visible` / `text`
@@ -1265,13 +1312,100 @@ makes § 9 possible.
   (`{ name, visible?, text? }`) and the binding that turns a schema plus a `FormGroup`
   into per-field property signals, one `EvalSignal` per (field, property) via
   `createEvalSignal` over the core's context.
+- **New**: `reactive/src/lib/field-schema.spec.ts` — the exit criteria below. Named
+  explicitly during step 4 rather than left implied: every criterion of this step is a
+  spec, and "driven through the public subpath import" is one of them.
+- **Edit**: `reactive/src/public-api.ts` — `FieldSchema`, `FieldProperties` and
+  `bindFieldProperties`, per § 5. Also added during step 4: the spec's subpath import
+  resolves this file, so the step cannot meet its own criteria without it.
+- **Signature**, settled before the step rather than improvised inside it:
+
+  ```ts
+  bindFieldProperties(
+    schema: readonly FieldSchema[],
+    group: FormGroup,
+    options: { injector: Injector; onError?: ExpressionErrorPolicy }
+  ): Record<string, FieldProperties>
+  ```
+
+  **`createControlSource` is called *once*, for the form half — never per field.** Per
+  field would build N mirrors over one group: N × the `toSignal` subscriptions of § 3.7's
+  live count, and trap 5's O(N) diff running N times per `group.events` emission on a
+  signal that already fires several times per interaction (§ 3.5.5). Stated here because
+  step 5's teardown counts rest on it: the live-subscription count it asserts is N, and
+  under a per-field mirror it would be N².
+- **The field half is deferred, and ships as an empty source this step.**
+  `createFieldContext`'s two-source signature stays exercised and § 3.4.1's N-contexts
+  rule still holds and is still asserted — the second argument is `{}`. What the
+  field-local key set *contains* is specified nowhere in this plan, and § 3.4.3's
+  "a field named `value`, `name` or `index`" is an illustration of collision **semantics**,
+  not a specification of which keys exist; inventing three keys to fill a parameter is how
+  a public surface acquires members nobody chose.
+
+  The cost, stated rather than left to be discovered: **§ 3.4.3's precedence rule ships
+  untested end-to-end.** Step 2's `field-context.spec.ts` asserts all four of its
+  assertions at the core, so the rule is not unasserted — but no `/reactive` path produces
+  a field-local key, so nothing exercises it through `bindFieldProperties`. It gets
+  settled by whichever phase first has a consumer for a field-local key: the `/signals`
+  adapter (§ 9), whose `FieldContext` supplies one natively, is the likely one, and it is
+  additive — a second argument that stops being `{}`.
+- **Open questions settled here, per their own "decide in step 4" instruction:**
+  - **8.3 — yes, validate the schema at construction.** Three checks, and the count is the
+    boundary: a **duplicate field name**, a **non-string `visible` / `text`**, and a
+    **field name that resolves off `Object.prototype`** (§ 3.4.3's third layer, which no
+    other layer can catch and which only this one can name in the message). This is three
+    checks and not a validation layer; if it starts to grow a schema language, that is a
+    stop-and-say-so, not a step 4 expansion.
+
+    **The third check runs over control names as well as schema names**, which is the same
+    check over the other source of names rather than a fourth one. Added after step 4's
+    review corrected a belief this plan had encoded twice: a control named `constructor`
+    is **not** rescued by the mirror defining an own accessor for it. Measured — the
+    accessor is present on the source and the expression still reads
+    `function Object() { [native code] }`, because the mirror is reached through `lookups`
+    (step 4 of `EvalContext.get`) while `original` is the empty field source read at
+    step 2, with a bare property access. So a *control* named off `Object.prototype` is
+    unreadable through every expression, silently and truthily, exactly as a schema field
+    of that name is — and it is worse, because the value genuinely exists.
+  - **Enforcement is construction-time only, and that is a limitation rather than a
+    guarantee.** `validate` reads `group.controls` once. `addControl('address', new
+    FormGroup(…))` afterwards reaches `sync` → `open` with no check, and throwing from
+    there is not available: a throw inside the `group.events` subscriber unsubscribes it
+    and silently ends all diffing for the life of the form (§ 3.5.5). So 8.5's answer is
+    precisely "a thrown error at construction **plus** a documented limitation after it",
+    and § 6's README says both.
+  - **8.5's second half — a nested control or `FormArray` throws**, and it follows from the
+    same check rather than being a fourth one: the group is read for the prototype-name
+    check anyway, and "not a `FormControl`" is a schema error of the same kind. A
+    documented limitation was the alternative and it is the worse one — the failure
+    otherwise surfaces as a confusing evaluation result, per open question 3's own framing.
+  - **8.1 — recorded, not acted on.** `visible` remains a boolean the consumer's template
+    decides on. Whether the README states a rendering recommendation is step 6's file and
+    step 6's call; this step does not pre-empt it.
+- **Carried forward from step 3 § 5.2:** `toSignal` opens with
+  `assertNotInReactiveContext`, so anything in `bindFieldProperties` that could run inside
+  an `effect()` throws out of `createControlSource`'s `open()`. Step 4 is where that
+  becomes reachable — the binding is what a consumer calls, and a consumer who calls it
+  from an `effect()` gets an error naming `toSignal`. The binding is constructed once, in
+  a service or factory (§ 3.7), which is what keeps this a note rather than a defect.
 - **Exit**: an end-to-end spec — a schema, a **flat** `FormGroup` of `FormControl`s per
   open question 8.5, a control change, and the
   property observed to change — driven through the public subpath import; the coercion
   rules of § 3.6 asserted, including `null`/`undefined` → `''` for `text`; the § 3.4.4
-  default asserted with an expression that genuinely **throws** — `user.name.first` where
-  `user` is absent raises a `TypeError`, where a rule merely *naming* a missing field
-  resolves `undefined` on its own and would pass with no error policy at all; and a
+  default asserted with an expression that genuinely **throws** — ~~`user.name.first` where
+  `user` is absent raises a `TypeError`~~ **corrected in step 4: it does not.** Measured
+  across nine forms before amending: `member-expression.ts` resolves a member of `undefined`
+  through `safeGetProperty`, which returns `undefined` for a null-ish target rather than
+  throwing, so `user.name.first`, `null.x` and `undefinedThing.x.y.z` all resolve
+  `undefined` and **no** member access throws. What throws is a **call**:
+  `user.name.first()` raises `Error('Cannot call undefined or null function')` from
+  `call-expression.ts`'s `safeCall`, and `country()` over a number raises
+  `Error('Value is not a function: number')`. So the criterion stands with the expression
+  changed to `user.name.first()` and the error class to `Error`, not `TypeError` —
+  eval-core throws plain `Error`s throughout. The distinction the criterion exists for is
+  untouched and is now sharper, since the guard is exactly what makes a rule merely
+  *naming* a missing field resolve `undefined` on its own and pass with no error policy at
+  all; and a
   `SignalContextWriteError` (`count = 5`) asserted to bypass that default rather than
   becoming a silent blank — and note the default is *resolved here* before forwarding
   (§ 3.4.4), since `createEvalSignal` would otherwise supply `'throw'`;
@@ -1280,13 +1414,63 @@ makes § 9 possible.
   field B's. Without it, a binding that shares one context across every field passes every
   other criterion in steps 4 and 5 — and § 3.4.1's own argument, that field A's leaked
   arrow scope shadows field B's key of the same name because `scopes` precedes `lookups`
-  in `get`, is exactly what a shared context produces;
+  in `get`, is exactly what a shared context produces.
+  **The leak has to be made to happen, and this is where the setup goes vacuous — twice.**
+  Two forms were tried and measured before the third was written:
+  - `((country) => country.x.y)(1)` — **does not leak.** By the correction above, no member
+    access throws, so the body returns and `arrow-function-expression.ts` pops normally.
+  - `((country) => country())(1)` — throws, and **still does not leak**, which is the one
+    that matters. `createEvalSignal` marks `ctx.scopes.length` before the walk and drains
+    back to it in a `finally` — [`phase-3-plan.md`](../signals/phase-3-plan.md) § 3.8.3's
+    containment, which covers a caller-supplied `EvalContext` as readily as one it built.
+    So **every in-walk leak on this path is already contained upstream**, and § 3.4.1's
+    stated argument is not reachable through `bindFieldProperties` at all.
+  - What is reachable is the case § 3.8.3 names as uncontained: **an arrow function that
+    escapes the walk**, whose push and missing pop happen when the consumer calls it, long
+    after the recompute's `finally` ran. Through this library's surface that needs the
+    escape hatch to be in the *form*: a control whose value is a function that stores its
+    argument, `visible: 'keep((country) => country())'`, and the spec calling the stored
+    closure with `'LEAK'`. Measured: field A's own `text: 'country'` then reads `'LEAK'`
+    and field B's reads `'CA'` — distinct contexts — where one shared context gives both
+    `'LEAK'`.
+
+  Both halves stay in the spec. Field A's `'LEAK'` is what separates "B was protected by a
+  separate context" from "no leak ever happened", and it is the assertion that caught the
+  first two forms.
+
+  **Consequence for § 3.4.1, recorded rather than acted on.** One context per field remains
+  correct and is still what ships, but its *justification* on the `/reactive` path is
+  narrower than the section claims: upstream containment means only an escaped arrow can
+  shadow a sibling field, and no shipped property can produce one, because `visible` and
+  `text` coerce their value and hand a consumer no closure. The rule is kept because
+  § 3.8.3 calls itself containment rather than a fix, because `/signals` will not
+  necessarily route through `createEvalSignal`, and because the alternative saves one
+  object per field;
   `bindFieldProperties`' `injector` is required, per § 5;
+  **the three schema checks of open question 8.3**, each asserted to throw and each with a
+  companion case proving the valid shape does not — a duplicate name, a non-string
+  `visible`, a field named off `Object.prototype`, and a non-`FormControl` under a schema
+  name (8.5's half). The prototype-name case is the one that goes vacuous most easily: the
+  discriminating setup is a schema naming `constructor` over a group that **has no such
+  control**, since a group that does have one makes the check indistinguishable from a
+  plain own-property read;
   all three projects green.
 
 ### Step 5 — Lifetime and teardown at form scale
 
 - **Edit**: the binding from step 4 gains its teardown.
+- **Added after step 4's review: a bind that throws part-way through must release what it
+  already built.** Step 4 puts `validate` before `createControlSource`, so a *schema*
+  rejection opens no subscription and that is asserted — but a **parse** error cannot be
+  validated ahead of the loop, and `createEvalSignal` compiles eagerly (§ 3.4.4's
+  amendment). Measured: `visible: 'country ==='` throws from inside the loop with the
+  mirror's `valueChanges` subscription already open (0 → 1) and the `group.events`
+  subscription registered on the injector's `DestroyRef` — which for a root injector is
+  the life of the application — and the binding has not returned, so the caller holds no
+  handle to any of it. Not fixable in step 4: releasing the mirror needs a handle
+  `createControlSource` does not return, and adding one edits step 3's file. The exit
+  criterion is the same count in its failing form — **a bind that throws leaves zero live
+  subscriptions and destroys every `EvalSignal` it had already created.**
 - **Exit**: the counts of § 3.7 asserted — **N × M** destroys for N × M signals, not "the
   form's destroy ran"; teardown reaches unrendered fields; a form destroyed twice does not
   throw; the live `toSignal` subscriptions are released on the same path. Break the loop
@@ -1345,11 +1529,18 @@ export { createControlSource,            // takes a FormGroup, § 3.5
          bindFieldProperties };
 ```
 
-`FieldProperties` maps each property name to an **`EvalSignal<unknown>`, not a plain
-`Signal`.** Both extra members are load-bearing on this path and neither is optional:
-`invalidate()` is trap 3's hatch and § 3.4.2's key-set hatch, and `destroy()` is what
-step 5 counts. Typing it as `Signal` would make both unreachable through the published
-surface.
+`FieldProperties` maps each property name to an **`EvalSignal`, not a plain `Signal`.**
+Both extra members are load-bearing on this path: `invalidate()` is trap 3's hatch and
+§ 3.4.2's key-set hatch, and `destroy()` is what step 5 counts. Typing it as `Signal`
+would make both unreachable through the published surface.
+
+**Amended in step 4, on both halves of that sentence.** The type arguments are
+`EvalSignal<boolean>` for `visible` and `EvalSignal<string>` for `text`, not
+`EvalSignal<unknown>`: this section was written before § 3.6's coercion had a home, and
+`coercion.ts` settled it — "both adapters call this" — so `unknown` now describes the value
+the property is built *from* rather than the one it answers with. And the two members are
+**optional**, because the schema's `visible` and `text` are: a field that supplies neither
+gets `{}`, which is why every consumer and every spec reads them through `?.`.
 
 `bindFieldProperties` takes `{ injector: Injector }` **required**, not optional. § 3.7's
 whole argument is that every `EvalSignal` here is built with an explicit injector and
@@ -1444,6 +1635,10 @@ restated. Two additions specific to this library:
    it interacts with trap 1: a field the consumer stops rendering may also get disabled,
    and then its value leaves the group aggregate. Decide in step 4 whether the README
    states a recommendation or stays silent.
+
+   **Settled in step 4: recorded, not acted on.** `visible` stays a boolean and the
+   consumer's template decides. Whether the README carries a rendering recommendation is
+   step 6's file and step 6's call, and step 4 does not pre-empt it.
 2. **What shape do form *state* keys take when they arrive?** (§ 3.5.6.) The two candidates
    — a namespaced flat key per state per field (`email$touched`), or one
    `signal({...})` — trade key-set explosion against loss of per-key tracking. Neither is
@@ -1463,6 +1658,12 @@ restated. Two additions specific to this library:
    the offending field in the message. It also subsumes the third half of open question
    8.5: a nested control passed where a `FormControl` is expected is a schema error of the
    same kind. If step 4 decides "no", it must say what happens to `constructor` instead.
+
+   **Settled in step 4: yes, three checks** — duplicate field name, non-string
+   `visible` / `text`, and a field name that resolves off `Object.prototype`; plus 8.5's
+   half, a schema name whose control is not a `FormControl`, which falls out of the same
+   read rather than being a fourth check. Three is the boundary, not a starting point: if
+   this grows toward a schema language, that is a stop-and-replan.
 4. **Does `dependencies` introspection have a use at form scale?** `EvalSignal` exposes
    it, and a form binding could use it to answer "which fields does this rule depend on"
    for a form-builder UI — plausibly the most valuable thing this library could surface for
@@ -1488,6 +1689,11 @@ restated. Two additions specific to this library:
    `FormControl`s; a nested control in the record passed to `createControlSource` is not
    supported, and step 4 decides whether that is a documented limitation or a thrown
    error. It is the second half of open question 3.
+
+   **Settled in step 4: a thrown error**, raised by the schema check of open question 3
+   rather than by a rule of its own. A documented limitation was the alternative and it is
+   the worse one — unsupported nesting otherwise surfaces as a confusing evaluation
+   result, which is the failure mode question 3 exists to remove.
 
 ---
 
