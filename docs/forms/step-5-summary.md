@@ -200,9 +200,10 @@ did; two spec comments corrected where they overstated what they proved.
   get collected at TestBed teardown through the `DestroyRef` net, which is an improvement
   and also means the suite would not notice a leak on the un-destroyed path. Pre-existing
   style; not something this step should have changed.
-- **There is no `step-4-summary.md`.** Step 4 shipped as `146b40c` without a retrospect, so
-  its findings — the eager-compile parse error, the coercion's placement, the escaping-arrow
-  context fixture — live only in the plan and in `field-schema.spec.ts`'s comments.
+- **Step 4 shipped without a retrospect.** Written afterwards, from the artifacts, as
+  [`step-4-summary.md`](./step-4-summary.md) — which recovers the decisions and the
+  corrections but **not** the probe table, since which inversions were run and what each
+  reddened is in no artifact. The gap is what a session-time retrospect is for.
 - **`eval-core`'s Jest run warns "a worker process has failed to exit gracefully".**
   Pre-existing; carried from [`step-1-summary.md`](./step-1-summary.md) § 5.2 unchanged.
 
