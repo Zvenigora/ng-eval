@@ -1,4 +1,8 @@
-import { Injector } from '@angular/core';
+import {
+  EnvironmentInjector,
+  Injector,
+  createEnvironmentInjector,
+} from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AbstractControl, FormArray, FormControl, FormGroup } from '@angular/forms';
 import { SignalContextWriteError } from '@zvenigora/ng-eval-signals';
@@ -12,7 +16,12 @@ import { Subject } from 'rxjs';
 // three symbols S 5 promises actually leave `reactive/src/public-api.ts`, and
 // dropping this import for a relative one to the implementation file would
 // stop proving even that.
-import { FieldSchema, bindFieldProperties } from '../public-api';
+import {
+  FieldProperties,
+  FieldSchema,
+  FormBinding,
+  bindFieldProperties,
+} from '../public-api';
 
 describe('bindFieldProperties', () => {
 
@@ -38,12 +47,34 @@ describe('bindFieldProperties', () => {
   const observers = (control: AbstractControl): number =>
     (control.valueChanges as unknown as Subject<unknown>).observers.length;
 
+  // The subscriber *object*, not the count. Trap 5's churn assertion is that
+  // an untouched key's subscription is the same one it was, which a count of
+  // 1 before and 1 after does not say: a teardown-and-resubscribe of
+  // everything produces exactly that count.
+  const subscriberOf = (control: AbstractControl): unknown =>
+    (control.valueChanges as unknown as Subject<unknown>).observers[0];
+
+  // `events` is exposed as `_events.asObservable()`, so the wrapper has no
+  // observer count of its own and the private subject is the only place the
+  // second long-lived subscription is visible. Reached deliberately rather
+  // than behaviourally - see the teardown case that uses it.
+  const groupEvents = (form: FormGroup): number =>
+    (form as unknown as { _events: Subject<unknown> })._events.observers.length;
+
+  // Step 5 nested the return in a `FormBinding` (plan S 5's amendment) and
+  // every case written before it reads a bare record. Adapted here rather
+  // than rewritten at forty call sites: the nesting itself is asserted in the
+  // teardown block, where the half that motivated it is under test.
+  const bindFields = (
+    ...args: Parameters<typeof bindFieldProperties>
+  ): Record<string, FieldProperties> => bindFieldProperties(...args).fields;
+
   describe('end to end', () => {
 
     it('should move a property when the control it names changes', () => {
       const form = group();
 
-      const bound = bindFieldProperties(
+      const bound = bindFields(
         [{ name: 'age', visible: "country === 'US'" }],
         form,
         { injector }
@@ -57,7 +88,7 @@ describe('bindFieldProperties', () => {
     });
 
     it('should bind every field of the schema', () => {
-      const bound = bindFieldProperties(
+      const bound = bindFields(
         [
           { name: 'country', text: 'country' },
           { name: 'age', visible: 'age > 18', text: "age + ' years'" },
@@ -102,7 +133,7 @@ describe('bindFieldProperties', () => {
     it('should coerce visible by truthiness rather than by equality to true', () => {
       const form = group({ country: new FormControl('CA') });
 
-      const bound = bindFieldProperties(
+      const bound = bindFields(
         [{ name: 'country', visible: 'country' }],
         form,
         { injector }
@@ -118,7 +149,7 @@ describe('bindFieldProperties', () => {
     it('should coerce an absent value to not visible', () => {
       // S 3.4.3's empty control: `undefined` is the ordinary input here, not
       // an edge case, and it is the same `undefined` a missing key produces.
-      const bound = bindFieldProperties(
+      const bound = bindFields(
         [{ name: 'country', visible: 'nosuchfield' }],
         group(),
         { injector }
@@ -130,7 +161,7 @@ describe('bindFieldProperties', () => {
     it('should coerce null and undefined to the empty string for text', () => {
       const form = group({ country: new FormControl<string | null>(null) });
 
-      const bound = bindFieldProperties(
+      const bound = bindFields(
         [
           { name: 'country', text: 'country' },
           { name: 'missing', text: 'nosuchfield' },
@@ -148,7 +179,7 @@ describe('bindFieldProperties', () => {
     it('should stringify a falsy value that is not null or undefined', () => {
       // The obvious wrong way to write `toText` is "falsy -> ''", which blanks
       // a field whose value is legitimately zero.
-      const bound = bindFieldProperties(
+      const bound = bindFields(
         [{ name: 'age', text: 'age' }],
         group({ age: new FormControl(0) }),
         { injector }
@@ -176,7 +207,7 @@ describe('bindFieldProperties', () => {
     const throwing = 'user.name.first()';
 
     it('should resolve a throwing expression to the property default, not throw', () => {
-      const bound = bindFieldProperties(
+      const bound = bindFields(
         [{ name: 'country', visible: throwing, text: throwing }],
         group(),
         { injector }
@@ -189,7 +220,7 @@ describe('bindFieldProperties', () => {
     it('should be a real throw that the default swallows', () => {
       // The probe, written as a spec rather than run once by hand: without
       // it the case above passes against an expression that never failed.
-      const bound = bindFieldProperties(
+      const bound = bindFields(
         [{ name: 'country', text: throwing }],
         group(),
         { injector: injector, onError: 'throw' }
@@ -205,7 +236,7 @@ describe('bindFieldProperties', () => {
       // that forwarded an *absent* policy verbatim would land on `'throw'` -
       // the opposite of this library's default. Resolving it here is what the
       // first case in this block is really asserting; this one names it.
-      const bound = bindFieldProperties(
+      const bound = bindFields(
         [{ name: 'country', text: throwing }],
         group(),
         { injector }
@@ -217,7 +248,7 @@ describe('bindFieldProperties', () => {
     it('should forward a function policy', () => {
       const seen: unknown[] = [];
 
-      const bound = bindFieldProperties(
+      const bound = bindFields(
         [{ name: 'country', text: throwing }],
         group(),
         {
@@ -238,7 +269,7 @@ describe('bindFieldProperties', () => {
       // A write violation is *static* - illegal on every recompute with every
       // dataset - so swallowing it under a default of `'undefined'` would hand
       // the consumer a silent blank for a bug in the rule's own syntax.
-      const bound = bindFieldProperties(
+      const bound = bindFields(
         [{ name: 'country', text: 'count = 5' }],
         group(),
         { injector }
@@ -297,7 +328,7 @@ describe('bindFieldProperties', () => {
     it('should give each field its own context', () => {
       const { form, leak } = escaping();
 
-      const bound = bindFieldProperties(
+      const bound = bindFields(
         [
           { name: 'a', visible: 'keep((country) => country())', text: 'country' },
           { name: 'b', text: 'country' },
@@ -319,7 +350,7 @@ describe('bindFieldProperties', () => {
       // rejected setups above did, and the only reason they were caught.
       const { form, leak } = escaping();
 
-      const bound = bindFieldProperties(
+      const bound = bindFields(
         [
           { name: 'a', visible: 'keep((country) => country())', text: 'country' },
           { name: 'b', text: 'country' },
@@ -376,7 +407,7 @@ describe('bindFieldProperties', () => {
     });
 
     it('should accept a field with neither rule', () => {
-      const bound = bindFieldProperties([{ name: 'country' }], group(), { injector });
+      const bound = bindFields([{ name: 'country' }], group(), { injector });
 
       expect(bound['country']).toEqual({});
     });
@@ -472,7 +503,7 @@ describe('bindFieldProperties', () => {
       // Both members are load-bearing on this path: `invalidate()` is trap 3's
       // hatch and S 3.4.2's key-set hatch, and `destroy()` is what step 5
       // counts. Typing these as `Signal` would put both out of reach.
-      const bound = bindFieldProperties(
+      const bound = bindFields(
         [{ name: 'country', text: 'country' }],
         group(),
         { injector }
@@ -485,7 +516,7 @@ describe('bindFieldProperties', () => {
     it('should recover a value the mirror could not see change (trap 3)', () => {
       const form = group();
 
-      const bound = bindFieldProperties(
+      const bound = bindFields(
         [{ name: 'country', text: 'country' }],
         form,
         { injector }
@@ -505,7 +536,7 @@ describe('bindFieldProperties', () => {
     });
 
     it('should read the coerced empty value once destroyed', () => {
-      const bound = bindFieldProperties(
+      const bound = bindFields(
         [{ name: 'country', visible: 'country', text: 'country' }],
         group(),
         { injector }
@@ -524,6 +555,299 @@ describe('bindFieldProperties', () => {
     });
   });
 
+  describe('teardown (plan S 3.7)', () => {
+
+    // Every rule here is *truthy* against the default fixture, deliberately.
+    // The cases below read a property after `destroy()` and expect the empty
+    // value - and against a rule that already answered `false` / `''` that
+    // assertion holds whether teardown reached the field or not.
+    const rules = (name: string): FieldSchema => ({
+      name,
+      visible: 'country',
+      text: 'country',
+    });
+
+    // Spied on the objects the caller holds, which are the objects the
+    // binding retains: `coerce` builds `destroy` as an own property, so
+    // replacing it here is seen by an implementation that calls
+    // `signal.destroy()` and missed by one that captured the function up
+    // front or destroyed the *inner* signal instead - and only the first of
+    // those destroys the thing the consumer was handed.
+    const destroySpies = (
+      fields: Record<string, FieldProperties>
+    ): jest.SpyInstance[] => {
+
+      const spies: jest.SpyInstance[] = [];
+
+      for (const properties of Object.values(fields)) {
+        for (const property of [properties.visible, properties.text]) {
+          if (property !== undefined) {
+            spies.push(jest.spyOn(property as { destroy: () => void }, 'destroy'));
+          }
+        }
+      }
+
+      return spies;
+    };
+
+    const destroyCalls = (spies: jest.SpyInstance[]): number =>
+      spies.reduce((total, spy) => total + spy.mock.calls.length, 0);
+
+    it('should destroy every signal it created, exactly once each', () => {
+      // The count, and the count is the assertion: "the form's destroy ran"
+      // holds equally for a binding that destroys the first field and leaks
+      // the rest, which is what a `for` loop with a wrong bound produces.
+      const binding: FormBinding = bindFieldProperties(
+        [rules('country'), rules('age'), rules('other')],
+        group(),
+        { injector }
+      );
+
+      const spies = destroySpies(binding.fields);
+
+      // N x M - three fields, two properties apiece. Asserted rather than
+      // assumed, because a `destroyCalls` of 6 would otherwise be reachable
+      // by six calls against however many signals exist.
+      expect(spies).toHaveLength(6);
+
+      binding.destroy();
+
+      expect(destroyCalls(spies)).toBe(6);
+
+      for (const spy of spies) {
+        expect(spy).toHaveBeenCalledTimes(1);
+      }
+    });
+
+    it('should reach a field nothing ever read', () => {
+      const binding = bindFieldProperties(
+        [rules('read'), rules('never')],
+        group(),
+        { injector }
+      );
+
+      // Reading `read` is what proves the rule is truthy to begin with.
+      // Without it every expectation below holds against a rule that was
+      // false all along, and the case asserts nothing about teardown.
+      expect(binding.fields['read'].visible?.()).toBe(true);
+      expect(binding.fields['read'].text?.()).toBe('CA');
+
+      binding.destroy();
+
+      expect(binding.fields['read'].visible?.()).toBe(false);
+      expect(binding.fields['never'].visible?.()).toBe(false);
+      expect(binding.fields['never'].text?.()).toBe('');
+    });
+
+    it('should release every live toSignal subscription', () => {
+      const form = group();
+
+      // One field, two controls: the mirror covers the whole group (S 3.5),
+      // so `age` is subscribed although no rule names it - and a teardown
+      // driven off the *schema* rather than off the mirror would leave it.
+      const binding = bindFieldProperties([rules('country')], form, { injector });
+
+      expect(observers(form.controls['country'])).toBe(1);
+      expect(observers(form.controls['age'])).toBe(1);
+
+      binding.destroy();
+
+      expect(observers(form.controls['country'])).toBe(0);
+      expect(observers(form.controls['age'])).toBe(0);
+    });
+
+    it('should release the group.events subscription on the same path', () => {
+      // The source holds **two** long-lived subscriptions and the per-control
+      // count above reaches only one, so this reaches the other directly -
+      // through Angular's private `_events`, since `events` is exposed as
+      // `_events.asObservable()` and the wrapper has no observer count.
+      //
+      // What it does *not* buy, stated because the first draft of this comment
+      // claimed it did: no assertion here can see a `group.events` subscriber
+      // that outlived the per-control chains, because that state is not
+      // reachable by any change to this file - `createControlSource` takes one
+      // injector for both. The break this file can produce is a mirror built
+      // on the caller's injector instead of the scope, and that leaves both
+      // alive; the behavioural case below sees it too, without a private
+      // field. Both are kept: they fail together here and independently
+      // against a change to step 3's file.
+      const form = group();
+      const binding = bindFieldProperties([rules('country')], form, { injector });
+
+      expect(groupEvents(form)).toBe(1);
+
+      binding.destroy();
+
+      expect(groupEvents(form)).toBe(0);
+    });
+
+    it('should not throw when destroyed twice', () => {
+      // Load-bearing here and vacuous under the alternative step 5 rejected:
+      // a release handle on the mirror is idempotent in every part, so the
+      // criterion passed against a binding with no guard at all. The scope is
+      // an `EnvironmentInjector`, and `R3Injector.destroy()` opens with
+      // `assertNotDestroyed` - NG0205 on the second call.
+      const binding = bindFieldProperties([rules('country')], group(), { injector });
+
+      binding.destroy();
+
+      expect(() => binding.destroy()).not.toThrow();
+    });
+
+    it('should not destroy anything a second time', () => {
+      // The half that survives a change of mechanism. `not.toThrow()` above
+      // would also hold for a guard that swallowed the throw and re-ran the
+      // whole loop, which is a double `destroy()` on every signal.
+      const binding = bindFieldProperties(
+        [rules('country'), rules('age')],
+        group(),
+        { injector }
+      );
+
+      const spies = destroySpies(binding.fields);
+
+      binding.destroy();
+      binding.destroy();
+
+      expect(destroyCalls(spies)).toBe(4);
+    });
+
+    it('should leave nothing live after a control instance was churned', () => {
+      // Trap 5's churn assertion, carried across a full teardown: the
+      // replacement is what makes the live set differ from the set the
+      // binding opened with, so a teardown that released "the controls I
+      // started with" leaks the replacement and over-releases the dead one.
+      const form = group();
+      const binding = bindFieldProperties([rules('country')], form, { injector });
+
+      const dead = form.controls['country'];
+      const untouched = form.controls['age'];
+      const before = subscriberOf(untouched);
+      const fresh = new FormControl('US');
+
+      form.setControl('country', fresh);
+
+      expect(observers(dead)).toBe(0);
+      expect(observers(fresh)).toBe(1);
+      expect(observers(untouched)).toBe(1);
+
+      // The identity, not the count: a binding that tore down and re-subscribed
+      // everything on the `group.events` emission produces the same three
+      // counts above.
+      expect(subscriberOf(untouched)).toBe(before);
+
+      binding.destroy();
+
+      expect(observers(fresh)).toBe(0);
+      expect(observers(untouched)).toBe(0);
+      expect(groupEvents(form)).toBe(0);
+    });
+
+    it('should leave nothing live when the bind itself throws', () => {
+      // `createEvalSignal` compiles eagerly (S 3.4.4's amendment), so a
+      // *parse* error throws from inside the loop - after the mirror is open
+      // and after the first field's signals exist. `validate` cannot move
+      // ahead of it the way it does for a schema-shape error: the expression
+      // is a string, and only the parser knows it is not an expression.
+      //
+      // This is the mirror half of the criterion. The signal half - that the
+      // signals already created are destroyed - is asserted in
+      // `field-schema.teardown-throw.spec.ts`, which instruments the factory
+      // because no route from *here* reaches it: a throwing bind returns no
+      // handle, an `EvalSignal` built with an explicit injector holds no
+      // `DestroyRef` registration, and a signal nobody can read never
+      // recomputes. The two halves fail independently, which is why they are
+      // two cases: a `catch` that released the mirror and leaked the signals
+      // passes this one.
+      const form = group();
+
+      expect(() =>
+        bindFieldProperties(
+          [rules('country'), { name: 'age', visible: 'country ===' }],
+          form,
+          { injector }
+        )
+      ).toThrow(/Unexpected token/);
+
+      expect(observers(form.controls['country'])).toBe(0);
+      expect(observers(form.controls['age'])).toBe(0);
+      expect(groupEvents(form)).toBe(0);
+    });
+
+    it('should stop diffing the control set once the binding is destroyed', () => {
+      // The behavioural half of the case above, and the one that needs no
+      // private field. It reddens the reachable regression - a mirror built on
+      // the caller's injector rather than the scope - because that mirror's
+      // `group.events` subscriber survives `destroy()` and opens a channel for
+      // the added control on an injector that is still alive.
+      const form = group();
+      const binding = bindFieldProperties([rules('country')], form, { injector });
+
+      binding.destroy();
+
+      const extra = new FormControl('x');
+      form.addControl('extra', extra);
+
+      expect(observers(extra)).toBe(0);
+    });
+
+    it('should release the mirror when the injector it was given is destroyed', () => {
+      // `createEnvironmentInjector` does **not** register the child with its
+      // parent's destroy hooks, so the scope's lifetime is detached rather
+      // than merely shorter. Step 4 scoped the mirror to the caller's injector
+      // directly and got this for free; without the registration
+      // `bindFieldProperties` adds, a consumer who wires a binding to a
+      // component or route injector - the case S 3.7's required `injector` is
+      // argued from - retains N subscriptions, the mirror and the form for the
+      // life of the root injector, silently.
+      const form = group();
+      const owner = createEnvironmentInjector([], TestBed.inject(EnvironmentInjector));
+
+      bindFieldProperties([rules('country')], form, { injector: owner });
+
+      // Guards the setup: without this the case passes against a binding that
+      // never subscribed anything.
+      expect(observers(form.controls['country'])).toBe(1);
+
+      owner.destroy();
+
+      expect(observers(form.controls['country'])).toBe(0);
+      expect(groupEvents(form)).toBe(0);
+    });
+
+    it('should require the injector inside an injection context too', () => {
+      // The other arm of the NG0203 case at the foot of this file, which runs
+      // outside a context and cannot see this. S 3.7 makes `injector` required
+      // precisely so that a call which *happens* to sit in an injection
+      // context does not silently get a different teardown story - so the
+      // fallback that preserves NG0203 outside a context must not become a
+      // working ambient binding inside one.
+      expect(() =>
+        TestBed.runInInjectionContext(() =>
+          bindFieldProperties(
+            [{ name: 'country', text: 'country' }],
+            group(),
+            {} as { injector: Injector }
+          )
+        )
+      ).toThrow(/injector/);
+    });
+
+    it('should return the fields under `fields`, not on the binding itself', () => {
+      // The nesting is why the shape changed (S 5's amendment): the record's
+      // keys are field names, `destroy` is a legal one, and S 0's premise is
+      // that those names come from a server rather than from the consumer.
+      const binding = bindFieldProperties(
+        [{ name: 'destroy', text: 'country' }],
+        group(),
+        { injector }
+      );
+
+      expect(typeof binding.destroy).toBe('function');
+      expect(binding.fields['destroy'].text?.()).toBe('CA');
+    });
+  });
+
   it('should require the injector at run time, not only at compile time', () => {
     // The premise the required `injector` rests on (S 3.7): a form binding is
     // constructed in a service or a factory, never in a component's injection
@@ -538,10 +862,17 @@ describe('bindFieldProperties', () => {
     //
     // Matched on NG0203 rather than left as a bare `toThrow()`, because a bare
     // one passes on any failure at all - including the `TypeError` that
-    // reading `DestroyRef` off `undefined` would produce. This is the error
-    // `control-source.ts` ordered its statements to get: `toSignal` runs
-    // before the `DestroyRef` read precisely so the message names the
-    // injection context.
+    // reading `.get` off `undefined` would produce.
+    //
+    // **The error moved in step 5 and now proves more than it did.** It used
+    // to come from `control-source.ts`, which ordered `toSignal` ahead of its
+    // `DestroyRef` read to get this message; it now comes from
+    // `field-schema.ts`'s `inject(EnvironmentInjector)` fallback, which runs
+    // before `createControlSource` is called at all. So a caller with no
+    // injector opens **zero** subscriptions, which the old ordering did not
+    // give. The in-context arm is a separate case in the teardown block, and
+    // it has to be: this one runs outside an injection context, where the
+    // fallback throws instead of succeeding.
     expect(() =>
       bindFieldProperties(
         [{ name: 'country', text: 'country' }],

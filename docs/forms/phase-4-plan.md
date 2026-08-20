@@ -1008,6 +1008,67 @@ questions are the exit criteria of step 5: exactly one destroy per signal create
 teardown reaches every property of every field, not only the rendered ones; and it
 survives a form destroyed twice.
 
+**Amended in step 5: the second path needs no handle, and this section's premise that it
+does was wrong.** Step 5 said releasing the mirror required something `createControlSource`
+does not return, and that adding one edits step 3's file. It does not. `bindFieldProperties`
+builds a **child `EnvironmentInjector`** — `createEnvironmentInjector([], injector.get(
+EnvironmentInjector))` — and passes *that* to `createControlSource` and to every
+`createEvalSignal`, so `scope.destroy()` releases the whole mirror. Step 3 had already
+measured this and the measurement is the reason the premise is wrong rather than merely
+one of two options: `control-source.spec.ts`'s "should release its subscriptions when that
+injector is destroyed" asserts every control's observer count drops to 0, and "should stop
+diffing the control set once that injector is destroyed" asserts the `group.events`
+subscriber is gone as well. Both were written in step 3 against the injector the caller
+supplied; a child injector is the same assertion with a shorter lifetime.
+**`control-source.ts` and `control-source.spec.ts` are therefore untouched by step 5.**
+
+**Corrected in step 5's review: "shorter" was the wrong word — the child's lifetime is
+*detached*.** `createEnvironmentInjector` does **not** register the child with its parent's
+destroy hooks (`EnvironmentNgModuleRefAdapter` builds an `R3Injector` and never calls
+`parent.onDestroy`), so the scope ends only when `destroy()` is called. Step 4 passed the
+caller's injector to `createControlSource` directly and therefore released the mirror when
+*that* injector died; measured on the first draft of step 5, `owner.destroy()` left every
+control's observer count at 1. That is a silent regression in exactly the case § 3.7's
+required `injector` is argued from — a binding wired to a component or route injector —
+and it retains the form, the N contexts and the mirror for the life of the root injector.
+
+So the binding **registers `destroy` on the caller's `DestroyRef` and releases the
+registration inside `destroy()`** — `eval-signal.ts:408-414`'s pattern, including clearing
+the handle before the call so a teardown driven by the injector does not mutate the hook
+list it is iterating. `destroy()` stays the documented call; this is the net under it.
+
+**The signals are built with `options.injector`, not with the scope**, for the same class
+of reason. `createEvalSignal` uses its injector only to resolve `CompilerService` and
+registers no teardown against it, while the scope's parent is
+`caller.get(EnvironmentInjector)` — an *ancestor* of a node injector. Scoping the signals
+would silently skip providers the caller declared. Measured: a `CompilerService` override
+on an `Injector.create` child is used by step 4's path and bypassed by the scoped one. The
+scope exists for the mirror, which is the only thing needing a releasable lifetime.
+
+Three consequences, in the order they matter:
+
+- **One path destroys everything, so the two cannot drift.** `createEvalSignal` and
+  `createControlSource` already take an injector apiece; the child is the single thing both
+  are scoped to.
+- **A throw mid-loop leaves a destroyed injector regardless of how far the loop got** —
+  which is exactly the failure the step's second bullet is about, and it needs no bookkeeping
+  of what was opened.
+- **"A form destroyed twice does not throw" stops being vacuous.** Against a handle it was:
+  `EvalSignal.destroy` is idempotent by contract (`eval-signal.ts`) and re-running a
+  drained channel map does nothing, so the criterion passed against a binding with no guard
+  at all. `R3Injector.destroy()` opens with `assertNotDestroyed()` and throws on the second
+  call, so the guard is now load-bearing. The **count** — a second `destroy()` producing no
+  further `EvalSignal.destroy` calls, total still N × M — is asserted alongside it, because
+  it is the half that survives a change of mechanism.
+
+The child injector is reached as `options.injector.get(EnvironmentInjector)`, and the one
+ordering constraint is the error a caller who passes no injector sees. Reading `.get` off
+`undefined` is a `TypeError` naming nothing, where today `toSignal` reaches
+`assertInInjectionContext` and raises **NG0203** — an existing assertion in
+`field-schema.spec.ts`. So the parent is resolved as
+`options.injector?.get(EnvironmentInjector) ?? inject(EnvironmentInjector)`, which is
+`toSignal`'s own line for the same problem (`rxjs-interop.mjs:106`) and preserves NG0203.
+
 **The churn is the assertion, and "a field removed and re-added works" is not.** That
 criterion — revision 1's — passes against a binding that tears down and re-subscribes
 *everything* on every group event, which is both wasteful and a different design from the
@@ -1328,6 +1389,10 @@ makes § 9 possible.
   ): Record<string, FieldProperties>
   ```
 
+  **Superseded by step 5 on the return type only** — it is `FormBinding`, per § 5's
+  amendment. Left standing as what step 4 shipped rather than rewritten, so the shape
+  change has a before as well as an after.
+
   **`createControlSource` is called *once*, for the form half — never per field.** Per
   field would build N mirrors over one group: N × the `toSignal` subscriptions of § 3.7's
   live count, and trap 5's O(N) diff running N times per `group.events` emission on a
@@ -1458,7 +1523,21 @@ makes § 9 possible.
 
 ### Step 5 — Lifetime and teardown at form scale
 
-- **Edit**: the binding from step 4 gains its teardown.
+- **Edit**: `reactive/src/lib/field-schema.ts` and its spec. `control-source.ts` and
+  `control-source.spec.ts` are **not** edited — see § 3.7's amendment for why the premise
+  that they had to be is wrong.
+- **New, added during step 5's review**: `reactive/src/lib/field-schema.teardown-throw.spec.ts`.
+  A second spec file for one case, because `jest.mock` is hoisted to the top of the file it
+  appears in: the throwing-bind criterion's *signal* half is only observable by
+  instrumenting the `createEvalSignal` factory, and putting that mock in
+  `field-schema.spec.ts` would route all forty-odd of its cases through a mocked barrel to
+  serve one. The passthrough shape is this workspace's own —
+  `eval-signals`' `nested-signal-check.spec.ts`.
+- **The return shape changes**: `bindFieldProperties` returns
+  `{ fields: Record<string, FieldProperties>; destroy(): void }`, not the bare record.
+  Nesting rather than a `destroy` key on the record, because the record is keyed by
+  *field name* and a field named `destroy` is legal — § 5 records the change and the
+  CLAUDE.md callout; `CHANGELOG.md` and the version bump are step 6's.
 - **Added after step 4's review: a bind that throws part-way through must release what it
   already built.** Step 4 puts `validate` before `createControlSource`, so a *schema*
   rejection opens no subscription and that is asserted — but a **parse** error cannot be
@@ -1467,10 +1546,18 @@ makes § 9 possible.
   mirror's `valueChanges` subscription already open (0 → 1) and the `group.events`
   subscription registered on the injector's `DestroyRef` — which for a root injector is
   the life of the application — and the binding has not returned, so the caller holds no
-  handle to any of it. Not fixable in step 4: releasing the mirror needs a handle
-  `createControlSource` does not return, and adding one edits step 3's file. The exit
-  criterion is the same count in its failing form — **a bind that throws leaves zero live
-  subscriptions and destroys every `EvalSignal` it had already created.**
+  handle to any of it. The exit criterion is the same count in its failing form — **a bind
+  that throws leaves zero live subscriptions and destroys every `EvalSignal` it had
+  already created.** The child injector of § 3.7 is what makes it one line rather than
+  bookkeeping: the `catch` destroys the signals it recorded and the scope, and the scope
+  covers everything the mirror opened however far the loop got.
+
+  **Both halves are asserted, and they fail independently** — corrected in review, where
+  the first draft carried the signal half "by construction" on the premise that no
+  observation existed. One does: instrumenting the `createEvalSignal` factory holds the
+  object before the throw loses it. Measured — against a `catch` that released the mirror
+  and leaked the signals, the factory case reddens (`0` destroy calls against `2` signals)
+  while the subscription case stays green.
 - **Exit**: the counts of § 3.7 asserted — **N × M** destroys for N × M signals, not "the
   form's destroy ran"; teardown reaches unrendered fields; a form destroyed twice does not
   throw; the live `toSignal` subscriptions are released on the same path. Break the loop
@@ -1483,6 +1570,10 @@ makes § 9 possible.
   controls' subscription objects are unchanged — the same assertion trap 5 makes in step 3,
   here carried across a full teardown so a churned-then-destroyed binding leaks nothing.
 
+  **Both forms of the double-destroy criterion are asserted**, per § 3.7's amendment: the
+  throw (which the child injector supplies, and a handle-based teardown did not) and the
+  count, which is the half that survives a change of mechanism.
+
 ### Step 6 — Docs, worked example, and release
 
 - **Edit**: `modules/eval-forms/README.md` — following `modules/eval-core/README.md`'s
@@ -1490,9 +1581,24 @@ makes § 9 possible.
   story (one peer range; `/signals` needs Angular 22), § 3.4.2's two-part live-key rule,
   § 3.4.3's `undefined`-field-key clause and its prototype-name warning, and § 3.5.3's
   `{ emitEvent: false }` limitation.
+
+  **And § 3.7's "constructed, not computed"**, which step 5 confirmed it cannot discharge
+  and is written here so it does not die in a step summary. `toSignal` opens with
+  `assertNotInReactiveContext`, so `bindFieldProperties` throws out of `createControlSource`
+  when it is called inside an `effect()` or a `computed()` — with an error naming `toSignal`
+  and nothing naming this library. **Nothing step 5 adds changes that**: teardown is a
+  `destroy()` the consumer calls, and the constraint is on construction. Not a spec either,
+  because the assertion available is "Angular's own guard fires", which pins a message this
+  library does not own. It is a README line: *build the binding in a service or a factory,
+  call `destroy()` from the same place.*
 - **New**: a worked example.
 - **Edit**: `CHANGELOG.md`, version to 0.1.0, and `ROADMAP.md` — Phase 4 marked done, the
   `/signals` entry point added as a new phase carrying § 9 and its § 9.1 precondition.
+  The `CHANGELOG.md` entry must **name `bindFieldProperties`' return-shape change** (bare
+  record → `FormBinding`, § 5's step-5 amendment) rather than leaving it inside "adds the
+  `/reactive` adapter". CLAUDE.md wants a shape change entered as one; step 5 deferred it
+  here on the ground that nothing has shipped, and a generic bullet is how that deferral
+  evaporates.
 - **Edit**: `ROADMAP.md` § Phase 4's exit criteria, which **three decisions in this plan
   narrow**. Listed here so the amendment is planned rather than discovered at close-out,
   which is when a narrowing starts looking like an omission:
@@ -1525,9 +1631,19 @@ export { createFieldContext,
 
 // from @zvenigora/ng-eval-forms/reactive
 export { createControlSource,            // takes a FormGroup, § 3.5
-         type FieldSchema, type FieldProperties,
+         type FieldSchema, type FieldProperties, type FormBinding,
          bindFieldProperties };
 ```
+
+**Amended in step 5, on `bindFieldProperties`' return type.** It returns `FormBinding` —
+`{ fields: Record<string, FieldProperties>; destroy(): void }` — and not the bare record it
+returned in step 4. This is a **shape change to an exported symbol**, called out per
+CLAUDE.md; the `CHANGELOG.md` entry and the version bump are step 6's, since nothing here
+is published and step 6 owns the manifest. Nested rather than a `destroy` key written onto
+the record, because the record's keys are *field names* and a field named `destroy` is a
+legal schema entry — a flat shape would put a collision between a consumer's data and this
+library's API, silently, in the one case where the consumer least controls the names
+(§ 0's server-supplied schema).
 
 `FieldProperties` maps each property name to an **`EvalSignal`, not a plain `Signal`.**
 Both extra members are load-bearing on this path: `invalidate()` is trap 3's hatch and

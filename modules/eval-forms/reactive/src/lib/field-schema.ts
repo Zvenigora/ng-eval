@@ -1,4 +1,11 @@
-import { Injector, computed } from '@angular/core';
+import {
+  DestroyRef,
+  EnvironmentInjector,
+  Injector,
+  computed,
+  createEnvironmentInjector,
+  inject,
+} from '@angular/core';
 import { AbstractControl, FormControl, FormGroup } from '@angular/forms';
 import {
   ExpressionErrorPolicy,
@@ -54,6 +61,43 @@ export interface FieldSchema {
 export interface FieldProperties {
   readonly visible?: EvalSignal<boolean>;
   readonly text?: EvalSignal<string>;
+}
+
+/**
+ * What {@link bindFieldProperties} returns: the bound fields, and the one call
+ * that ends them.
+ *
+ * **Nested rather than a `destroy` written onto the record** (plan S 5's step-5
+ * amendment). The record is keyed by *field name*, `destroy` is a legal field
+ * name, and S 0's premise is that those names arrive from a server rather than
+ * from the consumer - so a flat shape would put a silent collision between the
+ * consumer's data and this library's API in precisely the case where the
+ * consumer controls the names least.
+ */
+export interface FormBinding {
+
+  /** The bound properties, keyed by field name. */
+  readonly fields: Record<string, FieldProperties>;
+
+  /**
+   * Destroys every `EvalSignal` this binding created and releases the mirror.
+   *
+   * **Call it.** Every signal here is built with an explicit injector, and
+   * that means no `DestroyRef` registration of its own (`eval-signal.ts`) - so
+   * nothing auto-destroys and all N x M are the caller's (plan S 3.7).
+   *
+   * There is one net under that, and it is a net rather than a substitute: the
+   * binding registers this on the `DestroyRef` of the injector it was given,
+   * so a binding wired to a component or route injector is released when that
+   * injector dies even if nobody called it. It is not a licence to skip the
+   * call - a binding built on the root injector is released at the end of the
+   * application and no sooner.
+   *
+   * Idempotent, and that is load-bearing rather than polite: the scope is an
+   * `EnvironmentInjector`, and `R3Injector.destroy()` throws NG0205 when it
+   * has already run.
+   */
+  destroy(): void;
 }
 
 /**
@@ -192,13 +236,16 @@ const validate = (schema: readonly FieldSchema[], group: FormGroup): void => {
  * Binds a schema to a `FormGroup`, producing one `EvalSignal` per rule.
  *
  * ```ts
- * const fields = bindFieldProperties(
+ * const binding = bindFieldProperties(
  *   [{ name: 'state', visible: "country === 'US'" }],
  *   form,
  *   { injector }
  * );
  *
- * fields['state'].visible();   // recomputes when `country` changes
+ * binding.fields['state'].visible();   // recomputes when `country` changes
+ *
+ * binding.destroy();                   // yours to call - nothing here
+ *                                      // auto-destroys (S 3.7)
  * ```
  *
  * **One `EvalContext` per field, never one shared** (plan S 3.4.1). `get`
@@ -231,9 +278,21 @@ const validate = (schema: readonly FieldSchema[], group: FormGroup): void => {
  * nothing naming this library. A form binding belongs in a service or a
  * factory, which is the same premise `injector` being required rests on.
  *
- * Teardown is **not** here yet: every signal below is built with an explicit
- * injector, which resolves services and does not scope lifetime, so none of
- * them auto-destroys and all N x M are the caller's (S 3.7). Step 5 owns it.
+ * **Teardown runs off a child injector, and there is only one of them**
+ * (S 3.7, amended in step 5). The binding opens an `EnvironmentInjector` under
+ * the caller's and scopes *both* the mirror and every `createEvalSignal` to it,
+ * so `destroy()` releases the whole mirror - every per-key `toSignal`
+ * subscription and the `group.events` one - in a single call, and a bind that
+ * throws part-way through releases exactly the same thing however far it got.
+ * The plan's earlier premise, that releasing the mirror needed a handle
+ * `createControlSource` does not return, was wrong: step 3 had already measured
+ * that destroying the injector drops every control's observer count to 0 and
+ * ends the diffing.
+ *
+ * The `EvalSignal`s are **not** covered by that, and that is the point of the
+ * count: built with an explicit injector, they take no `DestroyRef`
+ * registration, so `destroy()` walks them itself and N x M of them is what a
+ * spec asserts rather than "the form's destroy ran".
  *
  * @param schema - The fields to bind. Validated at construction: a duplicate
  *                 name, a non-string rule, a name that resolves off
@@ -249,52 +308,166 @@ const validate = (schema: readonly FieldSchema[], group: FormGroup): void => {
  *                  `eval-signals`' default, and resolved *here* rather than
  *                  forwarded absent, since `createEvalSignal` would otherwise
  *                  supply `'throw'` (S 3.4.4).
- * @returns The bound properties, keyed by field name.
+ * @returns The bound properties keyed by field name, and the `destroy()` that
+ *          ends them.
  */
 export const bindFieldProperties = (
   schema: readonly FieldSchema[],
   group: FormGroup,
   options: { injector: Injector; onError?: ExpressionErrorPolicy }
-): Record<string, FieldProperties> => {
+): FormBinding => {
 
-  // Before the mirror, deliberately. Validation that ran after
-  // `createControlSource` would leave its subscriptions alive behind the
-  // throw, with nothing to release them: the binding has not returned, so the
-  // caller holds no handle to destroy.
+  // Before the mirror, deliberately. A schema rejection then opens no
+  // subscription at all, which is a stronger statement than "the catch below
+  // releases it" and is asserted separately.
   validate(schema, group);
 
-  const formSource = createControlSource(group, { injector: options.injector });
-  const onError = options.onError ?? 'undefined';
+  // `?.` and the `inject` fallback are not defensive dressing: the type makes
+  // `injector` required, but a JavaScript caller can omit it, and reading
+  // `.get` off `undefined` is a `TypeError` naming nothing. `toSignal` solves
+  // the same problem the same way (`rxjs-interop.mjs:106`), and it is what
+  // keeps the error a caller sees NG0203 - naming the injection context -
+  // rather than a property read on `undefined`. `control-source.ts` orders
+  // its own statements for that error; this preserves it one layer up.
+  const parent =
+    options?.injector?.get(EnvironmentInjector) ?? inject(EnvironmentInjector);
 
-  const bound: Record<string, FieldProperties> = {};
-
-  for (const field of schema) {
-
-    const context = createFieldContext(formSource, {});
-    const properties: { visible?: EvalSignal<boolean>; text?: EvalSignal<string> } = {};
-
-    if (field.visible !== undefined) {
-      properties.visible = coerce(
-        createEvalSignal(field.visible, context, {
-          injector: options.injector,
-          onError,
-        }),
-        toVisible
-      );
-    }
-
-    if (field.text !== undefined) {
-      properties.text = coerce(
-        createEvalSignal(field.text, context, {
-          injector: options.injector,
-          onError,
-        }),
-        toText
-      );
-    }
-
-    bound[field.name] = properties;
+  // The other arm of the same problem, and the fallback above is what opens
+  // it: *inside* an injection context that fallback succeeds, so a caller who
+  // omitted the required `injector` would get a working binding parented at
+  // the ambient environment injector - with no auto-teardown and no
+  // diagnostic. That is the exact silent variation S 3.7 makes `injector`
+  // required to prevent, so it is rejected here by name rather than left to
+  // surface as a leak. Outside a context the line above has already thrown
+  // NG0203 and this is unreachable.
+  if (!options?.injector) {
+    throw new Error(
+      `bindFieldProperties requires an 'injector': every signal it creates is built ` +
+      `with one and therefore takes no DestroyRef registration, so an ambient ` +
+      `injection context would silently vary when teardown runs.`
+    );
   }
 
-  return bound;
+  const scope = createEnvironmentInjector([], parent);
+
+  const onError = options.onError ?? 'undefined';
+
+  const fields: Record<string, FieldProperties> = {};
+
+  // The signals, in creation order, so the `catch` below releases exactly what
+  // exists rather than walking `fields` - which holds nothing for the field
+  // that threw and nothing at all for a throw in `createControlSource`.
+  const created: EvalSignal<unknown>[] = [];
+
+  let destroyed = false;
+
+  // The registration on the *caller's* injector, held so `destroy()` can drop
+  // it. See below for why it exists at all.
+  let unregister: (() => void) | undefined;
+
+  const destroy = (): void => {
+
+    if (destroyed) {
+      return;
+    }
+
+    destroyed = true;
+
+    // Cleared before it is called, so a teardown driven *by* the caller's
+    // injector does not turn around and mutate the hook list that injector is
+    // iterating - `eval-signal.ts:408-414`'s pattern and its reason.
+    const release = unregister;
+    unregister = undefined;
+    release?.();
+
+    try {
+      // Called through the property rather than a captured reference: it is
+      // the object the caller holds, and `coerce`'s `destroy` delegates to the
+      // inner signal, so this is the one call that reaches both.
+      for (const signal of created) {
+        signal.destroy();
+      }
+    } finally {
+      // In a `finally` because `destroyed` is already set: a signal whose
+      // `destroy` throws - a consumer calling this from inside a `computed()`
+      // reaches NG0600 - would otherwise leave the scope alive with the retry
+      // guarded into a no-op, and every mirror subscription live with no way
+      // back.
+      //
+      // Last, and idempotence is why the guard above exists at all:
+      // `R3Injector.destroy()` opens with `assertNotDestroyed` and throws
+      // NG0205 on a second call.
+      scope.destroy();
+    }
+  };
+
+  // **The scope is detached, not merely shorter-lived.**
+  // `createEnvironmentInjector` does not register the child with its parent's
+  // destroy hooks, so without this the mirror would outlive the injector the
+  // caller scoped it to - and step 4, which passed that injector to
+  // `createControlSource` directly, released everything when it died. A
+  // consumer who wires a binding to a component or route injector and forgets
+  // `destroy()` would otherwise retain N subscriptions, the mirror, the N
+  // contexts and the form itself for the life of the root injector, silently.
+  // `destroy()` stays the documented call; this is the net under it.
+  unregister = options.injector.get(DestroyRef).onDestroy(() => {
+    unregister = undefined;
+    destroy();
+  });
+
+  try {
+
+    // Scoped to the child, not to the caller's injector: it is what makes the
+    // mirror's two subscriptions releasable at all without a handle.
+    const formSource = createControlSource(group, { injector: scope });
+
+    for (const field of schema) {
+
+      const context = createFieldContext(formSource, {});
+      const properties: { visible?: EvalSignal<boolean>; text?: EvalSignal<string> } = {};
+
+      // `options.injector`, **not** the scope, and the distinction is not
+      // cosmetic: `createEvalSignal` uses the injector it is given only to
+      // resolve `CompilerService` (`eval-signal.ts:215-216`) - it registers no
+      // teardown against it - and the scope's parent is
+      // `caller.get(EnvironmentInjector)`, which for a node injector is an
+      // *ancestor*. Passing the scope would therefore skip providers the
+      // caller declared, silently, and diverge from step 4 for no gain. The
+      // scope exists for the one thing that does need a releasable lifetime,
+      // which is the mirror.
+      if (field.visible !== undefined) {
+        properties.visible = coerce(
+          createEvalSignal(field.visible, context, {
+            injector: options.injector,
+            onError,
+          }),
+          toVisible
+        );
+        created.push(properties.visible);
+      }
+
+      if (field.text !== undefined) {
+        properties.text = coerce(
+          createEvalSignal(field.text, context, {
+            injector: options.injector,
+            onError,
+          }),
+          toText
+        );
+        created.push(properties.text);
+      }
+
+      fields[field.name] = properties;
+    }
+
+  } catch (error) {
+    // A *parse* error is the reachable case (S 3.4.4's amendment):
+    // `createEvalSignal` compiles eagerly, so `visible: 'country ==='` throws
+    // from inside this loop with the mirror already open - and the caller
+    // holds no handle to any of it, because the binding never returned.
+    destroy();
+    throw error;
+  }
+
+  return { fields, destroy };
 };
