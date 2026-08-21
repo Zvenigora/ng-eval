@@ -575,6 +575,55 @@ It does **not** supersede the drift gate above and is strictly narrower than it:
 code, it does not read markdown, and nothing but a human keeps the two in step. The drift
 gate is still worth building, and still unbuilt.
 
+## Deferred tooling — the README-execution gate for `eval-core` and `eval-signals`
+
+The gate described immediately above exists for **`eval-forms` only**, and the five defects
+that justify it are in the other two packages: two shipped in `eval-core`'s documentation in
+Phase 1, three were found in `eval-signals`' in Phase 3. So the package with no record of a
+non-running snippet is the one now gated, and the two packages with the record are still on
+the review practice that missed them five times — each caught only by a later session that
+happened to be reviewing documentation, and nothing makes that session happen. That is the
+whole case for doing this, restated per package; the argument is not repeated here.
+
+Two pieces of work, not one, because the two packages are not equally tractable.
+
+**The soundness condition carries across unchanged: one case per continuous program, not
+one per block.** A document whose sections run in sequence is one program, and its printed
+values are claims about the state each block inherits. A per-block harness behind a
+resetting `beforeEach` executes a *different* program — one in which every block starts
+pristine — and reports green for a document that is wrong as written. That is not a weaker
+gate; it is the thing this section rejected, reached through the fixture instead of the
+preamble. Phase 4 step 6 hit it for real: a first draft split the worked example into a case
+apiece, went green, and hid a `false` that § 4 had already driven to `true`. Split only where
+the document itself declares a fresh start — `modules/eval-core/README.md` does exactly that
+between its `trackTime` section and its hooks section, and does not between the `trackTime`
+blocks, whose second reads a `state` the first declared.
+
+**`eval-signals` is the easier of the two** and should go first. Its README is already
+written in whole-unit blocks — a component class, then a sequence of reads and `set` calls
+against it — which is the shape the gate wants, and `eval-forms`' spec already imports
+`SignalContextWriteError` from it, so a consumer-shaped import through the published
+specifier is known to work from a spec folder.
+
+**`eval-core` is the harder case, and it may not be gateable as written.** Its snippets are
+fragments: `private service: EvalService;` followed by `...`, in both `README.md` and
+`modules/eval-core/README.md` — and the two Phase 1 defects were *exactly* that shape,
+`### Compilation` passing an `options` it never declared and `### Evaluation with scope`
+using an unconstructed `evalContext`. Fragments needing invented preamble are the condition
+under which this gate stops being sound: anyone turning them into runnable cases supplies
+the missing bindings without noticing, and the spec then passes on code the README cannot
+run, which is how those two shipped in the first place. Phase 4's answer was to complete the
+**document** rather than pad the spec, but there the fragments were a handful of blocks; here
+it would mean rewriting the prevailing style of both files, and the injected-service opening
+is load-bearing documentation in an Angular library rather than an omission to be tidied
+away. So `eval-core`'s step decides that first, and the plan's own drop rule applies without
+apology: if it fights, it is dropped and the reason reported, rather than a harness built to
+prop it up. Whatever preamble a surviving spec does supply is **enumerated in its docstring**
+— a blanket "self-contained" claim is how an unlisted substitution hides.
+
+Both are still narrower than the documented-symbol drift gate above and neither supersedes
+it: they run code, they do not read markdown.
+
 ## Suggested order
 
 1. ~~Phase 1 (hooks)~~ — **done**, shipped in 0.3.0; unblocks 3 and 4.
