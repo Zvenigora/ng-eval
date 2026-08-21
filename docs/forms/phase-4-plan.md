@@ -1619,6 +1619,32 @@ makes § 9 possible.
 
   If it fights — fragments needing invented preamble, snippets that cannot run standalone —
   it is dropped and the reason reported, rather than a harness being built to prop it up.
+
+  **The condition the gate is sound under: it must preserve the document's execution
+  order.** Stated as a condition rather than as an exception, because it is what separates
+  this gate from the thing `ROADMAP.md` rejected — and a harness that violates it *is* that
+  thing, whatever its file name says.
+
+  A document whose sections run in sequence is **one program**, and its printed values are
+  claims about the state each block inherits. A per-block harness — one `it` per section
+  behind a resetting `beforeEach` — does not execute that program. It executes a different
+  one, in which every block starts from the initial state, and it reports green for a
+  document that is wrong as written. That is not a weaker version of the gate; it is the
+  failure mode `ROADMAP.md` names, arrived at through the fixture rather than through the
+  preamble. "Anyone turning those fragments into a runnable test declares the missing
+  bindings without noticing" and "…resets the state without noticing" are the same sentence.
+
+  It is not hypothetical. Step 6's first draft split the worked example into a case apiece,
+  went green, and **hid a defect while doing so**: § 6 printed `false` for a rule § 4 had
+  already driven to `true`, which is the correct value only from the pristine state the
+  resetting fixture supplied. Found in review, not by the gate. The fix was to run §§ 4–8 as
+  a single ordered case, which is how the file ships.
+
+  So the rule for any future document brought under this gate: **one case per continuous
+  program, not one per block.** Split only where the document itself declares a fresh start,
+  and where a block is genuinely standalone say so in the document rather than deciding it
+  in the spec. The gate's value is that it executes what a reader would execute; a fixture
+  that silently improves on the reader's starting conditions removes exactly that value.
 - **Edit**: `modules/eval-forms/package.json` — the version bump's actual file, named in
   step 6's list as of step 6 rather than left implied by "version to 0.1.0".
 

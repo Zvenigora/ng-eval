@@ -428,6 +428,61 @@ these visible at all.
   auditing `set`'s callers in Phase 3 step 2. Cosmetic to fix, behavioural in effect; it
   needs a spec written against the corrected behaviour rather than the current one.
 
+## Correction owed — the throwing-subscriber premise in `eval-forms`
+
+Raised while closing Phase 4 step 6, and recorded here rather than only in
+[`docs/forms/phase-4-plan.md`](docs/forms/phase-4-plan.md) because that plan is now closed
+and nothing reads a closed plan.
+
+**The premise.** Four places in `eval-forms` state that a throw inside the `group.events`
+subscriber "unsubscribes it and silently ends all diffing for the life of the form".
+
+**It is false in both halves**, measured against this repo's `rxjs@7.8.2` with the same
+pipeline shape `createControlSource` uses — a `Subject` exposed through `asObservable()`,
+piped through `takeUntil`, with a function next-handler:
+
+```
+next(1) returned normally to the caller
+closed after 1st throw: false | handler calls: 1 | observers: 1
+closed after 2nd throw: false | handler calls: 2 | observers: 1
+ASYNC UNHANDLED: boom  (x2)
+```
+
+RxJS 7's `ConsumerObserver` catches the handler's throw and re-reports it through
+`reportUnhandledError`, **asynchronously**. The subscription stays open, later emissions are
+still delivered, and in an Angular application the error reaches the unhandled-error path.
+So the failure is *loud and non-fatal*, not *silent and terminal* — the opposite of the
+premise on both axes.
+
+**The four sites**, all stating it as established fact:
+
+- [`modules/eval-forms/reactive/src/lib/control-source.ts:165`](modules/eval-forms/reactive/src/lib/control-source.ts#L165)
+  — the own-property read in `sync`.
+- [`modules/eval-forms/reactive/src/lib/field-schema.ts:199`](modules/eval-forms/reactive/src/lib/field-schema.ts#L199)
+  — `validate`'s group loop.
+- [`modules/eval-forms/reactive/src/lib/control-source.spec.ts:409`](modules/eval-forms/reactive/src/lib/control-source.spec.ts#L409)
+  — the prototype-name removal case. Note this comment **already measured something that
+  does not fit it**: it goes on to record that "the throw lands in that key's own subscriber
+  and not back in `sync`, so the diff loop itself survives". The contradiction was sitting in
+  one comment and was not read as one.
+- [`docs/forms/phase-4-plan.md:1438`](docs/forms/phase-4-plan.md#L1438) — and it cites
+  "§ 3.5.5" as the source, which does **not** contain the claim. The citation is what made
+  it look settled.
+
+**This is not a comment fix, which is why it is a roadmap entry.** The premise is load-bearing
+for a shipped design decision: enforcement is construction-time only, and `validate` is not
+re-run for a control added later, *because* throwing from the diff was held to be
+unavailable. If a throw there is merely reported and diffing continues, that argument no
+longer decides the question, and the alternatives reopen — reject a late `addControl` from
+the diff, surface it through a channel the consumer can observe, or keep the current
+behaviour on a different and stated ground (a throw cannot un-add the control, and it fires
+far from the call that caused it, which may well still be decisive).
+
+Scope: correct the four sites; decide the question again on the real behaviour and record
+which ground it now rests on; and add a spec that pins what actually happens when the diff
+throws, since none exists — the case above pins the *symptom* the guard prevents, not the
+subscriber's fate. Behavioural if the decision changes, documentation-only if it does not.
+
 ## Deferred tooling — `eval-signals` has no CI test configuration
 
 Surfaced in Phase 3 step 6, while settling the `project.json` divergence between the two
