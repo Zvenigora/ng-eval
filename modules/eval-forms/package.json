@@ -1,6 +1,6 @@
 {
   "name": "@zvenigora/ng-eval-forms",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Angular form field properties from ng-eval expressions",
   "repository": {
     "type": "git",

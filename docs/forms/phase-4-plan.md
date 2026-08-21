@@ -1591,7 +1591,49 @@ makes § 9 possible.
   because the assertion available is "Angular's own guard fires", which pins a message this
   library does not own. It is a README line: *build the binding in a service or a factory,
   call `destroy()` from the same place.*
-- **New**: a worked example.
+- **New**: a worked example — [`docs/forms/worked-example.md`](./worked-example.md), a flat
+  `FormGroup` per open question 8.5. **Amended in step 6**, which is where the location was
+  decided: `ROADMAP.md`'s Phase 4 exit criteria lists "a worked example" separately from
+  "README", so a fenced block inside the README would not have discharged it.
+- **New**, and a **deliberate break from this step's own "by hand" exit criterion**:
+  `modules/eval-forms/reactive/src/lib/readme-examples.spec.ts`, executing the README's
+  snippets and the worked example as a committed spec.
+
+  The criterion below inherits `ROADMAP.md`'s "review practice rather than a gate", and that
+  practice has a measured record: Phase 1 shipped two non-running snippets and Phase 3 found
+  three more. All five survived because nothing executed them. `field-context.spec.ts`
+  already proves a spec can import through the published subpath exactly as a consumer does,
+  so the gate costs a handful of cases.
+
+  **It is narrower than `ROADMAP.md`'s deferred documented-symbol drift item and does not
+  supersede it.** That one scans the fenced blocks and would catch a symbol renamed out from
+  under a README; this one executes the same code the docs show and is kept in step **by
+  hand** — it does not parse markdown. Conflating the two would retire an unbuilt gate on the
+  strength of a different one. `ROADMAP.md`'s own "considered and rejected: executing
+  transcribed snippets" section is amended in the same step rather than left contradicting
+  the repo, and its objection is answered structurally: where a documented block was a
+  fragment, **the document** was completed rather than the spec padded. What the spec still
+  supplies — an `injector`, and the service handles the worked example refers to bare — is
+  enumerated in its docstring, because an unlisted substitution is the failure mode and a
+  blanket "self-contained" claim is how it hides.
+
+  If it fights — fragments needing invented preamble, snippets that cannot run standalone —
+  it is dropped and the reason reported, rather than a harness being built to prop it up.
+- **Edit**: `modules/eval-forms/package.json` — the version bump's actual file, named in
+  step 6's list as of step 6 rather than left implied by "version to 0.1.0".
+
+  **A premise this step's README could not repeat, measured in step 6.** § 3.5.5 and the
+  JSDoc on `control-source.ts` and `field-schema.ts` both say a throw inside the
+  `group.events` subscriber "unsubscribes it and silently ends all diffing for the life of
+  the form". Against this repo's `rxjs@7.8.2`, with the same `Subject` →
+  `asObservable()` → `takeUntil` → function-subscriber shape, that is false in both halves:
+  `ConsumerObserver` catches the throw and re-reports it **asynchronously**, the
+  subscription stays open (`closed: false`, observer count 1) and later emissions are still
+  delivered. So the failure is loud rather than silent, and diffing continues. The README
+  states the *limitation* — construction-time validation only — without the mechanism, since
+  the mechanism as written is wrong. The code comments are outside step 6's file list and
+  are left standing; correcting them, and re-deciding whether the design choice they justify
+  still holds, is its own change.
 - **Edit**: `CHANGELOG.md`, version to 0.1.0, and `ROADMAP.md` — Phase 4 marked done, the
   `/signals` entry point added as a new phase carrying § 9 and its § 9.1 precondition.
   The `CHANGELOG.md` entry must **name `bindFieldProperties`' return-shape change** (bare
@@ -1618,6 +1660,14 @@ makes § 9 possible.
   The amendment says which and why, and none of them is presented as complete.
 - **Exit**: the README's examples execute as written — by hand, per `ROADMAP.md`'s note
   that this is a review practice rather than a gate; all three projects green.
+
+  **Amended in step 6: "by hand" is replaced by the committed spec above**, which is
+  stricter on the covered blocks and unchanged on the rest. What it covers is the `ts`
+  blocks that are complete programs; the `html` template blocks, the manifest block and the
+  `interface FieldSchema` declaration execute nothing and are read rather than run. The
+  criterion is met when those cases are green *and* the uncovered blocks have been read
+  against the shipped surface — the second half is still the practice, because nothing
+  automates it.
 
 ---
 
@@ -1785,7 +1835,14 @@ restated. Two additions specific to this library:
    for a form-builder UI — plausibly the most valuable thing this library could surface for
    its actual audience. It is also off by default for a good reason
    ([`phase-3-plan.md`](../signals/phase-3-plan.md) § 3.4). Not this phase; recorded
-   because it is the most likely Phase 6 feature.
+   because it is the most likely feature of the phase *after* the `/signals` adapter.
+
+   **Renumbered in step 6.** This said "the most likely Phase 6 feature", written before
+   Phase 6 had a claimant. Step 6 gave that number to the `/signals` entry point in
+   `ROADMAP.md`, per § 9.1's own "Phase 6 decides whether it lives in the core or in the
+   adapter" — so the number here now points at a different phase than the sentence means,
+   and a cross-reference that survives into being wrong is worse than one that was never
+   made.
 5. ~~**Is one `EvalContext` per field the right granularity for array fields?**~~
    **Settled before step 1: flat forms only, and `FormArray` / nested `FormGroup` are out
    of scope (§ 2).** This one could bite step 4 rather than a later phase, because

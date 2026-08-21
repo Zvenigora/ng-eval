@@ -150,7 +150,42 @@ new package following the existing `modules/eval-core/README.md` pattern.
 to Phase 5 below, on the evidence in
 [`docs/signals/phase-3-plan.md`](docs/signals/phase-3-plan.md) § 3.7.
 
-### Phase 4 — `@zvenigora/ng-eval-forms` (new module)
+### ✅ Phase 4 — `@zvenigora/ng-eval-forms` (new module) — **done**
+
+Shipped in `@zvenigora/ng-eval-forms` **0.1.0**, as two entry points from one package:
+the core (`@zvenigora/ng-eval-forms`) and the Reactive Forms adapter
+(`@zvenigora/ng-eval-forms/reactive`). Design, findings and the step record are in
+[`docs/forms/phase-4-plan.md`](docs/forms/phase-4-plan.md); consumer documentation is the
+[package README](modules/eval-forms/README.md) and the
+[worked example](docs/forms/worked-example.md).
+
+What landed: `bindFieldProperties`, which validates a field schema, mirrors a flat
+`FormGroup` per control, and returns a `FormBinding` of `EvalSignal`s that recompute per
+key; `createControlSource` and `createFieldContext` as the two halves of that on their own;
+`toVisible` / `toText` and an `ExpressionErrorPolicy` defaulting to `'undefined'` rather
+than `'throw'`, because the rule's author may be an end user. Nothing was added to
+`eval-core` or `eval-signals`.
+
+**Three narrowings against the exit criteria below**, each a narrowing of *scope* and not of
+design — all three are additive when they arrive, and none of them is claimed complete:
+
+1. **`disabled` is deferred**, though the opening paragraph of this phase lists it.
+   `disable()` emits on `valueChanges` by default, so a rule naming its own field re-enters
+   its own input and whether that converges depends on the expression; it is also a write
+   back into the form rather than derived state, and it removes the value from the parent
+   aggregate. It is a better fit for the `/signals` entry point in Phase 6, where Angular
+   owns the semantics — see [`docs/forms/phase-4-plan.md`](docs/forms/phase-4-plan.md)
+   § 3.6.
+2. **Expressions name field *values* only.** "Expressions over form state" in the opening
+   sentence reads wider than what shipped: `touched` / `dirty` / `valid` / `status` are not
+   addressable. The shape they should take is unresolved rather than merely unbuilt (plan
+   § 3.5.6, open question 8.2), and real conditional-visibility rules read sibling values.
+3. **Flat forms only.** The worked example, and the library, cover a `FormGroup` of
+   `FormControl`s; `FormArray` and nested `FormGroup` are rejected at bind time rather than
+   documented as unsupported (open question 8.5). A `FormArray` raises a per-row naming
+   problem the current two-level context composition has no third level for.
+
+The original plan for this phase follows, for the record.
 
 Expression-driven dynamic form metadata: field properties like `visible`, `text`,
 `disabled`, `required` defined as expressions over form/context state and kept
@@ -218,6 +253,56 @@ Key design questions, all inherited from § 3.7 and none costed:
 Depends on Phase 3. Exit criteria: those questions answered in a plan document of its own,
 then either the primitive with tests, README and CHANGELOG entries, or a second recorded
 decision not to ship it.
+
+### Phase 6 — the `/signals` entry point (`eval-forms`)
+
+The second adapter of `@zvenigora/ng-eval-forms`: the same runtime-string rules, driving
+**Angular's Signal Forms** (`@angular/forms/signals`) instead of Reactive Forms. Designed on
+paper in [`docs/forms/phase-4-plan.md`](docs/forms/phase-4-plan.md) § 9 and deliberately not
+built in Phase 4. There is no `modules/eval-forms/signals/` yet; what Phase 4 put in place
+is the arrangement that makes adding one non-breaking — the shared core at the *primary*
+entry point and the adapter at a subpath, so a second adapter is a new subpath rather than a
+move of every exported symbol.
+
+The whole adapter is a translation from a string to a `LogicFn`, and § 9's sketch is the
+shape. Four things make it a phase rather than an afternoon:
+
+- **The source comes from the consumer's model signal, not from `ctx.valueOf`.**
+  `RootFieldContext.valueOf` takes a `SchemaPath` — a compile-time token — and there is no
+  string → `SchemaPath` mapping, which is the whole problem this library exists for. This is
+  why the Phase 4 core accepts a plain `SignalContextSource` rather than anything
+  forms-shaped.
+- **`text` goes through `createMetadataKey`**, Signal Forms' own per-field derived data,
+  rather than a second mechanism beside it. `visible` inverts to `hidden`.
+- **`disabled` becomes available**, and is the reason it is deferred rather than dropped in
+  Phase 4: none of the three problems that block it under Reactive Forms exists where
+  Angular owns the semantics.
+- **`applyErrorPolicy` is written here**, against the `ExpressionErrorPolicy` type Phase 4
+  shipped. It has no caller until this adapter exists, and Phase 4 declined to ship an
+  unexercised path.
+
+**Precondition, from § 9.1 — the arrow-scope leak is uncontained on this path.** This
+adapter does not go through `createEvalSignal`, so it does not inherit its
+snapshot-and-restore of the context's scope depth; a context reused across `LogicFn`
+invocations — which one-context-per-field is — carries a leaked scope forward, and scopes
+resolve *ahead* of the adapter's own resolver, so one throwing arrow body shadows a source
+key of the same name for every later rule on that field. Containment is three lines of
+published surface (`scopes.length` before, `pop()` in a `finally`), and it works only if
+**every** rule routes through one evaluate helper — a rule reaching for `call(fn, state)`
+directly bypasses it silently. This phase decides whether that choke point lives in the core
+or in the adapter; it does not get to skip the decision. The escaped-closure residual
+survives either way and is not this phase's to solve.
+
+Also note: `peerDependencies` are per package, so shipping this cannot narrow the manifest.
+`/signals` requires **Angular 22**; the loud failure for a 19–21 consumer importing it is
+inherited from Angular's own `exports` map (`Cannot find module '@angular/forms/signals'`),
+and narrowing the declared range to `>=22` would break every Reactive Forms consumer on
+19–21 without adding a diagnostic.
+
+Depends on Phase 4, and on nothing else. Exit criteria: the § 9 sketch turned into a plan
+document of its own with § 9.1's choke point decided; the adapter with tests, README and
+CHANGELOG entries; the `/signals` row of the package README's entry-point table no longer
+saying "designed but not built".
 
 ## Deferred defects in the visitor, context and service layers
 
@@ -411,13 +496,40 @@ declares the missing bindings without noticing, and the test passes on code the 
 cannot. The two defects were found by executing the documented examples *by hand*, which is
 a review practice rather than a gate, and it stays that way.
 
+**Reopened for `eval-forms` only, in Phase 4 step 6, and the reason is *when* the practice
+fires rather than whether it works.** `modules/eval-forms/reactive/src/lib/readme-examples.spec.ts`
+executes that package's runnable README examples and its worked example. The argument above
+is right that hand-execution is what found the Phase 1 and Phase 3 defects — five of them
+across the two phases — and the addition is that it found each of them *after* the snippet
+had been written and reviewed, on a later session that happened to be reviewing
+documentation. Nothing makes that session happen. A gate that covers the runnable subset
+runs on every session, and the two are additive rather than alternatives.
+
+Two things keep it honest, and both answer the objection above directly. Where a documented
+block was a fragment, the fix went into the **document** — the README's reactivity blocks
+each declare their own form and binding for that reason — rather than into the spec; what
+the spec still supplies (an `injector`, and the service handles the worked example refers
+to bare) is enumerated in its own docstring instead of being left for a reader to discover.
+And it earned its place twice on the way in: the `{ emitEvent: false }` block printed a
+stale value that a never-yet-read `computed()` does not produce, and a first draft that
+split the worked example into a case apiece hid a wrong printed value behind a resetting
+fixture — the second found in review rather than by the gate, which is the limit worth
+knowing about.
+
+It does **not** supersede the drift gate above and is strictly narrower than it: it runs
+code, it does not read markdown, and nothing but a human keeps the two in step. The drift
+gate is still worth building, and still unbuilt.
+
 ## Suggested order
 
 1. ~~Phase 1 (hooks)~~ — **done**, shipped in 0.3.0; unblocks 3 and 4.
 2. ~~Phase 3 (signals)~~ — **done**, shipped in `eval-signals` 0.1.0; unblocks 4.
-3. Phase 4 (forms) — depends on Phase 3, which is now in place, so it is next.
-4. Phase 2 (statements) — independent track, can run in parallel with 1/3/4 since
-   nothing else in this roadmap depends on `let`/`if`/`for`.
-5. Phase 5 (async signals) — depends on Phase 3, and nothing depends on it. Deferred
+3. ~~Phase 4 (forms)~~ — **done**, shipped in `eval-forms` 0.1.0; unblocks 6.
+4. Phase 6 (`/signals` entry point) — depends on Phase 4, which is now in place. It is
+   next of the forms work, and the only phase with a stated correctness precondition
+   (§ 9.1's choke point) rather than only open questions.
+5. Phase 2 (statements) — independent track, can run in parallel with any of the others
+   since nothing else in this roadmap depends on `let`/`if`/`for`.
+6. Phase 5 (async signals) — depends on Phase 3, and nothing depends on it. Deferred
    out of Phase 3 deliberately rather than left undone; it is ordered last because
    the sync primitive already composes with `resource` for the promise case.
