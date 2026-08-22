@@ -679,6 +679,73 @@ prop it up. Whatever preamble a surviving spec does supply is **enumerated in it
 Both are still narrower than the documented-symbol drift gate above and neither supersedes
 it: they run code, they do not read markdown.
 
+## Deferred dependency decision — the `js-sha256` peer range in `eval-core`
+
+Surfaced while verifying the 0.3.0 / 0.1.0 / 0.1.0 publish from the npm registry, not by
+any failing test. Nothing is broken today; the range is simply narrower than the dependency
+it names, and the gap only widens.
+
+`modules/eval-core/package.json` declares `js-sha256: ^0.10.1` as a peer. Because the
+package is still `0.x`, a caret range there is locked to the **minor**, so `^0.10.1` admits
+`0.10.x` and nothing else. Upstream has since published `0.11.0`, `0.11.1`, `0.12.0` and
+`1.0.0`, and `1.0.0` is `latest` — so every version a consumer would naturally reach for is
+outside the declared range.
+
+The peer itself is real, not vestigial. There is exactly one call site —
+`modules/eval-core/src/lib/internal/classes/common/cache.ts:53`, which hashes a
+`namespace:value` template string into a cache key, reached via the `import { sha256 }` on
+line 1 of that file — so the range cannot simply be dropped without replacing that call.
+
+**What a consumer sees.** A clean `npm install` is fine: npm's automatic peer installation
+picks `0.10.1` and the tree resolves with no warning. The failure is the *other* order — a
+consumer whose tree already contains `js-sha256@1` (or `0.12`) gets an `ERESOLVE overriding
+peer dependency` warning naming `@zvenigora/ng-eval-core`, and npm keeps their version, so
+the library runs against a major it never declared. That is a warning rather than an error,
+which is why this is logged rather than treated as a defect.
+
+**The decision, which is why it is deferred rather than done.** Widening to
+`^0.10.1 || ^0.11.0 || ^0.12.0 || ^1.0.0` needs the `sha256` call signature checked against
+`1.0.0` first — the point of a major is that it is allowed to have moved. The alternative is
+to stop depending on a hash library for what is a cache key: the value is never persisted,
+compared across processes, or relied on for integrity, so a non-cryptographic hash computed
+in-repo would remove a peer dependency from the published surface entirely, and the one call
+site makes that a contained change. Either way it alters an exported package's
+`peerDependencies`, so it needs a `CHANGELOG.md` entry and a version bump under
+"Public API discipline", which puts it past the edge of a chore.
+
+## Deferred docs — CONTRIBUTING's "Code style" section describes a config that no longer exists
+
+Surfaced while correcting the same file's Prerequisites block. Logged rather than fixed
+because the repair is an editorial decision, not a substitution.
+
+The section links to `.eslintrc.json`. That file does not exist — Phase 1's tooling work
+replaced it with flat config, and the workspace now has four: `eslint.config.mjs` at the root
+and one per module. The link is dead.
+
+The thirteen-rule table beneath it is the larger problem, because it reads as authoritative
+and is not. **None of its thirteen rules appear in any of the four configs** — not `semi`,
+`curly`, `brace-style`, `spaced-comment`, `no-dupe-keys` or any of the rest. The table
+predates flat config and was never migrated. What the configs actually enforce is a different
+kind of thing: the `@nx` flat presets (`base`, `typescript`, `javascript`, `angular`),
+`@nx/enforce-module-boundaries` with the `scope:core` / `scope:signals` / `scope:forms` tag
+constraints, the `zvenigora` Angular selector prefixes, and `@nx/dependency-checks` over
+`*.json`. Stylistic rules are absent by design; a Prettier config exists and the codebase is
+deliberately not formatted to it (see `CLAUDE.md`).
+
+It is worth treating as misleading rather than merely stale, because two of its rows tell a
+contributor to write code the repository does not contain:
+
+- `brace-style: [1, "stroustrup"]` requires `else` on its own line. `eval-core`'s sources have
+  57 occurrences of `} else` and none of the Stroustrup form.
+- `no-mixed-spaces-and-tabs: [1, "smart-tabs"]` is described as "tabs for indentation". No
+  file under `modules/eval-core/src` is tab-indented; 109 are space-indented.
+
+The decision is what should replace it. Enumerating the real rule set reproduces the same
+drift one migration later, and most of it is inherited from presets rather than chosen here,
+so a faithful table would be long and mostly not this project's decisions. Pointing at
+`eslint.config.mjs` and saying "run `npm run lint`" is honest and much shorter, but loses the
+commentary the current section was written to provide. That choice is the work.
+
 ## Suggested order
 
 1. ~~Phase 1 (hooks)~~ — **done**, shipped in 0.3.0; unblocks 3 and 4.
