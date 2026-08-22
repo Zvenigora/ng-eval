@@ -4,6 +4,13 @@
   "sourceRoot": "modules/eval-core/src",
   "prefix": "zvenigora",
   "projectType": "library",
+  "release": {
+    "version": {
+      "manifestRootsToUpdate": ["dist/{projectRoot}"],
+      "currentVersionResolver": "git-tag",
+      "fallbackCurrentVersionResolver": "disk"
+    }
+  },
   "tags": ["scope:core"],
   "targets": {
     "build": {
@@ -19,6 +26,11 @@
           "tsConfig": "modules/eval-core/tsconfig.lib.prod.json"
         },
         "development": {}
+      }
+    },
+    "nx-release-publish": {
+      "options": {
+        "packageRoot": "dist/{projectRoot}"
       }
     },
     "test": {

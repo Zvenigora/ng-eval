@@ -543,8 +543,8 @@ subscriber's fate. Behavioural if the decision changes, documentation-only if it
 Surfaced in Phase 3 step 6, while settling the `project.json` divergence between the two
 libraries. That step decided the **release** blocks deliberately (`eval-signals` keeps its
 `release.version` + `nx-release-publish` config, `eval-core` is left alone — see the phase-3
-plan's step 6). This is the other divergence, and it is a real gap rather than a style
-difference.
+plan's step 6); that half has since been **superseded**, see below. This is the other
+divergence, and it is a real gap rather than a style difference.
 
 `modules/eval-core/project.json` gives its `test` target a `configurations.ci` block
 (`ci: true`, `coverage: true`); `modules/eval-signals/project.json` gives its `test` target no
@@ -557,6 +557,63 @@ inside a documentation step.
 
 Fixing it is a few lines of `project.json` plus a decision about whether coverage thresholds
 should gate CI for either library, which is the part worth deciding rather than copying.
+
+### Superseded — `eval-core` now carries the release blocks too
+
+The **release** half of that step-6 decision no longer holds, and it was not overturned on
+review: the circumstance it rested on is gone.
+
+Leaving `eval-core` without a `release.version` block was sound while the workspace versioned
+**fixed**. A fixed group resolves one current version for every project and overrides each
+project's own resolution with it, so `eval-core`'s resolver was never consulted for anything
+that survived — the group masked the gap, and adding config would have bought nothing.
+
+Independent versioning removed the mask. Each project now resolves for itself, and the
+divergence became three live behaviours rather than a dormant one: `eval-core` read its
+version from `modules/eval-core/package.json` instead of its `eval-core@0.3.0` tag, which was
+therefore ignored; it wrote bumps into that **tracked source** manifest while its siblings
+wrote into gitignored `dist/` ones; and `nx-release-publish` fell back to the project root, so
+publishing would have handed npm `modules/eval-core` — source, with no build output in it. The
+right version still came out, but only because that manifest happened to be accurate.
+
+So `eval-core` now carries the same `release.version`
+(`currentVersionResolver: "git-tag"`, `fallbackCurrentVersionResolver: "disk"`,
+`manifestRootsToUpdate: ["dist/{projectRoot}"]`) and `nx-release-publish`
+(`packageRoot: "dist/{projectRoot}"`) blocks as `eval-signals` and `eval-forms`. All three
+resolve from their own tag and write to `dist/`.
+
+The **CI test configuration** half of step 6 above is untouched by this and still open.
+
+## Deferred tooling — one `CHANGELOG.md` for three independently-versioned packages
+
+Surfaced while writing CONTRIBUTING's release procedure, after the workspace moved to
+`projectsRelationship: "independent"`. Logged, not fixed: the workaround already in place
+works, and replacing it is a decision about tooling rather than a gap in behaviour.
+
+There is one `CHANGELOG.md` at the workspace root and three packages that now version
+separately. Phase 3 step 6 anticipated this and answered it in the heading convention: a
+release of a non-core package is titled with the package name, `## [eval-signals 0.1.0]` and
+`## [eval-forms 0.1.0]`, while `eval-core` keeps the bare `## [0.3.0]` form its history
+already used. That is enough to read the file unambiguously, and it costs nothing.
+
+Two things make it worth logging rather than leaving unwritten:
+
+- **`eval-core`'s entries are the implicit case.** A bare `## [0.3.0]` means "eval-core"
+  only by convention, and only because it got there first. Nothing enforces it, and a future
+  contributor adding a bare heading for the package they happen to be releasing would not be
+  contradicted by anything in the file.
+- **It has already drifted from npm.** The changelog carries `## [0.2.3]`, `## [0.2.4]` and
+  `## [0.2.5]` entries for `eval-core`; the registry's version list runs
+  `0.1.102 … 0.2.1, 0.2.2, 0.3.0`. Those three were changelogged and never published. A
+  reader treating the file as a release history is misled today, and the manual procedure has
+  no step that would catch it.
+
+The fix is not obviously "split into three files". `nx release changelog` can maintain
+per-project changelogs, which would make the file boundary match the version boundary — but
+adopting it means adopting the full `nx release` flow, which is separately unmade (see
+CONTRIBUTING, "Why publishing is still manual"), and it would have to be reconciled with the
+existing single file rather than starting clean. Deciding that is the work; the convention
+holds in the meantime.
 
 ## Deferred tooling — documented-symbol drift gate
 

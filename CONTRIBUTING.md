@@ -168,20 +168,21 @@ are whole-repo tags in a scheme no longer in use.
 
 ### Why publishing is still manual
 
-Versioning and tagging through `nx release` now resolve correctly — each project reads its
-own `{projectName}@{version}` tag. **Publishing through it does not, for `eval-core`.**
-
-`modules/eval-signals/project.json` and `modules/eval-forms/project.json` each carry a
+All three projects are now configured the same way. Each `modules/*/project.json` carries a
 `release.version` block (`currentVersionResolver: "git-tag"`,
-`manifestRootsToUpdate: ["dist/{projectRoot}"]`) and an `nx-release-publish` target with
-`packageRoot: "dist/{projectRoot}"`. `modules/eval-core/project.json` carries neither, so it
-falls back to the project root for both. Concretely:
+`fallbackCurrentVersionResolver: "disk"`, `manifestRootsToUpdate: ["dist/{projectRoot}"]`)
+and an `nx-release-publish` target with `packageRoot: "dist/{projectRoot}"`, so every project
+resolves its version from its own tag and both versions and publishes point at `dist/`.
 
-- it resolves its current version from `modules/eval-core/package.json` rather than from the
-  `eval-core@0.3.0` tag, which is therefore ignored;
-- it writes a bumped version into that **tracked source** manifest, while the other two write
-  into their gitignored `dist/` manifests;
-- it would publish from `modules/eval-core`, which holds source and no build output.
+`eval-core` was the exception until recently, and the shape of that bug is worth keeping in
+mind if these blocks are ever edited: with no `release` block it resolved from its **source**
+manifest and ignored its tag, wrote bumps into a tracked file rather than `dist/`, and would
+have published `modules/eval-core` — a directory holding source and no build output.
 
-The right version comes out today only because the source manifest happens to be accurate.
-Until `eval-core` gains the same two blocks, publish by hand from `dist/` as above.
+What remains unadopted is the **full `nx release` flow**, not any single piece of it. That
+command bundles versioning, changelog generation, a release commit, tagging and publishing
+into one run, and two things are not yet settled for it: there is one root `CHANGELOG.md`
+serving three independently-versioned packages (see ROADMAP, "Deferred tooling — one
+`CHANGELOG.md` for three independently-versioned packages"), and no release has yet been cut
+through it end to end. The manual procedure above is the one that has actually been
+exercised, so it stays the documented path until that changes.
