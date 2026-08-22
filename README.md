@@ -359,6 +359,15 @@ related packages available, including:
 - **✅ Async operation security** - Proper error boundaries and resource cleanup
 - **✅ Memory safety** - Prevents memory-based attacks and resource exhaustion
 
+### 🔎 **Reviewed Advisories**
+
+[`SECURITY.md`](SECURITY.md#reviewed-external-advisories) records advisories raised against
+related projects and whether ng-eval shares the defect, with the reasoning and the
+regression tests that pin each verdict. Most recently reviewed:
+[GHSA-pj3p-xpg7-h7gw](https://github.com/Zvenigora/jse-eval/security/advisories/GHSA-pj3p-xpg7-h7gw)
+(`@zvenigora/jse-eval <= 1.10.0`) — **does not apply to ng-eval**, verified by running the
+advisory's proof-of-concept against this evaluator.
+
 ### ⚠️ **Important Security Notice**
 Although this package does [avoid the use of `eval()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval#Do_not_ever_use_eval!) and now includes comprehensive security hardening against prototype pollution and injection attacks, it _cannot guarantee complete isolation from all possible attack vectors_. 
 

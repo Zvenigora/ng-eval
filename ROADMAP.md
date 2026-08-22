@@ -428,6 +428,61 @@ these visible at all.
   auditing `set`'s callers in Phase 3 step 2. Cosmetic to fix, behavioural in effect; it
   needs a spec written against the corrected behaviour rather than the current one.
 
+## Deferred security hardening — the primitive carve-out in `member-expression.ts`
+
+Surfaced while checking GHSA-pj3p-xpg7-h7gw (reported against the sibling `jse-eval`)
+against this repo. The advisory itself does not apply — see `SECURITY.md`, "Reviewed
+External Advisories" — but the check walked the surrounding guard and found this.
+
+**Status: not exploitable as far as probed. Not cleared.** No escalation was found; that is
+not the same as none existing, and the probing was one session's worth against one threat
+model. Treat it as an open hardening item.
+
+**What it is.** Both dangerous-property checks in the member visitor
+(`member-expression.ts:144` and `:188`) are gated on `!isPrimitive`, so when the receiver is
+a string, number or boolean the blocklist is skipped entirely. `"abc".constructor`
+therefore returns the real `String` function — a reference to a global constructor leaking
+out of the sandbox. It is the only place the guard is deliberately not applied.
+
+**Why it is there, and why deleting the gate is not the fix.** The blocklist holds
+`toString`, `valueOf` and `hasOwnProperty`, which are ordinary reads on a primitive.
+Enforcing it there would refuse `s.toString()`. Worse, simply removing `!isPrimitive` does
+not narrow the carve-out at all — it removes primitive member access outright, because
+`safeGetProperty` returns `undefined` for any target that is not an object or a function
+*before* it consults the blocklist, so `s.toUpperCase` becomes `undefined` rather than
+blocked (confirmed by probe). A fix has to keep a primitive read path and enforce a subset
+of the blocklist on it.
+
+**Probe results, so nobody re-derives them.** Against `{ s: 'abc', n: 1, b: true }`:
+
+- `s.constructor` → the `String` function. Likewise `n.constructor` → `Number`,
+  `b.constructor` → `Boolean`.
+- `s.constructor.call` → `Function.prototype.call`, and it is callable —
+  `s.constructor.call(null, "hi")` → `"hi"`. This is the one hop past the constructor that
+  is not on the blocklist. `this` is the `String` function, so it yields a string.
+- `s.constructor.constructor` → **throws**. So does `s.constructor.prototype`,
+  `s.constructor.__proto__`, `s.constructor.call.constructor`, `s.trim.constructor` and
+  `s.sub.constructor`.
+- Every escalation tried dead-ends at hop 2, and by the same mechanism: the receiver is then
+  a plain function, not a primitive, so the read goes through `safeGetProperty`, which does
+  enforce the blocklist.
+- A second, independent barrier sits behind that one: the case-insensitive lookup block is
+  gated on `typeof obj === 'object'`, and functions are not. So no case variant reopens the
+  chain either — `s.constructor.CONSTRUCTOR`, `s.constructor.PROTOTYPE` and
+  `s.trim.CONSTRUCTOR` all resolve to `undefined` under `caseInsensitive: true` rather than
+  being case-corrected. This barrier is incidental rather than designed, which is a reason
+  not to lean on it.
+
+**Covered, not fixed.** `eval.service.primitive-carve-out.spec.ts` pins the boundary in both
+directions — what the carve-out permits, why it exists, and where the escalations stop — so
+narrowing *or* widening it fails a test rather than passing silently. Confirmed
+load-bearing: skipping the carve-out reddens the first two blocks, extending it to function
+receivers reddens the third. The spec is a record of current behaviour, not an endorsement:
+a fix is expected to change its first `describe` block and leave the other two intact.
+
+Fixing it is a behavioural change — anything reading `s.constructor` today starts throwing —
+so it needs its own step and a version bump.
+
 ## Correction owed — the throwing-subscriber premise in `eval-forms`
 
 Raised while closing Phase 4 step 6, and recorded here rather than only in

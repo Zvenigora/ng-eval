@@ -204,6 +204,16 @@ makes repeated property lookups O(1). `visitor-result-cache.ts` exists but is
 **deliberately disabled** (commented out in `binary-expression.ts`) due to
 context-sensitivity bugs — don't re-enable it without solving cache-key-includes-context.
 
+Under `caseInsensitive`, what blocks the case-variant bypass (`x.CONSTRUCTOR`, the shape of
+GHSA-pj3p-xpg7-h7gw in the sibling `jse-eval`) is the *resolved-key* re-check at
+`member-expression.ts:188` — `isDangerousProperty(foundKey)`, testing the key the lookup
+matched rather than the key as written. It is now covered by
+`eval.service.case-variant-guard.spec.ts`; before that spec, the entire 717-test suite
+passed with it neutered. Also note `member-expression.ts:144` and `:188` are both gated on
+`!isPrimitive`, so the blocklist is skipped for string/number/boolean receivers and
+`"abc".constructor` really does return `String` — see the "Deferred security hardening"
+section of `ROADMAP.md` before touching either line.
+
 ### Performance
 
 `internal/performance.spec.ts` is a real gate. Work added to a path that runs per node

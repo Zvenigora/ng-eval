@@ -8,6 +8,8 @@ This library was generated with [Nx](https://nx.dev).
 
 Full documentation — parsing, evaluation, compilation, async evaluation, discovery, and the `caseInsensitive` / state / scope options — is in the [repository README](https://github.com/zvenigora/ng-eval#readme). This file documents the options that need more than a snippet.
 
+**Security.** [`SECURITY.md`](https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md) covers the threat model, the prototype-pollution and call-sandboxing protections, and their documented limits. It also records [reviewed external advisories](https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md#reviewed-external-advisories) — advisories raised against related projects and whether this library shares the defect. [GHSA-pj3p-xpg7-h7gw](https://github.com/Zvenigora/jse-eval/security/advisories/GHSA-pj3p-xpg7-h7gw), the case-insensitive guard bypass reported against the separate `@zvenigora/jse-eval` package, **does not apply to `@zvenigora/ng-eval-core`**: this library does not depend on `jse-eval`, and the advisory's proof-of-concept was run against this evaluator and is blocked. Note that ng-eval does not attempt to be a complete sandbox — see the threat model before evaluating untrusted expressions.
+
 ## Options
 
 ### Per-node timing

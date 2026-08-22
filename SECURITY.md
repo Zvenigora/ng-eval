@@ -419,6 +419,58 @@ describe('Security Tests', () => {
 ⚠️ **Supply Chain**: Security depends on the security of dependencies  
 ⚠️ **Environment**: Host environment vulnerabilities are outside ng-eval's scope  
 
+### Reviewed External Advisories
+
+Advisories raised against related projects, and whether ng-eval shares the defect. Each
+verdict below was reached by running the advisory's own proof-of-concept against this
+evaluator, not by reading the code alone.
+
+| Advisory | Project | Applies to ng-eval? |
+|----------|---------|---------------------|
+| [GHSA-pj3p-xpg7-h7gw](https://github.com/Zvenigora/jse-eval/security/advisories/GHSA-pj3p-xpg7-h7gw) | `@zvenigora/jse-eval` <= 1.10.0 | **No** |
+
+#### GHSA-pj3p-xpg7-h7gw — case-insensitive guard bypass leading to RCE
+
+**The reported defect.** `jse-eval` blocked prototype-chain escapes with the regex
+`/^__proto__|prototype|constructor$/`. It has no `i` flag, so `x.CONSTRUCTOR` was not
+matched; the library's case-insensitive fallback lookup then resolved that spelling back to
+the real `constructor`, and the chain
+
+```js
+x.CONSTRUCTOR.CONSTRUCTOR("return process")().mainModule
+  .require("child_process").execSync("id")
+```
+
+reached `Function` and arbitrary execution. A secondary finding: the alternation groups as
+`(^__proto__)|(prototype)|(constructor$)` rather than `^(__proto__|prototype|constructor)$`,
+so it both over-blocks names that merely *contain* a fragment and under-blocks names that
+merely *end* with one.
+
+**Why ng-eval does not share it.** Three reasons, in increasing order of importance:
+
+1. **No dependency.** ng-eval builds on `acorn` / `acorn-walk` and does not depend on
+   `jse-eval`, `expression-eval` or `jsep`. This is a shared-bug-class question, not a
+   supply-chain one.
+2. **No regex.** `isDangerousProperty` (`visitors/prototype-pollution-guard.ts`) matches
+   against an exact-match `Set` of names. The alternation-grouping defect cannot arise in
+   that form, so neither half of the secondary finding applies.
+3. **The guard tests the resolved key.** This is the load-bearing one. Under
+   `caseInsensitive`, `member-expression.ts` resolves a case variant to the key it actually
+   matched and then re-checks *that* key, not only the key as it was written. So
+   `x.CONSTRUCTOR` resolves to `constructor` and is refused, as are `x.CoNsTrUcToR`,
+   `x["CONSTRUCTOR"]` and the runtime-computed `x[k.toUpperCase()]`.
+
+**Verification.** The proof-of-concept and its variants are pinned in
+`modules/eval-core/src/lib/actual/services/eval.service.case-variant-guard.spec.ts`. That
+spec was confirmed load-bearing rather than assumed: with the resolved-key re-check
+neutered, `x.CONSTRUCTOR` yields `Object` again and five of its tests fail — while the
+**entire 717-test suite that existed before it passed unchanged**. Nothing else covers that
+line.
+
+Under `caseInsensitive: false` the chain fails for an unrelated reason — no case correction
+runs at all, so the variant is simply a missing property — which is why the spec covers
+both option settings separately.
+
 ### Recommended Additional Security Measures
 - **Content Security Policy (CSP)**: Implement strict CSP headers
 - **Input Validation**: Always validate expressions before evaluation
