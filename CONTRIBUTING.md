@@ -81,8 +81,11 @@ Which can be summarized as:
 <footer, optional>
 ```
 
-`<type>` Must be `build | ci | docs | feat | fix | perf | refactor | test`
-This field is used to control the semantic versioning of the release following a merge of the commit
+`<type>` Must be `build | chore | ci | docs | feat | fix | perf | refactor | test`
+
+`chore` is for changes that ship to no consumer — repository tooling such as the agent and skill definitions under `.claude/`.
+
+Nothing parses this field. Versions are bumped by hand (see Releasing below), so the type is a convention for whoever reads the log rather than a release trigger.
 
 ## Releasing
 

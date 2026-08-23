@@ -258,8 +258,11 @@ regress.
 ## Conventions
 
 - Commit messages follow the Angular format: `<type>(<scope>): <summary>` with `<type>`
-  one of `build | ci | docs | feat | fix | perf | refactor | test`. The type drives
-  semantic versioning on merge (`CONTRIBUTING.md`).
+  one of `build | chore | ci | docs | feat | fix | perf | refactor | test`. `chore` is for
+  changes that ship to no consumer — repository tooling such as the agent and skill
+  definitions under `.claude/`. Nothing parses the type: versions are bumped by hand
+  (`CONTRIBUTING.md`), so it is a convention for whoever reads the log, not a release
+  trigger.
 - Prettier config exists but the codebase is not formatted to it; match the surrounding file's style.
 - `tsconfig.base.json` sets `strict: false`, but both libraries override it — so library
   code compiles under strict, and you should narrow `T | undefined` for real rather than
