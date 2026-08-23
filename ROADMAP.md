@@ -538,7 +538,7 @@ which ground it now rests on; and add a spec that pins what actually happens whe
 throws, since none exists — the case above pins the *symptom* the guard prevents, not the
 subscriber's fate. Behavioural if the decision changes, documentation-only if it does not.
 
-## Deferred hygiene — `console` calls in `eval-core`, one of them shipping a state dump
+## Deferred hygiene — `console` calls in `eval-core`, and a dead branch that would leak state
 
 Surfaced during the Phase 6 CLAUDE.md pass, while establishing that "No `console.*` in
 library code" was a rule written as a description. `eval-core` has ~20 `console.*` calls in
@@ -552,18 +552,39 @@ verified by building and grepping `dist/modules/eval-core/fesm2022/`:
 | `actual/services/eval.service.ts:96` | `console.warn('Error cleaning up EvalState:', error)` |
 | `actual/services/eval.service.ts:108` | `console.warn('Error cleaning up Context:', error)` |
 
-**`pattern.ts:83` is the one that matters, and not for the reason it looks like.** It is
-inside `evaluateMemberExpression`, guarded by `if (pattern.type === 'MemberExpression')`,
-and the *next* line is `throw new Error('evaluateMemberExpression is not implemented.')`.
-So it is **not** a hot path — it fires once, on a destructuring pattern containing a member
-expression, immediately before that feature's not-implemented throw. `performance.spec.ts`
-is not the gate for it and there is no measurable cost to recover.
+**`pattern.ts:83` is the interesting one, and it is neither a hot path nor a live
+disclosure.** It is inside `evaluateMemberExpression`, guarded by
+`if (pattern.type === 'MemberExpression')`, and the *next* line is
+`throw new Error('evaluateMemberExpression is not implemented.')`. So it is not per-node
+work: `performance.spec.ts` is not the gate for it and there is no cost to recover.
 
-What it is instead is a disclosure: the second argument is `st`, the whole `EvalState`, so
-the call dumps the caller's entire evaluation context — every value the consumer put in
-scope — to the browser console of any application whose user writes that pattern. It is
-also a debug statement that outlived its debugging session, printing four values nobody
-reads before an exception that carries none of them.
+**It is currently unreachable**, which is what decides its priority. Three checks:
+
+- `evaluateMemberExpression` is reached only through `evaluatePatterns` / `evaluatePattern`,
+  and the only caller of either inside the library is `arrow-function-expression.ts:15`,
+  on an arrow function's parameter list.
+- A `MemberExpression` is not a valid binding target in a parameter list, so acorn rejects
+  every form of it — `(a.b) => 1`, `({x: a.b}) => 1`, `([a.b]) => 1`, `({...a.b}) => 1` —
+  with `Assigning to rvalue`, at `ecmaVersion` 2020 (this library's default), 2022 and
+  `latest`. The `case 'MemberExpression'` branch cannot be entered by any expression that
+  parses.
+- Neither function is exported from the built package — absent from both
+  `types/zvenigora-ng-eval-core.d.ts` and the FESM's export list — so a consumer cannot
+  call them directly to route around the parser.
+
+*Were* it reachable it would be a disclosure rather than a hygiene item, because the second
+argument is `st`, the whole `EvalState` — the call would dump the caller's entire
+evaluation context to the console of any application whose user wrote that pattern. That is
+the reason to delete it rather than leave it as a curiosity, and the reason this entry
+exists at all. It is not a reason to ship a fix release: nothing a consumer can do reaches
+it today.
+
+**Phase 2 is what could make it live.** Statement support brings destructuring declarations
+(`let [a, b] = c`, `let {x} = o`) and assignment destructuring, where a `MemberExpression`
+target *is* legal — `[a.b] = arr` parses. If that work routes through `pattern.ts`, this
+branch becomes reachable with a state dump already in it. So the deletion belongs to
+Phase 2 as a precondition, ahead of any code that widens what reaches these functions,
+rather than as a floating cleanup or a release of its own.
 
 Adjacent, and lower: `modules/eval-core/src/lib/eval-core/eval-core.component.ts` is
 generator scaffold — an empty `EvalCoreComponent` plus a stray `ngEval()` that parses
@@ -571,11 +592,12 @@ generator scaffold — an empty `EvalCoreComponent` plus a stray `ngEval()` that
 the FESM bundle, so this is dead source rather than a published-surface problem. It carries
 a template, a stylesheet and a spec with it.
 
-Scope: delete `pattern.ts:83`, and fold what it was for into the throw's message if
-anything there is worth keeping — the node type is the only part a caller could act on.
-Delete the `eval-core` component with its template, stylesheet and spec. Decide separately
-whether the three service-layer calls become the `isDevMode()` carve-out, a no-op, or stay.
-Behavioural only in that console output changes; no evaluation result moves.
+Scope: delete `pattern.ts:83` — a precondition of Phase 2, per above — and fold anything
+worth keeping into the throw's message; the node type is the only part a caller could act
+on. Delete the `eval-core` component with its template, stylesheet and spec. Decide
+separately whether the three service-layer calls become the `isDevMode()` carve-out, a
+no-op, or stay. None of it is behavioural: no evaluation result moves, and the one call
+that could expose anything cannot currently run.
 
 ## Deferred tooling — `eval-signals` has no CI test configuration
 
