@@ -4,45 +4,57 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-An Nx monorepo containing two publishable Angular libraries under `modules/`:
+An Nx monorepo containing three Angular libraries under `modules/`, versioned
+independently and **all three published to npm** under the `@zvenigora` scope, each with a
+`<name>@<version>` git tag:
 
 - **`@zvenigora/ng-eval-core`** (`modules/eval-core`) — a JavaScript expression
-  parser/evaluator built on `acorn` + `acorn-walk`, exposed as Angular DI services. At
-  0.3.0, not yet published to npm. This is where nearly all the code is.
+  parser/evaluator built on `acorn` + `acorn-walk`, exposed as Angular DI services.
+  Published at **0.3.0**. This is where nearly all the code is.
 - **`@zvenigora/ng-eval-signals`** (`modules/eval-signals`) — expression → Angular
-  `Signal`, built on the first library's published surface. At 0.1.0, not yet published to
-  npm; Phase 3 built it and is complete.
+  `Signal`, built on the first library's published surface. Published at **0.1.0**,
+  by Phase 3.
+- **`@zvenigora/ng-eval-forms`** (`modules/eval-forms`) — Angular form field properties
+  driven by expressions that arrive as strings at runtime, built on the other two.
+  Published at **0.1.0**, by Phase 4. It ships **two entry points from one package**: the
+  shared core at `@zvenigora/ng-eval-forms` and the Reactive Forms adapter at
+  `@zvenigora/ng-eval-forms/reactive`. A `/signals` entry point for Angular's Signal Forms
+  is designed and not built — that is Phase 6.
 
-Phase 1 (the generic evaluation hook API that unblocked the second library) is **complete**,
-shipped in `eval-core` 0.3.0; `docs/side-effects/phase-1-plan.md` is its design record, kept
-as reference rather than as active work. `ROADMAP.md` plans a third library,
-`eval-forms` (Phase 4), and statement support in `eval-core` (Phase 2).
+**Published is a constraint, not a status line.** No exported symbol's shape can change
+without a breaking release, in any of the three; "nothing has shipped yet" no longer
+applies to any of them.
+
+Phases 1, 3 and 4 are complete and their plan documents are design records rather than
+active work. `ROADMAP.md` plans statement support in `eval-core` (Phase 2), async
+signals (Phase 5) and the `/signals` entry point (Phase 6).
 
 ## Commands
 
 Prefer `nx` over the underlying tooling (see `AGENTS.md` for the workspace-wide Nx rules).
 
 ```sh
-npx nx run eval-core:build:production   # ng-packagr build → dist/modules/eval-core
-npx nx run eval-core:test               # jest (jest-preset-angular)
-npx nx run eval-core:lint               # eslint flat config
+# projects: eval-core, eval-signals, eval-forms
+npx nx run <project>:build:production   # ng-packagr → dist/modules/<project>
+npx nx run <project>:test               # jest (jest-preset-angular)
+npx nx run <project>:lint               # eslint flat config
 
-npx nx run eval-signals:build:production   # → dist/modules/eval-signals
-npx nx run eval-signals:test
-npx nx run eval-signals:lint
-
-npx nx run-many -t lint test -p eval-signals eval-core   # both projects at once
+npx nx run-many -t lint test build       # every project, every target
 
 # single test file / pattern — Jest 30, so the flag is plural
 npx nx test eval-core --testPathPatterns=queue.spec
 npx nx test eval-core --testNamePattern="case insensitive"   # note: singular here
 ```
 
-Root scripts: `npm test`, `npm run build` and `npm run lint` are all `nx run-many` and cover
-both projects. `test` moved in Phase 3 step 0, `build` and `lint` in step 1 — which is when
-`eval-signals`' build and lint first passed. CI (`.github/workflows/node.js.yml`) runs
-`npm run build --if-present` and `npm test`, so it covers both projects' build and test
-targets and neither project's lint.
+**Do not filter `run-many` with `-p`.** A project named in `-p` that does not exist is
+**silently dropped** rather than an error, so a stale project list reads as a pass while
+covering less than it names.
+
+Root scripts: `npm test`, `npm run build` and `npm run lint` are `nx run-many -t <target>`
+with no project filter, so each covers all three projects. CI
+(`.github/workflows/node.js.yml`) runs `npm ci`, `npm run build --if-present` and
+`npm test` — so it covers all three projects' build and test targets, and no project's
+lint.
 
 **A green `test` run is not a type-check.** Jest compiles per file through `tsconfig.spec`
 and is more permissive than `tsconfig.lib` — Phase 3 step 3 shipped an `EvalOptions` index
@@ -56,22 +68,35 @@ build before believing a type is sound.
 ## Working from a plan
 
 - Active work is driven by a plan document under `docs/`. **The active plan is
-  `docs/signals/phase-3-plan.md`** — read it before proposing changes; it records findings
-  about this codebase that are not obvious from reading files in isolation.
-  `docs/side-effects/phase-1-plan.md` is the **completed** Phase 1 plan: still worth reading
-  for the hook contract Phase 3 consumes (its § 9 and § 9.1), but it is not the work in
-  progress and its open questions are settled.
+  `docs/forms/phase-6-plan.md`, which does not exist yet** — writing it is Phase 6's first
+  deliverable, and `.claude/skills/step/SKILL.md` already targets it. Until it exists, the
+  brief is `ROADMAP.md` § "Phase 6" and the design on paper is
+  `docs/forms/phase-4-plan.md` § 9 / § 9.1.
+- The completed plans are design records, not work in progress, and each remains the
+  reference for its library — they record findings about this codebase that are not
+  obvious from reading files in isolation:
+  - `docs/side-effects/phase-1-plan.md` — Phase 1, the hook contract (its § 9 and § 9.1).
+  - `docs/signals/phase-3-plan.md` — Phase 3; its § 9 is the downstream contract
+    `eval-forms` is entitled to rely on, and § 3.2.2 the construct-once finding.
+  - `docs/forms/phase-4-plan.md` — Phase 4; its § 9 designs Phase 6 and § 9.1 states
+    Phase 6's one correctness precondition.
+
+  Their open questions are settled unless the document says otherwise. Two of them number
+  a § 9 and a § 9.1 on unrelated subjects, so name the document when citing one.
 - **Execute one numbered step per session.** Do not begin step N+1 in the same session.
 - Run lint and the full test suite after **every** step, not only at the end.
 - A step is done when its stated exit criteria are met, not when the code looks finished.
 - If a step turns out to be wrong, stop and say so rather than improvising a replacement
   design. Plan changes are written into the plan document first.
 
-## Architecture
+## Architecture (`eval-core`)
 
-`src/public-api.ts` is the entire published surface. It re-exports `actual/services`,
-`internal/interfaces`, `internal/functions`, `internal/classes/common`, and
-`internal/classes/eval` — but **not** `internal/visitors`. Visitor signatures are
+Everything in this section is `eval-core` unless it says otherwise. The two downstream
+libraries are far smaller, and their own invariants live in
+`.claude/agents/code-reviewer.md` beside the checklists that enforce them.
+
+`src/public-api.ts` is the entire published surface: it re-exports the service, interface,
+function and class barrels — but **not** `internal/visitors`. Visitor signatures are
 therefore free to change without a breaking release; anything under `classes/` or
 `functions/` is public despite the `internal/` folder name.
 
@@ -107,9 +132,11 @@ multi-exit handling.
 before predicting an event sequence; assuming left-to-right costs a test-fix cycle every
 time.
 
-Every visitor brackets its body with `beforeVisitor` / `afterVisitor` — 19 visitor files,
-20 `beforeVisitor` and 23 `afterVisitor` calls (`identifier.ts` holds two visitor
-functions, `logical-expression.ts` has four `after` exits). Both are **hook dispatchers**:
+Every visitor brackets its body with `beforeVisitor` / `afterVisitor`, and the two do not
+appear in equal numbers: `identifier.ts` holds two visitor functions, and
+`logical-expression.ts`, `binary-expression.ts` and `member-expression.ts` each close on
+more than one `after` exit. Count them with `grep` rather than trusting a number written
+down here — the totals have been recorded wrong twice. Both are **hook dispatchers**:
 each returns immediately unless `st.hasHooks`, then fires the registered `EvalHooks`
 callbacks for that node. They return `void`.
 
@@ -208,8 +235,8 @@ Under `caseInsensitive`, what blocks the case-variant bypass (`x.CONSTRUCTOR`, t
 GHSA-pj3p-xpg7-h7gw in the sibling `jse-eval`) is the *resolved-key* re-check at
 `member-expression.ts:188` — `isDangerousProperty(foundKey)`, testing the key the lookup
 matched rather than the key as written. It is now covered by
-`eval.service.case-variant-guard.spec.ts`; before that spec, the entire 717-test suite
-passed with it neutered. Also note `member-expression.ts:144` and `:188` are both gated on
+`eval.service.case-variant-guard.spec.ts`; before that spec, the entire suite passed with
+it neutered. Also note `member-expression.ts:144` and `:188` are both gated on
 `!isPrimitive`, so the blocklist is skipped for string/number/boolean receivers and
 `"abc".constructor` really does return `String` — see the "Deferred security hardening"
 section of `ROADMAP.md` before touching either line.
@@ -222,6 +249,8 @@ regress.
 
 ## Testing
 
+These apply to all three libraries.
+
 - Specs live next to the code they cover, as `*.spec.ts` or `*.test.ts`.
 - Match the existing per-visitor spec style — read a neighbouring spec before writing a
   new one.
@@ -231,8 +260,8 @@ regress.
   genuinely encodes wrong behaviour, flag it and ask.
 - **A test that would pass without the code it tests is worse than no test** — it reports
   coverage it does not have. For any assertion covering an invariant, break the
-  implementation and confirm the test fails. Step 3's identity-checked `exit` is the
-  pattern: it was confirmed load-bearing by forcing `exit` back to a positional pop and
+  implementation and confirm the test fails. Phase 1 step 3's identity-checked `exit` is
+  the pattern: it was confirmed load-bearing by forcing `exit` back to a positional pop and
   observing **7 failures**. Without that probe, "the suite is green" would have been equally
   true of the broken version.
   Common ways an assertion goes vacuous here: asserting on a hook that was never registered,
@@ -241,19 +270,24 @@ regress.
   the two arms of a comparison, so one producer moves both.
 - **The probe checks the assertion. Check the setup separately.** The failure is usually the
   setup, not the assertion: a fixture in which the discriminating condition cannot arise.
-  Step 4's pairing case gave both signals one shared source, so the "a dependency changed"
-  producer moved *both* of them and the two arms it existed to compare were never distinct.
+  Phase 3 step 4's pairing case gave both signals one shared source, so the "a dependency
+  changed" producer moved *both* of them and the two arms it existed to compare were never
+  distinct.
   So before writing the assertion, describe what the setup would look like if the invariant
   were false, and confirm that setup is reachable from the fixture you have. Then, when you
   break the implementation, read **which** tests went red rather than that the suite did —
-  step 4's pairing case survived a probe that produced three failures, none of them it.
+  that pairing case survived a probe that produced three failures, none of them it.
 
 ## Public API discipline
 
-- New public symbols are exported through the relevant `internal/classes/*/public-api.ts`,
-  which reaches `src/public-api.ts` automatically — not by adding a direct export there.
-- Prefer purely additive changes. Anything that alters an exported symbol's shape needs an
-  explicit callout in the response, a `CHANGELOG.md` entry, and a version bump.
+- In `eval-core`, export a new public symbol through the relevant
+  `internal/classes/*/public-api.ts`, which reaches `src/public-api.ts` automatically —
+  not by adding a direct export there. The downstream libraries have no such nesting:
+  their barrels list modules directly, and `eval-forms` has one barrel per entry point.
+- Prefer purely additive changes. All three packages are published, so altering an
+  exported symbol's shape is a **breaking release**: it needs an explicit callout in the
+  response, a version bump, and an entry in the **root `CHANGELOG.md`** under a heading
+  naming the package (`## [eval-forms 0.1.1]`). There are no per-module changelogs.
 
 ## Conventions
 
@@ -264,33 +298,48 @@ regress.
   (`CONTRIBUTING.md`), so it is a convention for whoever reads the log, not a release
   trigger.
 - Prettier config exists but the codebase is not formatted to it; match the surrounding file's style.
-- `tsconfig.base.json` sets `strict: false`, but both libraries override it — so library
-  code compiles under strict, and you should narrow `T | undefined` for real rather than
-  assuming the loose base config applies. Library code also leans on `unknown` + explicit
-  narrowing rather than `any`. **The two libraries are not equally strict**:
-  `modules/eval-core/tsconfig.json` sets `strict: true`, while
-  `modules/eval-signals/tsconfig.json` adds `noPropertyAccessFromIndexSignature`,
-  `noImplicitReturns`, `noFallthroughCasesInSwitch` and `isolatedModules` on top. The first
-  of those is why `eval-signals` reads options as `options?.['caseInsensitive']` and not
-  `options?.caseInsensitive` — `EvalOptions` is
+- `tsconfig.base.json` sets `strict: false`, but all three libraries override it — so
+  library code compiles under strict, and you should narrow `T | undefined` for real
+  rather than assuming the loose base config applies. Library code also leans on
+  `unknown` + explicit narrowing rather than `any`. All three additionally set
+  `noImplicitOverride`, `noPropertyAccessFromIndexSignature`, `noImplicitReturns` and
+  `noFallthroughCasesInSwitch`; `eval-signals` and `eval-forms` have identical
+  `tsconfig.json`s and add `isolatedModules` on top of that. **The strictness difference
+  between the libraries is `isolatedModules` and nothing else** — do not assume `eval-core`
+  is the lax one. `noPropertyAccessFromIndexSignature` is why options are read as
+  `options?.['caseInsensitive']` and not `options?.caseInsensitive` — `EvalOptions` is
   `Record<string, unknown> | { caseInsensitive: false }`, and dotted access into an index
-  signature is an error there. That is required, not a style slip; don't "tidy" it.
-- **`target` and `lib` disagree: both libraries target `es2022`, but `tsconfig.base.json`
-  pins `lib: ["es2020", "dom"]` and neither overrides it.** So an ES2021+ API is available
-  at *runtime* and absent from the *type system* — `ErrorOptions`, `Error.cause`,
-  `Object.hasOwn`, `Array.prototype.at`, `String.replaceAll` and friends all fail to
-  compile, usually with a "change your `lib`" hint that is not a licence to change it. The
-  fix at the call site is to declare what you need rather than widen the workspace: e.g.
-  `SignalContextWriteError` (`eval-signals`) declares its own `cause` property instead of
-  passing `ErrorOptions` to `super`. If `lib` is ever raised, that member starts shadowing
-  `Error.cause` and `noImplicitOverride` will ask for `override` — the one place a widening
-  would surface.
+  signature is an error under that flag, in all three. That is required, not a style slip;
+  don't "tidy" it.
+- **`target` and `lib` disagree — but only downstream.** All three libraries target
+  `es2022`. `tsconfig.base.json` pins `lib: ["es2020", "dom"]`, and
+  `modules/eval-core/tsconfig.json` **overrides it** to `["dom", "es2022"]` while the other
+  two do not. Re-check with
+  `npx tsc --showConfig -p modules/<project>/tsconfig.lib.json` rather than by reading the
+  files, since three levels of `extends` are involved.
+
+  So **in `eval-signals` and `eval-forms`** an ES2021+ API is available at *runtime* and
+  absent from the *type system* — `ErrorOptions`, `Error.cause`, `Object.hasOwn`,
+  `Array.prototype.at`, `String.replaceAll` and friends fail to compile, usually with a
+  "change your `lib`" hint that is not a licence to change it. Declare what you need at the
+  call site rather than widening the workspace: `SignalContextWriteError` (`eval-signals`)
+  declares its own `cause` property instead of passing `ErrorOptions` to `super`. If that
+  library's `lib` is ever raised, the member starts shadowing `Error.cause` and
+  `noImplicitOverride` will ask for `override` — the one place a widening would surface.
+  **None of this constrains `eval-core`**, where those APIs compile today.
 - Angular 22 / TypeScript 6 / Nx 23. `@zvenigora/ng-eval-core` declares Angular `>=19` as a
   peer dep, so avoid APIs newer than that in shipped code.
-- No `console.*` in library code. One carve-out: a dev-mode-only diagnostic behind
-  `isDevMode()`, for a misuse that fails silently and would otherwise be undiagnosable.
-  Anything reachable in production, or that a consumer could have caught another way, does
-  not qualify.
+- **Add no `console.*` to library code. This is a rule for what you write, not a
+  description of what is there.** `eval-core` has roughly twenty pre-existing calls in
+  source — `memory-manager.ts`, `eval.service.ts`, `parser.service.ts`, `pattern.ts:83`,
+  `eval-core.component.ts:7` — of which four survive tree-shaking into the published
+  bundle. A grep finds all of them; they are inherited, not something a recent change
+  introduced. Do not add to them, and do not clean them up in passing either: they are
+  recorded in `ROADMAP.md` under "Deferred hygiene".
+  The one deliberate call is the carve-out — a dev-mode-only diagnostic behind
+  `isDevMode()`, for a misuse that fails silently and would otherwise be undiagnosable
+  (`eval-signals`' `nested-signal-check.ts:88`, guarded at `:79`). Anything reachable in
+  production, or that a consumer could have caught another way, does not qualify.
 - New evaluator features generally need: the visitor, its registration in
   `recursive-visitors.ts`, a co-located spec, and an entry in the README's
   "ESTree Nodes Supported" list.

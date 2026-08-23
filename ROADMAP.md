@@ -538,6 +538,45 @@ which ground it now rests on; and add a spec that pins what actually happens whe
 throws, since none exists — the case above pins the *symptom* the guard prevents, not the
 subscriber's fate. Behavioural if the decision changes, documentation-only if it does not.
 
+## Deferred hygiene — `console` calls in `eval-core`, one of them shipping a state dump
+
+Surfaced during the Phase 6 CLAUDE.md pass, while establishing that "No `console.*` in
+library code" was a rule written as a description. `eval-core` has ~20 `console.*` calls in
+source. Most are unreachable and tree-shaken; **four reach the published FESM bundle**,
+verified by building and grepping `dist/modules/eval-core/fesm2022/`:
+
+| Site | Call |
+| ---- | ---- |
+| `visitors/pattern.ts:83` | `console.log(pattern, st, callback, arg)` |
+| `actual/services/parser.service.ts:67` | `console.debug('Parser cache cleared…')` |
+| `actual/services/eval.service.ts:96` | `console.warn('Error cleaning up EvalState:', error)` |
+| `actual/services/eval.service.ts:108` | `console.warn('Error cleaning up Context:', error)` |
+
+**`pattern.ts:83` is the one that matters, and not for the reason it looks like.** It is
+inside `evaluateMemberExpression`, guarded by `if (pattern.type === 'MemberExpression')`,
+and the *next* line is `throw new Error('evaluateMemberExpression is not implemented.')`.
+So it is **not** a hot path — it fires once, on a destructuring pattern containing a member
+expression, immediately before that feature's not-implemented throw. `performance.spec.ts`
+is not the gate for it and there is no measurable cost to recover.
+
+What it is instead is a disclosure: the second argument is `st`, the whole `EvalState`, so
+the call dumps the caller's entire evaluation context — every value the consumer put in
+scope — to the browser console of any application whose user writes that pattern. It is
+also a debug statement that outlived its debugging session, printing four values nobody
+reads before an exception that carries none of them.
+
+Adjacent, and lower: `modules/eval-core/src/lib/eval-core/eval-core.component.ts` is
+generator scaffold — an empty `EvalCoreComponent` plus a stray `ngEval()` that parses
+`"1 + 1"` and logs the result. Nothing imports it but its own spec, and it is **not** in
+the FESM bundle, so this is dead source rather than a published-surface problem. It carries
+a template, a stylesheet and a spec with it.
+
+Scope: delete `pattern.ts:83`, and fold what it was for into the throw's message if
+anything there is worth keeping — the node type is the only part a caller could act on.
+Delete the `eval-core` component with its template, stylesheet and spec. Decide separately
+whether the three service-layer calls become the `isDevMode()` carve-out, a no-op, or stay.
+Behavioural only in that console output changes; no evaluation result moves.
+
 ## Deferred tooling — `eval-signals` has no CI test configuration
 
 Surfaced in Phase 3 step 6, while settling the `project.json` divergence between the two
