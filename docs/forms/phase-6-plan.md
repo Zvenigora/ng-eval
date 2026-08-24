@@ -1,10 +1,39 @@
 # Phase 6 Plan — the `/signals` entry point (`@zvenigora/ng-eval-forms/signals`)
 
 **Date**: August 23, 2026
-**Revision**: 1 — initial plan, written against `13bec97`. Five of the six questions raised
-while drafting were settled before this was committed and are recorded as decisions in § 8;
-§ 8.4 (arrays) is the one still open. Two placement calls go opposite ways and § 3.4.1
-states the discriminator, because the pair reads as inconsistent otherwise.
+**Revision**: 2 — amended after review, before step 1. Nine changes; four are design
+reversals and the rest are corrections of fact or of a gate.
+
+Load-bearing, in dependency order:
+
+1. **§ 3.2.1 is new: the registrars are produced by a factory**, `createExpressionRules(model,
+   options?)`. Revision 1 specified them as free functions `(path, expression, options?)`
+   with no parameter carrying the source — and a `LogicFn` cannot recover it, because
+   `RootFieldContext` has no root or parent handle. The rules could not have reached a
+   sibling value at all.
+2. **§ 3.2's source is a snapshot record of per-key `computed`s**, and revision 1's live
+   key set is **withdrawn**. Its notation `() => model()[key]` was not merely shorthand: a
+   bare function in a `SignalContextSource` is passed through *untouched*
+   (`signal-context.ts:198-201`), so the expression would have compared a function object and
+   frozen silently — the exact failure `field-context.ts:66-72` already records.
+3. **§ 6.1 stops offering two harnesses as equivalent.** The `field().hidden()` read-back
+   cannot see over-subscription, because Angular's value equality masks a re-derivation that
+   returns the same boolean. It proves wiring and polarity; only a `LogicFn` invocation count
+   proves reactivity, and the negative case now requires it by name.
+4. **§ 1.2.7 cited `@deprecated` overloads.** `hidden`, `disabled` and `readonly` each ship
+   a `{ when: … }` config overload tagged `@publicApi 22.0` and a positional overload tagged
+   `@deprecated`. Revision 1 quoted the second of each pair and § 7 risk 5 then claimed
+   everything relied on was `@publicApi`. § 7 records how that happened.
+5. **§ 3.1 drops `CompilerService`.** `parse`, `compile` and `defaultParserOptions` are all
+   published free functions, so the whole string → callback → walk chain needs no Angular
+   DI — which means the registrars work at module scope, where `inject()` would have thrown
+   NG0203.
+
+Also: § 4 step 1 gains the `tsconfig.spec.json` edit without which its test target cannot
+pass (§ 4, C5); § 6 gate 3's grep is widened past `call(`; § 3.6 answers what happens to a
+reusable schema; § 8.3 is revisited and **re-affirmed on corrected grounds**.
+
+**Revision**: 1 — initial plan, written against `13bec97`.
 **Target package**: `@zvenigora/ng-eval-forms` (`modules/eval-forms`), **published at
 0.1.0**. This phase adds a third entry point to a released package; it does not create a
 library.
@@ -35,7 +64,7 @@ consumer calls. On `/signals` Angular owns all of it. The adapter's whole job is
 Angular a closure:
 
 ```ts
-hidden(p.country, (ctx) => !toVisible(evaluate('country === "US"', ctx)));
+hidden(p.country, { when: (ctx) => !toVisible(evaluate('country === "US"', ctx)) });
 ```
 
 Everything else in this plan follows from one property of that line: **Angular decides when
@@ -88,7 +117,7 @@ surface, and it is compatible with `eval-core`'s synchronous walk without adapta
 A `SchemaPath` is produced by the schema builder, not addressable by string. So a rule that
 names `country` as text cannot reach `ctx.valueOf`, exactly as § 9 said.
 
-**1.2.3 But `FieldContext` carries three runtime-addressable members § 9 did not account
+**1.2.3 But `FieldContext` carries four runtime-addressable members § 9 did not account
 for.** `:781-794`:
 
 - `readonly value: Signal<TValue>` — the current field's value, reactive.
@@ -120,18 +149,32 @@ given model as the source of truth" and not maintaining its own copy. So the mod
 and the field tree are two views of one thing, which is what makes § 3.2's fork a genuine
 choice rather than a correctness question.
 
-**1.2.7 `hidden`, `disabled` and `readonly` all take a `LogicFn`; `disabled` also takes a
-string.** From `signals.d.ts`:
+**1.2.7 `hidden`, `disabled` and `readonly` each ship two overloads, and only the config one
+is supported.** From `signals.d.ts` — the `@publicApi 22.0` tag sits on the first of each
+pair, `@deprecated` on the second:
 
 ```ts
+// supported — signals.d.ts:32-34, :66-68, :92-94
+declare function hidden<TValue, TPathKind>(path, config: { when: LogicFn<TValue, boolean, TPathKind> }): void;
+declare function disabled<TValue, TPathKind>(path, config?: { when?: string | LogicFn<TValue, boolean | string, TPathKind> }): void;
+declare function readonly<TValue, TPathKind>(path, config?: { when?: LogicFn<TValue, boolean, TPathKind> }): void;
+
+// @deprecated "Passing a function directly to `hidden` is deprecated. Use `{ when: ... }` instead."
 declare function hidden<TValue, TPathKind>(path, logic: LogicFn<TValue, boolean, TPathKind>): void;
-declare function disabled<TValue, TPathKind>(path, logic?: string | LogicFn<TValue, boolean | string, TPathKind>): void;
-declare function readonly<TValue, TPathKind>(path, logic?: LogicFn<TValue, boolean, TPathKind>): void;
 ```
 
-`disabled`'s `boolean | string` return is a **reason**, surfaced through
-`state.disabledReasons`. Noted because a rule returning the string `'false'` disables the
+Two details that matter downstream. **`hidden`'s `when` is required** while `disabled`'s and
+`readonly`'s are optional — the whole config is optional there, since `disabled(p.x)`
+disables unconditionally. And **`disabled`'s `boolean | string` return is a reason**,
+surfaced through `state.disabledReasons` as `DisabledReason { fieldTree, message? }`
+(`_structure-chunk.d.ts:118`). A rule returning the string `'false'` therefore disables the
 field with reason `"false"` — the `toVisible` truthiness trap (Phase 4 § 3.6) in a new shape.
+
+**The config overload does *not* separate the condition from the reason**: `when` is one
+field carrying both. That is why § 8.3's re-affirmation does not rest on it.
+
+`metadata` (`_structure-chunk.d.ts:855`) has no deprecated counterpart, so `evalText` is
+unaffected.
 
 **1.2.8 `text` has a real home: `createMetadataKey` + `metadata`.** `:966` and `:978`:
 
@@ -158,7 +201,23 @@ All four are value exports of the FESM. **`createState` is not** — it is a met
 buildable at all, and § 9's sketch (`compiler.createState(context)`) is therefore not the
 only shape available.
 
-**1.2.10 `createEvalSignal`'s write-error bypass does not travel with the type.**
+**1.2.10 The whole string → walk chain is published as free functions, so no Angular DI is
+needed anywhere.** Extending 1.2.9's search past `call`:
+
+```ts
+declare const parse: (expr: string, options: ParserOptions) => Program | AnyNode | undefined;  // :1804
+declare const compile: (node: AnyNode | undefined) => stateCallback;                            // :1836
+declare const defaultParserOptions: ParserOptions;                                              // :1427
+```
+
+All three are in the FESM's export list. `CompilerService` adds only an LRU over
+`parse` + `compile` (10-minute TTL, 200 entries) and its `simpleCall`; this adapter compiles
+once per rule at registration and holds the callback, so the cache has nothing to do. § 3.1
+therefore drops the service entirely — which also removes an injection-context requirement
+the plan never had a story for, and which `inject()` would have turned into NG0203 for a
+module-scope schema.
+
+**1.2.11 `createEvalSignal`'s write-error bypass does not travel with the type.**
 `modules/eval-signals/src/lib/eval-signal.ts:353` re-throws `SignalContextWriteError`
 regardless of `onError`. That behaviour lives **inside `createEvalSignal`**, which this path
 never calls. `applyErrorPolicy` must re-implement it or a write violation becomes a blank
@@ -240,8 +299,13 @@ The division for this phase:
 | `toVisible`, `toText`, `createFieldContext`, `ExpressionErrorPolicy` | core (shipped) | Already published; both adapters use them |
 | `applyErrorPolicy` | **core** | Pure function over a shipped type, no Angular — § 3.4 |
 | The walk choke point | **adapter** | § 3.3, on a measurement |
-| `CompilerService`, `form()`, `hidden`/`metadata`/`disabled` | adapter | Angular DI and `@angular/forms/signals` |
-| The source adapter | adapter | § 3.2 |
+| `parse` + `compile` (at registration), `hidden`/`metadata`/`disabled` | adapter | `@angular/forms/signals` |
+| The source adapter and the rule factory | adapter | § 3.2, § 3.2.1 |
+
+**`CompilerService` is not used** (1.2.10). The chain is `parse(expr, defaultParserOptions)`
+→ `compile(ast)` at registration, then `EvalState.fromContext` + `call` per invocation, all
+free functions. The adapter therefore requires **no injection context**, which is what makes
+§ 3.2.1's factory callable from module scope.
 
 ### 3.2 The source — model signal or field tree
 
@@ -269,12 +333,83 @@ scope anyway.
 **Decision: A, the model signal.** B is not refuted — it is the route form-state keys would
 take if § 8.2's Phase 7 candidate is ever built, and this table is where that work starts.
 
-`model()` is read **inside** the resolver, not at construction, so the key set is live in
-the same sense `createFieldContext` already is: a key added to the model object resolves on
-the next read. Appearance is still not reactive in the `EvalContext` sense — an expression
-that read a then-missing key subscribed to nothing — but reading `model()` subscribes to the
-model signal itself, so a whole-object replacement (`model.set({…})`) *does* recompute
-every rule. That is a difference from `/reactive` worth a spec.
+#### 3.2.1 The registration shape, and the source it binds
+
+These are one decision, not two. The shape determines what can hold the source; what holds
+the source determines what the source can be; and that determines what a reactivity spec is
+able to assert. Revision 1 settled them separately and got all three wrong.
+
+**No subsection is numbered 3.2.2 here.** `docs/signals/phase-3-plan.md` § 3.2.2 is this
+repo's construct-once finding, cited from `CLAUDE.md` and from the code-reviewer, and a
+second § 3.2.2 in a sibling plan is the ambiguity § 9.1 already suffers from.
+
+##### The shape — a factory, because a `LogicFn` cannot recover the source
+
+Revision 1 specified the registrars as free functions `(path, expression, options?)`. That
+cannot work, and the reason is 1.2.2 and 1.2.3 together: `RootFieldContext` exposes the
+*current* field's node plus three compile-time-token accessors, and **no root or parent
+handle**. A rule on `p.city` evaluating `country === "US"` has no route to `country` from
+inside the `LogicFn`. The source must be closed over at registration or it is unreachable.
+
+```ts
+const rules = createExpressionRules(model);            // binds the model, builds the source
+const s = schema<Model>((p) => {
+  required(p.email);                                   // Angular's
+  rules.evalVisible(p.city, 'country === "US"');       // ours
+});
+const f = form(model, s);
+```
+
+This preserves § 3.5.1's naming argument intact — the three registrars are still three
+separate functions, one per Angular rule, and destructuring keeps `evalVisible` at the call
+site. It is not the aggregate § 3.5.1 rejects: that was one call registering three different
+Angular primitives, and this is one factory returning three registrars.
+
+**The factory is per-form, and that is what bounds the context lifetime.** It closes over one
+model, so it cannot be shared by two forms with different models. A module-scope schema stays
+possible as a function of the rules —
+`const makeSchema = (rules) => schema<Model>(p => …)` — which keeps construction per-form
+without giving up reuse. § 3.6 states the resulting counts.
+
+##### The source — a snapshot of per-key `computed`s
+
+**Revision 1's `() => model()[key]` was wrong, not shorthand.** `SignalContextSource` is
+`Record<string, unknown>` and its resolver is `isSignal(value) ? value() : value`
+(`modules/eval-signals/src/lib/signal-context.ts:198-201`), with the type's own docblock
+saying functions are "passed through untouched." A bare arrow therefore resolves to the
+**function object** — truthy, never called, never tracked — which is precisely the silent
+freeze `modules/eval-forms/src/lib/field-context.ts:66-72` already records for the form half.
+
+What the factory builds instead, once, from `Object.keys(model())`:
+
+```ts
+const source: SignalContextSource = {};
+for (const key of Object.keys(model())) {
+  source[key] = computed(() => (model() as Record<string, unknown>)[key]);
+}
+```
+
+**Per-key propagation survives even though every `computed` reads the whole model.** Angular's
+`computed` memoises on `Object.is` by default, so a write to `zip` re-evaluates each
+computed's property read and propagates only from `zip`'s. A rule naming only `country` reads
+only `country`'s computed, so it does not re-run. That is what makes § 4's negative case
+satisfiable at all — and it is the one mechanism in this plan the whole reactivity story
+rests on, so step 2 asserts it directly rather than inferring it.
+
+The cost is O(keys) cheap property reads per model write, not O(rules), and it is the reason
+this is a snapshot rather than a `Proxy`.
+
+**The key set is frozen at factory time, and revision 1's claim that it is live is
+withdrawn.** A `Proxy` returning memoised computeds would restore liveness, at the price of
+implementing `has`, `ownKeys` and `getOwnPropertyDescriptor` to satisfy `resolve`'s
+`hasOwnProperty` and `Object.keys` (`signal-context.ts:133,142`) and
+`findNestedSignals`'s `Object.keys` (`nested-signal-check.ts:47`). It is not worth it here:
+**a Signal Forms schema addresses fields by compile-time path (`p.city`)**, so a key the
+model gains at runtime has no path that could name it. That is the opposite of `/reactive`,
+where `addControl` is the documented dynamic-form operation and liveness earns its keep.
+
+Recorded as a limitation for the README, in the same place `/reactive`'s key-set caveat
+lives.
 
 ### 3.3 The choke point — core or adapter, measured
 
@@ -286,7 +421,7 @@ against a realistic helper and the difference measured.
 
 ```ts
 export const evaluateRule = (
-  compiled: CompiledRule,
+  compiled: stateCallback,        // eval-core's own published type (§ 5)
   context: EvalContext,
   options?: EvalOptions
 ): unknown => {
@@ -356,7 +491,7 @@ pure function over a type the core already publishes, with no Angular and no `Ev
 and both adapters could reasonably use it. § 3.3's decisive argument does not apply — there
 is no invariant that a second caller would break.
 
-**It must re-throw `SignalContextWriteError` in every mode** (1.2.10). On `/reactive` this
+**It must re-throw `SignalContextWriteError` in every mode** (1.2.11). On `/reactive` this
 came free from `createEvalSignal`; here it does not exist unless written. The failure it
 prevents: an assigning expression is illegal on every recompute with every dataset — a bug
 in the rule's syntax — and a default of `'undefined'` would render it as a permanently blank
@@ -407,11 +542,11 @@ is divergence goes in the core where there can be exactly one of it.
 
 ### 3.5 Which properties ship
 
-| This library | Registers | Coercion | Note |
-| ------------ | --------- | -------- | ---- |
-| `evalVisible` | `hidden(p.x, ctx => !toVisible(…))` | `toVisible` (shipped) | Inverted — § 3.5.1 |
+| This library | Registers (config overload, 1.2.7) | Coercion | Note |
+| ------------ | --------------------------------- | -------- | ---- |
+| `evalVisible` | `hidden(p.x, { when: ctx => !toVisible(…) })` | `toVisible` (shipped) | Inverted — § 3.5.1 |
 | `evalText` | `metadata(p.x, TEXT, ctx => toText(…))` | `toText` (shipped) | `TEXT = createMetadataKey<string>()` (1.2.8) |
-| `evalDisabled` | `disabled(p.x, ctx => …)` | `toVisible`'s rule | 1.2.7 — Angular's returns `boolean \| string` |
+| `evalDisabled` | `disabled(p.x, { when: ctx => … })` | `toVisible`'s rule | § 3.5.2 for the reason |
 
 #### 3.5.1 Naming — `eval<Property>`, registering Angular's own rule
 
@@ -424,8 +559,8 @@ beside `hidden`, `disabled`, `required` and `metadata`:
 ```ts
 const s = schema<Model>((p) => {
   required(p.email);                              // Angular's
-  hidden(p.state, ctx => !ctx.valueOf(p.isUs));   // Angular's, a closure
-  evalVisible(p.city, 'country === "US"');        // ours, a string
+  hidden(p.state, { when: ctx => !ctx.valueOf(p.isUs) });   // Angular's, a closure
+  rules.evalVisible(p.city, 'country === "US"');            // ours, a string
 });
 ```
 
@@ -462,10 +597,33 @@ remove the value from a parent aggregate, and it is declarative rather than a wr
 
 **The one new decision is its return type.** `boolean | string` means a truthy string is
 both "disabled" and "the reason". A rule returning `'false'` would disable the field with
-the reason `"false"` — the same truthiness trap `toVisible` documents. `evalDisabled` coerces
-to `boolean` by `toVisible`'s rule and does **not** surface reasons (§ 8.3): passing the
-string through is free to implement and would make that trap a documented feature. Real
-Angular capability is being dropped, and § 8.3 records the shape that would bring it back.
+the reason `"false"` — the same truthiness trap `toVisible` documents.
+
+#### 3.5.2 The disabled reason — a static option, not the expression's return
+
+§ 8.3 deferred this in revision 1 pending "a schema shape that separates the two." The
+review suggested Angular's non-deprecated config overload is that shape. **It is not**:
+`disabled`'s config is a single field, `{ when?: string | LogicFn<…, boolean | string> }`
+(1.2.7), so the reason still arrives as the *return value* of the same function that decides
+the condition. Checked before acting on it.
+
+What does separate them is ours to build, and it costs one option:
+
+```ts
+rules.evalDisabled(p.zip, 'country !== "US"', { reason: 'ZIP is US-only' });
+// registers: disabled(p.zip, { when: ctx => truthy ? 'ZIP is US-only' : false })
+```
+
+The expression stays boolean and is coerced by `toVisible`'s rule; the reason is authored
+separately as a static string and is never expression-derived. **That is what kills the
+trap** — a rule yielding `'false'` disables the field with the *authored* reason, not with
+the reason `"false"`, because the string never comes from the expression.
+
+**Taken, rather than deferred again.** It is three lines in the registrar, adds no Angular
+surface beyond the `disabled` call already being made, and recovers capability that would
+otherwise be silently dropped at the entry point where Angular owns the semantics. A
+*dynamic* reason — the string coming from a second expression — stays out: it reopens the
+trap and needs its own coercion rule.
 
 ### 3.6 Lifetime — there is nothing to destroy, and that is the finding
 
@@ -474,11 +632,22 @@ Phase 4 § 3.7 is N × M `EvalSignal`s and a `destroy()` the consumer calls. Her
 - No `EvalSignal` is created. No `DestroyRef` registration, no `destroy()`.
 - Angular owns the `FieldTree`'s lifetime and the `LogicFn`s die with the schema.
 
-What the adapter **does** retain is one `EvalContext` per field, plus one compiled callback
-per rule, held in whatever structure registers the rules. That structure is closed over by
-the `LogicFn`s, so it lives exactly as long as the schema does — which is correct and needs
-no teardown API. § 6 requires the plan to be able to state the count and lifetime from the
-diff; that is the whole statement.
+What the adapter **does** retain, per `createExpressionRules` call: **one source record**
+(§ 3.2.1), **one `EvalContext` per field named by a rule**, and **one compiled callback per
+rule**. All three are closed over by the `LogicFn`s.
+
+**Their lifetime is the factory's, and the factory is per-form** (§ 3.2.1) — which is the
+answer to the reusable-schema hazard rather than an accident. A module-scope
+`const s = schema<M>(p => …)` that closed over registration-time contexts would share them
+across every `form()` built from it, and then field A's leaked scope in instance 1 would sit
+ahead of field A's source key in instance 2, permanently. § 3.3's `finally` does not bound
+that: it contains a leak *per walk*, not per form. Because the factory binds one model it
+cannot be shared by two forms, so the hazard is structurally unreachable — and
+`makeSchema = (rules) => schema<M>(p => …)` keeps schema reuse without reintroducing it.
+
+That is the count-and-lifetime statement § 6 asks the reviewer to be able to make from the
+diff. It needs no teardown API: nothing here registers with a `DestroyRef`, and everything
+becomes garbage with the form.
 
 **One context per field, never one shared across fields**, for Phase 4 § 3.4.1's reason,
 which is stronger here: § 3.3's containment bounds a leak to one walk, but a shared context
@@ -518,7 +687,25 @@ verbatim, so this step should re-read them rather than rediscover them.
   **and** widen `exclude` with `signals/**/*.spec.ts` and `signals/**/*.test.ts` in the same
   edit. Phase 4 step 1's finding: `include` widened alone pulls the specs into the library
   compilation where `types: []` leaves `describe` undeclared.
-- **Edit**: `modules/eval-forms/tsconfig.spec.json` — same widening for specs.
+- **Edit**: `modules/eval-forms/tsconfig.spec.json` — the same `include` widening for specs,
+  **and `moduleResolution: "bundler"`**, replacing the `node10` it sets at `:6`.
+
+  Without the second half this step cannot pass its own test target, and the library build
+  hides it: `tsconfig.lib.json` inherits `bundler` from `modules/eval-forms/tsconfig.json:6`,
+  while `tsconfig.spec.json` overrides it to `node10`. `@angular/forms` publishes `./signals`
+  **only** through its `exports` map — there is no `signals/` directory to fall back to — so
+  the spec program cannot resolve it. Measured against this workspace's own `node_modules`:
+
+  | `moduleResolution` | Result |
+  | ------------------ | ------ |
+  | `node10` | `TS2307: Cannot find module '@angular/forms/signals' … there are types at 'types/signals.d.ts', but this result could not be resolved under your current 'moduleResolution' setting` |
+  | `bundler` | clean |
+
+  **This is the step's mechanism risk**: it changes resolution for *every* eval-forms spec,
+  not only the new ones, so the whole existing suite is the gate on it. It is compatible with
+  the `module: "commonjs"` already set there. `modules/eval-signals/tsconfig.spec.json:6`
+  carries the same `node10`, so a cross-project spec would hit it too — out of scope here,
+  worth knowing.
 - **Edit**: `tsconfig.base.json` — add
   `"@zvenigora/ng-eval-forms/signals": ["./modules/eval-forms/signals/src/public-api.ts"]`.
 - **New**: a co-located spec, test-first.
@@ -536,12 +723,22 @@ verbatim, so this step should re-read them rather than rediscover them.
 
 ### Step 2 — The source adapter
 
-- **New**: `signals/src/lib/model-source.ts` — § 3.2 decision A, `WritableSignal<TModel>`
-  → `SignalContextSource`, reading `model()` inside the resolver.
-- **New**: co-located spec, test-first, including the negative case: a key the expression
-  never named changes and the rule does **not** re-run.
-- **Exit**: the source composes with the shipped `createFieldContext` and resolves a key;
-  the recompute-count harness of § 6.1 exists and is used here first.
+- **New**: `signals/src/lib/model-source.ts` — § 3.2.1's snapshot of per-key `computed`s
+  from a `WritableSignal<TModel>`.
+- **New**: `signals/src/lib/rules.ts` — `createExpressionRules(model, options?)`, returning
+  the three registrars. Step 2 ships the factory and the source; the registrars may be stubs
+  that throw until steps 4–5, but the factory's construction is real, because that is what
+  fixes the context count and lifetime of § 3.6.
+- **New**: co-located specs, test-first.
+- **Exit**:
+  - the source composes with the shipped `createFieldContext`, as the **form half**
+    (first argument); the field half is `{}`, matching `phase-4-plan.md:1910`, since a
+    Signal Forms field has no per-field key set of its own;
+  - **per-key propagation is asserted directly**: writing a key the expression does not name
+    leaves the named key's `computed` un-notified. This is the mechanism § 3.2.1 says the
+    whole reactivity story rests on, and it is asserted here rather than inferred from a
+    rule's behaviour two steps later;
+  - the `LogicFn`-invocation harness of § 6.1 exists and is used here first.
 
 ### Step 3 — The choke point and the error policy
 
@@ -559,18 +756,25 @@ walk and § 3.4's bypass is only testable through the same walk.
 
 ### Step 4 — `evalVisible` and `evalText`
 
-- **New**: `signals/src/lib/rules.ts` — the two registrars, naming per § 3.5.1.
-- **Exit**: an end-to-end spec builds a real `form()` with a schema, changes the model, and
-  asserts `field().hidden()` and the `TEXT` metadata signal follow — plus the negative case,
-  a model key the expression never named. One assertion must pin that `evalVisible` inverts,
-  i.e. that a *true* expression yields `hidden() === false`; without it the polarity is
-  untested and a sign flip is invisible.
+- **Edit**: `signals/src/lib/rules.ts` — the two registrars, naming per § 3.5.1, registering
+  Angular's **config** overloads per 1.2.7.
+- **Exit**:
+  - an end-to-end spec builds a real `form()` with a schema, writes the model, and asserts
+    `field().hidden()` and the `TEXT` metadata signal follow — the **wiring and polarity**
+    harness of § 6.1;
+  - one assertion pins that `evalVisible` **inverts**: a *true* expression yields
+    `hidden() === false`. Without it a sign flip is invisible, and § 3.5.1 put the inversion
+    inside the library precisely so no consumer's expression carries it;
+  - the negative case uses the **`LogicFn`-invocation count** and nothing else (§ 6.1):
+    writing a model key the expression never named leaves the count unchanged.
 
 ### Step 5 — `evalDisabled`
 
-- **Edit**: `signals/src/lib/rules.ts`.
-- **Exit**: as step 4, plus a spec pinning that a rule yielding the string `'false'`
-  disables the field (§ 3.5's trap), so the behaviour is recorded rather than discovered.
+- **Edit**: `signals/src/lib/rules.ts`, adding the `reason` option of § 3.5.2.
+- **Exit**: as step 4, plus two specs that exist because of the trap — a rule yielding the
+  string `'false'` **disables** the field, and it does so with the *authored* reason where
+  one was supplied, never with `"false"`. Both record behaviour rather than leave it to be
+  discovered.
 
 ### Step 6 — Docs, README and release
 
@@ -588,11 +792,17 @@ At `@zvenigora/ng-eval-forms/signals`:
 
 | Symbol | Shape |
 | ------ | ----- |
-| `createModelSource` | `<T>(model: WritableSignal<T>, options?: EvalOptions) => SignalContextSource` |
+| `createExpressionRules` | `<T>(model: WritableSignal<T>, options?: ExpressionRuleOptions) => ExpressionRules` — § 3.2.1 |
+| `ExpressionRules` | `{ evalVisible, evalText, evalDisabled }`, each `(path, expression: string, options?) => void` |
+| `ExpressionRuleOptions` | `{ eval?: EvalOptions; onError?: ExpressionErrorPolicy }` |
 | `TEXT` | `MetadataKey<Signal<string \| undefined>, string, string \| undefined>` |
-| `evalVisible` | `(path, expression: string, options?) => void` — registers Angular's `hidden`, inverted (§ 3.5.1) |
-| `evalText` | `(path, expression: string, options?) => void` — registers `metadata(path, TEXT, …)` |
-| `evalDisabled` | `(path, expression: string, options?) => void` — registers Angular's `disabled` |
+
+`evalVisible` registers Angular's `hidden` inverted (§ 3.5.1); `evalText` registers
+`metadata(path, TEXT, …)`; `evalDisabled` registers `disabled` and takes an extra
+`{ reason?: string }` (§ 3.5.2). All three use the **config** overloads (1.2.7).
+
+`createModelSource` is **not** exported. Revision 1 listed it; it has no caller outside the
+factory, and § 3.2.1 makes the factory the only supported way to build one.
 
 At `@zvenigora/ng-eval-forms` (primary, **additive to a released entry point**):
 
@@ -603,9 +813,15 @@ At `@zvenigora/ng-eval-forms` (primary, **additive to a released entry point**):
 **Not exported, deliberately**: `evaluateRule` (§ 3.3). Nothing else in `signals/src/lib/`
 is exported unless it appears above.
 
-**Imported from `eval-core`**: `EvalContext`, `EvalOptions`, `EvalState`, `call`,
-`CompilerService`. From `eval-signals`: `SignalContextSource`, `SignalContextWriteError`.
-Anything beyond these two lists is a finding.
+**Imported from `eval-core`**: `EvalContext`, `EvalOptions`, `EvalState`, `call`, `parse`,
+`compile`, `defaultParserOptions`, `stateCallback`. From `eval-signals`:
+`SignalContextSource`, `SignalContextWriteError`. From `@angular/core`: `computed`,
+`WritableSignal`, `Signal`. Anything beyond these lists is a finding.
+
+**`CompilerService` is deliberately absent** (1.2.10) — revision 1 listed it, and with it an
+`inject()` this plan never gave an injection-context story for. § 3.3's helper takes a
+`stateCallback`, `eval-core`'s own published type; revision 1 invented `CompiledRule`, which
+is a symbol nobody exports.
 
 ---
 
@@ -616,26 +832,53 @@ Every step: `npx nx run-many -t lint test build`, unfiltered. Plus:
 1. **`/signals` shipped**: `dist/modules/eval-forms/package.json` `exports` has `./signals`
    with `types` and `default` naming emitted files; `signals/package.json` agrees.
 2. **Angular 22 confinement**: every `@angular/forms/signals` hit under
-   `modules/eval-forms/` is inside `modules/eval-forms/signals/`.
-3. **One path to the walk**: exactly one `call(` in `modules/eval-forms/signals/`, in
-   `evaluate-rule.ts`.
-4. **`/reactive` unmoved**: its FESM stays at 25,748 bytes until step 6, and its specs stay
-   green throughout.
+   `modules/eval-forms/` is inside `modules/eval-forms/signals/`. Specs are excluded from
+   this grep — `src/lib/field-context.spec.ts` legitimately imports `@angular/core`, and a
+   grep that fires on it teaches the reader to ignore the gate.
+3. **One path to the walk**, and the grep must cover every published entrance, not just
+   `call`. `eval-core` also exports free `evaluate` (`:1819`), `evaluateAsync` (`:1826`) and
+   `compile` (`:1836`), and `CompilerService` publishes `simpleCall` (`:1918`) — which does
+   what `evaluateRule` does **minus the containment**, and which a case-sensitive `call(`
+   does not match. The gate is
+   `\b(call|simpleCall|simpleCallAsync|evaluate|evaluateAsync|simpleEval)\s*\(` plus any use
+   of `EvalService` or `CompilerService`, over non-spec files under
+   `modules/eval-forms/signals/`. Expected: exactly one hit, `call(` in `evaluate-rule.ts`.
+   `compile(` is expected in `rules.ts` and is registration, not a walk — it produces a
+   callback and does not run one.
+4. **`/reactive` unmoved**: its FESM stays at 25,748 bytes **through step 6** — nothing in
+   this phase, including step 6's README and version bump, touches its bundle — and its
+   specs stay green throughout.
 5. **Published core surface**: `dist/modules/eval-forms/types/zvenigora-ng-eval-forms.d.ts`
    gains `applyErrorPolicy` and **nothing else**.
 
 ### 6.1 Specs go through the end-to-end path
 
-As Phase 4 § 6.1, with one substitution that is not optional. **Reactivity is asserted by
-counting rule invocations around a real `form()`, never by inspecting the adapter's API** —
-and the `/reactive` harness does not port, because there is no `EvalSignal` whose recomputes
-can be counted (§ 3.6). The count is of `LogicFn` invocations, or of Angular's own
-re-derivation read back through `field().hidden()`.
+As Phase 4 § 6.1, with one substitution that is not optional: the `/reactive` harness does
+not port, because there is no `EvalSignal` whose recomputes can be counted (§ 3.6).
+
+**There are two harnesses here and they are not interchangeable.** Revision 1 offered them
+as alternatives, which would have let the weaker one stand in for the stronger:
+
+| Harness | Proves | Does **not** prove |
+| ------- | ------ | ------------------ |
+| Read back `field().hidden()` / the `TEXT` signal after a model write | The rule is registered with Angular, its value reaches the field's state, and the polarity is right — **wiring**, end to end | Anything about tracking |
+| Count `LogicFn` invocations across a model write | The rule ran, or did not — **reactivity** | Nothing about the value it produced |
+
+The read-back **cannot see over-subscription at all**: Angular's value equality means a
+re-derivation returning the same boolean is indistinguishable from no re-derivation, so a
+source that re-runs every rule on every keystroke passes it unchanged. It is a wiring
+harness, not a reactivity harness, and describing it as one is how the over-subscription
+probe gets defeated by its own setup.
+
+**So: the negative case — a key the expression never named changes, and the rule must not
+re-run — is asserted by `LogicFn` invocation count, and by nothing else.** Positive cases may
+use either, and should use both where the value matters.
 
 Both vacuity probes from
 [`.claude/agents/code-reviewer.md`](../../.claude/agents/code-reviewer.md) apply: break the
 unwrap, and make the resolver over-subscribe. A spec suite that survives both has no
-reactivity coverage regardless of what it reports.
+reactivity coverage regardless of what it reports — and after the table above, only the
+invocation count can fail the second one.
 
 ---
 
@@ -647,8 +890,20 @@ reactivity coverage regardless of what it reports.
 | 2 | `applyErrorPolicy` swallows `SignalContextWriteError` via a type-only import (§ 3.4) | Step 3 exit criterion asserts the re-throw through a `'undefined'` policy |
 | 3 | `@angular/forms/signals` leaks into the core or `/reactive`; green here, broken for a 19–21 consumer | § 6 gate 2 |
 | 4 | An additive core change alters `/reactive` behaviour; no gate row moves because it is one project | § 6 gates 4 and 5, plus reading the diff |
-| 5 | Signal Forms is new; an API used here changes in 22.x | Everything relied on is tagged `@publicApi 22.0` (1.2.1–1.2.8); pin nothing, re-verify at step 4 |
+| 5 | Signal Forms is new; an API used here changes in 22.x | Each symbol's **own docblock** checked, per overload — see below |
 | 6 | The escaped-closure residual — an arrow that outlives the walk pushes and pops outside any frame | Unsolved in both libraries, not this phase's; stated so it is not mistaken for a regression |
+| 7 | A reusable module-scope schema shares contexts across form instances (§ 3.6) | Structurally unreachable: the factory binds one model. Step 2's construction is where that is fixed |
+| 8 | `compile()` drifts into the `LogicFn` body, re-parsing per derivation | Step 4 exit counts parse/compile calls across N invocations of one rule. `CompilerService`'s LRU would have masked it; § 3.1 drops the service, so there is no cache to hide behind |
+
+**Risk 5's mitigation in revision 1 was false, and how it went wrong is worth recording.**
+It read "everything relied on is tagged `@publicApi 22.0` (1.2.1–1.2.8)". What was actually
+verified was the **export list** — every name present in `signals.d.ts`'s `export {…}` — and
+the **type shapes** of the signatures. What was not read was the **docblock immediately above
+each overload**. `hidden`, `disabled` and `readonly` each ship two overloads whose signatures
+both type-check; the `@publicApi 22.0` tag sits on the config one and `@deprecated` on the
+positional one, and revision 1 cited the positional one for all three. A name being exported
+and a signature compiling are both true of a deprecated overload. The check that
+distinguishes them is reading the comment, per symbol, per overload.
 
 ---
 
@@ -676,12 +931,17 @@ does not exist at `/reactive`, so shipping it now would ship an asymmetry:
 the same thing at both entry points. **Phase 7 is not yet in
 [`ROADMAP.md`](../../ROADMAP.md)** — adding it is a separate docs change, not this phase's.
 
-**8.3 — Should `disabled` surface its reason? Settled: no, this phase.** Angular's `disabled`
-accepts `boolean | string`, the string becoming a reason on `state.disabledReasons` (1.2.7).
-`evalDisabled` coerces to boolean by `toVisible`'s rule. Passing the string through is free
-in implementation and re-introduces the `'false'` trap as a *feature* — a rule yielding the
-string `'false'` would disable the field with reason `"false"`. Revisit only with a schema
-shape that separates the two, not by widening the return type.
+**8.3 — Should `disabled` surface its reason? Revisited in revision 2. Settled: yes, as a
+static option (§ 3.5.2).** Revision 1 deferred it pending "a schema shape that separates the
+two", and the review proposed Angular's non-deprecated config overload as that shape.
+**That premise does not hold** — `disabled`'s config is a single field,
+`{ when?: string | LogicFn<…, boolean | string> }` (1.2.7), so the reason still arrives as
+the return value of the function that decides the condition. Checked before acting on it.
+
+The shape that does separate them is ours: a static `reason?: string` on `evalDisabled`,
+never expression-derived, with the expression staying boolean. § 3.5.2 has it. So revision 1's
+stated precondition is now met — by a different mechanism than the one proposed — and the
+capability is recovered rather than dropped. A *dynamic* reason remains out.
 
 **8.4 — Arrays. Still open, and the only one.** `applyEach` and `ItemFieldContext` exist, and
 a per-row rule would read `ctx.index` (1.2.3). Unlike Phase 4's `FormArray`, the shape is
