@@ -1,6 +1,329 @@
 # Phase 6 Plan — the `/signals` entry point (`@zvenigora/ng-eval-forms/signals`)
 
-**Date**: August 23, 2026
+**Date**: August 24, 2026
+
+**Revision**: 9 — amended after a review of revision 8, and **the last revision before step 1**.
+No spike; no design changed. Three blockers, four warnings, and one decision revision 8 had
+described instead of making.
+
+1. **C1 — `acorn` survived revision 8's own kill, in two normative sections.** § 2's scope list
+   and § 5's import justification both still said `acorn` *and* `acorn-walk` are added, while
+   the header, § 3.8 and step 6 said `acorn-walk` alone. Step 6's manifest criterion checked
+   *presence* only, so a manifest carrying both passed it; it now has an absence arm.
+2. **C2 — "the memo is per form" survived in step 2**, the step that establishes the memo's
+   lifetime, plus § 1.2.10's compile count. Revision 8's sweep caught three sites of this and
+   missed three.
+3. **C3 — § 5's `guardIdentifiers` row named a type `eval-core` does not export.** `AnyNode` is
+   imported from `acorn` inside the published `.d.ts` and is absent from its export clause,
+   which publishes `AnyNodeTypes`. Written as stated, the signature forces
+   `import type { AnyNode } from 'acorn'`, `@nx/dependency-checks` flags an undeclared `acorn`,
+   and the shortest fix is the peer § 3.8 rejects — C1 and C3 converging on the manifest the
+   design refuses. Now `ReturnType<typeof parse>`, which needs no import.
+
+**W2 is decided rather than described, in § 3.8.1: the guard over-rejects, deliberately.** An
+arrow's own frame *is* safe — `EvalContext.get` resolves `scopes` at step 1 and `original` at
+step 2, so a bound `valueOf` shadows `Object.prototype` and resolves correctly — while a model
+key is unsafe for the mirror-image reason, arriving through `lookups` at step 4, *behind*
+`original`. Rejecting a bound parameter therefore refuses an expression that would have worked,
+and it is taken anyway: the alternative is a second copy of `eval-core`'s frame logic that must
+track two scope-pushing visitors this phase cannot change and fails by *under*-rejecting when
+it drifts, and the costs are asymmetric — a named error at registration against Q11's silently
+rendering field. Step 6 gains the arm that separates the two implementations, which both passed
+revision 8: **`'[1].map(valueOf => valueOf)'` throws**, and `'[1].map(valueOf => 1)'` registers,
+because `acorn-walk` never visits a binding as an `Identifier`.
+
+**W1, W3, W4**: gate 6's absent-list gains `guardIdentifiers`, which was revision 8's stated
+reason for adding the § 5 row and was left undone; **risk 13** is new, covering step 6's throw
+path and the `/reactive`-vs-`/signals` timing difference — the only new failure mode this phase
+introduces had no row, so § 7's audit ran to completion over a table that did not mention it;
+and step 7's README deliverable becomes the three edits it actually is, since the "designed but
+not built" claim is prose at `README.md:53-55` and not a row.
+
+**§ 0.2.2's runs are now recorded in the document.** Six sweeps, with their greps and their
+survivors, including the two revision 8 owed and did not run. That omission *is* C1 and C3, and
+it made revision 8 the fourth consecutive revision to leave its own claim standing. Both live
+survivors sat in normative sections, which is the difference between a stale sentence costing a
+reader a moment and one sending an implementer to add a dependency the design rejects.
+
+**Revision**: 8 — amended after a review of revision 7. No spike: all three blockers were
+internal inconsistencies or ungated criteria, none of them a mechanism question.
+
+1. **C1 — § 3.2.1 still asserted the premise § 3.6.1 and risk 7 refute.** Revision 7 rewrote
+   § 3.6 and risk 7 around Q7/Q9 and left the section it reasoned *from* saying "it closes over
+   one model, so it cannot be shared by two forms with different models". § 3.2.1 is what
+   steps 2 and 4 are implemented from, so an implementer reading it and not § 3.6.1 would
+   conclude Q9 cannot happen and that step 4's characterisation test covers an impossible case.
+   Rewritten, with the two counts that inherited the error: **contexts and compiled callbacks
+   are per rule per `form()`**, not per rule, and **the memo is per factory**, which equals per
+   form only in the supported shape.
+2. **C2 — step 6's guard was gated through one registrar of three.** The deliverable says every
+   registrar calls it; every criterion went through `evalVisible`. The gap it left is § 3.8's
+   worst case: `evalText(p.city, 'constructor')` renders `"function Object() { [native code] }"`
+   into the field through `toText`, with the suite green. Now asserted through all three.
+3. **C3 — step 6's manifest criterion passed before its own deliverable existed.** `npm ls
+   acorn-walk` resolves from the workspace root today: the root declares `acorn-walk` directly
+   and has no `workspaces` field, so `modules/eval-forms` is not an installed package. Replaced
+   with a read of the artifact a consumer receives — `dist/modules/eval-forms/package.json`'s
+   `peerDependencies` — which ng-packagr populates and which gate 1 already opens. § 0.2.1's
+   own defect, on the newest step in the plan.
+
+**§ 0.2's escalation rule fired, and § 0.2.2 is the check it promised.** C1 is the *third*
+occurrence of a fix that left its own claim standing elsewhere — one page away in revision 4,
+one line away in revision 6, one section upstream in revision 7 — and revision 6 wrote that a
+third would make it a check of its own. **The kill-list check**: quote the sentence being
+killed, grep its most distinctive three-to-five words across the whole file, and decide every
+hit as rewritten, deleted, or marked history. Run against C1's own fix it immediately found
+three more survivors of the same claim — two "memo per form"s and a context count — which is
+the second time in two revisions that a check caught its author within minutes of being
+written.
+
+**W1–W5, one line each.** Step 7 gains the README `Versions` block, which quotes
+`peerDependencies` verbatim and would otherwise reproduce a manifest step 6 changed; step 7's
+exit gains a real gate on the version and the CHANGELOG heading, where it had "all gates green"
+and no gate reads either; § 5's module-private table gains `guardIdentifiers`, without which
+gate 6 cannot name it as absent; step 6's `field-schema.ts` citation is corrected to `:172-178`;
+step 3's § 3.2.1 cross-reference is corrected to the second bullet. **`acorn` is dropped from
+the peer addition** — `acorn-walk@8.3.5` declares it as a real dependency and this adapter
+imports no `acorn` symbol, so only `acorn-walk ^8.3.0` is added.
+
+**Revision**: 7 — amended after a review of revision 6, plus a **fourth spike**. One Critical
+and five Warnings. The Critical was a containment claim resting on an argument the type
+signatures contradict, and measuring it retired that hazard and uncovered a worse one nobody
+had named.
+
+**C1 — the reusable-schema question, measured (Q7–Q9), and the answer is not the one either
+side of the argument expected.**
+
+1. **Q7 refutes the old premise.** `form()` accepts the **same** model signal twice — no throw,
+   two distinct trees — so "the factory binds one model, therefore it cannot be shared by two
+   forms" never bounded anything. Revisions 1–6 declared the context-sharing hazard
+   "structurally unreachable" on that.
+2. **Q8 retires the hazard anyway, on measured ground.** The schema body runs **0** times at
+   `schema()` and **once per `form()`**: one reused schema, two forms → 2 registrar bodies, 2
+   contexts, 2 distinct identities. Angular re-invokes; contexts are never shared across form
+   instances. § 3.2's "the schema runs *during* `form()`" is now measured rather than asserted.
+3. **Q9 is what replaces it, and it is worse.** A schema built from
+   `createExpressionRules(modelA)` and reused for `form(modelB, s)` re-runs its registrars and
+   every rebuilt rule still reads **model A** — form B renders against form A's data, silently,
+   on every rule. Flipping `modelA` moved **both** forms. § 3.6 is rewritten around this,
+   risk 7 with it, `makeSchema = (rules) => schema(…)` is promoted from aside to the documented
+   pattern, and step 4 pins the behaviour so a change to it goes red.
+
+**W1 is a design decision and is taken, not deferred.** Q10/Q11 measured it: `constructor`,
+`toString`, `valueOf` and `hasOwnProperty` resolve off `Object.prototype` before § 3.2.1's
+resolver ever runs, **identically with and without `caseInsensitive`** — so this is *not*
+GHSA-pj3p-xpg7-h7gw's case-variant bypass, and saying so matters because the family resemblance
+invites the stronger claim. `CONSTRUCTOR` resolves `undefined` in both modes, so under an
+option whose purpose is that spelling stops mattering, spelling decides the answer. End to end,
+`evalVisible(p.city, 'constructor')` **renders the field** on a key the model does not have.
+Phase 4 rejected such names at schema construction; **§ 3.8 rejects them at registration, on
+the *expression* rather than the field name**, because that is the input this entry point
+actually owns and it is the complete subject — every expression is known at registration
+whatever the model does later. New **step 6**, `acorn`/`acorn-walk` into `eval-forms`'
+`peerDependencies`, docs and release become step 7. § 8.2 is the reason it ships here:
+`/reactive` throws on this today, and shipping the silent side of that asymmetry is worse than
+shipping neither.
+
+**W2–W5**, in one line each: step 2's "both sources are asserted empty" named no reachable
+observable and is restated as `lookups.length === 3` plus a pop (W2 — and § 0.2 now records
+this as the **second** occurrence of its scoped-fix hazard, with the rule that a third makes it
+a check of its own); `field` is not an export of `@angular/forms/signals` and the read is
+`f.city().hidden()`, corrected throughout with the finding recorded at § 1.2.5 (W3); § 6.1's
+sequence disambiguates *sequence* step 2 from *work-breakdown* step 2 (W4); risk 6's cell now
+opens with "Accepted" so § 7's audit is exact (W5).
+
+**§ 0.2.1's audit is re-run to completion, and it caught the section that wrote it.** Revision 6
+applied the check to § 7's table alone and reported eight gated rows; the true count was
+**seven**, because risk 7's mitigation named a deliverable — the check's own headline case,
+missed one row past where the paragraph stopped. Run to completion it also produced W2 and W3.
+That is recorded in § 0.2.1 as the strongest thing available for it: a rule whose first
+application finds its own author's miss, within a day, is doing work rather than describing it.
+Question 3 gains a third half — *does the import compile?* — which is the surface `field`
+slipped through.
+
+**Revision**: 6 — amended after a review of revision 5, plus a **third spike**: C1 asked for
+§ 6.1.1's instrument to be re-measured under the layout § 3.4.1 actually specifies, where
+`applyErrorPolicy` sits in the core and the adapter reaches it through the
+`@zvenigora/ng-eval-forms` **barrel** rather than a sibling `./error-policy`.
+
+Five C-series findings and seven warnings. The theme of four of them is one thing: **a
+criterion, gate or mitigation that names something it does not actually test.** Revision 5 was
+the revision that fixed three instances of that pattern; it shipped four more.
+
+**The spike first — the instrument choice survives the change of seam; two sentences about it
+do not.**
+
+1. **M4 and M6 reproduce at identical numbers.** M1's stage-by-stage 0/0 → 1/1 → 1/1 → 2/2
+   holds for all three mocked instruments; M6 — the rule that skips the walk — is again
+   ground truth **1**, `applyErrorPolicy` **1**, `evaluateRule` **0**, `call` **0**. The
+   decision stands and the specifier changes.
+2. **M7 is new, and it is what § 3.5's invariant actually rests on** (C2). Moving the guard
+   *ahead* of the wrapper reads **0** against a ground truth of **1**. M6 had put the guard
+   *inside* an outermost wrapper, where the invariant holds — so revision 5 cited, three times,
+   a measurement whose arrangement is the one that works. § 0.2 gains the general form: **a
+   measured result restated as a principle can lose the property it measured, and this
+   restatement inverted the observable.** § 3.5, § 6.1.1 and risk 12 now cite M7.
+3. **Revision 5's account of the bare auto-mock is corrected by the same run.** Under the
+   barrel, `jest.mock('@zvenigora/ng-eval-forms')` with no factory also auto-mocks
+   `createFieldContext`, so registration throws
+   `TypeError: Cannot read properties of undefined (reading 'lookups')` — loud, not the silent
+   dead rule revision 5 described from the sibling seam.
+
+**Then the two blockers that are not about the spike, and both are criteria with nothing
+underneath them.**
+
+4. **C3 — step 2 required an `EvalContext` its own deliverables could not build.** Its first
+   and last exit criteria need a live context, and revision 4 moved context construction into
+   the registrars, which step 2 ships as stubs that throw. `model-source.ts` therefore gains
+   **named exports** — `createModelSource(model, options)` returning
+   `{ keySignal, createRuleContext }`, module-private to the entry point (§ 3.2.1, § 5, W5).
+   `createRuleContext()` is the subject the criteria construct; `keySignal` is what the
+   memo-identity criterion compares. This is a scope-and-naming call and § 0.2 says settle
+   those by argument, so it is settled by argument and needed no measuring.
+5. **C4 — risk 12 named a gate that does not gate it.** Both nestings of the coercion satisfy
+   "an ordinary error resolves per `onError`" and "an assigning expression throws out of
+   `f.city().hidden()`". Step 4 gains the assertion that does separate them: under
+   `'undefined'`, a throwing expression must leave `f.city().hidden()` **`true`** — the
+   coercion ran on the policy's output. The guard half stays with the counting spec, where
+   M7's 0-against-1 is what makes it able to fail.
+6. **C5 — step 4's compile-once criterion gains an instrument and an N.** A delegating mock of
+   `@zvenigora/ng-eval-core` counting `parse`/`compile` — measured coexisting with the
+   `LogicFn` counter in one file — and the count is hung off § 6.1's sequence, so "across N
+   invocations" is enforced by reads: `compile` 1 while invocations move 1 → 1 → 2.
+
+**The seven warnings.** W7 is the one with a section of its own: **`jest.mock` hoists to *file*
+scope, so the barrel mock needs its own spec file.** Step 4 stacked six cases in one and would
+have hoisted the mock over all of them; it now ships `rules.spec.ts` and
+`rules.invocation-count.spec.ts`. All four of § 6.1.1's mechanics were already on this
+repository's shelf, in `reactive/src/lib/field-schema.teardown-throw.spec.ts`, with the reasons
+in its comment — the **second** mechanic rediscovered rather than borrowed, so § 0.1 gains both
+the row and the rule: **check the shelf before spiking, not after.** The other six:
+
+- **W1** — § 6.1.1 said the `LogicFn` count is required "for every negative case", twice, while
+  § 6.1's table and step 2 both assign step 2 the third harness. Restricted to steps 4 and 5.
+- **W2** — gate 3's intro scoped its greps to `signals/`, its own table rows to
+  `modules/eval-forms/`, and its refinement said explicitly that the path is the whole package.
+  Risk 1 repeated the narrow one. The narrow spelling misses the case the refinement says the
+  gate exists for; `signals/` is gone from both.
+- **W3** — `TEXT` was published surface in § 5 with no step producing the barrel line that
+  publishes it. Step 1's `public-api.ts` deliverable is now `export * from './lib/text-key';`.
+  The same defect revision 5 fixed for the other three symbols.
+- **W4** — nothing gated the `/signals` published surface at all: gate 5 reads the *primary*
+  entry point's `.d.ts`, and step 4 pointed at it for exports that never reach it. **Gate 6**
+  is new, from step 1, over `…-signals.d.ts`.
+- **W5** — step 2 compared `keySignal` by identity while neither § 3.2.1 nor § 5 stated
+  `model-source.ts`'s export shape. Stated in both, as part of C3.
+- **W6** — § 6.1's six-step sequence was written in `f.city().hidden()` terms and handed to
+  step 2, which has no form, no field state and no `LogicFn`. Restated generically, with a
+  table giving each harness its own **read**.
+
+**And § 0.2 gains a third failure mode, § 0.2.1, because four of the twelve findings are one
+defect on three surfaces.** C3, C4, W3 and W4 are each an obligation attached to nothing that
+can go red — a mitigation naming a criterion its own failure would pass, an exit criterion
+whose subject its step does not build, a published symbol with no line publishing it and no
+gate reading the `.d.ts`. Risk 8 sat in that state for four revisions and risk 12 for five, so
+this is not one revision's slip; and revision 5 fixed three instances of it while shipping
+four, which is why it is written as a **check** — *name the thing that goes red, and if the
+answer is a section number, it is not gated* — rather than as advice to be careful. § 7's table
+is audited against it below the risks.
+
+**Revision**: 5 — amended after a scoped review of revision 4, plus a second spike. Twenty
+findings applied; one of them (the `LogicFn` instrument) was a mechanism question and was
+measured rather than decided, per § 0.2.
+
+The four that were blockers:
+
+1. **Step 2's first exit criterion contradicted § 3.2.1** — it still said the source composes
+   "as the form half (first argument)", the record shape Q4 killed. Revision 4 rewrote the
+   section and left the same claim standing one page away. § 0.2 gains the one-line hazard:
+   **grep for the claim, not for the section.**
+2. **§ 3.5 now shows the `LogicFn` body**, `applyErrorPolicy` wrapping `evaluateRule`.
+   `onError` was published in § 5 and wired up nowhere, so a registrar calling `evaluateRule`
+   bare passed every gate while an assigning expression rendered a blank field.
+3. **Step 3's write-error criterion was satisfiable by an `applyErrorPolicy` with no `catch`**
+   — the error propagated from never having been caught. It gains the second arm.
+4. **Q5 and Q5b are in the table.** They were measured with the other seven and carried in
+   prose for a whole revision, cited three times, in the revision that introduced § 0.2.
+
+**§ 6.1.1 is new and answers what no revision had said: how a spec obtains the `LogicFn`
+count** when `rules.ts` builds the closure and hands it to `hidden()`. Four candidate
+instruments, graded against a ground-truth counter. All four agree on every case this plan
+already had; **M6** — a rule that skips the walk — separates them: ground truth 1,
+`applyErrorPolicy` 1, `evaluateRule` 0, `call` 0. The `evaluateRule` mock counts *walks*, and
+a negative case built on it would pass while the rule was running. The instrument is
+`applyErrorPolicy`, which is also the seam blocker 2 needs.
+
+The other sixteen were corrections of fact or of an exit criterion: § 1.2.7's `hidden` and
+`disabled` line ranges were transposed, `tsconfig.spec.json`'s `node10` is line 8 not 6,
+`field-context.ts:9-11` was correct before revision 4 "fixed" it, `eval-signal.ts:353-354`
+re-*wraps* rather than re-throws, no step listed the `signals/src/public-api.ts` edit that
+publishes § 5's surface, two README obligations § 3.2.1 created were in no step, risk 8 had
+named a step-4 criterion since revision 1 that step 4 never contained, and § 6's gates 3 and
+5 cannot pass before step 3.
+
+**Revision**: 4 — amended after a **spike**, before step 1. Revision 3 was reviewed, found to
+have reintroduced the freeze class it withdrew, and then *measured* rather than re-argued. A
+throwaway jest project built both candidate sources against a real `form()` + `schema()` +
+`hidden(path, { when })` and answered the questions this section had been guessing at. The
+spike was deleted; § 3.2.1's table is what it produced.
+
+What changed, in dependency order:
+
+1. **§ 0.2 is new, and it is the constraint that supersedes the others in force**: a question
+   about *mechanism* is settled by measurement, not by review. Every part of this plan
+   settled that way — § 3.3's choke point, `phase-4-plan.md` § 3.4.2's A/B fork — has held
+   across three revisions, while every part settled by reasoning has produced a silent
+   freeze. § 0.1's borrow rule stands and is now second in line: borrowing narrows the
+   guessing, and revision 3 proved it does not eliminate it.
+2. **§ 3.2.1's source keeps its memo in a private `Map` and resolves the property inside the
+   computed** (Q4). Revision 3 wrote the memo back into the record upstream's `resolve`
+   enumerates, and under `caseInsensitive` that entry becomes an exact match on the second
+   read and permanently shadows the key that was working. **Observed, not argued.**
+3. **§ 3.6 and step 3: one `EvalContext` per rule, not per field.** Q6 measured the
+   `SchemaPath` token as identical across two property accesses, so per-field keying is
+   available; it is declined for a stated reason rather than an assumed impossibility, and
+   step 3's containment exit becomes the failure that actually happens — the *same* rule
+   invoked twice on one context.
+4. **§ 6.1 gains the positive arm** the count needs to be worth anything, and § 6 gate 3 is
+   tightened past its own heading (the single `EvalState.fromContext` must be inside
+   `evaluateRule`'s body, and the grep covers all of `modules/eval-forms/`).
+5. Corrections of fact throughout: the `findNestedSignals` justification for the seed loop
+   was void, the resolver sketch did not type-check against `EvalLookup`, § 5's import list
+   made the adapter's own reason for existing a finding, and three citations pointed near
+   their claims rather than at them.
+
+**Revision 3's design reversal is narrowed rather than repeated.** Q3 measured revision 3's
+shape resolving a late key correctly in the case-sensitive path — the case C2 was raised
+about. It failed only under `caseInsensitive`. The record below says that, because "the whole
+fix was wrong" would be the fourth wrong thing this document asserted about its own source.
+
+**Revision**: 3 — amended after a second review, before step 1. Four changes, one of them a
+design reversal, plus one standing constraint that is new to this document:
+
+1. **§ 0.1 is new and governs the whole plan**: prefer a mechanism this repository already
+   exercises over one derived for the plan, and when a section deviates, say what makes the
+   case different. It is written in because of this document's own history — revisions 1 and
+   2 each introduced a *silent-freeze* defect, and each fix was invented where the repo
+   already had the mechanism on the shelf.
+2. **§ 3.2.1's source materialises keys at resolve time** — the direction stands and the
+   *implementation* is superseded by revision 4 item 2, which moves the memo out of the
+   source record. Revision 2's snapshotted key set is **withdrawn** (C2). The reasoning that produced it is corrected in place rather
+   than dropped: the argument was about *paths* and the failure is about *values*. Steps 2
+   and 4 gain the fixture that makes it reachable, because every fixture in the plan as
+   written used a fully-populated model and so none of them could have caught it.
+3. **§ 6.1 states the negative case as a sequence** — read, record, write an unnamed key,
+   read again, count unchanged — and records the general form beside it (C1). "By the count
+   and by nothing else" was written as a vacuity guard and had become the clause forbidding
+   the read-back that makes the count mean anything: an assertion discipline can itself have
+   a vacuous setup.
+4. **§ 6 gate 3 counts `EvalState` constructions, not call-site names** (W1). `compile`
+   returns `evaluate.bind(null, node)` (`modules/eval-core/src/lib/internal/functions/compile.ts:16`),
+   so a rule holding `compiled` and writing `compiled(state)` runs a full uncontained walk
+   while matching no name-based regex. Every walk needs a state; state construction is the
+   thing worth counting.
+
+Revision 2's changes stand except where item 2 above supersedes one, and are kept below.
+
 **Revision**: 2 — amended after review, before step 1. Nine changes; four are design
 reversals and the rest are corrections of fact or of a gate.
 
@@ -11,12 +334,13 @@ Load-bearing, in dependency order:
    with no parameter carrying the source — and a `LogicFn` cannot recover it, because
    `RootFieldContext` has no root or parent handle. The rules could not have reached a
    sibling value at all.
-2. **§ 3.2's source is a snapshot record of per-key `computed`s**, and revision 1's live
-   key set is **withdrawn**. Its notation `() => model()[key]` was not merely shorthand: a
+2. **§ 3.2's source is a record of per-key `computed`s** — the record stands, and its
+   *snapshotted key set* is superseded by revision 3 item 2. Revision 1's notation
+   `() => model()[key]` stays **withdrawn**, and it was not merely shorthand: a
    bare function in a `SignalContextSource` is passed through *untouched*
    (`signal-context.ts:198-201`), so the expression would have compared a function object and
-   frozen silently — the exact failure `field-context.ts:66-72` already records.
-3. **§ 6.1 stops offering two harnesses as equivalent.** The `field().hidden()` read-back
+   frozen silently — the exact failure `field-context.ts:60-64` already records.
+3. **§ 6.1 stops offering two harnesses as equivalent.** The `f.city().hidden()` read-back
    cannot see over-subscription, because Angular's value equality masks a re-derivation that
    returns the same boolean. It proves wiring and polarity; only a `LogicFn` invocation count
    proves reactivity, and the negative case now requires it by name.
@@ -74,6 +398,299 @@ it runs, how often, and in what reactive context.** We supply a function; we do 
 **If a consumer's conditions are known at compile time, they should write the `LogicFn`
 themselves and not install this.** Same sentence as § 0 of Phase 4, and it matters more
 here, because on this path the thing we replace is four words of TypeScript.
+
+### 0.1 The mechanism-reuse constraint — borrow it, or say what makes this different
+
+**Prefer a mechanism this repository already exercises over one derived for this plan. Where
+a section deviates, it must say what makes its case different.** This is a standing
+constraint on every section below and on every step that implements one, not a summary of
+the two decisions that happened to prompt it.
+
+It is written in because of this document's own revision history. Two rounds of review have
+each found a **silent-freeze** defect, and each of those defects was introduced by the
+previous round's fix:
+
+| Revision | The mechanism it derived | The mechanism already on the shelf | How it failed |
+| -------- | ------------------------ | ---------------------------------- | ------------- |
+| 1 | `() => model()[key]` as a `SignalContextSource` value | `createSignalContext`'s resolver, which unwraps a `Signal` and passes a bare function through untouched (`signal-context.ts:198-201`) | The expression compared a function object — truthy, never called, never tracked. `field-context.ts:60-64` records that exact failure, for the form half, in a docblock |
+| 2 | A record of per-key `computed`s snapshotted from `Object.keys(model())` | `createFieldContext`'s two resolvers, which "close over their source and read it at resolve time, so a key added to either after construction resolves" (`field-context.ts:9-11`) | An expression naming a key the model does not have *yet* has no computed to read, subscribes to nothing, and never re-runs when the key arrives (§ 3.2.1, C2) |
+| 3 | The same resolver, **borrowed** this time — but memoising into the record it shares with upstream | `field-context.ts:84` pushes a resolver that only ever **reads** `formSource` | Under `caseInsensitive`, the memo entry is spelled as the *expression* wrote it, so `resolve`'s scan (`signal-context.ts:127-144`) finds it as an exact match on the second read and permanently shadows the model's own key. Measured: § 3.2.1, Q4 |
+
+The first two share a shape, and it is the shape that makes the constraint about
+**provenance** rather than about being more careful. Each derived mechanism was *reasoned*
+correct, and each time the reasoning was sound about the thing it considered and silent about
+the thing it did not: revision 1 reasoned about how a value is read and not about what a
+`SignalContextSource` does with a function; revision 2 reasoned about which *fields* a schema
+can address and not about which *values* an expression can name. Being more careful is what
+produced revision 2.
+
+**Revision 3 is the one that says what this constraint cannot do.** It was a borrow — the
+push onto `lookups`, taken from `field-context.ts:84`, cited as such in the provenance table
+below. It still failed, because a borrow is only borrowed at the point it *resembles* the
+original, and this one departed at the point it *touched* it: upstream's resolver reads the
+source, and this one wrote into it. So the rule has a second half that revision 3 did not
+have. **Check a borrow where it contacts the borrowed code, not where it looks like it** —
+what the original does to that object, what else enumerates it, what upstream assumes about
+who owns it. And note what still happened after all that: this was caught by review, and the
+review's proposed fix was accepted only after § 0.2 checked it.
+
+This generalises [`.claude/agents/code-reviewer.md`](../../.claude/agents/code-reviewer.md)'s
+`/signals` item 4 — "Angular's own primitives, not a second mechanism beside them" — from
+Angular's primitives to this repository's own. Item 4 already makes a working parallel
+mechanism a finding; § 0.1 says the same of a parallel mechanism inside `eval-forms`,
+`eval-signals` and `eval-core`.
+
+**Deviating is allowed and is not rare. Deviating silently is not.** Where this plan borrows
+and where it departs, so a reviewer can check the claim rather than take it:
+
+| Section | Mechanism | Provenance |
+| ------- | --------- | ---------- |
+| § 3.2.1 resolver | A resolver pushed onto `context.lookups` | **Borrowed** — `field-context.ts:84` composes the form half exactly this way. Revision 3 cited this row for a resolver that also *wrote* into the shared record, which upstream's never does; that is the departure the row failed to name and Q4 caught |
+| § 3.2.1 key resolution | `readProperty`'s exact-then-case-insensitive rule | **Departs** — a re-implementation of `resolve` (`signal-context.ts:127-144`), which is module-private in `eval-signals` and cannot be called. Two copies that must agree; § 3.2.1 says so |
+| § 3.2.1 context construction | `createFieldContext({}, {})` | **Borrowed for its class, not its sources** — the `SignalEvalContext` it returns is what makes an assigning expression throw (`signal-context.ts:112-117`), which § 3.4 depends on |
+| § 3.3 containment | Snapshot `scopes.length`, restore in a `finally` | **Departs** — `createEvalSignal` does this and `/reactive` inherits it; this path never calls that function (§ 9.1 of `phase-4-plan.md`), so the three lines are re-stated here rather than reached |
+| § 3.4 write-error bypass | Re-throw of `SignalContextWriteError` ahead of the policy | **Borrowed, and it departs where it contacts** — `eval-signal.ts:353-354` re-*wraps* (`throw new SignalContextWriteError(error.key, expression, error)`), while § 3.4 does `throw error`, having no expression string to attach. Same bypass, different error object out; § 3.4 states it |
+| § 3.5 `text` | `createMetadataKey` + `metadata` | **Borrowed from Angular**, which is item 4's own instruction |
+| § 6.1 harness | An invocation count around a real evaluation | **Departs** — eval-signals' recompute count has no subject here, because no `computed()` of ours exists (§ 3.6). The count is of `LogicFn` invocations instead |
+| § 6.1.1 instrument | A **delegating** mock of a package-specifier barrel, counting one export, in its own spec file | **Borrowed** — `reactive/src/lib/field-schema.teardown-throw.spec.ts:14-31` mocks `@zvenigora/ng-eval-signals` in exactly this shape: counter object declared first, `jest.mock` with a factory that spreads `jest.requireActual` and wraps one export. Its own comment (`:8-13`) states the file-scope-hoisting reason for the separate file, and credits `eval-signals`' `nested-signal-check.spec.ts:1-15` for the passthrough shape (W7) |
+| § 6 gate 3 | The one-path-to-the-walk gate | **Departs** — the checklist's `call(` grep cannot see a bound compiled callback (`compile.ts:16`), so the gate counts `EvalState` constructions instead (W1) |
+
+**Check the shelf *before* spiking, not after — this is the second time a mechanic was
+rediscovered rather than borrowed.** § 6.1.1's row above was found by running a spike, twice:
+revision 5 derived the delegating-mock-plus-`requireActual` shape from its own
+`ReferenceError`, and revision 6's re-spike derived the own-spec-file rule from the same
+place, while `field-schema.teardown-throw.spec.ts` had carried both — with the reasons written
+in a comment — since Phase 4. § 0.2 outranks § 0.1 and says measure rather than argue; it does
+not say measure rather than *look*, and the two failure modes are different. A spike answers
+"what does the machinery do"; the shelf answers "has this repository already answered it". Run
+the second search first: it is a grep, it costs seconds, and where it hits, the spike's job
+shrinks to confirming the borrow at the point it contacts the borrowed code. The § 6.1.1
+re-spike is what that looks like when the shelf is checked late: all four of its mechanics were
+already on the shelf, in one file. What the spike added and the shelf could not are the
+numbers — M4, M6, M7 — and the correction to revision 5's account of the bare auto-mock.
+
+The three departures are where a later reviewer should push hardest. The first two are
+departures of *subject* rather than of design — the mechanism is the repo's, and what changed
+is that the object it acted on is absent on this path. The third is a departure of
+*instrument*, and it is the one that says the borrowed thing was **checked** rather than
+assumed: the existing grep is sound for what it names and blind to a case this path makes
+easy to write.
+
+### 0.2 Mechanism questions are settled by measurement, not by review
+
+**Where a decision turns on what the machinery actually does — Angular's, `eval-core`'s,
+ng-packagr's — build the smallest thing that answers it and record the numbers. Do not settle
+it in prose, and do not settle it by review of prose.** This outranks § 0.1: borrowing
+narrows the guessing and revision 3 is the proof that it does not end it.
+
+The evidence is this document's own scoreboard, and it is one-sided:
+
+| Settled by | Sections | Outcome across four revisions |
+| ---------- | -------- | ----------------------------- |
+| **Measurement** | § 3.3's choke-point placement (six measurements); `phase-4-plan.md` § 3.4.2's A/B resolver fork; § 4 step 1's `moduleResolution` table; § 3.2.1's source and § 6.1.1's instrument, as of revisions 4–6; § 3.6.1's schema reuse and § 3.8's prototype-shadowed identifiers, as of revision 7 | **Every one has held.** § 3.3's table records **three of the four** apparent discriminators as *false*, § 3.2.1's Q4 separates two shapes nothing else could, and § 6.1.1's M6 separates four instruments that agreed everywhere else. Re-run under the real seam for revision 6, M4 and M6 reproduce at identical numbers — the finding survived a change of layout that the *prose* around it did not. **Revision 7 is the sharpest instance yet**: Q7 refuted the premise of a claim six revisions old, Q8 reached the same conclusion on different ground, and Q9 — which nobody had thought to ask — found a live correctness defect the argument had no way to reach |
+| **Reasoning, then review** | § 3.2.1's source in revisions 1, 2 and 3 | Three shapes, three silent freezes, each introduced by the previous fix. Each was caught by the *next* round, never the one that shipped it |
+
+The failure mode this addresses is specific and it is not carelessness. A silent freeze is
+invisible to the thing that produced it: the reasoning that builds a source is reasoning
+about the case the author has in mind, and a frozen rule *looks* exactly like a rule whose
+condition is false. Prose review inherits that blindness, because it can only check the cases
+the prose raises. A measurement does not — Q4 below was written to observe a defect that had
+already been argued for and against, and what it actually showed was that revision 3 was
+correct in the case it was defended on (Q3) and broken in one nobody had reached.
+
+**When this applies.** A question is a mechanism question if the answer is a fact about code
+this plan does not own. "Does Angular re-invoke a `LogicFn` inside a memoising consumer?"
+(Q2), "is a `SchemaPath` token stable across two property accesses?" (Q6), "does
+`moduleResolution: bundler` coexist with `module: commonjs`?" (§ 4 step 1) — all measurable
+in minutes, all previously answered here by assertion, and one of those three assertions was
+wrong. Scope, naming, and what to defer are **not** mechanism questions; § 8 settles those by
+argument and should.
+
+**A hazard in restating a finding: a measured result restated as a principle can lose the
+property it measured.** M6 measured a rule whose guard sat *inside* an outermost
+`applyErrorPolicy` — ground truth 1, instrument 1. Revision 5 restated that as "the
+measurement of what happens to an instrument sitting under a branch" and then cited it three
+times — § 3.5, § 6.1.1, risk 12 — as the evidence that `applyErrorPolicy` must be the
+outermost call. It is not that evidence. M6's arrangement is one where the invariant **holds**;
+the numbers that make it load-bearing are M7's, and M7 was not run until revision 6. The
+restatement did not merely overreach, it **inverted the observable**: M6 reads 1 for a rule
+that ran, M7 reads 0 for a rule that ran, and every negative case in steps 4 and 5 turns on
+which of those the instrument does.
+
+So: **a measurement supports only what its arms distinguish.** M6 had one arm and one number,
+so it could support "the instrument still tracks a rule that skips the walk" and nothing
+further. Before citing a measurement for a claim, name the arm that would have produced the
+claim's negation — if there isn't one, the citation is prose wearing a number's clothes, which
+is the failure § 0.2 exists to prevent, one level up.
+
+**One hazard in applying a finding, since three revisions have now hit it.** A fix scoped to
+the section a finding names leaves the same claim standing wherever else it was written down:
+revision 4 rewrote § 3.2.1 to build `createFieldContext({}, {})` and left step 2's exit
+criterion one page away still saying "as the form half (first argument)", where it survived a
+scoped review because that review was looking at the section it had already fixed. **Grep for
+the claim, not for the section.**
+
+**Second occurrence, and it is worth counting because the next one changes what this is.** W2:
+revision 6 fixed C3 by giving step 2's criteria a constructible subject, rewrote that bullet,
+and left the *adjacent* clause — "both `createFieldContext` sources are asserted empty" —
+naming an observable no spec can reach. Same defect, same step, one bullet up, in text the same
+revision had its hands on. The first occurrence was a claim one page away; this one was one
+line away, which is the harder case for a grep and the easier case for reading the bullet you
+are editing to its end.
+
+**It happened a third time, in revision 7, and the escalation this paragraph promised is
+§ 0.2.2.** Revision 7 rewrote § 3.6 and risk 7 around Q7/Q9 and left § 3.2.1 — the section the
+fix was reasoned *from* — still asserting the refuted premise verbatim. Three occurrences at
+three distances: one page, one line, one section upstream. That is enough to say what the check
+must be, which two were not.
+
+#### 0.2.1 The third failure mode — an answer attached to nothing that can fail
+
+**The two rules above govern how a question gets answered** — measure rather than argue, and
+do not restate a measurement as a principle that loses the property it measured. **This one
+governs whether the answer is attached to something that can go red.** It is a different
+defect and it has never been caught by either of the others, because both of those are
+satisfied by an answer that is entirely correct and entirely ungated.
+
+The evidence is four instances across five revisions, on three different surfaces:
+
+| Instance | Surface | What it named | What was actually there |
+| -------- | ------- | ------------- | ----------------------- |
+| **Risk 8** | a mitigation | "step 4's parse/compile count" | No step contained that criterion until revision 5 — **four revisions ungated** |
+| **Risk 12** (C4) | a mitigation | "step 4's policy-through-a-rule criteria" | Both nestings of the coercion satisfy both of those criteria; the risk's own failure passes them |
+| **Step 2's criteria 1 and 6** (C3) | an exit criterion | a context built by `createFieldContext({}, {}, …)`, and a `computed` around `context.get(key)` | Revision 4 moved context construction into registrars this step ships as stubs that throw — **no subject** |
+| **`TEXT`** (W3, W4) | a published symbol | § 5's published-surface table | No step produced the barrel line that exports it, and no gate read the `.d.ts` it would appear in |
+
+**Three surfaces, one defect.** A mitigation that names a criterion which would not fail; an
+exit criterion whose subject its own step does not build; a published symbol with no line that
+publishes it. In each case the *answer* is right — risk 8's mitigation is the right mitigation,
+step 2's criteria are the right criteria, `TEXT` is the right symbol — and in each case nothing
+would have reported its absence.
+
+**It is not one revision's slip, which is the reason it earns a rule.** Revision 5 fixed three
+instances of exactly this pattern — it put risk 8's count into step 4, rewrote step 2's
+criteria against its deliverables, and added the barrel line for three of § 5's four
+`/signals` symbols — and shipped four more in the same pass, including the fourth symbol. A
+defect that survives being fixed instance by instance needs a check, not more care.
+
+**The check, and it would have caught all four: for every risk, every exit criterion and every
+§ 5 entry, name the thing that goes red when it is violated.** A named assertion in a named
+spec file, or a grep with an expected count. **If the answer is a section number, it is not
+gated** — § 3.5 stating an invariant is not a gate on it, § 5 listing a symbol is not a line
+that exports it, and "step 4's criteria" is not a gate unless one of those criteria fails when
+the risk occurs.
+
+Three questions make it mechanical:
+
+1. **A risk** — *which assertion goes red?* Run the risk's own failure against the criterion
+   it names. If the criterion still passes, the mitigation is a cross-reference wearing a
+   gate's clothes (risk 12, C4).
+2. **An exit criterion** — *which deliverable of **this** step builds its subject?* If the
+   subject arrives in a later step, the criterion cannot be met in the step that states it
+   (C3).
+3. **A § 5 entry** — *which barrel line publishes it, which gate reads the emitted `.d.ts`,
+   and **does the import compile**?* Three halves, because each alone leaves something
+   undetectable: the first two are W3 and W4, and the third is revision 7's `field` — a name
+   § 5 listed as an import from `@angular/forms/signals` for six revisions, which that package
+   does not export (§ 1.2.5).
+
+**The check's first run, and what it caught.** Revision 6 wrote this section and applied it to
+§ 7's table alone, reporting eight gated rows and four honest exceptions. Re-run to completion
+one day later, it produced three findings, one of them Critical:
+
+- **Risk 7 was ungated and counted as gated.** Its cell named "Step 2's construction" — a
+  *deliverable*, which is the "a section is not a gate" case in its purest form. The
+  arithmetic was wrong by exactly that row: **seven** gated, not eight.
+- **Step 2 had a criterion with no observable and no criterion through its factory.** "Both
+  sources are asserted empty" names nothing a spec can reach (W2) — the same defect as C3, one
+  bullet up, in a bullet revision 6 had just rewritten — and nothing exercised
+  `createExpressionRules` itself, so a factory building one memo *per rule* would have passed
+  every criterion in steps 2 and 4.
+- **§ 5's `field` entry authorised an import that cannot compile** (W3), which is the surface
+  question 3 covered least.
+
+**That is the strongest thing this document can say for the check: it caught the section that
+introduced it, one row past where that section stopped, within a day.** A rule whose first
+application finds its own author's miss is doing work rather than describing it. It also fixes
+the way the rule must be run — **to completion, over every row, every criterion and every § 5
+entry** — because a partial run is what produced the wrong count, and a wrong count reads
+exactly like a right one.
+
+This is [`CLAUDE.md`](../../CLAUDE.md)'s "break the implementation and confirm the test fails",
+moved up one level from the spec to the plan. A mitigation that cannot fail reports coverage it
+does not have, in exactly the way a vacuous assertion does — and § 6.1's own history is the
+proof that a document can hold that rule for specs while breaking it for itself.
+
+#### 0.2.2 The kill-list check — did the old claim actually die?
+
+**Promoted from a hazard note in revision 8, because § 0.2's escalation rule fired exactly as
+written.** § 0.2.1 asks whether an answer is attached to something that can fail. This asks a
+different question about the same revision: **when a finding kills a claim, did the claim die
+everywhere, or only in the section the finding named?**
+
+Three occurrences, and the distance is not the pattern:
+
+| | Revision | The claim killed | Where it survived |
+| - | -------- | ---------------- | ----------------- |
+| 1 | 4 | § 3.2.1's record-shaped source | step 2's exit criterion, **one page away**: "as the form half (first argument)" |
+| 2 | 6 (W2) | step 2's criteria had no constructible subject | the **adjacent clause of the same bullet**: "both sources are asserted empty" |
+| 3 | 7 (C1) | "the factory binds one model, so it cannot be shared by two forms" | § 3.2.1, **the section the fix was reasoned from**: "it closes over one model, so it cannot be shared by two forms with different models" |
+
+What *is* constant: in all three, the surviving text contained a **distinctive phrase**, and a
+grep for that phrase would have found it in seconds. What failed each time was scoping the
+search to a section, a claim's paraphrase, or the finding's own words.
+
+**So, three steps, before a revision is called done:**
+
+1. **Quote the sentence being killed, verbatim.** Not the finding's summary of it — the words
+   in the document.
+2. **Grep for its most distinctive three to five words**, across the whole file. "form half",
+   "sources are asserted empty", "closes over one model". Not the section number, not the
+   concept.
+3. **Read every hit and decide it**: rewritten, deleted, or kept as history and *marked* as
+   history. The third option is why this cannot be a blind replace — two of the three
+   occurrences sat next to legitimate restatements in revision blocks, where the old claim is
+   supposed to stand.
+
+Step 3 is also what distinguishes this from § 0.2's "grep for the claim, not for the section",
+which is the same instinct without a procedure: that line has been in the document since
+revision 4 and did not prevent occurrences 2 or 3, because an instinct with no step 1 has
+nothing to grep *for*.
+
+##### The sweeps, recorded
+
+**A check whose runs are not written down is a check that was not run.** Revision 8 wrote this
+section, ran it for one claim, and did not run it for either of the two changes revision 8
+itself made — which produced revision 9's C1 and C3, and made this the *fourth* consecutive
+revision to leave its own claim standing. The runs go here from now on, with their greps.
+
+| Killed claim | Grep | Live survivors | Historical hits, left as history |
+| ------------ | ---- | -------------- | -------------------------------- |
+| The record-shaped source (r3–r4) | `record`, `seeded`, `snapshot`, `SignalContextSource` | none | § 0.1's table, § 3.2.1's withdrawal, step 2's "break it by seeding the record" mutation probe |
+| "The factory binds one model" (r8) | `closes over one model`, `shared by two forms` | none for the phrase; **three for its derived counts** (r9 C2) — step 2's deliverable and criterion, § 1.2.10's compile count | § 3.2.1 and § 3.6.1 quoting the killed claim, marked |
+| "`applyErrorPolicy` outermost, per **M6**" (r6) | `outermost`, `M6`, `under a branch` | none | § 3.5, § 6.1.1 and risk 12 all cite M7 and name M6's substitution as the error |
+| The seed loop over `Object.keys(model())` (r4) | `seed`, `Object.keys`, `findNestedSignals` | none | § 3.2.1's withdrawal and the void-justification account; § 3.8 re-derives why the *expression* is the subject |
+| **`acorn` as a second peer (r8)** | `acorn` | **two** (r9 C1): § 2's scope list and § 5's import justification, both live and normative | the Revision 7 block's "`acorn`/`acorn-walk` into `peerDependencies`", which revision 8's entry corrects; § 1.2.10's quotation of `eval-core`'s own `.d.ts`, which is upstream's signature and not our import |
+| **`guardIdentifiers`' signature (r9)** | `AnyNode`, `guardIdentifiers` | none after the fix | § 1.2.10's quoted `parse`/`compile` declarations, which name `AnyNode` because upstream does |
+
+The last two rows are what the check is for and are also its indictment: they were run one
+revision late, and both live survivors sat in **normative** sections — § 2's scope list and
+§ 5, which ends "anything beyond these lists is a finding". A stale sentence in a revision block
+costs a reader a moment; a stale sentence in § 5 sends an implementer to add a peer dependency
+the design rejects.
+
+**The cost is low and was measured too.** The spike behind § 3.2.1 was a jest project outside
+`modules/`, nine cases, both candidate shapes side by side, and it ran in about seven
+seconds. The one behind § 6.1.1 was six cases against a ground-truth counter, and it ran in
+three. The re-spike C1 asked for — the same cases plus M7 and the compile-once counter, run
+against the real barrel seam rather than a sibling module — was fifteen cases across five spec
+files and ran in about ten seconds warm. The fourth, behind § 3.6.1 and § 3.8, was five cases
+and ran in under three. **Its numbering continues § 3.2.1's**, so Q1–Q6 are the source spike's
+and **Q7–Q11 are revision 7's**, recorded in § 3.6.1 and § 3.8 rather than in § 3.2.1's table
+because they measure different subjects. It
+is cheaper than the review round it replaces and far cheaper than the release it prevents.
+A spike is throwaway by construction: it is deleted when its numbers reach the plan, which is
+what keeps it from becoming a second, untested copy of the design.
 
 ---
 
@@ -138,10 +755,17 @@ all `Signal<…>`. [`ROADMAP.md`](../../ROADMAP.md) narrowing 2 called form-stat
 here it is a scope decision, not a mechanism gap.
 
 **1.2.5 `FieldTree` is string-indexable and iterable at runtime.** `:208` makes a
-`FieldTree` callable — `field()` returns the `FieldState` — and `:224` defines `Subfields`
+`FieldTree` callable — calling the node returns its `FieldState` — and `:224` defines `Subfields`
 as a mapped type **plus** `[Symbol.iterator](): Iterator<[string, MaybeFieldTree<…>]>`. So
 from a `FieldTree` node one can enumerate `[key, childNode]` pairs at runtime and call each
 child to get its state. This is a second candidate source, and § 3.2 is the fork it opens.
+
+**And it settles the notation, which revisions 1–6 got wrong** (W3). There is **no lowercase
+`field` export**: `signals.d.ts:10` and `:814` export `Field` (the directive), `FieldState`,
+`FieldTree` and `ReadonlyFieldTree`, and nothing named `field`. A read is therefore
+`f.city().hidden()` — the node called, then its state's signal — which follows from this
+finding and from nothing else. Revisions 1–6 wrote `field(f).hidden()` throughout and § 5's
+import list, which is normative, authorised an import that cannot compile.
 
 **1.2.6 `form()` does not copy the model.** `:1860`,
 `form<TModel>(model: WritableSignal<TModel>): FieldTree<TModel>`, documented as using "the
@@ -154,7 +778,8 @@ is supported.** From `signals.d.ts` — the `@publicApi 22.0` tag sits on the fi
 pair, `@deprecated` on the second:
 
 ```ts
-// supported — signals.d.ts:32-34, :66-68, :92-94
+// supported — signals.d.ts: hidden :66-68, disabled :32-34, readonly :92-94
+// (declaration order below is hidden, disabled, readonly; the file's is disabled first)
 declare function hidden<TValue, TPathKind>(path, config: { when: LogicFn<TValue, boolean, TPathKind> }): void;
 declare function disabled<TValue, TPathKind>(path, config?: { when?: string | LogicFn<TValue, boolean | string, TPathKind> }): void;
 declare function readonly<TValue, TPathKind>(path, config?: { when?: LogicFn<TValue, boolean, TPathKind> }): void;
@@ -187,6 +812,11 @@ declare function metadata<TValue, TKey, TPathKind>(path, key: TKey, logic: Logic
 So `text` is `metadata(p.x, TEXT, logicFn)` with `TEXT = createMetadataKey<string>()`, read
 back off the field's state. No parallel mechanism, per Phase 4 § 3.2's failure mode.
 
+**The read-back has a named API and it is worth citing, since every neighbouring claim here
+carries one**: `ReadonlyFieldState.metadata<M>(key: MetadataKey<M, any, any>): M | undefined`
+(`_structure-chunk.d.ts:406`). For `TEXT` that is `Signal<string | undefined> | undefined`, so
+a spec reads `f.city().metadata(TEXT)?.()` — two calls and an optional chain, not one.
+
 **1.2.9 The containment primitives are all published and none of them is Angular.** From
 `dist/modules/eval-core/types/zvenigora-ng-eval-core.d.ts`:
 
@@ -212,7 +842,10 @@ declare const defaultParserOptions: ParserOptions;                              
 
 All three are in the FESM's export list. `CompilerService` adds only an LRU over
 `parse` + `compile` (10-minute TTL, 200 entries) and its `simpleCall`; this adapter compiles
-once per rule at registration and holds the callback, so the cache has nothing to do. § 3.1
+once per rule per `form()` at registration and holds the callback, so the cache has little to
+do — and "little" rather than "nothing" is Q8's correction: N forms from one schema recompile
+each rule N times, which is the one case an LRU would have served. It does not change the
+call, because § 3.1 drops the service for the injection-context reason and not for this. § 3.1
 therefore drops the service entirely — which also removes an injection-context requirement
 the plan never had a story for, and which `inject()` would have turned into NG0203 for a
 module-scope schema.
@@ -243,6 +876,13 @@ Phase 4 § 1.3 had to:
   [`CLAUDE.md`](../../CLAUDE.md) "Context resolution", so one context backs many states.
 - `createSignalContext`'s `lookups` resolver unwraps signals on read — the property
   `createFieldContext` already composes on.
+- **`EvalContext.lookups` is a mutable array a caller may push onto**, and resolvers run in
+  push order. `field-context.ts:84` already relies on both, and § 3.2.1 pushes a third
+  resolver onto the context that function returns. Measured in the spike: with both
+  `createFieldContext` sources empty, the third resolver answers every key.
+- **`EvalContext.get` treats `undefined` as absent at every step**, so a resolver that
+  returns `undefined` has still *read* whatever it read. § 3.2.1's fix depends on this
+  entirely, and `field-context.ts:28-30` records it as a limitation rather than a promise.
 
 ---
 
@@ -255,8 +895,13 @@ Phase 4 § 1.3 had to:
   precondition [`phase-4-plan.md`](phase-4-plan.md) § 9.1 states.
 - `applyErrorPolicy`, written against the shipped `ExpressionErrorPolicy`, with the
   `SignalContextWriteError` bypass (§ 3.4).
-- A source adapter turning the consumer's form into a `SignalContextSource` (§ 3.2).
+- A source adapter turning the consumer's model signal into resolvable, per-key reactive
+  reads (§ 3.2).
 - `hidden`, `text` and `disabled` as string-driven rules (§ 3.5).
+- **Rejection of prototype-shadowed identifiers at registration** (§ 3.8), with **`acorn-walk`**
+  — and only `acorn-walk` — added to `eval-forms`' `peerDependencies`. Phase 4 answered the same question
+  for `/reactive` with construction-time validation, and § 8.2's principle makes shipping the
+  silent side of that asymmetry worse than shipping neither.
 - README entry-point table row, CHANGELOG entry, and a minor release.
 
 ### Out of scope (deliberately deferred)
@@ -316,16 +961,19 @@ iterable at runtime.
 | | **A — model signal** | **B — root `FieldTree`** |
 | --- | --- | --- |
 | What the adapter takes | `WritableSignal<TModel>` | `FieldTree<TModel>` (what `form()` returned) |
-| Key → value | `() => model()[key]` | `() => tree[key]()!.value()` |
+| Key → value | one memoised `computed` per key, resolving the property inside (§ 3.2.1) | `() => tree[key]()!.value()` |
 | Reactive | yes, one signal read | yes, `state.value` is a `Signal` |
-| Key set | whatever the model object has | enumerable via `[Symbol.iterator]` |
+| Key set | any key an expression names, built on first read (§ 3.2.1) | enumerable via `[Symbol.iterator]` |
 | Reaches form state (1.2.4) | no | **yes** — `tree[key]()!.touched()` etc. |
 | Extra coupling | none beyond `WritableSignal` | the whole `FieldTree` shape |
 | Available before `form()` returns | yes | **no** — the schema runs *during* `form()` |
 
-**The last row is decisive and it is a sequencing fact, not a preference.** A schema function
-runs while `form()` is constructing the tree, so a rule registered inside the schema cannot
-close over `form()`'s return value — it does not exist yet. B would need the source to be
+**The last row is decisive and it is a sequencing fact, not a preference — and as of revision 7
+it is measured rather than asserted** (Q8). A schema function runs while `form()` is
+constructing the tree, so a rule registered inside the schema cannot close over `form()`'s
+return value — it does not exist yet. Q8 timed it exactly: after `schema<Model>(p => …)`
+returns, the registrar has run **0** times; after the first `form(model, s)`, **1**. The body
+does not run at `schema()` time at all. B would need the source to be
 built lazily and read on first `LogicFn` invocation, which is possible but puts a
 construction-order hazard on the hot path for a capability (form state) that § 2 puts out of
 scope anyway.
@@ -365,51 +1013,240 @@ separate functions, one per Angular rule, and destructuring keeps `evalVisible` 
 site. It is not the aggregate § 3.5.1 rejects: that was one call registering three different
 Angular primitives, and this is one factory returning three registrars.
 
-**The factory is per-form, and that is what bounds the context lifetime.** It closes over one
-model, so it cannot be shared by two forms with different models. A module-scope schema stays
-possible as a function of the rules —
-`const makeSchema = (rules) => schema<Model>(p => …)` — which keeps construction per-form
-without giving up reuse. § 3.6 states the resulting counts.
+**The factory closes over one model, and nothing bounds it to one form.** Revisions 1–7 said
+the opposite here — "it closes over one model, so it cannot be shared by two forms with
+different models" — and Q7/Q9 refute it: `form()` takes the same model signal twice, and a
+schema built from this factory and reused against a **second** model re-registers its rules and
+still reads the **first** model's values, silently (§ 3.6.1). What actually bounds the context
+lifetime is Angular, not this factory: Q8 measured the schema body re-running once per
+`form()`, so each form mints its own contexts.
 
-##### The source — a snapshot of per-key `computed`s
+So the supported reuse shape is a schema **function of the rules** —
+`const makeSchema = (rules) => schema<Model>(p => …)`, called per form — which keeps reuse
+while giving each form a factory bound to its own model. A schema **value** shared across
+models is the unsupported shape and is the subject of risk 7. § 3.6 states the resulting counts
+and § 3.6.1 has the measurements.
+
+##### The source — a private memo of per-key `computed`s, measured
 
 **Revision 1's `() => model()[key]` was wrong, not shorthand.** `SignalContextSource` is
 `Record<string, unknown>` and its resolver is `isSignal(value) ? value() : value`
 (`modules/eval-signals/src/lib/signal-context.ts:198-201`), with the type's own docblock
 saying functions are "passed through untouched." A bare arrow therefore resolves to the
 **function object** — truthy, never called, never tracked — which is precisely the silent
-freeze `modules/eval-forms/src/lib/field-context.ts:66-72` already records for the form half.
+freeze `modules/eval-forms/src/lib/field-context.ts:60-64` already records for the form half.
 
-What the factory builds instead, once, from `Object.keys(model())`:
+**Revision 2 replaced it with a record snapshotted from `Object.keys(model())`; revision 3
+grew that record at resolve time; both are withdrawn.** The record is gone entirely. The
+factory keeps a **private memo** nothing upstream can see, and the property resolution
+happens **inside** the computed:
 
 ```ts
-const source: SignalContextSource = {};
-for (const key of Object.keys(model())) {
-  source[key] = computed(() => (model() as Record<string, unknown>)[key]);
+// eval-signals' own `resolve` (signal-context.ts:127-144), re-implemented — § 0.1
+const readProperty = (model: Record<string, unknown>, key: string, caseInsensitive: boolean): unknown => {
+  if (Object.prototype.hasOwnProperty.call(model, key)) return model[key];
+  if (!caseInsensitive) return undefined;
+  const lowered = key.toLowerCase();
+  const match = Object.keys(model).find((candidate) => candidate.toLowerCase() === lowered);
+  return match === undefined ? undefined : model[match];
+};
+
+// `signals/src/lib/model-source.ts` — module-private to the entry point (§ 5).
+export interface ModelSource {
+  /** One `computed` per key, per **factory**. Exported for the memo-identity assertion. */
+  keySignal: (key: string) => Signal<unknown>;
+  /** § 3.6's one context per rule per `form()`, built off the shared memo. */
+  createRuleContext: () => EvalContext;
 }
+
+export const createModelSource = <TModel extends object>(
+  model: WritableSignal<TModel>,
+  options?: EvalOptions
+): ModelSource => {
+  const caseInsensitive = !!options?.['caseInsensitive'];   // index access, per CLAUDE.md
+  const memo = new Map<string, Signal<unknown>>();
+
+  const keySignal = (key: string): Signal<unknown> => {
+    let cached = memo.get(key);
+    if (!cached) {
+      cached = computed(() => readProperty(model() as Record<string, unknown>, key, caseInsensitive));
+      memo.set(key, cached);
+    }
+    return cached;
+  };
+
+  const createRuleContext = (): EvalContext => {
+    const context = createFieldContext({}, {}, options);
+    context.lookups.push((key) => (typeof key === 'string' ? keySignal(key)() : undefined));
+    return context;
+  };
+
+  return { keySignal, createRuleContext };
+};
 ```
+
+**`createModelSource` is a named export, and `keySignal` reaches a spec on the object it
+returns — that is a deliverable rather than a style note** (C3, W5). Revisions 1–5 wrote both
+as closures inside `createExpressionRules`, and step 2 then
+carried exit criteria — "the resolver is pushed onto the `lookups` of a context built by
+`createFieldContext({}, {}, options?.eval)`, and both sources asserted empty", and a
+"spec-local `computed` around `context.get(key)`" — with **no reachable subject**, because
+revision 4 moved context construction into the registrars and step 2's registrars are stubs
+that throw. A criterion whose object cannot be constructed by the step that states it is what
+sends an implementer off to invent one. `createModelSource` is the object: `createRuleContext`
+is callable in step 2's own specs, and `keySignal` is what the memo-identity criterion compares
+across two reads. The registrars in step 4 call `source.createRuleContext()` once each and hold
+the result; they build no context of their own.
+
+This is a scope-and-naming call, so § 0.2 says settle it by argument and it is settled by
+argument. Nothing about it turns on what Angular or `eval-core` does — the mechanism it exposes
+is the one Q2/Q3/Q4 already measured, unchanged.
+
+**Three things about that sketch are load-bearing and were each a defect one revision ago.**
+
+- **The memo is a `Map`, not the source record.** Revision 3 wrote it back into the record
+  `createFieldContext` hands to `createSignalContext`, and upstream's `resolve` enumerates
+  that record with `Object.keys` under `caseInsensitive` (`signal-context.ts:137-143`). A memo
+  entry spelled as the *expression* wrote it therefore becomes an **exact** match on the
+  second read and shadows the model's own key for the life of the form. Q4 below is that
+  defect observed.
+- **Both sources are `{}`.** With resolution inside the computed there is nothing left for a
+  static record to hold: the resolver answers every key, exactly and case-insensitively.
+  `createFieldContext` is still what builds the context — not for its sources but for its
+  **class**: it returns a `SignalEvalContext` whose `set` throws `SignalContextWriteError`
+  (`signal-context.ts:112-117`), which is the error § 3.4 exists to re-throw. A hand-built
+  `EvalContext` would silently accept an assigning expression.
+- **The resolver's parameter is untyped.** `EvalLookup` is
+  `(key: unknown, thisArg?: unknown, options?: EvalOptions) => unknown`
+  (`eval-lookup.ts:3`), and under `strict` a parameter position is contravariant, so
+  `(key: string) => …` does not compile. Upstream writes `(key) => …` for the same reason.
+  The `typeof key === 'string'` narrowing is not defensive padding: without it a non-string
+  key would be coerced into the memo as a spurious entry, which is the revision-3 defect in a
+  second costume.
+
+**What the spike measured.** Nine cases, both candidate shapes side by side, against a real
+`form()` + `schema()` + `hidden(path, { when })`, a real `createFieldContext`, and § 3.3's
+`evaluateRule`. **A** is revision 3's shape (seeded record, memo written back into it); **B**
+is the one above.
+
+| # | Question | Shape A | Shape B |
+| - | -------- | ------- | ------- |
+| 1 | Write a key the rule named — does it re-run? | invocations 1 → 2, `hidden` true → false | same |
+| 2 | Write a key it did not name — does it stay put? | **delta 0** | **delta 0** |
+| 2b | Same, under `caseInsensitive`, where B scans the whole model inside the computed | — | **delta 0** — per-key propagation holds |
+| 3 | Key absent at factory time, added later (case-sensitive) | **resolves** | **resolves** |
+| 4 | Expression names `Country`, model holds `country: undefined`, `caseInsensitive`, **second read** | **FROZEN** | **resolves** |
+| 4b | Same, key absent at factory time too | **FROZEN** | **resolves** |
+| 5 | Same rule twice on one context, throwing arrow first, **through `evaluateRule`** | `scopes.length` 0 → 0 → 0; the throw propagates; the second invocation reads `country` = `'US'` — **contained** | |
+| 5b | Same, with the `finally` removed | `scopes.length` = **1** after the throw; the second read of `country` returns **`1`** — the arrow's own parameter, shadowing the source key | |
+| 6 | Is a `SchemaPath` token identical across two property accesses? | `Object.is` → **true** (see § 3.6) | |
+
+Rows 5 and 5b are shape-independent — they measure § 3.3's choke point, not the source — which
+is why their cells span the table.
+
+**Q5 and Q5b were measured with the rest and then carried in prose for a whole revision.**
+Revision 4 cited them three times, in § 3.6 and in step 3, while its own table had seven rows
+and § 0.2 said nine; the numbers existed and the document asserted them instead of recording
+them. Left here as the plainest evidence for § 0.2 that this document contains: **a rule about
+recording measurements does not apply itself**, and the revision that introduced the rule is
+the one that broke it.
+
+Q3 is why revision 3's reversal is narrowed rather than repeated: **it worked for the case it
+was raised about.** Q4 is the case nobody reached by arguing, and it is the whole difference
+between the two shapes.
+
+Q2b is the measurement that pre-empts the obvious objection to B — that `readProperty` reads
+`Object.keys(model())` and must therefore over-subscribe. It does not, and the reason is the
+one the next paragraph already gives: the computed was reading the whole model before this
+change too. Scanning it costs work inside a memoised derivation, not a dependency.
 
 **Per-key propagation survives even though every `computed` reads the whole model.** Angular's
 `computed` memoises on `Object.is` by default, so a write to `zip` re-evaluates each
 computed's property read and propagates only from `zip`'s. A rule naming only `country` reads
-only `country`'s computed, so it does not re-run. That is what makes § 4's negative case
-satisfiable at all — and it is the one mechanism in this plan the whole reactivity story
-rests on, so step 2 asserts it directly rather than inferring it.
+only `country`'s computed, so it does not re-run. This is the one mechanism the whole
+reactivity story rests on, and it is **no longer an inference about Angular's graph**: Q2
+measured it end to end through Angular's own `hidden()`, which also settles the standing
+question of whether Signal Forms invokes a `LogicFn` inside a memoising consumer at all. It
+does. Step 2 still asserts it, because a plan's measurement is not a repository's regression
+gate.
 
-The cost is O(keys) cheap property reads per model write, not O(rules), and it is the reason
-this is a snapshot rather than a `Proxy`.
+The cost per model write is O(keys some expression actually reads), not O(rules) and not
+O(model keys): Angular's `computed` is lazy, so a key nothing names is never evaluated. Under
+`caseInsensitive`, a key the model does not hold pays one `Object.keys` scan per evaluation of
+*that key's* computed — bounded by the same memoisation, per Q2b.
 
-**The key set is frozen at factory time, and revision 1's claim that it is live is
-withdrawn.** A `Proxy` returning memoised computeds would restore liveness, at the price of
-implementing `has`, `ownKeys` and `getOwnPropertyDescriptor` to satisfy `resolve`'s
-`hasOwnProperty` and `Object.keys` (`signal-context.ts:133,142`) and
-`findNestedSignals`'s `Object.keys` (`nested-signal-check.ts:47`). It is not worth it here:
-**a Signal Forms schema addresses fields by compile-time path (`p.city`)**, so a key the
-model gains at runtime has no path that could name it. That is the opposite of `/reactive`,
-where `addControl` is the documented dynamic-form operation and liveness earns its keep.
+**There is no seed loop, and dropping it costs a diagnostic that never worked.** Revisions 2
+and 3 seeded the record from `Object.keys(model())` and revision 3 justified it by
+`findNestedSignals`' scan. That justification was void: `findNestedSignals` only reports a key
+whose value `isPlainObject` (`nested-signal-check.ts:52`), and every value in that record was
+a `computed` — a function — so the loop skipped every key, seeded or not. The nested-signal
+diagnostic does not reach `/signals` and never did. A consumer model of
+`{ user: { name: signal('a') } }` gets no warning here, and the README caveat says so rather
+than implying the scan covers this adapter.
 
-Recorded as a limitation for the README, in the same place `/reactive`'s key-set caveat
-lives.
+**The read is what subscribes, and it happens even when the key resolves to `undefined`.**
+That single sentence is the fix. `EvalContext.get` treats `undefined` as absent at every step
+(`field-context.ts:28-30`), so a rule naming a key the model does not yet have still resolves
+to nothing — but `keySignal(key)()` has been *called*, inside Angular's derivation, so the
+rule is now subscribed to that key's computed. When the model gains the key, the computed's
+value changes and the rule re-runs. A record that simply lacked the key returns `undefined`
+without reading anything, subscribes to nothing, and is frozen for the life of the form.
+Measured as Q3, in both shapes.
+
+Two consequences of the shape, neither obvious:
+
+- **The memo is mandatory, not an optimisation.** A resolver that built a fresh `computed`
+  per read would hand Angular a new dependency on every invocation, so the previous one is
+  dropped and the tracking churns. The `Map` also means a key first read by one rule is
+  already built for the next — one computed per key per **factory**, not per rule, even though
+  the contexts are per rule **per `form()`** (§ 3.6, Q8).
+- **A `computed` is created inside Angular's reactive consumer**, on the first read of any
+  key. That is allowed — `computed()` needs no injection context and is not `effect()` — and
+  the spike exercised it in every case above rather than reasoning about it. It is the inner
+  computed that becomes the active consumer for its own body, so `model()` is attributed
+  there and the outer consumer records the inner one as a dependency, which is exactly what
+  Q2's delta of 0 demonstrates.
+
+**The correction to revision 2's own reasoning, stated rather than quietly dropped.** Revision
+2 argued the frozen key set was acceptable because *a Signal Forms schema addresses fields by
+compile-time path (`p.city`), so a key the model gains at runtime has no path that could name
+it*. That argument is true, and it is about the wrong thing. It is about **paths** — which
+fields a rule can be attached to. The failure is about **values** — which keys an expression
+is allowed to read. In `rules.evalVisible(p.city, 'country === "US"')` the path is `p.city`
+and the key read is `country`, and nothing requires `country` to be an own property of the
+model object when `createExpressionRules` runs: an optional field, a model the user fills in,
+a partial loaded from an API, or a model typed with optional members and initialised `{}` all
+produce a key set that grows. The path argument never touched that case.
+
+**And nothing in the plan as written would have caught it.** Every fixture in steps 2 and 4
+used a fully-populated model, so the discriminating condition — an expression naming a key
+the model does not have yet — was not reachable from any of them. This is
+[`CLAUDE.md`](../../CLAUDE.md)'s setup failure rather than its assertion failure: breaking the
+implementation would have turned tests red and none of them would have been this one. Steps 2
+and 4 therefore gain a fixture whose model omits a key its expression names, and that fixture
+is the gate on this section.
+
+The `Proxy` alternative **stays rejected, and the reason has changed twice, so here is the
+final one**: it existed to make the record's key set live, and there is no record. It would
+have to implement `has`, `ownKeys` and `getOwnPropertyDescriptor` to satisfy `resolve`'s
+`hasOwnProperty` and `Object.keys` (`signal-context.ts:133,142`) to buy a property the
+resolver has without traps.
+
+**What is limited, stated for the README beside `/reactive`'s key-set caveat.** Two things,
+and neither is resolution — every key an expression can name resolves, at any spelling the
+`caseInsensitive` option allows, whether or not the model held it when the form was built:
+
+- **The nested-signal diagnostic does not reach this adapter**, per the paragraph above. A
+  model property holding a signal is read un-called by the member visitor and nothing warns.
+- **Enumeration of the form's keys is not available to anything upstream**, because the memo
+  is deliberately private. That is the fix, not a cost: the record being enumerable by
+  `resolve` is precisely what produced Q4's freeze.
+
+`caseInsensitive` matching is now **ours** rather than upstream's, since `resolve` is
+module-private in `eval-signals` and could not be called. `readProperty` above is a
+re-implementation of its exact rule, and § 0.1 requires that be said plainly rather than
+recorded as a borrow: the two must agree, and if `resolve` ever changes, this is the second
+copy that does not know.
 
 ### 3.3 The choke point — core or adapter, measured
 
@@ -510,6 +1347,14 @@ export const applyErrorPolicy = <T>(run: () => T, policy: ExpressionErrorPolicy 
 };
 ```
 
+**It re-throws the error it caught; `/reactive` re-wraps.** `eval-signal.ts:353-354` throws a
+*new* `SignalContextWriteError` carrying the offending expression string, which
+`createEvalSignal` has and this path does not — the `LogicFn` holds a compiled callback, not
+the source text. So the same misuse surfaces a different object at each entry point: wrapped
+with the expression under `/reactive`, the original under `/signals`. Stated rather than
+hidden, per § 0.1's second half, and it is the one thing a consumer catching this error
+across both adapters would notice.
+
 **This makes the core import a value from `eval-signals`, and that is the point rather than
 a cost.** `SignalContextWriteError` is a class; `instanceof` needs the constructor, not the
 type. `field-context.ts` already imports `createSignalContext` from the same package, so
@@ -544,9 +1389,33 @@ is divergence goes in the core where there can be exactly one of it.
 
 | This library | Registers (config overload, 1.2.7) | Coercion | Note |
 | ------------ | --------------------------------- | -------- | ---- |
-| `evalVisible` | `hidden(p.x, { when: ctx => !toVisible(…) })` | `toVisible` (shipped) | Inverted — § 3.5.1 |
-| `evalText` | `metadata(p.x, TEXT, ctx => toText(…))` | `toText` (shipped) | `TEXT = createMetadataKey<string>()` (1.2.8) |
-| `evalDisabled` | `disabled(p.x, { when: ctx => … })` | `toVisible`'s rule | § 3.5.2 for the reason |
+| `evalVisible` | `hidden(p.x, { when: () => !toVisible(evaluated()) })` | `toVisible` (shipped) | Inverted — § 3.5.1 |
+| `evalText` | `metadata(p.x, TEXT, () => toText(evaluated()))` | `toText` (shipped) | `TEXT = createMetadataKey<string>()` (1.2.8) |
+| `evalDisabled` | `disabled(p.x, { when: () => … })` | `toVisible`'s rule | § 3.5.2 for the reason |
+
+**`evaluated()` above is not a placeholder for "the walk" — it is `applyErrorPolicy` wrapping
+the walk, and every `LogicFn` body has exactly this shape:**
+
+```ts
+const evaluated = () =>
+  applyErrorPolicy(() => evaluateRule(compiled, context, options?.eval), options?.onError);
+```
+
+Revisions 1–4 elided this and the omission was load-bearing twice over. **`onError` is
+published in `ExpressionRuleOptions` (§ 5) and nothing else in the plan wired it up**, so a
+registrar calling `evaluateRule` bare would satisfy every exit criterion and every § 6 gate
+while an expression that throws took down the derivation and an assigning one rendered a
+blank field — the `/signals` checklist's Critical item 2, untested end to end.
+`phase-4-plan.md:1911-1913`'s sketch had the wrapper; this plan dropped it in transcription.
+
+**`applyErrorPolicy` must be the outermost call in the body**, ahead of the coercion and
+ahead of any guard a later phase adds. Two things depend on that and neither is obvious:
+the policy has to cover the coercion's input rather than only the walk, and § 6.1.1's
+invocation instrument counts this call — **M7** measured what happens to that count when the
+wrapper sits under a branch instead of over one, and it is 0 against a ground truth of 1.
+(Revision 5 cited **M6** here, which measures the opposite arrangement — a guard *inside* an
+outermost wrapper, still tracking 1:1. § 0.2 records why that substitution is a class of error
+and not a slip.)
 
 #### 3.5.1 Naming — `eval<Property>`, registering Angular's own rule
 
@@ -632,26 +1501,104 @@ Phase 4 § 3.7 is N × M `EvalSignal`s and a `destroy()` the consumer calls. Her
 - No `EvalSignal` is created. No `DestroyRef` registration, no `destroy()`.
 - Angular owns the `FieldTree`'s lifetime and the `LogicFn`s die with the schema.
 
-What the adapter **does** retain, per `createExpressionRules` call: **one source record**
-(§ 3.2.1), **one `EvalContext` per field named by a rule**, and **one compiled callback per
-rule**. All three are closed over by the `LogicFn`s.
+What the adapter **does** retain, per `createExpressionRules` call: **one private memo**
+(§ 3.2.1 — one `computed` per key any expression has named, built on first read, bounded by
+the union of the keys the rules mention), **one `EvalContext` per rule per `form()`**, and
+**one compiled callback per rule per `form()`**. All three are closed over by the `LogicFn`s.
+The first lives on the `ModelSource` of § 3.2.1 and the other two come from
+`createRuleContext()` and `compile()` inside each registrar — which is what lets step 2 assert
+the memo half before any registrar exists (C3).
 
-**Their lifetime is the factory's, and the factory is per-form** (§ 3.2.1) — which is the
-answer to the reusable-schema hazard rather than an accident. A module-scope
-`const s = schema<M>(p => …)` that closed over registration-time contexts would share them
-across every `form()` built from it, and then field A's leaked scope in instance 1 would sit
-ahead of field A's source key in instance 2, permanently. § 3.3's `finally` does not bound
-that: it contains a leak *per walk*, not per form. Because the factory binds one model it
-cannot be shared by two forms, so the hazard is structurally unreachable — and
-`makeSchema = (rules) => schema<M>(p => …)` keeps schema reuse without reintroducing it.
+**"Per rule per `form()`" is Q8's wording and revisions 1–7 said "per rule".** The registrar
+body re-runs on every `form()` built from the schema, so N forms from one schema hold N × rules
+contexts and N × rules compiled callbacks, all of them garbage when their form is. The memo is
+the exception: it belongs to the factory, so it is per **factory** — which equals per form only
+in the supported shape of § 3.2.1, where each form gets its own.
+
+**One context per rule, and revisions 1–3 said "per field".** The plan never stated how the
+factory would recognise that `rules.evalVisible(p.city, …)` and `rules.evalText(p.city, …)`
+name the same field, which would need the `SchemaPath` token to be a stable identity. **Q6
+measured that it is** — `p.city` accessed twice inside one schema gives `Object.is → true` —
+so per-field keying is available, and this is a decision rather than a limit:
+
+- Containment makes the count a question of economy, not of correctness. Q5 measured a
+  throwing arrow inside `evaluateRule` leaving `scopes.length` at 0 and the next invocation
+  on the same context resolving its key correctly. A shared context is not carrying anything
+  forward to be shared.
+- Per-rule is the strictly safer end of the range, and § 3.4.1's argument — a leak sitting
+  ahead of another rule's source key — has no reachable form at all when no two rules share
+  a context.
+- Token identity is an unpromised implementation detail of a library this plan already lists
+  under risk 5. Per-field would buy a smaller number of small objects and would owe a spec
+  pinning someone else's `Proxy` behaviour.
+
+The memo is still per **factory**, so the computeds are shared across every rule that factory
+registers — and across every `form()` built from them, which is Q9's mechanism seen from the
+other side. What multiplies, per rule and again per `form()`, is an `EvalContext` holding an
+empty source and a `lookups` array of three entries.
+
+#### 3.6.1 The reusable-schema question, measured — and the answer replaces the hazard rather than closing it
+
+Revisions 1–6 said: a module-scope `const s = schema<M>(p => …)` that closed over
+registration-time contexts would share them across every `form()` built from it, so field A's
+leaked scope in instance 1 would sit ahead of field A's source key in instance 2, permanently
+— § 3.3's `finally` bounds a leak *per walk*, not per form. And they then declared it
+**structurally unreachable "because the factory binds one model, so it cannot be shared by two
+forms."**
+
+**That argument is false, and C1 was right to reject it.** `form<TModel>(model:
+WritableSignal<TModel>, schemaOrOptions)` (`_structure-chunk.d.ts:1908`) does not stop two
+`form()` calls on the *same* model signal, and § 1.2.6 already established that `form()` does
+not copy it. Q7 built two forms from one model signal: **no throw, two distinct trees, both
+functional.** So binding one model never bounded anything, and the conclusion rested on a
+premise the type signature contradicts.
+
+**The conclusion survives on measured ground, and it is a stronger one.** Q8 ran the module-
+scope shape — one `schema()` built once from one factory, then two `form()` calls:
+
+| Stage | registrar bodies run | contexts minted |
+| ----- | -------------------- | --------------- |
+| after `schema<Model>(p => …)` | **0** | 0 |
+| after `form(modelA, s)` | **1** | 1 |
+| after `form(modelB, s)` | **2** | 2 |
+
+Two distinct `EvalContext` identities. **Angular re-invokes the schema body once per `form()`,
+so a reused schema does not share contexts — it mints fresh ones per form.** The scope-sharing
+hazard is unreachable, and the reason is Angular's re-invocation rather than anything this
+plan does. Revisions 1–6 reached the right answer through an argument that does not hold,
+which is § 0.2's whole subject.
+
+**What replaces it is worse, louder in effect and quieter at the call site (Q9).** The
+registrars close over the **factory's** model, and the factory is bound to one model. So a
+schema built from `createExpressionRules(modelA)` and reused for `form(modelB, s)` re-runs its
+registrars — and every rebuilt rule still reads **model A**:
+
+| Q9 | `fA.city().hidden()` | `fB.city().hidden()` |
+| -- | -------------------- | -------------------- |
+| `modelA.country = 'US'`, `modelB.country = 'CA'` | false | **false** — should be true; B evaluated A's `country` |
+| then `modelA.country = 'FR'` | true | **true** — B followed A |
+
+Form B renders against form A's data, on every rule, silently. No error, no warning, and the
+form is fully functional — it is simply wrong. That is a correctness defect where the old
+hazard was a containment one, and it is reachable by exactly the pattern § 3.6 previously
+recommended as the safe one.
+
+**So `makeSchema = (rules) => schema<M>(p => …)` is promoted from an aside to the documented
+pattern, and it works for a reason that is now stated:** it takes the rules as a parameter, so
+each form gets a factory bound to its own model. A schema value shared across models is the
+unsupported shape. § 4's step 4 pins Q9's behaviour so a change to it is noticed, step 7's
+README carries the caveat, and risk 7 is rewritten around this rather than around the leak.
 
 That is the count-and-lifetime statement § 6 asks the reviewer to be able to make from the
 diff. It needs no teardown API: nothing here registers with a `DestroyRef`, and everything
 becomes garbage with the form.
 
-**One context per field, never one shared across fields**, for Phase 4 § 3.4.1's reason,
-which is stronger here: § 3.3's containment bounds a leak to one walk, but a shared context
-would put field A's leak in front of field B's source key for the life of the form.
+**Never one context shared across rules**, for Phase 4 § 3.4.1's reason. It is worth being
+exact about how much of that reason survives measurement: § 3.3's containment bounds a leak
+to one walk and Q5 confirms it does, so the shared-context hazard is not live while the
+`finally` is there. Per-rule contexts are what make it unreachable *if the `finally` is ever
+removed* — belt and braces, and Q5b shows what the braces are holding. That is a weaker claim
+than revisions 1–3 made, and it is the true one.
 
 ### 3.7 The Angular 22 boundary
 
@@ -663,6 +1610,138 @@ inherited from Angular's own `exports` map (`Cannot find module '@angular/forms/
 under `modules/eval-forms/signals/`. The workspace is on 22.0.8, so a leak into the shared
 core or `/reactive` compiles green here and fails in the consumer's build. § 6 makes it a
 grep.
+
+### 3.8 Prototype-shadowed identifiers — the same question Phase 4 answered, on a path that owns a different input
+
+**The failure, measured** (W1). `createSignalContext` builds its context on an empty
+`original` (`signal-context.ts:196`), and `EvalContext.get` consults `original` *before*
+`lookups`, reading a plain object as a bare property access. So an identifier naming an own
+property of `Object.prototype` resolves off the prototype and **never reaches § 3.2.1's
+resolver at all**. Q10, through a real `createRuleContext()` context:
+
+| Identifier | Resolves to | Under `caseInsensitive` |
+| ---------- | ----------- | ----------------------- |
+| `constructor` | `function Object()` | `function Object()` |
+| `toString`, `valueOf`, `hasOwnProperty` | functions off `Object.prototype` | the same functions |
+| `CONSTRUCTOR` | **`undefined`** | **`undefined`** |
+| `country` (a real model key) | `'US'` | `'US'` |
+
+And Q11, end to end: **`rules.evalVisible(p.city, 'constructor')` renders the field**, against
+a model with no such key, with nothing logged. A function is truthy, so `toVisible` says
+visible — the field with no data is precisely the one that shows.
+
+**Two things the table says that the reasoning did not.** The behaviour is **identical** with
+and without `caseInsensitive`, so this is *not* GHSA-pj3p-xpg7-h7gw's case-variant bypass —
+that shape needs `member-expression.ts`'s resolved-key re-check, which is about property
+access and is already `eval-core`'s. What is here is narrower and dumber: `constructor`
+returns a function and `CONSTRUCTOR` returns `undefined`, **in both modes**, so under an option
+whose entire purpose is that spelling stops mattering, spelling decides the answer. That is an
+inconsistency, not an escalation, and it is worth being exact because the family resemblance
+invites the stronger claim.
+
+**§ 0's premise is the test of any answer**, and it is not an edge case here: the condition is
+a string authored in a builder UI, and the model arrives from an API. `visible: "constructor"`
+is a plausible thing for a form author to type by accident — a field genuinely named
+`constructor` in a server-supplied schema — and the result is a field that always renders.
+
+**Phase 4 answered this by rejecting the name at construction** — `field-schema.ts:172-178`
+throws on a schema field name that is an own property of `Object.prototype`, and again at
+`:214-220` over the group's controls, because that layer is the only one that can name the
+offending field. `phase-4-plan.md` § 3.4.3 calls it "the strongest argument for validating
+schemas at construction". **`/signals` gets the same answer and a different subject.**
+
+**Decision: reject at registration, on the *expression*, not on the field name.** The two entry
+points own different inputs. `/reactive` owns the field names — they arrive in its own
+`FieldSchema[]`. Here the field paths are compile-time `p.city` tokens, the consumer's own
+TypeScript, and the library never sees a name it could validate. What it does see, at
+registration, is **the expression** — it already calls `parse(expression, defaultParserOptions)`
+there (§ 3.1). So the registrar walks the AST it has just built and throws on any `Identifier`
+whose name is an own property of `Object.prototype`, naming the expression and the identifier.
+
+**And the expression is the complete subject, which the field name would not have been.** A
+model key is only ever read because some expression names it; an unnamed key harms nobody. All
+expressions are known at registration, whatever the model does later — so this check does not
+inherit § 3.2.1's growing-key-set problem, which is exactly why revision 2's seed loop over
+`Object.keys(model())` was withdrawn. A construction-time scan of the *model* would have that
+problem and would buy nothing on top. It is not taken.
+
+**Mechanism — borrowed** (§ 0.1). `acorn-walk`'s `simple` walker, from the package `eval-core`
+itself walks with (`recursive-visitors.ts:12`, `import * as walk from 'acorn-walk'`), rather
+than a hand-rolled AST scan. It costs a manifest line: `acorn-walk` is a `peerDependency` of
+`@zvenigora/ng-eval-core` and is **not** declared by `@zvenigora/ng-eval-forms`, so the adapter
+would be importing an undeclared dependency — which resolves today by accident of hoisting and
+would not resolve at all under pnpm's isolated layout. § 4's step 6 adds it at `eval-core`'s own
+range, `acorn-walk ^8.3.0`.
+
+**`acorn` itself is deliberately not added**, though `eval-core` declares it: this adapter
+imports no `acorn` symbol (§ 5's list names only `acorn-walk`'s `simple`), and `acorn-walk@8.3.5`
+declares `acorn ^8.11.0` as a real **dependency**, so it arrives regardless. An unused peer on a
+published manifest is surface without a caller.
+
+**This is a manifest change to a published package and is called out as one.** It imposes no
+new install: a consumer of `eval-forms` already peer-depends on `eval-core`, whose peers include
+`acorn-walk ^8.3.0`, so npm 7+ has already placed it and a strict consumer who satisfied
+`eval-core`'s peers by hand needs nothing further. It still belongs in the CHANGELOG and in the
+README's `Versions` block — which quotes `peerDependencies` verbatim (`README.md:59-69`) and
+would otherwise reproduce a manifest the package no longer has. Step 7 carries both.
+
+**The residual, stated rather than implied.** A *member* expression — `user.constructor` — is
+not this check's business and is `eval-core`'s prototype-pollution guard, with the
+`!isPrimitive` gate [`CLAUDE.md`](../../CLAUDE.md) records. A model key named off
+`Object.prototype` that no expression names stays unreadable and unreported, which is harmless
+by the paragraph above and is the one thing `/reactive`'s second check covers that this does
+not. Both go in step 7's README beside the other caveats.
+
+#### 3.8.1 Arrow parameters — the guard over-rejects, deliberately
+
+An expression may bind its own names: `'[1].map(valueOf => valueOf)'`. Does the guard reject
+it? Two implementations of § 3.8 answer differently and revision 8 decided neither, so both
+passed step 6 (W2).
+
+**The arrow's own frame is genuinely safe, and the reason is the resolution order this whole
+section turns on.** `EvalContext.get` resolves **`scopes` first**, `original` second,
+`priorScopes` third, `lookups` fourth ([`CLAUDE.md`](../../CLAUDE.md), "Context resolution").
+`arrow-function-expression.ts:14-19` pushes the parameters as a scope, so a bound `valueOf`
+is found at **step 1** and shadows `Object.prototype` at step 2 — resolved correctly, with the
+prototype never consulted. **A model key is unsafe for the mirror-image reason**: it arrives
+through `lookups`, at step **4**, *behind* `original`. Same name, opposite outcomes, and the
+gap between step 1 and step 4 is the entire subject of § 3.8.
+
+So rejecting a bound `valueOf` refuses an expression that would have worked. **Take it
+anyway.** Three reasons, in the order they decide it:
+
+1. **The alternative is a second copy of `eval-core`'s frame logic.** A scope-aware guard must
+   track what `arrow-function-expression.ts:14-19` *and* `pattern.ts:110-113` push, including
+   destructuring patterns, and stay in sync with two visitors this phase does not own and § 2
+   forbids changing. § 0.1 and [`.claude/agents/code-reviewer.md`](../../.claude/agents/code-reviewer.md)'s
+   `/signals` item 4 both make a working parallel mechanism a finding — and a scoping
+   implementation that silently drifts from the real one is the worst shape of that, because
+   it fails by *under*-rejecting.
+2. **The costs are asymmetric and the guard exists because of the asymmetry.** Over-rejecting
+   is a named error at registration whose fix is renaming a parameter. Under-rejecting is
+   Q11: a field that always renders, silently, in production. A check built to convert a
+   silent wrong answer into a loud one should not acquire a silent failure mode to spare a
+   rename.
+3. **The name set is seven, and none is natural as a parameter** — `constructor`, `toString`,
+   `valueOf`, `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable`, `toLocaleString`.
+
+**It is recorded as a false positive, not as a hazard.** The README says the guard rejects
+these names anywhere in an expression, including where the expression binds them itself, and
+that the fix is to rename the parameter — not that binding one is dangerous.
+
+**One line the borrowed walker draws, which is a property of the borrow rather than a
+decision.** `acorn-walk`'s `base.Function` walks parameters with the `"Pattern"` override,
+reaching `VariablePattern` → `ignore` (`walk.js:287-306`), and `simple` suppresses its callback
+whenever an override is passed — so a **binding** is never visited as an `Identifier`. The
+body re-dispatches with no override, so a **reference** is. `'[1].map(valueOf => 1)'` therefore
+registers and `'[1].map(valueOf => valueOf)'` throws. Recorded because a hand-rolled scan over
+every node would reject both, which is the difference § 0.1 asks a borrow to be checked at.
+
+**Why it ships here rather than deferring, which was the alternative.** § 8.2's principle is
+that an expression means the same thing at both entry points. `/reactive` **throws** on this
+today. Ship `/signals` without the check and the same authored rule throws under one adapter
+and silently renders a data-less field under the other — the asymmetry § 8.2 exists to
+prevent, in the direction where the silent side is the unsafe one.
 
 ---
 
@@ -677,7 +1756,12 @@ verbatim, so this step should re-read them rather than rediscover them.
 
 - **New**: `modules/eval-forms/signals/ng-package.json` —
   `{ "lib": { "entryFile": "src/public-api.ts" } }` against `ng-entrypoint.schema.json`.
-- **New**: `modules/eval-forms/signals/src/public-api.ts`.
+- **New**: `modules/eval-forms/signals/src/public-api.ts`, whose one line is
+  `export * from './lib/text-key';` — **the line that publishes `TEXT`** (W3). § 5 has listed
+  `TEXT` as published surface since revision 1 and no step ever produced that line: step 4's
+  barrel edit enumerates the other three symbols by name, and step 1 created the barrel
+  without saying what goes in it. Revision 5 fixed exactly this for `createExpressionRules`,
+  `ExpressionRules` and `ExpressionRuleOptions` and left it standing for the fourth symbol.
 - **New**: the smallest real runtime symbol — a type-only barrel does not satisfy
   ng-packagr. `signals/src/lib/text-key.ts` exporting
   `export const TEXT = createMetadataKey<string>();` is the natural one: it is real, it is
@@ -688,7 +1772,7 @@ verbatim, so this step should re-read them rather than rediscover them.
   edit. Phase 4 step 1's finding: `include` widened alone pulls the specs into the library
   compilation where `types: []` leaves `describe` undeclared.
 - **Edit**: `modules/eval-forms/tsconfig.spec.json` — the same `include` widening for specs,
-  **and `moduleResolution: "bundler"`**, replacing the `node10` it sets at `:6`.
+  **and `moduleResolution: "bundler"`**, replacing the `node10` it sets at `:8`.
 
   Without the second half this step cannot pass its own test target, and the library build
   hides it: `tsconfig.lib.json` inherits `bundler` from `modules/eval-forms/tsconfig.json:6`,
@@ -702,8 +1786,12 @@ verbatim, so this step should re-read them rather than rediscover them.
   | `bundler` | clean |
 
   **This is the step's mechanism risk**: it changes resolution for *every* eval-forms spec,
-  not only the new ones, so the whole existing suite is the gate on it. It is compatible with
-  the `module: "commonjs"` already set there. `modules/eval-signals/tsconfig.spec.json:6`
+  not only the new ones, so the whole existing suite is the gate on it. Compatibility with
+  the `module: "commonjs"` already set there was an assertion in revisions 1–3 and is now
+  measured: `tsc` accepts the pair with no `TS5095`, and resolves `@angular/forms/signals`
+  clean. The same probe found that the **`node10` being replaced is itself deprecated** —
+  `TS5107: Option 'moduleResolution=node10' is deprecated and will stop functioning in
+  TypeScript 7.0` — so this edit retires a setting that is on borrowed time regardless. `modules/eval-signals/tsconfig.spec.json:8`
   carries the same `node10`, so a cross-project spec would hit it too — out of scope here,
   worth knowing.
 - **Edit**: `tsconfig.base.json` — add
@@ -723,22 +1811,94 @@ verbatim, so this step should re-read them rather than rediscover them.
 
 ### Step 2 — The source adapter
 
-- **New**: `signals/src/lib/model-source.ts` — § 3.2.1's snapshot of per-key `computed`s
-  from a `WritableSignal<TModel>`.
+- **New**: `signals/src/lib/model-source.ts` — § 3.2.1's per-key `computed`s over a
+  `WritableSignal<TModel>`, **exporting `createModelSource` and the `ModelSource` type**
+  (§ 3.2.1, § 5): `readProperty`, the private memo, `keySignal`, and `createRuleContext`,
+  which builds one `createFieldContext({}, {}, options)` and pushes the resolver onto its
+  `lookups`. Module-private to the entry point — not listed in `signals/src/public-api.ts`.
+
+  **The named exports are the step's load-bearing deliverable, not a detail of it** (C3).
+  Every exit criterion below needs a live `EvalContext`, and revision 4 moved context
+  construction into the registrars, which this step ships as stubs that throw. So through
+  revisions 4 and 5 this step required an object none of its own deliverables could build —
+  the very failure its last bullet has called out since revision 4, reintroduced one bullet
+  above it. `createRuleContext` is what the criteria construct; `keySignal` is what the
+  memo-identity criterion compares (W5).
 - **New**: `signals/src/lib/rules.ts` — `createExpressionRules(model, options?)`, returning
-  the three registrars. Step 2 ships the factory and the source; the registrars may be stubs
-  that throw until steps 4–5, but the factory's construction is real, because that is what
-  fixes the context count and lifetime of § 3.6.
+  the three registrars. It calls `createModelSource(model, options?.eval)` **once**, and that
+  call is real in this step, because that is what fixes the **memo**'s lifetime — one per
+  **factory**, § 3.6. The registrars may be stubs that throw until steps 4–5; what they will do is
+  call `source.createRuleContext()` once each, so the **context** count only becomes
+  observable in step 4. Revisions 1–3 said "context count and lifetime" here and the first
+  half stopped being true when § 3.6 changed.
 - **New**: co-located specs, test-first.
 - **Exit**:
-  - the source composes with the shipped `createFieldContext`, as the **form half**
-    (first argument); the field half is `{}`, matching `phase-4-plan.md:1910`, since a
-    Signal Forms field has no per-field key set of its own;
+  - **`createRuleContext()` returns a context whose `lookups` carry the resolver, asserted on
+    observables the step can actually reach** (§ 3.2.1). The subject is
+    `createModelSource(model, options).createRuleContext()`, callable in this step's own spec
+    — that is C3's fix and the reason the criterion has one. **The observables are
+    `context.lookups.length === 3` and a pop**: removing the third lookup makes every model
+    key resolve `undefined`, which is what proves the third one is ours and the first two are
+    empty.
+
+    Revisions 2–6 wrote this as "**both sources are asserted empty**", which names nothing a
+    spec can see: `createSignalContext` closes over its source (`signal-context.ts:196-201`)
+    and the returned `EvalContext` exposes no accessor for it, and this step's own harness
+    needs no mocking. That is the C3 defect one bullet up, in a bullet revision 6 rewrote —
+    § 0.2's scoped-fix hazard, second occurrence (W2). `phase-4-plan.md:1910`'s `createFieldContext(sourceFromModel(model), {})` is
+    the *record* design and is what this phase withdrew — the citation is kept here only to
+    say so, because through revisions 2, 3 and 4 this criterion said "as the form half
+    (first argument)" and would have walked the implementer straight back into the shape Q4
+    killed and risk 9 exists to prevent;
   - **per-key propagation is asserted directly**: writing a key the expression does not name
     leaves the named key's `computed` un-notified. This is the mechanism § 3.2.1 says the
     whole reactivity story rests on, and it is asserted here rather than inferred from a
     rule's behaviour two steps later;
-  - the `LogicFn`-invocation harness of § 6.1 exists and is used here first.
+  - **a key absent from the model at construction resolves, and re-resolves when it
+    arrives** (§ 3.2.1, C2). The fixture's model **omits** a key the expression names — that
+    is the whole point of the case and the plan as written had no fixture in which it was
+    reachable. Reading that key resolves `undefined` *and subscribes*; adding it to the model
+    afterwards notifies. Break it by seeding the record from `Object.keys(model())` and
+    returning `undefined` for anything else — revision 2's shape — and this case must be the
+    one that goes red;
+  - **the memo holds**: two reads of the same late key produce the same `computed`, not two.
+    Without this the tracking churns and the negative case below becomes unstable rather
+    than wrong, which is the harder failure to read. **State the observable**: the memo is
+    private and the resolver returns a *value*, so comparing two resolved values passes with
+    or without a memo. `model-source.ts` **exports** `keySignal` on the `ModelSource` it
+    returns — module-private to the entry point either way (§ 3.3, § 5) — and the spec
+    compares `source.keySignal('country')` across two reads by identity;
+  - **case-insensitive resolution is asserted on the second read, not only the first**
+    (§ 3.2.1, Q4). An expression naming `Country` against a model holding `country` resolves,
+    then still resolves after a write. Revision 3 passed the first read and froze on the
+    second, so a spec that reads once is the setup failure that let it through;
+  - **two assertions go through `createExpressionRules`, not only through `createModelSource`**
+    (C1). Every other criterion here constructs the source directly, so nothing exercises the
+    factory's own wiring — and a factory that called `createModelSource` **per registrar**
+    instead of once would satisfy all of them, and every step-4 criterion including Q4, while
+    quietly making the memo per rule rather than per factory.
+
+    **Through the factory**: a delegating mock of `./model-source` counting `createModelSource`
+    — one `createExpressionRules(model)` call invokes it **exactly once**, and two factories
+    invoke it twice. That is § 6.1.1's instrument shape applied to a module-private sibling,
+    so it needs its own spec file (W7) and `jest.requireActual` inside the factory.
+    **On the source**: two `createRuleContext()` calls give **different** `EvalContext`
+    identities and the **same** `keySignal('country')` identity — § 3.6's count, memo per
+    **factory** and context per rule **per `form()`**, as two identity comparisons rather than
+    as a sentence. The
+    second pair is asserted on the source rather than through two registrations because this
+    step's registrars are stubs; step 4 observes the count through them;
+  - **the harness here is § 6.1's third row, and it is not the `LogicFn` count.** Step 2 has
+    no registrars — they are stubs until steps 4–5 — and no `evaluateRule` until step 3, so
+    there is no `LogicFn` to invoke and no field state to read. The step-2 instrument is a
+    spec-local `computed(() => context.get(key))` over a context from `createRuleContext()`,
+    counted, running **all six steps** of § 6.1's sequence including the positive calibration
+    arm — the negative case here is otherwise the one asserted with no in-fixture proof that
+    its counter can move. § 6.1's sequence is stated generically, and its table gives this
+    harness its own **read**: "read the counted derivation" means reading that spec-local
+    `computed`, not `f.city().hidden()` (W6). Revisions 2 and 3 gave this step exit criteria
+    its own deliverables could not satisfy; revision 4 put two of them back (C3). That is how
+    an implementer ends up improvising a design.
 
 ### Step 3 — The choke point and the error policy
 
@@ -749,24 +1909,115 @@ walk and § 3.4's bypass is only testable through the same walk.
   `signals/src/public-api.ts` (§ 3.3).
 - **New**: `src/lib/error-policy.ts` gains `applyErrorPolicy` (§ 3.4) — the one additive
   change to the published core this phase makes.
-- **Exit**: a throwing arrow body leaves `context.scopes.length` at its pre-walk value,
-  asserted directly; a second rule on the same field resolves its own source key afterwards;
-  an assigning expression throws `SignalContextWriteError` **through** a `'undefined'`
-  policy; `grep -rn "call(" modules/eval-forms/signals/` has exactly one hit.
+- **Exit**:
+  - a throwing arrow body leaves `context.scopes.length` at its pre-walk value, asserted
+    directly, and **the same rule invoked a second time on that context resolves its own
+    source key**. Per rule, not per field (§ 3.6): the failure that actually happens is one
+    `LogicFn` re-invoked by Angular on one context, not two rules meeting. The spike ran both
+    halves — contained, `scopes` 0 → 0, second read correct;
+  - **the containment probe is required, not optional**, and its expected output is on
+    record: remove the `finally` and the same fixture must show `scopes.length === 1` after
+    the throw and the second read of `country` returning **`1`** — the arrow's own parameter,
+    shadowing the source key. Without that arm, "scopes is 0" is a claim about a number
+    nothing was ever able to move;
+  - **both arms of the policy, in one spec, through one `applyErrorPolicy` call.** An
+    assigning expression throws `SignalContextWriteError` **through** a `'undefined'` policy
+    — reachable because `createFieldContext` returns a context whose `set` throws (§ 3.2.1,
+    **second** bullet, "Both sources are `{}`") — **and** an expression that throws an ordinary error under the same
+    `'undefined'` policy returns `undefined`. The second arm is not padding: with only the
+    first, `applyErrorPolicy = (run) => run()` passes, because the error propagates from
+    having never been caught. One arm proves the `catch` exists; the other proves the bypass
+    inside it does. Risk 2 names this criterion as its whole mitigation, so a single arm
+    leaves that risk unmitigated while reading as covered;
+  - § 6 gate 3's greps pass.
 
 ### Step 4 — `evalVisible` and `evalText`
 
 - **Edit**: `signals/src/lib/rules.ts` — the two registrars, naming per § 3.5.1, registering
-  Angular's **config** overloads per 1.2.7.
+  Angular's **config** overloads per 1.2.7, each body shaped per § 3.5 with
+  `applyErrorPolicy` outermost.
+- **Edit**: `signals/src/public-api.ts` — export `createExpressionRules`, `ExpressionRules`
+  and `ExpressionRuleOptions`. Named as a deliverable because barrels re-export whole modules
+  and nothing else in this phase makes the barrel a place anyone looks: § 5 lists these three
+  as published and, through revisions 1–4, no step produced the line that publishes them. It
+  is also where an *unintended* export gets in, so it is worth a deliberate edit and a look
+  at **gate 6's** output afterwards — gate 5 reads the primary entry point's `.d.ts` and never
+  sees this one (W4).
+- **New**: **two** co-located spec files, not one, and the split is mechanical rather than
+  stylistic (W7). `rules.spec.ts` carries the read-back cases; **`rules.invocation-count.spec.ts`
+  carries every case that needs a § 6.1.1 counter**, because `jest.mock` hoists to *file*
+  scope and cannot be confined to a `describe`. Stacked in one file, the barrel mock of
+  `@zvenigora/ng-eval-forms` would put all six of this step's cases through a mocked core
+  entry point to serve two of them. This is
+  `reactive/src/lib/field-schema.teardown-throw.spec.ts`'s own split, made for the same reason
+  and stated in its own comment — § 0.1's row.
 - **Exit**:
   - an end-to-end spec builds a real `form()` with a schema, writes the model, and asserts
-    `field().hidden()` and the `TEXT` metadata signal follow — the **wiring and polarity**
+    `f.city().hidden()` and the `TEXT` metadata signal follow — the **wiring and polarity**
     harness of § 6.1;
   - one assertion pins that `evalVisible` **inverts**: a *true* expression yields
     `hidden() === false`. Without it a sign flip is invisible, and § 3.5.1 put the inversion
     inside the library precisely so no consumer's expression carries it;
-  - the negative case uses the **`LogicFn`-invocation count** and nothing else (§ 6.1):
-    writing a model key the expression never named leaves the count unchanged.
+  - the negative case **asserts** on the `LogicFn`-invocation count and runs § 6.1's full
+    six-step sequence to get there: read the field state, record a count that is ≥ 1, write a
+    model key the expression never named, **read the field state again**, assert the count
+    unchanged, **then write a key it does name and assert the count moved**. The reads are
+    setup, not assertions (§ 6.1) — without them the case compares 0 to 0 and passes against
+    a rule that over-subscribes; without the last step the counter is never shown to work;
+  - **one end-to-end case runs against a model missing a key its expression names** (§ 3.2.1,
+    Q3), and asserts the field follows once the model gains it. Step 2 asserts this at the
+    source; this is the same case through a real `form()`, and it is where a regression in
+    the resolver would actually reach a consumer;
+  - **one end-to-end case is Q4**: `caseInsensitive`, an expression naming `Country` against a
+    model holding `country`, asserted on the **second** read after a write. This is the only
+    case that separated the two candidate sources, and it is the one a later "simplification"
+    of the memo would silently reverse;
+  - **the error policy is asserted through a registered rule**, not only through
+    `applyErrorPolicy` directly as in step 3: a rule whose expression throws an ordinary
+    error resolves per `options.onError` and the field renders, and a rule whose expression
+    assigns throws `SignalContextWriteError` out of `f.city().hidden()`. Step 3 proves the
+    function; this proves the registrars actually call it (§ 3.5). Without it, `onError` is
+    published surface with no test that anything reads it;
+  - **the coercion is pinned to the *outside* of the policy** (C4): with `onError: 'undefined'`
+    and an expression that throws, `f.city().hidden()` is **`true`**. One assertion, and it is
+    the only one that separates the two nestings § 3.5 chooses between —
+    `!toVisible(applyErrorPolicy(walk, policy))` coerces the policy's `undefined` to `false`
+    and inverts to `true`, while `applyErrorPolicy(() => !toVisible(walk()), policy)` returns
+    `undefined` and the field is not hidden.
+
+    Risk 12 named step 4's policy-through-a-rule criteria as its whole mitigation and **those
+    criteria do not gate it**: "an ordinary error resolves per `options.onError`" and "an
+    assigning expression throws out of `f.city().hidden()`" are both true of either nesting. So
+    risk 12 sat in exactly the state risk 8 sat in through revisions 1–4 — a mitigation naming
+    a criterion that does not test the thing. This bullet is the criterion.
+
+    **The guard half of the invariant is the counting spec's, not this one's.** A branch
+    hoisted above the wrapper survives the assertion above whenever the branch does not trip,
+    so what catches it is M7's number: the same rule in `rules.invocation-count.spec.ts`, its
+    branch key absent, must show the instrument at **≥ 1**. M7 measured **0** there against a
+    ground truth of **1**, which is what makes that assertion capable of failing;
+  - **the reused-schema behaviour is pinned, because it is wrong and shipping** (C1, Q9). One
+    `schema<Model>` built from `createExpressionRules(modelA)`, two `form()` calls — `modelA`
+    and `modelB` — and the spec asserts what actually happens: form B's rule evaluates
+    **model A**, and flipping `modelA` moves **both** fields. It is a characterisation test,
+    said so in a comment: it records a limitation rather than a guarantee, and its job is that
+    a future change to Angular's re-invocation or to the factory's binding goes red instead of
+    quietly changing which data a form reads. Alongside it, the **supported** shape asserted
+    positively: `makeSchema = (rules) => schema<Model>(p => …)` called per form gives each form
+    its own model. Without both arms, § 3.6's reuse guidance is a paragraph;
+  - **compile-once is counted, not assumed — and the count has a named instrument and a stated
+    N** (C5). The instrument is a **delegating mock of `@zvenigora/ng-eval-core` counting
+    `parse` and `compile`**, the same shape as the `LogicFn` counter one barrel over; the two
+    were measured coexisting in one file, so both live in `rules.invocation-count.spec.ts`.
+    **The N is § 6.1's sequence, not a loop**: run its six steps and assert `compile` stays at
+    **1** while the invocation count moves **1 → 1 → 2**. Revisions 1–5 wrote "across N
+    invocations" with nothing in the criterion making N exceed one, so it was satisfiable by a
+    fixture that read the field once — the same shape of vacuous setup § 6.1 already carries a
+    paragraph about, in the step that cites it. Measured in the § 6.1.1 re-spike, same fixture
+    and same reads: `parse` 1, `compile` 1, invocations 1 → 1 → 2. Risk 8 has named this as its
+    mitigation since revision 1 and no step has ever contained it. `CompilerService`'s LRU
+    would have masked a `compile()` that drifted into the `LogicFn` body; § 3.1 drops the
+    service, so nothing else would catch it.
 
 ### Step 5 — `evalDisabled`
 
@@ -776,13 +2027,111 @@ walk and § 3.4's bypass is only testable through the same walk.
   one was supplied, never with `"false"`. Both record behaviour rather than leave it to be
   discovered.
 
-### Step 6 — Docs, README and release
+### Step 6 — Rejecting prototype-shadowed identifiers
 
-- **Edit**: `modules/eval-forms/README.md` — the `/signals` row stops saying "designed but
-  not built"; the Angular 22 requirement stated at the entry-point table, not only in prose.
-- **Edit**: root `CHANGELOG.md` — `## [eval-forms 0.2.0]`, naming the package.
-- **Edit**: `modules/eval-forms/package.json` — version only.
-- **Exit**: `readme-examples.spec.ts` covers the new examples; all gates green.
+§ 3.8's check. Its own step rather than a clause in step 4: it adds a throw path, a manifest
+change to a published package, and specs of its own, and one plan step is one commit.
+
+- **New**: `signals/src/lib/guard-identifiers.ts` — module-private, walking the AST the
+  registrar already has with `acorn-walk`'s `simple`, throwing on any `Identifier` whose name
+  is an own property of `Object.prototype`. The message names the expression and the
+  identifier, per `field-schema.ts:172-178`'s precedent.
+- **Edit**: `signals/src/lib/rules.ts` — every registrar calls it immediately after `parse`,
+  before `compile`. Registration-time only; no hot path is touched.
+- **Edit**: `modules/eval-forms/package.json` — `acorn-walk ^8.3.0` into `peerDependencies`,
+  matching `eval-core`'s range (§ 3.8).
+- **New**: a co-located spec, test-first.
+- **Exit**:
+  - `'constructor'` **throws, through each of `evalVisible`, `evalText` and `evalDisabled`** —
+    three assertions, not one. The deliverable says *every* registrar calls the guard, and a
+    single-registrar criterion goes green with it wired into `evalVisible` alone; the miss that
+    leaves is the worst shape § 3.8 has, since `evalText(p.city, 'constructor')` would render
+    `"function Object() { [native code] }"` into the field through `toText`. Q11 is the case:
+    without this step that call builds a form whose field always renders;
+  - **the throw surfaces from `form()`, not from `schema()`** — Q8 measured the schema body
+    running zero times at `schema()` — so the specs `expect(() => form(model, s)).toThrow(…)`,
+    and the message contains both the expression and the identifier;
+  - the same for `toString`, `valueOf` and `hasOwnProperty`, and **not** for `CONSTRUCTOR`,
+    `country`, or `constructorName` — the check is on the identifier's exact name, not a
+    substring, and the negative arm is what proves it (a `String.includes` implementation
+    passes the first three and fails these);
+  - **a member expression is not rejected**: `'user.constructor'` registers, because that is
+    `eval-core`'s guard and not this one (§ 3.8's residual). Without this arm the check has no
+    stated upper bound and the next revision widens it into `eval-core`'s territory. It is also
+    the arm that pins the borrow: `acorn-walk`'s base walker descends into `node.property` only
+    when `node.computed` (`node_modules/acorn-walk/dist/walk.js:397-400`), so a bare
+    `Identifier` visitor cannot see `user.constructor` — while a hand-rolled scan over every
+    node would, and would fail here;
+  - **an arrow's own binding does not rescue the name, and § 3.8.1 chose that**:
+    `'[1].map(valueOf => valueOf)'` **throws**. This is the arm that separates the two
+    implementations revision 8 left undecided — an over-rejecting guard throws here, a
+    scope-aware one does not, and both satisfy every other criterion in this step;
+  - **and `'[1].map(valueOf => 1)'` registers**, because `acorn-walk` never visits a *binding*
+    as an `Identifier` (§ 3.8.1). Not a decision — a property of the borrowed walker, pinned
+    so that a hand-rolled scan, which would reject both, fails this step instead of shipping;
+  - **the manifest edit is gated on the artifact a consumer receives**:
+    `dist/modules/eval-forms/package.json`'s `peerDependencies` contains `acorn-walk ^8.3.0`
+    **and does not contain `acorn`**. Both arms: § 3.8 rejects the second peer for a stated
+    reason, and a presence-only check passes a manifest carrying it.
+    ng-packagr copies `peerDependencies` into the built manifest — the five existing peers are
+    in that file today — so this is a real read of a real output. **`npm ls acorn-walk` is not
+    the gate and was proposed as one in revision 7**: the root declares `acorn-walk` directly
+    and has no `workspaces` field, so `modules/eval-forms` is not an installed package and the
+    command passes at the root with or without the edit. A criterion that passes before its own
+    deliverable exists is § 0.2.1's defect on the newest step in the plan;
+  - gate 4 still shows `/reactive`'s FESM at 25,748 bytes — the guard is adapter-only, and this
+    step edits the shared `package.json`, so it is the step most likely to move it.
+
+### Step 7 — Docs, README and release
+
+- **Edit**: `modules/eval-forms/README.md` — **three separate edits, not one row** (W4): add a
+  `/signals` row to the entry-point table at `README.md:47-51`, which today has two rows;
+  **delete the "designed but not built" prose block at `:53-55`** and repoint its link, since
+  that claim lives in prose pointing at `phase-4-plan.md` § 9 and not in any row; and update
+  the `Versions` lead-in at `:59`, which reads "The package declares **one** peer range, at the
+  floor" immediately above the JSON step 6 adds an entry to. Revision 8 wrote this as "the
+  `/signals` row stops saying 'designed but not built'", which describes an edit to a row that
+  does not exist and leaves the other two undone. Also: the Angular 22 requirement stated at
+  the entry-point table, not only in prose;
+  and the two caveats § 3.2.1 assigns to the README, which exist nowhere else and would
+  otherwise never be written: **the nested-signal diagnostic does not reach `/signals` at
+  all** (a model property holding a signal is read un-called and nothing warns — revision 4
+  established the scan never covered this shape), and the enumeration limit, beside
+  `/reactive`'s key-set caveat. Also the `evalVisible`/`hidden` polarity line § 3.5.1 asks
+  for, and **three caveats revision 7 adds, none of which exists anywhere else**: the
+  **schema-reuse rule** (§ 3.6, Q9 — a schema value carries its factory's model, so
+  `makeSchema = (rules) => schema(…)` is the supported reuse shape and a shared schema value
+  is not), the **prototype-shadowed identifier rejection** and its residual (§ 3.8 — a member
+  expression is `eval-core`'s, and a model key nobody names stays unreadable), and the fact
+  that `/reactive` and `/signals` now reject the same identifier at **different times**:
+  schema-construction there, `form()` here. **And the `Versions` block at `README.md:59-69`,
+  which quotes `peerDependencies` verbatim** — step 6 adds an entry to that manifest, so the
+  block reproduces a package that no longer exists unless this step edits it. It is listed as a
+  deliverable because a quoted manifest is the one piece of a README nothing recompiles (W1).
+- **New**: `signals/src/lib/readme-examples.spec.ts` — the `/signals` counterpart to
+  `reactive/src/lib/readme-examples.spec.ts`, which is the only file of that name today.
+- **Edit**: root `CHANGELOG.md` — `## [eval-forms 0.2.0]`, naming the package, and **naming
+  the `peerDependencies` addition** step 6 made (§ 3.8). A manifest change to a published
+  package is a release note, not an implementation detail, even when it imposes no new
+  install.
+- **Edit**: `modules/eval-forms/package.json` — version only. The peer ranges landed in
+  step 6.
+- **Exit**:
+  - `readme-examples.spec.ts` covers the new examples; all gates green;
+  - **the release is gated on the build output, not on the edits** (W2): `dist/modules/eval-forms/package.json`
+    shows `"version": "0.2.0"` and carries `acorn-walk` in `peerDependencies`, and root
+    `CHANGELOG.md` contains a `## [eval-forms 0.2.0]` heading that names the
+    `peerDependencies` addition. Revision 7's exit was "all gates green", and no gate reads a
+    version or a changelog — gate 1 reads the dist manifest's `exports` map, gates 5 and 6 read
+    `.d.ts` files. A step whose whole product is a release needs one criterion that fails when
+    the release is wrong;
+  - the README's `Versions` block matches `modules/eval-forms/package.json` exactly, **and its
+    lead-in sentence at `:59` no longer says "one peer range"** — the JSON alone satisfies a
+    diff and leaves the prose above it wrong, which is how that block came to be worth a
+    criterion at all;
+  - **no "designed but not built" string survives in `README.md`**, and the `/signals` row
+    exists in the entry-point table. One grep and one read, because the deliverable is three
+    edits and a single criterion would gate one of them.
 
 ---
 
@@ -801,8 +2150,36 @@ At `@zvenigora/ng-eval-forms/signals`:
 `metadata(path, TEXT, …)`; `evalDisabled` registers `disabled` and takes an extra
 `{ reason?: string }` (§ 3.5.2). All three use the **config** overloads (1.2.7).
 
-`createModelSource` is **not** exported. Revision 1 listed it; it has no caller outside the
-factory, and § 3.2.1 makes the factory the only supported way to build one.
+`createModelSource` is **not** exported *from the entry point* — and it **is** a named export
+of its own module, which through revision 5 it was not (W5). Those are different statements and
+collapsing them is what left step 2's criteria without a subject (C3). **Four** symbols hold the
+same status § 3.3 gives `evaluateRule`: real exports, module-private to `/signals`, absent from
+`signals/src/public-api.ts`, changeable by a later phase without a release. The table is what
+lets gate 6 name what must be **absent** from the emitted `.d.ts`, so a symbol missing from it
+is a symbol that gate cannot check.
+
+| Module-private symbol | Shape | Named by |
+| --------------------- | ----- | -------- |
+| `createModelSource` | `<T extends object>(model: WritableSignal<T>, options?: EvalOptions) => ModelSource` | step 2's exit criteria |
+| `ModelSource` | `{ keySignal: (key: string) => Signal<unknown>; createRuleContext: () => EvalContext }` | step 2's memo-identity and context criteria |
+| `evaluateRule` | `(compiled: stateCallback, context: EvalContext, options?: EvalOptions) => unknown` | § 3.3, step 3 |
+| `guardIdentifiers` | `(expression: string, node: ReturnType<typeof parse>) => void` — throws, § 3.8 | step 6 |
+
+**`guardIdentifiers`' second parameter is typed `ReturnType<typeof parse>`, not `AnyNode`, and
+that is load-bearing rather than fussy.** `eval-core` does **not** export `AnyNode`: its
+published `.d.ts` imports it from `acorn` at `:4` for internal use and its export clause at
+`:1980` publishes `AnyNodeTypes` — a string union of node-type names — and not the node type
+itself. Writing the signature with `AnyNode` therefore requires `import type { AnyNode } from
+'acorn'` in the adapter, which is the one thing § 3.8's peer decision rests on not happening;
+`@nx/dependency-checks` would then flag an undeclared `acorn`, and the shortest fix from there
+is to add the peer § 3.8 rejects. `parse` is already on the import list below, so
+`ReturnType<typeof parse>` names exactly the value the registrar holds between `parse` and
+`compile` and needs no import at all. This is § 0.2.1's question 3, third half — *does the
+import compile?* — which exists because of revision 7's `field`.
+
+Revision 1 listed `createModelSource` as **published** and it is not: it has no caller outside
+the factory, and § 3.2.1 makes the factory the only supported way to build one. What revision 6
+changes is that "not published" stopped meaning "not named".
 
 At `@zvenigora/ng-eval-forms` (primary, **additive to a released entry point**):
 
@@ -810,13 +2187,46 @@ At `@zvenigora/ng-eval-forms` (primary, **additive to a released entry point**):
 | ------ | ----- |
 | `applyErrorPolicy` | `<T>(run: () => T, policy?: ExpressionErrorPolicy) => T \| undefined` |
 
-**Not exported, deliberately**: `evaluateRule` (§ 3.3). Nothing else in `signals/src/lib/`
-is exported unless it appears above.
+**Not exported from the entry point, deliberately**: `evaluateRule`, `createModelSource`,
+`ModelSource` and `guardIdentifiers` — the table above. Nothing in `signals/src/lib/` reaches
+`signals/src/public-api.ts` unless it appears in this section's first table.
+
+**These lists govern non-spec files under `signals/`** — the same non-spec scoping § 6 gate 3
+uses, though gate 3's *path* is the whole package rather than the adapter (W2). A spec imports
+`form` and `schema` from `@angular/forms/signals` and `TestBed` from
+`@angular/core/testing`, none of which belongs in shipped code; without this sentence § 5
+made step 4's own required spec a finding.
 
 **Imported from `eval-core`**: `EvalContext`, `EvalOptions`, `EvalState`, `call`, `parse`,
 `compile`, `defaultParserOptions`, `stateCallback`. From `eval-signals`:
-`SignalContextSource`, `SignalContextWriteError`. From `@angular/core`: `computed`,
-`WritableSignal`, `Signal`. Anything beyond these lists is a finding.
+`SignalContextWriteError` — **in specs only**. The adapter's non-spec files must *not* import
+it: § 3.4.1 put the `instanceof` bypass in the core precisely so `/signals` cannot grow its own,
+and this list is normative over non-spec files, so listing it here authorised the thing that
+argument forbids. Step 4's and step 3's specs need the class to assert on, which is what the
+sentence below about spec imports already covers. From the shared core at
+`@zvenigora/ng-eval-forms`: `toVisible`,
+`toText`, `createFieldContext`, `applyErrorPolicy`, `ExpressionErrorPolicy`. From
+`@angular/core`: `computed`, `Signal`, `WritableSignal`. From `@angular/forms/signals`:
+`hidden`, `disabled`, `metadata`, `createMetadataKey`, `MetadataKey`, and the
+`SchemaPath`/`LogicFn` types. From **`acorn-walk`**: `simple` — § 3.8's guard, and the reason
+step 6 adds `acorn-walk` — and not `acorn` (§ 3.8) — to this package's `peerDependencies`;
+without that
+manifest edit the import is an undeclared dependency that happens to resolve through
+`eval-core`'s peers. Anything beyond these lists is a finding.
+
+**`field` is deliberately absent**, and it was on this list through revision 6.
+`@angular/forms/signals` exports no such symbol (§ 1.2.5) — the read is `f.city().hidden()` —
+so the list authorised an import that cannot compile, which is the third half § 0.2.1's
+question 3 gained because of it.
+
+`MetadataKey` is on the list because § 5's `TEXT` row states the symbol's shape in terms of
+it. **`EvalLookup` is deliberately *not*** — revision 4 added it, and § 3.2.1's third bullet
+is the reason it cannot appear: the resolver's parameter must stay unannotated for the
+contravariance to work out, so the type is inferred and never named.
+
+`SignalContextSource` **drops off the list** — with § 3.2.1's memo private and both
+`createFieldContext` sources empty, no value of that type is constructed here. Revisions 1–3
+listed it, and it was the type of the record Q4 killed.
 
 **`CompilerService` is deliberately absent** (1.2.10) — revision 1 listed it, and with it an
 `inject()` this plan never gave an injection-context story for. § 3.3's helper takes a
@@ -827,42 +2237,216 @@ is a symbol nobody exports.
 
 ## 6. Verification gates
 
-Every step: `npx nx run-many -t lint test build`, unfiltered. Plus:
+Every step: `npx nx run-many -t lint test build`, unfiltered. Plus the gates below — **two of
+which are step-conditional, and saying so is not pedantry**: gate 3 expects exactly one
+`EvalState.fromContext` and steps 1–2 have zero, gate 5 expects `applyErrorPolicy` in the
+core's `.d.ts` and it does not exist until step 3. A gate the first two steps are meant to
+fail is a gate the reader learns to skip. Gate 6 is neither — it applies from step 1, and what
+changes is its expected list, which grows by three symbols at step 4.
+
+| Gate | Applies from |
+| ---- | ------------ |
+| 1 `/signals` shipped | step 1 |
+| 2 Angular 22 confinement | step 1 |
+| 3 One path to the walk | **step 3** (zero hits before it, and zero is the expected value) |
+| 4 `/reactive` unmoved | step 1, through step 7 |
+| 5 Published core surface | **step 3** |
+| 6 `/signals` published surface | step 1 |
 
 1. **`/signals` shipped**: `dist/modules/eval-forms/package.json` `exports` has `./signals`
    with `types` and `default` naming emitted files; `signals/package.json` agrees.
 2. **Angular 22 confinement**: every `@angular/forms/signals` hit under
-   `modules/eval-forms/` is inside `modules/eval-forms/signals/`. Specs are excluded from
-   this grep — `src/lib/field-context.spec.ts` legitimately imports `@angular/core`, and a
-   grep that fires on it teaches the reader to ignore the gate.
-3. **One path to the walk**, and the grep must cover every published entrance, not just
-   `call`. `eval-core` also exports free `evaluate` (`:1819`), `evaluateAsync` (`:1826`) and
-   `compile` (`:1836`), and `CompilerService` publishes `simpleCall` (`:1918`) — which does
-   what `evaluateRule` does **minus the containment**, and which a case-sensitive `call(`
-   does not match. The gate is
-   `\b(call|simpleCall|simpleCallAsync|evaluate|evaluateAsync|simpleEval)\s*\(` plus any use
-   of `EvalService` or `CompilerService`, over non-spec files under
-   `modules/eval-forms/signals/`. Expected: exactly one hit, `call(` in `evaluate-rule.ts`.
-   `compile(` is expected in `rules.ts` and is registration, not a walk — it produces a
-   callback and does not run one.
-4. **`/reactive` unmoved**: its FESM stays at 25,748 bytes **through step 6** — nothing in
-   this phase, including step 6's README and version bump, touches its bundle — and its
-   specs stay green throughout.
+   `modules/eval-forms/` is inside `modules/eval-forms/signals/`. Specs are excluded because
+   they do not ship: step 4's end-to-end spec must import `form` and `schema` from
+   `@angular/forms/signals` to exist at all, and it can live under `signals/` or, per step
+   1's cross-entry-point rule, under another entry point's folder — where a spec-inclusive
+   grep would fire on a file that reaches no consumer. (Revisions 1–4 justified this
+   exclusion with `field-context.spec.ts` importing `@angular/core`, which this grep would
+   not have matched.)
+3. **One path to the walk — gated on state construction, not on call-site names** (W1).
+   Revision 2 widened a name-based grep past `call(`; the invariant cannot be expressed that
+   way at all. `compile` returns `evaluate.bind(null, node)`
+   (`modules/eval-core/src/lib/internal/functions/compile.ts:16`), so a rule that holds the
+   compiled callback and writes `compiled(state)` runs the identical walk under a local
+   variable's name, matching no regex over `call|evaluate|simpleCall`, with the containment
+   `finally` skipped in silence. Widening the name list makes that miss harder to notice, not
+   less likely.
+
+   What every walk needs is an `EvalState`, and outside Angular DI there are exactly two ways
+   to obtain one: `EvalState.fromContext` (1.2.9) and `new EvalState(context, result, …)`,
+   whose constructor is public
+   (`modules/eval-core/src/lib/internal/classes/eval/eval-state.ts:177`). The services
+   construct one out of sight — `EvalService.simpleEval` and `CompilerService.simpleCall`
+   build a state internally, so their use would never appear as a construction in our source.
+   Three greps over **non-spec files under `modules/eval-forms/`** — the whole package, not
+   `signals/`, and the intro said `signals/` through revision 5 while the table rows and the
+   refinement below both said the package (W2). The narrow spelling misses the one case the
+   refinement says this gate exists for:
+
+   | Grep | Over | Expected |
+   | ---- | ---- | -------- |
+   | `EvalState\.fromContext` | **all** non-spec files under `modules/eval-forms/` | **exactly one hit**, and it is in `signals/src/lib/evaluate-rule.ts` |
+   | `new\s+EvalState` | non-spec files under `modules/eval-forms/` | zero |
+   | `EvalService\|CompilerService` | non-spec files under `modules/eval-forms/` | zero |
+
+   Two refinements the greps alone do not carry, and both are read from the diff. **The one
+   hit must be inside `evaluateRule`'s body** — hoisted to module scope it is still one hit,
+   while one `EvalState` reused across invocations shares the value stack, the open-node
+   stack and `result.trace` between derivations, which is a different defect wearing this
+   gate's pass. And **the path is the whole package, not `signals/`** — a state-constructing
+   helper parked in `src/lib/` and reached by a relative import is invisible to a grep scoped
+   to the adapter, and gate 5 catches it only if it is also exported.
+
+   One state construction, in the right place, and no route that constructs one elsewhere. A second walk is then
+   unreachable rather than merely unnamed: free `evaluate` (`:1819`), `evaluateAsync`
+   (`:1826`) and a bound `compiled` all require a state they have no way to get. `compile(`
+   stays expected in `rules.ts` and is registration, not a walk — it produces a callback and
+   does not run one.
+
+   **This departs from the `/signals` checklist's own wording**, which says to "grep the
+   adapter for `call(` and for direct `EvalService` use"
+   ([`.claude/agents/code-reviewer.md`](../../.claude/agents/code-reviewer.md), item 1), and
+   § 0.1 requires saying why: the checklist's grep is sound for the two entrances it names
+   and blind to the bound callback, which is the one a rule reaching for speed would most
+   plausibly write. `call(` is still worth grepping — more than one hit inside
+   `evaluate-rule.ts` is still a finding — but a hit count of one proves nothing by itself.
+4. **`/reactive` unmoved**: its FESM stays at 25,748 bytes **through step 7** — nothing in
+   this phase touches its bundle, including step 6's guard and peer-dependency edit and
+   step 7's README and version bump — and its specs stay green throughout. Step 6 is the one
+   that could plausibly move it, since it edits the shared `package.json`; the manifest is not
+   compiled into the FESM, and this row is what confirms that rather than assumes it.
 5. **Published core surface**: `dist/modules/eval-forms/types/zvenigora-ng-eval-forms.d.ts`
    gains `applyErrorPolicy` and **nothing else**.
+6. **`/signals` published surface** (W4).
+   `dist/modules/eval-forms/types/zvenigora-ng-eval-forms-signals.d.ts` declares **exactly**
+   § 5's `/signals` list and nothing besides: `TEXT` alone from step 1, and
+   `createExpressionRules`, `ExpressionRules`, `ExpressionRuleOptions` and `TEXT` from step 4
+   on. `evaluateRule`, `createModelSource`, `ModelSource` and `guardIdentifiers` must be
+   **absent** — the four rows of § 5's module-private table — which is what turns § 3.3's
+   module-privacy decision and that table from claims into something a build output can fail.
+
+   Gate 5 does not cover this and cannot: it names the *primary* entry point's `.d.ts`, and
+   `/signals` emits a separate file. So through revision 5 the one entry point this phase
+   actually creates — the one where an unintended export would appear — had no surface gate,
+   while step 4 told the implementer to "look at gate 5's output afterwards" for exports that
+   never reach gate 5's file. That is the same shape as W3 one gate over: the obligation was
+   written where it reads naturally rather than where it is checked.
 
 ### 6.1 Specs go through the end-to-end path
 
 As Phase 4 § 6.1, with one substitution that is not optional: the `/reactive` harness does
 not port, because there is no `EvalSignal` whose recomputes can be counted (§ 3.6).
 
-**There are two harnesses here and they are not interchangeable.** Revision 1 offered them
-as alternatives, which would have let the weaker one stand in for the stronger:
+**There are three harnesses here and they are not interchangeable.** Revision 1 offered the
+first two as alternatives, which would have let the weaker stand in for the stronger; the
+third exists because step 2 has no `LogicFn` to count:
 
-| Harness | Proves | Does **not** prove |
-| ------- | ------ | ------------------ |
-| Read back `field().hidden()` / the `TEXT` signal after a model write | The rule is registered with Angular, its value reaches the field's state, and the polarity is right — **wiring**, end to end | Anything about tracking |
-| Count `LogicFn` invocations across a model write | The rule ran, or did not — **reactivity** | Nothing about the value it produced |
+| Harness | Used by | Proves | Does **not** prove |
+| ------- | ------- | ------ | ------------------ |
+| Read back `f.city().hidden()` / the `TEXT` signal after a model write | steps 4–7 | The rule is registered with Angular, its value reaches the field's state, and the polarity is right — **wiring**, end to end | Anything about tracking |
+| Count `LogicFn` invocations across a model write | steps 4–5 | The rule ran, or did not — **reactivity** | Nothing about the value it produced |
+| Count re-evaluations of a spec-local `computed(() => context.get(key))` | **step 2 only** | The source and the context resolve and track — **reactivity of the source alone** | Nothing about a rule, a `LogicFn`, or Angular |
+
+#### 6.1.1 How the `LogicFn` count is actually obtained, measured
+
+The second harness is required by name for every negative case **in steps 4 and 5** — step 2's
+is the third harness, which needs no mocking at all (W1) — and revisions 1–4 never said
+how a spec gets the number. It cannot wrap the closure: `rules.ts` builds the `LogicFn` and
+hands it straight to `hidden()`. Four candidate instruments were spiked against a ground-truth
+counter placed inside the registrar — available to the spike, never to the library's specs.
+
+**The numbers below are the re-spike's, run under the layout this plan actually specifies**
+(C1). Revision 5's spike mocked `./error-policy` as a **sibling** of the adapter, and § 3.4
+does not put it there: `applyErrorPolicy` lives in the core (§ 3.4.1), so the adapter imports
+it from `@zvenigora/ng-eval-forms` and the seam is a **barrel** re-exporting `toVisible`,
+`toText`, `createFieldContext` and `ExpressionErrorPolicy` alongside it. That is a different
+mock — wider, and shared with the specs' own imports — so the instrument choice was re-run
+rather than re-specified. Six cases, a ground-truth counter, a real `form()` + `schema()` +
+`hidden(path, { when })`, the real `createFieldContext`, § 3.3's `evaluateRule`, and
+`applyErrorPolicy` reached through the package specifier.
+
+| Instrument | Tracks the true invocation count? |
+| ---------- | --------------------------------- |
+| Delegating mock of `@zvenigora/ng-eval-forms` — the core entry point's **barrel** — counting `applyErrorPolicy` | **Yes, in every case measured** — construction, first read, unnamed write, named write, throwing expression, and M6's guarded rule |
+| Module mock of `./evaluate-rule`, counting `evaluateRule` | Yes **until a rule short-circuits**, then no — see M6 |
+| Module mock of `@zvenigora/ng-eval-core`, counting `call` | Same as `evaluateRule`, one layer lower |
+| A probe function carried in the model, called by the expression itself | Yes, and needs no mocking — `eval-core`'s call sandboxing does not block it |
+
+**Decision: mock `applyErrorPolicy` — unchanged by the re-spike, and now on four
+measurements rather than three.** M4 and M6 hold across the barrel seam at identical numbers;
+what the re-spike added is M7, and M7 is the one that changes a sentence this plan had
+written down.
+
+- **M1** — with an unguarded rule all three mocked instruments equal the ground truth at every
+  stage of § 6.1's sequence: at construction **0/0**, first read **1/1**, unnamed write then
+  read **1/1**, named write then read **2/2**, with `hidden` false → false → true. So the
+  choice cannot be made by trying the plan's own cases. It has to be made by constructing the
+  case that separates them.
+- **M6** — a rule that skips the walk when its key is absent, which is the shape a later
+  "optimisation" would take, invoked once: ground truth **1**, `applyErrorPolicy` **1**,
+  `evaluateRule` **0**, `call` **0**. Identical through the barrel. A negative case built on
+  the `evaluateRule` mock would compare 0 to 0 and pass **while the rule was running** —
+  reporting reactivity coverage it does not have, exactly as this document's § 6.1 has twice
+  before. Counting walks is not counting invocations, and the difference is invisible until
+  the day it matters.
+- **M4** — `applyErrorPolicy` is 1:1 with the invocation count at every stage above *and*
+  under a throwing expression (ground **1**, all three mocked instruments **1**), *and* is the
+  seam § 3.4 already requires around the same call. One seam serves the instrument and the
+  error policy, so neither is scaffolding held up only by the other. The barrel does not
+  weaken this: the delegating mock leaves the rest of the entry point real, and an assigning
+  expression still throws `SignalContextWriteError` out through a `'undefined'` policy with
+  the mock installed.
+- **M7 — new, and it is the measurement § 3.5's invariant actually rests on.** The same
+  guarded rule with the guard moved **ahead** of the wrapper, so `applyErrorPolicy` is no
+  longer the outermost call, invoked once: ground truth **1**, `applyErrorPolicy` **0**.
+  *That* is the instrument sitting under a branch, and it reads zero.
+
+**The instrument depends on a design invariant, and the invariant is therefore stated rather
+than assumed: `applyErrorPolicy` must be the outermost call in every `LogicFn` body** (§ 3.5).
+M7 is what makes that load-bearing, and **M6 is not** — M6 put the guard *inside* the wrapper,
+where the wrapper is still outermost and still tracked 1:1. Revision 5 cited M6 for this
+sentence and so cited a measurement whose numbers say the opposite of the claim; § 0.2 records
+the general form. A registrar that evaluates before wrapping, or guards ahead of it, degrades
+every negative case in steps 4 and 5 to the **M7** result — a count of 0 that reads as "the
+rule did not re-run". Step 4's exit criteria assert the policy path through a registered rule,
+which is what keeps this checkable.
+
+**Four mechanics, and the barrel changes one of them.** All four are borrowed rather than
+derived; the § 0.1 row records where from.
+
+1. **A delegating mock is required, and the bare one fails differently here than the
+   sibling-seam spike reported.** Revision 5 wrote that `jest.mock` with no factory auto-mocks
+   the function to `undefined`, the rule goes dead, and the read-back assertions in the same
+   spec pass while meaning nothing. Under the barrel that is **not** what happens:
+   `jest.mock('@zvenigora/ng-eval-forms')` auto-mocks `createFieldContext` too, so
+   registration throws `TypeError: Cannot read properties of undefined (reading 'lookups')`
+   before any `LogicFn` exists. Measured. The failure is loud, not silent — which is a reason
+   to spread `requireActual` rather than a hazard to guard against, and revision 5's stated
+   reason for the delegating form does not survive the move to the real seam. It preserves
+   behaviour: with the delegating mock installed, every read-back and both error-policy arms
+   produce the same values as with no mock at all.
+2. **`jest.requireActual` goes *inside* the factory**, because `jest.mock` factories are
+   hoisted above every `const` in the file; the obvious spelling throws
+   `ReferenceError: Cannot access '…' before initialization`. A counter object declared before
+   the `jest.mock` call is fine, because the factory only *reads* it when the wrapped function
+   runs.
+3. **The mock target is the package specifier**, `@zvenigora/ng-eval-forms`, and
+   `jest.requireActual` takes the same specifier. Nothing resolves `./error-policy` from the
+   adapter — that path does not exist on this side of § 3.4.1's placement call.
+4. **`jest.mock` hoists to *file* scope, so the barrel mock needs its own spec file** (W7).
+   It cannot be scoped to one `describe`. Two *delegating* barrel mocks do coexist in one file
+   — measured, `@zvenigora/ng-eval-core` and `@zvenigora/ng-eval-forms` side by side, both
+   counting correctly — so the split is per file, not per mock.
+
+**The in-expression probe is the rejected alternative, not a refuted one.** It works, it
+needs no mocking, and it is 1:1. It is not taken because it changes the expression under
+test — `probe(country) === "US"` is not the string a consumer writes — so the fixture and the
+shipped case diverge in the one place this plan cares about. Recorded because it is the
+fallback if module mocking ever becomes unavailable.
+
+**Also measured: `form()` construction invokes the `LogicFn` zero times** (M1, first row).
+The count is 0 until something reads field state, which is why § 6.1's step 1 is a read and
+why step 2's `≥ 1` is a real assertion rather than one construction already satisfied.
 
 The read-back **cannot see over-subscription at all**: Angular's value equality means a
 re-derivation returning the same boolean is indistinguishable from no re-derivation, so a
@@ -871,8 +2455,59 @@ harness, not a reactivity harness, and describing it as one is how the over-subs
 probe gets defeated by its own setup.
 
 **So: the negative case — a key the expression never named changes, and the rule must not
-re-run — is asserted by `LogicFn` invocation count, and by nothing else.** Positive cases may
-use either, and should use both where the value matters.
+re-run — is asserted by the `LogicFn` invocation count in steps 4 and 5.** In step 2 it is
+asserted by the third harness's count, for the reason the table's third row gives: there is no
+`LogicFn` yet (W1). Positive cases may use either
+harness, and should use both where the value matters.
+
+**Revision 2 wrote "and by nothing else", and that clause was itself the defect** (C1). It
+was aimed at the assertion and it landed on the setup. Angular's graph is pull-based: a
+`LogicFn` registered through `hidden(p.x, { when })` runs when something reads field state
+that depends on it, not when the model is written. A spec that writes the model and compares
+counts without ever reading the field compares 0 to 0 — and passes identically against a rule
+that over-subscribes, a rule wired to the wrong field, and a `hidden()` that was never
+registered at all.
+
+**The full sequence, every line of it load-bearing. It is stated generically because two
+different harnesses run it** (W6): **sequence steps 2 and 5** are the count in both, and what
+"read" means differs, because **work-breakdown step 2** has no form, no field state and no
+`LogicFn` at all. (Both numberings in one sentence, which is why both are qualified — W4.)
+
+| Harness | "the counted derivation" is | "read" is | Used by |
+| ------- | --------------------------- | --------- | ------- |
+| `LogicFn` count | the registered rule's `LogicFn` | `f.city().hidden()`, or the `TEXT` metadata signal read as `f.city().metadata(TEXT)?.()` | steps 4–5 |
+| Source count | a spec-local `computed(() => context.get(key))` over a `createRuleContext()` context | calling that `computed` | **step 2** |
+
+1. **Read the counted derivation**, forcing the first invocation.
+2. **Record** the count, and assert it is **≥ 1**. A recorded count of 0 means nothing has
+   run yet, and the rest of the spec is measuring an absence it created.
+3. **Write** a model key the expression does not name.
+4. **Read the same derivation again.** This is the step "by nothing else" forbade. Without
+   it nothing demands a derivation, and the count cannot move whether the rule is
+   over-subscribed or not.
+5. **Assert the count is unchanged.** The count is the assertion; steps 1 and 4 are setup.
+6. **Then write a key the expression *does* name, read again, and assert the count
+   increased.** Without this arm nothing ever demonstrates the counter can move: a counter
+   incremented at registration, or wrapping the wrong closure, or sitting outside the
+   `LogicFn` body, satisfies step 2's `≥ 1` and then reports "unchanged" for every negative
+   case in **work-breakdown** steps 2, 4 and 5 — and § 6.1's own table has already disqualified the read-back
+   from covering for it. The instrument needs its own calibration, and this is it. Measured
+   for real in the § 3.2.1 spike: Q2's delta is 0, Q1's is 1, same fixture, same counter.
+
+The distinction revision 2 lost is that the read-back is **barred as the assertion and
+required as the setup**. `f.city().hidden()` returning the same boolean proves nothing about
+tracking — that is the table above, and it stands — but reading it is the only way to make
+Angular do the work whose absence the count measures.
+
+**The general form, which is the part worth keeping past this fix: an assertion discipline
+can itself have a vacuous setup.** [`CLAUDE.md`](../../CLAUDE.md)'s rule — "The probe checks
+the assertion. Check the setup separately." — applies to the rules a plan writes *about*
+assertions, not only to the assertions a spec writes. "By the count and by nothing else" was
+written as a vacuity guard and it removed the only thing that could make its own subject
+occur, which is the same signature § 0.1 gives the other two defects: sound about what it
+considered, silent about what it did not. A rule of the form "assert X and nothing else"
+therefore has to say what must **happen** for X to be observable, or it is a rule about
+notation rather than about evidence.
 
 Both vacuity probes from
 [`.claude/agents/code-reviewer.md`](../../.claude/agents/code-reviewer.md) apply: break the
@@ -886,14 +2521,42 @@ invocation count can fail the second one.
 
 | # | Risk | Mitigation |
 | - | ---- | ---------- |
-| 1 | A rule reaches the walk without `evaluateRule`, silently voiding containment | § 6 gate 3 — one `call(` in the directory |
+| 1 | A rule reaches the walk without `evaluateRule`, silently voiding containment — most plausibly by calling the compiled callback directly, which no name-based grep sees | § 6 gate 3 — exactly one `EvalState.fromContext` under **`modules/eval-forms/`**, no `new EvalState`, and neither service. Scoped to the package, not to `signals/`: a state-constructing helper parked in `src/lib/` is invisible to the narrow grep (W1, W2) |
 | 2 | `applyErrorPolicy` swallows `SignalContextWriteError` via a type-only import (§ 3.4) | Step 3 exit criterion asserts the re-throw through a `'undefined'` policy |
 | 3 | `@angular/forms/signals` leaks into the core or `/reactive`; green here, broken for a 19–21 consumer | § 6 gate 2 |
 | 4 | An additive core change alters `/reactive` behaviour; no gate row moves because it is one project | § 6 gates 4 and 5, plus reading the diff |
 | 5 | Signal Forms is new; an API used here changes in 22.x | Each symbol's **own docblock** checked, per overload — see below |
-| 6 | The escaped-closure residual — an arrow that outlives the walk pushes and pops outside any frame | Unsolved in both libraries, not this phase's; stated so it is not mistaken for a regression |
-| 7 | A reusable module-scope schema shares contexts across form instances (§ 3.6) | Structurally unreachable: the factory binds one model. Step 2's construction is where that is fixed |
-| 8 | `compile()` drifts into the `LogicFn` body, re-parsing per derivation | Step 4 exit counts parse/compile calls across N invocations of one rule. `CompilerService`'s LRU would have masked it; § 3.1 drops the service, so there is no cache to hide behind |
+| 6 | The escaped-closure residual — an arrow that outlives the walk pushes and pops outside any frame | **Accepted**, not mitigated: unsolved in both libraries and not this phase's, stated so it is not mistaken for a regression |
+| 7 | **A schema value reused across two models evaluates both forms against the *factory's* model** (§ 3.6, Q9) — every rule silently reads the wrong form's data, with no error and a fully working form | Step 4's Q9 criterion pins the behaviour by assertion (two forms from one schema; form B reads model A), so a change to it goes red rather than passing unnoticed; step 7's README names `makeSchema = (rules) => schema(…)` as the supported reuse shape. **Not** "structurally unreachable" — revisions 1–6 said that of the *context-sharing* hazard on an argument Q7 refutes, and Q8 retires that hazard for a different reason |
+| 8 | `compile()` drifts into the `LogicFn` body, re-parsing per derivation | Step 4's parse/compile count, **which revisions 1–4 named here and never put in the step**. `CompilerService`'s LRU would have masked it; § 3.1 drops the service, so there is no cache to hide behind |
+| 9 | A later step "simplifies" § 3.2.1's memo back into the source record — the shape that reads more naturally and is what revision 3 shipped | Steps 2 and 4 both carry the Q4 case, asserted on the **second** read under `caseInsensitive`. This is risk 2's shape — a correct implementation a tidying edit silently disables — and the only reason it is catchable is that the case is written down with its expected output |
+| 10 | `resolve` changes upstream and `readProperty` does not (§ 3.2.1) | Accepted, and stated rather than mitigated: `resolve` is module-private in `eval-signals`, so there is nothing to import. Two copies that must agree, in a package this repo owns and versions |
+| 11 | Angular stops invoking `LogicFn`s inside a memoising consumer, or `computed`'s equality behaviour changes, and every negative case in §§ 4–6 inverts | Q1/Q2/Q2b measure it rather than assume it, so a failing negative case in step 4 is a **mechanism finding about Angular**, not a bug in the diff. Recorded so the next reader spends the hour in the right place |
+| 12 | `applyErrorPolicy` stops being the outermost call in a `LogicFn` body — a guard added ahead of it, or the coercion moved inside | Two things break at once and only one is loud: the policy stops covering the coercion, and § 6.1.1's instrument reads 0 where the truth is 1 (**M7**) — so every negative case built on it reports "the rule did not re-run" for a rule that ran, which is the quiet half. **Gated by step 4's coercion-outside-the-policy criterion** — `hidden()` is `true` for a throwing expression under `'undefined'` — plus the instrument at ≥ 1 for a rule whose branch trips, which step 4 states as "its branch key absent" — the same M7 case in the two wordings. Revisions 1–5 named the policy-through-a-rule criteria here, which both nestings satisfy (C4); § 3.5 states the invariant |
+
+| 13 | Step 6's guard rejects an expression a consumer legitimately wrote — a bound arrow parameter (§ 3.8.1) or a name it does not actually shadow — or the `/reactive`-vs-`/signals` **timing** difference surprises a consumer moving a schema between adapters: schema construction there, `form()` here | Step 6's four negative arms are the gate, and they bound the check from both sides: `CONSTRUCTOR`, `country` and `constructorName` must register, `'user.constructor'` must register, `'[1].map(valueOf => 1)'` must register, and `'[1].map(valueOf => valueOf)'` must throw. The timing difference is stated in § 3.8 and carried into step 7's README, which is where a consumer moving a schema would look |
+
+**§ 0.2.1's check applied to this table — re-run to completion in revision 7, and revision 6's
+run of it was wrong.** Revision 6 reported eight gated rows and four exceptions. The true count
+then was **seven**: risk 7's cell named "Step 2's construction", which is a *deliverable*, not
+an assertion — § 0.2.1's own headline case, missed by the paragraph that introduced it, one row
+past where it stopped reading. Revision 7 rewrites risk 7 around Q9 and gives it a step-4
+assertion, so the count is eight now for a reason rather than by arithmetic.
+
+**As it stands: nine rows name an assertion or a grep** — 1, 2, 3, 4, 7, 8, 9, 12 and 13 —
+**and four are exceptions that say so on their face** rather than implying a gate they do not have:
+risk 5's is a **completed** read of Angular's per-overload docblocks (1.2.7), done once at plan
+time and not repeatable by a spec; risks 6 and 10 are **accepted rather than mitigated**, in
+those words; and risk 11's measurement makes a failure *diagnosable* rather than preventable,
+which is why its cell says where to spend the hour. Those four are the rows a later revision
+must not quietly convert into a cross-reference; the nine are the rows where "which assertion
+goes red?" must keep having an answer.
+
+**Risk 13 is new in revision 9, and its absence was itself the defect.** Step 6 adds a
+registration-time **throw** to a released package — the only new failure mode this phase
+introduces — and through revision 8 no row owned it, so this audit ran to completion over a
+table that did not mention the plan's newest deliverable. A check over a list only covers what
+the list contains, which is the one thing § 0.2.1's three questions cannot tell you.
 
 **Risk 5's mitigation in revision 1 was false, and how it went wrong is worth recording.**
 It read "everything relied on is tagged `@publicApi 22.0` (1.2.1–1.2.8)". What was actually
