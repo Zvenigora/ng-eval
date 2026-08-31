@@ -20,6 +20,9 @@
       "@zvenigora/ng-eval-forms": ["./modules/eval-forms/src/index.ts"],
       "@zvenigora/ng-eval-forms/reactive": [
         "./modules/eval-forms/reactive/src/public-api.ts"
+      ],
+      "@zvenigora/ng-eval-forms/signals": [
+        "./modules/eval-forms/signals/src/public-api.ts"
       ]
     },
     "strict": false,
