@@ -2,6 +2,30 @@
 
 **Date**: August 24, 2026
 
+**Revision**: 11 — **a step-2 amendment, not a review round.** One correction, and it comes
+from running the step rather than reading it.
+
+1. **Step 2's two new files are never seen by the production compiler, and the plan did not
+   say so.** Gate 6 keeps `createExpressionRules`, `ExpressionRules` and
+   `ExpressionRuleOptions` out of the emitted `.d.ts` until step 4, so
+   `signals/src/public-api.ts` is not edited in steps 2–3 and neither `model-source.ts` nor
+   `rules.ts` is reachable from the entry file. ng-packagr compiles **from the entry file**,
+   not from `tsconfig.lib.json`'s `include`. Measured: with
+   `const probeTypeError: number = 'not a number'` in `createModelSource`'s body,
+   `nx run eval-forms:build:production --skip-nx-cache` is **green**. So § 6's "every step:
+   lint, test, build" silently covers less than it names for two steps, and **step 4's barrel
+   edit is where two steps of source first meets `tsconfig.lib.prod.json`** — Phase 3 step 3's
+   `TS7053` is the precedent for what surfaces at exactly that transition. Step 2's bullet list
+   records it, and step 4 should budget for it.
+
+   This is § 0.2's third failure mode again, the one revision 10 added: the claim "build is a
+   type-check" is true of every *other* file in this package and false of these two, and
+   nothing in the gate's wording distinguishes them. **A cheaper gate exists and is not yet
+   adopted** — `npx tsc -p modules/eval-forms/tsconfig.lib.prod.json --noEmit` does honour the
+   `include` and reports zero errors in `modules/eval-forms` today. Left as a note rather than
+   a new § 6 row, because adding a gate mid-phase is a plan change and this revision is an
+   amendment.
+
 **Revision**: 10 — **a step-1 amendment, not a review round.** Step 1 was executed against
 revision 9 and its three corrections all come from running the plan rather than reading it,
 which is the outcome § 0.2 has been arguing for since revision 4.
@@ -1990,6 +2014,28 @@ verbatim, so this step should re-read them rather than rediscover them.
     `computed`, not `f.city().hidden()` (W6). Revisions 2 and 3 gave this step exit criteria
     its own deliverables could not satisfy; revision 4 put two of them back (C3). That is how
     an implementer ends up improvising a design.
+
+  - **Neither new file is type-checked by `build:production`, and step 4 is the first time
+    they meet the production compiler** — added in revision 11, after step 2 measured it.
+    Gate 6 requires `createExpressionRules`, `ExpressionRules` and `ExpressionRuleOptions` to
+    be absent from the emitted `.d.ts` until step 4, so `signals/src/public-api.ts` is not
+    edited in this step and neither `model-source.ts` nor `rules.ts` is reachable from the
+    entry file. ng-packagr compiles **from the entry file**, not from `tsconfig.lib.json`'s
+    `include`, so an unreachable module is never compiled at all.
+
+    Measured rather than inferred: with `const probeTypeError: number = 'not a number'` in
+    `createModelSource`'s body, `nx run eval-forms:build:production --skip-nx-cache` is
+    **green**. `lint` and `test` are therefore the only gates on these two files for steps 2
+    and 3 — and `tsconfig.spec.json` is more permissive than `tsconfig.lib.prod.json`, which
+    is [`CLAUDE.md`](../../CLAUDE.md)'s "a green `test` run is not a type-check" with the
+    usual one-project caveat removed: here it is not that the two configs differ in
+    strictness but that one of them never sees the file.
+
+    **So step 4 should expect to find things.** The barrel edit that publishes the three
+    symbols is also the moment two steps' worth of accumulated source first reaches
+    `tsconfig.lib.prod.json`, and a step-4 budget that assumes those files are already sound
+    is the same mistake in a new place. Phase 3 step 3's `TS7053` is the precedent for what
+    surfaces at exactly this transition.
 
 ### Step 3 — The choke point and the error policy
 
