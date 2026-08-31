@@ -2,6 +2,36 @@
 
 **Date**: August 24, 2026
 
+**Revision**: 10 — **a step-1 amendment, not a review round.** Step 1 was executed against
+revision 9 and its three corrections all come from running the plan rather than reading it,
+which is the outcome § 0.2 has been arguing for since revision 4.
+
+1. **Step 1's `moduleResolution` bullet stated a false claim that had been reached by
+   measurement.** "Without it this step cannot pass its own test target" — `tsc` really does
+   report `TS2307` under `node10`, and the test target is not `tsc`: ts-jest does not enforce
+   type diagnostics, and `nx test eval-forms` is green under `node10` with both new specs in
+   place. Five pre-existing specs import `@angular/core/testing`, which `node10` also cannot
+   resolve, and have been green since Phase 4. The bullet now lists the grounds that hold —
+   `tsc` cleanliness for editors and any later type-aware check, the `TS5107` deprecation, and
+   parity with `eval-core`, which already sets `bundler`. **§ 0.2 gains the third failure mode
+   this is an instance of**: a claim can be false and still have been arrived at by
+   measurement, if the wrong artifact was measured. Neither § 0.2.1 nor § 0.2.2 catches it,
+   because the claim is gated, single-sourced, and wrong.
+2. **Gate 3's third grep now matches an `import`, not a bare name.** Run for real, the name
+   grep returned one hit — a pre-existing block comment at
+   `reactive/src/lib/field-schema.ts:431` naming `CompilerService` as eval-signals' internal.
+   A gate with a known standing hit is one people learn to ignore, and step 3 is where that
+   bites. The import form makes the row a subset of § 5's import list and is calibrated
+   against `eval-signal.ts:2-3`, a real multi-line import it does find.
+3. **Step 1's file list carries two specs**, which its own third exit criterion had required
+   since revision 1: `@nx/enforce-module-boundaries` rejects a package-name self-import within
+   one entry point, so the spec proving the `paths` mapping cannot be the co-located one.
+
+**Also recorded from the step**: the boundary rule resolves the specifier before deciding, so
+a spec written test-first against a not-yet-existing `public-api.ts` fails the rule for a
+reason that disappears when the barrel lands (`runtime-lint-utils.js:330-344`) — a mechanic
+worth knowing before step 2 writes its specs first again.
+
 **Revision**: 9 — amended after a review of revision 8, and **the last revision before step 1**.
 No spike; no design changed. Three blockers, four warnings, and one decision revision 8 had
 described instead of making.
@@ -505,6 +535,34 @@ this plan does not own. "Does Angular re-invoke a `LogicFn` inside a memoising c
 in minutes, all previously answered here by assertion, and one of those three assertions was
 wrong. Scope, naming, and what to defer are **not** mechanism questions; § 8 settles those by
 argument and should.
+
+**A third failure mode, and it is the one that most resembles success: a claim can be false
+and still have been arrived at by measurement, if the wrong thing was measured.** The other
+two above are about not measuring and about restating a measurement. This one is about
+measuring the wrong artifact and reading the number as if it were about the right one — and
+it leaves a false claim wearing every mark of a true one, which is why neither § 0.2.1 nor
+§ 0.2.2 catches it.
+
+Step 1's own bullet is the instance. Revisions 1–9 said the `moduleResolution` edit was forced
+because "without it this step cannot pass its own test target", and that was not asserted —
+`tsc -p modules/eval-forms/tsconfig.spec.json` really does report `TS2307` under `node10` and
+really is clean under `bundler`. Both numbers are correct. The claim is still false, because
+**the test target is not `tsc`**: Jest runs ts-jest, which does not enforce type diagnostics,
+and `nx test eval-forms` is green under `node10` with the new specs in place. A measurement of
+`tsc` is evidence about `tsc`.
+
+The tell was in the repository and cost nothing to look at: **five pre-existing specs import
+`@angular/core/testing`, which `node10` cannot resolve either, and they have been green since
+Phase 4.** A claim that a resolution failure stops the suite was refuted by a suite that had
+been passing with that exact failure for two phases.
+
+**So: name the artifact the claim is about, and measure *that* artifact.** If the claim is
+"the test target fails", run the test target. If it is "the build fails", run the build. A
+number from a neighbouring tool is a fact about the neighbouring tool, and the gap between the
+two is invisible in the write-up — the prose reads "measured" either way. This is the reason
+§ 4 step 1's corrected bullet lists the grounds that *do* hold rather than deleting the edit:
+the edit was right, and only its stated reason was wrong, which is exactly how this failure
+mode survives review.
 
 **A hazard in restating a finding: a measured result restated as a principle can lose the
 property it measured.** M6 measured a rule whose guard sat *inside* an outermost
@@ -1774,11 +1832,31 @@ verbatim, so this step should re-read them rather than rediscover them.
 - **Edit**: `modules/eval-forms/tsconfig.spec.json` — the same `include` widening for specs,
   **and `moduleResolution: "bundler"`**, replacing the `node10` it sets at `:8`.
 
-  Without the second half this step cannot pass its own test target, and the library build
-  hides it: `tsconfig.lib.json` inherits `bundler` from `modules/eval-forms/tsconfig.json:6`,
-  while `tsconfig.spec.json` overrides it to `node10`. `@angular/forms` publishes `./signals`
-  **only** through its `exports` map — there is no `signals/` directory to fall back to — so
-  the spec program cannot resolve it. Measured against this workspace's own `node_modules`:
+  **Corrected in revision 10, after step 1 measured the claim this bullet actually rested
+  on.** Revisions 1–9 said "without the second half this step cannot pass its own test
+  target". That is false, and it was measured: with `node10` restored and both new specs in
+  place, `nx test eval-forms` is **green — 8 suites, 113 tests**. ts-jest does not enforce type
+  diagnostics here, so `TS2307` never reaches the test target at all. The refutation was
+  sitting in the baseline the whole time: **five pre-existing eval-forms specs import
+  `@angular/core/testing`**, which `node10` cannot resolve either (`tsc -p
+  modules/eval-forms/tsconfig.spec.json` at `e739d0f` reports 8 × `TS2307`), and those suites
+  have been green since Phase 4. § 0.2 records the general form.
+
+  **The grounds that do hold**, and they are enough on their own:
+
+  - **`tsc -p modules/eval-forms/tsconfig.spec.json` fails under `node10` and is clean under
+    `bundler`** — an editor, a `tsc --noEmit` in CI, or any later type-aware lint rule sees
+    those errors even though Jest does not. `@angular/forms` publishes `./signals` **only**
+    through its `exports` map, with no `signals/` directory to fall back to.
+  - **It retires a setting on borrowed time**: `TS5107: Option 'moduleResolution=node10' is
+    deprecated and will stop functioning in TypeScript 7.0`.
+  - **It aligns eval-forms with `eval-core`, which already sets `bundler`** in its own
+    `tsconfig.spec.json`. Revisions 1–9 named only `eval-signals` as still carrying `node10`,
+    which understated the case: eval-forms is the second of three, not the first.
+
+  The library build hides the whole question either way: `tsconfig.lib.json` inherits
+  `bundler` from `modules/eval-forms/tsconfig.json:6`, while `tsconfig.spec.json` overrides it
+  to `node10`. Measured against this workspace's own `node_modules`:
 
   | `moduleResolution` | Result |
   | ------------------ | ------ |
@@ -1786,7 +1864,13 @@ verbatim, so this step should re-read them rather than rediscover them.
   | `bundler` | clean |
 
   **This is the step's mechanism risk**: it changes resolution for *every* eval-forms spec,
-  not only the new ones, so the whole existing suite is the gate on it. Compatibility with
+  not only the new ones, so the whole existing suite is the gate on it. **Measured in step 1
+  and it moved nothing**: `tsc --listFiles` under both settings over the pre-existing spec set
+  resolves **no file to a different file**; three files appear that `node10` had reported as
+  `TS2307` (`@angular/core/types/testing.d.ts`, `types/rxjs-interop.d.ts`,
+  `types/primitives-signals.d.ts`), none is removed, and no `paths` entry shadows a real
+  package. Whole-program errors go from 38 × `TS1205` + 8 × `TS2307` + 1 × `TS2353` to
+  38 × `TS1205` — strictly fewer, with the `TS1205` set identical and pre-existing. Compatibility with
   the `module: "commonjs"` already set there was an assertion in revisions 1–3 and is now
   measured: `tsc` accepts the pair with no `TS5095`, and resolves `@angular/forms/signals`
   clean. The same probe found that the **`node10` being replaced is itself deprecated** —
@@ -1796,7 +1880,14 @@ verbatim, so this step should re-read them rather than rediscover them.
   worth knowing.
 - **Edit**: `tsconfig.base.json` — add
   `"@zvenigora/ng-eval-forms/signals": ["./modules/eval-forms/signals/src/public-api.ts"]`.
-- **New**: a co-located spec, test-first.
+- **New**: **two** specs, test-first, because the third exit criterion needs a file the
+  co-located one cannot be. `signals/src/lib/text-key.spec.ts` imports `TEXT` **relatively**
+  and carries the key's own invariant; `src/lib/signals-entry-point.spec.ts` imports it
+  through **`@zvenigora/ng-eval-forms/signals`** and lives under another entry point's folder,
+  because `@nx/enforce-module-boundaries` rejects a package-name self-import within one entry
+  point and permits it across. Revisions 1–9 listed one spec here: the deliverable predates
+  the boundary constraint, which arrived with the exit criterion below and was never reflected
+  upward.
 - **Exit**:
   - all three projects green on lint, test and build;
   - `dist/modules/eval-forms/package.json`'s `exports` map has a `./signals` key whose
@@ -2287,7 +2378,23 @@ changes is its expected list, which grows by three symbols at step 4.
    | ---- | ---- | -------- |
    | `EvalState\.fromContext` | **all** non-spec files under `modules/eval-forms/` | **exactly one hit**, and it is in `signals/src/lib/evaluate-rule.ts` |
    | `new\s+EvalState` | non-spec files under `modules/eval-forms/` | zero |
-   | `EvalService\|CompilerService` | non-spec files under `modules/eval-forms/` | zero |
+   | `import\s*(type\s*)?\{[^}]*\b(EvalService\|CompilerService)\b[^}]*\}\s*from\s*'@zvenigora/ng-eval-core'`, multiline | non-spec files under `modules/eval-forms/` | zero |
+
+   **The third grep matches an `import`, not a name, and revision 10 narrowed it after step 1
+   ran it.** The bare `EvalService\|CompilerService` returned **one hit** —
+   `reactive/src/lib/field-schema.ts:431`, a block comment explaining why `createEvalSignal`
+   gets `options.injector`, which names `CompilerService` as *eval-signals'* internal and cites
+   `eval-signal.ts:215-216`. Pre-existing since `9fd548d`, and not a use: there is no import of
+   either service anywhere in `modules/eval-forms/`. So the gate's expected value of zero was
+   right about the invariant and wrong about the grep, and step 3 is where that bites — it
+   ships `evaluate-rule.ts`, whose § 3.3 discussion makes another such comment more likely than
+   not, and the gate would then read as failing on prose. **A gate with a known pre-existing hit
+   is one people learn to ignore**, which is worse than no gate. Matching the import also makes
+   this row a **subset of § 5's "Imported from `eval-core`" list** rather than a second,
+   differently-shaped check: neither symbol can enter a non-spec file by any other route.
+   Calibrated so it is not vacuous — the same pattern finds
+   `modules/eval-signals/src/lib/eval-signal.ts:2-3`, a real multi-line import of
+   `CompilerService`, so the grep fires when there is something to find.
 
    Two refinements the greps alone do not carry, and both are read from the diff. **The one
    hit must be inside `evaluateRule`'s body** — hoisted to module scope it is still one hit,
@@ -2521,7 +2628,7 @@ invocation count can fail the second one.
 
 | # | Risk | Mitigation |
 | - | ---- | ---------- |
-| 1 | A rule reaches the walk without `evaluateRule`, silently voiding containment — most plausibly by calling the compiled callback directly, which no name-based grep sees | § 6 gate 3 — exactly one `EvalState.fromContext` under **`modules/eval-forms/`**, no `new EvalState`, and neither service. Scoped to the package, not to `signals/`: a state-constructing helper parked in `src/lib/` is invisible to the narrow grep (W1, W2) |
+| 1 | A rule reaches the walk without `evaluateRule`, silently voiding containment — most plausibly by calling the compiled callback directly, which no name-based grep sees | § 6 gate 3 — exactly one `EvalState.fromContext` under **`modules/eval-forms/`**, no `new EvalState`, and no **import** of either service. Scoped to the package, not to `signals/`: a state-constructing helper parked in `src/lib/` is invisible to the narrow grep (W1, W2). The third grep matches an import rather than a bare name, because the bare name hits a pre-existing comment (gate 3) |
 | 2 | `applyErrorPolicy` swallows `SignalContextWriteError` via a type-only import (§ 3.4) | Step 3 exit criterion asserts the re-throw through a `'undefined'` policy |
 | 3 | `@angular/forms/signals` leaks into the core or `/reactive`; green here, broken for a 19–21 consumer | § 6 gate 2 |
 | 4 | An additive core change alters `/reactive` behaviour; no gate row moves because it is one project | § 6 gates 4 and 5, plus reading the diff |
