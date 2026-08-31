@@ -2,6 +2,30 @@
 
 **Date**: August 24, 2026
 
+**Revision**: 12 — **a one-item amendment, made between steps 2 and 3.** Revision 11 measured
+that `build:production` does not compile `model-source.ts` or `rules.ts`, recorded it as a
+warning to step 4, and explicitly declined to add a gate because "adding a gate mid-phase is a
+plan change". This revision makes that plan change instead of carrying the hole for another
+step.
+
+1. **§ 6 gains gate 7, "unpublished sources type-check", applying from step 2.** One command —
+   `npx tsc -p modules/eval-forms/tsconfig.lib.prod.json --noEmit`, filtered to
+   `^modules/eval-forms/` — because `tsc` honours `tsconfig.lib.json`'s `include` where
+   ng-packagr, compiling from the entry file, does not. Steps 2 and 3 otherwise run with lint
+   and Jest as their only compile gates over these two files, and `tsconfig.spec.json` is the
+   more permissive of the two configs.
+
+   **The filter is load-bearing and is stated in the row rather than left to the runner.**
+   Unfiltered, the command exits non-zero on **38** pre-existing `TS1205` errors in `eval-core`
+   sources reached through `paths` — none in this package, all older than this phase. Shipping
+   it that way would recreate exactly what revision 10 removed from gate 3: a gate with a known
+   standing hit, which is worse than no gate. Calibrated against `^modules/eval-core/`, where
+   the same grep returns all 38, so it is not a filter that can never fire.
+
+   It lands green today and is redundant with `build` from step 4 on for these two files —
+   which is the argument for adding it now rather than at the step that would have caught the
+   errors late.
+
 **Revision**: 11 — **a step-2 amendment, not a review round.** One correction, and it comes
 from running the step rather than reading it.
 
@@ -24,7 +48,7 @@ from running the step rather than reading it.
    adopted** — `npx tsc -p modules/eval-forms/tsconfig.lib.prod.json --noEmit` does honour the
    `include` and reports zero errors in `modules/eval-forms` today. Left as a note rather than
    a new § 6 row, because adding a gate mid-phase is a plan change and this revision is an
-   amendment.
+   amendment. — **Superseded by revision 12, which makes that plan change: it is gate 7.**
 
 **Revision**: 10 — **a step-1 amendment, not a review round.** Step 1 was executed against
 revision 9 and its three corrections all come from running the plan rather than reading it,
@@ -2025,11 +2049,12 @@ verbatim, so this step should re-read them rather than rediscover them.
 
     Measured rather than inferred: with `const probeTypeError: number = 'not a number'` in
     `createModelSource`'s body, `nx run eval-forms:build:production --skip-nx-cache` is
-    **green**. `lint` and `test` are therefore the only gates on these two files for steps 2
-    and 3 — and `tsconfig.spec.json` is more permissive than `tsconfig.lib.prod.json`, which
-    is [`CLAUDE.md`](../../CLAUDE.md)'s "a green `test` run is not a type-check" with the
+    **green**. `lint` and `test` would otherwise be the only gates on these two files for
+    steps 2 and 3 — and `tsconfig.spec.json` is more permissive than `tsconfig.lib.prod.json`,
+    which is [`CLAUDE.md`](../../CLAUDE.md)'s "a green `test` run is not a type-check" with the
     usual one-project caveat removed: here it is not that the two configs differ in
-    strictness but that one of them never sees the file.
+    strictness but that one of them never sees the file. **Revision 12 closes that with
+    gate 7**, a filtered `tsc -p tsconfig.lib.prod.json --noEmit`, which does honour `include`.
 
     **So step 4 should expect to find things.** The barrel edit that publishes the three
     symbols is also the moment two steps' worth of accumulated source first reaches
@@ -2374,12 +2399,18 @@ is a symbol nobody exports.
 
 ## 6. Verification gates
 
-Every step: `npx nx run-many -t lint test build`, unfiltered. Plus the gates below — **two of
+Every step: `npx nx run-many -t lint test build`, unfiltered. Plus the gates below — **three of
 which are step-conditional, and saying so is not pedantry**: gate 3 expects exactly one
 `EvalState.fromContext` and steps 1–2 have zero, gate 5 expects `applyErrorPolicy` in the
-core's `.d.ts` and it does not exist until step 3. A gate the first two steps are meant to
+core's `.d.ts` and it does not exist until step 3, and gate 7 has nothing to catch until step 2
+puts the first barrel-unreachable file in the package. A gate the first two steps are meant to
 fail is a gate the reader learns to skip. Gate 6 is neither — it applies from step 1, and what
 changes is its expected list, which grows by three symbols at step 4.
+
+**Gate 7 is step-conditional in a different sense from 3 and 5, and the difference matters**:
+those two are *expected to fail* before their step and this one is not — it is green from step
+1 onward and simply has no subject until step 2. It is listed with them because a reader
+scanning for "which gates can I skip today" needs the same answer either way.
 
 | Gate | Applies from |
 | ---- | ------------ |
@@ -2389,6 +2420,7 @@ changes is its expected list, which grows by three symbols at step 4.
 | 4 `/reactive` unmoved | step 1, through step 7 |
 | 5 Published core surface | **step 3** |
 | 6 `/signals` published surface | step 1 |
+| 7 Unpublished sources type-check | **step 2** (nothing before it is unreachable from a barrel) |
 
 1. **`/signals` shipped**: `dist/modules/eval-forms/package.json` `exports` has `./signals`
    with `types` and `default` naming emitted files; `signals/package.json` agrees.
@@ -2484,6 +2516,37 @@ changes is its expected list, which grows by three symbols at step 4.
    while step 4 told the implementer to "look at gate 5's output afterwards" for exports that
    never reach gate 5's file. That is the same shape as W3 one gate over: the obligation was
    written where it reads naturally rather than where it is checked.
+7. **Unpublished sources type-check** — new in revision 12, and it closes the hole step 2
+   measured. Gate 6 keeps the factory symbols off the published surface until step 4, so
+   `signals/src/public-api.ts` is unedited in steps 2–3 and neither `model-source.ts` nor
+   `rules.ts` is reachable from the entry file. **ng-packagr compiles from the entry file, not
+   from `tsconfig.lib.json`'s `include`**, so those two files are not compiled at all:
+   measured in step 2 with `const probeTypeError: number = 'not a number'` in
+   `createModelSource`'s body, against which `nx run eval-forms:build:production
+   --skip-nx-cache` is **green**. Without this row, § 6's `build` covers less than it names
+   for two steps and every type error in them defers to step 4's barrel edit.
+
+   `tsc` honours `include` where ng-packagr does not, so the gate is one command:
+
+   | Command | Expected |
+   | ------- | -------- |
+   | `npx tsc -p modules/eval-forms/tsconfig.lib.prod.json --noEmit 2>&1 \| grep "^modules/eval-forms/"` | **no output** |
+
+   **The filter is the row, not a convenience, and dropping it would make this the gate
+   revision 10 spent gate 3 removing.** Run unfiltered the command exits non-zero with **38**
+   pre-existing `TS1205` errors — all in `eval-core` sources pulled in through
+   `tsconfig.base.json`'s `paths`, none in this package, and all of them there before this
+   phase started. A gate with 38 standing hits is one people learn to ignore. Calibrated so
+   the filter is not vacuous: the same grep against `^modules/eval-core/` returns those 38, so
+   it fires when there is something to find.
+
+   **Applies from step 2**, and permanently after — step 1 shipped nothing a barrel does not
+   reach, so it had nothing this gate could have caught, and from step 4 on the row is
+   redundant with `build` for these two files and still live for anything a later step leaves
+   unexported. It reports no output today, so it lands green rather than as a known failure.
+
+   This does not replace `build`: `build` is the only gate on an empty or type-only barrel and
+   on the emitted `.d.ts` gates 5 and 6 read, and `tsc --noEmit` emits nothing to check.
 
 ### 6.1 Specs go through the end-to-end path
 
