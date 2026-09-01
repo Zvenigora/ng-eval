@@ -413,6 +413,34 @@ these visible at all.
   `EvalSignalService` is the DI-first face of that same factory — and Phase 4 will inherit
   the constraint wholesale.
 
+- **`call-expression.ts`'s `safeCall` destroys the class of any error thrown *through* a
+  call — the service-layer wrapper above, one layer down and on a path no caller can route
+  around.** `safeCall` catches whatever the callee threw and re-raises
+  `new Error(\`Function call error: ${error.message}\`)` (`internal/visitors/call-expression.ts:126-128`),
+  so an error crossing a call frame arrives as a bare `Error` carrying only a decorated
+  message. Same consequences as the service wrapper's — no `instanceof`, no `cause`, a stack
+  pointing at the wrapper — but the routing that saves Phase 3 does not apply: calling the
+  free `call(fn, state)` does not help, because this wrapper is inside the walk itself.
+
+  **Surfaced by Phase 6 step 3, which is where it stops being abstract.** `applyErrorPolicy`
+  (`modules/eval-forms/src/lib/error-policy.ts`) guarantees that `SignalContextWriteError`
+  is re-thrown rather than routed through the consumer's error policy — a write violation is
+  illegal on every recompute with every dataset, so swallowing it under the default of
+  `'undefined'` hands the consumer a permanently blank field for a bug in the rule's own
+  syntax. That guarantee holds for a top-level assignment and **fails for an assignment
+  nested inside a call**: `[1].map(x => (country = "CA"))` reaches `applyErrorPolicy` as a
+  plain `Error`, fails the `instanceof`, and is policy-routed to `undefined`. Measured in
+  step 3 with a temporary probe; recorded in `docs/forms/phase-6-plan.md` § 3.4 as a
+  boundary on the guarantee, and in `eval-forms`' README so a consumer meets it before the
+  silence does.
+
+  The blast radius is wider than that one class: **no** custom error type survives a call
+  frame anywhere in the evaluator, so this is the same defect for any future consumer that
+  discriminates on error type. Fixing it means re-throwing the original object — or wrapping
+  it with `cause` set, which needs `eval-core`'s `lib` rather than the two downstream ones —
+  and it is a behavioural change to what escapes a call, so it needs its own step and a
+  version bump.
+
 - **`EvalContext.getThis` reads the wrong object in its `priorScopes` loop.**
   `internal/classes/eval/eval-context.ts:203` calls
   `getContextValue(this._original, key)` inside the loop over `this._priorScopes`, where it

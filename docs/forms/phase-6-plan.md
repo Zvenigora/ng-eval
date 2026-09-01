@@ -2,6 +2,37 @@
 
 **Date**: August 24, 2026
 
+**Revision**: 14 — **a two-item amendment, made after step 3 and before step 4.** Both items
+are things step 3 found and step 3's own deliverables had no room for.
+
+1. **§ 3.4 gains the boundary on its own guarantee, and `ROADMAP.md` gains the defect
+   underneath it.** The guarantee is that `SignalContextWriteError` bypasses the error policy;
+   it does not hold for an assignment nested inside a call, because `safeCall` re-raises a
+   fresh `Error` for anything a callee throws
+   (`internal/visitors/call-expression.ts:126-128`), so the class is gone before
+   `applyErrorPolicy` sees it and the write is routed to `undefined`. Measured in step 3 with
+   a temporary probe. Top-level assignments — the shape a rule would actually take — are
+   unaffected, which is why this is a boundary rather than a hole.
+
+   Recorded in three places on purpose, and the split is the point: **§ 3.4** because a
+   section stating a guarantee has to state where it stops; **`ROADMAP.md`**'s deferred
+   visitor defects because the fix is `eval-core`'s and the blast radius is *every* custom
+   error type crossing a call frame, not this one class; and **step 7's README list** because
+   the consumer-visible symptom is a silently blank field with nothing in the console, and
+   nothing else in the phase would put that in front of a consumer. § 2 keeps this phase
+   additive to `eval-core`, so it is deferred rather than worked around — and matching on the
+   wrapper's decorated message would buy the fix at the price of coupling this package to
+   another library's error wording, which is the coupling `ROADMAP.md` gives as the reason
+   that wrapper is a defect in the first place.
+
+2. **Step 7's `CHANGELOG.md` row and its exit criterion now name `applyErrorPolicy`.** They
+   named only the `peerDependencies` addition, and `applyErrorPolicy` is the *only* thing
+   this phase changes about the already-released primary entry point — everything else lands
+   behind `/signals`, which no current consumer imports. A release note that omits it tells an
+   existing consumer their surface is untouched. The criterion is amended with the row rather
+   than after it: an obligation written where it reads naturally and gated nowhere is the
+   defect § 0.2.1 exists to catch, and it is what left this missing through six revisions.
+
 **Revision**: 13 — **a three-item amendment, made during step 3**, and items 2 and 3 come from
 running the step rather than reading it. One is a file the step could not have been completed
 without; the other two are a mechanism claim this plan asserted twice and that step 3 measured
@@ -1506,6 +1537,36 @@ export const applyErrorPolicy = <T>(run: () => T, policy: ExpressionErrorPolicy 
 };
 ```
 
+**The bypass holds for a top-level assignment and not for one nested inside a call, and that
+is a boundary on the guarantee rather than a caveat about a corner** (new in revision 14,
+measured in step 3). `safeCall` catches whatever a callee threw and re-raises
+`new Error(\`Function call error: ${error.message}\`)`
+(`modules/eval-core/src/lib/internal/visitors/call-expression.ts:126-128`), so an error
+crossing a call frame loses its class. `country = "CA"` throws `SignalContextWriteError` and
+is re-thrown as this section promises; `[1].map(x => (country = "CA"))` arrives at
+`applyErrorPolicy` as a plain `Error`, fails the `instanceof`, and is policy-routed to
+`undefined` — the silently blank field this whole section exists to prevent, in the one shape
+where the mechanism cannot see it.
+
+Three things follow, and the order matters:
+
+- **The shape a rule would actually take is unaffected.** A field property is an expression
+  whose *value* drives the property; an assignment is already a misuse, and a rule author
+  writing one writes `country = "CA"`, not an assignment buried in a `.map` callback. The
+  unprotected shape is a misuse inside a misuse.
+- **It is not fixable here.** The re-wrap is `eval-core`'s, inside the walk, and the routing
+  Phase 3 used to escape the *service*-layer version of this wrapper — call the free
+  `call(fn, state)` — does not apply to a wrapper the walk itself runs. § 2 scopes this phase
+  to add nothing to `eval-core`, so this is recorded and deferred, not worked around. Matching
+  on the decorated message would couple this package to another library's error wording, which
+  is the coupling [`ROADMAP.md`](../../ROADMAP.md) already names as the reason that wrapper is
+  a defect.
+- **It is recorded twice, deliberately**: in `ROADMAP.md`'s "Deferred defects in the visitor,
+  context and service layers", because the fix is upstream and the blast radius is every
+  custom error type rather than this one class; and in step 7's README list, because a
+  consumer meets this as a blank field with nothing in the console and has no route from the
+  symptom to the cause.
+
 **It re-throws the error it caught; `/reactive` re-wraps.** `eval-signal.ts:353-354` throws a
 *new* `SignalContextWriteError` carrying the offending expression string, which
 `createEvalSignal` has and this path does not — the `LogicFn` holds a compiled callback, not
@@ -2331,16 +2392,32 @@ change to a published package, and specs of its own, and one plan step is one co
   is not), the **prototype-shadowed identifier rejection** and its residual (§ 3.8 — a member
   expression is `eval-core`'s, and a model key nobody names stays unreadable), and the fact
   that `/reactive` and `/signals` now reject the same identifier at **different times**:
-  schema-construction there, `form()` here. **And the `Versions` block at `README.md:59-69`,
+  schema-construction there, `form()` here. **And one caveat revision 14 adds, which exists in
+  no other consumer-facing place**: an assigning expression is rejected loudly — the error
+  bypasses `onError` entirely — **unless it is nested inside a call**, where
+  `[1].map(x => (country = "CA"))` loses its error class to `eval-core`'s `safeCall` re-wrap
+  and is routed to `undefined` like any other failure. The README states the guarantee, so it
+  is the README that has to state the boundary; a consumer meets this as a blank field with
+  nothing in the console (§ 3.4). **And the `Versions` block at `README.md:59-69`,
   which quotes `peerDependencies` verbatim** — step 6 adds an entry to that manifest, so the
   block reproduces a package that no longer exists unless this step edits it. It is listed as a
   deliverable because a quoted manifest is the one piece of a README nothing recompiles (W1).
 - **New**: `signals/src/lib/readme-examples.spec.ts` — the `/signals` counterpart to
   `reactive/src/lib/readme-examples.spec.ts`, which is the only file of that name today.
-- **Edit**: root `CHANGELOG.md` — `## [eval-forms 0.2.0]`, naming the package, and **naming
-  the `peerDependencies` addition** step 6 made (§ 3.8). A manifest change to a published
-  package is a release note, not an implementation detail, even when it imposes no new
-  install.
+- **Edit**: root `CHANGELOG.md` — `## [eval-forms 0.2.0]`, naming the package, and naming
+  **two** things (the second is new in revision 14): the **`peerDependencies` addition**
+  step 6 made (§ 3.8), because a manifest change to a published package is a release note
+  even when it imposes no new install; and **`applyErrorPolicy`, the one symbol this phase
+  adds to the already-released primary entry point** (§ 3.4, § 5).
+
+  Revisions 7–13 named only the first, and the omission is § 0.2.1's shape rather than a
+  slip: this row exists to record what the release changes for an existing consumer, and
+  `applyErrorPolicy` is the only such change outside the new entry point — a new export on a
+  package at 0.1.0, additive but permanent. Every other deliverable of this phase lands
+  behind `/signals`, which no current consumer imports, so a reader of this row would
+  reasonably conclude the released surface was untouched. Named here rather than left to
+  step 7 because step 7 is several sessions away and this row is what step 7 will be read
+  against.
 - **Edit**: `modules/eval-forms/package.json` — version only. The peer ranges landed in
   step 6.
 - **Exit**:
@@ -2348,7 +2425,9 @@ change to a published package, and specs of its own, and one plan step is one co
   - **the release is gated on the build output, not on the edits** (W2): `dist/modules/eval-forms/package.json`
     shows `"version": "0.2.0"` and carries `acorn-walk` in `peerDependencies`, and root
     `CHANGELOG.md` contains a `## [eval-forms 0.2.0]` heading that names the
-    `peerDependencies` addition. Revision 7's exit was "all gates green", and no gate reads a
+    `peerDependencies` addition **and `applyErrorPolicy`** — both, since a criterion naming
+    one of the two deliverable's halves is how the second came to be missing for six
+    revisions. Revision 7's exit was "all gates green", and no gate reads a
     version or a changelog — gate 1 reads the dist manifest's `exports` map, gates 5 and 6 read
     `.d.ts` files. A step whose whole product is a release needs one criterion that fails when
     the release is wrong;
