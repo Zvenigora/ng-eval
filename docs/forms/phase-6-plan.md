@@ -2,6 +2,59 @@
 
 **Date**: August 24, 2026
 
+**Revision**: 13 — **a three-item amendment, made during step 3**, and items 2 and 3 come from
+running the step rather than reading it. One is a file the step could not have been completed
+without; the other two are a mechanism claim this plan asserted twice and that step 3 measured
+to be false.
+
+1. **Step 3's file list gains `signals/src/lib/evaluate-rule.spec.ts`.** Both new-file rows
+   were implementation; the criteria beneath them are entirely behavioural, so the list as
+   written described a step that could satisfy none of them. This is the same shape as C3 one
+   step over — there the criteria had no reachable *subject*, here they had no file to live
+   in — and the fix is the same: name the file rather than leave the implementer to invent
+   one. The placement is not free either, and the row says why: both policy arms need a walk,
+   and the write arm is reachable only through the context `createFieldContext` builds, which
+   exists in the adapter and not beside `error-policy.ts`.
+
+   No criterion changes. This adds nothing to the step's scope: it names a file the step could
+   not have been completed without.
+
+2. **§ 3.4's and § 8.1's claim that a type-only import "would compile and the guard would
+   silently never fire" is false, and step 3 measured it.** `instanceof` is a value position,
+   so `import type { SignalContextWriteError }` is **TS1361** — it fails `build:production`
+   and gate 7, and under ts-jest's transpile path, which does not report type diagnostics, the
+   elided binding raises a `ReferenceError` inside the `catch` that reddens **both** policy
+   arms. There is no configuration in this workspace under which that edit is quiet.
+
+   The claim mattered because § 3.4 built an argument on it — the import's form is
+   "load-bearing", and "step 3's exit criterion is what catches that". The criterion is worth
+   keeping and the reason is not: what the write-error arm actually covers is the bypass's
+   **behaviour**, including the one failure mode no import syntax prevents — two resolved
+   copies of `@zvenigora/ng-eval-signals` giving two constructors, for which `instanceof` is
+   silently false. That is why the arm throws the error across the real package boundary
+   instead of constructing one.
+
+   This is § 0.2.1's third failure mode in the plan's own prose: an answer attached to
+   nothing that can fail. The mutation § 3.4 named as the hazard cannot reach a green suite,
+   so the criterion defended against a thing that was never possible, while the mutation that
+   *is* possible went unnamed. § 8.1's settlement is unaffected — the helper still belongs in
+   the core, for the one-implementation-for-both-adapters reason, which never rested on this.
+
+3. **Step 3's spec carries two arms the criteria do not require, and the reason is that the
+   docblock claims more than the criteria do.** `applyErrorPolicy` re-throws in **every** mode,
+   and the criteria reach only `'undefined'`. A fast path for function policies placed ahead of
+   the `instanceof` passes both required arms and swallows a write error under a handler —
+   measured, and caught by the added arm alone. The pair is asserted with the handler at zero
+   calls, so "the bypass re-threw it" is distinguishable from "the handler re-threw it", plus
+   an ordinary-error case under the same handler so the zero-call assertion cannot pass
+   vacuously.
+
+   Step 3 also asserts that `evaluateRule`'s `options` reach the **walk** and not only the
+   context. `EvalState.fromContext(context)` — the argument dropped — leaves every other case
+   in the file green, so without this the parameter step 4 forwards `options.eval` into is
+   uncovered wiring, and `caseInsensitive` property-name correction would be dead at this
+   entry point with no test naming it.
+
 **Revision**: 12 — **a one-item amendment, made between steps 2 and 3.** Revision 11 measured
 that `build:production` does not compile `model-source.ts` or `rules.ts`, recorded it as a
 warning to step 4, and explicitly declined to add a gate because "adding a gate mid-phase is a
@@ -1466,10 +1519,15 @@ a cost.** `SignalContextWriteError` is a class; `instanceof` needs the construct
 type. `field-context.ts` already imports `createSignalContext` from the same package, so
 there is no new dependency edge — and the value import **is** the enforcement that
 [`.claude/agents/code-reviewer.md`](../../.claude/agents/code-reviewer.md)'s
-`/signals` Critical item 2 asks for. A type-only import would compile and the guard would
+`/signals` Critical item 2 asks for. ~~A type-only import would compile and the guard would
 silently never fire, so the import's form is load-bearing: a step that "tidies" it to
 `import type` disables the bypass with a green suite. Step 3's exit criterion is what
-catches that.
+catches that.~~ — **Superseded by revision 13 item 2, which measured it rather than reasoning
+about it.** `import type` is **TS1361** at the `instanceof`, so it fails `build:production`,
+gate 7, and both policy arms under ts-jest. The criterion stands and the value import stays;
+what the criterion covers is the bypass's **behaviour** across the package boundary — where
+two resolved copies of `eval-signals` really would make `instanceof` silently false — and not
+the import's form, which the compiler already owns.
 
 #### 3.4.1 Why this is the opposite call from § 3.3, which it superficially contradicts
 
@@ -2071,6 +2129,13 @@ walk and § 3.4's bypass is only testable through the same walk.
   `signals/src/public-api.ts` (§ 3.3).
 - **New**: `src/lib/error-policy.ts` gains `applyErrorPolicy` (§ 3.4) — the one additive
   change to the published core this phase makes.
+- **New**: `signals/src/lib/evaluate-rule.spec.ts` — all three behavioural criteria below,
+  in one file. Revision 12 omitted it, and the omission is worth naming rather than
+  silently repairing: every criterion here names an assertion, so a step whose file list
+  holds no spec states obligations no listed file can carry. It goes **here** rather than
+  beside `error-policy.ts` because both policy arms need a *walk* — the write arm is
+  reachable only through the context `createFieldContext` builds (§ 3.2.1, second bullet),
+  which exists in the adapter — and the criterion requires both arms in one spec.
 - **Exit**:
   - a throwing arrow body leaves `context.scopes.length` at its pre-walk value, asserted
     directly, and **the same rule invoked a second time on that context resolves its own
@@ -2794,8 +2859,10 @@ open and is marked as such.
 
 **8.1 — Where `applyErrorPolicy` lives. Settled: the core.** The `instanceof
 SignalContextWriteError` value import is not a cost to be minimised — it *is* the
-enforcement the reviewer's `/signals` Critical item 2 asks for, and a type-only import would
-disable it silently. In the core there is one implementation for both adapters; in the
+enforcement the reviewer's `/signals` Critical item 2 asks for, ~~and a type-only import would
+disable it silently~~ — **and revision 13 item 2 corrects that second clause: `import type` is
+a compile error, not a silent one. The settlement does not rest on it.** In the core there is
+one implementation for both adapters; in the
 adapter, `/reactive`'s eventual version drifts from `/signals`', and the two end up
 disagreeing about the one error that must never be swallowed. § 3.4.1 records why this is the
 opposite placement call from § 3.3 and what actually separates the two cases: `evaluateRule`
