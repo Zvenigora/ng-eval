@@ -2,6 +2,32 @@
 
 **Date**: August 24, 2026
 
+**Revision**: 16 — **a three-item amendment, made after step 4 and before step 5.** All three
+come from step 4's review, and the third is the general form of the second.
+
+1. **Step 5's file list gains `evalText`'s two missing cases.** Step 4 asserted the invocation
+   count and the write-error bypass through `evalVisible` alone, on the argument that `prepare`
+   is structurally shared. That is an argument that they would pass rather than evidence that
+   they do — § 0.2's own subject — and `metadata` is a different Angular primitive with its own
+   reducer. `evalText` is also the registrar whose failure renders a *wrong string* rather than
+   hiding a field, which is the harder one to notice, so it is the one least well served by an
+   argument from symmetry.
+
+2. **Step 5's file list gains the correction to `rules.model-source-count.spec.ts`.** Its
+   comment names a defect — a factory calling `createModelSource` per registrar — that neither
+   of its fixtures can reach, because neither registers a rule.
+
+3. **§ 0.2 gains a fourth failure mode, § 0.2.3, because item 2 is not a mistake anyone made.**
+   That spec was sound when step 2 wrote it: with the registrars stubs that threw, "per
+   registrar" had no reachable form its count of 1 did not catch. **Step 4 made a new wrong
+   implementation reachable, and the probe stopped discriminating without being edited** — no
+   red at any point in between, and § 0.2.1's check passes on it before and after, because
+   there is a named assertion in a named file the whole time. The rule is therefore about the
+   step that *enlarges* the space of reachable implementations, not about the spec that decays:
+   when a stub becomes a body, re-run the earlier steps' probes over the code that changed
+   subject. Step 5 carries that re-run as a deliverable, since `evalDisabled` stops being a stub
+   there.
+
 **Revision**: 15 — **a one-item amendment, made at the start of step 4**, and the item is a
 question this plan has carried unanswered since revision 1 rather than something step 4
 introduced.
@@ -900,6 +926,51 @@ because they measure different subjects. It
 is cheaper than the review round it replaces and far cheaper than the release it prevents.
 A spike is throwaway by construction: it is deleted when its numbers reach the plan, which is
 what keeps it from becoming a second, untested copy of the design.
+
+#### 0.2.3 Probe decay — a gate can stop discriminating without being edited
+
+§ 0.2.1 asks whether a claim is gated. **This is the case where it *was* gated, and quietly
+stopped being** — no edit to the spec, no edit to the claim, and nothing red at any point in
+between. It is a fourth failure mode rather than an instance of the third, because § 0.2.1's
+check passes on it at every moment: ask "which assertion goes red?" and there is a named
+assertion in a named file, both before and after.
+
+**The instance, found in step 4's review.**
+`signals/src/lib/rules.model-source-count.spec.ts` was written in step 2 to gate § 3.6's
+one-memo-per-factory count, and its own comment names the defect it exists to catch: "a factory
+calling `createModelSource` **per registrar** instead of once … would satisfy all of them while
+quietly making the memo per rule". When it was written that was true — the registrars were
+stubs that threw, so "per registrar" had no reachable form other than a second call at
+construction time, which its count of 1 did catch. **Step 4 shipped the registrar bodies, and
+`createModelSource` moved into `prepare`'s reach for the first time.** Patched to build a memo
+per registration — the exact defect the file names — both of its cases stayed green, because
+neither fixture ever registers a rule.
+
+**The mechanism, and it is the part that generalises: a probe discriminates over the set of
+wrong implementations that are *reachable*, and a later step can enlarge that set.** The spec
+did not decay by rotting. It stayed exactly as sound as it was written; the space it was
+guarding grew around it. Nothing in this document's other checks looks at that — § 0.2.1 is a
+question about a claim at the moment it is written, § 0.2.2 is a question about a claim that was
+*replaced*, and this is a claim that was neither rewritten nor falsified while the ground under
+it moved.
+
+**The check, and it is a question for the step that does the enlarging rather than for the spec
+that decayed**: when a step makes a previously-unreachable implementation reachable — a stub
+becomes a body, a parameter starts being read, a private helper gains a second caller — **re-run
+the probes of every earlier step whose subject that code is**, not just the current step's. The
+mechanical form is the one this repository already has: patch in the wrong implementation the
+older spec names in its own comment, and confirm that spec is among the files that go red.
+
+Two consequences worth stating, because both are the opposite of the obvious response:
+
+- **The older spec is not at fault and editing it is not the whole fix.** The step that
+  enlarged the space owes the coverage, so step 4 added the two-rule lifetime case to
+  `rules.invocation-count.spec.ts` rather than only correcting a comment. Step 5 corrects the
+  comment because step 5 is the next step to edit `rules.ts`.
+- **A stub is the loudest form of this, and it is exactly what step 5 inherits.**
+  `evalDisabled` is a throwing stub today, so every claim about the shared `prepare` path is
+  currently gated over a set of two registrars. Step 5 makes it three, and § 4's step 5 carries
+  the re-run as a deliverable rather than leaving it to whoever notices.
 
 ---
 
@@ -2397,11 +2468,42 @@ walk and § 3.4's bypass is only testable through the same walk.
 
 ### Step 5 — `evalDisabled`
 
-- **Edit**: `signals/src/lib/rules.ts`, adding the `reason` option of § 3.5.2.
+- **Edit**: `signals/src/lib/rules.ts`, adding the `reason` option of § 3.5.2 and removing the
+  `pending` stub, whose unused `source` parameter exists only to keep
+  `@typescript-eslint/no-unused-vars` quiet while a registrar is unimplemented.
+- **Edit**: `signals/src/lib/rules.spec.ts` and `signals/src/lib/rules.invocation-count.spec.ts`
+  — **`evalText` gains the two cases step 4 did not give it** (revision 16, from step 4's
+  review): an invocation-count case over § 6.1's six-step sequence, and a write-error case
+  asserting `SignalContextWriteError` escapes the `metadata` reducer. Step 4 covered both
+  through `evalVisible` only, on the argument that `prepare` is structurally shared — **which
+  is an argument that they would pass, not evidence that they do**, and § 0.2 is the section
+  about that substitution. It lands here rather than as a step-4 amendment for two reasons:
+  step 5 edits the same shared path, and `evalText` is the registrar whose failure renders a
+  *wrong string* rather than hiding a field, which is the harder one for a consumer to notice.
+  `metadata` is also a different Angular primitive with its own reducer and its own
+  memoisation, so "the wrapper is shared" is a claim about our code and not about Angular's.
+- **Edit**: `signals/src/lib/rules.model-source-count.spec.ts` — **the § 0.2.3 correction**. Its
+  comment at `:33-37` claims to catch a factory calling `createModelSource` per registrar, and
+  neither of its fixtures registers a rule, so since step 4 it does not. Give one case a real
+  registration — a `schema()` + `form()` through `TestBed.runInInjectionContext` — so the count
+  is taken after registrations have run. The comment is corrected with the fixture and not
+  instead of it: step 4 already restored the *coverage* in
+  `rules.invocation-count.spec.ts`'s lifetime case, so what is owed here is that this file stops
+  claiming a discrimination it no longer performs.
 - **Exit**: as step 4, plus two specs that exist because of the trap — a rule yielding the
   string `'false'` **disables** the field, and it does so with the *authored* reason where
   one was supplied, never with `"false"`. Both record behaviour rather than leave it to be
   discovered.
+  - and the three edits above, each gated rather than assumed: `evalText`'s count case must
+    fail when the resolver over-subscribes, its write-error case must fail when the bypass is
+    removed, and `rules.model-source-count.spec.ts` must go **red** when `createModelSource` is
+    moved into `prepare` — which is the patch that leaves it green today. Naming the patch is
+    the criterion, per § 0.2.1: "the file is corrected" is a deliverable, not a gate;
+  - **§ 0.2.3's re-run, as a deliverable rather than as a habit.** `evalDisabled` stops being a
+    stub in this step, so every claim in this package that is gated over "the registrars"
+    silently changes subject from two to three. Re-run step 4's probes — the C4 nesting, the M7
+    hoisted guard, the compile-in-the-closure, the context hoisted to factory scope — and
+    confirm each still reddens a named case, rather than confirming the suite is green.
 
 ### Step 6 — Rejecting prototype-shadowed identifiers
 
