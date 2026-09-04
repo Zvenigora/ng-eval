@@ -1,8 +1,10 @@
 import { WritableSignal } from '@angular/core';
-import type { PathKind, SchemaPath, SchemaPathRules } from '@angular/forms/signals';
-import type { EvalOptions } from '@zvenigora/ng-eval-core';
-import type { ExpressionErrorPolicy } from '@zvenigora/ng-eval-forms';
+import { type PathKind, type SchemaPath, type SchemaPathRules, hidden, metadata } from '@angular/forms/signals';
+import { type EvalOptions, compile, defaultParserOptions, parse } from '@zvenigora/ng-eval-core';
+import { type ExpressionErrorPolicy, applyErrorPolicy, toText, toVisible } from '@zvenigora/ng-eval-forms';
+import { evaluateRule } from './evaluate-rule';
 import { ModelSource, createModelSource } from './model-source';
+import { TEXT } from './text-key';
 
 /**
  * What `createExpressionRules` takes, and what a single registration may
@@ -15,6 +17,15 @@ export interface ExpressionRuleOptions {
    * both: on the context it corrects identifier keys, and on the walk it
    * corrects *property* names, which the member visitor reads off the
    * state's options.
+   *
+   * **A per-registration value reaches exactly one of the three places it
+   * has to: the walk** (plan S 3.5.3). Both of the others - the factory's
+   * memo and the context `createRuleContext()` builds - are made once, at
+   * `createExpressionRules` time, from the factory's own options. So
+   * overriding this per registration corrects *property* names and leaves
+   * *identifier* keys on the factory's setting, and one expression then obeys
+   * two casing rules. Set `caseInsensitive` on the **factory** unless that is
+   * the behaviour you want.
    */
   eval?: EvalOptions;
 
@@ -124,19 +135,61 @@ export const createExpressionRules = <TModel extends object>(
   // rule, which is why the count has a spec of its own.
   const source = createModelSource(model, options?.eval);
 
-  // The registrar bodies land in steps 4 and 5, and this is the seam they
-  // fill: each takes the shared `source` and its own name. The `source`
-  // argument is **not read yet** - a registrar will call
-  // `source.createRuleContext()` once and hold the result alongside one
-  // compiled callback, so the *context* count only becomes observable in
-  // step 4. What this step settles is the *memo* count, which
-  // `createModelSource` owns and `model-source.spec.ts` asserts.
+  /**
+   * Resolves the two levels `ExpressionRuleOptions` arrives at:
+   * **registration wins, per key** (plan S 3.5.3). Each key is resolved
+   * independently and neither is a deep merge, so a registration supplying
+   * only `onError` keeps the factory's `eval` and vice versa.
+   *
+   * Exact for `onError`, partial for `eval.caseInsensitive` - see the note on
+   * `ExpressionRuleOptions.eval`. The divergence is characterised in
+   * `rules.spec.ts` rather than left to be discovered.
+   */
+  const resolveOptions = (rule?: ExpressionRuleOptions): ExpressionRuleOptions => ({
+    eval: rule?.eval ?? options?.eval,
+    onError: rule?.onError ?? options?.onError,
+  });
+
+  /**
+   * Everything a registrar does before handing Angular a `LogicFn`, and the
+   * shape of what it returns is the phase's one structural invariant.
+   *
+   * **Called once per registration**, so `parse` + `compile` and
+   * `createRuleContext()` happen at schema-body time - which Angular re-runs
+   * once per `form()` (Q8), giving S 3.6's count of one context and one
+   * compiled callback per rule per form. Nothing here re-parses per
+   * derivation; risk 8 is a compile that drifts into the returned closure, and
+   * `rules.invocation-count.spec.ts` counts `compile` to say it has not.
+   *
+   * **`applyErrorPolicy` is the outermost call in the returned closure, and
+   * that is load-bearing twice over** (S 3.5). The policy has to cover the
+   * coercion's *input* rather than only the walk - a registrar that coerced
+   * first would hand `toVisible` a value the policy never saw - and S 6.1.1's
+   * invocation instrument counts this exact call. M7 measured what a guard
+   * hoisted *above* the wrapper does to that number: ground truth 1,
+   * instrument **0**, which reads as "the rule did not re-run" in every
+   * negative case in this package. A later guard belongs **inside** the
+   * `run` callback, never ahead of this call.
+   */
+  const prepare = (expression: string, ruleOptions?: ExpressionRuleOptions): (() => unknown) => {
+    const resolved = resolveOptions(ruleOptions);
+    const compiled = compile(parse(expression, defaultParserOptions));
+    const context = source.createRuleContext();
+
+    return () =>
+      applyErrorPolicy(() => evaluateRule(compiled, context, resolved.eval), resolved.onError);
+  };
+
+  // `evalDisabled` lands in step 5, and this is the seam it fills: it takes
+  // the shared `source` and its own name. The `source` argument is **not read
+  // here** - step 5's registrar will go through `prepare` like the two above,
+  // adding only S 3.5.2's static `reason`.
   //
   // Throwing rather than no-op'ing, deliberately: a no-op registrar would let
   // a schema build, a form render and every field silently keep its default,
   // which is the failure mode this entry point exists to remove.
   //
-  // **The parameter order is load-bearing until step 4 reads `source`.**
+  // **The parameter order is load-bearing until step 5 removes this.**
   // `@typescript-eslint/no-unused-vars` runs at max-warnings 0 with no ignore
   // pattern, and its default `args: 'after-used'` reports an unused parameter
   // only when nothing after it is used. `source` is unread here and survives
@@ -150,8 +203,29 @@ export const createExpressionRules = <TModel extends object>(
   };
 
   return {
-    evalVisible: pending(source, 'evalVisible'),
-    evalText: pending(source, 'evalText'),
+
+    // Angular's **config** overload (S 1.2.7); the deprecated one takes the
+    // `LogicFn` positionally. `hidden`'s `when` is the only required config of
+    // the three primitives this entry point registers.
+    //
+    // The `!` is S 3.5.1's inversion, and it lives here rather than in every
+    // consumer's expression so the same rule string means the same thing at
+    // this entry point and at `/reactive`'s `visible`.
+    evalVisible: (path, expression, ruleOptions) => {
+      const evaluated = prepare(expression, ruleOptions);
+
+      hidden(path, { when: () => !toVisible(evaluated()) });
+    },
+
+    // `text` has no dedicated primitive, so it is Angular's `metadata` against
+    // the module-scope key of `text-key.ts` (S 1.2.8) - its own mechanism
+    // rather than a second one beside it.
+    evalText: (path, expression, ruleOptions) => {
+      const evaluated = prepare(expression, ruleOptions);
+
+      metadata(path, TEXT, () => toText(evaluated()));
+    },
+
     evalDisabled: pending(source, 'evalDisabled'),
   };
 };
