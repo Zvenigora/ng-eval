@@ -2,6 +2,25 @@
 
 **Date**: August 24, 2026
 
+**Revision**: 15 — **a one-item amendment, made at the start of step 4**, and the item is a
+question this plan has carried unanswered since revision 1 rather than something step 4
+introduced.
+
+**§ 3.5 gains 3.5.3, `ExpressionRuleOptions` resolution, and step 7's README list gains its
+caveat.** `ExpressionRuleOptions` arrives at two levels — the factory and each registration —
+and no revision said how they combine, while the type's own docblock (shipped in step 2)
+already promised a registration "may override". The rule is registration-wins per key. What
+made this worth a revision rather than an implementer's judgement call is that the rule is
+**exact for `onError` and partial for `eval.caseInsensitive`**: § 3.6 binds both the memo *and*
+the rule's context to the factory, so a per-registration `caseInsensitive` moves the walk and
+nothing else, and one expression then resolves its property names under one casing rule and its
+identifier keys under another, silently. That is Q4's failure mode reached through the
+options instead of through the memo — a silent partial failure on published surface, which is
+the class § 0.2 exists to catch, so it is stated in § 3.5.3, pinned by a characterisation case
+in step 4, and carried to the consumer in step 7. § 3.5.3 also records the throw that was
+considered and rejected, and why, so a later reader inherits the decision rather than
+re-opening it.
+
 **Revision**: 14 — **a two-item amendment, made after step 3 and before step 4.** Both items
 are things step 3 found and step 3's own deliverables had no room for.
 
@@ -1719,6 +1738,66 @@ otherwise be silently dropped at the entry point where Angular owns the semantic
 *dynamic* reason — the string coming from a second expression — stays out: it reopens the
 trap and needs its own coercion rule.
 
+#### 3.5.3 Option resolution — registration wins per key, and `caseInsensitive` is only two-thirds resolved
+
+`ExpressionRuleOptions` arrives twice: once at `createExpressionRules(model, options)` and once
+at each `rules.evalVisible(path, expression, options)`. Revisions 1–14 never said how the two
+combine, while the type's own docblock says a registration "may override" the factory's. **The
+rule is registration wins, per key** — `rule?.eval ?? factory?.eval` and
+`rule?.onError ?? factory?.onError`, resolved independently, neither a deep merge.
+
+**That rule is exact for `onError` and partial for `eval.caseInsensitive`, and the gap is a
+wrong answer rather than a missing feature.** § 3.6 gives the memo one lifetime — per factory —
+so `createModelSource(model, options?.eval)` runs once, at `createExpressionRules` time, and
+`readProperty`'s `caseInsensitive` is fixed there. **A registration supplying a different one
+moves exactly one of the three places it has to reach**, and the other two are factory-bound
+for the same reason:
+
+| Place | Built from | Reached by a per-registration `eval.caseInsensitive`? |
+| ----- | ---------- | ---------------------------------------------------- |
+| the walk's options — `evaluateRule`'s third argument | the resolved per-rule options | **yes** — corrects *property* names; the member visitor reads the flag off the state (`CLAUDE.md`, "Context resolution") |
+| the rule's context — `createFieldContext({}, {}, options)` | `createModelSource`'s parameter, i.e. the **factory's** `eval` (`model-source.ts:155`) | **no** — and it is inert either way, since both of that context's own sources are `{}` (§ 3.2.1) |
+| the factory's memo — `readProperty` | the same factory parameter | **no** — and this is the resolver that actually answers every identifier at this entry point |
+
+**"Two of three" is what revision 15 first wrote, and it was wrong**: `prepare` obtains its
+context from `source.createRuleContext()`, which closes over the factory's options rather than
+taking the rule's. Recorded rather than silently corrected, because the count is the premise the
+two deferred fixes below are chosen between — under the true count, moving `caseInsensitive`
+onto `createExpressionRules`' signature is the cheaper of the two rather than the more
+invasive, since two of the three levers already live there.
+
+So `rules.evalVisible(p.city, 'Country === "US"', { eval: { caseInsensitive: true } })` against
+a factory built without it, and a model holding `country`, resolves `Country` to `undefined`
+while correcting every *property* name in the same expression. One expression, two casing
+rules, no error.
+
+**Decision: no throw. Registration wins uniformly, the divergence is documented, and the fix is
+deferred to a phase that can afford it.** Rejecting a registration whose `caseInsensitive`
+differs from the factory's resolved value was the alternative, and it is rejected on two
+grounds:
+
+- **It enumerates one key of an open set.** `EvalOptions` is
+  `Record<string, unknown> | { caseInsensitive: false }`, so any later option with factory reach
+  recreates this gap and a guard naming `caseInsensitive` does not cover it — while teaching the
+  reader that the set is closed. That is § 0.2.1's shape: a check attached to the one case
+  somebody thought of.
+- **It fires at the wrong time with the wrong blast radius.** Registration runs inside the
+  schema body, during `form()` (Q8), so the throw takes down the entire form over a
+  misconfiguration affecting one rule's identifier casing — and it is unreachable through
+  `onError`, which exists precisely so a bad rule degrades to a blank field rather than a dead
+  form (§ 3.4.4).
+
+**The real fix makes the gap unreachable rather than loud**, and both shapes of it change
+something § 3.6 or § 5 states, which is why neither is taken here: move `caseInsensitive` onto
+`createExpressionRules`' own signature, where it already effectively lives, or key the memo on
+`(key, caseInsensitive)` and give up "one computed per key per factory". Named so a later phase
+inherits the choice rather than the surprise.
+
+**Pinned by a characterisation case in `rules.spec.ts`**, on Q9's precedent: this is behaviour
+that is wrong and shipping, so the spec records the limitation and goes red if a later change to
+the memo's lifetime silently reverses it. Nothing else in step 4 would touch it — the divergence
+needs options set at *both* levels, which no other fixture does.
+
 ### 3.6 Lifetime — there is nothing to destroy, and that is the finding
 
 Phase 4 § 3.7 is N × M `EvalSignal`s and a `destroy()` the consumer calls. Here:
@@ -2293,6 +2372,15 @@ walk and § 3.4's bypass is only testable through the same walk.
     quietly changing which data a form reads. Alongside it, the **supported** shape asserted
     positively: `makeSchema = (rules) => schema<Model>(p => …)` called per form gives each form
     its own model. Without both arms, § 3.6's reuse guidance is a paragraph;
+  - **§ 3.5.3's option-resolution divergence is pinned as a characterisation case** (revision
+    15). A factory built *without* `caseInsensitive` and a registration passing
+    `{ eval: { caseInsensitive: true } }`, against a model holding `country`, and the spec
+    asserts what actually happens: an identifier spelled `Country` does **not** resolve, while a
+    *property* name in the same expression is corrected — two casing rules in one expression.
+    Said to be a characterisation test in a comment, on Q9's precedent: registration-wins is
+    exact for `onError` and partial here, and a later change to the memo's lifetime would
+    reverse it silently. The property half is what keeps the case from passing against a
+    registration whose `eval` was dropped on the floor entirely;
   - **compile-once is counted, not assumed — and the count has a named instrument and a stated
     N** (C5). The instrument is a **delegating mock of `@zvenigora/ng-eval-core` counting
     `parse` and `compile`**, the same shape as the `LogicFn` counter one barrel over; the two
@@ -2398,7 +2486,14 @@ change to a published package, and specs of its own, and one plan step is one co
   `[1].map(x => (country = "CA"))` loses its error class to `eval-core`'s `safeCall` re-wrap
   and is routed to `undefined` like any other failure. The README states the guarantee, so it
   is the README that has to state the boundary; a consumer meets this as a blank field with
-  nothing in the console (§ 3.4). **And the `Versions` block at `README.md:59-69`,
+  nothing in the console (§ 3.4). **And one caveat revision 15 adds, which likewise exists in no
+  other consumer-facing place**: `caseInsensitive` is in practice a **factory** option — a
+  per-registration `eval.caseInsensitive` corrects *property* names and leaves *identifier* keys
+  on the factory's setting, because the memo it would have to move is bound to the factory
+  (§ 3.5.3). A consumer meets this as one expression obeying two casing rules: `address.NAME`
+  resolves and `Country` does not. The README documents `ExpressionRuleOptions` at both levels,
+  so it is the README that has to say where "a registration may override" stops.
+  **And the `Versions` block at `README.md:59-69`,
   which quotes `peerDependencies` verbatim** — step 6 adds an entry to that manifest, so the
   block reproduces a package that no longer exists unless this step edits it. It is listed as a
   deliverable because a quoted manifest is the one piece of a README nothing recompiles (W1).
