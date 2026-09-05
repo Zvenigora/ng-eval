@@ -1,9 +1,9 @@
 import { WritableSignal } from '@angular/core';
-import { type PathKind, type SchemaPath, type SchemaPathRules, hidden, metadata } from '@angular/forms/signals';
+import { type PathKind, type SchemaPath, type SchemaPathRules, disabled, hidden, metadata } from '@angular/forms/signals';
 import { type EvalOptions, compile, defaultParserOptions, parse } from '@zvenigora/ng-eval-core';
 import { type ExpressionErrorPolicy, applyErrorPolicy, toText, toVisible } from '@zvenigora/ng-eval-forms';
 import { evaluateRule } from './evaluate-rule';
-import { ModelSource, createModelSource } from './model-source';
+import { createModelSource } from './model-source';
 import { TEXT } from './text-key';
 
 /**
@@ -128,11 +128,11 @@ export const createExpressionRules = <TModel extends object>(
   options?: ExpressionRuleOptions
 ): ExpressionRules => {
 
-  // Called **once** per factory, and the call is real in this step: it is
-  // what fixes the memo's lifetime, one per factory rather than one per rule
-  // (plan S 3.6). Calling it per registrar instead would satisfy every
-  // behavioural criterion in this phase while quietly making the memo per
-  // rule, which is why the count has a spec of its own.
+  // Called **once** per factory: it is what fixes the memo's lifetime, one
+  // per factory rather than one per rule (plan S 3.6). Calling it per
+  // registrar instead would satisfy every behavioural criterion in this phase
+  // while quietly making the memo per rule, which is why the count has a spec
+  // of its own.
   const source = createModelSource(model, options?.eval);
 
   /**
@@ -180,28 +180,6 @@ export const createExpressionRules = <TModel extends object>(
       applyErrorPolicy(() => evaluateRule(compiled, context, resolved.eval), resolved.onError);
   };
 
-  // `evalDisabled` lands in step 5, and this is the seam it fills: it takes
-  // the shared `source` and its own name. The `source` argument is **not read
-  // here** - step 5's registrar will go through `prepare` like the two above,
-  // adding only S 3.5.2's static `reason`.
-  //
-  // Throwing rather than no-op'ing, deliberately: a no-op registrar would let
-  // a schema build, a form render and every field silently keep its default,
-  // which is the failure mode this entry point exists to remove.
-  //
-  // **The parameter order is load-bearing until step 5 removes this.**
-  // `@typescript-eslint/no-unused-vars` runs at max-warnings 0 with no ignore
-  // pattern, and its default `args: 'after-used'` reports an unused parameter
-  // only when nothing after it is used. `source` is unread here and survives
-  // because `registrar` follows it; swapping the two fails lint.
-  const pending = (source: ModelSource, registrar: string) => (): never => {
-    throw new Error(
-      `@zvenigora/ng-eval-forms/signals: ${registrar} is not implemented yet. ` +
-        `The factory's model source is built; the registrars arrive in a ` +
-        `later step of Phase 6.`
-    );
-  };
-
   return {
 
     // Angular's **config** overload (S 1.2.7); the deprecated one takes the
@@ -226,6 +204,37 @@ export const createExpressionRules = <TModel extends object>(
       metadata(path, TEXT, () => toText(evaluated()));
     },
 
-    evalDisabled: pending(source, 'evalDisabled'),
+    // Angular's polarity, uninverted: `/reactive` ships no `disabled`, so no
+    // expression has to mean the same thing at two entry points, and `true`
+    // disabling is what an author expects (S 3.5.1).
+    //
+    // **The reason is a static option, never the expression's return**
+    // (S 3.5.2). Angular's `when` is a single field carrying both the
+    // condition and the reason - it returns `boolean | string`, and a truthy
+    // string is *both* (1.2.7) - so a registrar forwarding `evaluated()` raw
+    // would disable a field on the string `'false'` **with the reason
+    // `"false"`**. Coercing through `toVisible` first, and sourcing the reason
+    // from the registration instead, is what kills that: the string never
+    // comes from the expression at all.
+    //
+    // A *dynamic* reason stays out of scope - it reopens the trap and needs a
+    // coercion rule of its own.
+    evalDisabled: (path, expression, ruleOptions) => {
+      const evaluated = prepare(expression, ruleOptions);
+      const reason = ruleOptions?.reason;
+
+      disabled(path, {
+        when: () => {
+          // `evaluated()` first, so `applyErrorPolicy` stays the outermost
+          // call in this body as it is in the other two (S 3.5). `reason` is
+          // read from a closure rather than branched on ahead of the call:
+          // a guard hoisted above the wrapper is M7's arrangement, which
+          // reads 0 on an instrument whose ground truth is 1.
+          const on = toVisible(evaluated());
+
+          return on && reason !== undefined ? reason : on;
+        },
+      });
+    },
   };
 };

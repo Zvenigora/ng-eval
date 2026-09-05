@@ -147,6 +147,121 @@ describe('createExpressionRules', () => {
     });
   });
 
+  describe('evalDisabled', () => {
+
+    it('should register disabled uninverted and follow the model', () => {
+      // Unlike `evalVisible`, there is no inversion here (S 3.5.1):
+      // `/reactive` ships no `disabled`, so nothing has to port, and Angular's
+      // polarity is already the one an author expects. A true expression
+      // disables.
+      const model = signal<Model>({ city: 'Boston', country: 'US', zip: '10001' });
+      const rules = createExpressionRules(model);
+
+      const f = buildForm(
+        model,
+        schema<Model>((p) => {
+          rules.evalDisabled(p.zip, 'country !== "US"');
+        })
+      );
+
+      expect(f.zip().disabled()).toBe(false);
+
+      model.set({ city: 'Boston', country: 'CA', zip: '10001' });
+
+      expect(f.zip().disabled()).toBe(true);
+    });
+
+    it('should surface the authored reason through disabledReasons', () => {
+      // S 3.5.2's whole point, stated positively before the trap cases below
+      // state it negatively: the reason is a **static option**, authored
+      // beside the expression and never derived from it.
+      const model = signal<Model>({ city: 'Boston', country: 'CA', zip: '10001' });
+      const rules = createExpressionRules(model);
+
+      const f = buildForm(
+        model,
+        schema<Model>((p) => {
+          rules.evalDisabled(p.zip, 'country !== "US"', { reason: 'ZIP is US-only' });
+        })
+      );
+
+      expect(f.zip().disabled()).toBe(true);
+      expect(f.zip().disabledReasons().map((r) => r.message)).toEqual(['ZIP is US-only']);
+    });
+
+    it('should not disable on a falsy expression even when a reason is authored', () => {
+      // **The `on &&` conjunct of the registrar's return, which nothing else
+      // here asserts.** The reason is static, so a registrar returning it
+      // whenever one was supplied - dropping the conjunct - would disable
+      // every field carrying a `reason` unconditionally, for the life of the
+      // form, with the authored message. Every other case in this describe
+      // registers a reason only alongside a *truthy* expression, so all of
+      // them stay green against that.
+      const model = signal<Model>({ city: 'Boston', country: 'US', zip: '10001' });
+      const rules = createExpressionRules(model);
+
+      const f = buildForm(
+        model,
+        schema<Model>((p) => {
+          rules.evalDisabled(p.zip, 'country !== "US"', { reason: 'ZIP is US-only' });
+        })
+      );
+
+      expect(f.zip().disabled()).toBe(false);
+      expect(f.zip().disabledReasons()).toEqual([]);
+    });
+
+    // **The two trap cases, and they assert on `disabledReasons()` rather than
+    // on `disabled()`** - which is the only assertion that can tell the trap
+    // from a correctly-disabled field. Angular's `when` returns
+    // `boolean | string` and a truthy string is *both* "disabled" and "the
+    // reason" (1.2.7), so a registrar handing the expression's value straight
+    // to `when` produces `disabled() === true` exactly as a correct one does.
+    // `disabled()` is true under both arms; the **message** is where the
+    // leak shows.
+    //
+    // `toVisible` is `!!value` (`coercion.ts:27`), so the string `'false'` is
+    // truthy: the field really is disabled, and the question is only what the
+    // reason says.
+    it('should disable on a rule yielding the string false, without it becoming the reason', () => {
+      const model = signal<Model>({ city: 'Boston', zip: '10001' });
+      const rules = createExpressionRules(model);
+
+      const f = buildForm(
+        model,
+        schema<Model>((p) => {
+          rules.evalDisabled(p.zip, '"false"');
+        })
+      );
+
+      expect(f.zip().disabled()).toBe(true);
+
+      // No reason was authored, so there is no message - **not** the message
+      // `"false"`. This is the assertion a registrar returning `evaluated()`
+      // raw would fail while passing the line above.
+      expect(f.zip().disabledReasons().map((r) => r.message)).toEqual([undefined]);
+    });
+
+    it('should use the authored reason and never the expression value', () => {
+      const model = signal<Model>({ city: 'Boston', zip: '10001' });
+      const rules = createExpressionRules(model);
+
+      const f = buildForm(
+        model,
+        schema<Model>((p) => {
+          rules.evalDisabled(p.zip, '"false"', { reason: 'ZIP is US-only' });
+        })
+      );
+
+      expect(f.zip().disabled()).toBe(true);
+
+      const messages = f.zip().disabledReasons().map((r) => r.message);
+
+      expect(messages).toEqual(['ZIP is US-only']);
+      expect(messages).not.toContain('false');
+    });
+  });
+
   describe('the error policy, through a registered rule', () => {
 
     // Step 3 proves `applyErrorPolicy` as a function. These arms prove the
@@ -192,6 +307,86 @@ describe('createExpressionRules', () => {
       );
 
       expect(() => f.city().hidden()).toThrow(SignalContextWriteError);
+    });
+
+    it('should throw a write error out of the metadata reducer, bypassing onError', () => {
+      // **Step 4 covered the bypass through `evalVisible` only**, on the
+      // argument that `prepare` is structurally shared - which is an argument
+      // that this would pass, not evidence that it does (plan revision 16,
+      // S 0.2). `metadata` is a different Angular primitive with its own
+      // reducer and its own memoisation, so "the wrapper is shared" is a claim
+      // about our code and not about Angular's: nothing here rules out a
+      // reducer that catches what a `hidden` derivation lets through.
+      //
+      // It is also the registrar whose failure renders a *wrong string*
+      // rather than hiding a field, which is the harder one for a consumer to
+      // notice - so swallowing this throw would produce a permanently blank
+      // label with nothing in the console.
+      const model = signal<Model>({ city: 'Boston', country: 'US' });
+      const rules = createExpressionRules(model, { onError: () => 'handled' });
+
+      const f = buildForm(
+        model,
+        schema<Model>((p) => {
+          rules.evalText(p.city, 'country = "CA"');
+        })
+      );
+
+      expect(() => f.city().metadata(TEXT)?.()).toThrow(SignalContextWriteError);
+    });
+
+    it('should resolve an ordinary error per onError in evalDisabled too', () => {
+      // The third registrar's policy path. Without `applyErrorPolicy` in the
+      // body the throw would escape `f.zip().disabled()` and take the
+      // derivation down; with it, the handler's value is what `toVisible`
+      // coerces and the authored reason still applies.
+      const model = signal<Model>({
+        city: 'Boston',
+        zip: '10001',
+        boom: () => {
+          throw new Error('boom');
+        },
+      });
+      const rules = createExpressionRules(model);
+
+      const f = buildForm(
+        model,
+        schema<Model>((p) => {
+          rules.evalDisabled(p.zip, 'boom()', {
+            onError: () => true,
+            reason: 'rule failed',
+          });
+        })
+      );
+
+      expect(f.zip().disabled()).toBe(true);
+      expect(f.zip().disabledReasons().map((r) => r.message)).toEqual(['rule failed']);
+    });
+
+    it('should throw a write error out of disabled, bypassing onError', () => {
+      // **The third registrar's bypass, and the reason it is not inherited
+      // from the two above is the argument this file already makes twenty
+      // lines up** (S 0.2): "the wrapper is shared" is a claim about our code,
+      // not about Angular's. `disabled` goes through `addDisabledReasonRule`
+      // and its result is reduced into `disabledReasons` rather than read as a
+      // boolean, so it is a third wrapper around our `LogicFn` and not
+      // `hidden`'s.
+      //
+      // Under this module's default of `'undefined'` a swallowed write error
+      // would leave the field permanently **enabled** with nothing logged,
+      // which is the quietest of the three failures: a blank label is visible
+      // and a hidden field is visible, an absent disable is not.
+      const model = signal<Model>({ city: 'Boston', country: 'US', zip: '10001' });
+      const rules = createExpressionRules(model, { onError: () => true });
+
+      const f = buildForm(
+        model,
+        schema<Model>((p) => {
+          rules.evalDisabled(p.zip, 'country = "CA"');
+        })
+      );
+
+      expect(() => f.zip().disabled()).toThrow(SignalContextWriteError);
     });
 
     it('should coerce outside the policy, so a thrown rule reads as hidden', () => {

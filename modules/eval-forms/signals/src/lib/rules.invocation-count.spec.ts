@@ -100,6 +100,7 @@ jest.mock('./model-source', () => {
 });
 
 import { createExpressionRules } from './rules';
+import { TEXT } from './text-key';
 
 interface Model {
   city: string;
@@ -189,6 +190,110 @@ describe('createExpressionRules invocation counts', () => {
     // and two writes, one compile. `CompilerService`'s LRU would have masked a
     // `compile()` that drifted into the `LogicFn` body; S 3.1 drops the
     // service, so nothing else would catch it.
+    expect(mockCalls.parse).toBe(1);
+    expect(mockCalls.compile).toBe(1);
+  });
+
+  it('should re-invoke evalText only for a key its expression names', () => {
+    // **The same six steps, through `metadata` rather than `hidden`** (plan
+    // revision 16). Step 4 counted `evalVisible` alone and argued the rest
+    // from `prepare` being shared - S 0.2's substitution of "it would pass"
+    // for "it does". `metadata` is a different Angular primitive with its own
+    // reducer and its own memoisation, so an over-subscribing resolver could
+    // reach this registrar and not the other; the shared wrapper is a fact
+    // about our code, not about Angular's caching.
+    const model = signal<Model>({ city: 'Boston', country: 'US', zip: '10001' });
+    const rules = createExpressionRules(model);
+
+    const f = buildForm(
+      model,
+      schema<Model>((p) => {
+        rules.evalText(p.city, 'country');
+      })
+    );
+
+    expect(mockCalls.parse).toBe(1);
+    expect(mockCalls.compile).toBe(1);
+    expect(mockCalls.applyErrorPolicy).toBe(0);
+
+    // 1. Read the counted derivation. The read-back is two calls and an
+    //    optional chain (1.2.8), and it is setup here rather than the
+    //    assertion.
+    expect(f.city().metadata(TEXT)?.()).toBe('US');
+
+    // 2. Record, and assert it moved at all.
+    const afterFirstRead = mockCalls.applyErrorPolicy;
+    expect(afterFirstRead).toBeGreaterThanOrEqual(1);
+
+    // 3. Write a key the expression never names.
+    model.set({ city: 'Boston', country: 'US', zip: '90210' });
+
+    // 4. Read again - the step without which the count cannot move whether
+    //    the rule over-subscribes or not.
+    expect(f.city().metadata(TEXT)?.()).toBe('US');
+
+    // 5. The count is the assertion.
+    expect(mockCalls.applyErrorPolicy).toBe(afterFirstRead);
+
+    // 6. The calibration arm: the counter is shown to be able to move.
+    model.set({ city: 'Boston', country: 'CA', zip: '90210' });
+
+    expect(f.city().metadata(TEXT)?.()).toBe('CA');
+    expect(mockCalls.applyErrorPolicy).toBeGreaterThan(afterFirstRead);
+
+    // Pinned absolutely: 1 -> 1 -> 2, which additionally rejects a registrar
+    // invoking the rule twice per read.
+    expect(afterFirstRead).toBe(1);
+    expect(mockCalls.applyErrorPolicy).toBe(2);
+
+    expect(mockCalls.parse).toBe(1);
+    expect(mockCalls.compile).toBe(1);
+  });
+
+  it('should re-invoke evalDisabled only for a key its expression names', () => {
+    // The third registrar, on the same sequence. It stops being a stub in
+    // this step, so every claim in this file that was gated over "the
+    // registrars" changes subject from two to three (S 0.2.3) - and the
+    // subject that arrives last is the one no earlier probe ever ran against.
+    const model = signal<Model>({ city: 'Boston', country: 'US', zip: '10001' });
+    const rules = createExpressionRules(model);
+
+    const f = buildForm(
+      model,
+      schema<Model>((p) => {
+        rules.evalDisabled(p.zip, 'country !== "US"', { reason: 'ZIP is US-only' });
+      })
+    );
+
+    expect(mockCalls.parse).toBe(1);
+    expect(mockCalls.compile).toBe(1);
+    expect(mockCalls.applyErrorPolicy).toBe(0);
+
+    // 1. Read.
+    expect(f.zip().disabled()).toBe(false);
+
+    // 2. Record.
+    const afterFirstRead = mockCalls.applyErrorPolicy;
+    expect(afterFirstRead).toBeGreaterThanOrEqual(1);
+
+    // 3. Write a key the expression never names.
+    model.set({ city: 'Cambridge', country: 'US', zip: '10001' });
+
+    // 4. Read again.
+    expect(f.zip().disabled()).toBe(false);
+
+    // 5. Assert.
+    expect(mockCalls.applyErrorPolicy).toBe(afterFirstRead);
+
+    // 6. Calibrate.
+    model.set({ city: 'Cambridge', country: 'CA', zip: '10001' });
+
+    expect(f.zip().disabled()).toBe(true);
+    expect(mockCalls.applyErrorPolicy).toBeGreaterThan(afterFirstRead);
+
+    expect(afterFirstRead).toBe(1);
+    expect(mockCalls.applyErrorPolicy).toBe(2);
+
     expect(mockCalls.parse).toBe(1);
     expect(mockCalls.compile).toBe(1);
   });

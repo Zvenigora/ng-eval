@@ -2,6 +2,36 @@
 
 **Date**: August 24, 2026
 
+**Revision**: 17 — **a two-item amendment, made during step 5**, both recording a reading
+rather than changing a decision.
+
+1. **Step 5's "as step 4" is read as *the harnesses*, not as the eleven bullets.** The
+   discriminator is registrar-level versus factory-level. Step 4's read-back, invocation-count
+   and error-policy criteria are *about a registrar*, so `evalDisabled` owes each of them its
+   own case; schema reuse, § 3.5.3's option-resolution characterisation and the compile-once
+   count are *about the factory*, are already pinned by step 4's fixtures, and could not fail
+   differently for a third registrar — re-running them under a new registrar's name would add
+   assertions that cannot go red, which is § 0.2.1's defect wearing a duplicate's clothes.
+   Written down because "as step X" is exactly the shorthand that means something else to the
+   next reader, and this document's own history is that an unstated reading survives review.
+
+   **One consequence, found by step 5's review and worth the sentence**: the "it is about the
+   registrar" test is not always obvious from the criterion's wording. Step 5 first shipped
+   `evalDisabled` *without* the assigning-expression case, reasoning that the bypass lives in
+   `applyErrorPolicy` and is therefore factory-level — which is the same "the wrapper is
+   shared" substitution item 1 of revision 16 exists to reject, made about the very registrar
+   that revision introduced. `disabled` registers through `addDisabledReasonRule` and is a
+   third Angular primitive, so the case is registrar-level and is now present. **The rule: if a
+   criterion's subject is a path Angular owns, it is registrar-level, however shared our own
+   half of it looks.**
+
+2. **Step 6's file list gains `signals/src/lib/model-source.spec.ts`.** Its comment at `:75-77`
+   says "this step's registrars are stubs" in the present tense, which stopped being true in
+   step 4 and is now false for all three. Deferred rather than fixed in step 5 because step 5's
+   file list does not name it and § 0.2.3's own consequence puts the correction in the next step
+   to edit that area — the same disposition step 5 inherited for
+   `rules.model-source-count.spec.ts`. It is prose only: no assertion in that file depends on it.
+
 **Revision**: 16 — **a three-item amendment, made after step 4 and before step 5.** All three
 come from step 4's review, and the third is the general form of the second.
 
@@ -2518,6 +2548,11 @@ change to a published package, and specs of its own, and one plan step is one co
   before `compile`. Registration-time only; no hot path is touched.
 - **Edit**: `modules/eval-forms/package.json` — `acorn-walk ^8.3.0` into `peerDependencies`,
   matching `eval-core`'s range (§ 3.8).
+- **Edit**: `signals/src/lib/model-source.spec.ts` — the last stub-world sentence in the
+  package (revision 17). Its comment at `:75-77` reads "this step's registrars are stubs; step 4
+  observes the same count through them", which step 4 falsified and step 5 finished falsifying.
+  Prose only — no assertion in that file depends on it — and it lands here because step 6 is the
+  next step to work in this area, on the same disposition § 0.2.3 gave step 5.
 - **New**: a co-located spec, test-first.
 - **Exit**:
   - `'constructor'` **throws, through each of `evalVisible`, `evalText` and `evalDisabled`** —
