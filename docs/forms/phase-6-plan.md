@@ -25,7 +25,7 @@ rather than changing a decision.
    criterion's subject is a path Angular owns, it is registrar-level, however shared our own
    half of it looks.**
 
-2. **Step 6's file list gains `signals/src/lib/model-source.spec.ts`.** Its comment at `:75-77`
+2. **Step 6's file list gains `signals/src/lib/model-source.spec.ts`.** Its comment at `:76-77`
    says "this step's registrars are stubs" in the present tense, which stopped being true in
    step 4 and is now false for all three. Deferred rather than fixed in step 5 because step 5's
    file list does not name it and § 0.2.3's own consequence puts the correction in the next step
@@ -2549,7 +2549,7 @@ change to a published package, and specs of its own, and one plan step is one co
 - **Edit**: `modules/eval-forms/package.json` — `acorn-walk ^8.3.0` into `peerDependencies`,
   matching `eval-core`'s range (§ 3.8).
 - **Edit**: `signals/src/lib/model-source.spec.ts` — the last stub-world sentence in the
-  package (revision 17). Its comment at `:75-77` reads "this step's registrars are stubs; step 4
+  package (revision 17). Its comment at `:76-77` reads "this step's registrars are stubs; step 4
   observes the same count through them", which step 4 falsified and step 5 finished falsifying.
   Prose only — no assertion in that file depends on it — and it lands here because step 6 is the
   next step to work in this area, on the same disposition § 0.2.3 gave step 5.
