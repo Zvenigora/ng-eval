@@ -3,6 +3,7 @@ import { type PathKind, type SchemaPath, type SchemaPathRules, disabled, hidden,
 import { type EvalOptions, compile, defaultParserOptions, parse } from '@zvenigora/ng-eval-core';
 import { type ExpressionErrorPolicy, applyErrorPolicy, toText, toVisible } from '@zvenigora/ng-eval-forms';
 import { evaluateRule } from './evaluate-rule';
+import { guardIdentifiers } from './guard-identifiers';
 import { createModelSource } from './model-source';
 import { TEXT } from './text-key';
 
@@ -161,6 +162,19 @@ export const createExpressionRules = <TModel extends object>(
    * derivation; risk 8 is a compile that drifts into the returned closure, and
    * `rules.invocation-count.spec.ts` counts `compile` to say it has not.
    *
+   * **`guardIdentifiers` runs here, between `parse` and `compile`, and one
+   * call site is deliberate** (S 3.8, revision 18 item 1). Revision 16's rule
+   * rejects "the wrapper is shared" as a substitute for a per-registrar case,
+   * and the discriminator it states is whether the subject is a path Angular
+   * owns. This one is not: the guard throws **before any Angular primitive is
+   * reached**, so in the rejecting case `hidden`, `metadata` and
+   * `addDisabledReasonRule` are never called and the three registrars have
+   * nothing downstream that could diverge. Contrast the invocation count and
+   * the write-error bypass, whose values arrive *through* those three
+   * primitives - `rules.spec.ts` gives each of them a case per registrar for
+   * exactly that reason. Anything the returned closure does stays
+   * registrar-level; this runs before there is a closure.
+   *
    * **`applyErrorPolicy` is the outermost call in the returned closure, and
    * that is load-bearing twice over** (S 3.5). The policy has to cover the
    * coercion's *input* rather than only the walk - a registrar that coerced
@@ -173,7 +187,11 @@ export const createExpressionRules = <TModel extends object>(
    */
   const prepare = (expression: string, ruleOptions?: ExpressionRuleOptions): (() => unknown) => {
     const resolved = resolveOptions(ruleOptions);
-    const compiled = compile(parse(expression, defaultParserOptions));
+    const node = parse(expression, defaultParserOptions);
+
+    guardIdentifiers(expression, node);
+
+    const compiled = compile(node);
     const context = source.createRuleContext();
 
     return () =>

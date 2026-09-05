@@ -2,6 +2,73 @@
 
 **Date**: August 24, 2026
 
+**Revision**: 18 — **a three-item amendment, made during step 6.** The first records a reading;
+the second corrects a claim in § 3.8.1 that a later reader could not have resolved; the third
+records a false sentence in the same subsection and hands its correction to step 7 rather than
+rewriting a shipped decision's justification inside step 6.
+
+1. **Step 6's guard is called from the shared `prepare`, and revision 16 item 1 does not
+   apply to it.** That item, and revision 17 item 1's rule, reject "the wrapper is shared" as
+   a substitute for a per-registrar case. The discriminator revision 17 states is whether the
+   criterion's subject is *a path Angular owns* — and this one is not. The guard runs
+   **entirely inside `prepare`, at registration, and throws before any Angular primitive is
+   reached**: in the rejecting case `hidden`, `metadata` and `addDisabledReasonRule` are never
+   called, so there is no third reducer, no second polarity and nothing downstream that could
+   diverge between the three. Contrast step 4's invocation count and step 5's write-error
+   bypass, whose values arrive *through* those three primitives and could each fail
+   differently.
+
+   **This is a fact about where the guard sits, not a licence to argue from a shared wrapper.**
+   Anything the returned `LogicFn` does is on Angular's path and stays registrar-level. And
+   step 6's three-registrar assertions ship regardless: a guard wired into `evalVisible` alone
+   is a reachable wrong implementation, and excluding it is the specs' job even when the
+   shipped structure makes it unlikely.
+
+2. **§ 3.8.1's "the name set is seven" is corrected: the predicate is normative and the list
+   was illustrative.** The check is
+   `Object.prototype.hasOwnProperty.call(Object.prototype, name)` — § 3.8's own wording ("an
+   own property of `Object.prototype`") and `field-schema.ts:172`'s precedent — and
+   `Object.getOwnPropertyNames(Object.prototype)` is **twelve**, not seven: the seven named
+   there plus `__proto__`, `__defineGetter__`, `__defineSetter__`, `__lookupGetter__` and
+   `__lookupSetter__`. A list of seven standing beside a predicate matching twelve leaves the
+   next reader unable to tell which is authoritative, which is § 0.2.1's defect in a
+   documentation register. § 3.8.1 now says the seven are the names a form author might
+   plausibly type and that the predicate decides, and step 6 gains an exit criterion asserting
+   one name the seven omits — so the wider reach is **gated rather than incidental**.
+
+3. **§ 3.8.1's "`/reactive` **throws** on this today" is false, and step 7 owns the fix.**
+   Found by step 6's review. `/reactive`'s checks are on **field and control names**
+   (`field-schema.ts:172`, `:214`), not on the expression — so `visible: "constructor"` over a
+   schema of `city`/`country` does **not** throw there either; it renders the data-less field,
+   exactly as `/signals` did before this step. § 3.8's residual paragraph states this
+   correctly and § 3.8.1's closing paragraph contradicts it, which is the shape § 0.2.1 exists
+   for: two normative sentences, one true.
+
+   **The decision to ship the check here is unaffected** — Q11's silently rendering field is
+   its own justification, and § 3.8's own argument never rested on this sentence. What the
+   sentence gets wrong is the *reason*: the entry points do not currently agree, and the
+   check makes `/signals` **stricter** than `/reactive` rather than equal to it. That is a
+   defensible outcome and a different one from what § 8.2's symmetry principle claims here.
+
+   **Not rewritten in step 6.** Re-deriving a shipped decision's justification is not this
+   step's deliverable, and the sentence has a dependent: step 7's README caveat is written
+   from the looser reading. Step 7 edits both, so it corrects them together — its file list
+   already names `README.md`, and it gains § 3.8.1's closing paragraph.
+
+   **And the asymmetry is consumer-visible, not only a plan defect — which changes what step 7
+   owes the README.** The same authored rule, `visible: "constructor"`, now **throws under
+   `/signals`** and **silently renders a data-less field under `/reactive`**. So it cannot be
+   documented as a `/signals` caveat alone: the consumer who does not know is the one reading
+   **`/reactive`'s** documentation, where the behaviour is the silent one. Step 7 states it
+   plainly in **both** entry points' sections — under `/signals` as "this is rejected", under
+   `/reactive` as "this is *not* rejected, and here is what it does instead".
+
+   **Whether `/reactive` should gain the same guard is a Phase 8 question and step 7 does not
+   decide it.** It is a behaviour change to a released entry point — an expression that
+   registers today would start throwing — so it needs a phase, a major-version decision and a
+   migration note, none of which belong in a docs step. Step 7 logs it to `ROADMAP.md` and
+   stops there.
+
 **Revision**: 17 — **a two-item amendment, made during step 5**, both recording a reading
 rather than changing a decision.
 
@@ -2127,8 +2194,16 @@ anyway.** Three reasons, in the order they decide it:
    Q11: a field that always renders, silently, in production. A check built to convert a
    silent wrong answer into a loud one should not acquire a silent failure mode to spare a
    rename.
-3. **The name set is seven, and none is natural as a parameter** — `constructor`, `toString`,
-   `valueOf`, `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable`, `toLocaleString`.
+3. **No name the predicate matches is natural as a parameter.** Seven of them are names a
+   form author might plausibly type — `constructor`, `toString`, `valueOf`, `hasOwnProperty`,
+   `isPrototypeOf`, `propertyIsEnumerable`, `toLocaleString` — and that list is
+   **illustrative**. **The predicate is normative**:
+   `Object.prototype.hasOwnProperty.call(Object.prototype, name)`, § 3.8's wording and
+   `field-schema.ts:172`'s precedent, which matches **twelve** names —
+   `Object.getOwnPropertyNames(Object.prototype)` adds `__proto__`, `__defineGetter__`,
+   `__defineSetter__`, `__lookupGetter__` and `__lookupSetter__`. Revision 18 corrects a
+   sentence that gave the count as seven flat; step 6 asserts one of the five so that the
+   wider reach is gated rather than incidental.
 
 **It is recorded as a false positive, not as a hazard.** The README says the guard rejects
 these names anywhere in an expression, including where the expression binds them itself, and
@@ -2546,6 +2621,13 @@ change to a published package, and specs of its own, and one plan step is one co
   identifier, per `field-schema.ts:172-178`'s precedent.
 - **Edit**: `signals/src/lib/rules.ts` — every registrar calls it immediately after `parse`,
   before `compile`. Registration-time only; no hot path is touched.
+
+  **Through the shared `prepare`, and revision 18 item 1 says why that is not revision 16's
+  rejected argument.** The guard throws before any Angular primitive is reached, so the three
+  registrars have nothing downstream that could diverge — unlike step 4's count and step 5's
+  bypass, whose values arrive *through* `hidden`, `metadata` and `addDisabledReasonRule`. The
+  three assertions below still ship: one call site is what the code has, three registrars is
+  what the criterion is about.
 - **Edit**: `modules/eval-forms/package.json` — `acorn-walk ^8.3.0` into `peerDependencies`,
   matching `eval-core`'s range (§ 3.8).
 - **Edit**: `signals/src/lib/model-source.spec.ts` — the last stub-world sentence in the
@@ -2568,6 +2650,10 @@ change to a published package, and specs of its own, and one plan step is one co
     `country`, or `constructorName` — the check is on the identifier's exact name, not a
     substring, and the negative arm is what proves it (a `String.includes` implementation
     passes the first three and fails these);
+  - **and the same for `__defineGetter__`, which the seven-name list omits** (revision 18
+    item 2). The predicate matches twelve names and the illustrative list names seven, so an
+    implementation that hard-codes the seven satisfies every other criterion in this step.
+    This arm is what makes the predicate the deliverable rather than the list;
   - **a member expression is not rejected**: `'user.constructor'` registers, because that is
     `eval-core`'s guard and not this one (§ 3.8's residual). Without this arm the check has no
     stated upper bound and the next revision widens it into `eval-core`'s territory. It is also
@@ -2597,7 +2683,26 @@ change to a published package, and specs of its own, and one plan step is one co
 
 ### Step 7 — Docs, README and release
 
-- **Edit**: `modules/eval-forms/README.md` — **three separate edits, not one row** (W4): add a
+- **Edit**: `docs/forms/phase-6-plan.md` § 3.8.1's closing paragraph — new in revision 18
+  item 3, and it comes **before** the README row because that row's caveat is written from
+  the sentence being corrected. `/reactive` does not throw on a prototype-shadowed
+  *expression*; it throws on a field or control **name**. So the check makes `/signals`
+  stricter than `/reactive` rather than symmetric with it, and § 8.2's principle is not what
+  carries the decision — Q11 is. Correct the paragraph, then write the README caveat from
+  the corrected version rather than the other way round.
+- **Edit**: `ROADMAP.md` — new in revision 18 item 3. Log **"should `/reactive` reject
+  prototype-shadowed identifiers in expressions too?"** as a **Phase 8** question. It is a
+  behaviour change to a released entry point — an expression that registers today would start
+  throwing — so it needs a phase, a major-version decision and a migration note. **Logged, not
+  decided**: a docs step deciding it is how a breaking change ships without one.
+- **Edit**: `modules/eval-forms/README.md` — **four separate edits, not three** (W4, and
+  revision 18 item 3 adds the fourth). The fourth is the **`/reactive` side of the
+  asymmetry**, and it is separate from the `/signals` caveat because the two sections have
+  different readers and only one of them is currently told anything. `visible: "constructor"`
+  throws under `/signals` and silently renders a data-less field under `/reactive`; the
+  consumer who needs that sentence is reading `/reactive`'s documentation, where the
+  behaviour is the silent one. A `/signals`-only caveat documents the asymmetry to the half
+  of the audience already protected from it. The other three edits: add a
   `/signals` row to the entry-point table at `README.md:47-51`, which today has two rows;
   **delete the "designed but not built" prose block at `:53-55`** and repoint its link, since
   that claim lives in prose pointing at `phase-4-plan.md` § 9 and not in any row; and update

@@ -73,8 +73,10 @@ describe('createModelSource', () => {
 
       // S 3.6's count as two identity comparisons rather than as a sentence:
       // one `EvalContext` per rule per `form()`, one `computed` per key per
-      // **factory**. Asserted on the source because this step's registrars
-      // are stubs; step 4 observes the same count through them.
+      // **factory**. Asserted on the source directly, which is the narrower
+      // subject; `rules.invocation-count.spec.ts`' "one memo per factory and
+      // one context per rule per form" observes **both** counts through the
+      // registrars, across two `form()` calls on a two-rule schema.
       expect(first).not.toBe(second);
       expect(source.keySignal('country')).toBe(source.keySignal('country'));
     });
