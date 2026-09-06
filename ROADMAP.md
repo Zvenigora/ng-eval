@@ -254,7 +254,37 @@ Depends on Phase 3. Exit criteria: those questions answered in a plan document o
 then either the primitive with tests, README and CHANGELOG entries, or a second recorded
 decision not to ship it.
 
-### Phase 6 — the `/signals` entry point (`eval-forms`)
+### ✅ Phase 6 — the `/signals` entry point (`eval-forms`) — **done**
+
+Shipped in `@zvenigora/ng-eval-forms` **0.2.0**, as a second entry point,
+`@zvenigora/ng-eval-forms/signals`. Design, findings and the step-by-step execution record
+are in [`docs/forms/phase-6-plan.md`](docs/forms/phase-6-plan.md); consumer documentation is
+the `/signals` section of the [package README](modules/eval-forms/README.md).
+
+What landed: `createExpressionRules(model, options?)`, a factory rather than free functions —
+Angular's `LogicFn` cannot recover the source a rule closes over, so the model must be bound
+at registration — returning `evalVisible`, `evalText` and `evalDisabled` for use inside a
+`schema()` body; `TEXT`, the metadata key `evalText` writes through and
+`field().metadata(TEXT)` reads back; `evalDisabled`'s **static** `reason?` parameter, since
+Angular's `when` treats a truthy string as both "disabled" and "the reason"; a
+prototype-shadowed-identifier guard enforced at registration, the mirror image of
+`/reactive`'s construction-time name check; and, on the already-released surface,
+`acorn-walk ^8.3.0` as a declared peer (no new install for an existing consumer, since
+`eval-core`'s own peers already place it) and `applyErrorPolicy` in the core, which rethrows
+`SignalContextWriteError` regardless of policy.
+
+**Narrowings, all documented in the README**: `/signals` and `/reactive` now deliberately
+disagree about one authored string — `visible: "constructor"` throws under `/signals` and
+renders cleanly under `/reactive` — logged as an open question for a later major rather than
+resolved here; a schema **value** shared across models silently renders form B against form
+A's data, so reuse must go through a schema *function* of the rules; `caseInsensitive` is in
+practice a factory-wide option, not a per-registration one; the nested-signal diagnostic from
+`eval-signals` does not reach this entry point; the form's key set is not enumerable from
+upstream; the identifier guard over-rejects a name an expression binds itself; the
+`SignalContextWriteError` bypass does not survive a call frame; and there is no `destroy()`
+at `/signals` — Angular owns the field tree's lifetime and the rules die with the schema.
+
+The original plan for this phase follows, unchanged.
 
 The second adapter of `@zvenigora/ng-eval-forms`: the same runtime-string rules, driving
 **Angular's Signal Forms** (`@angular/forms/signals`) instead of Reactive Forms. Designed on

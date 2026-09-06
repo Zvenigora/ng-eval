@@ -8,6 +8,21 @@ The repository publishes more than one package, and they version independently. 
 
 ---
 
+## [Unreleased]
+
+### Fixed
+- **Dependency Security**: Bumped the transitive `fast-uri` dependency (pulled in by `ajv`,
+  used by the lint/build tooling) from 3.1.5 to 3.1.7, resolving 4 high-severity Dependabot
+  advisories — [GHSA-jqff-g426-hqxp](https://github.com/advisories/GHSA-jqff-g426-hqxp),
+  [GHSA-f65p-4m7j-42xc](https://github.com/advisories/GHSA-f65p-4m7j-42xc),
+  [GHSA-fph4-wmhf-6fwf](https://github.com/advisories/GHSA-fph4-wmhf-6fwf), and
+  [GHSA-5jgf-p345-68v8](https://github.com/advisories/GHSA-5jgf-p345-68v8). `ajv`'s own
+  declared range (`^3.0.1`) already permitted the patched version, so only
+  `package-lock.json` needed updating — no published package's runtime dependencies are
+  affected.
+
+---
+
 ## [eval-forms 0.2.0] - 2026-09-06
 
 Phase 6 of the [roadmap](ROADMAP.md): a third entry point, `@zvenigora/ng-eval-forms/signals`, driving Angular [Signal Forms](https://angular.dev/guide/forms/signals) field properties from **string** expressions resolved at runtime — the same proposition as `/reactive`, against Angular's schema-and-model API rather than `FormGroup`. Design, measurements and the questions it settles are in `docs/forms/phase-6-plan.md`; consumer documentation in the [package README](modules/eval-forms/README.md). **`/signals` requires Angular 22 or later.** `/reactive` is unchanged and the shared core changes only additively — one new export, `applyErrorPolicy`, called out below; both still work from Angular 19.
