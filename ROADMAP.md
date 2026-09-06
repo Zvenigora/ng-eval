@@ -566,6 +566,67 @@ which ground it now rests on; and add a spec that pins what actually happens whe
 throws, since none exists — the case above pins the *symptom* the guard prevents, not the
 subscriber's fate. Behavioural if the decision changes, documentation-only if it does not.
 
+## Deferred behaviour decision — should `/reactive` reject prototype-shadowed identifiers in expressions too?
+
+**A Phase 8 question. Logged here, not decided** — and the distinction is the point of the
+entry, because the deciding is the expensive half.
+
+**Neither Phase 7 nor Phase 8 is yet a section in this document**, so the number is a
+reservation rather than a cross-reference: Phase 7 is held for form-state keys
+(`touched` / `dirty` / `valid`) across both adapters, per
+[`docs/forms/phase-6-plan.md`](docs/forms/phase-6-plan.md) § 8.2, and registering either as a
+phase here is a separate docs change that Phase 6 declined to make on its own authority.
+
+Raised by Phase 6 step 6, which added the check to `/signals`, and written down by step 7. See
+[`docs/forms/phase-6-plan.md`](docs/forms/phase-6-plan.md) § 3.8 and § 3.8.1 for the measurement
+and the argument; this section records only what is left open.
+
+**The asymmetry, as it now ships.** `@zvenigora/ng-eval-forms/signals` walks every expression at
+registration and throws on any `Identifier` whose name is an own property of `Object.prototype`
+— `constructor`, `toString`, `valueOf`, `hasOwnProperty` and the other eight. `/reactive` does
+not: its two **prototype-name** checks (`reactive/src/lib/field-schema.ts:172-178` over the
+schema's field names, `:214-220` over the group's controls) inspect **names**, never
+expressions — and neither do the other two construction-time rejections that entry point makes,
+which are on a rule's type and a control's class. So `{ name: 'city', visible: 'constructor' }` throws under `/signals` and, under
+`/reactive`, binds cleanly and renders a field that has no data — because the identifier
+resolves off `Object.prototype`, a function is truthy, and truthy means visible.
+
+One authored rule string, two behaviours, and the silent one is the unsafe one. That is exactly
+the asymmetry `phase-6-plan.md` § 8.2 exists to prevent, shipped knowingly because the
+alternative was leaving both entry points silently wrong.
+
+**Why it is not a bug fix.** `/reactive` is released, at `0.1.0`, and an expression that
+registers today would start throwing. That makes it a behaviour change to a published surface
+and it needs three things a docs step cannot supply: a phase, a major-version decision, and a
+migration note for a consumer whose form genuinely has a field named `constructor`. A docs step
+deciding it is how a breaking change ships without one.
+
+**What a phase would have to settle**, none of it obvious from the paragraphs above:
+
+- **Where the check runs.** `/signals` guards between `parse` and `compile` inside its own
+  registrar. `/reactive` compiles inside `bindFieldProperties`, so the natural site is there —
+  which makes it a fifth construction-time rejection beside the four the README already
+  documents, and folds into the same throw a consumer already handles.
+- **Whether the residual is acceptable at both.** A *member* expression — `user.constructor` —
+  is `eval-core`'s prototype-pollution guard and not this check's business at either entry
+  point, and `CLAUDE.md`'s `!isPrimitive` carve-out applies. A check that rejects the bare
+  identifier and passes the member access is the same shape at both, and is worth stating
+  rather than discovering.
+- **Whether the deliberate over-rejection ports.** `/signals` rejects a name an expression
+  *binds* itself — `'[1].map(valueOf => valueOf)'` throws — because a scope-aware guard would be
+  a second copy of `eval-core`'s frame logic (§ 3.8.1). The same reasoning applies unchanged at
+  `/reactive`, but it is a false positive that a released entry point would be acquiring rather
+  than shipping with.
+- **The migration note.** The fix for a real `constructor` field is renaming the model key, which
+  a consumer may not control if the schema arrives from a server — the case § 0 of the Phase 6
+  plan is written for. Whether that is a rename, an escape hatch, or an accepted break is the
+  substance of the decision.
+
+Scope if taken: the guard is already written and module-private to `/signals`
+(`signals/src/lib/guard-identifiers.ts`), so the mechanism is a move rather than a design. The
+work is the version decision, the migration note, and the `acorn-walk` peer already being
+declared. Behavioural, and breaking.
+
 ## Deferred hygiene — `console` calls in `eval-core`, and a dead branch that would leak state
 
 Surfaced during the Phase 6 CLAUDE.md pass, while establishing that "No `console.*` in

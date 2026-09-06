@@ -2,6 +2,56 @@
 
 **Date**: August 24, 2026
 
+**Revision**: 19 — **a one-item amendment, made during step 7**, widening that step's own file
+list and gating what it adds. A 18→19 diff also shows § 3.8.1's closing paragraph rewritten,
+which is **not** this revision's item: that rewrite is revision 18 item 3 being *executed* by the
+step it was assigned to, and the new text self-attributes inline.
+
+1. **Step 7's README deliverable gains three prose claims this release falsifies, and a fifth
+   exit criterion that greps for them.** Found by restating the step against the file before
+   editing it. All three sit *adjacent to* structure the existing criteria already reach, and
+   that adjacency is the pattern rather than a coincidence — **it is § 0.2.1 in a documentation
+   register**: a criterion aimed at a gated artefact leaves the sentences around it ungated, and
+   the sentences are the other half of the same deliverable.
+
+   - `README.md:3-4` — "Angular form field properties — `visible` and `text`". `/signals` ships
+     `disabled` as well (step 5). Adjacent to nothing gated at all, which is why it survived
+     eighteen revisions.
+   - `README.md:71-77` — the prose **below** the `Versions` JSON: "`/reactive` — everything this
+     release ships" and "**When** `/signals` **arrives** it will require Angular 22 or later."
+     Revision 7's criterion reads "the README's `Versions` block matches
+     `modules/eval-forms/package.json` exactly", which reaches the fenced JSON and stops at its
+     closing fence. Same section, same deliverable, two sentences past the gate.
+   - `README.md:400-407` — "What is not here" still lists `disabled` as deferred and calls
+     `/signals` "the **future** `/signals` entry point". Adjacent to the entry-point table's
+     gated row, one section away.
+
+   **Gated, not merely fixed.** Revision 18 assigned step 7 four README edits and gave three of
+   them criteria; a fifth criterion — one grep over the three false claims, returning nothing —
+   is what keeps these from being a deliverable with no gate, which is the shape the other three
+   were rescued from. § 4's step 7 carries both halves.
+
+2. **Step 7's file list gains two files its own diff falsified, and this is § 0.2.2 rather than
+   tidying.** The kill-list check asks whether a claim died everywhere or only where the finding
+   named it. Step 7 killed two claims and left each alive in one other place:
+
+   - **`signals/src/lib/rules.ts:24-27`** says a per-registration `caseInsensitive` misses "the
+     factory's memo and the context `createRuleContext()` builds" because both "are made once,
+     at `createExpressionRules` time". Step 7's review established that the *context* is minted
+     per registration and only its **options** are fixed at factory time, and the README was
+     corrected accordingly — leaving a source comment that contradicts the shipped README on the
+     one subject a consumer is most likely to check. **It is the worse copy of the two**: a
+     doc comment is what an editor shows on hover, so it reaches a reader who never opens the
+     README, and nothing in this phase's gates compares the two.
+   - **`reactive/src/lib/readme-examples.spec.ts`'s docblock** claims it executes the README's
+     runnable `ts` blocks. Step 7 moved one `/reactive` block — the `/signals`↔`/reactive`
+     asymmetry — into the `/signals` spec, because that claim is a pair and splitting it lets
+     either half drift. So the docblock over-claims by exactly the block this step relocated.
+
+   **Neither is a behaviour change** and both are one- or two-sentence edits; they are named
+   here rather than left to a later step because the next step to edit either file is in another
+   phase, and § 0.2.3's disposition only works when such a step exists.
+
 **Revision**: 18 — **a three-item amendment, made during step 6.** The first records a reading;
 the second corrects a claim in § 3.8.1 that a later reader could not have resolved; the third
 records a false sentence in the same subsection and hands its correction to step 7 rather than
@@ -2217,11 +2267,37 @@ body re-dispatches with no override, so a **reference** is. `'[1].map(valueOf =>
 registers and `'[1].map(valueOf => valueOf)'` throws. Recorded because a hand-rolled scan over
 every node would reject both, which is the difference § 0.1 asks a borrow to be checked at.
 
-**Why it ships here rather than deferring, which was the alternative.** § 8.2's principle is
-that an expression means the same thing at both entry points. `/reactive` **throws** on this
-today. Ship `/signals` without the check and the same authored rule throws under one adapter
-and silently renders a data-less field under the other — the asymmetry § 8.2 exists to
-prevent, in the direction where the silent side is the unsafe one.
+**Why it ships here rather than deferring, which was the alternative — and revision 18 item 3
+corrects what carries it.** Revisions 8–17 read: "§ 8.2's principle is that an expression means
+the same thing at both entry points. `/reactive` **throws** on this today. Ship `/signals`
+without the check and the same authored rule throws under one adapter and silently renders a
+data-less field under the other." The middle sentence is false, and it inverts the conclusion
+the other two rest on. **`/reactive` throws on a field or control *name*** —
+`field-schema.ts:172-178` over the schema's names and `:214-220` over the group's controls —
+and it never inspects an expression at all. So `{ name: 'city', visible: 'constructor' }` binds
+there without complaint and renders the field, which is Q11's outcome exactly, reached by the
+same mechanism at the other entry point.
+
+**So this check makes `/signals` stricter than `/reactive`, not symmetric with it, and § 8.2 is
+not what carries the decision.** It cannot: § 8.2's subject is an expression *meaning* the same
+thing at both entry points, and what ships here is a divergence of precisely that kind — the
+string `'constructor'` throws at one entry point and renders a data-less field at the other.
+Shipping it **opens** an § 8.2 asymmetry rather than closing one.
+
+**Q11 carries it, on its own account.** `rules.evalVisible(p.city, 'constructor')` renders a
+field against a model with no such key, with nothing logged, and § 0's premise is that the
+expression was authored in a builder UI. Converting a silent wrong answer into a named throw is
+worth doing whether or not `/reactive` ever does the same, and the two entry points owning
+different inputs (above) is why it could not have been done symmetrically in one step regardless.
+
+**What § 8.2 does carry is that the asymmetry is a debt.** Whether `/reactive` should reject
+prototype-shadowed identifiers in expressions too is a behaviour change to a **released** entry
+point — an expression that registers today would start throwing — so it needs a phase, a
+major-version decision and a migration note. Step 7 logs it against a later phase in
+[`ROADMAP.md`](../../ROADMAP.md) and **does not decide it**; a docs step deciding it is how a
+breaking change ships without one. Step 7's README also documents the asymmetry from
+`/reactive`'s side, where the behaviour is the silent one and the reader is the one not yet
+protected from it.
 
 ---
 
@@ -2739,6 +2815,25 @@ change to a published package, and specs of its own, and one plan step is one co
   which quotes `peerDependencies` verbatim** — step 6 adds an entry to that manifest, so the
   block reproduces a package that no longer exists unless this step edits it. It is listed as a
   deliverable because a quoted manifest is the one piece of a README nothing recompiles (W1).
+- **Edit**: `modules/eval-forms/README.md` — **three further prose claims this release
+  falsifies**, new in revision 19. Each sits adjacent to structure the four edits above already
+  gate, which is the pattern rather than three separate slips (§ 0.2.1 in a documentation
+  register): **`:3-4`**, which describes the package as "`visible` and `text`" and omits the
+  `disabled` step 5 shipped; **`:71-77`**, the prose *below* the `Versions` JSON — "`/reactive`
+  — everything this release ships" and "**when** `/signals` **arrives** it will require Angular
+  22" — which the "matches `package.json` exactly" criterion reaches the fenced block of and
+  not the sentences after it; and **`:400-407`**, where "What is not here" still lists
+  `disabled` as deferred and calls `/signals` "the **future** `/signals` entry point". The
+  fifth exit criterion below is what makes these a gate rather than a deliverable.
+- **Edit**: `signals/src/lib/rules.ts` — prose only, new in revision 19 item 2. The
+  `ExpressionRuleOptions.eval` doc comment at `:24-27` says the context is "made once, at
+  `createExpressionRules` time"; it is minted per registration from options fixed then, which is
+  what the corrected README now says. A doc comment is the copy an editor shows on hover, so
+  this is the version that reaches a consumer who never opens the README.
+- **Edit**: `reactive/src/lib/readme-examples.spec.ts` — prose only, new in revision 19 item 2.
+  Its docblock claims coverage of the README's runnable `ts` blocks; this step moved the
+  `/signals`↔`/reactive` asymmetry block into the `/signals` spec, so it over-claims by one.
+  No assertion in the file changes.
 - **New**: `signals/src/lib/readme-examples.spec.ts` — the `/signals` counterpart to
   `reactive/src/lib/readme-examples.spec.ts`, which is the only file of that name today.
 - **Edit**: root `CHANGELOG.md` — `## [eval-forms 0.2.0]`, naming the package, and naming
@@ -2774,7 +2869,13 @@ change to a published package, and specs of its own, and one plan step is one co
     criterion at all;
   - **no "designed but not built" string survives in `README.md`**, and the `/signals` row
     exists in the entry-point table. One grep and one read, because the deliverable is three
-    edits and a single criterion would gate one of them.
+    edits and a single criterion would gate one of them;
+  - **none of revision 19's three false claims survives in `README.md`** — one grep, over
+    `visible` and `text` as the package's stated properties (`:3-4`), "everything this release
+    ships" and "when `/signals` arrives" (`:71-77`), and "future `/signals` entry point"
+    (`:400-407`), returning nothing. Added rather than left to the fix itself: the three were
+    found *because* the four criteria above stop at the structure they name, and a correction
+    with no criterion is the same shape one revision later.
 
 ---
 

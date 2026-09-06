@@ -37,11 +37,24 @@ import {
  * that one gates *what the README says*, this one gates *whether what it says
  * runs*.
  *
- * It also does not cover every block. Covered: the `ts` blocks that are
- * runnable. Not covered: the `html` template blocks, the `json` manifest block,
- * and the `interface FieldSchema` declaration - none of which executes, and a
- * transcription that padded them into something that did would be asserting
- * against code the README does not contain.
+ * It also does not cover every block. Covered: the `/reactive` `ts` blocks
+ * that are runnable, and the shared core's two `Coercion` blocks - which live
+ * here rather than under `src/lib/` because a spec there could not import
+ * `bindFieldProperties` to sit beside them, and splitting two blocks into a
+ * third file buys nothing. Not covered: the `html` template blocks, the `json`
+ * manifest block, and the `interface FieldSchema` declaration - none of which
+ * executes, and a transcription that padded them into something that did would
+ * be asserting against code the README does not contain.
+ *
+ * **One `/reactive` block is deliberately covered elsewhere**, and this
+ * sentence exists because the file's location would otherwise imply it is
+ * here (Phase 6 step 7, plan revision 19 item 2). The README's "Expressions
+ * are not validated" block - `visible: "constructor"` binding cleanly and
+ * rendering a data-less field - is executed by
+ * `signals/src/lib/readme-examples.spec.ts`, paired in one case with the
+ * `/signals` registration that throws on the same authored string. The claim
+ * is the *asymmetry*, so the pair is the assertion: split across two files,
+ * either half could drift without the pair failing.
  *
  * **What this file supplies that the documents do not print**, listed in full
  * because `ROADMAP.md`'s rejection of transcribed snippets turns on exactly

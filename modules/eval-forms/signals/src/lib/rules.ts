@@ -20,13 +20,18 @@ export interface ExpressionRuleOptions {
    * state's options.
    *
    * **A per-registration value reaches exactly one of the three places it
-   * has to: the walk** (plan S 3.5.3). Both of the others - the factory's
-   * memo and the context `createRuleContext()` builds - are made once, at
-   * `createExpressionRules` time, from the factory's own options. So
-   * overriding this per registration corrects *property* names and leaves
-   * *identifier* keys on the factory's setting, and one expression then obeys
-   * two casing rules. Set `caseInsensitive` on the **factory** unless that is
-   * the behaviour you want.
+   * has to: the walk** (plan S 3.5.3). The other two read the **factory's**
+   * options, which are fixed when `createExpressionRules` is called: the memo
+   * is built once, there; the context is minted per registration by
+   * `createRuleContext()` but always from that same fixed setting, so a
+   * registration cannot move it. So overriding this per registration corrects
+   * *property* names and leaves *identifier* keys on the factory's setting,
+   * and one expression then obeys two casing rules. Set `caseInsensitive` on
+   * the **factory** unless that is the behaviour you want.
+   *
+   * Revision 19 item 2 corrects "both are made once, at
+   * `createExpressionRules` time", which was wrong about the context and is
+   * the claim the README states correctly.
    */
   eval?: EvalOptions;
 
