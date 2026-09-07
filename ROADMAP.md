@@ -107,15 +107,18 @@ introduce **control flow** that the current visitor-returns-a-value model
 - Decide initial scope of `for`: classic `for (let i = ...)` first; `for...of` /
   `for...in` can follow once the loop-completion mechanism exists.
 
-**Four backlog entries are preconditions for this phase**, because statements widen paths
-they sit on. See [`docs/backlog.md`](docs/backlog.md) § "Phase 2 preconditions" for the
-argument; in short: [BL-A9](docs/backlog.md#a9) (the missing `try`/`finally` at both scope
-pushes — a `for` loop leaks per iteration, and five new visitors would copy the idiom),
-[BL-B2](docs/backlog.md#b2) (a `console.log` of the whole `EvalState` that destructuring
-declarations make reachable), [BL-A2](docs/backlog.md#a2) (the silent fall-through this
-phase's statement dispatchers would reproduce at larger scale), and
-[BL-E6](docs/backlog.md#e6) (`exit`'s unbounded scan, which the loop-completion mechanism
-makes reachable).
+**This phase opens with a step 0**, because statements widen two paths that already carry
+defects. See [`docs/backlog.md`](docs/backlog.md#phase-2-preconditions) § "Phase 2
+preconditions" for the argument and for why two further entries are *not* preconditions.
+
+- **Step 0 — [BL-A9](docs/backlog.md#a9) and [BL-B2](docs/backlog.md#b2), one session.** A9 is
+  the missing `try`/`finally` at both scope-push sites: block scoping means a scope per block
+  per iteration, so a `for` body that throws leaks one per iteration, and the five new visitors
+  below would copy whatever idiom the two existing sites set. B2 is a `console.log` of the whole
+  `EvalState` sitting in a branch that destructuring declarations make reachable.
+- **[BL-E6](docs/backlog.md#e6) is a design constraint of this phase, not a step ahead of it.**
+  Bounding `exit`'s scan with a mark and choosing the loop-completion mechanism are one
+  decision; this phase's plan document owns both.
 
 Exit criteria: `VariableDeclaration` (`let`/`const`), `IfStatement`, `BlockStatement`,
 classic `ForStatement` visitors; multi-statement `Program` evaluation; tests mirroring
@@ -394,14 +397,24 @@ Entries are cited by stable ID — `BL-A8`, not a line number.
 2. ~~Phase 3 (signals)~~ — **done**, shipped in `eval-signals` 0.1.0; unblocks 4.
 3. ~~Phase 4 (forms)~~ — **done**, shipped in `eval-forms` 0.1.0; unblocks 6.
 4. ~~Phase 6 (`/signals` entry point)~~ — **done**, shipped in `eval-forms` 0.2.0.
-5. Phase 2 (statements) — the only unstarted phase with preconditions. Four backlog entries
-   must land first ([BL-A9](docs/backlog.md#a9), [BL-B2](docs/backlog.md#b2),
-   [BL-A2](docs/backlog.md#a2), [BL-E6](docs/backlog.md#e6)); see
-   [`docs/backlog.md`](docs/backlog.md) § "Phase 2 preconditions". Otherwise independent —
-   nothing else in this roadmap depends on `let`/`if`/`for`.
-6. Phase 5 (async signals) — depends on Phase 3, and nothing depends on it. Deferred
+5. The documentation and CI gates — [BL-F3](docs/backlog.md#f3),
+   [BL-F4](docs/backlog.md#f4), [BL-F1](docs/backlog.md#f1), [BL-F7](docs/backlog.md#f7),
+   [BL-D10](docs/backlog.md#d10) / [BL-D11](docs/backlog.md#d11). Not a phase and not new
+   capability, but ordered here deliberately: no version bump, no behavioural change, blocks
+   nothing — and F3 and F4 build gates every later phase inherits, so Phase 2 should start
+   behind them rather than adding to a queue in front of them.
+6. Phase 2 (statements) — opens with the step 0 above
+   ([BL-A9](docs/backlog.md#a9), [BL-B2](docs/backlog.md#b2)). Otherwise independent — nothing
+   else in this roadmap depends on `let`/`if`/`for`.
+7. Phase 5 (async signals) — depends on Phase 3, and nothing depends on it. Deferred
    out of Phase 3 deliberately rather than left undone; it is ordered after Phase 2 because
    the sync primitive already composes with `resource` for the promise case, and because
-   [BL-A9](docs/backlog.md#a9) — a Phase 2 precondition — would retire one of its open
-   questions outright.
-7. Phase 7 / Phase 8 — reserved above, neither costed nor scheduled.
+   [BL-A9](docs/backlog.md#a9) — Phase 2's step 0 — would retire one of its open questions
+   outright.
+8. Phase 7 / Phase 8 — reserved above, neither costed nor scheduled.
+
+Unscheduled and independent of all of the above: [BL-A2](docs/backlog.md#a2), a wrong-value
+bug with a real route to it, which lands whenever someone picks it up; and the `eval-core`
+error-identity minor ([BL-A5](docs/backlog.md#a5), [BL-A6](docs/backlog.md#a6),
+[BL-A4](docs/backlog.md#a4), [BL-A7](docs/backlog.md#a7), [BL-C3](docs/backlog.md#c3)), which
+wants appetite for a version bump.

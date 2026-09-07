@@ -36,6 +36,13 @@ reader looking.
   gap tells them nothing, and they will re-derive it.
 - **A step that fixes an entry** updates that entry in the same commit.
 
+### Work in flight
+
+[`docs/gates/plan.md`](gates/plan.md) — "Track 3", the documentation and CI gates — plans
+[F1](#f1), [F3](#f3), [F4](#f4), [F7](#f7) and [D10](#d10) as five steps. It ships no exported
+symbol and bumps no version, and it is ordered ahead of Phase 2 because F3 and F4 build gates
+every later phase inherits. [D11](#d11) was deliberately left out of it; that entry says why.
+
 ### Status vocabulary
 
 | Status | Meaning |
@@ -64,16 +71,16 @@ release, not a free change.
 | ID | Entry | Package | Kind | Status |
 | -- | ----- | ------- | ---- | ------ |
 | [A1](#a1) | `await-expression.ts` downgrades a sync throw to a promise rejection | core | fix | Open |
-| [A2](#a2) | `update-expression.ts` desyncs the value stack under `preserveParens` | core | fix | Open |
+| [A2](#a2) | `update-expression.ts` desyncs the value stack under `preserveParens` | core | fix | Open — standalone, [not a Phase 2 precondition](#phase-2-preconditions) |
 | [A3](#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | Open |
 | [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered |
 | [A5](#a5) | Service-layer entry points discard the error they caught — **12 sites, 4 services** | core | fix | Open |
 | [A6](#a6) | `safeCall` destroys the class of any error thrown through a call | core | fix | Open |
 | [A7](#a7) | `EvalContext.getThis` reads `_original` in its `priorScopes` loop | core | fix | Open |
 | [A8](#a8) | `EvalService._activeStates` grows unboundedly | core | fix | Open, Covered |
-| [A9](#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | Contained, Premise retired |
+| [A9](#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | Contained, Premise retired — **[Phase 2 step 0](#phase-2-preconditions)** |
 | [B1](#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | Open, Covered |
-| [B2](#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | Open — **Phase 2 precondition** |
+| [B2](#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | Open — **[Phase 2 step 0](#phase-2-preconditions)** |
 | [B3](#b3) | Three service-layer `console.*` calls reach the published bundle | core | decision | Open |
 | [B4](#b4) | `eval-core.component.ts` is dead generator scaffold | core | fix | Open |
 | [C1](#c1) | A member-target write escapes the read-only policy | signals | decision | Open, Covered |
@@ -96,7 +103,7 @@ release, not a free change.
 | [E3](#e3) | `dependencies` introspection at form scale | forms | phase | Open |
 | [E4](#e4) | Short-circuiting / value-rewriting hooks | core | phase | Open, by design |
 | [E5](#e5) | The options-first style cannot read `hookErrors` | core | decision | Open, Premise retired |
-| [E6](#e6) | `exit` has no mark to bound its scan | core | fix | Open — **Phase 2 precondition** |
+| [E6](#e6) | `exit` has no mark to bound its scan | core | fix | Open — **[Phase 2 design constraint](#phase-2-preconditions)** |
 | [F1](#f1) | No `configurations.ci` on the `test` target — **two projects, not one** | signals, forms | fix + decision | Open |
 | [F2](#f2) | One `CHANGELOG.md` for three independently-versioned packages | repo | decision | Open |
 | [F3](#f3) | Documented-symbol drift gate | core | fix | Open |
@@ -109,6 +116,40 @@ release, not a free change.
 | [R2](#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
 | [R4](#r4) | Two false cross-references asserting [A8](#a8) was tracked | repo | — | **Retired — corrected** |
+
+---
+
+## Phase 2 preconditions
+
+Four entries are named preconditions for Phase 2 (statements). They are **not** equally
+binding, and the difference decides where each one goes. The test is: *does Phase 2 make this
+worse, or is it merely nearby?*
+
+| Entry | What Phase 2 does to it | Where it goes |
+| ----- | ----------------------- | ------------- |
+| [A9](#a9) | **Multiplies the construct.** Block scoping means a scope per block per iteration, so a `for` body that throws on iteration 3 leaks three scopes. And five new visitors copy whatever idiom the two existing sites set | **Phase 2 step 0** |
+| [B2](#b2) | **Makes it reachable.** Destructuring declarations and assignment destructuring give a `MemberExpression` a legal binding target, and the branch has a whole-`EvalState` `console.log` in it | **Phase 2 step 0** |
+| [E6](#e6) | **Makes it reachable, but through the design itself.** Loop completion — "skip the rest of the block" — is exactly the unmatched-`after` shape `exit` cannot bound | **A design section of Phase 2's plan**, not a step ahead of it |
+| [A2](#a2) | **Nothing.** `(a)++` under `preserveParens` is no more reachable after Phase 2 than before | **Standalone fix, whenever** |
+
+**Step 0 is [A9](#a9) + [B2](#b2), one session.** Both are small, both are strictly-before, and
+neither needs Phase 2's design settled: A9 is a `try`/`finally` at two sites plus specs proving
+the pop survives a throw, B2 is a deletion. The cost asymmetry is what makes them step 0 rather
+than cleanup — fixing A9 first sets the idiom the five new visitors copy; fixing it afterwards
+means auditing seven sites, by which time the two originals have been read as precedent.
+
+**[E6](#e6) is a constraint on the design, not a queue item.** Bounding `exit`'s scan with a
+mark and choosing the completion-value mechanism are one decision seen twice. Discharging it
+ahead of the plan would mean designing the mark without knowing what it has to bound.
+
+**[A2](#a2) is not a precondition and should not wait.** The argument for pulling it early was
+precedent — statement dispatchers are the same `if`/`else if`-over-node-types shape and would
+copy the silent fall-through. That is a reason to fix it, not a reason to put it in step 0: its
+fix is a `ParenthesizedExpression` visitor, which is a new node type with registration, a
+co-located spec and a README row — feature-shaped work in a step whose whole value is being
+small and strictly-before. "Correct before imitated" is served by the fix *existing*, not by it
+living in step 0. It is a real wrong-value bug with a real route to it, so it should land on its
+own schedule regardless of whether Phase 2 ever starts.
 
 ---
 
@@ -492,7 +533,7 @@ Behavioural — anything reading `s.constructor` today starts throwing.
 <a id="b2"></a>
 ## B2 — `pattern.ts:83` logs the whole `EvalState`
 
-**Package** core · **Kind** fix · **Status** Open — **Phase 2 precondition**
+**Package** core · **Kind** fix · **Status** Open — **[Phase 2 step 0](#phase-2-preconditions)**
 
 `eval-core` has ~20 `console.*` calls in source. Most are unreachable and tree-shaken; **four
 reach the published FESM bundle**, verified by building and grepping
@@ -918,6 +959,11 @@ new gap; worth revisiting if the core's surface grows.
 asked for no counterpart. The quick start plus five caveat blocks cover the API; a whole-form
 narrative is the thing `/reactive` has and `/signals` does not.
 
+**Deliberately left out of [`docs/gates/plan.md`](gates/plan.md)** (§ 2, out of scope): it is
+~200 lines of original narrative authoring rather than a gate, and gating it afterwards would add
+a sixth step to a plan whose value is being small. It belongs with whoever next has a reason to
+document `/signals` end to end.
+
 *Recorded*: [`forms/phase-6-step-7-summary.md` § 4.4](forms/phase-6-step-7-summary.md).
 
 <a id="d12"></a>
@@ -1040,7 +1086,7 @@ would read.
 <a id="e6"></a>
 ## E6 — `exit` has no mark to bound its scan
 
-**Package** core · **Kind** fix · **Status** Open — **Phase 2 precondition**
+**Package** core · **Kind** fix · **Status** Open — **[Phase 2 design constraint](#phase-2-preconditions)**
 
 `EvalHooks.exit` cannot distinguish "absent from this walk" from "absent from the stack", so a node
 open only in an *enclosing* walk would fall into case 2 and the flush would cross the walk boundary.
@@ -1135,6 +1181,15 @@ This is an **export-surface** assertion, so a `public-api.spec.ts` beside `src/p
 natural home. **No such spec exists anywhere in the repo** (verified 2026-09-06), so this creates
 one; the published surface has no direct test today, which is a second reason to add it.
 
+> **Two findings from planning**, both in [`docs/gates/plan.md`](gates/plan.md). A runtime export
+> list (`Object.keys` over a namespace import) is **blind to interfaces and type aliases**, and the
+> READMEs document those today — `modules/eval-forms/README.md:555` names `ExpressionRules`, which
+> is an `export interface`. So the obvious implementation false-fails on correct code on day one
+> (§ 1.1), and the plan reads the export list with the TypeScript compiler API instead (§ 3.1).
+> Separately, this entry is **scoped to `eval-core`** because it was written when that was the only
+> package; there are now four READMEs and three packages (§ 1.4, § 3.2) — the same under-scoping
+> [F1](#f1) carried.
+
 **Deliberately excluded**: a block-count assertion ("the README contains N snippets"). It fires on
 every legitimate addition, so its steady-state behaviour is to train people to bump the number
 rather than investigate the failure.
@@ -1180,8 +1235,23 @@ first declared.
 
 **`eval-signals` is the easier of the two** and should go first. Its README is already written in
 whole-unit blocks — a component class, then a sequence of reads and `set` calls against it — which
-is the shape the gate wants, and `eval-forms`' spec already imports `SignalContextWriteError` from
-it, so a consumer-shaped import through the published specifier is known to work from a spec folder.
+is the shape the gate wants.
+
+> **Premise retired, 2026-09-07.** This entry also argued that "`eval-forms`' spec already imports
+> `SignalContextWriteError` from it, so a consumer-shaped import through the published specifier is
+> known to work from a spec folder." **Measured false for the case that matters.** That import
+> works because it crosses *projects*; a spec inside `modules/eval-signals/` importing
+> `@zvenigora/ng-eval-signals` is an `@nx/enforce-module-boundaries` error — *"Projects should use
+> relative imports to import from other files within the same project"* — and the root
+> `eslint.config.mjs` sets `allow: []`, so there is no exemption to reach for. The gate must import
+> `../public-api`, which is a substitution against what the README prints and must be enumerated in
+> the docstring. The conclusion (do `eval-signals` first) stands on its README's shape alone; see
+> [`docs/gates/plan.md`](gates/plan.md) § 1.2 and § 1.3.
+
+**Two further findings from planning**, both in [`docs/gates/plan.md`](gates/plan.md): this
+README's blocks are one continuous program that reads `this.` outside any class body, so the spec
+must supply a component instance (§ 1.3); and F3 and F4 read the same files, so a step that
+completes `eval-core`'s fragments moves F3's input (§ 1.5).
 
 **`eval-core` is the harder case, and it may not be gateable as written.** Its snippets are
 fragments: `private service: EvalService;` followed by `...`, in both READMEs — and the two Phase 1
