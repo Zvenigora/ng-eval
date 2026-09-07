@@ -29,13 +29,15 @@ imply. Five findings, four of them measured, in descending order of how much wor
 2. **F4's stated reason for doing `eval-signals` first is false** (§ 1.2) — measured, not
    reasoned. The consumer-shaped import it rests on is a lint error in exactly the place the
    argument needs it.
-3. **`eval-signals`' README is not the zero-preamble case F4 implies** (§ 1.3). It is still the
-   easier of the two, but not for the reason given.
+3. **`eval-signals`' README has a live defect the gate will catch on its first run** (§ 1.3) —
+   found while re-deriving the soundness argument, and better evidence for the whole track than
+   the argument it replaced.
 4. **F3 is scoped to one package and there are now three** (§ 1.4) — the same under-scoping
    that F1 carried for two phases.
-5. **F3 and F4 read the same files and one can move the other's input** (§ 1.5).
+5. **F3 and F4 read the same files, and F3 scans rather than enumerates** (§ 1.5), which is what
+   settles their order.
 
-None of these changes the plan's shape. Two of them change a step's content, and one retires a
+None of these changes the plan's shape. Three of them change a step's content, and one retires a
 premise a later reader would otherwise inherit.
 
 ---
@@ -63,6 +65,12 @@ the exception — `ParserOptions`, `AnyNodeTypes`, `CacheType`, `QueueType`,
 A gate that false-fails is worse than no gate: the first person to hit it will either delete it
 or add an exception list, and an exception list is where the symbols that *should* fail go to
 hide.
+
+**Revision 2's own step 2 criterion reproduced this exact failure two sections later** — it
+demanded that a symbol documented in only one `eval-core` README fail, which is unsatisfiable
+today on eight symbols without the exception list this paragraph rejects (§ 3.2, and the
+criterion is now restated). Fourth check in this project to catch its own author within a
+session of being written.
 
 **Two viable sources for a complete export list**, and choosing between them is § 3.1:
 
@@ -105,15 +113,22 @@ This does **not** overturn "do `eval-signals` first" — § 1.3 leaves that conc
 a different footing — but the stated reason is retired, and
 [`docs/backlog.md` F4](../backlog.md#f4) should not be read as still asserting it.
 
-### 1.3 `eval-signals`' README is continuous, which is the good news and the cost
+### 1.3 `eval-signals`' README has a live defect, and finding it re-derived this section
 
-F4 describes it as "already written in whole-unit blocks — a component class, then a sequence of
-reads and `set` calls against it — which is the shape the gate wants." Accurate, and it has a
-second half.
+[`modules/eval-signals/README.md`](../../modules/eval-signals/README.md) has **9** `ts` blocks
+(plus two `sh`) and exactly **one** `import` from the package across the whole file, at line 26.
 
-[`modules/eval-signals/README.md`](../../modules/eval-signals/README.md) has 11 `ts` blocks and
-exactly **one** `import` from the package across the whole file, at line 26. Its Quick start
-declares a component class; the very next block reads
+**Revision 2 argued the wrong thing here, and the correction is the finding.** It said the
+one-program condition was mandatory because the Quick start's second block reads `this.total()`
+against the class the first block declares. That is a **declaration** dependency, and it does not
+fail the way the condition is about: split that pair behind a resetting fixture and it does not go
+green on a wrong document, it fails to run at all, because `this.total` does not exist. The Phase 4
+precedent it invoked is a **state** dependency — a later block's printed value falsified by an
+earlier block's mutation. Two different failures; only the second is what a resetting fixture
+hides.
+
+**The file does contain a state dependency, and under the one-program reading the README is
+wrong.** The Quick start sets `quantity` to 4:
 
 ```ts
 this.total();              // 30
@@ -121,21 +136,42 @@ this.quantity.set(4);
 this.total();              // 40  — recomputed
 ```
 
-— `this.`, outside any class body, against the class the previous block declared. So:
+and `## Dependency introspection` at [:102](../../modules/eval-signals/README.md#L102) then prints
 
-- **The one-program soundness condition is not optional here, it is the file's actual shape.**
-  A per-block harness behind a resetting `beforeEach` would execute a different program and go
-  green on a document that is wrong as written. This is the failure Phase 4 step 6 hit for real
-  when a first draft split the worked example into a case apiece and hid a `false` that § 4 had
-  already driven to `true`.
+```ts
+const total = createEvalSignal('price * quantity', { price, quantity, shipping },
+  { trackDependencies: true });
+
+total();                  // 30
+```
+
+against bare `price` / `quantity` / `shipping` that **the document never declares**. Bind them to
+the Quick start's fields and `price * quantity` is 40, not 30 — the printed value is wrong. Treat
+them as a fresh start and it is right, but that concedes a per-block reset on exactly the axis the
+one-program condition governs.
+
+**This is better evidence for the whole track than the argument it replaced.** It is a real
+documented value that is wrong under a defensible reading, in a shipped README, found by reading
+the file rather than by running anything — which is the fifth instance of the review practice
+F4 exists to replace, and the first one caught before it shipped rather than a phase later.
+
+**Step 3 should expect to fix it, not discover it.** The fix is a document edit under § 1.5's rule
+— give the `Dependency introspection` block its own declarations, which is what the surrounding
+blocks (`Options`, `Contexts that are not signal-backed`, `Lifetime`, `Writes`, `Async`) already
+do — and it turns an ambiguous block into a genuine fresh start the gate can split on. Step 3's
+criteria are written for that outcome rather than for a discovery.
+
+**Two costs survive the re-derivation:**
+
 - **The spec must supply a component instance and rewrite `this.` to it**, plus a real
   `@Component` decorator argument where the README elides one as `{ /* … */ }`. That is a
   substitution of exactly the kind F3's "considered and rejected" section warns about, and the
-  established answer applies: enumerate it in the docstring, and where a block is a genuine
-  fragment fix the **document** rather than padding the spec.
+  established answer applies: enumerate it in the docstring.
+- **The Quick start pair is one program and must stay one case.** The declaration dependency is
+  real even though it is not the dangerous kind, and splitting it would need invented preamble.
 
 `eval-signals` is still the easier package — its blocks are whole units and its narrative is
-linear — but "already in the shape the gate wants" overstates it by one preamble.
+linear — but "already in the shape the gate wants" overstates it by one preamble and one defect.
 
 ### 1.4 F3 names one package; there are three, and four READMEs
 
@@ -168,14 +204,25 @@ Phase 4, is that **where a documented block is a fragment the fix goes into the 
 step that gates `eval-core`'s README may add the import lines its fragments are missing, which
 is precisely the set F3 scans.
 
-They do not conflict, but the order is not free: F3 built first measures a document F4 may then
-change, and F3's cases would need re-reading. F3 built *last* measures the final text once.
-Against that, F3 is the larger unknown (§ 1.1) and finding it unbuildable after two F4 steps
-would be finding it late.
+**F3 scans; it does not enumerate.** Settled here because revision 2 held both readings at once
+and its ordering argument rested on the wrong one. Step 2 derives its identifiers from the README
+text at run time (§ 3.2), so a README edited in step 3 or 4 is re-scanned on the next test run
+and there is **no case list to re-read**. Revision 2 claimed the re-read as the cost of ordering
+F3 first and gave step 4 a criterion for it; both are wrong and both are gone.
 
-§ 4 resolves this by putting F3 second — after the config step, before both F4 steps — and
-accepting one re-read of its case list in step 4 if that step edits `eval-core`'s README. The
-re-read is cheap; discovering F3's export-list problem in step 5 would not be.
+That removes the argument *against* F3 first, and the argument *for* F3 second survives intact
+and alone: **F3 is the larger unknown (§ 1.1), and finding it unbuildable after two F4 steps
+would be finding it late.** § 4 puts it second — after the config step, before both F4 steps —
+on that ground only.
+
+One real interaction remains, and it runs the other way: steps 3 and 4 may **add** import lines
+to a README when they complete a fragment (§ 1.3's `Dependency introspection` fix is exactly
+this), which gives step 2's scan new identifiers to resolve. That needs no action — a scan sees
+them — but it does shape how step 2 proves its scan is not silently empty (§ 4 step 2, criterion
+3). The proof is a **floor per file**: each README's scanned set is non-empty and contains one
+named symbol known to be there. A floor survives a later step adding an import; an exact expected
+count would not, and would train people to bump a number, which is § 3.2's stated reason for
+rejecting a block count.
 
 ---
 
@@ -191,7 +238,8 @@ re-read is cheap; discovering F3's export-list problem in step 5 would not be.
   decide-or-drop for `eval-core`.
 - **[F7](../backlog.md#f7)** — the Jest worker warning, timeboxed, with a drop rule.
 - **[D10](../backlog.md#d10)** — a runnable README block for `applyErrorPolicy`, which folds into
-  `eval-forms`' existing README-execution spec rather than creating anything.
+  an existing spec rather than creating anything. `eval-forms` has **two** README-execution specs
+  (`reactive/` and `signals/`); this goes in `reactive/`'s, for the reason step 5 gives.
 
 ### Out of scope (deliberately deferred)
 
@@ -241,9 +289,25 @@ wrong" and "the README is wrong" cannot be confused for one another.
 
 F3's original wording is honoured and widened rather than reinterpreted:
 
-- **Both `eval-core` READMEs are compared against each other**, which is the published/unpublished
-  check F3 exists for and the only place it applies (§ 1.4 — the root README imports nothing
-  else).
+- **The two `eval-core` READMEs are compared against each other *and* against the export list**,
+  which is the published/unpublished check F3 exists for and the only place it applies (§ 1.4 —
+  the root README imports nothing else). **This is a three-way relation, not a set difference**,
+  and the distinction is what makes it satisfiable. F3's motivating case was `trackTime`: a
+  symbol that **is exported**, documented in the root README, and **absent from the package
+  README** — so the consumer who installs the package cannot read about a symbol they have. The
+  claim is therefore "*exported* and documented only in the unpublished README", not "documented
+  in only one of the two".
+
+  A plain set difference is unsatisfiable today. Measured: the root README imports 7 symbols
+  (`ParserService`, `EvalService`, `CompilerService`, `DiscoveryService`, `EvalContext`,
+  `EvalScope`, `EvalScopeOptions`) and `modules/eval-core/README.md` imports 5 (`EvalService`,
+  `CompilerService`, `createTimingHook`, `ASYNC_HOOK_MESSAGE`, `EvalHooks`) — a symmetric
+  difference of **eight**. Requiring all eight to fail would mean an exception list holding
+  eight entries on day one, which is § 1.1's rejected shape.
+
+  The five root-only symbols are the ones the real check is about, and step 2 dispositions each:
+  a symbol that is exported and documented only in the root is a **finding**, and the fix is a
+  package-README edit, not an exception.
 - **Each package README is checked against its own package's export list**, which is the
   rename-drift half and applies to all three.
 - **`eval-forms` is checked per entry point**, because `/reactive` and `/signals` have separate
@@ -308,19 +372,46 @@ answer — into `docs/backlog.md` F1.
 helper for the export list and the README scan.
 
 Build the § 3.1 helper **first**, with its own cases: a known value export, a known
-`export interface`, and a name that is not exported at all. Only then scan the READMEs.
+`export interface`, a symbol reachable only through **a multi-hop barrel chain**, and a name that
+is not exported at all. Only then scan the READMEs.
 
 **Exit criteria**
 - The helper returns type-only exports. Asserted directly on `ExpressionRules`
   (`export interface`, § 1.1) — this is the case the naive implementation fails, so it is the
   case that proves the helper is not the naive implementation.
+- **The helper follows the barrel graph**, asserted on `EvalService`, which is **three hops**
+  from `modules/eval-core/src/public-api.ts`: `./lib/actual/services` → its `index.ts`
+  (`export * from './public-api'`) → `services/public-api.ts`
+  (`export { EvalService } from './eval.service'`) → the declaration. Verified 2026-09-07.
+  `ExpressionRules` does **not** cover this — it is one hop from
+  `modules/eval-forms/signals/src/public-api.ts` (`export * from './lib/rules'`), so a
+  single-file parser passes the type-only criterion above and still fails here. This is § 3.1's
+  one stated cost, and without this criterion nothing gates it.
 - Every identifier imported from a `@zvenigora/…` specifier in all four READMEs resolves against
   that specifier's export list. `eval-forms` is checked per entry point.
-- **Confirmed load-bearing**: rename one exported symbol and observe a named failure that points
-  at the README and line that still uses the old name. Report which case went red, not that the
-  suite did.
-- The published/unpublished comparison for `eval-core` is asserted, not merely enabled — a symbol
-  documented in only one of the two `eval-core` READMEs fails.
+- **The scan is not silently empty — a floor per file** (§ 1.5). Each of the four READMEs yields
+  a non-empty identifier set containing one named symbol known to be there: root and
+  `eval-core` → `EvalService`, `eval-signals` → `createEvalSignal`, `eval-forms` →
+  `bindFieldProperties` for `/reactive` and `createExpressionRules` for `/signals`. A floor, not
+  an expected count, so a later step adding an import does not turn it red.
+- **Confirmed load-bearing, four arms — one per README × specifier pair.** Rename an exported
+  symbol used by each of: the root README, `eval-core`'s, `eval-signals`', and each `eval-forms`
+  entry point. Each rename must produce a named failure pointing at *that* README and line.
+  **One arm is not enough**: a scanner that silently returns `[]` for three of the four goes red
+  exactly where it works and stays green everywhere it does not. Report which case went red for
+  each arm, not that the suite did.
+- **Each rename is reverted before the step's diff is taken.** A rename touches a non-spec file
+  under `src/lib/` and a `public-api.ts`, which § 6 gates 1 and 2 call a stop-and-replan. The
+  probe is legitimate; leaving it in the diff is not.
+- **The published/unpublished check is the three-way relation of § 3.2**, not a set difference:
+  a symbol that **is exported**, is documented in the root `README.md`, and is **absent from
+  `modules/eval-core/README.md`** fails. Measured today that is five symbols — `ParserService`,
+  `DiscoveryService`, `EvalContext`, `EvalScope`, `EvalScopeOptions` — each of which must be
+  dispositioned in the step: documented in the package README, or recorded with a reason. A
+  symmetric-difference assertion is **not** acceptable; it needs an eight-entry exception list
+  on day one, which is § 1.1's rejected shape.
+- **The helper's wall-clock cost is recorded in the step summary** — one number, so risk 6's
+  "cache the program if it adds seconds" becomes actionable rather than aspirational.
 - No block-count assertion anywhere (§ 3.2).
 - `nx run-many -t lint test` green.
 
@@ -335,18 +426,28 @@ it is the pattern, including its docstring discipline. One case per continuous p
 split only where the document itself declares a fresh start.
 
 **Exit criteria**
-- The runnable `ts` blocks execute and their printed values are asserted as printed. Blocks that
-  do not execute are named in the docstring as not covered, with the reason.
+- **All 9 ` ```ts ` blocks** are accounted for — executed with their printed values asserted as
+  printed, or named in the docstring as not covered with the reason. The count is stated so
+  "asserted over the empty set" is not available: `modules/eval-signals/README.md` has 9 `ts`
+  blocks and 2 `sh` blocks, measured 2026-09-07, and the `sh` blocks are install and link
+  commands that are not covered.
+- **§ 1.3's `Dependency introspection` defect is fixed in the README**, not worked around in the
+  spec: the block at `:102` gains its own `price` / `quantity` / `shipping` declarations, so its
+  printed `// 30` is true and the block becomes a genuine fresh start the gate can split on.
+  Step 3 **expects** this rather than discovering it.
 - **Every substitution is enumerated in the docstring**, and the list explicitly includes the
   `../public-api` import (§ 1.2) and the component instance standing in for `this.` (§ 1.3).
   A blanket "self-contained" claim is how an unlisted substitution hides.
-- Where a block was a genuine fragment, the fix went into the **README**, and the step summary
-  says which blocks moved and why.
+- Where any other block was a genuine fragment, the fix went into the **README**, and the step
+  summary says which blocks moved and why.
 - **Confirmed load-bearing**: change one printed value in the README and observe the paired case
-  fail.
-- **The one-program condition is demonstrated, not asserted**: show that splitting the Quick
-  start pair behind a resetting fixture makes a wrong document pass. One paragraph in the step
-  summary; this is the trap Phase 4 fell into and the reason the condition is in § 1.3.
+  fail — named, not "the suite went red".
+- **The one-program condition is demonstrated on the block that can falsify it.** Restore the
+  `Dependency introspection` block to its bare identifiers, bind them to the Quick start's
+  fields, and show that a per-block resetting fixture reports green on the wrong `// 30` while
+  the one-program arrangement reports red. That is the Phase 4 trap reproduced on this file. The
+  Quick start pair is **not** the subject: splitting it fails to run rather than passing wrongly,
+  which is a declaration dependency and not the condition's business (§ 1.3).
 - `nx run-many -t lint test` green.
 
 ### Step 4 — `eval-core`: decide gateable, then build or drop
@@ -358,19 +459,37 @@ Decide **first**, and in writing, whether `eval-core`'s READMEs can be gated wit
 preamble. The evidence against is that both are written as fragments — `private service:
 EvalService;` followed by `...` — and that the two Phase 1 defects were exactly that shape.
 
+**Both files fence their code as ` ```javascript `, not ` ```ts `.** Measured 2026-09-07: the
+root `README.md` has 11 `javascript` blocks and one `json`; `modules/eval-core/README.md` has 8
+`javascript` blocks. **Neither contains a single ` ```ts ` fence** — `eval-signals` and
+`eval-forms` use `ts`, which is why revision 2's criteria, written against those two, said "the
+runnable `ts` blocks" and would have selected nothing here.
+
+**Record what the wrong answer would have cost, because it is not the miss itself.** A spec
+scanning for `ts` finds zero blocks in both files, and zero blocks reads as *the document is
+ungateable* — which is the exact conclusion this step exists to reach honestly. The drop decision
+below would have been made on evidence about a **fence tag** while appearing to be evidence about
+the fragment style, and the step would have reported "assessed and dropped" with a reason that was
+not the real one. A wrong drop here is quiet: F4 gets re-scoped, `eval-core`'s READMEs stay
+ungated, and the five defects that motivated the whole track keep their least-covered document.
+
 **F4's drop rule applies without apology: if it fights, drop it and report the reason.** A
 harness built to prop up an ungateable document is the failure mode this whole track exists to
 avoid, and dropping here is a legitimate exit, not a failed step.
 
 **Exit criteria**
+- **The block inventory is stated before the decision**: the count of `javascript` blocks per
+  file (11 and 8 today) and how many of each are runnable as printed. The decision must cite
+  those numbers, so "ungateable" is a claim about fragments rather than about a fence tag.
 - The decision is recorded with its evidence, before any spec exists.
-- **If gated**: the criteria of step 3 apply unchanged, and any block completed in the README is
-  named. If completion touched the fragments' prevailing style, the step summary says how far it
-  went and what it left.
+- **If gated**: step 3's criteria apply with `javascript` substituted for `ts` throughout, and
+  the per-file block count is non-zero and stated. Any block completed in the README is named,
+  and if completion touched the fragments' prevailing style the summary says how far it went and
+  what it left.
 - **If dropped**: `docs/backlog.md` F4 records that `eval-core` was assessed and dropped, with
-  the reason, and F4 is re-scoped to `eval-signals` only rather than left implying pending work.
-  This is a complete step.
-- If step 4 edited a README, step 2's case list is re-read and updated (§ 1.5).
+  the reason — which must be about the fragments, since the fence tag is settled above — and F4
+  is re-scoped to `eval-signals` only rather than left implying pending work. This is a complete
+  step.
 - `nx run-many -t lint test` green.
 
 ### Step 5 — The worker warning, `applyErrorPolicy`'s block, and the retrospect
@@ -384,8 +503,11 @@ close it. **If it is not identified within the step, stop**, write what was rule
 and leave it open — an open-handle hunt is exactly the kind of work that consumes a session and
 produces a diff nobody can evaluate.
 
-D10 adds a runnable `applyErrorPolicy` block to `eval-forms`' README and a case for it in the
-spec that already gates that file.
+D10 adds a runnable `applyErrorPolicy` block to `eval-forms`' README and a case for it in
+**`reactive/src/lib/readme-examples.spec.ts`** — there are two such specs in that package, and
+this is the one, because it already covers the shared core's two `Coercion` blocks and already
+imports `@zvenigora/ng-eval-forms` through the published specifier. `applyErrorPolicy` is core
+surface, so it belongs beside them rather than under `signals/`.
 
 **Exit criteria**
 - F7 is either fixed with the cause named, or updated with what was eliminated and left open.
@@ -393,8 +515,9 @@ spec that already gates that file.
 - `applyErrorPolicy` has a runnable README block and a case in
   `reactive/src/lib/readme-examples.spec.ts`, and step 2's drift gate covers any symbol that
   block imports.
-- Every entry this track touched is updated in `docs/backlog.md` — Retired with a reason, or
-  re-scoped — in the same commit as the change.
+- **F7 and D10's entries are updated in `docs/backlog.md` in the same commit**, and F1, F3 and
+  F4 are **confirmed** already updated by their own steps (§ 6 gate 6 is what enforces that
+  per-step; this criterion only checks none was missed).
 - A retrospect for the track, as `docs/gates/summary.md`.
 - `nx run-many -t lint test` green.
 
@@ -437,10 +560,10 @@ is that it cannot regress a published package, and the way that stops being true
 | - | ---- | ---------- |
 | 1 | The drift gate false-fails on type-only exports and someone adds an exception list to silence it | § 3.1's helper, and step 2's exit criterion asserting `ExpressionRules` specifically — the case the naive implementation gets wrong |
 | 2 | Step 3's spec passes on a program the README does not describe, because a fixture reset between blocks | Step 3's exit criterion demands the split be **demonstrated** to make a wrong document pass, not asserted to be avoided |
-| 3 | An unlisted substitution hides in step 3 or 4 — the failure mode that shipped five documented defects | Docstring enumeration is an exit criterion, and § 1.2 and § 1.3 name the two substitutions already known, so a *third* one appearing unlisted is visible |
+| 3 | An unlisted substitution hides in step 3 or 4 — the failure mode that shipped five documented defects | **Accepted, not gated.** The mitigation is a docstring, which is a *deliverable* judged by the author who would be the one omitting the entry — nothing goes red when the risk occurs. That is § 0.2.1's headline case and it is marked rather than dressed up. The ground for accepting: this is F4's own limitation ("nothing keeps the spec and the documents in step but a human", § 3.3), the two known substitutions are named in § 1.2 and § 1.3 so a third is at least *visible* to a reader, and the alternative — counting the spec's non-README declarations — gates arithmetic rather than honesty |
 | 4 | F7 consumes step 5 and produces nothing | The timebox and the explicit "leave it open" pass. Accepted rather than solved: the warning has survived twelve summaries, so one bounded attempt failing is the expected case, not the bad one |
-| 5 | Step 4 builds a harness for an ungateable document because dropping feels like failing | The drop is written into the exit criteria as a **complete step**, and F4 already licenses it in its own words |
-| 6 | The compiler-API helper is slower than the suite tolerates | Not measured. It runs once per spec file, not per node, so `performance.spec.ts` is not the gate — but if step 2 finds it adds seconds, cache the program across the four checks rather than widening the budget |
+| 5 | Step 4 builds a harness for an ungateable document because dropping feels like failing | **Accepted, not gated.** Step 4's criteria pass in both branches by construction, so nothing goes red when the risk occurs — the drop being written in as a *complete step* is a permission, not a detector. It is a judgement call and saying so is the honest form. What narrows it is step 4's new block-inventory criterion: the decision must cite the per-file `javascript` block counts, so a drop has to argue about fragments with numbers on the table rather than in the abstract |
+| 6 | The compiler-API helper is slower than the suite tolerates | **Gated as of revision 3.** Step 2 records the helper's wall-clock cost in its summary — one number, which is a mechanism question answerable by building the smallest thing rather than deferred. It runs once per spec file, not per node, so `performance.spec.ts` is not the gate; if the number is seconds, cache the program across the four checks rather than widening the budget |
 | 7 | Step 2 gates four READMEs and a later phase adds a fifth without a case | **Refused, not unfilled.** Nothing detects a fifth README that no gate reads, and a gate over the gates is where this stops paying. See below — this cell is a decision, and a later revision should not treat it as an empty slot to complete |
 
 **Risk 7's cell is a stated refusal and the wording is deliberate.** A blank or vague
@@ -455,6 +578,16 @@ human", and it gets the same answer: the limit is named in the docstring and in
 [`docs/backlog.md`](../backlog.md), and a human owns it. **Neither this plan nor a later
 revision should convert this row into a gate** without an argument that the regress stops
 somewhere — which is a higher bar than "it would be nice to catch".
+
+**Three rows are accepted or refused, and five name something that goes red.** Gated: 1
+(step 2's `ExpressionRules` criterion), 2 (step 3's demonstration on the `Dependency
+introspection` block), 6 (step 2's wall-clock number), plus 3 and 5's partial narrowings noted
+in their cells. Accepted or refused on their face: 3, 4, 5 and 7. **Revision 2 had rows 3, 5 and
+6 asserting mitigations that were a deliverable, a permission and a deferral** — § 0.2.1's
+headline case, three times in one table, which is the same count Phase 6's plan hit before its
+own audit ran to completion. A later revision must not quietly convert an accepted row into a
+cross-reference; the four above say what they are on their face, and that is the property to
+preserve.
 
 ---
 
