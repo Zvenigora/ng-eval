@@ -187,7 +187,11 @@ only on the success path, and the `_activeStates` contrast carries a pointer to 
   confirm the test fails; the missing halves are "check the setup can produce both outcomes"
   and "read **which** tests went red rather than that the suite did".
 - **`EvalService.simpleEval` adds every state to `_activeStates` and never removes it.**
-  Pre-existing `eval-core`, already in `ROADMAP.md`'s deferred defects. This step *uses* it as
+  Pre-existing `eval-core`, tracked as `BL-A8` in [`docs/backlog.md`](../backlog.md).
+  **Correction, 2026-09-06**: this line originally read "already in `ROADMAP.md`'s deferred
+  defects". It was not, in any revision — the entry existed in no register until
+  `docs/backlog.md` was written, and this sentence is one of the two cross-references that
+  made five later phases believe otherwise (`BL-R4`). This step *uses* it as
   a contrast probe, which means a future fix turns this library's suite red at one named line;
   the comment there says so.
 - **`eval-core`'s Jest run warns "a worker process has failed to exit gracefully".**

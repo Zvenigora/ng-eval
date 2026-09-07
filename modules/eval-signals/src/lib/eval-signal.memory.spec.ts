@@ -96,8 +96,8 @@ describe('createEvalSignal - lifetime and cleanup', () => {
       //
       // It also pins an `eval-core` defect from this library's suite:
       // `simpleEval` adds to `_activeStates` and never removes, and the set
-      // drains only in `ngOnDestroy` (ROADMAP.md, "Deferred defects"). If that
-      // is ever fixed, this line is the one that goes red, and the assertion
+      // drains only in `ngOnDestroy` (docs/backlog.md, `BL-A8`). If that is
+      // ever fixed, this line is the one that goes red, and the assertion
       // above it is the one that still matters.
       const context = createSignalContext({ c });
 

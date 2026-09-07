@@ -3,6 +3,11 @@
 This document tracks planned functional additions to ng-eval and how they should be
 distributed across packages/repositories.
 
+**Deferred work is not in this file.** Defects recorded rather than fixed, decisions logged
+rather than made, and gaps in what the suite can catch all live in
+[`docs/backlog.md`](docs/backlog.md), which is the single register for them. This file plans
+**phases** — new capability, in order. See "Deferred work" at the end.
+
 ## Modules vs. new repositories
 
 **Recommendation: add new Nx libraries under `modules/` in this repo, not new repositories.**
@@ -101,6 +106,16 @@ introduce **control flow** that the current visitor-returns-a-value model
   visitor.
 - Decide initial scope of `for`: classic `for (let i = ...)` first; `for...of` /
   `for...in` can follow once the loop-completion mechanism exists.
+
+**Four backlog entries are preconditions for this phase**, because statements widen paths
+they sit on. See [`docs/backlog.md`](docs/backlog.md) § "Phase 2 preconditions" for the
+argument; in short: [BL-A9](docs/backlog.md#a9) (the missing `try`/`finally` at both scope
+pushes — a `for` loop leaks per iteration, and five new visitors would copy the idiom),
+[BL-B2](docs/backlog.md#b2) (a `console.log` of the whole `EvalState` that destructuring
+declarations make reachable), [BL-A2](docs/backlog.md#a2) (the silent fall-through this
+phase's statement dispatchers would reproduce at larger scale), and
+[BL-E6](docs/backlog.md#e6) (`exit`'s unbounded scan, which the loop-completion mechanism
+makes reachable).
 
 Exit criteria: `VariableDeclaration` (`let`/`const`), `IfStatement`, `BlockStatement`,
 classic `ForStatement` visitors; multi-statement `Program` evaluation; tests mirroring
@@ -241,7 +256,8 @@ Key design questions, all inherited from § 3.7 and none costed:
   depth in a `finally` around a *synchronous* `call` (phase-3 plan § 3.8.3); under `callAsync`
   the correct restore point depends on where the walk ends relative to the promise. This is
   the one open question with a correctness consequence — the context is reused for the life of
-  the signal, so an uncontained leak permanently shadows a source key.
+  the signal, so an uncontained leak permanently shadows a source key. Fixing
+  [BL-A9](docs/backlog.md#a9) in `eval-core` would remove the question rather than answer it.
 - The spec harness: every reactivity assertion in `eval-signals` is a recompute count around a
   synchronous read, and effects are scheduled.
 - Three gaps the sync path leaves for it to close: an expression cannot use `await`, promises
@@ -275,14 +291,15 @@ prototype-shadowed-identifier guard enforced at registration, the mirror image o
 
 **Narrowings, all documented in the README**: `/signals` and `/reactive` now deliberately
 disagree about one authored string — `visible: "constructor"` throws under `/signals` and
-renders cleanly under `/reactive` — logged as an open question for a later major rather than
-resolved here; a schema **value** shared across models silently renders form B against form
-A's data, so reuse must go through a schema *function* of the rules; `caseInsensitive` is in
-practice a factory-wide option, not a per-registration one; the nested-signal diagnostic from
-`eval-signals` does not reach this entry point; the form's key set is not enumerable from
-upstream; the identifier guard over-rejects a name an expression binds itself; the
-`SignalContextWriteError` bypass does not survive a call frame; and there is no `destroy()`
-at `/signals` — Angular owns the field tree's lifetime and the rules die with the schema.
+renders cleanly under `/reactive` — logged as [BL-D2](docs/backlog.md#d2) for a later major
+rather than resolved here; a schema **value** shared across models silently renders form B
+against form A's data, so reuse must go through a schema *function* of the rules;
+`caseInsensitive` is in practice a factory-wide option, not a per-registration one
+([BL-D3](docs/backlog.md#d3)); the nested-signal diagnostic from `eval-signals` does not reach
+this entry point; the form's key set is not enumerable from upstream; the identifier guard
+over-rejects a name an expression binds itself; the `SignalContextWriteError` bypass does not
+survive a call frame ([BL-A6](docs/backlog.md#a6)); and there is no `destroy()` at `/signals`
+— Angular owns the field tree's lifetime and the rules die with the schema.
 
 The original plan for this phase follows, unchanged.
 
@@ -323,6 +340,11 @@ directly bypasses it silently. This phase decides whether that choke point lives
 or in the adapter; it does not get to skip the decision. The escaped-closure residual
 survives either way and is not this phase's to solve.
 
+> **Discharged.** Phase 6 built the choke point (`evaluateRule`), so this precondition is met.
+> The `eval-core` defect it contains is still open as [BL-A9](docs/backlog.md#a9), and the
+> escaped-closure residual survives — see that entry rather than reading this paragraph as
+> pending work.
+
 Also note: `peerDependencies` are per package, so shipping this cannot narrow the manifest.
 `/signals` requires **Angular 22**; the loud failure for a 19–21 consumer importing it is
 inherited from Angular's own `exports` map (`Cannot find module '@angular/forms/signals'`),
@@ -334,665 +356,52 @@ document of its own with § 9.1's choke point decided; the adapter with tests, R
 CHANGELOG entries; the `/signals` row of the package README's entry-point table no longer
 saying "designed but not built".
 
-## Deferred defects in the visitor, context and service layers
-
-Recorded rather than fixed: each is a **behavioral** change, and the phase that surfaced it
-was scoped to be additive. Identity-checked `exit` (§ 3.8 of the Phase 1 plan) means the
-hook layer now stays balanced in spite of the three visitor defects below, so none of them
-is urgent — but none of them is gone either.
-
-The first three came out of the Phase 1 hook work (`docs/side-effects/phase-1-plan.md`) and
-are in the visitors. The remaining three are not: `getKey` is in `EvalContext` and was
-surfaced by Phase 1 step 4's read hooks, while the service-layer error wrapper and
-`getThis` were surfaced by Phase 3 step 2 (`docs/signals/phase-3-plan.md`) — the first
-consumer to reuse one `EvalContext` across many evaluations, which is what makes several of
-these visible at all.
-
-- **`await-expression.ts` downgrades a synchronous throw to a promise rejection.**
-  `awaitVisitor` wraps `callback(node.argument, st)` in a `try`/`catch` inside a `Promise`
-  executor, so a child that throws synchronously — a prototype-pollution guard rejection,
-  for instance — does not propagate. It becomes a rejected promise that only surfaces when
-  something awaits it, and the visitor continues to its own `pushVisitorResult`. In the
-  async path a security rejection therefore arrives as a rejected value rather than a
-  throw, and in the sync path it may never be observed at all. Fixing it means moving the
-  `callback` out of the executor, which changes what `evalAsync` throws and when — a
-  breaking change for anyone catching the current shape, so it needs its own step and a
-  version bump.
-
-- **`update-expression.ts` desynchronizes the value stack under `preserveParens`.**
-  `updateExpressionVisitor`'s `if`/`else if` chain handles `Identifier` and
-  `MemberExpression` arguments and falls through silently for anything else — pushing
-  nothing, but still calling `afterVisitor`. `ParserOptions` is
-  `Partial<acorn.Options> & {…}` (`internal/interfaces/parser-types.ts:3`), so a consumer
-  may pass `preserveParens: true`, and `(a)++` then parses with
-  `argument.type === 'ParenthesizedExpression'` (verified against the acorn in this repo).
-  The result is a wrong value for every node downstream of it, not merely an untidy
-  bracket. This one is a real defect with a real route to it and deserves a proper fix —
-  a `ParenthesizedExpression` visitor, or unwrapping the argument here — rather than
-  triage. It is listed here only because it is out of Phase 1's scope.
-
-- **`import-expression.ts` has a dead `afterVisitor`.** `importExpressionVisitor` calls it
-  after an unconditional throw, so the line can never run. Cosmetic; tidy when that visitor
-  is next touched.
-
-  For both: under identity-checked `exit` (§ 3.8 of the Phase 1 plan) a violation of the
-  bracketing convention now produces a visible `completed: false` event instead of a silent
-  stack desync, so the *hook* layer stays balanced either way. That is containment, not a
-  fix — the value stack is a separate stack and is not protected by it.
-
-- **`EvalContext.getKey` cannot case-correct a namespace, and does not resolve through the
-  same chain as `get`.** Two related gaps in one method
-  (`internal/classes/eval/eval-context.ts:159`), both surfaced by step 4's read hooks, which
-  report `getKey`'s answer as the key that was read.
-
-  *The namespace gap.* `getKey` searches `scopes`, then `original`, then **inside** each
-  prior scope's `context` — but never a scope's `namespace`. An `EvalScope` resolves its
-  namespace in `EvalScope.get`, which `getKey` has no counterpart for. So with a scope
-  namespaced `dog`, the expression `Dog.Says()` reports an uncorrected `'Dog'` for the
-  identifier while the member hop correctly reports `says`. Pinned as current behaviour by
-  `internal/visitors/read-hooks.spec.ts`; a fix must update that spec deliberately.
-
-  *The divergence from `get`.* `getKey` omits the `lookups` loop that `get` runs, so a key
-  resolved by an `EvalLookup` reports its spelling uncorrected. And the two disagree about
-  absent values: `get` treats `undefined` as "not found" and continues to prior scopes and
-  lookups, while `getKey` returns the first spelling it finds. Under `caseInsensitive` the
-  reported key can therefore come from a *different source* than the value did — a context
-  key whose value is `undefined` shadows the spelling of a prior scope's key that actually
-  supplied the value.
-
-  Both are behavioral changes to an exported method, so they are out of Phase 1's additive
-  scope. They matter most to Phase 3: dependency tracking keys on what `getKey` returns, and
-  § 9.1 of the Phase 1 plan already tells Phase 3 not to trust `target` identity for bare
-  identifiers. An uncorrected or mis-sourced key compounds that.
-
-  *Confirmed to reach further than "a diagnostic" — Phase 3 step 2.* The `lookups`
-  divergence also strips the key off a library-owned error. `assignment-expression.ts:49`
-  and `update-expression.ts:22` resolve their target through `getKey` **before** writing, so
-  under `caseInsensitive` a key that lives only in `lookups` — which is every key of a
-  `@zvenigora/ng-eval-signals` context — comes back `undefined`, and any error raised from
-  the write names `'undefined'` instead of the key. See `docs/signals/phase-3-plan.md`
-  § 3.6.4.
-
-- **Every service-layer entry point discards the error it caught.** `EvalService.simpleEval`,
-  `EvalService.eval`, and `CompilerService.call` / `simpleCall` / `callAsync` /
-  `simpleCallAsync` all catch and `throw new Error(error.message)`. That replaces the thrown
-  object: its **type**, its `cause`, its stack and any property it carried are gone, and the
-  caller receives a bare `Error` whose only surviving information is the message string.
-
-  `evaluate` / `evaluateAsync` do not do this — they rethrow the original untouched — so the
-  loss is entirely in the service wrapper, and the free `call` / `callAsync` from
-  `internal/functions` are the same functions without it.
-
-  Consequences, in order of how quietly they fail:
-
-  - A caller cannot select an error by type. `instanceof` against any custom error class is
-    false after one of these calls, so the only discriminator left is matching the message —
-    which couples the caller to wording and breaks silently when it changes.
-  - A `catch` block cannot re-raise with context, because `cause` is already gone.
-  - Stack traces point at the service method rather than at the visitor that threw.
-
-  Fixing it is a behavioural change to six exported methods — anything catching the current
-  bare `Error` keeps working, but code that branches on the message would want revisiting —
-  so it needs its own step and a version bump. Rethrowing the original object, or wrapping it
-  with `cause` set, are both candidates; the second preserves the current type for callers
-  who already depend on getting an `Error`.
-
-  Phase 3 routes around it rather than waiting: `createEvalSignal` calls the free
-  `call(fn, state)` so `SignalContextWriteError` survives to the factory
-  (`docs/signals/phase-3-plan.md` § 3.6.3). **Phase 3 step 3 hits it again immediately** —
-  `EvalSignalService` is the DI-first face of that same factory — and Phase 4 will inherit
-  the constraint wholesale.
-
-- **`call-expression.ts`'s `safeCall` destroys the class of any error thrown *through* a
-  call — the service-layer wrapper above, one layer down and on a path no caller can route
-  around.** `safeCall` catches whatever the callee threw and re-raises
-  `new Error(\`Function call error: ${error.message}\`)` (`internal/visitors/call-expression.ts:126-128`),
-  so an error crossing a call frame arrives as a bare `Error` carrying only a decorated
-  message. Same consequences as the service wrapper's — no `instanceof`, no `cause`, a stack
-  pointing at the wrapper — but the routing that saves Phase 3 does not apply: calling the
-  free `call(fn, state)` does not help, because this wrapper is inside the walk itself.
-
-  **Surfaced by Phase 6 step 3, which is where it stops being abstract.** `applyErrorPolicy`
-  (`modules/eval-forms/src/lib/error-policy.ts`) guarantees that `SignalContextWriteError`
-  is re-thrown rather than routed through the consumer's error policy — a write violation is
-  illegal on every recompute with every dataset, so swallowing it under the default of
-  `'undefined'` hands the consumer a permanently blank field for a bug in the rule's own
-  syntax. That guarantee holds for a top-level assignment and **fails for an assignment
-  nested inside a call**: `[1].map(x => (country = "CA"))` reaches `applyErrorPolicy` as a
-  plain `Error`, fails the `instanceof`, and is policy-routed to `undefined`. Measured in
-  step 3 with a temporary probe; recorded in `docs/forms/phase-6-plan.md` § 3.4 as a
-  boundary on the guarantee, and in `eval-forms`' README so a consumer meets it before the
-  silence does.
-
-  The blast radius is wider than that one class: **no** custom error type survives a call
-  frame anywhere in the evaluator, so this is the same defect for any future consumer that
-  discriminates on error type. Fixing it means re-throwing the original object — or wrapping
-  it with `cause` set, which needs `eval-core`'s `lib` rather than the two downstream ones —
-  and it is a behavioural change to what escapes a call, so it needs its own step and a
-  version bump.
-
-- **`EvalContext.getThis` reads the wrong object in its `priorScopes` loop.**
-  `internal/classes/eval/eval-context.ts:203` calls
-  `getContextValue(this._original, key)` inside the loop over `this._priorScopes`, where it
-  should read `scope`. So the loop re-tests the original context on every iteration: it can
-  only ever succeed for a key `_original` already holds — in which case the preceding block
-  has returned — and it therefore returns a prior scope's `thisArg` for no key, and never
-  returns one for a key a prior scope actually supplies.
-
-  Bounded today because `getThis` has exactly one call site in the evaluator,
-  `member-expression.ts:97`, and a bare call takes a different path — `call-expression.ts`
-  passes `st.context` as `thisArg` and never consults `getThis` at all (pinned by
-  `modules/eval-signals/src/lib/signal-context.spec.ts`). Surfaced incidentally while
-  auditing `set`'s callers in Phase 3 step 2. Cosmetic to fix, behavioural in effect; it
-  needs a spec written against the corrected behaviour rather than the current one.
-
-## Deferred security hardening — the primitive carve-out in `member-expression.ts`
-
-Surfaced while checking GHSA-pj3p-xpg7-h7gw (reported against the sibling `jse-eval`)
-against this repo. The advisory itself does not apply — see `SECURITY.md`, "Reviewed
-External Advisories" — but the check walked the surrounding guard and found this.
-
-**Status: not exploitable as far as probed. Not cleared.** No escalation was found; that is
-not the same as none existing, and the probing was one session's worth against one threat
-model. Treat it as an open hardening item.
-
-**What it is.** Both dangerous-property checks in the member visitor
-(`member-expression.ts:144` and `:188`) are gated on `!isPrimitive`, so when the receiver is
-a string, number or boolean the blocklist is skipped entirely. `"abc".constructor`
-therefore returns the real `String` function — a reference to a global constructor leaking
-out of the sandbox. It is the only place the guard is deliberately not applied.
-
-**Why it is there, and why deleting the gate is not the fix.** The blocklist holds
-`toString`, `valueOf` and `hasOwnProperty`, which are ordinary reads on a primitive.
-Enforcing it there would refuse `s.toString()`. Worse, simply removing `!isPrimitive` does
-not narrow the carve-out at all — it removes primitive member access outright, because
-`safeGetProperty` returns `undefined` for any target that is not an object or a function
-*before* it consults the blocklist, so `s.toUpperCase` becomes `undefined` rather than
-blocked (confirmed by probe). A fix has to keep a primitive read path and enforce a subset
-of the blocklist on it.
-
-**Probe results, so nobody re-derives them.** Against `{ s: 'abc', n: 1, b: true }`:
-
-- `s.constructor` → the `String` function. Likewise `n.constructor` → `Number`,
-  `b.constructor` → `Boolean`.
-- `s.constructor.call` → `Function.prototype.call`, and it is callable —
-  `s.constructor.call(null, "hi")` → `"hi"`. This is the one hop past the constructor that
-  is not on the blocklist. `this` is the `String` function, so it yields a string.
-- `s.constructor.constructor` → **throws**. So does `s.constructor.prototype`,
-  `s.constructor.__proto__`, `s.constructor.call.constructor`, `s.trim.constructor` and
-  `s.sub.constructor`.
-- Every escalation tried dead-ends at hop 2, and by the same mechanism: the receiver is then
-  a plain function, not a primitive, so the read goes through `safeGetProperty`, which does
-  enforce the blocklist.
-- A second, independent barrier sits behind that one: the case-insensitive lookup block is
-  gated on `typeof obj === 'object'`, and functions are not. So no case variant reopens the
-  chain either — `s.constructor.CONSTRUCTOR`, `s.constructor.PROTOTYPE` and
-  `s.trim.CONSTRUCTOR` all resolve to `undefined` under `caseInsensitive: true` rather than
-  being case-corrected. This barrier is incidental rather than designed, which is a reason
-  not to lean on it.
-
-**Covered, not fixed.** `eval.service.primitive-carve-out.spec.ts` pins the boundary in both
-directions — what the carve-out permits, why it exists, and where the escalations stop — so
-narrowing *or* widening it fails a test rather than passing silently. Confirmed
-load-bearing: skipping the carve-out reddens the first two blocks, extending it to function
-receivers reddens the third. The spec is a record of current behaviour, not an endorsement:
-a fix is expected to change its first `describe` block and leave the other two intact.
-
-Fixing it is a behavioural change — anything reading `s.constructor` today starts throwing —
-so it needs its own step and a version bump.
-
-## Correction owed — the throwing-subscriber premise in `eval-forms`
-
-Raised while closing Phase 4 step 6, and recorded here rather than only in
-[`docs/forms/phase-4-plan.md`](docs/forms/phase-4-plan.md) because that plan is now closed
-and nothing reads a closed plan.
-
-**The premise.** Four places in `eval-forms` state that a throw inside the `group.events`
-subscriber "unsubscribes it and silently ends all diffing for the life of the form".
-
-**It is false in both halves**, measured against this repo's `rxjs@7.8.2` with the same
-pipeline shape `createControlSource` uses — a `Subject` exposed through `asObservable()`,
-piped through `takeUntil`, with a function next-handler:
-
-```
-next(1) returned normally to the caller
-closed after 1st throw: false | handler calls: 1 | observers: 1
-closed after 2nd throw: false | handler calls: 2 | observers: 1
-ASYNC UNHANDLED: boom  (x2)
-```
-
-RxJS 7's `ConsumerObserver` catches the handler's throw and re-reports it through
-`reportUnhandledError`, **asynchronously**. The subscription stays open, later emissions are
-still delivered, and in an Angular application the error reaches the unhandled-error path.
-So the failure is *loud and non-fatal*, not *silent and terminal* — the opposite of the
-premise on both axes.
-
-**The four sites**, all stating it as established fact:
-
-- [`modules/eval-forms/reactive/src/lib/control-source.ts:165`](modules/eval-forms/reactive/src/lib/control-source.ts#L165)
-  — the own-property read in `sync`.
-- [`modules/eval-forms/reactive/src/lib/field-schema.ts:199`](modules/eval-forms/reactive/src/lib/field-schema.ts#L199)
-  — `validate`'s group loop.
-- [`modules/eval-forms/reactive/src/lib/control-source.spec.ts:409`](modules/eval-forms/reactive/src/lib/control-source.spec.ts#L409)
-  — the prototype-name removal case. Note this comment **already measured something that
-  does not fit it**: it goes on to record that "the throw lands in that key's own subscriber
-  and not back in `sync`, so the diff loop itself survives". The contradiction was sitting in
-  one comment and was not read as one.
-- [`docs/forms/phase-4-plan.md:1438`](docs/forms/phase-4-plan.md#L1438) — and it cites
-  "§ 3.5.5" as the source, which does **not** contain the claim. The citation is what made
-  it look settled.
-
-**This is not a comment fix, which is why it is a roadmap entry.** The premise is load-bearing
-for a shipped design decision: enforcement is construction-time only, and `validate` is not
-re-run for a control added later, *because* throwing from the diff was held to be
-unavailable. If a throw there is merely reported and diffing continues, that argument no
-longer decides the question, and the alternatives reopen — reject a late `addControl` from
-the diff, surface it through a channel the consumer can observe, or keep the current
-behaviour on a different and stated ground (a throw cannot un-add the control, and it fires
-far from the call that caused it, which may well still be decisive).
-
-Scope: correct the four sites; decide the question again on the real behaviour and record
-which ground it now rests on; and add a spec that pins what actually happens when the diff
-throws, since none exists — the case above pins the *symptom* the guard prevents, not the
-subscriber's fate. Behavioural if the decision changes, documentation-only if it does not.
-
-## Deferred behaviour decision — should `/reactive` reject prototype-shadowed identifiers in expressions too?
-
-**A Phase 8 question. Logged here, not decided** — and the distinction is the point of the
-entry, because the deciding is the expensive half.
-
-**Neither Phase 7 nor Phase 8 is yet a section in this document**, so the number is a
-reservation rather than a cross-reference: Phase 7 is held for form-state keys
-(`touched` / `dirty` / `valid`) across both adapters, per
-[`docs/forms/phase-6-plan.md`](docs/forms/phase-6-plan.md) § 8.2, and registering either as a
-phase here is a separate docs change that Phase 6 declined to make on its own authority.
-
-Raised by Phase 6 step 6, which added the check to `/signals`, and written down by step 7. See
-[`docs/forms/phase-6-plan.md`](docs/forms/phase-6-plan.md) § 3.8 and § 3.8.1 for the measurement
-and the argument; this section records only what is left open.
-
-**The asymmetry, as it now ships.** `@zvenigora/ng-eval-forms/signals` walks every expression at
-registration and throws on any `Identifier` whose name is an own property of `Object.prototype`
-— `constructor`, `toString`, `valueOf`, `hasOwnProperty` and the other eight. `/reactive` does
-not: its two **prototype-name** checks (`reactive/src/lib/field-schema.ts:172-178` over the
-schema's field names, `:214-220` over the group's controls) inspect **names**, never
-expressions — and neither do the other two construction-time rejections that entry point makes,
-which are on a rule's type and a control's class. So `{ name: 'city', visible: 'constructor' }` throws under `/signals` and, under
-`/reactive`, binds cleanly and renders a field that has no data — because the identifier
-resolves off `Object.prototype`, a function is truthy, and truthy means visible.
-
-One authored rule string, two behaviours, and the silent one is the unsafe one. That is exactly
-the asymmetry `phase-6-plan.md` § 8.2 exists to prevent, shipped knowingly because the
-alternative was leaving both entry points silently wrong.
-
-**Why it is not a bug fix.** `/reactive` is released, at `0.1.0`, and an expression that
-registers today would start throwing. That makes it a behaviour change to a published surface
-and it needs three things a docs step cannot supply: a phase, a major-version decision, and a
-migration note for a consumer whose form genuinely has a field named `constructor`. A docs step
-deciding it is how a breaking change ships without one.
-
-**What a phase would have to settle**, none of it obvious from the paragraphs above:
-
-- **Where the check runs.** `/signals` guards between `parse` and `compile` inside its own
-  registrar. `/reactive` compiles inside `bindFieldProperties`, so the natural site is there —
-  which makes it a fifth construction-time rejection beside the four the README already
-  documents, and folds into the same throw a consumer already handles.
-- **Whether the residual is acceptable at both.** A *member* expression — `user.constructor` —
-  is `eval-core`'s prototype-pollution guard and not this check's business at either entry
-  point, and `CLAUDE.md`'s `!isPrimitive` carve-out applies. A check that rejects the bare
-  identifier and passes the member access is the same shape at both, and is worth stating
-  rather than discovering.
-- **Whether the deliberate over-rejection ports.** `/signals` rejects a name an expression
-  *binds* itself — `'[1].map(valueOf => valueOf)'` throws — because a scope-aware guard would be
-  a second copy of `eval-core`'s frame logic (§ 3.8.1). The same reasoning applies unchanged at
-  `/reactive`, but it is a false positive that a released entry point would be acquiring rather
-  than shipping with.
-- **The migration note.** The fix for a real `constructor` field is renaming the model key, which
-  a consumer may not control if the schema arrives from a server — the case § 0 of the Phase 6
-  plan is written for. Whether that is a rename, an escape hatch, or an accepted break is the
-  substance of the decision.
-
-Scope if taken: the guard is already written and module-private to `/signals`
-(`signals/src/lib/guard-identifiers.ts`), so the mechanism is a move rather than a design. The
-work is the version decision, the migration note, and the `acorn-walk` peer already being
-declared. Behavioural, and breaking.
-
-## Deferred hygiene — `console` calls in `eval-core`, and a dead branch that would leak state
-
-Surfaced during the Phase 6 CLAUDE.md pass, while establishing that "No `console.*` in
-library code" was a rule written as a description. `eval-core` has ~20 `console.*` calls in
-source. Most are unreachable and tree-shaken; **four reach the published FESM bundle**,
-verified by building and grepping `dist/modules/eval-core/fesm2022/`:
-
-| Site | Call |
-| ---- | ---- |
-| `visitors/pattern.ts:83` | `console.log(pattern, st, callback, arg)` |
-| `actual/services/parser.service.ts:67` | `console.debug('Parser cache cleared…')` |
-| `actual/services/eval.service.ts:96` | `console.warn('Error cleaning up EvalState:', error)` |
-| `actual/services/eval.service.ts:108` | `console.warn('Error cleaning up Context:', error)` |
-
-**`pattern.ts:83` is the interesting one, and it is neither a hot path nor a live
-disclosure.** It is inside `evaluateMemberExpression`, guarded by
-`if (pattern.type === 'MemberExpression')`, and the *next* line is
-`throw new Error('evaluateMemberExpression is not implemented.')`. So it is not per-node
-work: `performance.spec.ts` is not the gate for it and there is no cost to recover.
-
-**It is currently unreachable**, which is what decides its priority. Three checks:
-
-- `evaluateMemberExpression` is reached only through `evaluatePatterns` / `evaluatePattern`,
-  and the only caller of either inside the library is `arrow-function-expression.ts:15`,
-  on an arrow function's parameter list.
-- A `MemberExpression` is not a valid binding target in a parameter list, so acorn rejects
-  every form of it — `(a.b) => 1`, `({x: a.b}) => 1`, `([a.b]) => 1`, `({...a.b}) => 1` —
-  with `Assigning to rvalue`, at `ecmaVersion` 2020 (this library's default), 2022 and
-  `latest`. The `case 'MemberExpression'` branch cannot be entered by any expression that
-  parses.
-- Neither function is exported from the built package — absent from both
-  `types/zvenigora-ng-eval-core.d.ts` and the FESM's export list — so a consumer cannot
-  call them directly to route around the parser.
-
-*Were* it reachable it would be a disclosure rather than a hygiene item, because the second
-argument is `st`, the whole `EvalState` — the call would dump the caller's entire
-evaluation context to the console of any application whose user wrote that pattern. That is
-the reason to delete it rather than leave it as a curiosity, and the reason this entry
-exists at all. It is not a reason to ship a fix release: nothing a consumer can do reaches
-it today.
-
-**Phase 2 is what could make it live.** Statement support brings destructuring declarations
-(`let [a, b] = c`, `let {x} = o`) and assignment destructuring, where a `MemberExpression`
-target *is* legal — `[a.b] = arr` parses. If that work routes through `pattern.ts`, this
-branch becomes reachable with a state dump already in it. So the deletion belongs to
-Phase 2 as a precondition, ahead of any code that widens what reaches these functions,
-rather than as a floating cleanup or a release of its own.
-
-Adjacent, and lower: `modules/eval-core/src/lib/eval-core/eval-core.component.ts` is
-generator scaffold — an empty `EvalCoreComponent` plus a stray `ngEval()` that parses
-`"1 + 1"` and logs the result. Nothing imports it but its own spec, and it is **not** in
-the FESM bundle, so this is dead source rather than a published-surface problem. It carries
-a template, a stylesheet and a spec with it.
-
-Scope: delete `pattern.ts:83` — a precondition of Phase 2, per above — and fold anything
-worth keeping into the throw's message; the node type is the only part a caller could act
-on. Delete the `eval-core` component with its template, stylesheet and spec. Decide
-separately whether the three service-layer calls become the `isDevMode()` carve-out, a
-no-op, or stay. None of it is behavioural: no evaluation result moves, and the one call
-that could expose anything cannot currently run.
-
-## Deferred tooling — `eval-signals` has no CI test configuration
-
-Surfaced in Phase 3 step 6, while settling the `project.json` divergence between the two
-libraries. That step decided the **release** blocks deliberately (`eval-signals` keeps its
-`release.version` + `nx-release-publish` config, `eval-core` is left alone — see the phase-3
-plan's step 6); that half has since been **superseded**, see below. This is the other
-divergence, and it is a real gap rather than a style difference.
-
-`modules/eval-core/project.json` gives its `test` target a `configurations.ci` block
-(`ci: true`, `coverage: true`); `modules/eval-signals/project.json` gives its `test` target no
-`configurations` at all (its `build` target has the usual two). So
-`nx test eval-signals --configuration=ci` does not exist, and any CI job that
-starts asking for coverage per project gets it from one library and not the other. Today's
-workflow runs `npm test` — plain `nx run-many -t test` — so nothing is red and nothing is
-missing coverage that was previously reported; that is why it was logged rather than fixed
-inside a documentation step.
-
-Fixing it is a few lines of `project.json` plus a decision about whether coverage thresholds
-should gate CI for either library, which is the part worth deciding rather than copying.
-
-### Superseded — `eval-core` now carries the release blocks too
-
-The **release** half of that step-6 decision no longer holds, and it was not overturned on
-review: the circumstance it rested on is gone.
-
-Leaving `eval-core` without a `release.version` block was sound while the workspace versioned
-**fixed**. A fixed group resolves one current version for every project and overrides each
-project's own resolution with it, so `eval-core`'s resolver was never consulted for anything
-that survived — the group masked the gap, and adding config would have bought nothing.
-
-Independent versioning removed the mask. Each project now resolves for itself, and the
-divergence became three live behaviours rather than a dormant one: `eval-core` read its
-version from `modules/eval-core/package.json` instead of its `eval-core@0.3.0` tag, which was
-therefore ignored; it wrote bumps into that **tracked source** manifest while its siblings
-wrote into gitignored `dist/` ones; and `nx-release-publish` fell back to the project root, so
-publishing would have handed npm `modules/eval-core` — source, with no build output in it. The
-right version still came out, but only because that manifest happened to be accurate.
-
-So `eval-core` now carries the same `release.version`
-(`currentVersionResolver: "git-tag"`, `fallbackCurrentVersionResolver: "disk"`,
-`manifestRootsToUpdate: ["dist/{projectRoot}"]`) and `nx-release-publish`
-(`packageRoot: "dist/{projectRoot}"`) blocks as `eval-signals` and `eval-forms`. All three
-resolve from their own tag and write to `dist/`.
-
-The **CI test configuration** half of step 6 above is untouched by this and still open.
-
-## Deferred tooling — one `CHANGELOG.md` for three independently-versioned packages
-
-Surfaced while writing CONTRIBUTING's release procedure, after the workspace moved to
-`projectsRelationship: "independent"`. Logged, not fixed: the workaround already in place
-works, and replacing it is a decision about tooling rather than a gap in behaviour.
-
-There is one `CHANGELOG.md` at the workspace root and three packages that now version
-separately. Phase 3 step 6 anticipated this and answered it in the heading convention: a
-release of a non-core package is titled with the package name, `## [eval-signals 0.1.0]` and
-`## [eval-forms 0.1.0]`, while `eval-core` keeps the bare `## [0.3.0]` form its history
-already used. That is enough to read the file unambiguously, and it costs nothing.
-
-Two things make it worth logging rather than leaving unwritten:
-
-- **`eval-core`'s entries are the implicit case.** A bare `## [0.3.0]` means "eval-core"
-  only by convention, and only because it got there first. Nothing enforces it, and a future
-  contributor adding a bare heading for the package they happen to be releasing would not be
-  contradicted by anything in the file.
-- **It has already drifted from npm.** The changelog carries `## [0.2.3]`, `## [0.2.4]` and
-  `## [0.2.5]` entries for `eval-core`; the registry's version list runs
-  `0.1.102 … 0.2.1, 0.2.2, 0.3.0`. Those three were changelogged and never published. A
-  reader treating the file as a release history is misled today, and the manual procedure has
-  no step that would catch it.
-
-The fix is not obviously "split into three files". `nx release changelog` can maintain
-per-project changelogs, which would make the file boundary match the version boundary — but
-adopting it means adopting the full `nx release` flow, which is separately unmade (see
-CONTRIBUTING, "Why publishing is still manual"), and it would have to be reconciled with the
-existing single file rather than starting clean. Deciding that is the work; the convention
-holds in the meantime.
-
-## Deferred tooling — documented-symbol drift gate
-
-Not a defect in shipped behaviour; a gap in what the suite can catch. Raised while closing
-Phase 1 step 6, after the step-5 retrospective had found two documented snippets that did
-not run as printed.
-
-**Assert that every symbol a README imports from `@zvenigora/ng-eval-core` is actually
-exported from it.** Scan the fenced code blocks
-in **both** `README.md` and `modules/eval-core/README.md`, collect the identifiers named in
-`import { … } from '@zvenigora/ng-eval-core'`, and assert each resolves against the public
-API.
-
-Scanning both is the point, not thoroughness for its own sake. The divergence this step had
-to correct was exactly a published/unpublished split: `trackTime` was documented only in the
-root `README.md`, which ships nowhere, so the one file a consumer installing the package can
-read was the one file the documentation was not in. A symbol documented only in the
-unpublished README is a gap, and comparing the two sets surfaces it structurally instead of
-depending on someone noticing. It also catches the higher-frequency case: a public symbol
-renamed or removed while a README goes on naming it.
-
-This is an **export-surface** assertion, so a `public-api.spec.ts` beside `src/public-api.ts`
-is its natural home. No such spec exists yet, so this creates one; the published surface has
-no direct test today, which is a second reason to add it.
-
-Deliberately excluded: a **block-count assertion** ("the README contains N snippets; update
-this spec if that changes"). It fires on every legitimate addition, so its steady-state
-behaviour is to train people to bump the number rather than investigate the failure, which
-costs more than the one gap it closes.
-
-### Considered and rejected: executing transcribed snippets
-
-The larger version of this — mirroring each documented snippet as a test and asserting the
-output the README prints — was written and run during step 6 (eight tests, all green) and
-then deleted rather than kept.
-
-A transcription is a **copy, not a reader**. It gates "the API behaves as documented", and
-the 711-test suite already does that; what it cannot gate is what the README actually says,
-because nothing connects the two. It would report a documentation guarantee it does not
-have — the failure mode CLAUDE.md names, arrived at from the documentation side.
-
-The decisive evidence is that **neither defect step 5 found would have been caught by it.**
-Both were missing declarations in fragments — `### Compilation` passing an `options` it never
-declared, `### Evaluation with scope` using an unconstructed `evalContext` — and a
-transcription is written to work. Anyone turning those fragments into a runnable test
-declares the missing bindings without noticing, and the test passes on code the README
-cannot. The two defects were found by executing the documented examples *by hand*, which is
-a review practice rather than a gate, and it stays that way.
-
-**Reopened for `eval-forms` only, in Phase 4 step 6, and the reason is *when* the practice
-fires rather than whether it works.** `modules/eval-forms/reactive/src/lib/readme-examples.spec.ts`
-executes that package's runnable README examples and its worked example. The argument above
-is right that hand-execution is what found the Phase 1 and Phase 3 defects — five of them
-across the two phases — and the addition is that it found each of them *after* the snippet
-had been written and reviewed, on a later session that happened to be reviewing
-documentation. Nothing makes that session happen. A gate that covers the runnable subset
-runs on every session, and the two are additive rather than alternatives.
-
-Two things keep it honest, and both answer the objection above directly. Where a documented
-block was a fragment, the fix went into the **document** — the README's reactivity blocks
-each declare their own form and binding for that reason — rather than into the spec; what
-the spec still supplies (an `injector`, and the service handles the worked example refers
-to bare) is enumerated in its own docstring instead of being left for a reader to discover.
-And it earned its place twice on the way in: the `{ emitEvent: false }` block printed a
-stale value that a never-yet-read `computed()` does not produce, and a first draft that
-split the worked example into a case apiece hid a wrong printed value behind a resetting
-fixture — the second found in review rather than by the gate, which is the limit worth
-knowing about.
-
-It does **not** supersede the drift gate above and is strictly narrower than it: it runs
-code, it does not read markdown, and nothing but a human keeps the two in step. The drift
-gate is still worth building, and still unbuilt.
-
-## Deferred tooling — the README-execution gate for `eval-core` and `eval-signals`
-
-The gate described immediately above exists for **`eval-forms` only**, and the five defects
-that justify it are in the other two packages: two shipped in `eval-core`'s documentation in
-Phase 1, three were found in `eval-signals`' in Phase 3. So the package with no record of a
-non-running snippet is the one now gated, and the two packages with the record are still on
-the review practice that missed them five times — each caught only by a later session that
-happened to be reviewing documentation, and nothing makes that session happen. That is the
-whole case for doing this, restated per package; the argument is not repeated here.
-
-Two pieces of work, not one, because the two packages are not equally tractable.
-
-**The soundness condition carries across unchanged: one case per continuous program, not
-one per block.** A document whose sections run in sequence is one program, and its printed
-values are claims about the state each block inherits. A per-block harness behind a
-resetting `beforeEach` executes a *different* program — one in which every block starts
-pristine — and reports green for a document that is wrong as written. That is not a weaker
-gate; it is the thing this section rejected, reached through the fixture instead of the
-preamble. Phase 4 step 6 hit it for real: a first draft split the worked example into a case
-apiece, went green, and hid a `false` that § 4 had already driven to `true`. Split only where
-the document itself declares a fresh start — `modules/eval-core/README.md` does exactly that
-between its `trackTime` section and its hooks section, and does not between the `trackTime`
-blocks, whose second reads a `state` the first declared.
-
-**`eval-signals` is the easier of the two** and should go first. Its README is already
-written in whole-unit blocks — a component class, then a sequence of reads and `set` calls
-against it — which is the shape the gate wants, and `eval-forms`' spec already imports
-`SignalContextWriteError` from it, so a consumer-shaped import through the published
-specifier is known to work from a spec folder.
-
-**`eval-core` is the harder case, and it may not be gateable as written.** Its snippets are
-fragments: `private service: EvalService;` followed by `...`, in both `README.md` and
-`modules/eval-core/README.md` — and the two Phase 1 defects were *exactly* that shape,
-`### Compilation` passing an `options` it never declared and `### Evaluation with scope`
-using an unconstructed `evalContext`. Fragments needing invented preamble are the condition
-under which this gate stops being sound: anyone turning them into runnable cases supplies
-the missing bindings without noticing, and the spec then passes on code the README cannot
-run, which is how those two shipped in the first place. Phase 4's answer was to complete the
-**document** rather than pad the spec, but there the fragments were a handful of blocks; here
-it would mean rewriting the prevailing style of both files, and the injected-service opening
-is load-bearing documentation in an Angular library rather than an omission to be tidied
-away. So `eval-core`'s step decides that first, and the plan's own drop rule applies without
-apology: if it fights, it is dropped and the reason reported, rather than a harness built to
-prop it up. Whatever preamble a surviving spec does supply is **enumerated in its docstring**
-— a blanket "self-contained" claim is how an unlisted substitution hides.
-
-Both are still narrower than the documented-symbol drift gate above and neither supersedes
-it: they run code, they do not read markdown.
-
-## Deferred dependency decision — the `js-sha256` peer range in `eval-core`
-
-Surfaced while verifying the 0.3.0 / 0.1.0 / 0.1.0 publish from the npm registry, not by
-any failing test. Nothing is broken today; the range is simply narrower than the dependency
-it names, and the gap only widens.
-
-`modules/eval-core/package.json` declares `js-sha256: ^0.10.1` as a peer. Because the
-package is still `0.x`, a caret range there is locked to the **minor**, so `^0.10.1` admits
-`0.10.x` and nothing else. Upstream has since published `0.11.0`, `0.11.1`, `0.12.0` and
-`1.0.0`, and `1.0.0` is `latest` — so every version a consumer would naturally reach for is
-outside the declared range.
-
-The peer itself is real, not vestigial. There is exactly one call site —
-`modules/eval-core/src/lib/internal/classes/common/cache.ts:53`, which hashes a
-`namespace:value` template string into a cache key, reached via the `import { sha256 }` on
-line 1 of that file — so the range cannot simply be dropped without replacing that call.
-
-**What a consumer sees.** A clean `npm install` is fine: npm's automatic peer installation
-picks `0.10.1` and the tree resolves with no warning. The failure is the *other* order — a
-consumer whose tree already contains `js-sha256@1` (or `0.12`) gets an `ERESOLVE overriding
-peer dependency` warning naming `@zvenigora/ng-eval-core`, and npm keeps their version, so
-the library runs against a major it never declared. That is a warning rather than an error,
-which is why this is logged rather than treated as a defect.
-
-**The decision, which is why it is deferred rather than done.** Widening to
-`^0.10.1 || ^0.11.0 || ^0.12.0 || ^1.0.0` needs the `sha256` call signature checked against
-`1.0.0` first — the point of a major is that it is allowed to have moved. The alternative is
-to stop depending on a hash library for what is a cache key: the value is never persisted,
-compared across processes, or relied on for integrity, so a non-cryptographic hash computed
-in-repo would remove a peer dependency from the published surface entirely, and the one call
-site makes that a contained change. Either way it alters an exported package's
-`peerDependencies`, so it needs a `CHANGELOG.md` entry and a version bump under
-"Public API discipline", which puts it past the edge of a chore.
-
-## Deferred docs — CONTRIBUTING's "Code style" section describes a config that no longer exists
-
-Surfaced while correcting the same file's Prerequisites block. Logged rather than fixed
-because the repair is an editorial decision, not a substitution.
-
-The section links to `.eslintrc.json`. That file does not exist — Phase 1's tooling work
-replaced it with flat config, and the workspace now has four: `eslint.config.mjs` at the root
-and one per module. The link is dead.
-
-The thirteen-rule table beneath it is the larger problem, because it reads as authoritative
-and is not. **None of its thirteen rules appear in any of the four configs** — not `semi`,
-`curly`, `brace-style`, `spaced-comment`, `no-dupe-keys` or any of the rest. The table
-predates flat config and was never migrated. What the configs actually enforce is a different
-kind of thing: the `@nx` flat presets (`base`, `typescript`, `javascript`, `angular`),
-`@nx/enforce-module-boundaries` with the `scope:core` / `scope:signals` / `scope:forms` tag
-constraints, the `zvenigora` Angular selector prefixes, and `@nx/dependency-checks` over
-`*.json`. Stylistic rules are absent by design; a Prettier config exists and the codebase is
-deliberately not formatted to it (see `CLAUDE.md`).
-
-It is worth treating as misleading rather than merely stale, because two of its rows tell a
-contributor to write code the repository does not contain:
-
-- `brace-style: [1, "stroustrup"]` requires `else` on its own line. `eval-core`'s sources have
-  57 occurrences of `} else` and none of the Stroustrup form.
-- `no-mixed-spaces-and-tabs: [1, "smart-tabs"]` is described as "tabs for indentation". No
-  file under `modules/eval-core/src` is tab-indented; 109 are space-indented.
-
-The decision is what should replace it. Enumerating the real rule set reproduces the same
-drift one migration later, and most of it is inherited from presets rather than chosen here,
-so a faithful table would be long and mostly not this project's decisions. Pointing at
-`eslint.config.mjs` and saying "run `npm run lint`" is honest and much shorter, but loses the
-commentary the current section was written to provide. That choice is the work.
+### Phase 7 and Phase 8 — reserved, not yet specified
+
+Both numbers have been cited by shipped documents and neither has ever been a section here,
+which is how [BL-E1](docs/backlog.md#e1) and [BL-D2](docs/backlog.md#d2) came to be "deferred
+to a phase" that does not exist. Reserved now so the citations resolve:
+
+- **Phase 7 — form-state keys across both adapters** (`touched` / `dirty` / `valid`).
+  Cited by [`docs/forms/phase-6-plan.md`](docs/forms/phase-6-plan.md) § 8.2. The brief and the
+  two candidate shapes are [BL-E1](docs/backlog.md#e1). Not costed.
+- **Phase 8 — should `/reactive` reject prototype-shadowed identifiers in expressions too?**
+  Cited by [`docs/forms/phase-6-step-7-summary.md`](docs/forms/phase-6-step-7-summary.md). The
+  question, what a phase would have to settle, and why it is breaking are
+  [BL-D2](docs/backlog.md#d2). `eval-forms`' README and `CHANGELOG.md` deliberately say only
+  "a later major" — this file is the single source for the phase number.
+
+Neither is scheduled. A phase becomes real when it gets a plan document, per `CLAUDE.md`.
+
+## Deferred work
+
+Everything recorded-and-not-done lives in **[`docs/backlog.md`](docs/backlog.md)**: the
+`eval-core` visitor, context and service defects; the primitive carve-out and the `console`
+calls; the `eval-signals` write-policy gaps; the `eval-forms` asymmetries and doc debts; the
+features deferred to phases not yet specified; and the tooling and documentation gaps.
+
+It moved out of this file on 2026-09-06. Until then these were nine sections here, six plan
+and step documents under `docs/`, and several code comments — and the most serious entry
+([`BL-A8`](docs/backlog.md#a8), an unbounded retention in `EvalService`) was in none of them
+while two documents asserted it was in this one. Read that entry's preamble before adding a
+deferral anywhere other than the backlog.
+
+Entries are cited by stable ID — `BL-A8`, not a line number.
 
 ## Suggested order
 
 1. ~~Phase 1 (hooks)~~ — **done**, shipped in 0.3.0; unblocks 3 and 4.
 2. ~~Phase 3 (signals)~~ — **done**, shipped in `eval-signals` 0.1.0; unblocks 4.
 3. ~~Phase 4 (forms)~~ — **done**, shipped in `eval-forms` 0.1.0; unblocks 6.
-4. Phase 6 (`/signals` entry point) — depends on Phase 4, which is now in place. It is
-   next of the forms work, and the only phase with a stated correctness precondition
-   (§ 9.1's choke point) rather than only open questions.
-5. Phase 2 (statements) — independent track, can run in parallel with any of the others
-   since nothing else in this roadmap depends on `let`/`if`/`for`.
+4. ~~Phase 6 (`/signals` entry point)~~ — **done**, shipped in `eval-forms` 0.2.0.
+5. Phase 2 (statements) — the only unstarted phase with preconditions. Four backlog entries
+   must land first ([BL-A9](docs/backlog.md#a9), [BL-B2](docs/backlog.md#b2),
+   [BL-A2](docs/backlog.md#a2), [BL-E6](docs/backlog.md#e6)); see
+   [`docs/backlog.md`](docs/backlog.md) § "Phase 2 preconditions". Otherwise independent —
+   nothing else in this roadmap depends on `let`/`if`/`for`.
 6. Phase 5 (async signals) — depends on Phase 3, and nothing depends on it. Deferred
-   out of Phase 3 deliberately rather than left undone; it is ordered last because
-   the sync primitive already composes with `resource` for the promise case.
+   out of Phase 3 deliberately rather than left undone; it is ordered after Phase 2 because
+   the sync primitive already composes with `resource` for the promise case, and because
+   [BL-A9](docs/backlog.md#a9) — a Phase 2 precondition — would retire one of its open
+   questions outright.
+7. Phase 7 / Phase 8 — reserved above, neither costed nor scheduled.

@@ -16,18 +16,24 @@ independently and **all three published to npm** under the `@zvenigora` scope, e
   by Phase 3.
 - **`@zvenigora/ng-eval-forms`** (`modules/eval-forms`) — Angular form field properties
   driven by expressions that arrive as strings at runtime, built on the other two.
-  Published at **0.1.0**, by Phase 4. It ships **two entry points from one package**: the
-  shared core at `@zvenigora/ng-eval-forms` and the Reactive Forms adapter at
-  `@zvenigora/ng-eval-forms/reactive`. A `/signals` entry point for Angular's Signal Forms
-  is designed and not built — that is Phase 6.
+  Published at **0.2.0**, by Phase 6. It ships **three entry points from one package**: the
+  shared core at `@zvenigora/ng-eval-forms`, the Reactive Forms adapter at
+  `@zvenigora/ng-eval-forms/reactive`, and the Signal Forms adapter at
+  `@zvenigora/ng-eval-forms/signals`, which requires Angular 22.
 
 **Published is a constraint, not a status line.** No exported symbol's shape can change
 without a breaking release, in any of the three; "nothing has shipped yet" no longer
 applies to any of them.
 
-Phases 1, 3 and 4 are complete and their plan documents are design records rather than
-active work. `ROADMAP.md` plans statement support in `eval-core` (Phase 2), async
-signals (Phase 5) and the `/signals` entry point (Phase 6).
+Phases 1, 3, 4 and 6 are complete and their plan documents are design records rather than
+active work. `ROADMAP.md` plans statement support in `eval-core` (Phase 2) and async
+signals (Phase 5), and reserves Phases 7 and 8 without specifying them.
+
+**Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left
+unfixed, decisions logged rather than made, gaps in what the suite can catch — is in
+**`docs/backlog.md`**, cited by stable ID (`BL-A8`, not a line number). Read its preamble
+before recording a deferral anywhere else: the register exists because the most serious
+entry in it spent five phases invisible while two documents claimed it was tracked.
 
 ## Commands
 
@@ -67,11 +73,10 @@ build before believing a type is sound.
 
 ## Working from a plan
 
-- Active work is driven by a plan document under `docs/`. **The active plan is
-  `docs/forms/phase-6-plan.md`, which does not exist yet** — writing it is Phase 6's first
-  deliverable, and `.claude/skills/step/SKILL.md` already targets it. Until it exists, the
-  brief is `ROADMAP.md` § "Phase 6" and the design on paper is
-  `docs/forms/phase-4-plan.md` § 9 / § 9.1.
+- Active work is driven by a plan document under `docs/`. **There is no active plan right
+  now** — Phase 6 closed with `eval-forms` 0.2.0 and no phase has opened since, so
+  `.claude/skills/step/SKILL.md` targets a finished document. The next phase writes its plan
+  first; until it exists, the brief is that phase's section of `ROADMAP.md`.
 - The completed plans are design records, not work in progress, and each remains the
   reference for its library — they record findings about this codebase that are not
   obvious from reading files in isolation:
@@ -170,8 +175,8 @@ swallows a child's throw between its own `beforeVisitor` and `afterVisitor` — 
 *value* stack is silently one entry out, and every downstream node reads the wrong operand.
 Making the hook stack self-correcting made value-stack corruption quieter, not louder: do
 not read balanced hook events as evidence that a visitor is correctly bracketed. See
-`docs/side-effects/phase-1-plan.md` § 3.8 and the "Deferred defects in the visitor, context
-and service layers" section of `ROADMAP.md`.
+`docs/side-effects/phase-1-plan.md` § 3.8 and `docs/backlog.md` § A — `BL-A1` is the
+`await-expression.ts` case specifically.
 
 ### Sync vs. async
 
@@ -238,8 +243,8 @@ matched rather than the key as written. It is now covered by
 `eval.service.case-variant-guard.spec.ts`; before that spec, the entire suite passed with
 it neutered. Also note `member-expression.ts:144` and `:188` are both gated on
 `!isPrimitive`, so the blocklist is skipped for string/number/boolean receivers and
-`"abc".constructor` really does return `String` — see the "Deferred security hardening"
-section of `ROADMAP.md` before touching either line.
+`"abc".constructor` really does return `String` — see `docs/backlog.md` `BL-B1`, which
+carries the probe results, before touching either line.
 
 ### Performance
 
@@ -335,7 +340,8 @@ These apply to all three libraries.
   `eval-core.component.ts:7` — of which four survive tree-shaking into the published
   bundle. A grep finds all of them; they are inherited, not something a recent change
   introduced. Do not add to them, and do not clean them up in passing either: they are
-  recorded in `ROADMAP.md` under "Deferred hygiene".
+  recorded in `docs/backlog.md` as `BL-B2` (the `pattern.ts:83` state dump, a Phase 2
+  precondition), `BL-B3` (the three service-layer calls) and `BL-B4` (the dead component).
   The one deliberate call is the carve-out — a dev-mode-only diagnostic behind
   `isDevMode()`, for a misuse that fails silently and would otherwise be undiagnosable
   (`eval-signals`' `nested-signal-check.ts:88`, guarded at `:79`). Anything reachable in
