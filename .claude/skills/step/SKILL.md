@@ -8,32 +8,34 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: `docs/forms/phase-6-plan.md`
-Target library: `@zvenigora/ng-eval-forms` (`modules/eval-forms`), the `/signals` entry point
+Plan document: `docs/gates/plan.md`
+Target: **all three libraries**, and specs only — see the constraint below
 Requested step: $ARGUMENTS
 
-`eval-core` and `eval-signals` are **dependencies, not work areas**: the plan is scoped to
-add nothing to either, and this library consumes both as published. Their lint and test
-targets run below as the regression gate that catches a step which reached into one anyway.
-If a step genuinely needs a change in either, that is a stop-and-replan condition, not a
-wider step.
+**This track's scope rule is not the previous phases'**, and the difference is why this
+section is more than a retarget. Phases 3, 4 and 6 each named one library as the work area
+and made reaching into another a stop-and-replan. This track has no single work area:
+`docs/gates/plan.md` steps 2, 3 and 4 add specs to `eval-core` and `eval-signals`, and step 1
+edits `eval-signals`' and `eval-forms`' `project.json`. Applying the old rule here would make
+step 3 a stop-and-replan on its own file list.
 
-**`eval-forms` itself is published, at `0.1.0`** — which no previous phase had to work
-against. The primary entry point and `/reactive` are a released surface with consumers, and
-that is a third category the two above leave no slot for: *same project, already shipped,
-additive only*.
+**The constraint that replaces it is about the kind of file, not the project.** All three
+libraries are work areas; in all three, this track may add or edit only:
 
-- **Additive** work on the shared core at the primary entry point is in scope when the plan
-  calls for it. `docs/forms/phase-4-plan.md` § 9.1's choke point may land there; deciding
-  that is this phase's job.
-- A change to an **existing exported symbol's shape**, or to `/reactive`'s behaviour, is a
-  stop-and-replan condition on the same terms as reaching into a dependency. It is a
-  breaking release of a package that is on npm.
+- `*.spec.ts` / `*.test.ts`
+- `project.json`
+- `README.md`, and documents under `docs/`
 
-The regression gate above does not cover this one. `eval-core` and `eval-signals` are
-separate Nx projects, so reaching into either moves a row; the other two eval-forms entry
-points are the **same** project as the one being worked on, and a widened core signature
-moves nothing. Reading the diff is what covers it.
+**A non-spec file under `src/lib/`, `reactive/` or `signals/` in the diff is a
+stop-and-replan condition** — that is § 6 gate 1 of the plan, and it is the whole reason this
+track is safe to run ahead of Phase 2. So is anything that changes a `public-api.ts`, an
+`index.ts`, or a `package.json` under `modules/` (§ 6 gate 2): all three packages are
+published, and this track ships no exported symbol, no version bump and no `CHANGELOG.md`
+entry (§ 5).
+
+The lint and test targets below run for all three projects and are the regression gate. They
+do **not** cover the constraint above — adding a spec and editing a source file both leave the
+suite green. Reading the diff is what covers it.
 
 ## Current state
 
@@ -104,9 +106,9 @@ After I confirm:
 npx nx run-many -t lint test build
 ```
 
-All must be clean, with the same exception § 1 allows and on the same terms. The
-`eval-core` and `eval-signals` rows are the regression gate for the plan's scope section —
-if either moves, the step touched a dependency.
+All must be clean, with the same exception § 1 allows and on the same terms. All three
+projects are work areas for this track, so no row here is a scope gate on its own — the
+scope gate is the diff check below.
 
 `build` is in this list because a green `test` run is not a type-check: Jest compiles per
 file through `tsconfig.spec` and `build:production` through `tsconfig.lib.prod`, and three
@@ -117,28 +119,25 @@ All three projects default to the production configuration, so this covers what
 baseline, so confirm a build failure in a project the step did not touch is pre-existing
 before reporting it as a regression.
 
-Then two checks a green build cannot make.
+Then the check a green build cannot make, which for this track is the scope gate itself.
 
-**The `/signals` subpath actually shipped.** ng-packagr discovers a secondary entry point
-by finding its `ng-package.json`; omit that file, or put it at the wrong level, and there
-is no error — the subpath is simply absent from `dist/` and the build is green. Phase 4's
-step 1 proved the check that catches this, so run the same one:
+**No non-spec source file moved, in any of the three projects.** This is § 6 gates 1 and 2 of
+the plan, and it is the property that lets this track run ahead of Phase 2 without a version
+bump. A green suite does not show it: adding a spec and editing the source it covers both
+leave `lint test build` clean.
 
-- Read `dist/modules/eval-forms/package.json` and confirm its `exports` map has a
-  `./signals` key whose `types` and `default` name emitted files.
-- Read `dist/modules/eval-forms/signals/package.json` and confirm it names the same pair.
+```sh
+git diff --name-only HEAD
+```
 
-That proves the ng-packagr wiring. It does not prove the `tsconfig.base.json` `paths`
-mapping, which is what a spec importing through `@zvenigora/ng-eval-forms/signals` proves —
-neither substitutes for the other, and per step 1's finding that spec must live under
-*another* entry point's folder or `@nx/enforce-module-boundaries` rejects the self-import.
+Every path must be a `*.spec.ts` / `*.test.ts`, a `project.json`, a `README.md`, or a file
+under `docs/`. A path under `src/lib/`, `reactive/` or `signals/` that is not a spec — or any
+`public-api.ts`, `index.ts` or `package.json` under `modules/` — is a **stop-and-replan**, not
+a judgement call. Report it and stop.
 
-**The Angular 22 import stays confined to `/signals`.** `@angular/forms/signals` needs
-Angular 22, the package manifest declares `>=19`, and it cannot narrow without breaking
-every `/reactive` consumer on 19–21. The workspace is on Angular 22, so `build:production`
-compiles that import wherever it appears and the failure lands in a 19–21 consumer's build
-instead of ours. Grep `@angular/forms/signals` across `modules/eval-forms/` and confirm
-every hit is under `modules/eval-forms/signals/`.
+The one edit this rule deliberately permits is a `README.md`: `docs/gates/plan.md` § 1.5 has
+steps 3 and 4 completing a documented fragment in the **document** rather than padding a spec
+around it. Say in the report which blocks moved and why.
 
 If a pre-existing spec now fails, that is a regression in this step, not a stale test.
 Report it; do not edit the spec to match the new behaviour.
