@@ -36,6 +36,17 @@ reader looking.
   gap tells them nothing, and they will re-derive it.
 - **A step that fixes an entry** updates that entry in the same commit.
 
+**The convention above is not enough, and there is evidence rather than a worry.** The commit
+that created this file added two links from `ROADMAP.md` to a § "Phase 2 preconditions" that it
+never wrote — a dangling cross-reference, shipped in the commit whose stated subject was that
+dangling cross-references are how [A8](#a8) hid for five phases, and caught within the same
+session by reading the links back. That is the fourth time in this project a check has caught
+its own author inside a session of being written; the first three became
+[`docs/forms/phase-6-plan.md`](forms/phase-6-plan.md) §§ 0.2.1–0.2.3. It argues for a
+**mechanical link check** over this file's cross-references rather than a rule telling people
+to be careful — see [`docs/gates/plan.md`](gates/plan.md) § 8.4, where the question of whether
+step 2's machinery should cover it is open.
+
 ### Work in flight
 
 [`docs/gates/plan.md`](gates/plan.md) — "Track 3", the documentation and CI gates — plans

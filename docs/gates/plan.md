@@ -441,11 +441,20 @@ is that it cannot regress a published package, and the way that stops being true
 | 4 | F7 consumes step 5 and produces nothing | The timebox and the explicit "leave it open" pass. Accepted rather than solved: the warning has survived twelve summaries, so one bounded attempt failing is the expected case, not the bad one |
 | 5 | Step 4 builds a harness for an ungateable document because dropping feels like failing | The drop is written into the exit criteria as a **complete step**, and F4 already licenses it in its own words |
 | 6 | The compiler-API helper is slower than the suite tolerates | Not measured. It runs once per spec file, not per node, so `performance.spec.ts` is not the gate — but if step 2 finds it adds seconds, cache the program across the four checks rather than widening the budget |
-| 7 | Step 2 gates four READMEs and a later phase adds a fifth without a case | **Unmitigated and stated.** Nothing detects a README that no gate reads. A sixth gate that enumerates READMEs would itself need maintaining; the honest answer is that this is a human step in `CONTRIBUTING.md`, and it is not in this plan's scope |
+| 7 | Step 2 gates four READMEs and a later phase adds a fifth without a case | **Refused, not unfilled.** Nothing detects a fifth README that no gate reads, and a gate over the gates is where this stops paying. See below — this cell is a decision, and a later revision should not treat it as an empty slot to complete |
 
-Risk 7 is the one an later reader should not mistake for an oversight: it is the same class as
-F4's "nothing keeps the spec and the documents in step but a human", and inventing a gate over
-the gates is where this stops paying.
+**Risk 7's cell is a stated refusal and the wording is deliberate.** A blank or vague
+mitigation invites the next reader to fill it; a refusal with a reason does not. The reason is
+that the mitigation would be a sixth gate whose only job is enumerating the files the other
+gates read — which then needs its own maintenance, its own case when someone adds a seventh
+README, and its own answer to "what watches *it*". That regress is real and it terminates
+nowhere useful.
+
+This is the same class as F4's own "nothing keeps the spec and the documents in step but a
+human", and it gets the same answer: the limit is named in the docstring and in
+[`docs/backlog.md`](../backlog.md), and a human owns it. **Neither this plan nor a later
+revision should convert this row into a gate** without an argument that the regress stops
+somewhere — which is a higher bar than "it would be nice to catch".
 
 ---
 
@@ -457,12 +466,25 @@ Four files match F3's "a `public-api.spec.ts` beside `src/public-api.ts`" and gi
 a failure in its own suite; one file is less duplication. **Decide in step 2**, and note that a
 workspace-level spec has no obvious project to live in, which probably settles it.
 
-**8.2 — Does `.claude/skills/step/SKILL.md` retarget to this document?** It currently reads
-`Plan document: docs/forms/phase-6-plan.md`, which is a closed phase. If this track is executed
-with `/step`, that line points at the wrong file. Retargeting it is a one-line `chore` and is
-**not** in any step's file list above, deliberately — it should be done before step 1 runs, or
-the steps should be executed without the skill. Flagged rather than decided because it depends on
-how the track is actually run.
+**8.2 — `.claude/skills/step/SKILL.md`. Settled before step 1: retargeted, as a standalone
+`chore` outside every step's file list.** Kept here because what it turned out to be is a
+finding about this track rather than a bookkeeping note.
+
+It was expected to be the one-line `Plan document:` change the last two phases needed. It was
+not. Phases 3, 4 and 6 each named **one** library as the work area and made reaching into
+another a stop-and-replan; that rule is wrong here, because steps 2, 3 and 4 add specs to
+`eval-core` and `eval-signals` and step 1 edits two `project.json` files. A one-line retarget
+would have handed step 3 a stop-and-replan condition on its own file list.
+
+The scope rule in the skill is therefore about the **kind of file**, not the project: all three
+libraries are work areas, and only specs, `project.json`, READMEs and `docs/` may move — § 6
+gates 1 and 2, restated where a step actually reads them. Two verification blocks went with it:
+the "`eval-core` and `eval-signals` rows are the regression gate" sentence, false once both are
+work areas, and Phase 6's two `/signals` build checks, which have nothing to check here.
+
+**The general point, for whoever writes the next plan**: the step skill encodes the *previous*
+phase's scope shape, not just its filename. A track whose scope shape differs inherits a rule
+that will fire on its own first step.
 
 **8.3 — Is `eval-core`'s README fragment style worth changing at all?** Step 4 decides gateable
 or not, but if it decides "not", the underlying question stands: an injected-service opening is
@@ -470,3 +492,17 @@ load-bearing documentation in an Angular library, and the two Phase 1 defects we
 style. Neither this plan nor F4 claims the style is wrong — only that it is not gateable as
 written. If someone later wants both, that is a documentation rewrite with its own argument, not
 a gate.
+
+**8.4 — Should step 2's machinery also check *document* cross-references?** Step 2 scans markdown
+for `import { … } from '<specifier>'` and resolves each name. Resolving `](path#anchor)` against
+the filesystem and against the target's anchors is the same shape of scan over the same files,
+and [`docs/backlog.md`](../backlog.md)'s preamble now records the evidence for wanting it: the
+commit that created that register shipped two links to a section it had not written — in the
+commit arguing that dangling cross-references are how [A8](../backlog.md#a8) hid for five phases.
+
+Two things make this a question rather than a sixth step. It is a **different gate** — nothing to
+do with the public API surface F3 exists to guard — so folding it into `public-api.spec.ts` would
+put two unrelated claims behind one name. And its natural scope is `docs/` plus the four READMEs,
+wider than anything else here. **Decide in step 2**, once the scan helper exists and its cost is
+known. If it is deferred, it goes into `docs/backlog.md` as its own entry rather than staying a
+paragraph in a plan — which is the failure the register was built to stop.
