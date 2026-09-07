@@ -360,7 +360,14 @@ answer — into `docs/backlog.md` F1.
 
 **Exit criteria**
 - `nx test eval-signals --configuration=ci` and `nx test eval-forms --configuration=ci` both run
-  and emit coverage; the command errored before this step and does not after.
+  and **emit coverage** — `coverage/modules/<project>/` is written where it was not before.
+
+  > **Corrected during execution.** This criterion originally read "the command errored before
+  > this step and does not after". **It does not error.** Measured with the config stashed and
+  > `--skip-nx-cache`: `nx test eval-signals --configuration=ci` exits 0, runs the suite, and
+  > silently produces no coverage — Nx ignores an unknown configuration rather than rejecting it.
+  > So the discriminator is coverage emitted, not exit status, and F1's own "that command does
+  > not exist" understated the gap: the failure was **silent**, not loud. See [F1](../backlog.md#f1).
 - The three baseline coverage numbers are in the step summary.
 - F1's entry records the threshold decision and its ground, and is marked Retired if nothing is
   left open.

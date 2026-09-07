@@ -115,7 +115,7 @@ release, not a free change.
 | [E4](#e4) | Short-circuiting / value-rewriting hooks | core | phase | Open, by design |
 | [E5](#e5) | The options-first style cannot read `hookErrors` | core | decision | Open, Premise retired |
 | [E6](#e6) | `exit` has no mark to bound its scan | core | fix | Open — **[Phase 2 design constraint](#phase-2-preconditions)** |
-| [F1](#f1) | No `configurations.ci` on the `test` target — **two projects, not one** | signals, forms | fix + decision | Open |
+| [F1](#f1) | No `configurations.ci` on the `test` target — **two projects, not one** | signals, forms | fix + decision | **Retired — fixed, no thresholds** |
 | [F2](#f2) | One `CHANGELOG.md` for three independently-versioned packages | repo | decision | Open |
 | [F3](#f3) | Documented-symbol drift gate | core | fix | Open |
 | [F4](#f4) | README-execution gate for `eval-core` and `eval-signals` | core, signals | fix / decide-then-drop | Open |
@@ -1125,23 +1125,54 @@ is invisible to per-state isolation by construction.
 <a id="f1"></a>
 ## F1 — No `configurations.ci` on the `test` target
 
-**Package** signals **and** forms · **Kind** fix + decision · **Status** Open
+**Package** signals **and** forms · **Kind** fix + decision · **Status** **Retired — fixed and
+decided**, [`docs/gates/plan.md`](gates/plan.md) step 1, 2026-09-07
 
-`modules/eval-core/project.json` gives its `test` target a `configurations.ci` block
+`modules/eval-core/project.json` gave its `test` target a `configurations.ci` block
 (`ci: true`, `coverage: true`). Neither `modules/eval-signals/project.json` nor
-`modules/eval-forms/project.json` has any `configurations` on `test` at all. So
-`nx test <project> --configuration=ci` does not exist for two of three libraries, and any CI job
-that starts asking for coverage per project gets it from one and not the others.
+`modules/eval-forms/project.json` had any `configurations` on `test` at all, so any CI job that
+started asking for coverage per project would get it from one and not the others.
+
+> **Premise corrected in execution: the failure was silent, not loud.** This entry said
+> "`nx test <project> --configuration=ci` does not exist for two of three libraries", which
+> implies the command fails. **It does not.** Measured with the block stashed and
+> `--skip-nx-cache`: the command exits **0**, runs the full suite, and quietly emits no
+> coverage — Nx ignores an unknown configuration rather than rejecting it. So a CI job asking
+> for per-project coverage would have gone **green with no coverage** on two of three projects
+> and reported nothing. That is worse than the entry described, and it is why the fix's exit
+> criterion is "coverage is emitted" rather than "the command stops erroring".
 
 **The entry this replaces named `eval-signals` only** — it was written in Phase 3 step 6, before
 `eval-forms` existed, and nobody widened it when Phase 4 shipped a third project with the same gap.
 Corrected here 2026-09-06 by reading all three `project.json` files.
 
-Today's workflow runs `npm test` — plain `nx run-many -t test` — so nothing is red and nothing is
-missing coverage that was previously reported.
+Today's workflow runs `npm test` — plain `nx run-many -t test` — so nothing was red and nothing
+was missing coverage that had previously been reported.
 
-Fixing it is a few lines of `project.json` per project plus a decision about whether coverage
-thresholds should gate CI, which is the part worth deciding rather than copying.
+**Fixed**: both projects now carry the same block, and
+`nx run-many -t test --configuration=ci` writes `coverage/modules/<project>/` for all three.
+
+**Decided: no thresholds, not yet — and the baselines are why.** Measured 2026-09-07:
+
+| Project | Statements | Branches | Functions | Lines |
+| ------- | ---------- | -------- | --------- | ----- |
+| `eval-core` | 82.44% | **67.95%** | 79.43% | 81.51% |
+| `eval-signals` | 100% | 99.13% | 100% | 100% |
+| `eval-forms` | 98.66% | 95.72% | 97.61% | 98.53% |
+
+The spread settles it. A single workspace-wide threshold is either trivially met by the two
+newer packages or immediately blocking for `eval-core`, whose branch coverage is 31 points below
+its siblings'. Per-project thresholds would work, but setting three numbers from today's figures
+draws three arbitrary lines that get lowered the first time one blocks somebody — and CI does
+not run `--configuration=ci` at all today
+([`.github/workflows/node.js.yml`](../.github/workflows/node.js.yml) runs plain `npm test`), so
+adopting thresholds also means changing the workflow. That is a second decision with a second
+owner.
+
+**What would reopen it**: a decision to gate CI on coverage, which should be taken together with
+the workflow change and per-project numbers rather than one workspace figure. `eval-core`'s 68%
+branch coverage is the interesting number and is worth its own look — it is the package with the
+`ROADMAP`-deferred defects, and low branch coverage is where an unfixed branch hides.
 
 <a id="f2"></a>
 ## F2 — One `CHANGELOG.md` for three independently-versioned packages
