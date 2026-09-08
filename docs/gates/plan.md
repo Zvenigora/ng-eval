@@ -394,6 +394,23 @@ is not exported at all. Only then scan the READMEs.
   `modules/eval-forms/signals/src/public-api.ts` (`export * from './lib/rules'`), so a
   single-file parser passes the type-only criterion above and still fails here. This is § 3.1's
   one stated cost, and without this criterion nothing gates it.
+
+  > **Amended during execution — the hop counts differ by where the graph is rooted, and both
+  > numbers here are right.** Counting **edges**, three is correct from `src/public-api.ts`, as
+  > written. The gate roots the graph at **what the specifier resolves to** instead:
+  > `tsconfig.base.json` maps `@zvenigora/ng-eval-core` to `modules/eval-core/src/index.ts`,
+  > which is `export * from './public-api'` — one hop further out, making `EvalService`
+  > **four** (five files). The reason to root it there rather than at the barrel is that the
+  > gate's claim is about what a consumer's import reaches, and the consumer writes the
+  > specifier.
+  >
+  > The shipped assertion uses `CacheType`, which is at the **same** depth — four edges,
+  > `index.ts` → `public-api.ts` → `internal/interfaces/index.ts` → its `public-api.ts` →
+  > `cache-type.ts` — and is type-only with it, so one case carries both properties;
+  > `EvalService` is asserted beside it. The two chains are structurally identical, so neither
+  > is "the deeper one". Count edges, not files, and say which when writing a number down: a
+  > reader who finds three, four and five in this document without this note will assume two of
+  > them are stale.
 - Every identifier imported from a `@zvenigora/…` specifier in all four READMEs resolves against
   that specifier's export list. `eval-forms` is checked per entry point.
 - **The scan is not silently empty — a floor per file** (§ 1.5). Each of the four READMEs yields
@@ -467,8 +484,11 @@ preamble. The evidence against is that both are written as fragments — `privat
 EvalService;` followed by `...` — and that the two Phase 1 defects were exactly that shape.
 
 **Both files fence their code as ` ```javascript `, not ` ```ts `.** Measured 2026-09-07: the
-root `README.md` has 11 `javascript` blocks and one `json`; `modules/eval-core/README.md` has 8
-`javascript` blocks. **Neither contains a single ` ```ts ` fence** — `eval-signals` and
+root `README.md` has 11 `javascript` blocks and one `json`; `modules/eval-core/README.md` has 11
+`javascript` blocks — 8 when this plan was written, plus the **three** step 2 added when it
+dispositioned the five root-only symbols into that file (§ 4 step 2, and `step-2-summary.md`
+§ 4). The added blocks are in the file's prevailing fragment style, so they change the inventory
+without changing the question. **Neither contains a single ` ```ts ` fence** — `eval-signals` and
 `eval-forms` use `ts`, which is why revision 2's criteria, written against those two, said "the
 runnable `ts` blocks" and would have selected nothing here.
 
@@ -486,8 +506,11 @@ avoid, and dropping here is a legitimate exit, not a failed step.
 
 **Exit criteria**
 - **The block inventory is stated before the decision**: the count of `javascript` blocks per
-  file (11 and 8 today) and how many of each are runnable as printed. The decision must cite
-  those numbers, so "ungateable" is a claim about fragments rather than about a fence tag.
+  file (11 and 11 as of step 2 — 11 and 8 when this plan was written) and how many of each are
+  runnable as printed. The decision must cite those numbers, so "ungateable" is a claim about
+  fragments rather than about a fence tag. **Re-count rather than quoting this line**: step 2
+  changed one of the two numbers, and step 3 may change nothing here but sets the same
+  precedent.
 - The decision is recorded with its evidence, before any spec exists.
 - **If gated**: step 3's criteria apply with `javascript` substituted for `ts` throughout, and
   the per-file block count is non-zero and stated. Any block completed in the README is named,
@@ -600,11 +623,37 @@ preserve.
 
 ## 8. Open questions
 
-**8.1 — Should the drift gate live in one spec or one per package?** § 3.2 implies four checks;
+**8.1 — Should the drift gate live in one spec or one per package? Settled in step 2: four
+gate specs, and the helper triplicated — one copy per project.** § 3.2 implies four checks;
 they could be four `public-api.spec.ts` files sharing a helper, or one workspace-level spec.
 Four files match F3's "a `public-api.spec.ts` beside `src/public-api.ts`" and give each package
-a failure in its own suite; one file is less duplication. **Decide in step 2**, and note that a
-workspace-level spec has no obvious project to live in, which probably settles it.
+a failure in its own suite; one file is less duplication. A workspace-level spec has no obvious
+project to live in — and, measured, no runnable one: the root `jest.config.ts` is
+`getJestProjectsAsync()`, so a spec outside a project is executed by no `nx test` target at all.
+
+What the question did not anticipate is that **"sharing a helper" is not available either**.
+`@nx/enforce-module-boundaries` runs with `allow: []`, so a spec in one project cannot import a
+helper out of another by alias or relatively (§ 1.2's measurement, one layer over), and § 6
+gate 4 forbids loosening the rule for a spec. The helper must also itself be a `*.spec.ts`, since
+§ 6 gate 1 admits no other file kind. So the shape is: **three copies of the helper, one per
+project, each carrying its own § 3.1 probes; four gate specs importing their project's copy**
+(`eval-forms`' two entry-point gates share that package's one copy).
+
+The triplication is deliberate and it is recorded in each copy's docstring along with **what
+retires it** — a shared spec-utilities location the boundary rule permits. No such location
+exists in this workspace, and building one is not this track's to do. A later reader who wants
+to de-duplicate should build that, not add a boundary exemption.
+
+One consequence worth knowing before reading a failure report: a gate spec importing its
+helper spec **re-registers the helper's own cases in the importing file**, so a broken reader is
+reported once per file that imports it. That is duplication in the output, not in the check.
+
+**What would retire this decision on evidence is a measured number, and it is recorded**:
+`step-2-summary.md` § 3.1. Jest builds the compiler program once per *importing test file*, which
+is seven today and scales with the copies rather than with the packages — so the ~8 s the gates
+add to a `run-many` is the triplication's cost expressed in seconds. If that figure grows, the
+move is to build the shared spec-utilities location named above and read the export lists once,
+not to optimise the reader.
 
 **8.2 — `.claude/skills/step/SKILL.md`. Settled before step 1: retargeted, as a standalone
 `chore` outside every step's file list.** Kept here because what it turned out to be is a
@@ -646,3 +695,17 @@ put two unrelated claims behind one name. And its natural scope is `docs/` plus 
 wider than anything else here. **Decide in step 2**, once the scan helper exists and its cost is
 known. If it is deferred, it goes into `docs/backlog.md` as its own entry rather than staying a
 paragraph in a plan — which is the failure the register was built to stop.
+
+**Settled in step 2: deferred, and recorded as [F9](../backlog.md#f9).** The two reasons above
+both survived contact with the helper, and building it added a third. The machinery does not
+transfer as cleanly as the shape suggests: the export-list reader — the part that was the
+unknown — is no help at all to a link checker, which needs only `fs` and a heading-to-anchor
+slugifier. What would be shared is the markdown regex scan, which is nine lines. So the "same
+shape of scan over the same files" argument buys almost nothing, while the scope difference
+(`docs/` is 20+ files against four READMEs) and the two-claims-behind-one-name objection are
+unchanged. Deferring it costs a future session the nine lines and no more.
+
+The cost side is now measured rather than assumed: one cold export-list read is 344 ms for
+`eval-core` and 210–235 ms for each of the other four entries (§ 4 step 2's wall-clock
+criterion), so the four gates are well under a second in total and a fifth check would not have
+been blocked on cost. It is deferred on scope and on what it claims, not on speed.

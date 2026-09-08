@@ -117,12 +117,14 @@ release, not a free change.
 | [E6](#e6) | `exit` has no mark to bound its scan | core | fix | Open — **[Phase 2 design constraint](#phase-2-preconditions)** |
 | [F1](#f1) | No `configurations.ci` on the `test` target — **two projects, not one** | signals, forms | fix + decision | **Retired — fixed, no thresholds** |
 | [F2](#f2) | One `CHANGELOG.md` for three independently-versioned packages | repo | decision | Open |
-| [F3](#f3) | Documented-symbol drift gate | core | fix | Open |
+| [F3](#f3) | Documented-symbol drift gate — **three packages, four READMEs** | core, signals, forms | fix | **Retired — built and green** |
 | [F4](#f4) | README-execution gate for `eval-core` and `eval-signals` | core, signals | fix / decide-then-drop | Open |
 | [F5](#f5) | The `js-sha256` peer range is locked to a dead minor | core | decision | Open |
 | [F6](#f6) | CONTRIBUTING's "Code style" describes a config that never existed here | repo | decision (editorial) | Open |
 | [F7](#f7) | `eval-core`'s Jest run warns about a worker process | core | fix | Open — **12 summaries, never an entry** |
 | [F8](#f8) | `eval-forms@0.2.0` is untagged; CLAUDE.md describes a pre-Phase-6 repo | repo | fix | Open |
+| [F9](#f9) | No gate on document cross-references — the register's own dangling links | repo | fix | Open — deferred by [plan](gates/plan.md) § 8.4 |
+| [F10](#f10) | The drift gate covers documented-**and-imported** symbols only | core, signals, forms | fix | Open — the gap [F3](#f3) leaves |
 | [R1](#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -1204,7 +1206,43 @@ Related: [F8](#f8), which is the same class of drift reaching the git tags.
 <a id="f3"></a>
 ## F3 — Documented-symbol drift gate
 
-**Package** core · **Kind** fix · **Status** Open
+**Package** core, signals **and** forms · **Kind** fix · **Status** **Retired — built, green,
+and probed**, [`docs/gates/plan.md`](gates/plan.md) step 2, 2026-09-07
+
+> **What shipped.** Four gate specs — `modules/eval-core/src/public-api.spec.ts`,
+> `modules/eval-signals/src/public-api.spec.ts`, and one per `eval-forms` entry point under
+> `reactive/src/` and `signals/src/` — over an export-list reader built with the TypeScript
+> compiler API, so type-only exports resolve (§ 1.1's `ExpressionRules` is asserted directly).
+> The reader is triplicated, one copy per project, because `allow: []` on
+> `@nx/enforce-module-boundaries` permits no cross-project helper import and § 6 gate 1 permits
+> no non-spec file; see [`docs/gates/plan.md`](gates/plan.md) § 8.1 for what retires that.
+>
+> **The published/unpublished check found its five symbols on the first run**, exactly as § 3.2
+> predicted: `ParserService`, `DiscoveryService`, `EvalContext`, `EvalScope` and
+> `EvalScopeOptions` were exported, documented in the root `README.md`, and absent from
+> `modules/eval-core/README.md`. All five are now documented in the package README — no
+> exception list exists anywhere in the gate.
+>
+> **Three limits, all deliberate, and the first is the one to read before relying on this
+> entry being closed.**
+>
+> 1. **Only identifiers inside an `import { … } from '@zvenigora/…'` statement are checked** —
+>    which does **not** include this entry's own motivating example. `trackTime` is an
+>    `EvalOptions` key, not an exported symbol, and appears in no import statement in any
+>    README; the gate would have stayed green through the Phase 1 step 6 divergence described
+>    below. What it catches is that divergence's *shape* for the subset that is imported by
+>    name — which is how it found five real instances on its first run.
+>
+>    **The exported surface this leaves unwatched is [F10](#f10)**, opened rather than folded in
+>    here: three `/reactive` symbols are documented in `modules/eval-forms/README.md` and named
+>    in no import, so renaming them keeps every gate green. That is a coverage gap with its own
+>    fix, not a caveat on this mechanism.
+> 2. No gate covers the bare `@zvenigora/ng-eval-forms` specifier: no README imports from it
+>    today, so the check would assert over the empty set. [D10](#d10) creates the subject, which
+>    makes the third `eval-forms` gate step 5's obligation — recorded in
+>    `reactive/src/public-api.spec.ts`'s docstring, not only here.
+> 3. Nothing detects a **fifth** README that no gate reads; that is the plan's risk 7, a stated
+>    refusal rather than an unfilled slot.
 
 Not a defect in shipped behaviour; a gap in what the suite can catch.
 
@@ -1408,6 +1446,86 @@ context, so each new session started from a description of the repository one ph
 the "active plan" pointer aimed at a document the same file said did not exist.
 
 **Open: the tag, and whether 0.2.0 is actually on npm.**
+
+<a id="f10"></a>
+## F10 — The drift gate covers documented-**and-imported** symbols, not documented ones
+
+**Package** core, signals **and** forms · **Kind** fix · **Status** Open — the coverage gap
+[F3](#f3) leaves behind, opened 2026-09-08
+
+[F3](#f3) is retired and its gate is green, and it now reads — including in its own title — as
+"documented symbols do not drift". **What it actually asserts is that documented *and imported*
+symbols do not drift.** The gate scans `import { … } from '@zvenigora/…'` statements, so an
+exported symbol a README documents by any other means is outside it entirely.
+
+This is a gap in coverage, not a caveat on the mechanism, which is why it is here rather than in
+F3's limits list: F3's three limits describe what its gate deliberately does not attempt; this
+describes a class of exported surface that no gate in the repository watches.
+
+**Measured today**, in `modules/eval-forms/README.md`:
+
+| Symbol | Exported from | Documented at | In an `import`? |
+| ------ | ------------- | ------------- | --------------- |
+| `createControlSource` | `/reactive` | `:159`, the API table | no |
+| `FormBinding` | `/reactive` | `:156` and `:497`, prose and table | no |
+| `FieldSchema` | `/reactive` | `:157` table, `:177` interface block | no |
+
+All three are real published surface, all three are documented well enough that a consumer will
+use them, and renaming any of them leaves every gate green. `bindFieldProperties` sits in the
+same table and *is* covered — only because a different section happens to import it.
+
+**Two shapes of fix, and they are not the same size.**
+
+- **Cheap and partial**: scan for the symbols' *names* as they appear in prose or tables, not
+  only in import statements. This finds these three, and it false-fails the first time a README
+  legitimately names a symbol that was removed on purpose, or names a word that is also a
+  symbol. That is close to the shape [F3](#f3) § 1.1 rejected, and it should not be adopted
+  without an answer to it.
+- **Sound and larger**: assert the other direction — every symbol in a package's export list is
+  documented *somewhere* in that package's README. That is a real completeness gate rather than
+  a drift gate, and it starts red: `eval-core` exports 74 names and its README names a small
+  fraction of them, so adopting it means deciding what "documented" means for an internal type
+  alias. That decision is the actual work here, and it is why this is an entry rather than a
+  step someone can pick up in an hour.
+
+Whoever takes it should also rename F3's summary line, or leave it retired and let this entry
+carry the claim — but the two should not both stand as written.
+
+<a id="f9"></a>
+## F9 — No gate on document cross-references
+
+**Package** repo · **Kind** fix · **Status** Open — considered and deferred by
+[`docs/gates/plan.md`](gates/plan.md) § 8.4, step 2, 2026-09-07
+
+Nothing resolves a `](path#anchor)` link in this repository's documents against the filesystem or
+against the target's headings. The evidence for wanting one is this register's own history: the
+commit that created it shipped **two links to a section it had not written** — in the commit
+arguing that dangling cross-references are how [A8](#a8) stayed invisible for five phases
+([R4](#r4)). The documents here cite each other heavily and by anchor, so the failure is
+available on every edit.
+
+**Why it was deferred rather than folded into step 2**, now that the machinery exists and can be
+compared rather than guessed at:
+
+- **It shares almost nothing with the drift gate.** The part that was the unknown — the
+  TypeScript export-list reader — is no use to a link checker, which needs `fs` and a
+  heading-to-anchor slugifier. What would be shared is the markdown scan, which is nine lines.
+  "The same shape of scan over the same files" turned out to be the weakest half of the argument.
+- **It is a different claim.** F3 guards the public API surface; this guards document integrity.
+  Folding it into `public-api.spec.ts` would put two unrelated claims behind one name, and the
+  first person to see that spec red would learn nothing from its name.
+- **Its scope is wider than anything in Track 3** — `docs/` is 20+ files against four READMEs —
+  and it has no natural project to live in, which is the same constraint that settled § 8.1.
+
+**Not deferred on cost.** One cold export-list read measures 344 ms (`eval-core`) and 210–235 ms
+for each other entry, so the gate this would join is well under a second in total.
+
+**What it would take**, for whoever picks it up: resolve every `](relative/path)` against the
+filesystem, and every `#anchor` against the headings of the target file, over `docs/**/*.md` plus
+the four READMEs. The anchor half is the one with a real decision in it — this repository writes
+some anchors as explicit `<a id="…">` tags and relies on generated heading slugs elsewhere, so a
+checker must handle both or it will false-fail on correct links, which is the shape
+[F3](#f3) § 1.1 rejected.
 
 ---
 

@@ -6,9 +6,72 @@ The sources for this package are in the main [@zvenigora/ng-eval](https://github
 
 This library was generated with [Nx](https://nx.dev).
 
-Full documentation — parsing, evaluation, compilation, async evaluation, discovery, and the `caseInsensitive` / state / scope options — is in the [repository README](https://github.com/zvenigora/ng-eval#readme). This file documents the options that need more than a snippet.
+Full documentation — parsing, evaluation, compilation, async evaluation, discovery, and the `caseInsensitive` / state / scope options — is in the [repository README](https://github.com/zvenigora/ng-eval#readme). This file names the exported entry points, then documents the options that need more than a snippet.
 
 **Security.** [`SECURITY.md`](https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md) covers the threat model, the prototype-pollution and call-sandboxing protections, and their documented limits. It also records [reviewed external advisories](https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md#reviewed-external-advisories) — advisories raised against related projects and whether this library shares the defect. [GHSA-pj3p-xpg7-h7gw](https://github.com/Zvenigora/jse-eval/security/advisories/GHSA-pj3p-xpg7-h7gw), the case-insensitive guard bypass reported against the separate `@zvenigora/jse-eval` package, **does not apply to `@zvenigora/ng-eval-core`**: this library does not depend on `jse-eval`, and the advisory's proof-of-concept was run against this evaluator and is blocked. Note that ng-eval does not attempt to be a complete sandbox — see the threat model before evaluating untrusted expressions.
+
+## Exported entry points
+
+The [repository README](https://github.com/zvenigora/ng-eval#readme) walks through each of these in full. They are named here because they are what installing this package gives you: a symbol documented only in the repository README is one the consumer who installed the package cannot read about.
+
+`EvalService` (evaluation) and `CompilerService` (compile once, call repeatedly) are used throughout the sections below.
+
+### Parsing — `ParserService`
+
+```javascript
+import { ParserService } from '@zvenigora/ng-eval-core';
+
+private service: ParserService;
+...
+const ast = service.parse('1 + foo'); // an ESTree AST
+```
+
+### Discovery — `DiscoveryService`
+
+Finds every node of a given type in an expression.
+
+```javascript
+import { DiscoveryService } from '@zvenigora/ng-eval-core';
+
+private service: DiscoveryService;
+...
+const expressions = service.extract('1 + 2 * a', 'BinaryExpression'); // 2 nodes
+```
+
+### Scopes — `EvalContext`, `EvalScope`, `EvalScopeOptions`
+
+An evaluation context may carry prior scopes, each with its own `namespace`, `thisArg` and case sensitivity. Bare identifiers are read from the context itself; a namespaced scope is reached through its namespace.
+
+```javascript
+import { EvalContext, EvalScope, EvalScopeOptions,
+  EvalService } from '@zvenigora/ng-eval-core';
+
+private service: EvalService;
+...
+const cat = {
+  name: 'Miss Kitty',
+  num: 3,
+  action: function(args: string[], n: number, t: string) {
+    return this.name + ' ' + args.join(' ') + ' ' + n + ' ' + t;
+  }
+};
+
+// `args` is read as a bare identifier, so it belongs to the context itself
+// rather than to the scope.
+const evalContext = new EvalContext({ args: ['says', 'meow'] }, {});
+
+const catOptions: EvalScopeOptions = {
+  global: false,
+  caseInsensitive: false,
+  namespace: 'cat',
+  thisArg: cat
+};
+evalContext.priorScopes.push(EvalScope.fromObject(cat, catOptions));
+
+const result = service.simpleEval('cat.action(args, cat.num, "times")', evalContext);
+```
+
+Note that an `EvalContext` may back any number of evaluations, and that `caseInsensitive` set on the context alone does not reach the walk — pass it in the evaluation options too.
 
 ## Options
 
