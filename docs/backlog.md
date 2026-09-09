@@ -118,7 +118,7 @@ release, not a free change.
 | [F1](#f1) | No `configurations.ci` on the `test` target — **two projects, not one** | signals, forms | fix + decision | **Retired — fixed, no thresholds** |
 | [F2](#f2) | One `CHANGELOG.md` for three independently-versioned packages | repo | decision | Open |
 | [F3](#f3) | Documented-symbol drift gate — **three packages, four READMEs** | core, signals, forms | fix | **Retired — built and green** |
-| [F4](#f4) | README-execution gate for `eval-core` and `eval-signals` | core, signals | fix / decide-then-drop | **Half done** — signals gated; core is step 4 |
+| [F4](#f4) | README-execution gate for `eval-core` and `eval-signals` | core, signals | fix / decide-then-drop | **Retired** — both package READMEs gated; root **assessed and dropped** |
 | [F5](#f5) | The `js-sha256` peer range is locked to a dead minor | core | decision | Open |
 | [F6](#f6) | CONTRIBUTING's "Code style" describes a config that never existed here | repo | decision (editorial) | Open |
 | [F7](#f7) | `eval-core`'s Jest run warns about a worker process | core | fix | Open — **12 summaries, never an entry** |
@@ -1301,8 +1301,41 @@ code-running gate and does **not** supersede this one.
 ## F4 — README-execution gate for `eval-core` and `eval-signals`
 
 **Package** core, signals · **Kind** fix (signals) / decide-then-maybe-drop (core) · **Status**
-**Half done** — `eval-signals` gated 2026-09-08 ([`docs/gates/plan.md`](gates/plan.md) step 3);
-`eval-core` still open, and step 4 decides it
+**Retired — three states, no pending work**, [`docs/gates/plan.md`](gates/plan.md) steps 3 and 4,
+2026-09-08
+
+> **Where each file landed.** The verdict is per file, not per package, because the two
+> `eval-core` READMEs fail differently — the plan's binary was amended to allow it rather than
+> the answer fitted to the form.
+>
+> | File | State |
+> | ---- | ----- |
+> | `modules/eval-signals/README.md` | **Gated** — step 3, `src/lib/readme-examples.spec.ts`, 7 cases over 9 `ts` blocks |
+> | `modules/eval-core/README.md` | **Gated** — step 4, `src/lib/readme-examples.spec.ts`, 9 cases over **12** `javascript` blocks |
+> | `README.md` (root) | **Assessed and dropped** — step 4, on the fragments |
+>
+> **The root README is a decision, not an omission**, and nothing here should be read as work
+> still queued on it. Measured with the TypeScript parser: **0 of its 11 `javascript` blocks are
+> runnable as printed and 9 do not parse at all** — a bare `...` line and
+> `private service: EvalService;` outside a class body.
+>
+> The ground is **volume and ownership**: gating it means rewriting the opening style of 9 of 11
+> blocks, a whole-file documentation rewrite [`plan.md`](gates/plan.md) § 8.3 keeps open as its
+> own question; 2 of those 9 additionally carry interior `...` elisions that stand in for prose
+> and cannot be completed without deleting what the document prints. Gating it *without*
+> rewriting it would put the whole program into the substitution list of every case — F3's
+> "considered and rejected" shape, where the transcription declares the missing bindings and
+> nobody notices. **Not** because a fragment style makes gating impossible: the spec never
+> consumes the README's opening line either way. See
+> [`step-4-summary.md`](gates/step-4-summary.md) § 3, which corrects a first draft that gave
+> "subtractive" as the reason — true of 2 of the 9 blocks, not of the file.
+>
+> **The package README was the opposite case**: 8 of 12 blocks parsed and needed only bindings
+> the document already implied. The other 4 carried the same `private service:` shape — **three
+> of them added by step 2 itself**, which recorded that they changed nothing; see
+> [`step-4-summary.md`](gates/step-4-summary.md) § 2 and the correction in
+> [`step-2-summary.md`](gates/step-2-summary.md) § 4. All four now open `const service =
+> inject(X);`.
 
 > **The `eval-signals` half shipped**, as
 > `modules/eval-signals/src/lib/readme-examples.spec.ts`: seven cases over the README's nine `ts`

@@ -21,9 +21,10 @@ The [repository README](https://github.com/zvenigora/ng-eval#readme) walks throu
 ```javascript
 import { ParserService } from '@zvenigora/ng-eval-core';
 
-private service: ParserService;
-...
-const ast = service.parse('1 + foo'); // an ESTree AST
+const service = inject(ParserService);   // Angular's inject(), or constructor injection
+
+const ast = service.parse('1 + foo');    // an ESTree AST
+ast.type;                                // 'BinaryExpression'
 ```
 
 ### Discovery — `DiscoveryService`
@@ -33,9 +34,10 @@ Finds every node of a given type in an expression.
 ```javascript
 import { DiscoveryService } from '@zvenigora/ng-eval-core';
 
-private service: DiscoveryService;
-...
-const expressions = service.extract('1 + 2 * a', 'BinaryExpression'); // 2 nodes
+const service = inject(DiscoveryService);
+
+const expressions = service.extract('1 + 2 * a', 'BinaryExpression');
+expressions.length;   // 2
 ```
 
 ### Scopes — `EvalContext`, `EvalScope`, `EvalScopeOptions`
@@ -46,8 +48,8 @@ An evaluation context may carry prior scopes, each with its own `namespace`, `th
 import { EvalContext, EvalScope, EvalScopeOptions,
   EvalService } from '@zvenigora/ng-eval-core';
 
-private service: EvalService;
-...
+const service = inject(EvalService);
+
 const cat = {
   name: 'Miss Kitty',
   num: 3,
@@ -69,6 +71,7 @@ const catOptions: EvalScopeOptions = {
 evalContext.priorScopes.push(EvalScope.fromObject(cat, catOptions));
 
 const result = service.simpleEval('cat.action(args, cat.num, "times")', evalContext);
+// 'Miss Kitty says meow 3 times'
 ```
 
 Note that an `EvalContext` may back any number of evaluations, and that `caseInsensitive` set on the context alone does not reach the walk — pass it in the evaluation options too.
@@ -82,15 +85,16 @@ Set `trackTime` to `true` to accumulate per-node-type timings for an evaluation.
 ```javascript
 import { EvalService } from '@zvenigora/ng-eval-core';
 
-private service: EvalService;
-...
+const service = inject(EvalService);
+
 const context = { a: 2, b: 3, c: 4 };
 const state = service.createState(context, { trackTime: true });
 
 const result = service.eval('a + b * c', state); // 14
 
-state.nodeTimings.get('BinaryExpression'); // { count: 2, total: 0.081 }
-state.nodeTimings.get('Identifier');       // { count: 3, total: 0.014 }
+// `count` is exact; `total` is wall-clock in milliseconds.
+state.nodeTimings.get('BinaryExpression'); // { count: 2, total: <ms> }
+state.nodeTimings.get('Identifier');       // { count: 3, total: <ms> }
 ```
 
 Totals are in milliseconds and **inclusive** of child nodes, so nested node types overlap and summing them exceeds the walk's duration — the figures are for comparing node types against each other, not for a breakdown that adds up. They accumulate for the life of the state rather than per `eval` call, so under the `createState` + repeated `eval` style the counts are running totals; use a fresh state for per-run figures.
@@ -100,9 +104,18 @@ Totals are in milliseconds and **inclusive** of child nodes, so nested node type
 `trackTime` configures the hook registry the state creates for itself. If you pass your own registry through `options.hooks`, that registry is yours and options never configure it — install the hook explicitly instead:
 
 ```javascript
-import { createTimingHook } from '@zvenigora/ng-eval-core';
+import { EvalHooks, createTimingHook } from '@zvenigora/ng-eval-core';
+
+const hooks = new EvalHooks();   // yours, so `trackTime` never configures it
+const state = service.createState(context, { hooks, trackTime: true });
+
+service.eval('a + b * c', state);
+state.nodeTimings.size;          // 0 — the option did not reach your registry
 
 const off = createTimingHook().install(state.hooks);
+
+service.eval('a + b * c', state);
+state.nodeTimings.get('BinaryExpression');   // { count: 2, total: <ms> }
 ```
 
 ### Evaluation hooks
@@ -112,6 +125,7 @@ Hooks let you observe an evaluation as it happens: a callback per AST node, or p
 ```javascript
 import { EvalService } from '@zvenigora/ng-eval-core';
 
+const service = inject(EvalService);
 const state = service.createState({ a: 2, b: 3 });
 
 const off = state.hooks.on('after', 'BinaryExpression', (event) => {
@@ -155,7 +169,12 @@ state.hookErrors.some(
 By default an error thrown by a hook is collected rather than propagated, so a faulty observer cannot break the evaluation it is observing. Collected errors are read back from the state:
 
 ```javascript
+const service = inject(EvalService);
+const context = { a: 2, b: 3 };
+
 const state = service.createState(context, { onHookError: 'collect' }); // the default
+state.hooks.on('after', 'Identifier', () => { throw new Error('faulty observer'); });
+
 service.eval('a + b', state);
 state.hookErrors; // [{ phase, nodeType, error }, ...]
 ```
@@ -169,6 +188,9 @@ Two things to know about it:
 
   ```javascript
   import { EvalHooks } from '@zvenigora/ng-eval-core';
+
+  const service = inject(EvalService);
+  const context = { a: 2, b: 3 };
 
   const hooks = new EvalHooks({ onHookError: 'throw' });
   const state = service.createState(context, { hooks });
@@ -185,6 +207,8 @@ These come from two different places, and **the presence of `error` is what tell
 **1. Evaluation actually failed.** The unwinder closes every node still open and supplies the `error`:
 
 ```javascript
+const service = inject(EvalService);
+
 const boom = () => { throw new Error('kaboom'); };
 const state = service.createState({ boom });
 const seen = [];
@@ -203,7 +227,9 @@ try { service.eval('1 + boom()', state); } catch { /* rethrown */ }
 
 ```javascript
 import { CompilerService, EvalService } from '@zvenigora/ng-eval-core';
-// `service` is an EvalService, `compiler` a CompilerService
+
+const service = inject(EvalService);
+const compiler = inject(CompilerService);
 
 const state = service.createState({ obj: {} });
 const seen = [];

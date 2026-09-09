@@ -164,6 +164,31 @@ This moves step 4's input: `modules/eval-core/README.md` now has **11** `javascr
 8. Both the § 4 step 4 inventory paragraph and its exit criterion are corrected in the plan, with
 an instruction to re-count rather than quote.
 
+> ### Superseded by step 4, 2026-09-08 — two errors, and one of them flattered a drop
+>
+> Corrected here, where the claim was made, rather than only in the later summary.
+>
+> **1. "The added blocks are in the file's prevailing fragment style, so they change the
+> inventory without changing the question" — wrong, and wrong in the direction that made step
+> 4's drop look better supported.** Measured with the TypeScript parser, the three blocks this
+> step added do not **parse**: `private service: X;` outside a class body plus a bare `...` line
+> are syntax errors, not merely missing bindings. Before this step
+> `modules/eval-core/README.md` had **one** such block; after it, **four**. So this step tripled
+> the unparseable count in the file step 4 then had to judge — in the exact shape that judgement
+> was about — and said it had changed nothing. Step 4 rewrote all four to
+> `const service = inject(X);`, which parses.
+>
+> **2. Both counts were one short.** The file has **12** `javascript` blocks and had **9**
+> before this step, not 11 and 8: the `EvalHooks` block sits inside a bullet and its fence is
+> **indented**, so a `^```` scan skips it. The plan's original 8 and this step's corrected 11
+> share the error.
+>
+> **What caught both was step 4's criterion 1 — "re-count rather than quoting this line".**
+> Quoting the numbers written here would have hidden this step's own three blocks inside a
+> total nobody re-derived, and left the indented block uncounted in a second document. The
+> lesson is the criterion's, not this step's: a count recorded in one document and quoted in the
+> next is a fact with no owner.
+
 ## 5. Confirmed load-bearing — five arms, and which case went red in each
 
 Four rename arms as § 4 step 2 requires, plus two for the reader itself. **Every probe edit was

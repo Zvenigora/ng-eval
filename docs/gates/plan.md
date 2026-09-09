@@ -504,22 +504,55 @@ ungated, and the five defects that motivated the whole track keep their least-co
 harness built to prop up an ungateable document is the failure mode this whole track exists to
 avoid, and dropping here is a legitimate exit, not a failed step.
 
+> **Amended during execution — the verdict is per file, not per step.** This section and its
+> criteria were written as one decision covering both READMEs. Measured, the two files fail
+> differently, and forcing one verdict would have meant fitting the answer to the form:
+>
+> - **Root `README.md`: 0 of 11 blocks runnable as printed**, 9 of them not even *parsing* — a
+>   bare `...` line and `private service: EvalService;` outside a class body. Gating it means
+>   rewriting the opening style of **9 of 11 blocks**, which is the whole-file documentation
+>   rewrite § 8.3 defers to its own argument; 2 of those 9 additionally carry interior `...`
+>   elisions standing in for prose, which cannot be completed without deleting what the document
+>   prints. **Dropped.**
+> - **`modules/eval-core/README.md`: 8 of 12 parse**, needing only a `service`, `state` or
+>   `context` binding the document already implies — which is step 3's completability test,
+>   passed. Of its 4 exceptions, **3 were introduced by step 2 itself**. **Gated.**
+>
+> **Neither count is this document's to own.** An earlier draft of this amendment said "7 of
+> 11", written before the re-count found the **indented** `EvalHooks` fence that a `^```` scan
+> skips — the same error, in the same session that diagnosed it. The owner is
+> [`step-4-summary.md`](step-4-summary.md) § 1: cite it rather than copying these numbers again.
+>
+> So "If gated" and "If dropped" below both apply, each to its own file, and F4 re-scopes to
+> three states rather than two: `eval-signals` gated (step 3), `eval-core`'s package README gated
+> (step 4), root README **assessed and dropped** with the fragment reason. The root is a
+> decision, not an omission, and F4 must not read as though it were still pending there.
+>
+> **The measurement that produced this split also caught an error in step 2**, and criterion 1's
+> "re-count rather than quoting this line" is what caught it — see `step-4-summary.md` § 2 and
+> the correction added to `step-2-summary.md` § 4.
+
 **Exit criteria**
 - **The block inventory is stated before the decision**: the count of `javascript` blocks per
-  file (11 and 11 as of step 2 — 11 and 8 when this plan was written) and how many of each are
-  runnable as printed. The decision must cite those numbers, so "ungateable" is a claim about
-  fragments rather than about a fence tag. **Re-count rather than quoting this line**: step 2
-  changed one of the two numbers, and step 3 may change nothing here but sets the same
-  precedent.
+  file and how many of each are runnable as printed. The decision must cite those numbers, so
+  "ungateable" is a claim about fragments rather than about a fence tag. **Re-count rather than
+  quoting this line** — and this line no longer carries numbers to quote, which is the fix this
+  criterion earned twice: it once read "11 and 11 as of step 2 — 11 and 8 when this plan was
+  written", and **both** of those package-README figures were one short of the indented fence.
+  The measured inventory has exactly one owner, [`step-4-summary.md`](step-4-summary.md) § 1.
 - The decision is recorded with its evidence, before any spec exists.
 - **If gated**: step 3's criteria apply with `javascript` substituted for `ts` throughout, and
   the per-file block count is non-zero and stated. Any block completed in the README is named,
   and if completion touched the fragments' prevailing style the summary says how far it went and
   what it left.
-- **If dropped**: `docs/backlog.md` F4 records that `eval-core` was assessed and dropped, with
-  the reason — which must be about the fragments, since the fence tag is settled above — and F4
-  is re-scoped to `eval-signals` only rather than left implying pending work. This is a complete
-  step.
+- **If dropped**: `docs/backlog.md` F4 records that the dropped file was assessed and dropped,
+  with the reason — which must be about the fragments, since the fence tag is settled above — and
+  F4 is re-scoped so nothing in it implies pending work there. This is a complete step.
+
+  > **As executed**: the root `README.md` is the dropped file, and F4 re-scopes to the three
+  > states in the amendment above — not to "`eval-signals` only", which the original wording
+  > anticipated and which would have erased the package README's gate along with the root's
+  > decision.
 - `nx run-many -t lint test` green.
 
 ### Step 5 — The worker warning, `applyErrorPolicy`'s block, and the retrospect
