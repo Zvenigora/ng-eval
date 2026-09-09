@@ -118,13 +118,14 @@ release, not a free change.
 | [F1](#f1) | No `configurations.ci` on the `test` target — **two projects, not one** | signals, forms | fix + decision | **Retired — fixed, no thresholds** |
 | [F2](#f2) | One `CHANGELOG.md` for three independently-versioned packages | repo | decision | Open |
 | [F3](#f3) | Documented-symbol drift gate — **three packages, four READMEs** | core, signals, forms | fix | **Retired — built and green** |
-| [F4](#f4) | README-execution gate for `eval-core` and `eval-signals` | core, signals | fix / decide-then-drop | Open |
+| [F4](#f4) | README-execution gate for `eval-core` and `eval-signals` | core, signals | fix / decide-then-drop | **Half done** — signals gated; core is step 4 |
 | [F5](#f5) | The `js-sha256` peer range is locked to a dead minor | core | decision | Open |
 | [F6](#f6) | CONTRIBUTING's "Code style" describes a config that never existed here | repo | decision (editorial) | Open |
 | [F7](#f7) | `eval-core`'s Jest run warns about a worker process | core | fix | Open — **12 summaries, never an entry** |
 | [F8](#f8) | `eval-forms@0.2.0` is untagged; CLAUDE.md describes a pre-Phase-6 repo | repo | fix | Open |
 | [F9](#f9) | No gate on document cross-references — the register's own dangling links | repo | fix | Open — deferred by [plan](gates/plan.md) § 8.4 |
 | [F10](#f10) | The drift gate covers documented-**and-imported** symbols only | core, signals, forms | fix | Open — the gap [F3](#f3) leaves |
+| [F11](#f11) | A gated README can only import from its own specifier | core, signals, forms | fix | Open — bounds [F3](#f3) and [F4](#f4) |
 | [R1](#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -1237,6 +1238,13 @@ and probed**, [`docs/gates/plan.md`](gates/plan.md) step 2, 2026-09-07
 >    here: three `/reactive` symbols are documented in `modules/eval-forms/README.md` and named
 >    in no import, so renaming them keeps every gate green. That is a coverage gap with its own
 >    fix, not a caveat on this mechanism.
+>
+>    **[F11](#f11) is the same shape one axis over**: each gate checks its README against **one**
+>    specifier, so an import line naming a *different* `@zvenigora/…` package in a gated file is
+>    scanned by nothing. Step 3 hit it for real and left an import out of
+>    `modules/eval-signals/README.md` rather than print an unchecked one. F10 bounds which
+>    symbols are checked; F11 bounds which specifiers. Both were found from inside the work, and
+>    together they are what "the READMEs are gated" is entitled to mean.
 > 2. No gate covers the bare `@zvenigora/ng-eval-forms` specifier: no README imports from it
 >    today, so the check would assert over the empty set. [D10](#d10) creates the subject, which
 >    makes the third `eval-forms` gate step 5's obligation — recorded in
@@ -1292,7 +1300,41 @@ code-running gate and does **not** supersede this one.
 <a id="f4"></a>
 ## F4 — README-execution gate for `eval-core` and `eval-signals`
 
-**Package** core, signals · **Kind** fix (signals) / decide-then-maybe-drop (core) · **Status** Open
+**Package** core, signals · **Kind** fix (signals) / decide-then-maybe-drop (core) · **Status**
+**Half done** — `eval-signals` gated 2026-09-08 ([`docs/gates/plan.md`](gates/plan.md) step 3);
+`eval-core` still open, and step 4 decides it
+
+> **The `eval-signals` half shipped**, as
+> `modules/eval-signals/src/lib/readme-examples.spec.ts`: seven cases over the README's nine `ts`
+> blocks, with the two not covered named in the docstring and the reason given for each.
+>
+> **It found the defect the plan predicted, and a limit of value-transcription the plan did not
+> name.** The defect: `Dependency introspection` printed `// 30` against identifiers the document
+> never declared — fixed in the README, which now declares its own three signals. The limit,
+> which is a property of the gate rather than an error in the document: `## Quick start`'s
+> `// 40  — not recomputed` is a **behavioural** claim its printed value cannot discriminate,
+> since a signal that *did* recompute produces 40 as well. The case asserts a recompute count
+> beside it, listed as a substitution because the README prints no such number — and probed:
+> made the resolver subscribe to every key and **only** that case went red, on the count, with
+> the printed `40` still `40`.
+>
+> **The one-program condition was demonstrated, not asserted** — both halves. With the block
+> restored to its bare identifiers and bound to the Quick start's fields, a per-block resetting
+> fixture reported **green** on the wrong `// 30` while the one-program arrangement reported
+> **red** (40 ≠ 30). The green half is the one that reproduces the Phase 4 trap, and it
+> materialised.
+>
+> **The limit this gate keeps**, restated because it is easy to read a green suite as more:
+> nothing connects a case to the block it mirrors except a human. Editing a printed value in the
+> README alone does not turn anything red; what the gate catches is the *library* drifting from
+> what a case transcribed. See [`docs/gates/step-3-summary.md`](gates/step-3-summary.md) § 4.
+>
+> **[F11](#f11) bounds this gate too**, and step 3 is where it surfaced: an execution spec
+> substitutes its import line (§ 1.2), and the drift gate checks only the README's own
+> specifier, so a **cross-package** import in a gated README is neither resolved nor run. That
+> is why `## Using the adapter directly` names `EvalService`'s package in a comment instead of
+> printing an import for it. With [F10](#f10), these are the two coverage limits this track
+> found from inside the work rather than from planning.
 
 `readme-examples.spec.ts` exists for `eval-forms/reactive` **and** `eval-forms/signals`, and for
 neither other package (verified 2026-09-06). The five defects that justify the gate are in the other
@@ -1490,6 +1532,45 @@ same table and *is* covered — only because a different section happens to impo
 
 Whoever takes it should also rename F3's summary line, or leave it retired and let this entry
 carry the claim — but the two should not both stand as written.
+
+<a id="f11"></a>
+## F11 — A gated README can only import from its own specifier
+
+**Package** core, signals **and** forms · **Kind** fix · **Status** Open — the second coverage
+limit Track 3 found from inside the work, opened 2026-09-08
+
+Each drift gate built in [F3](#f3) checks one README against **one** specifier's export list:
+`modules/eval-signals/README.md` against `@zvenigora/ng-eval-signals`, `eval-forms`' against
+`/reactive` and `/signals` separately, and so on. **An import line naming a different
+`@zvenigora/…` package in that same file is scanned by nothing** — not by that file's gate, which
+filters on its own specifier, and not by the other package's gate, which reads only its own
+README.
+
+This is not hypothetical and the track walked into it in step 3. Completing
+`## Using the adapter directly` in `modules/eval-signals/README.md` required an `EvalService`,
+which is `@zvenigora/ng-eval-core` surface. The block names it in a comment rather than an
+`import` line **for this reason**: printing the import would have added the first unscanned
+import line to a gated file, buying documentation completeness and zero coverage. That is a
+defensible call for one block and a bad general rule — cross-package examples are exactly what a
+three-package workspace's documentation should contain.
+
+**It bounds [F4](#f4) as well as F3.** An execution spec substitutes its imports anyway (§ 1.2),
+so a cross-package import line is unchecked in both directions: nothing verifies the symbol
+exists, and nothing runs the line as printed.
+
+**The fix is small and its cost is a decision, not code.** Each gate takes the set of specifiers
+appearing in its README rather than a single constant, and resolves each against that specifier's
+own export list — the reader in `export-list.spec.ts` already maps all five specifiers, so the
+machinery exists. What has to be decided first is **which gate owns a cross-package line**: the
+README's own package, which is where the failure should be reported, or the exporting package,
+which is where a rename happens. Owning it in the README's package means a rename in `eval-core`
+turns `eval-signals`' suite red, which is the right report and a cross-project coupling this
+workspace has so far avoided in its test targets.
+
+Related: [F10](#f10), the other limit of the same shape — the gate covers documented-**and-
+imported** symbols, so an exported symbol named only in prose is unwatched. F10 is about which
+*symbols* are checked; this is about which *specifiers*. Together they bound what "the READMEs
+are gated" is entitled to mean.
 
 <a id="f9"></a>
 ## F9 — No gate on document cross-references

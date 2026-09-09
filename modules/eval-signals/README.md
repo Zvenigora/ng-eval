@@ -100,6 +100,10 @@ re-runs.
 `trackDependencies: true` records what the **last recompute** read:
 
 ```ts
+const price = signal(10);
+const quantity = signal(3);
+const shipping = signal(5);
+
 const total = createEvalSignal('price * quantity', { price, quantity, shipping },
   { trackDependencies: true });
 
@@ -133,10 +137,15 @@ If the source has no reactive surface — a plain object you own and do not want
 nothing can tell the signal it changed, so you say so:
 
 ```ts
+const plainObject = { price: 10, quantity: 3 };
+
 const total = createEvalSignal('price * quantity', plainObject);
+
+total();              // 30
 
 plainObject.quantity = 4;
 total.invalidate();   // the next read re-evaluates
+total();              // 40
 ```
 
 Coarse by construction: it re-evaluates regardless of what changed, or whether anything did.
@@ -189,6 +198,8 @@ The keys of a signal context are read-only. An assignment throws `SignalContextW
 the first read, naming the key and the expression:
 
 ```ts
+const count = signal(1);
+
 const broken = createEvalSignal('count = 5', { count });
 
 try {
@@ -304,8 +315,14 @@ Four things that decide whether this library fits, rather than surprises you lat
 `createSignalContext` is the context on its own, for callers who want `EvalService`:
 
 ```ts
+const price = signal(10);
+const quantity = signal(3);
+const evalService = inject(EvalService);   // from @zvenigora/ng-eval-core
+
 const context = createSignalContext({ price, quantity });
 const total = computed(() => evalService.simpleEval('price * quantity', context));
+
+total();   // 30
 ```
 
 You keep native per-key tracking and lose what the factory adds: compile-once, `dependencies`,
