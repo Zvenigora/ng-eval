@@ -703,7 +703,8 @@ reported once per file that imports it. That is duplication in the output, not i
 
 **What would retire this decision on evidence is a measured number, and it is recorded**:
 `step-2-summary.md` § 3.1. Jest builds the compiler program once per *importing test file*, which
-is seven today and scales with the copies rather than with the packages — so the ~8 s the gates
+is eight as of step 5 — seven at step 2, plus `eval-forms`' third entry-point gate — and scales
+with the copies rather than with the packages, so the ~8 s the gates
 add to a `run-many` is the triplication's cost expressed in seconds. If that figure grows, the
 move is to build the shared spec-utilities location named above and read the export lists once,
 not to optimise the reader.

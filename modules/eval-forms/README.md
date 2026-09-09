@@ -332,7 +332,28 @@ expression that fails here may have been typed into a form builder by an end use
 right response to "the administrator wrote a bad rule" is a field that does not render, not
 an application that throws on every change-detection pass.
 
-Two things are **not** routed through it:
+`applyErrorPolicy` is that decision on its own, exported so an adapter applies the rule rather
+than reimplementing it — and so you can apply it to a rule invocation you drive yourself:
+
+```ts
+import { applyErrorPolicy } from '@zvenigora/ng-eval-forms';
+// SignalContextWriteError is @zvenigora/ng-eval-signals' — neither adapter re-exports it.
+
+const boom = () => { throw new Error('bad rule'); };
+
+applyErrorPolicy(boom);              // undefined — the default
+applyErrorPolicy(boom, 'undefined'); // undefined
+applyErrorPolicy(boom, () => '—');   // '—'
+applyErrorPolicy(boom, 'throw');     // rethrows Error('bad rule')
+applyErrorPolicy(() => 'fine');      // 'fine' — nothing thrown, nothing to police
+
+// A write violation is rethrown whatever the policy says:
+const write = () => { throw new SignalContextWriteError('country', 'country = "CA"'); };
+
+applyErrorPolicy(write, 'undefined'); // throws SignalContextWriteError
+```
+
+Two things are **not** routed through `options.onError`, in either adapter:
 
 - **A parse error throws from `bindFieldProperties` itself**, whatever the policy.
   Expressions are compiled eagerly, so `visible: 'country ==='` fails at bind time — and

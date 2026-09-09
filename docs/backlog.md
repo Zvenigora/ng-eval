@@ -106,7 +106,7 @@ release, not a free change.
 | [D7](#d7) | `toSignal`'s `assertNotInReactiveContext` throws out of the mirror | forms | accepted | Open, documented |
 | [D8](#d8) | `warnOnNestedSignals` runs once, at construction | forms | accepted | Open, documented |
 | [D9](#d9) | § 3.4.3's precedence rule is untested end to end | forms | test gap | Open, Premise retired |
-| [D10](#d10) | `applyErrorPolicy` has no runnable README block | forms | docs | Open |
+| [D10](#d10) | `applyErrorPolicy` has no runnable README block | forms | docs | **Retired — fixed**, and it created [F3](#f3)'s third gate's subject |
 | [D11](#d11) | `/signals` has no worked example | forms | docs | Open |
 | [D12](#d12) | ~20 specs discard the binding and never call `destroy()` | forms | test hygiene | Open |
 | [E1](#e1) | Form-state keys across both adapters | forms | phase | Open — **no phase reserved** |
@@ -955,7 +955,31 @@ Whoever closes this writes the fixture rather than waiting for a consumer to arr
 <a id="d10"></a>
 ## D10 — `applyErrorPolicy` has no runnable README block
 
-**Package** forms · **Kind** docs · **Status** Open
+**Package** forms · **Kind** docs · **Status** **Retired — fixed**,
+[`docs/gates/plan.md`](gates/plan.md) step 5, 2026-09-09
+
+> **What shipped.** A `ts` block in `modules/eval-forms/README.md`'s
+> [When a rule fails](../modules/eval-forms/README.md) section showing the default, an explicit
+> `'undefined'`, a mapping function, the no-throw path — and the **rethrow**, which is the half
+> a reader would not predict: every other failure is policed, a `SignalContextWriteError` is
+> not. Two cases in `reactive/src/lib/readme-examples.spec.ts`, the file
+> [`plan.md`](gates/plan.md) § 4 step 5 names because `applyErrorPolicy` is the shared core's
+> surface and that spec already reaches it through the published specifier.
+>
+> **It also discharged a deferral that resolved as designed.** The block is the **first** import
+> through the bare `@zvenigora/ng-eval-forms` specifier in any README, which is what
+> [F3](#f3)'s third `eval-forms` gate had been waiting for: step 2 declined to build it because
+> a gate over a specifier no README imports asserts over the empty set, recorded the obligation
+> in the `/reactive` gate's docstring rather than leaving it implicit, and step 5 built it once
+> the subject existed — `modules/eval-forms/src/public-api.spec.ts`. Probed: renaming
+> `applyErrorPolicy` reddens it with `modules/eval-forms/README.md:339 imports
+> { applyErrorPolicy } … which it does not export`.
+>
+> **One thing the block does not print**, and it is [F11](#f11)'s second instance:
+> `SignalContextWriteError` belongs to `@zvenigora/ng-eval-signals` and neither `eval-forms`
+> entry point re-exports it, so the block names its package in a comment rather than printing an
+> import line no gate would scan. The class is still execution-gated — the spec imports and
+> constructs it — but not drift-gated, which is exactly the hole F11 describes.
 
 Only a "How it fits together" row — so the one symbol the 0.2.0 release adds to the *released
 primary* surface is documented but not example-gated. Consistent with `createFieldContext` and
@@ -1210,7 +1234,8 @@ Related: [F8](#f8), which is the same class of drift reaching the git tags.
 **Package** core, signals **and** forms · **Kind** fix · **Status** **Retired — built, green,
 and probed**, [`docs/gates/plan.md`](gates/plan.md) step 2, 2026-09-07
 
-> **What shipped.** Four gate specs — `modules/eval-core/src/public-api.spec.ts`,
+> **What shipped.** Five gate specs — four in step 2 and the fifth in step 5, see limit 2 —
+> `modules/eval-core/src/public-api.spec.ts`,
 > `modules/eval-signals/src/public-api.spec.ts`, and one per `eval-forms` entry point under
 > `reactive/src/` and `signals/src/` — over an export-list reader built with the TypeScript
 > compiler API, so type-only exports resolve (§ 1.1's `ExpressionRules` is asserted directly).
@@ -1245,10 +1270,13 @@ and probed**, [`docs/gates/plan.md`](gates/plan.md) step 2, 2026-09-07
 >    `modules/eval-signals/README.md` rather than print an unchecked one. F10 bounds which
 >    symbols are checked; F11 bounds which specifiers. Both were found from inside the work, and
 >    together they are what "the READMEs are gated" is entitled to mean.
-> 2. No gate covers the bare `@zvenigora/ng-eval-forms` specifier: no README imports from it
->    today, so the check would assert over the empty set. [D10](#d10) creates the subject, which
->    makes the third `eval-forms` gate step 5's obligation — recorded in
->    `reactive/src/public-api.spec.ts`'s docstring, not only here.
+> 2. ~~No gate covers the bare `@zvenigora/ng-eval-forms` specifier~~ — **discharged in step 5,
+>    2026-09-09.** Step 2 declined that gate because no README imported through the bare
+>    specifier, so it would have asserted over the empty set, and recorded the obligation here
+>    and in `reactive/src/public-api.spec.ts`'s docstring rather than leaving it implicit.
+>    [D10](#d10) created the subject — `modules/eval-forms/README.md:339` is now the first such
+>    import — and the gate is `modules/eval-forms/src/public-api.spec.ts`. **All three
+>    `eval-forms` entry points are gated**; nothing is owed here.
 > 3. Nothing detects a **fifth** README that no gate reads; that is the plan's risk 7, a stated
 >    refusal rather than an unfilled slot.
 

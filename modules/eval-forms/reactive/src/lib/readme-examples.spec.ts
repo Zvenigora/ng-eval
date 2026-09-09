@@ -6,7 +6,7 @@ import { AbstractControl, FormControl, FormGroup } from '@angular/forms';
 // entry points and rejects one that does not. So the two core symbols below
 // appear here exactly as a consumer writes them, and the `/reactive` ones
 // cannot - see the note on `../public-api` below.
-import { toText, toVisible } from '@zvenigora/ng-eval-forms';
+import { applyErrorPolicy, toText, toVisible } from '@zvenigora/ng-eval-forms';
 // Not on the core's allowed import list, and legal here for the reason
 // `field-schema.spec.ts` records: plan S 5's list governs `src/lib/` and
 // `reactive/src/lib/`, explicitly not specs. Load-bearing rather than
@@ -69,6 +69,13 @@ import {
  *    Taken from the service here, which is what the document's own S 4 note
  *    says they are.
  * 3. The import specifier, below.
+ * 4. `SignalContextWriteError`'s binding, in the `applyErrorPolicy` case. The
+ *    README's block names the class's package in a **comment** rather than
+ *    printing an import for it, because an import line from another package's
+ *    specifier is scanned by no gate - `docs/backlog.md` F11 - so this file
+ *    supplies the import from `@zvenigora/ng-eval-signals` instead. The block
+ *    is therefore not runnable exactly as printed, which is the one place in
+ *    this file that is true and is why it is listed here.
  *
  * Nothing else was invented, and where a block *was* a fragment the fix went
  * into the document rather than into this file - the README's two reactivity
@@ -247,6 +254,33 @@ describe('documented examples', () => {
   });
 
   describe('README - When a rule fails', () => {
+
+    // The `applyErrorPolicy` block (docs/backlog.md D10). It lives in this file
+    // rather than under `signals/` for the reason the two `Coercion` cases do:
+    // `applyErrorPolicy` is the shared core's surface, and this spec already
+    // reaches it through the published specifier.
+    it('should answer the applyErrorPolicy lines', () => {
+      const boom = () => { throw new Error('bad rule'); };
+
+      expect(applyErrorPolicy(boom)).toBeUndefined();
+      expect(applyErrorPolicy(boom, 'undefined')).toBeUndefined();
+      expect(applyErrorPolicy(boom, () => '—')).toBe('—');
+      expect(() => applyErrorPolicy(boom, 'throw')).toThrow('bad rule');
+      expect(applyErrorPolicy(() => 'fine')).toBe('fine');
+    });
+
+    it('should rethrow a write violation from applyErrorPolicy whatever the policy says', () => {
+      // The block's last two lines, and the half a reader would not predict:
+      // every other failure is policed, this one is not. `'undefined'` is the
+      // policy that would otherwise swallow it.
+      const write = () => {
+        throw new SignalContextWriteError('country', 'country = "CA"');
+      };
+
+      expect(() => applyErrorPolicy(write, 'undefined')).toThrow(
+        SignalContextWriteError
+      );
+    });
 
     it('should throw from the bind itself for an expression that does not parse', () => {
       const form = new FormGroup({ country: new FormControl('CA') });
