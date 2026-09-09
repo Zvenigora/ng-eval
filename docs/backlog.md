@@ -121,7 +121,7 @@ release, not a free change.
 | [F4](#f4) | README-execution gate for `eval-core` and `eval-signals` | core, signals | fix / decide-then-drop | **Retired** — both package READMEs gated; root **assessed and dropped** |
 | [F5](#f5) | The `js-sha256` peer range is locked to a dead minor | core | decision | Open |
 | [F6](#f6) | CONTRIBUTING's "Code style" describes a config that never existed here | repo | decision (editorial) | Open |
-| [F7](#f7) | `eval-core`'s Jest run warns about a worker process | core | fix | Open — **12 summaries, never an entry** |
+| [F7](#f7) | Intermittent Jest worker-teardown warning — **no established locus**, possibly Nx/Jest rather than a library | — | fix? | Open — locus corrected 2026-09-09; **not reproducible per project** |
 | [F8](#f8) | `eval-forms@0.2.0` is untagged; CLAUDE.md describes a pre-Phase-6 repo | repo | fix | Open |
 | [F9](#f9) | No gate on document cross-references — the register's own dangling links | repo | fix | Open — deferred by [plan](gates/plan.md) § 8.4 |
 | [F10](#f10) | The drift gate covers documented-**and-imported** symbols only | core, signals, forms | fix | Open — the gap [F3](#f3) leaves |
@@ -1477,13 +1477,66 @@ migration later, and most of it is inherited from presets rather than chosen her
 commentary the section was written to provide. That choice is the work.
 
 <a id="f7"></a>
-## F7 — `eval-core`'s Jest run warns about a worker process
+## F7 — An intermittent Jest worker-teardown warning with no established locus
 
-**Package** core · **Kind** fix · **Status** Open
+**Package** — · **Kind** fix, **possibly not a library defect at all** · **Status** Open —
+**locus corrected 2026-09-09**, previously recorded as an `eval-core` property
 
-`A worker process has failed to exit gracefully` on `eval-core:test`. Confined to `eval-core` —
-confirmed by running each project separately — and present in the baseline of every phase since
-Phase 3.
+**What it is, as measured today.** `A worker process has failed to exit gracefully` appears
+**intermittently under `nx run-many`, and does not reproduce for any project run on its own.**
+Measured on this tree, 2026-09-09, every run with `--skip-nx-cache`:
+
+| Command | Warnings |
+| ------- | -------- |
+| `nx test eval-core` (with and without the new spec) | **0**, twice |
+| `nx test eval-signals` (with and without the new spec) | **0**, twice |
+| `nx test eval-forms` | **0** |
+| `nx run-many -t test --parallel=1` | **0** |
+| `nx run-many -t test --output-style=stream` | **0** |
+| `nx run-many -t lint test build` | **2** on one run, then **0** on the next three |
+| two `nx run-many` invocations racing each other | **0** and **0** |
+
+So it fired twice in roughly a dozen runs, in a multi-target parallel run, and every attempt to
+pin it since — including the same command, and including deliberately loading the machine —
+came back clean.
+
+> **What this replaces.** The entry said: "Confined to `eval-core` — confirmed by running each
+> project separately." **That does not hold today**: run separately, `eval-core` is the *quietest*
+> of the three, at zero. Either the attribution was made under conditions this tree no longer
+> reproduces, or a single clean per-project run was read as confirmation of a locus. The claim
+> travelled through twelve summaries without anyone re-running it, which is the same failure the
+> entry itself is about.
+
+**Say what it now is, not only what it is not.** These are two different investigations and only
+the first is a library defect:
+
+- **"`eval-core` leaks a handle"** — a timer or listener a spec leaves behind. This is what the
+  entry used to assert. **The evidence against it is that a leak of that kind is deterministic**:
+  it would fire on `nx test eval-core` alone, every time. It does not fire there at all.
+- **"Something about parallel execution surfaces a Jest worker that misses its exit window"** —
+  which is where the observations actually point, and which **may be no package's defect**. Under
+  `run-many` several Jest instances contend for the same cores; a worker that has finished its
+  work but does not exit within Jest's grace period is force-exited and reported exactly like a
+  leak. That is a **tooling and scheduling question — Nx's task parallelism against Jest's worker
+  teardown** — not an expression evaluator's.
+
+**What this means for the timebox.** [`docs/gates/plan.md`](gates/plan.md) § 4 step 5 opens F7
+with `nx test eval-core --detectOpenHandles`. **That command is aimed at a run that does not
+exhibit the symptom**, so it will report nothing and the box will be spent proving the absence of
+a leak nobody has evidence for. Amended there to say so.
+
+**The honest recommendation is that step 5 should not spend its box here.** F7's own drop rule —
+"if it is not identified within the step, stop, write what was ruled out, and leave it open" — is
+already satisfied by this entry: the measurements above *are* what was ruled out, and they were
+cheap because they were run against a symptom rather than a suspect. What would change that is a
+**reproduction**, not another hunt: if someone catches it firing, capture the run with
+`--output-style=stream` so the emitting task is attributed, and record the command and the
+machine. Until then there is no locus to investigate, and an unattributed intermittent warning in
+a build tool is not work this repository owes anyone.
+
+**Not closed, and deliberately not.** It is real, it has been seen repeatedly across phases, and
+"cannot reproduce today" is not "does not happen". What changed is that the entry no longer names
+a package that the evidence does not support.
 
 **Carried in twelve step summaries and never once promoted to an entry**, from
 [`signals/step-4-summary.md` § 5.2](signals/step-4-summary.md) through
@@ -1491,8 +1544,10 @@ Phase 3.
 "pre-existing; carried unchanged". Twelve sessions noticed it and none owned it, which is [A8](#a8)'s
 failure mode in a lower-stakes register: a note that travels forward is not a note that gets acted on.
 
-Most likely an open handle — a timer or a listener a spec leaves behind. `--detectOpenHandles` is the
-first step.
+~~Most likely an open handle — a timer or a listener a spec leaves behind. `--detectOpenHandles` is
+the first step.~~ **Superseded by the measurements above**: `--detectOpenHandles` on a run that
+does not warn reports nothing, and "most likely an open handle" was a guess that hardened into a
+locus over twelve restatements.
 
 <a id="f8"></a>
 ## F8 — `eval-forms@0.2.0` is untagged, and CLAUDE.md describes a pre-Phase-6 repo

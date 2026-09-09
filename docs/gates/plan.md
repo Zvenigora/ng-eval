@@ -560,11 +560,31 @@ avoid, and dropping here is a legitimate exit, not a failed step.
 **Files**: whatever F7 turns out to touch; `modules/eval-forms/README.md` and its
 `readme-examples.spec.ts` for D10; `docs/backlog.md`.
 
-**F7 is timeboxed to this step and no further.** Start with
-`nx test eval-core --detectOpenHandles`. If the handle is identified and closing it is contained,
-close it. **If it is not identified within the step, stop**, write what was ruled out into F7,
-and leave it open — an open-handle hunt is exactly the kind of work that consumes a session and
-produces a diff nobody can evaluate.
+**F7 is timeboxed to this step and no further.** ~~Start with
+`nx test eval-core --detectOpenHandles`.~~ If the handle is identified and closing it is
+contained, close it. **If it is not identified within the step, stop**, write what was ruled out
+into F7, and leave it open — an open-handle hunt is exactly the kind of work that consumes a
+session and produces a diff nobody can evaluate.
+
+> **Amended 2026-09-09, before step 5 opened: the starting command is aimed at a run that does
+> not exhibit the symptom.** Measured on this tree — every command with `--skip-nx-cache` —
+> `nx test eval-core` warns **zero** times, as do `eval-signals` and `eval-forms` run alone;
+> the warning appeared **twice in about a dozen runs**, only under multi-target
+> `nx run-many`, and did not recur on the same command three times after, or under deliberate
+> concurrent load. `--detectOpenHandles` on a quiet run reports nothing, so that box would be
+> spent proving the absence of a leak nothing points to.
+>
+> **F7's locus is corrected in [`docs/backlog.md`](../backlog.md#f7)**, which now carries the
+> table: the entry's "confined to `eval-core` — confirmed by running each project separately"
+> does not hold, and the symptom's shape — intermittent, only under parallel task execution —
+> makes it a **Jest-worker-teardown-under-contention** question, which may be no package's
+> defect at all rather than a library bug.
+>
+> **So step 5 should not spend its box hunting a handle.** The entry's own "leave it open" pass
+> is already satisfied by those measurements — they are what was ruled out. What F7 needs next
+> is a **reproduction**, captured with `--output-style=stream` so the emitting task is
+> attributed; without one there is no locus to investigate. Step 5's F7 exit criterion is met by
+> recording that, and its time is better spent on D10 and the retrospect.
 
 D10 adds a runnable `applyErrorPolicy` block to `eval-forms`' README and a case for it in
 **`reactive/src/lib/readme-examples.spec.ts`** — there are two such specs in that package, and
