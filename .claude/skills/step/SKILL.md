@@ -8,34 +8,40 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: `docs/gates/plan.md`
-Target: **all three libraries**, and specs only — see the constraint below
+Plan document: `docs/statements/phase-2-plan.md`
+Target library: `@zvenigora/ng-eval-core` (`modules/eval-core`)
 Requested step: $ARGUMENTS
 
-**This track's scope rule is not the previous phases'**, and the difference is why this
-section is more than a retarget. Phases 3, 4 and 6 each named one library as the work area
-and made reaching into another a stop-and-replan. This track has no single work area:
-`docs/gates/plan.md` steps 2, 3 and 4 add specs to `eval-core` and `eval-signals`, and step 1
-edits `eval-signals`' and `eval-forms`' `project.json`. Applying the old rule here would make
-step 3 a stop-and-replan on its own file list.
+`eval-signals` and `eval-forms` are **dependencies, not work areas**: Phase 2 adds statement
+support to the evaluator they both consume, and consumes neither of them. Their lint and test
+targets run below as the regression gate that catches a step which reached into one anyway. If
+a step genuinely needs a change in either, that is a stop-and-replan condition, not a wider
+step.
 
-**The constraint that replaces it is about the kind of file, not the project.** All three
-libraries are work areas; in all three, this track may add or edit only:
+**`eval-core` is published, at `0.3.0`, and it is the package the other two are built on** —
+which is a third category the two above leave no slot for: *same project, already shipped, and
+every consumer downstream of it*.
 
-- `*.spec.ts` / `*.test.ts`
-- `project.json`
-- `README.md`, and documents under `docs/`
+- **Additive** work — a new visitor, its registration in `recursive-visitors.ts`, a new node
+  type — is in scope whenever the plan calls for it.
+- A change to an **existing exported symbol's shape**, or to the behaviour of an
+  already-shipped path, is a versioned release of that package: it needs an explicit callout
+  in the step's report, a version bump, and an entry in the root `CHANGELOG.md` under a
+  heading naming the package (`## [eval-core 0.4.0]`).
 
-**A non-spec file under `src/lib/`, `reactive/` or `signals/` in the diff is a
-stop-and-replan condition** — that is § 6 gate 1 of the plan, and it is the whole reason this
-track is safe to run ahead of Phase 2. So is anything that changes a `public-api.ts`, an
-`index.ts`, or a `package.json` under `modules/` (§ 6 gate 2): all three packages are
-published, and this track ships no exported symbol, no version bump and no `CHANGELOG.md`
-entry (§ 5).
+**Every step says which of those two it is, in its § 2 restatement.** Step 0 is the case that
+proves the requirement is needed: `docs/backlog.md` A9's `try`/`finally` changes what a
+throwing arrow body leaves on a reused `EvalContext`, and B2 deletes a `console.log` from the
+shipped bundle. Both
+are behavioural changes to a published package and neither is additive, in the package the
+other two depend on — and a phase that reads its own first step as cleanup has already skipped
+the callout. Whether the bump lands per step or once at the end of the phase is the plan
+document's call; saying which category the step is in is this skill's requirement either way.
 
-The lint and test targets below run for all three projects and are the regression gate. They
-do **not** cover the constraint above — adding a spec and editing a source file both leave the
-suite green. Reading the diff is what covers it.
+The lint and test targets below cover the first rule: `eval-signals` and `eval-forms` are
+separate Nx projects, so a step that edits one moves a row. They do **not** cover the third
+category — a widened signature or a changed behaviour inside `eval-core` leaves every row
+green. Reading the diff is what covers that.
 
 ## Current state
 
@@ -75,6 +81,15 @@ baseline section records it as an expected pre-existing failure *and* the step y
 is one it covers. Any other pre-existing failure must be understood before it is buried
 under new work.
 
+**One known intermittent is not a failure and not yours.** A Jest worker-teardown warning fired
+twice in roughly a dozen runs, both times under a multi-target `nx run-many` — `-t lint test
+build`, § 4's command rather than this one — and zero times for any project run alone or for
+`run-many -t test`. The table is `docs/backlog.md` F7, which is where the measurements live;
+the entry is open, with no reproduction and a corrected locus that is no longer `eval-core`.
+Targets stay green through it. Re-run the command; if it recurs, capture it with
+`--output-style=stream` so the emitting task is attributed, note that in the report, and carry
+on with the step.
+
 ### 2. Read and restate
 
 Read the plan document and locate the requested step. Then report back, without
@@ -82,6 +97,8 @@ editing anything:
 
 - The step's objective in one sentence.
 - Every file it says to create or edit, marked **new** or **edit**.
+- **Which category the step is in** — additive, or a versioned change to an already-shipped
+  path — and, if the second, what the plan says about the bump and the `CHANGELOG.md` entry.
 - Its stated exit criteria, verbatim.
 - Anything in the step you find ambiguous, or that disagrees with what the code
   actually looks like now.
@@ -106,9 +123,11 @@ After I confirm:
 npx nx run-many -t lint test build
 ```
 
-All must be clean, with the same exception § 1 allows and on the same terms. All three
-projects are work areas for this track, so no row here is a scope gate on its own — the
-scope gate is the diff check below.
+All must be clean, with the same exception § 1 allows and on the same terms. The
+`eval-signals` and `eval-forms` rows are the regression gate for the plan's scope section — if
+either moves, the step touched a dependency. They are also this phase's downstream witness:
+both libraries consume `eval-core` at its published surface, so a statement change that alters
+an existing path shows up there before it shows up in a consumer's build.
 
 `build` is in this list because a green `test` run is not a type-check: Jest compiles per
 file through `tsconfig.spec` and `build:production` through `tsconfig.lib.prod`, and three
@@ -119,25 +138,27 @@ All three projects default to the production configuration, so this covers what
 baseline, so confirm a build failure in a project the step did not touch is pre-existing
 before reporting it as a regression.
 
-Then the check a green build cannot make, which for this track is the scope gate itself.
+Then the check a green build cannot make, which for this phase is the scope gate itself.
 
-**No non-spec source file moved, in any of the three projects.** This is § 6 gates 1 and 2 of
-the plan, and it is the property that lets this track run ahead of Phase 2 without a version
-bump. A green suite does not show it: adding a spec and editing the source it covers both
-leave `lint test build` clean.
+**Nothing moved outside `eval-core`.** A green suite is weak evidence for this: an edit to
+`eval-signals` or `eval-forms` that keeps that project's own suite green moves no row at all,
+and the third category above moves none by construction.
 
 ```sh
 git diff --name-only HEAD
 ```
 
-Every path must be a `*.spec.ts` / `*.test.ts`, a `project.json`, a `README.md`, or a file
-under `docs/`. A path under `src/lib/`, `reactive/` or `signals/` that is not a spec — or any
-`public-api.ts`, `index.ts` or `package.json` under `modules/` — is a **stop-and-replan**, not
-a judgement call. Report it and stop.
+Every path must be under `modules/eval-core/`, under `docs/`, or the root `CHANGELOG.md`. A
+path under `modules/eval-signals/` or `modules/eval-forms/` is a **stop-and-replan**, not a
+judgement call — a `public-api.ts`, an `index.ts` or a `package.json` there most of all.
+Report it and stop.
 
-The one edit this rule deliberately permits is a `README.md`: `docs/gates/plan.md` § 1.5 has
-steps 3 and 4 completing a documented fragment in the **document** rather than padding a spec
-around it. Say in the report which blocks moved and why.
+**Inside `eval-core` those same three filenames are not a stop condition**, and that split is
+the whole difference from the previous track's rule: a `package.json` version bump is an
+expected output of this phase, and the plan may export a type. What they are instead is the
+trigger for the third category's checklist. When one of them is in the diff, the report says
+which category the step is in and where the callout, the bump and the `CHANGELOG.md` entry
+are — or why the plan defers them to a later step.
 
 If a pre-existing spec now fails, that is a regression in this step, not a stale test.
 Report it; do not edit the spec to match the new behaviour.
@@ -145,6 +166,11 @@ Report it; do not edit the spec to match the new behaviour.
 ### 5. Report
 
 Before writing your report, invoke the `code-reviewer` subagent on this step's changes. Include its findings in your report. If it raises anything Critical, stop and surface it rather than closing out the step.
+
+**Expect a permission prompt for that invocation, and approve it.** The `allowed-tools` above
+deliberately does not name the subagent tool: its token is not the same in every build — `Task`
+in the ones this skill has run under, `Agent` in others — and a grant naming the wrong one
+grants nothing while reading like a grant. A prompt that arrives is the honest version of that.
 
 Finish with:
 

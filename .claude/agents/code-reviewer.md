@@ -37,9 +37,20 @@ thorough and checked nothing.
 - Diff under `modules/eval-forms/src/` — the shared core — → **both** forms checklists. The
   core is compiled into both adapters, so a change there reaches `/reactive` and `/signals`
   at once, and a defect that is benign under one may not be under the other.
-- Items 1, 2 and 4 of the eval-core list are **eval-core-only** and apply to no file in
-  either downstream library: neither contains visitors, so there is no value stack, no
-  `beforeVisitor`/`afterVisitor` bracketing, and nothing reachable from a walk.
+- **An `eval-core` diff now has downstream reach, and the rule above does not send you
+  there.** Four phases in a row changed no core file, so "eval-core → the eval-core list" was
+  complete. It stops being complete the moment a step touches scope push/pop, hook `exit`, or
+  `EvalState`'s lifetime: two downstream mechanisms exist *to contain an `eval-core` defect* —
+  `eval-signals`' snapshot-and-restore of the context's scope depth, and
+  `eval-forms/signals`' `evaluateRule` — and each names that defect where it lives, in a
+  comment or in its plan document. Fixing it upstream breaks neither; it makes what they say
+  about **why they exist** false, and nothing in `nx run-many` flags a now-wrong comment. Read
+  both sites and report two things: whether the containment still holds, and whether its
+  stated rationale still does.
+- Items 1, 2, 3, 5, 7 and 9 of the eval-core list are **eval-core-only** and apply to no file
+  in either downstream library: neither contains visitors, so there is no value stack, no
+  `beforeVisitor`/`afterVisitor` bracketing, no `st.context.push`, no binding form, nothing
+  that must stay synchronous inside a walk, and no loop of ours to fail to terminate.
 - A diff spanning more than one → run each list, and say in your report which findings
   came from which. A step that was scoped to one library and touched another is itself a
   finding: each library consumes the ones below it as published, and the active plan's
@@ -49,9 +60,9 @@ thorough and checked nothing.
   its primary entry point and `/reactive` are a released shape. Additive work on the core
   is legitimate when the plan calls for it; a change to an existing exported symbol's shape,
   or to `/reactive`'s behaviour, is the same stop-and-replan condition. Nothing in
-  `nx run-many` detects it, because it is the same Nx project — item 7 below is the gate.
+  `nx run-many` detects it, because it is the same Nx project — item 10 below is the gate.
 
-Whichever list applies, eval-core items 3, 5, 6, 7, 8 and 9 — refactor equivalence, state
+Whichever list applies, eval-core items 4, 6, 8, 10, 11 and 12 — refactor equivalence, state
 placement, hot-path cost, published surface, test integrity and scope — apply to all three
 libraries as written. Run them for a downstream diff too, alongside that library's own
 list.
@@ -60,59 +71,155 @@ list.
 
 Work through these in order. They are ranked by how badly they fail and how quietly.
 
-1. **Stack balance.** *(eval-core only.)* For every visitor in the diff, trace each exit path. Exactly one
-   push per exit, exactly one pop per `callback(child, …)`. An imbalance does not throw
-   — a later node silently reads the wrong operand. Early returns and short-circuits are
-   where this hides. If a visitor has more than two exits, enumerate them explicitly in
-   your report and say which you checked.
+1. **Value-stack balance.** *(eval-core only.)* For every visitor in the diff, trace each exit
+   path and account for every `callback(child, …)`. An imbalance does not throw — a later node
+   silently reads the wrong operand. Early returns and short-circuits are where this hides. If
+   a visitor has more than two exits, enumerate them explicitly in your report and say which
+   you checked.
 
-2. **Bracketing.** *(eval-core only.)* `beforeVisitor` and `afterVisitor` must both run on every path
-   through a visitor, including thrown-error and short-circuit paths. A missing
-   `afterVisitor` on one branch leaks state rather than failing a test.
+   **The arithmetic is the plan's, not a fixed one-in, one-out.** "Exactly one push per exit,
+   exactly one pop per child" is an *expression* visitor's contract. A statement visitor's is
+   whatever the active plan settled for completion values, and for a block or a `Program` the
+   correct shape is **N pops and one push** — so the expression rule applied literally flags
+   the right design as an imbalance, while a reviewer who merely notices it does not fit is
+   left with no rule at all. Read the plan's completion-value section, cite it, and check the
+   diff against the convention it states; if the plan does not state one, that is the finding.
+   The precedent for this shape is eval-forms item 5, whose adjacent clause inverts under
+   `/signals`: a list run past its subject costs a redesign of correct code.
 
-3. **Refactor equivalence.** When a change is meant to preserve behaviour, say so
+   *(Cite the deciding § of `docs/statements/phase-2-plan.md` here once that document exists.)*
+
+2. **Bracketing, and what a balanced hook stream does not prove.** *(eval-core only.)*
+   `beforeVisitor` and `afterVisitor` must both run on every path through a visitor, including
+   thrown-error and short-circuit paths. A missing `afterVisitor` on one branch leaks state
+   rather than failing a test.
+
+   **Balanced hook events are not evidence that a visitor is bracketed, and still less that
+   item 1 holds.** `EvalHooks.exit` matches the closing node by identity and flushes any frame
+   still open above it, and `evaluate` unwinds to a depth mark in its `catch` — so the hook
+   layer self-corrects, and a visitor that swallows a child's throw between its own `before`
+   and `after` reads as healthy while the value stack is one entry out. That safety net made
+   the quieter failure quieter, not louder.
+
+   **An early exit out of a statement list is the shape `exit` cannot bound**
+   (`docs/backlog.md` E6): it produces an `after` with no matching `before` in the same frame,
+   which is what lets a flush cross a walk boundary — and the re-entrant `evaluate()` at
+   `arrow-function-expression.ts:17` puts a nested walk inside the same state, so that boundary
+   is real rather than theoretical. E6 is a design constraint of the statements plan, not a
+   defect to fix in passing: check the diff against the mark that plan specifies, and report
+   its absence from the plan as the finding if there is none.
+
+3. **Scope balance — the third invariant, and the one that outlives the walk.**
+   *(eval-core only.)* Exactly one `st.context.pop()` per `st.context.push()`, on every exit
+   path including the one an exception takes. CLAUDE.md names three stack invariants; this is
+   the one with no safety net anywhere in the system.
+
+   **What ranks it here is where it lives.** The value stack and the open-node stack are on
+   `EvalState`, which `evaluate` builds per walk and discards — corruption there dies with the
+   walk that caused it. The scope stack is on `EvalContext`, and one context can back any
+   number of evaluations, because `EvalContext.fromContext` short-circuits on identity. A
+   leaked scope therefore survives the walk, and `scopes` is step 1 of `EvalContext.get`'s
+   resolution order, so every later evaluation on that context reads it first. Nothing drains
+   it.
+
+   **The probe is one `EvalContext` handed to two evaluations.** `eval-core`'s own suite cannot
+   see this defect, because the usual call builds a fresh context per evaluation — so a spec
+   that constructs its context inline asserts nothing about the pop, however much it asserts
+   about the value. The discriminating setup reuses one `EvalContext`, makes the first
+   evaluation throw from inside a pushed scope, and reads a same-named key in the second. When
+   the diff adds a push site and no spec does that, the finding is the missing setup, not a
+   missing assertion.
+
+   Block scoping multiplies the construct — a scope per block per iteration — and the two
+   existing push sites, `arrow-function-expression.ts:14-19` and `pattern.ts:110-113`, are the
+   idiom every new visitor copies. Check the `try`/`finally` reaches the **new** sites, not
+   only the two a step fixed.
+
+4. **Refactor equivalence.** When a change is meant to preserve behaviour, say so
    explicitly and show why: what did the old code do on each path, what does the new
    code do, where could they diverge. "Tests pass" is not the answer — the existing
    suite is the floor, not the ceiling.
 
-4. **Synchronous-only.** *(eval-core only.)* No `async`, `await`, or returned promise anywhere reachable
+5. **Synchronous-only.** *(eval-core only.)* No `async`, `await`, or returned promise anywhere reachable
    from the walk. This includes hook callbacks: a hook that returns a promise must be
    rejected or ignored, never awaited.
 
-5. **State placement.** Per-evaluation data on `EvalState`. Any module-level mutable
-   binding introduced by the diff is a defect — flag it even if it looks harmless,
-   because `EvalService` is a root singleton and concurrent evaluations share it.
+6. **State placement, and the deferred re-entry.** Per-evaluation data on `EvalState`. Any
+   module-level mutable binding introduced by the diff is a defect — flag it even if it looks
+   harmless, because `EvalService` is a root singleton and concurrent evaluations share it.
 
-6. **Hot path cost.** Anything added to a per-node path must sit behind a cheap guard
+   **Correct placement on `EvalState` is necessary and not sufficient**, and control-flow state
+   is where the gap opens. *(This half is eval-core only.)* `arrow-function-expression.ts:17`
+   calls `evaluate(node.body, st)` with the **same state**, from inside the closure it pushes
+   as the arrow's value — so that nested walk runs whenever the arrow is called: during the
+   outer walk, after it has returned, many times, or never. A completion sentinel — break,
+   continue, return, "skip the rest of the block" — set by a nested arrow body, or cleared
+   unconditionally in a `catch`, corrupts the outer walk's control flow with nothing thrown.
+   For every per-walk field the diff adds, ask what a second walk sharing the state does to it,
+   and require a spec in which an arrow function is called *after* the outer evaluation
+   returned.
+
+7. **Termination.** *(eval-core only.)* `ForStatement` is the first construct in this evaluator
+   that need not terminate, and expressions arrive as runtime strings from authors who are not
+   the application's author. Ask what bounds a loop and say plainly when nothing does — whether
+   a cap ships is the plan's decision, asking is yours. Nothing else covers it:
+   `internal/performance.spec.ts` measures per-node cost, not non-termination, and a runaway
+   loop is a Jest timeout in a spec and a frozen tab in a consumer.
+
+8. **Hot path cost.** Anything added to a per-node path must sit behind a cheap guard
    so the no-hooks, no-tracing case is unaffected. Point at the guard, or note its
    absence.
 
-7. **Published surface.** Two questions, and the second one only started mattering when
-   these packages went to npm.
+   **A loop makes the same nodes hot N times**, so per-node stops being the only unit:
+   whatever the diff allocates per block — a scope object, a completion record, a context — is
+   allocated per iteration. Say what a loop body allocates on each pass.
 
-   *Did anything new become reachable, and was that intended?* Check every barrel the
-   diff's project has, not one: `eval-core` and `eval-signals` publish through a single
-   `src/public-api.ts`, `eval-forms` publishes through `src/index.ts` →
-   `src/public-api.ts`, `reactive/src/public-api.ts` and `signals/src/public-api.ts`.
-   Barrels re-export whole modules, so an `export` keyword on a helper is enough to
-   publish it — and a helper exported from the eval-forms shared core is published at
-   **every** entry point at once.
+9. **Binding targets and the pollution guard.** *(eval-core only.)* Prototype-pollution
+   blocking is applied today by the `member`, `assignment`, `update` and `object` visitors.
+   Declarations widen what may sit on the left of a binding — a `VariableDeclarator` with an
+   object or array pattern is a new way to name a property — so for each new binding form in
+   the diff, name the guard that covers it and read the branch of `pattern.ts` it reaches.
+   Those branches were close to unreachable before declarations existed, and `docs/backlog.md`
+   B2 is one of them.
 
-   *Did an existing exported symbol change shape?* `eval-core` is at `0.3.0`,
-   `eval-signals` and `eval-forms` at `0.1.0`, all three on npm, so this is a breaking
-   release rather than a free correction. When the diff changes one, three things must be
-   present or the finding is that they are missing: an explicit callout in the step's
-   report, a version bump, and an entry in the **root `CHANGELOG.md`** under a heading
-   naming the package — `## [eval-forms 0.1.1]`, matching the convention that file
-   records from `eval-signals 0.1.0` onward. There are no per-module changelogs; do not
-   ask for one.
+   `console.*` belongs to this item too: library code carries no new call, and the one shape
+   that qualifies is a dev-mode-only diagnostic behind `isDevMode()`. The inherited calls leave
+   only with the step that owns them.
 
-8. **Test integrity.** Assertions loosened or deleted, `eslint-disable` added, `any`
-   introduced, a spec rewritten to match new behaviour rather than the behaviour being
-   fixed. Any of these is a critical finding regardless of how green the suite is.
+10. **Published surface.** Two questions, and the second one only started mattering when
+    these packages went to npm.
 
-9. **Scope.** Files or symbols changed that the step did not call for. Report them;
-   drive-by edits defeat one-step-per-session review.
+    *Did anything new become reachable, and was that intended?* Check every barrel the
+    diff's project has, not one: `eval-core` and `eval-signals` publish through a single
+    `src/public-api.ts`, `eval-forms` publishes through `src/index.ts` →
+    `src/public-api.ts`, `reactive/src/public-api.ts` and `signals/src/public-api.ts`.
+    Barrels re-export whole modules, so an `export` keyword on a helper is enough to
+    publish it — and a helper exported from the eval-forms shared core is published at
+    **every** entry point at once.
+
+    *Did an existing exported symbol change shape?* All three are on npm, so this is a
+    versioned release rather than a free correction — read each package's current version from
+    its own `modules/*/package.json` rather than from any document, this one included. When
+    the diff changes a symbol, three things must be present or the finding is that they are
+    missing: an explicit callout in the step's report, a version bump, and an entry in the
+    **root `CHANGELOG.md`** under a heading naming the package — `## [eval-forms 0.1.1]`,
+    matching the convention that file records from `eval-signals 0.1.0` onward. There are no
+    per-module changelogs; do not ask for one.
+
+11. **Test integrity.** Assertions loosened or deleted, `eslint-disable` added, `any`
+    introduced, a spec rewritten to match new behaviour rather than the behaviour being
+    fixed. Any of these is a critical finding regardless of how green the suite is.
+
+12. **Scope, and the four parts of a new node type.** Files or symbols changed that the step
+    did not call for. Report them; drive-by edits defeat one-step-per-session review.
+
+    **A new node type is four things**: the visitor, its registration in
+    `recursive-visitors.ts`, a co-located spec in the neighbouring visitors' style, and a row
+    in the README's "ESTree Nodes Supported" list. Registration enforces itself — an
+    unregistered visitor fails its own spec — so the two that go missing quietly are the README
+    row and the traversal-order assumption. `callExpressionVisitor` evaluates arguments before
+    the callee; a statement visitor sets its own order, and a spec written on the assumption of
+    source order is asserting that order by accident rather than on purpose.
 
 ## What actually breaks in eval-signals
 
@@ -163,7 +270,7 @@ for this library whether or not it is the active plan.
 3. **Published surface against the plan.** `docs/signals/phase-3-plan.md` § 5 enumerates
    both what this library exports *and* what it may import from `eval-core`. Check the
    diff against both lists, and check that a symbol meant to stay internal is genuinely
-   unexported, per item 7 of the eval-core list above. § 5 governs `src/lib/`, not specs:
+   unexported, per item 10 of the eval-core list above. § 5 governs `src/lib/`, not specs:
    a spec may import anything.
 
 4. **Silence where a consumer needs a diagnostic.** A misuse that produces a signal
@@ -363,7 +470,7 @@ Then the five that are this adapter's own.
 5. **Compile once, call many.** Angular re-invokes the `LogicFn` on every re-derivation, and
    no `computed()` of ours memoizes anything in between, so a `compile()` inside the
    `LogicFn` body re-parses the expression on every derivation — correct results, silently
-   slow, and eval-core item 6's per-node guard does not reach it. The compile belongs where
+   slow, and eval-core item 8's per-node guard does not reach it. The compile belongs where
    the rule is registered, not where it is evaluated.
 
 ## Report format
