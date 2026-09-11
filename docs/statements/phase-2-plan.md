@@ -1,0 +1,907 @@
+# Phase 2 Plan — statement support in `eval-core`
+
+Implements [`ROADMAP.md`](../../ROADMAP.md) § "Phase 2 — Statement support: `let`, `if`, `for`",
+and closes [`docs/backlog.md`](../backlog.md) [A9](../backlog.md#a9) and [B2](../backlog.md#b2) as
+its step 0, per that file's [Phase 2 preconditions](../backlog.md#phase-2-preconditions).
+
+**Target**: `@zvenigora/ng-eval-core` (`modules/eval-core`), published at **0.3.0**.
+`@zvenigora/ng-eval-signals` and `@zvenigora/ng-eval-forms` are dependencies, not work areas;
+their suites are this phase's regression gate.
+
+---
+
+## 0. On the length of this document, and what makes this phase risky
+
+[`docs/gates/plan.md`](../gates/plan.md) opened by saying its worst outcome was a spec that did not
+earn its place, and came in at 765 lines against
+[`docs/forms/phase-6-plan.md`](../forms/phase-6-plan.md)'s 3,420. This phase's worst outcome is
+different in kind: it changes the evaluator that **all three published packages** run on, and the
+findings below show that the change is not the additive one the roadmap brief assumes.
+
+**The brief is wrong about the starting point, and that is finding 1.1.** `ROADMAP.md` says "the
+evaluator itself only ever walks a single `Expression` node; there are currently no visitors for
+`Program`, `VariableDeclaration`, `IfStatement`, `ForStatement`, or `BlockStatement`." The second
+half is true and the first is not: `extractExpressions` defaults to **false**
+([`parser-options.ts:7`](../../modules/eval-core/src/lib/internal/classes/eval/parser-options.ts#L7)),
+so every evaluation already walks a whole `Program`, and acorn-walk's *base* walkers descend into
+every statement body that has no visitor of ours. Statements do not fail today. They evaluate, and
+they return values that are arbitrary.
+
+So this phase does not add a capability beside an existing one. It **replaces silent
+mis-evaluation with defined semantics**, which makes every step of it a behavioural change to an
+already-shipped path — the second category in
+[`.claude/skills/step/SKILL.md`](../../.claude/skills/step/SKILL.md), not the first.
+
+That is why this document is longer than the gates plan and why its § 1 is mostly numbers. It is
+still not Phase 6's length: the surface it adds is small, there is no framework boundary to read
+per docblock, and four of the five decisions are settled by measurement rather than by argument.
+
+**Everything in § 1 marked *measured* was run**, against the built package (`dist/`, i.e. the
+published surface) from a throwaway script outside the repository, deleted afterwards. § 1.9
+records the harness.
+
+---
+
+## 1. Findings that shape the design
+
+### 1.1 Statements are not unsupported today — they are silently mis-evaluated
+
+*Measured.* Each row is `parse(expr, { extractExpressions: false })` → `evaluate(ast, state)`, the
+default path. "Stranded" is `state.result.stack.length` after `evaluate` returned — the values the
+walk pushed that nothing popped, since
+[`evaluate.ts:29`](../../modules/eval-core/src/lib/internal/functions/evaluate.ts#L29) pops exactly
+one.
+
+| Expression | Returns today | Correct | Stranded |
+| ---------- | ------------- | ------- | -------- |
+| `1 + 2` | `3` | `3` | 0 |
+| `1; 2; 3` | `3` | `3` | **2** |
+| `a; b` (a='A', b='B') | `'B'` | `'B'` | **1** |
+| `let x = 1` | `1` | `undefined` | 0 |
+| `let x = 1; x + 1` | **`NaN`** | `2` | 1 |
+| `const y = 2; y` | **`undefined`** | `2` | 1 |
+| `if (a) { 1 } else { 2 }`, a=**true** | **`2`** | `1` | 2 |
+| `for (let i = 0; i < 3; i++) { i }` | **`NaN`** | `2` | 3 |
+| `{ 1; 2 }` | `2` | `2` | 1 |
+| `while (false) { 1 }` | **`1`** | `undefined` | 1 |
+| `function f() { return 1 }` | **`1`** | `undefined` | 0 |
+| `let [p, q] = arr` | the array | `undefined` | 0 |
+
+Three things follow, and they set the shape of the whole phase.
+
+**The right answer arrives by accident when it arrives at all.** `1; 2; 3` is correct only because
+`Stack.pop` returns the last value pushed and the last statement happens to be the last thing
+walked. `if (a) { 1 } else { 2 }` is wrong for a reason worth stating plainly: the base walker
+visits **both** branches regardless of the test, so the `else` value is pushed last and wins — and
+any call or assignment in the untaken branch has already run.
+
+**A binding position is being evaluated as a read.** `let x = 1; x + 1` is `NaN` because the base
+walker hands the declarator's `id` to `identifierVisitor`, which resolves `x` against the context,
+fails, and pushes `undefined`; `x + 1` then reads the *outer* `x`, also absent. The declaration
+binds nothing.
+
+**Every statement form in the table is a live path with consumers on it.** Phase 2 changes the
+value each row returns. That is the version-bump argument, made once here and not repeated: this
+phase is `0.4.0` with a `CHANGELOG.md` entry, and its README section says what changed rather than
+only what is new.
+
+### 1.2 The value stack is already the completion-value mechanism
+
+`evaluate` walks and then pops exactly one value
+([`evaluate.ts:27-29`](../../modules/eval-core/src/lib/internal/functions/evaluate.ts#L27-L29)), so
+whatever node it is handed must leave exactly one value behind. `ROADMAP.md` speculates that
+control flow needs "a sentinel/completion value bubbled through `EvalState`, similar in spirit to
+`eval-result.ts`/`eval-trace.ts`". It does not, and § 3.1 says why: with no `break`, `continue` or
+`return` in scope there is no *abrupt* completion to bubble, and a statement's completion value is
+just a value on the stack the enclosing block pops. The mechanism is a discipline, not a channel.
+
+### 1.3 A9, measured: one throwing arrow body shadows a source key for the life of the context
+
+[A9](../backlog.md#a9) is recorded as *Verified: source read* — read, not run. Run, on the built
+package:
+
+| Probe | `ctx.scopes.length` after | A later `evaluate('x')` on the same context |
+| ----- | ------------------------- | ------------------------------------------- |
+| `(x => boom())` called with `'SHADOW'`, `boom` throws | **1** | **`'SHADOW'`** |
+| control: `(x => ok())` called with `'SHADOW'`, no throw | 0 | `'SOURCE'` |
+
+The leaked scope is not merely present; it is **read first**, because `scopes` is step 1 of
+[`EvalContext.get`](../../modules/eval-core/src/lib/internal/classes/eval/eval-context.ts#L110-L138)'s
+resolution order. This is the defect step 0 fixes, and it is the reason block scoping cannot be
+built on the current idiom: a scope per block per iteration multiplies the two existing push sites
+([`arrow-function-expression.ts:14-19`](../../modules/eval-core/src/lib/internal/visitors/arrow-function-expression.ts#L14-L19),
+[`pattern.ts:110-113`](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L110-L113)) into
+one per iteration of every loop.
+
+### 1.4 Writes ignore the scope stack entirely — and the classic `for` loop forces this open
+
+*Measured.* `(x => (x = 99))(1)` against `{ x: 'SOURCE' }` returns `99` and leaves the **caller's
+object** holding `{ x: 99 }`. The arrow's parameter scope is not written; the source is.
+
+The cause is one method:
+[`EvalContext.set`](../../modules/eval-core/src/lib/internal/classes/eval/eval-context.ts#L268-L276)
+writes to `_original` and consults no scope. Both write sites route through it —
+[`assignment-expression.ts:53`](../../modules/eval-core/src/lib/internal/visitors/assignment-expression.ts#L53)
+and
+[`update-expression.ts:27`](../../modules/eval-core/src/lib/internal/visitors/update-expression.ts#L27).
+
+**This is not a nice-to-have for Phase 2, it is load-bearing.** `for (let i = 0; i < 3; i++)`
+updates `i` through exactly that path, so without a scope-aware write every loop counter this
+library ever runs is written into the consumer's context object — and left there. § 3.2 settles it.
+
+### 1.5 `get` treats `undefined` as absent, so a `let` binding with no initializer cannot shadow
+
+`EvalContext.get` returns the first scope value that is `!== undefined` and otherwise falls through
+to `original`, `priorScopes` and `lookups`
+([`eval-context.ts:110-138`](../../modules/eval-core/src/lib/internal/classes/eval/eval-context.ts#L110-L138)).
+`let x;` binds `undefined`, so a block-scoped `x` would fall through and read whatever the caller's
+context has under that name.
+
+Phase 1 already found this and already built the predicate for it:
+[`hasInScopes`](../../modules/eval-core/src/lib/internal/classes/eval/eval-context.ts#L188-L197)
+asks about *binding* rather than value, and its docblock states the divergence for arrow parameters
+in as many words. It has one caller —
+[`identifier.ts:44`](../../modules/eval-core/src/lib/internal/visitors/identifier.ts#L44), for the
+read hooks' `scoped` flag — and `get` is not it. So the library already answers "is this key bound
+in a scope?" one way for hook consumers and another way for resolution. § 3.2's decision makes the
+two agree.
+
+### 1.6 E6, measured: the flush does cross a walk boundary — and this phase's design does not make it reachable
+
+[`docs/side-effects/phase-1-plan.md` § 3.8](../side-effects/phase-1-plan.md) specifies `exit`'s
+three cases and records the residual: *"`exit` has no mark, so it cannot tell 'absent from this
+walk' from 'absent from the stack'."* [E6](../backlog.md#e6) carries it forward and says Phase 2 is
+what makes it reachable.
+
+*Measured*, driving the published `EvalHooks` directly — enter two nodes (the enclosing walk), take
+the mark `evaluate` would take, enter a third (the nested walk), then close the **first** node:
+
+| | Depth before | Mark | Depth after | Synthesised `completed: false` | Crossed the mark |
+| - | - | - | - | - | - |
+| case 2, node below the mark | 3 | 2 | **0** | 2 | **yes** |
+| case 3 control, node never opened | 1 | — | 1 | 0 | no |
+
+So the mechanism is exactly as § 3.8 described, and the damage is quantified: the nested walk's
+`unwindTo(mark)` afterwards has nothing left to unwind, and one frame belonging to the enclosing
+walk was closed under a hook event the consumer will read as that node completing.
+
+**What the roadmap gets wrong here is the trigger.** E6 needs an `afterVisitor` with no matching
+`beforeVisitor` *in the same frame*. Skipping a subtree does not produce one — an untaken `if`
+branch or a `for` body that never runs is never entered, so nothing is left open. Only an *abrupt*
+completion that abandons a partially-walked child does, and `break` / `continue` / `return` are out
+of scope (§ 2). **Under the design in § 3.1, Phase 2 does not make E6 reachable.** § 3.3 settles
+what to do about that.
+
+### 1.7 There are three silent fall-throughs in this family, not one
+
+[A2](../backlog.md#a2) records `update-expression.ts`'s `if`/`else if` chain pushing nothing on its
+third path
+([`update-expression.ts:19-37`](../../modules/eval-core/src/lib/internal/visitors/update-expression.ts#L19-L37)).
+The same shape is in `assignment-expression.ts`
+([:46-63](../../modules/eval-core/src/lib/internal/visitors/assignment-expression.ts#L46-L63)):
+`node.left` that is neither `Identifier` nor `MemberExpression` falls past both branches to
+`afterVisitor` with nothing pushed.
+
+*Measured:* `[a, b] = arr` and `({m} = o)` both return `undefined`, throw nothing, and leave the
+context **unchanged** — destructuring assignment is silently a no-op today. Third in the family; all
+three now live in [A2](../backlog.md#a2), whose entry was rewritten to name them rather than read as
+one bug (§ 8.4).
+
+This matters to the phase for one reason: the statement visitors are `switch`-over-node-type
+dispatchers, the same shape, and a `default:` that falls through silently is how this family
+reproduces. § 3.1's convention makes that a compile-time and review-time impossibility rather than a
+matter of care.
+
+### 1.8 The performance gate is a behavioural guard, not a tight budget
+
+`internal/performance.spec.ts` is a real gate per `CLAUDE.md`, but its one timing assertion allows
+**5 seconds for 100 iterations**
+([`performance.spec.ts:206`](../../modules/eval-core/src/lib/internal/performance.spec.ts#L206));
+the rest of the file asserts *behaviour* — that results are not cached across contexts, that read
+events are not built when no read hook is registered. Adding a `Program` visitor to a path that is
+currently base-walked will not move it.
+
+That is not licence to spend on the hot path. It means the gate for § 3.4's iteration bound is an
+argument about where the counter lives, not a benchmark — see § 3.4.
+
+*Measured baseline, for § 3.4's arithmetic:* a compiled `i < 3` evaluates **~1.4 M times per
+second** (0.7 µs per walk, 200,000 runs, both with a fresh state per run and with one reused).
+
+### 1.9 The spike harness
+
+Node 26, ESM, importing `dist/modules/eval-core/fesm2022/zvenigora-ng-eval-core.mjs` after
+`npx nx run eval-core:build:production`, with `@angular/compiler` loaded first so the package's
+`@Injectable` services can be constructed under JIT. Four scripts — statement behaviour (1.1),
+A9 (1.3) and the write path (1.4), E6 (1.6), throughput (1.8) — written under the session scratch
+directory, outside the repository, and deleted. Nothing under `modules/` was touched; `dist/` is
+build output.
+
+**Measuring against `dist/` rather than the source tree was deliberate**: every number above is
+therefore a statement about the *published* package, which is the thing this phase's consumers
+actually run.
+
+---
+
+## 2. Scope
+
+### In scope
+
+- `Program`, `ExpressionStatement` and `EmptyStatement` — the walk boundary and the completion
+  convention (§ 3.1). `EmptyStatement` is a one-line `EMPTY` push and is in scope because § 3.1's
+  dispatcher throws on anything it does not name: without it `a;;b` and `if (x) ;` would start
+  throwing, which is a divergence nobody chose.
+- `BlockStatement`, with block scoping (§ 3.2).
+- `VariableDeclaration` for `let` and `const`, including the destructuring forms `pattern.ts`
+  already implements, and scope-aware writes for assignment and update (§ 3.2).
+- `IfStatement`, including `else if` chains.
+- `ForStatement` — the classic three-part form — with the iteration bound of § 3.4.
+- [A9](../backlog.md#a9) and [B2](../backlog.md#b2), as step 0.
+- Bounding both of `EvalHooks.exit`'s routes — the scan and the identity fast path (§ 3.3).
+- README "ESTree Nodes Supported" rows, a `CHANGELOG.md` entry, the `0.4.0` bump, and the backlog
+  entries this phase moves.
+
+### Out of scope — deliberately, with the reason
+
+| Not in this phase | Why |
+| ----------------- | --- |
+| `break`, `continue`, `return` | Abrupt completion is a completion **record** with a type, not a value on a stack — a different mechanism from § 3.1, and the one that makes [E6](../backlog.md#e6) reachable. A phase of its own |
+| `while`, `do…while`, `for…of`, `for…in` | `ROADMAP.md` defers them behind the classic `for` explicitly. They are cheap once § 3.1–§ 3.4 exist, and they are not free before |
+| `var` | Function-scoped hoisting is a second scoping model beside § 3.2's. Open question 8.2 |
+| `function` declarations, classes, `try`/`catch`, `switch`, labels | No design in this phase reaches them; each throws per § 3.1's dispatcher |
+| Default values in patterns (`let {a = 1} = o`) | `AssignmentPattern` is commented out in `pattern.ts` ([:43-47](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L43-L47), [:67-68](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L67-L68)) and is its own work |
+| The fall-through family of § 1.7 — `(a)++`, `[a, b] = arr`, `({m} = o)` | Defects this phase measured but did not create. Recorded together in [A2](../backlog.md#a2); § 8.4 says why fixing one of three here would be arbitrary |
+| `@zvenigora/ng-eval-signals`, `@zvenigora/ng-eval-forms` | Dependencies. A step that needs a change in either is a stop-and-replan |
+| Everything in [`docs/backlog.md`](../backlog.md) Track 1 / Track 2 | Not this phase's subject |
+
+[A2](../backlog.md#a2) was the one deliberate maybe, and is settled at § 8.4: out.
+
+---
+
+## 3. Design
+
+### 3.1 Decision 1 — the completion-value convention
+
+**This section is what `.claude/agents/code-reviewer.md` item 1 cites.** Item 1 says the
+push/pop arithmetic for statements is this plan's to state, and that silence here is a finding
+against the plan. The convention, in four rules:
+
+1. **Every statement visitor pushes exactly one value on every exit path**, including the paths
+   where the statement produced nothing. This is the same rule expression visitors follow; the
+   arithmetic differs only in the pops.
+2. **A statement visitor pops exactly one value per `callback(child, …)` it makes.** A visitor that
+   walks K child statements pops K. This is where a block departs from an expression: `N` pops, one
+   push.
+3. **A statement that produces no value pushes `EMPTY`**, a sentinel, never `undefined`.
+4. **`EMPTY` never leaves an evaluation's return value.** `evaluate` and `evaluateAsync` convert it
+   to `undefined` immediately after `popVisitorResult`
+   ([`evaluate.ts:29`](../../modules/eval-core/src/lib/internal/functions/evaluate.ts#L29),
+   [:139](../../modules/eval-core/src/lib/internal/functions/evaluate.ts#L139)) — **at the walk
+   boundary, not inside the `Program` visitor**. A draft of this plan put it in `Program` and was
+   wrong: `arrow-function-expression.ts:17` calls `evaluate(node.body, st)` on a **`BlockStatement`**
+   for a block-bodied arrow, so `x => { }` would have handed the sentinel straight to a consumer,
+   on the one path § 3.6.1 documents as a deliberate divergence. Converting where the walk ends
+   covers both entry points by construction.
+
+**`EMPTY` is exported, and rule 4 is narrower than it first reads.** A statement visitor pushes and
+*then* calls `afterVisitor`, which reads the value positionally off the top of the stack
+([`after-visitor.ts:23-26`](../../modules/eval-core/src/lib/internal/visitors/after-visitor.ts#L23-L26)) —
+so an `after` hook on a `VariableDeclaration`, an untaken `if`, or a zero-iteration `for` observes
+the sentinel itself. Hiding it is not available: the alternatives are calling `afterVisitor` before
+the push, which the same docblock warns reports the *neighbour's* value, or normalising inside
+`afterVisitor`, which is a per-node cost on the hot path for a case only statements produce.
+
+So the sentinel is part of the Phase 1 hook contract's `value` field and must be recognisable:
+`EMPTY_COMPLETION` is exported for identity comparison, on the precedent of `ASYNC_HOOK_MESSAGE`,
+which Phase 1 exported so a consumer could tell a diagnostic apart "without matching on message text
+it would have to keep in sync by hand"
+([`eval-hooks.ts:176-181`](../../modules/eval-core/src/lib/internal/classes/eval/eval-hooks.ts#L176-L181)).
+The README's hooks section says so, and step 1 carries a spec asserting a hook sees it — an
+undocumented sentinel arriving in a published event is worse than a documented one.
+
+**Why a sentinel and not `undefined`.** JavaScript's completion-value semantics keep the last
+*non-empty* value, and empty is not the same as `undefined`. The cost is one frozen symbol and one
+identity comparison per statement in a block.
+
+**The discriminating case is `{ 'a'; noop() }`, and two earlier drafts of this plan said otherwise.**
+`{ 'a'; if (false) { 'b' } }` → `'a'` does **not** distinguish the sentinel from `undefined`: "keep
+the last non-`EMPTY`" and "keep the last non-`undefined`" agree on it, because the empty statement
+produced nothing under either reading. Only a statement that genuinely *produced* `undefined` —
+`noop()` for a context function returning `undefined` — separates them, and it must win over the
+earlier `'a'`. The drafts named the weaker case "the assertion that distinguishes the sentinel"
+**twice**, in two different steps' exit criteria.
+
+That repetition is the finding, not the typo. A named claim about what an assertion discriminates,
+restated in a second place, is how a bad *setup* survives review: the second reader checks the
+assertion against the claim rather than deriving the claim, which is the same shape as Phase 6's
+`form()`/`schema()` criterion. Where this plan says an assertion is discriminating, it now states
+the implementation that would pass it while being wrong — see step 2 and step 4.
+
+**Why no completion record on `EvalState`.** `ROADMAP.md` anticipated a sentinel "bubbled through
+`EvalState`". With no abrupt completion in scope (§ 2) nothing needs to bubble: an `if` that takes
+no branch, or a `for` whose test is false at the top, simply pushes `EMPTY` and returns. Per-walk
+mutable state on `EvalState` would also collide with the re-entrant `evaluate()` at
+[`arrow-function-expression.ts:17`](../../modules/eval-core/src/lib/internal/visitors/arrow-function-expression.ts#L17),
+which runs a nested walk on the *same state* whenever the closure is called — the hazard
+`code-reviewer.md` item 6 exists to catch. The stack discipline has no such coupling, because each
+walk pushes and pops its own frames.
+
+**The dispatcher is explicit and its default throws.** `Program` and `BlockStatement` iterate their
+`body` and dispatch per statement type. A type this phase does not implement raises
+`Error('Unsupported statement type: <type>')` rather than falling through to a base walker. This is
+what retires § 1.1's table: `while (false) { 1 }` stops returning `1` and starts saying why, and
+§ 1.7's family of silent fall-throughs gains no fourth member.
+
+**Worked arithmetic**, for the review of every step below:
+
+| Visitor | Pops | Pushes | Empty-path push |
+| ------- | ---- | ------ | --------------- |
+| `Program` | one per statement | 1 (`EMPTY` → `undefined`) | `undefined` |
+| `BlockStatement` | one per statement | 1 (last non-`EMPTY`, else `EMPTY`) | `EMPTY` |
+| `ExpressionStatement` | 1 (the expression) | 1 (that value) | — |
+| `VariableDeclaration` | one per declarator `init` walked | 1 | always `EMPTY` |
+| `IfStatement` | 1 (test) + 1 (the branch taken, if any) | 1 | `EMPTY` when no branch runs |
+| `ForStatement` | 1 (init, if present) + per iteration: 1 (test) + 1 (body) + 1 (update) | 1 | `EMPTY` when zero iterations |
+
+### 3.2 Decision 2 — block scoping
+
+**One scope per block entry, and one per loop iteration.** A fresh scope per iteration is what makes
+a closure created inside the body capture that iteration's binding, which is `let`'s defining
+property; reusing one scope for the whole loop is the `var` semantics § 2 excluded.
+
+**The idiom is step 0's, applied at every new site**:
+
+```ts
+st.context?.push(scope);
+try {
+  // … walk the block's statements …
+} finally {
+  st.context?.pop();
+}
+```
+
+Step 0 puts exactly this shape at the two existing sites
+([`arrow-function-expression.ts:14-19`](../../modules/eval-core/src/lib/internal/visitors/arrow-function-expression.ts#L14-L19),
+[`pattern.ts:110-113`](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L110-L113)),
+which is the whole reason it is step 0 rather than cleanup: the three new push sites — `Program`,
+`BlockStatement`, `ForStatement` — copy whatever the existing two do, and § 1.3 measured what the
+current shape costs when a body throws. Every new
+push site in this phase is reviewed against `code-reviewer.md` item 3, including its probe — one
+`EvalContext` handed to two evaluations, the first throwing inside a pushed scope.
+
+**Reads.** `EvalContext.get` already searches `scopes` first, innermost first
+([`stack.ts:79-82`](../../modules/eval-core/src/lib/internal/classes/common/stack.ts#L79-L82) reverses, so
+`asArray()` is top-down), which is the correct order for nested blocks with no change. The one gap
+is § 1.5: a binding whose value is `undefined` reads as absent, so `let x;` cannot shadow.
+
+**Decided (8.1): `get` treats a binding in a *pushed scope* as present whatever its value, and
+nothing else changes.** The narrowing is what makes it safe, and it is narrow against two named
+consumers rather than against a general worry:
+
+- **Phase 1's arrow-parameter resolution.** `hasInScopes`' docblock
+  ([`eval-context.ts:168-187`](../../modules/eval-core/src/lib/internal/classes/eval/eval-context.ts#L168-L187))
+  states the divergence deliberately: a parameter bound to `undefined` is still a parameter, but
+  `get` falls through past it. This phase closes that for the scope stack, which is the change —
+  named here so a future reader knows it was made on purpose and against what.
+- **`eval-forms`' documented empty-control behaviour**
+  ([`docs/forms/phase-4-plan.md`](../forms/phase-4-plan.md) § 3.4.3): an empty `FormControl` falls
+  through to the form value because `EvalContext.get` treats `undefined` as absent at **every** step.
+  That fall-through is **within `lookups`** — `createFieldContext` installs the field resolver and
+  the form resolver as two resolvers on the same context, which is the composition Phase 4 chose
+  over a merged record — and not in the scope stack, so this change does not reach it. `eval-forms`
+  keeps the limitation it documented rather than having it silently repaired under one adapter.
+  (An earlier draft of this plan placed that fall-through "between `original` and `lookups`". Wrong
+  in the one direction that matters: a later phase told to watch `original` would widen `lookups`
+  and break `eval-forms` believing it had checked.)
+
+A later phase that wants presence semantics everywhere now has to argue against both of these by
+name, instead of rediscovering them from a green suite.
+
+**Writes are the forced part** (§ 1.4). `for (let i = 0; i < 3; i++)` cannot work without them, so
+this phase adds:
+
+```ts
+/** Assigns to the innermost pushed scope that binds `key`; false when none does. */
+public setInScope(key: unknown, value: unknown): boolean
+```
+
+on `EvalContext`, and both write sites — `assignment-expression.ts` and `update-expression.ts` —
+try it before falling back to today's `set`. Consequences, stated rather than discovered in review:
+
+- It is **additive** as a symbol and **behavioural** at the two call sites. `(x => (x = 99))(1)`
+  stops writing `99` into the caller's object (§ 1.4's measurement) and writes the arrow's parameter
+  scope instead. That is JavaScript's semantics and today's behaviour is not, but it is a change to
+  a shipped path: callout, bump, `CHANGELOG.md`.
+- **`setInScope` returns `false` when no pushed scope *binds* the key, and the fallback to `set` is
+  load-bearing rather than tidy.** `eval-signals` enforces its read-only policy by subclassing
+  `EvalContext` and overriding `set` to throw
+  ([`signal-context.ts:112-117`](../../modules/eval-signals/src/lib/signal-context.ts#L112-L117)),
+  so every write that reaches the source goes through the one method it overrides. An
+  implementation that wrote the innermost scope unconditionally — or created the binding when absent
+  — would route `count = 5` around that override and **silently disable the policy of a published
+  library**. Binding-presence, not scope-presence, is what keeps the fallback reachable.
+- **The blast radius, checked rather than assumed.** Every write case pinned in `eval-signals`'
+  specs is a bare identifier the source binds (`count = 5`,
+  [`eval-signal.spec.ts:300-330`](../../modules/eval-signals/src/lib/eval-signal.spec.ts#L300-L330)),
+  which takes the fallback and still throws; no spec in either downstream library assigns to an
+  arrow parameter. So both suites are expected to stay green, and movement in either is a finding
+  rather than an expectation to update.
+- **What it deliberately relaxes**: a write to a binding the expression itself created — an arrow
+  parameter, or a `let` from step 3 — no longer throws `SignalContextWriteError` under
+  `eval-signals`, because it mutates nothing the consumer owns. That is a prerequisite for `for`'s
+  `i++` to work at all inside a signal, and it is the one place this phase changes what a downstream
+  policy covers. It belongs in the CHANGELOG entry, not only here.
+
+**Scope objects are plain records built by the visitor**, handed to `EvalContext.push`, which
+normalises through `fromContext`
+([`eval-context.ts:283-286`](../../modules/eval-core/src/lib/internal/classes/eval/eval-context.ts#L283-L286)).
+No new class, and two mechanics that a draft of this plan got wrong:
+
+- **The record the visitor builds is not always the object on the stack.** `fromContext`
+  **copies** a plain record into a `Registry` when `caseInsensitive` is set
+  ([`context.ts:20-31`](../../modules/eval-core/src/lib/internal/classes/common/context.ts#L20-L31)).
+  So a visitor may not keep a reference to its record and expect later writes through it to be
+  visible, and nothing may be stored *on* the record that the visitor needs to read back. Every new
+  push site passes the walk's `options`, so a block binding is case-insensitive exactly when the
+  evaluation is; omitting them would make block bindings case-sensitive inside an otherwise
+  case-insensitive evaluation, which is a divergence nobody asked for.
+- **`const` kinds live beside the scope, not in it.** A metadata key on the record is itself
+  resolvable as a binding name — `getContextValue` reads the same surface — so `let __kind` would
+  be readable from an expression. Kinds go in a `WeakMap<Context, Set<string>>` on `EvalState`,
+  checked at the write site only, so reads pay nothing.
+
+**Binding targets go through the pollution guard** (`code-reviewer.md` item 9). Declarations are a
+new way to name a property, and the two places a binding is written today write raw —
+[`pattern.ts:76`](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L76)
+(`object[pattern.name] = arg`) and
+[`pattern.ts:116`](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L116). On a plain
+record `__proto__` is a setter, so `let __proto__ = x` and `let { __proto__: p } = o` would set a
+prototype rather than bind a name. Step 3 routes every binding write through
+`safeSetProperty` from
+[`prototype-pollution-guard.ts`](../../modules/eval-core/src/lib/internal/visitors/prototype-pollution-guard.ts),
+which is the same guard `member`, `assignment`, `update` and `object` already use, and its specs say
+which names are rejected. This is a surface this phase widens, so it is stated rather than assumed.
+
+### 3.3 Decision 3 — bounding `exit`'s scan (E6)
+
+**Settled together with § 3.1, as [E6](../backlog.md#e6) asks.** The completion mechanism chosen
+there is what decides this: because there is no abrupt completion, no visitor in this phase abandons
+a partially-walked child, and **Phase 2 does not make E6 reachable** (§ 1.6). E6's own text says the
+opposite, so this phase corrects that premise rather than inheriting it.
+
+**Bound the scan anyway, in step 1.** Three reasons, in order of weight:
+
+1. The failure is silent when it happens — § 1.6 measured a stack drained from depth 3 to 0 past a
+   mark of 2, with two `after` events a consumer reads as ordinary completions.
+2. The phase that *does* make it reachable is the `break`/`continue` phase, which will be written
+   against these visitors as precedent. Leaving the trap armed under seven new statement visitors is
+   how a residual becomes a defect.
+3. It is small, and the mechanism already exists: `depth(state)` and `unwindTo(mark, …)` are the
+   same idea one level up
+   ([`eval-hooks.ts:510-540`](../../modules/eval-core/src/lib/internal/classes/eval/eval-hooks.ts#L510-L540)).
+
+**Shape.** `evaluate` and `evaluateAsync` already capture a mark
+([`evaluate.ts:22`](../../modules/eval-core/src/lib/internal/functions/evaluate.ts#L22),
+[:132](../../modules/eval-core/src/lib/internal/functions/evaluate.ts#L132)) but keep it in a local,
+where `exit` cannot see it. Move that mark onto the per-run bookkeeping as a stack of walk bases:
+`evaluate` pushes its base on entry and pops it in a `finally`, and **both** of `exit`'s routes
+respect it.
+
+- The `lastIndexOf` scan
+  ([`eval-hooks.ts:487`](../../modules/eval-core/src/lib/internal/classes/eval/eval-hooks.ts#L487))
+  searches no further down than the current base.
+- **The identity fast path
+  ([`eval-hooks.ts:480`](../../modules/eval-core/src/lib/internal/classes/eval/eval-hooks.ts#L480))
+  needs the same bound, and a draft of this plan missed it.** It returns before the scan and pops
+  unconditionally, so when a nested walk has opened nothing yet, the top of the stack *is* the
+  enclosing walk's node and an unmatched `after` for it crosses the boundary by the cheap route.
+  Bounding only the scan would leave the case reachable and § 1.6's spike would not see it —
+  that sequence opens a third node before closing the first, so it exercises case 2 only.
+
+A node open only in an enclosing walk therefore falls into case 3 by either route — pop nothing,
+emit nothing — which is the behaviour § 3.8's table already specifies for "not open at all".
+
+`EvalHookBookkeeping` is `@internal` and unexported, so this is not published surface. The cost is
+two array operations per `evaluate` call, guarded by `state.hasHooks`, and none per node.
+
+**Probe** (step 1's, and it is § 1.6's spike promoted to a spec), three cases:
+
+1. Case 2 across a boundary — § 1.6's sequence — leaves depth at the mark and synthesises **zero**
+   events.
+2. **The fast path across a boundary**: open a node, take the mark, open nothing, close that node.
+   Depth stays at the mark. This is the case a scan-only bound passes while still being wrong.
+3. Control: case 3 with a node never entered stays a no-op, or the bound has been implemented as
+   "never pop" rather than "act within this walk".
+
+Reverting the bound must turn 1 and 2 red and leave 3 green.
+
+### 3.4 Decision 4 — non-termination
+
+**A bound exists, it is an iteration budget on `EvalState`, its default is finite, and exceeding it
+throws.**
+
+| Question | Decision |
+| -------- | -------- |
+| Per loop, or per evaluation? | **Per evaluation.** A per-loop cap multiplies under nesting: two nested loops at 100 k each is 10¹⁰ iterations, which is not a bound |
+| Where does the counter live? | `EvalState`, decrement-only, never reset by a visitor — see the row below for what "per evaluation" means, which is not "per state" |
+| Per state, or per `evaluate()` entry? | **Per outermost `evaluate()` entry.** `EvalState` carries a walk-depth counter that `evaluate` increments on entry and decrements in a `finally`; the budget is refilled only on the 0 → 1 transition. This is forced by two cases a per-state budget gets wrong: the documented `createState` + repeated `eval` style ([`eval-state.ts:103-124`](../../modules/eval-core/src/lib/internal/classes/eval/eval-state.ts#L103-L124) describes counters accumulating for the life of the state under exactly that style) would erode one budget across independent evaluations, and an **escaped closure** — an arrow that outlives its walk — would carry that walk's spent budget and throw "exhausted" on a later call. A nested `evaluate` from an arrow body *during* a walk still shares the remaining budget, which is the half `code-reviewer.md` item 6 is about and the half the plan had right |
+| Default | **100,000 iterations** |
+| Configurable? | Yes, `maxIterations` on `EvalOptions`. A caller may raise it, or set `Infinity` and own the consequence |
+| Behaviour at the limit | Throw. `Error('Iteration budget exhausted after 100000 iterations')` — a runaway loop that silently returns a partial value is the failure mode this exists to prevent |
+
+**Why 100,000.** § 1.8 measured ~1.4 M simple walks per second; a loop iteration is roughly three of
+them (test, body, update), so ~2 µs. 100,000 iterations is **~0.2 s** before the throw — short
+enough that a Jest spec fails fast rather than timing out at 5 s, and short enough that a browser
+tab stutters rather than freezes. It is also far above any expression a rule author writes by hand.
+
+**What it costs on the no-loop path: nothing, structurally.** The counter is decremented inside
+`ForStatement`'s iteration loop and nowhere else, so an expression with no loop never executes the
+instruction — this is not a claim about a guard being cheap (`code-reviewer.md` item 8), it is the
+absence of a call site. The alternative design, a per-node fuel budget decremented in
+`beforeVisitor`, *would* be on the hot path and is rejected for that reason; it buys protection
+against pathological recursion, which this phase does not introduce.
+
+### 3.5 What each visitor does
+
+Registered in
+[`recursive-visitors.ts`](../../modules/eval-core/src/lib/internal/visitors/recursive-visitors.ts#L20-L45)
+alongside the existing nineteen. Every one brackets its body with `beforeVisitor` / `afterVisitor`
+on **every** exit path (`code-reviewer.md` item 2), and satisfies § 3.1's arithmetic.
+
+- **`Program`** — **push a program-level scope** in a `try`/`finally`, dispatch over `body`, pop one
+  per statement, keep the last non-`EMPTY`, push once.
+
+  **The scope is required, and a draft of this plan said the opposite.** That draft had `Program`
+  push nothing, on the reasoning that the top level "shares the caller's context, which is what
+  makes `let x = 1; x + 1` resolve `x` at all". The reasoning is backwards — `get` searches `scopes`
+  first and *falls through* on a miss, so a program scope costs no outer resolution — and the
+  omission broke two things elsewhere: a top-level `let` would have had nowhere to bind but
+  `EvalContext.set`, i.e. the caller's object, contradicting step 3's "the caller's context object
+  is unchanged" and making § 3.2's relaxation false, since `set` is the method `eval-signals`
+  overrides to throw.
+
+  It is also the one place this phase adds work to **every** evaluation, loops or not, which is why
+  step 1 measures it rather than asserting it is cheap.
+- **`BlockStatement`** — push a scope (§ 3.2), dispatch over `body` in a `try`/`finally`, keep the
+  last non-`EMPTY`, push once.
+- **`ExpressionStatement`** — walk `expression`, pop one, push it. A pass-through, registered rather
+  than left to the base walker so that hooks see the statement and § 3.1's rule has no exception.
+- **`EmptyStatement`** — push `EMPTY`. One line, and the reason it exists is the dispatcher's
+  throwing `default:`, which would otherwise make `a;;b` an error.
+- **`VariableDeclaration`** — for each declarator: walk `init` if present and pop one, else bind
+  `undefined`; bind through the existing `evaluatePattern` for the destructuring forms; record the
+  declaration kind for `const`. Pushes `EMPTY` always.
+- **`IfStatement`** — walk `test`, pop one; walk exactly one branch or neither; push that branch's
+  value or `EMPTY`. The untaken branch is **not walked**, which is the behavioural fix in § 1.1's
+  table.
+- **`ForStatement`** — push **one** scope for the loop, in a `try`/`finally`; walk `init` once; per
+  iteration walk `test` (an absent test is `true`), `body`, then `update`, charging one against
+  § 3.4's budget; keep the last non-`EMPTY` body value; push once.
+
+  **One scope for the loop, not one per iteration — and the deleted paragraph is worth keeping
+  visible.** A draft of this plan specified a fresh scope per iteration, seeded from the head's
+  bindings and copied back after `update`, and called that copy-in/copy-back "the subtle part"
+  because it is what makes a closure capture its own iteration. **It makes no observable difference
+  in this evaluator**, so the mechanism was subtle and unobservable at once. The closure
+  `arrow-function-expression.ts` builds
+  ([:14-20](../../modules/eval-core/src/lib/internal/visitors/arrow-function-expression.ts#L14-L20))
+  captures `st`, not a scope chain: it resolves its free variables against `st.context` **as it is
+  when the closure is called**, and by then the loop has popped every scope it pushed. So a closure
+  called during its own iteration reads the right value under either design, and one called after
+  the loop reads nothing under either. The per-iteration design would have allocated a scope and
+  copied bindings twice per iteration — `code-reviewer.md` item 8's per-iteration cost — to buy a
+  property no spec can assert.
+
+  Giving closures a captured scope chain is real work in `arrow-function-expression.ts`, in no
+  step's file list, and it changes a shipped path Phase 1 documented as deliberate. It is out
+  (§ 3.6.5), and it is what a later phase would have to do before per-iteration scopes mean
+  anything.
+
+### 3.6 Divergences from JavaScript, stated rather than discovered
+
+Each of these is a README line, not a defect to be filed later.
+
+1. **An arrow function with a block body returns the block's completion value**, where JavaScript
+   returns `undefined` without a `return`. `x => { 1 }` yields `1` here.
+   [`arrow-function-expression.ts:17`](../../modules/eval-core/src/lib/internal/visitors/arrow-function-expression.ts#L17)
+   calls `evaluate(node.body, st)` and takes what it returns; with `return` out of scope (§ 2), the
+   completion value is the only answer available that is not an error. Today the same expression
+   returns whatever the base walk stranded, so this replaces an accident with a documented rule
+   (§ 8.3).
+2. **`const` reassignment throws at the write, not at parse time.**
+3. **An unsupported statement type throws** (§ 3.1), where today it returns a value (§ 1.1).
+4. **No hoisting.** A `let` is bound when its declaration is reached; reading it earlier reads the
+   enclosing context rather than raising a temporal-dead-zone error.
+5. **Closures do not capture their lexical scope.** An arrow function resolves its free variables
+   against the context *as it is when it is called*, not as it was where it was written
+   ([`arrow-function-expression.ts:14-20`](../../modules/eval-core/src/lib/internal/visitors/arrow-function-expression.ts#L14-L20)).
+   So an arrow created inside a block or a loop body sees nothing of that block's bindings once
+   the block has exited: `for (let i = 0; i < 3; i++) { fns.push(() => i) }` leaves three functions
+   that all read whatever `i` resolves to at call time, which after the loop is the caller's `i` or
+   nothing. This is pre-existing behaviour — the statement visitors neither cause it nor worsen it —
+   and § 3.5's `ForStatement` bullet records that it is what makes a per-iteration scope pointless.
+6. **A pattern form the binder does not implement throws** rather than binding nothing (§ 4 step 3).
+   `let { a = 1 } = o` is the reachable case: `AssignmentPattern` is commented out in `pattern.ts`,
+   and `evaluatePattern` returns an empty context for any unhandled type
+   ([:71](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L71)), which would be a fourth
+   member of § 1.7's silent-fall-through family arriving in the same phase that promises not to add
+   one.
+
+---
+
+## 4. Work breakdown
+
+One numbered step per session, per `CLAUDE.md`. Lint and the full suite after every step, and every
+step leaves all three projects green. Each step states its category — additive, or a behavioural
+change to an already-shipped path — because
+[`.claude/skills/step/SKILL.md`](../../.claude/skills/step/SKILL.md) requires it in the § 2
+restatement; the categories are pre-filled here so a step cannot quietly read itself as cleanup.
+
+### Step 0 — [A9](../backlog.md#a9) and [B2](../backlog.md#b2)
+
+**Category: behavioural.** **Files**: `arrow-function-expression.ts`, `pattern.ts`, a spec for each,
+`docs/backlog.md`.
+
+`try`/`finally` at both scope-push sites; delete the `console.log` at
+[`pattern.ts:83`](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L83), folding the node
+type into the throw's message. Short by design — the argument is already in the backlog.
+
+**The two sites are asserted by different routes, and the second route is not a choice.** The arrow
+site is reachable by evaluating an expression. The `pattern.ts` site is not: acorn rejects a
+`MemberExpression` as a binding target in a parameter list in every form, at every `ecmaVersion`
+(B2's three reachability checks), so an evaluation-driven spec cannot enter that branch and would
+**report green over nothing**. Step 0 therefore calls `evaluatePattern` directly with a hand-built
+`MemberExpression` node and asserts the throw and its message. Stated here rather than left to the
+implementer, because the wrong choice is the one that looks more idiomatic.
+
+**Exit criteria**
+- A spec reproduces § 1.3's measurement — one `EvalContext`, an arrow whose body throws, then a
+  second evaluation on the same context — and asserts `scopes.length === 0` and that the later read
+  returns the source value. It fails when the `finally` is reverted.
+- The `pattern.ts` scope push has a spec entered by a **direct call** to `evaluatePattern` with a
+  hand-built node, asserting the throw, its message, and that `scopes.length` is unchanged after it.
+- `pattern.ts` has no `console.*`; the throw names the node type.
+- Backlog A9 and B2 updated in the same commit.
+- `nx run-many -t lint test build` green.
+
+### Step 1 — The walk boundary: `Program`, `ExpressionStatement`, and E6's bound
+
+**Category: behavioural.** **Files**: three new visitors (`Program`, `ExpressionStatement`,
+`EmptyStatement`), `recursive-visitors.ts`, `eval-hooks.ts`,
+`evaluate.ts`, `eval-state.ts`, the `internal/classes/eval` barrel for `EMPTY_COMPLETION`,
+co-located specs, `docs/backlog.md`.
+
+§ 3.1's convention and the `EMPTY` sentinel land here, converted at the `evaluate` boundary per
+rule 4; § 3.3's walk-base bound lands here because this is the step that makes `Program` the walk's
+root; § 3.4's walk-depth counter lands here because the bound and the budget refill read the same
+field.
+
+**Two criteria a draft of this plan put here belong later**, and are moved rather than dropped:
+`let x = 1` returning `undefined` is step 3's, because at step 1 § 3.1's dispatcher *throws* on a
+`VariableDeclaration`; and the `EMPTY_COMPLETION` hook criterion is step 2's, because no statement
+this step adds can produce `EMPTY` — `Program` never pushes it past rule 4's conversion and
+`ExpressionStatement` is a pass-through. A criterion that can only be met by driving a visitor
+directly is not evidence about a walk.
+
+**Exit criteria**
+- `1; 2; 3` returns `3` with **zero** stranded values (§ 1.1 measured 2). The stranded count is
+  asserted, not just the value — the value was already right by accident.
+- `''` returns `undefined`; no evaluation returns the sentinel.
+- `while (false) { 1 }` and `function f() { return 1 }` now **throw** naming the node type
+  (§ 1.1 measured `1` for both), which is the dispatcher's `default:` asserted rather than assumed.
+- § 3.3's three-case probe passes, and reverting the bound turns cases 1 and 2 red while leaving
+  case 3 green.
+- **`statement-semantics.spec.ts` exists and pins every row of § 1.1's table**, with each row either
+  at its new value or marked with the step that changes it. It is the detector for risk 1: without
+  it the only thing standing behind "six of twelve rows change" is step 6 transcribing a table by
+  hand from a deleted scratch script.
+- **The program-level scope's cost is measured and recorded in the step summary** (§ 3.5): walks per
+  second for a simple expression before and after, on the § 1.8 harness. `internal/performance.spec.ts`
+  must be green unchanged, and the number goes in the summary whether or not it is small — this is
+  the one thing this phase adds to every evaluation, and `code-reviewer.md` item 8 will ask.
+- E6's premise correction is written into `docs/backlog.md` (§ 1.6): Phase 2's design does not make
+  it reachable, and the bound landed anyway.
+- `nx run-many -t lint test build` green.
+
+### Step 2 — `BlockStatement` and block scoping
+
+**Category: behavioural.** **Files**: one new visitor, `recursive-visitors.ts`, `eval-context.ts`
+(§ 8.1's presence rule), specs.
+
+**Block scoping is deliberately unobservable until step 3.** Nothing binds into a block scope yet,
+and an empty pushed scope changes no lookup, so this step's scope assertions are about **depth and
+teardown**, not about resolution. Resolution is step 3's, where there is something to resolve; a
+criterion here that claims to test shadowing would be testing an empty object.
+
+**Exit criteria**
+- `{ 1; 2 }` returns `2` with zero stranded values; `{ }` returns `undefined`.
+- **`{ 'a'; noop() }` returns `undefined`**, where `noop` is a context function returning
+  `undefined` — the case that separates § 3.1's sentinel from `undefined`. The implementation it
+  catches is `EMPTY === undefined`, which passes `{ 'a'; { } }` → `'a'` and fails this. See § 3.1 on
+  why the weaker case was named twice before anyone checked it.
+- A block whose body throws leaves `ctx.scopes.length` at its pre-walk value, asserted on a
+  **reused** `EvalContext` per `code-reviewer.md` item 3, with a second evaluation on that context
+  reading the source value afterwards.
+- A hook registered on `after` for the empty block receives `EMPTY_COMPLETION`, by identity against
+  the exported const (§ 3.1) — the first step at which a statement can produce it.
+- `nx run-many -t lint test build` green.
+
+### Step 3 — `VariableDeclaration` and scope-aware writes
+
+**Category: behavioural.** **Files**: one new visitor, `eval-context.ts` (`setInScope`),
+`assignment-expression.ts`, `update-expression.ts`, `pattern.ts` (§ 3.6.6's throwing default and
+§ 3.2's guarded binding writes), `eval-state.ts` (the `const`-kind `WeakMap`),
+`recursive-visitors.ts`, specs.
+
+**Exit criteria**
+- `let x = 1; x + 1` returns `2` (§ 1.1 measured `NaN`); `const y = 2; y` returns `2` (measured
+  `undefined`); `let x = 1` returns `undefined`.
+- `let x = 1; x = 2; x` returns `2`, and the caller's context object is **unchanged** — the
+  assertion that § 1.4's write path was actually redirected.
+- **`(x => (x = 99))(1)` returns `99` and leaves the caller's object at `{ x: 'SOURCE' }`** —
+  § 1.4's headline behavioural change, which a draft of this plan named in three sections and
+  asserted in none.
+- **A write inside a pushed scope that does not bind the key still reaches `EvalContext.set`.**
+  The probe is a subclass whose `set` throws, mirroring
+  [`signal-context.ts:112-117`](../../modules/eval-signals/src/lib/signal-context.ts#L112-L117);
+  `{ count = 5 }` must throw from it. This is the detector for § 3.2's binding-presence rule, and
+  **no downstream suite is one**: every write case `eval-signals` pins runs with no scopes pushed
+  at all, so the dangerous implementation — write the innermost scope, creating the binding —
+  leaves all three suites green while silently disabling that library's read-only policy.
+- Reassigning a `const` throws; the message names the binding.
+- Destructuring declarations bind: `let [p, q] = arr` then `p` resolves.
+- `let __proto__ = 1` and `let { __proto__: p } = o` are rejected by the pollution guard rather than
+  setting a prototype (§ 3.2), asserted by reading the scope's prototype afterwards.
+- `let { a = 1 } = o` throws naming `AssignmentPattern` (§ 3.6.6) rather than binding nothing.
+- `nx run-many -t lint test build` green, including both downstream suites — a regression gate for
+  the write-path change, and explicitly **not** the detector for the criterion above.
+
+### Step 4 — `IfStatement`
+
+**Category: behavioural.** **Files**: one new visitor, `recursive-visitors.ts`, specs.
+
+**Exit criteria**
+- `if (a) { 1 } else { 2 }` with `a` true returns `1` (§ 1.1 measured `2`).
+- **The untaken branch does not run**: a branch containing a `jest.fn` from the context, or an
+  assignment, leaves no trace. The implementation this catches is today's — walk both branches and
+  select the right value — which passes a value-only assertion and fails this one. Setup: the
+  function is in the evaluation context, so the branch is reachable and the call is observable.
+- `if (false) { 1 }` returns `undefined`; `{ 'a'; if (false) { 'b' } }` returns `'a'`. Note this
+  pair does **not** discriminate the sentinel — § 3.1 says which case does, and step 2 carries it.
+- `nx run-many -t lint test build` green.
+
+### Step 5 — `ForStatement` and the iteration budget
+
+**Category: behavioural** (additive as a node type; behavioural because § 1.1 measured `NaN` today).
+**Files**: one new visitor, `eval-state.ts`, `eval-options.ts`, `recursive-visitors.ts`, specs.
+
+**Exit criteria**
+- `for (let i = 0; i < 3; i++) { i }` returns `2`; the counter is **not** written into the caller's
+  context.
+- **A loop body that throws mid-iteration leaves `ctx.scopes.length` at its pre-walk value**, on a
+  **reused** `EvalContext`. `ForStatement` is the visitor with the highest push multiplicity, and
+  the backlog's own precondition argument for A9 is a `for` body throwing on iteration 3; step 2
+  carries this probe and step 5 is where it matters most.
+- `for (;;) { 1 }` throws within the budget rather than hanging; the spec asserts the throw, and the
+  budget is asserted as **per outermost `evaluate()`** two ways: a nested pair of 1,000-iteration
+  loops exhausts a 100,000 budget (which a per-loop cap would not), and two successive `evaluate`
+  calls on **one** `EvalState` each get a full budget (which a per-state counter would not).
+- `internal/performance.spec.ts` is unchanged and green.
+- No exit criterion here asserts closure capture — § 3.6.5 says why there is nothing to assert.
+- `nx run-many -t lint test build` green.
+
+### Step 6 — Release and records
+
+**Category: behavioural** (the bump itself). **Files**: `modules/eval-core/README.md`,
+`modules/eval-core/src/lib/readme-examples.spec.ts`, `modules/eval-core/package.json`, root
+`CHANGELOG.md`, `docs/backlog.md`, `ROADMAP.md`, `docs/statements/summary.md`.
+
+README rows for the seven node types plus § 3.6's six divergences and § 3.4's option; `0.4.0`;
+a `## [eval-core 0.4.0]` entry whose "Changed" section is § 1.1's table read as a migration note;
+confirmation that [A2](../backlog.md#a2) still names all three members of § 1.7's family, and that
+this phase left them alone; `ROADMAP.md` Phase 2 marked done; a retrospect.
+
+**Exit criteria**
+- Every row of § 1.1's table appears in the CHANGELOG with its old and new value, **transcribed from
+  `statement-semantics.spec.ts`** (step 1) rather than from this document — the spec is green, the
+  table in § 1.9 came from a scratch script that no longer exists.
+- The `eval-signals` relaxation of § 3.2 — a write to a binding the expression created stops
+  throwing `SignalContextWriteError` — is in the CHANGELOG, cross-referenced from an `eval-signals`
+  heading or with the decision not to recorded in the step summary.
+- `readme-examples.spec.ts` covers the new fenced blocks, or its docblock's count claim is corrected;
+  it is hand-transcribed and currently asserts coverage of all twelve.
+- The drift gate from `docs/gates/plan.md` step 2 covers any symbol the new README blocks import.
+- `nx run-many -t lint test build` green.
+
+---
+
+## 5. Published surface added
+
+| Symbol | Kind | Where |
+| ------ | ---- | ----- |
+| `EvalContext.setInScope` | method, additive | `internal/classes/eval/eval-context.ts` |
+| `EvalOptions.maxIterations` | option key, additive | `internal/classes/eval/eval-options.ts` |
+| `EMPTY_COMPLETION` | const, additive | `internal/classes/eval/` — reachable in `after` hook events, so recognisable by contract (§ 3.1) |
+| seven statement visitors | **not published** | `internal/visitors/` is not re-exported by `src/public-api.ts` |
+
+**Behavioural changes to already-published paths** — the list the version bump is for: every row of
+§ 1.1's table; the write redirection of § 1.4; `EvalHooks.exit`'s scan bound (§ 3.3); and, if open
+question 8.1 is answered yes, `EvalContext.get`'s treatment of a scope binding whose value is
+`undefined`.
+
+---
+
+## 6. Verification gates
+
+Checked at every step, not only at the end.
+
+| # | Gate | How |
+| - | ---- | --- |
+| 1 | Nothing moved outside `eval-core` | `git diff --name-only HEAD` — `modules/eval-core/`, `docs/`, root `CHANGELOG.md`, and `ROADMAP.md` in step 6 only |
+| 2 | § 3.1's arithmetic holds | For each visitor in the diff, enumerate exit paths and state pops and pushes per path, against § 3.1's table |
+| 3 | Every scope push has a `finally` pop | Reviewed on a **reused** `EvalContext`, per `code-reviewer.md` item 3's probe — a spec building its context inline asserts nothing |
+| 4 | No per-walk control-flow state on `EvalState` | § 3.1 chose a stack discipline; a field that a nested `evaluate` could clobber is a stop-and-replan |
+| 5 | Every new assertion is load-bearing | Each step names the inversion it ran and **which** cases went red |
+| 6 | The dispatcher's `default` throws | § 1.7's family gains no fourth member |
+| 7 | Downstream suites are the regression gate | `eval-signals` and `eval-forms` rows of `run-many` — movement is a finding, not an expectation |
+| 8 | Backlog entries move with the work | No step closes without its entries updated |
+
+---
+
+## 7. Risks
+
+1. **The behavioural surface is wider than the node list.** Six of § 1.1's twelve rows change value.
+   A consumer whose expression happened to depend on one — most plausibly a multi-statement string
+   that returns its last value — sees a different result after `0.4.0`. **Detector**:
+   `statement-semantics.spec.ts`, built in step 1, pins all twelve rows and is what step 6
+   transcribes. A CHANGELOG entry is a writing task, not a detector, and a row that lands on a third
+   value — neither the old one nor the intended one — would otherwise ship with the document
+   asserting otherwise.
+2. **Scope-aware writes change arrow-parameter assignment** (§ 3.2), which no roadmap document
+   anticipated. **Detector**: step 3's subclass-`set` probe, *not* the downstream suites — their
+   write cases run with no scopes pushed, so they are green for the implementation that breaks
+   `eval-signals`' policy. The suites remain the regression gate for everything else, and movement
+   in either is a stop-and-replan rather than a spec to update.
+3. **`for` is the first construct that can consume unbounded time.** § 3.4 bounds it; the residual is
+   a consumer who raises `maxIterations` and gets what they asked for.
+4. **Three new scope-push sites** — `Program`, `BlockStatement`, `ForStatement` — on top of the two
+   step 0 repairs. Step 0 sets the idiom, but the review burden is per site and
+   the failure is invisible to `eval-core`'s own suite by construction (§ 1.3). **Detectors**: gate 3
+   as a review gate, plus the reused-context throw probe as an exit criterion in steps 0, 2 and 5 —
+   one per site, so no site ships on the review gate alone.
+5. **`pattern.ts` is reached by more paths after step 3.** Its `MemberExpression` branch throws
+   ([:84](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L84)), its `AssignmentPattern`
+   branch is commented out, and its unhandled-type path returns an empty context silently
+   ([:71](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L71)); declarations make all
+   three easier to reach. **Detectors**: step 3's `let { a = 1 } = o` and `let __proto__ = 1`
+   criteria, and step 0's direct-call spec for the `MemberExpression` branch — promoted out of this
+   prose into exit criteria, since a risk whose mitigation lives only here has no detector.
+
+---
+
+## 8. Questions, all settled before step 0
+
+Kept as a record of what was decided and against what, not as work. A step that finds itself
+reopening one of these has left the plan.
+
+**8.1 — settled: yes, narrowed to pushed scopes.** `EvalContext.get` treats a binding in a pushed
+scope as present whatever its value, so `let x;` shadows; `original`, `priorScopes` and `lookups`
+keep today's fall-through. § 3.2 carries the decision and names the two consumers the narrowing
+protects — Phase 1's deliberate arrow-parameter resolution, and `eval-forms`' documented
+empty-control behaviour — so that a later widening argues against them by name.
+
+**8.2 — settled: no `var`.** Function-scoped hoisting is a second scoping model beside § 3.2's and
+buys a consumer nothing `let` does not. `var x = 1` throws per § 3.1's dispatcher, which is at least
+loud.
+
+**8.3 — settled: keep the divergence.** `x => { 1 }` returns `1` here and `undefined` in
+JavaScript (§ 3.6.1). It replaces today's stranded-value accident with a rule, and throwing would
+remove a form that works today for some inputs. README line, not a defect.
+
+**8.4 — settled: A2 stays out.** [A2](../backlog.md#a2)'s entry is rewritten to name all three
+members of the fall-through family — `(a)++`, `[a, b] = arr`, `({m} = o)` — so that "fixing one of
+three is arbitrary" is checkable against the entry rather than a judgement made here. Step 6 no
+longer files a new entry; it confirms that rewrite landed.
+
+**8.5 — settled.** Nothing in this phase touches `evaluateAsync`'s contract: the walk stays
+synchronous, statements included, and a loop containing an `await` is outside § 2's scope.
+`awaitAllPromises` still resolves promises in the final value only.

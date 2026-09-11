@@ -144,7 +144,7 @@ worse, or is it merely nearby?*
 | [A9](#a9) | **Multiplies the construct.** Block scoping means a scope per block per iteration, so a `for` body that throws on iteration 3 leaks three scopes. And five new visitors copy whatever idiom the two existing sites set | **Phase 2 step 0** |
 | [B2](#b2) | **Makes it reachable.** Destructuring declarations and assignment destructuring give a `MemberExpression` a legal binding target, and the branch has a whole-`EvalState` `console.log` in it | **Phase 2 step 0** |
 | [E6](#e6) | **Makes it reachable, but through the design itself.** Loop completion — "skip the rest of the block" — is exactly the unmatched-`after` shape `exit` cannot bound | **A design section of Phase 2's plan**, not a step ahead of it |
-| [A2](#a2) | **Nothing.** `(a)++` under `preserveParens` is no more reachable after Phase 2 than before | **Standalone fix, whenever** |
+| [A2](#a2) | **Nothing.** None of its three members — `(a)++`, `[a, b] = arr`, `({m} = o)` — is more reachable after Phase 2 than before; Phase 2 adds no path into either write visitor's chain | **Standalone fix, whenever** |
 
 **Step 0 is [A9](#a9) + [B2](#b2), one session.** Both are small, both are strictly-before, and
 neither needs Phase 2's design settled: A9 is a `try`/`finally` at two sites plus specs proving
@@ -211,24 +211,44 @@ a version bump.
 *Verified*: source read, 2026-09-06.
 
 <a id="a2"></a>
-## A2 — `update-expression.ts` desynchronizes the value stack under `preserveParens`
+## A2 — Three silent fall-throughs in the two write visitors, one shape
 
 **Package** core · **Kind** fix · **Status** Open
 
-`updateExpressionVisitor`'s `if`/`else if` chain handles `Identifier` and `MemberExpression`
-arguments and falls through silently for anything else — pushing nothing, but still calling
-`afterVisitor`
-([`update-expression.ts:19-37`](../modules/eval-core/src/lib/internal/visitors/update-expression.ts#L19-L37)).
-`ParserOptions` is `Partial<acorn.Options> & {…}` (`internal/interfaces/parser-types.ts:3`), so a
-consumer may pass `preserveParens: true`, and `(a)++` then parses with
-`argument.type === 'ParenthesizedExpression'` (verified against the acorn in this repo).
+**Widened 2026-09-10 from one member to three**, while planning Phase 2. The entry previously
+described `(a)++` alone, which read as a single exotic bug behind a non-default parser option. It is
+one instance of a shape that appears **twice in the code and three times in behaviour**, and two of
+the three need no option at all.
 
-The result is a wrong value for every node downstream of it, not merely an untidy bracket. This
-one is a real defect with a real route to it and deserves a proper fix — a
-`ParenthesizedExpression` visitor, or unwrapping the argument here — rather than triage.
+The shape: an `if`/`else if` chain over the node types a write visitor knows how to handle, with
+**no final `else`** — so an unhandled type reaches `afterVisitor` having pushed nothing, and every
+node downstream of it pops its neighbour's value.
 
-*Recorded*: [`side-effects/step-3-summary.md` § 5.1](side-effects/step-3-summary.md).
-*Verified*: source read, 2026-09-06.
+| # | Expression | Needs an option? | What happens today |
+| - | ---------- | ---------------- | ------------------ |
+| 1 | `(a)++` | `preserveParens: true` | `argument.type === 'ParenthesizedExpression'`; neither branch of [`update-expression.ts:19-37`](../modules/eval-core/src/lib/internal/visitors/update-expression.ts#L19-L37) matches. Pushes nothing |
+| 2 | `[a, b] = arr` | **no** | `left.type === 'ArrayPattern'`; neither branch of [`assignment-expression.ts:46-63`](../modules/eval-core/src/lib/internal/visitors/assignment-expression.ts#L46-L63) matches |
+| 3 | `({m} = o)` | **no** | `left.type === 'ObjectPattern'`; same chain, same fall-through |
+
+*Measured 2026-09-10*, against the built package: 2 and 3 both return `undefined`, throw nothing,
+and leave the context **unchanged** — destructuring assignment is silently a no-op, which is a wrong
+answer on the default path rather than an untidy bracket.
+
+**Why this is one entry and not three.** The fix is one decision — what a write visitor does with a
+target it does not handle — applied at two sites. Handling `ParenthesizedExpression` alone leaves
+the two default-path members live; adding a `default:` that throws fixes all three and changes what
+`[a, b] = arr` does from "nothing" to "a diagnostic", which is the behavioural half that needs a
+version bump. Implementing destructuring assignment properly is a third, larger option and is the
+only one that makes 2 and 3 *work* rather than *report*.
+
+**Phase 2 deliberately left this alone** ([`statements/phase-2-plan.md`](statements/phase-2-plan.md)
+§ 1.7 and § 8.4): that phase reviews the same fall-through shape in five new statement dispatchers
+and requires a throwing `default:` in each, so fixing one of these three in passing would be
+arbitrary rather than principled. It is unblocked and lands whenever someone picks it up.
+
+*Recorded*: [`side-effects/step-3-summary.md` § 5.1](side-effects/step-3-summary.md) (member 1);
+[`statements/phase-2-plan.md` § 1.7](statements/phase-2-plan.md) (members 2 and 3).
+*Verified*: source read, 2026-09-06; members 2 and 3 measured against `dist/`, 2026-09-10.
 
 <a id="a3"></a>
 ## A3 — `import-expression.ts` has a dead `afterVisitor`
@@ -642,6 +662,23 @@ This is a write *through* a signal-backed key rather than *to* one, which is why
 rather than a wording nicety: it is a mutation performed from inside a `computed()`, and it lands
 in **data this library does not own** — the object the consumer's signal holds — so it is **not
 containable at the `EvalContext`** the way every other instance of this shape is.
+
+**The chokepoint framing, added 2026-09-11 while planning Phase 2.** `eval-signals` enforces its
+read-only policy in exactly one place: it subclasses `EvalContext` and overrides `set` to throw
+([`signal-context.ts:112-117`](../modules/eval-signals/src/lib/signal-context.ts#L112-L117)). So
+`EvalContext.set` is the **single policy chokepoint**, and this entry is definitionally *the class of
+write that never enters it* — `safeSetProperty` writes the resolved object directly and no context
+method is called. That is a harder question than "stop this write": there is nothing to override,
+and the three mechanisms below are each an attempt to *reach* a write that bypasses the chokepoint
+rather than to tighten one that passes through it.
+
+Two consequences worth having recorded. A fix that adds a check to `EvalContext` cannot work, by
+construction. And the sibling defect — [`statements/phase-2-plan.md` § 1.4](statements/phase-2-plan.md),
+an identifier write reaching the caller's object because `set` consults no scope — is *not* this
+entry: it goes **through** the chokepoint and lands on the wrong target, which is why Phase 2 can fix
+it and cannot fix this one. Phase 2 § 3.2 preserves the chokepoint deliberately: its `setInScope`
+returns false unless a pushed scope already binds the key, so every write that targets the source
+still reaches `set`.
 
 Three candidate mechanisms, none costed:
 
