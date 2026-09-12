@@ -21,7 +21,7 @@ export const evaluatePatterns = (patterns: Pattern[], st: EvalState, callback: w
         }
         break;
       case 'MemberExpression': {
-          const object = evaluateMemberExpression(pattern, st, callback, args[i]);
+          const object = evaluateMemberExpression(pattern);
           context = {...context, ...object};
         }
         break;
@@ -57,7 +57,7 @@ export const evaluatePattern = (pattern: Pattern, st: EvalState, callback: walk.
     case 'Identifier':
       return evaluateIdentifier(pattern, st, arg);
     case 'MemberExpression':
-      return evaluateMemberExpression(pattern, st, callback, arg);
+      return evaluateMemberExpression(pattern);
     case 'ObjectPattern':
       return evaluateObjectPattern(pattern, st, callback, arg as unknown[]);
     case 'ArrayPattern':
@@ -77,11 +77,20 @@ const evaluateIdentifier = (pattern: Identifier, st: EvalState, arg: unknown) =>
   return object;
 }
 
-const evaluateMemberExpression = (pattern: MemberExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>, arg: unknown): BaseContext => {
+// Module-private, and down to the one parameter it reads: deleting the log
+// below left `st`, `callback` and `arg` unused, and the two call sites are both
+// in this file.
+const evaluateMemberExpression = (pattern: MemberExpression): BaseContext => {
 
   if (pattern.type === 'MemberExpression') {
-    console.log(pattern, st, callback, arg);
-    throw new Error('evaluateMemberExpression is not implemented.');
+    // The node type is the only part of this a caller could act on. What stood
+    // here before was `console.log(pattern, st, callback, arg)` - `st` being the
+    // whole EvalState, i.e. the caller's entire evaluation context dumped to the
+    // console of any application whose user wrote that pattern. Unreachable
+    // today because acorn rejects a MemberExpression binding target in a
+    // parameter list, and deleted ahead of the work that widens what reaches
+    // here. See docs/backlog.md B2.
+    throw new Error(`${pattern.type} is not supported as a binding target.`);
   }
 
   return {} as BaseContext;
@@ -107,10 +116,20 @@ const evaluateObjectPattern = (pattern: ObjectPattern, st: EvalState, callback: 
           }
 
           const ctx = arg as BaseContext;
+
+          // `finally`, for the reason given at the other push site in
+          // arrow-function-expression.ts: the scope stack is on EvalContext,
+          // which outlives this walk, so a scope left behind here shadows a
+          // source key on every later evaluation against the same context.
+          // The `try` opens after the push, never around it.
           st.context?.push(ctx);
-          callback(pattern.value, st);
-          const value = popVisitorResult(pattern, st) as BaseContext;
-          st.context?.pop();
+          let value: BaseContext;
+          try {
+            callback(pattern.value, st);
+            value = popVisitorResult(pattern, st) as BaseContext;
+          } finally {
+            st.context?.pop();
+          }
 
           const pair = {} as BaseContext;
           pair[key] = value;

@@ -250,7 +250,7 @@ actually run.
 | `function` declarations, classes, `try`/`catch`, `switch`, labels | No design in this phase reaches them; each throws per § 3.1's dispatcher |
 | Default values in patterns (`let {a = 1} = o`) | `AssignmentPattern` is commented out in `pattern.ts` ([:43-47](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L43-L47), [:67-68](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L67-L68)) and is its own work |
 | The fall-through family of § 1.7 — `(a)++`, `[a, b] = arr`, `({m} = o)` | Defects this phase measured but did not create. Recorded together in [A2](../backlog.md#a2); § 8.4 says why fixing one of three here would be arbitrary |
-| `@zvenigora/ng-eval-signals`, `@zvenigora/ng-eval-forms` | Dependencies. A step that needs a change in either is a stop-and-replan |
+| `@zvenigora/ng-eval-signals`, `@zvenigora/ng-eval-forms` | Dependencies. A step that needs a change in either is a stop-and-replan — **with one sanctioned exception, step 0b**, which exists because step 0 hit exactly that condition and the plan, not the step, has to decide it. 0b's file list is closed and enumerated in § 4; every other step keeps the original rule |
 | Everything in [`docs/backlog.md`](../backlog.md) Track 1 / Track 2 | Not this phase's subject |
 
 [A2](../backlog.md#a2) was the one deliberate maybe, and is settled at § 8.4: out.
@@ -650,18 +650,184 @@ site is reachable by evaluating an expression. The `pattern.ts` site is not: aco
 `MemberExpression` as a binding target in a parameter list in every form, at every `ecmaVersion`
 (B2's three reachability checks), so an evaluation-driven spec cannot enter that branch and would
 **report green over nothing**. Step 0 therefore calls `evaluatePattern` directly with a hand-built
-`MemberExpression` node and asserts the throw and its message. Stated here rather than left to the
+node and asserts the throw and its message. Stated here rather than left to the
 implementer, because the wrong choice is the one that looks more idiomatic.
+
+**Corrected during step 0: `pattern.ts` needs two fixtures, not one.** An earlier draft of the
+criterion below asked for one hand-built `MemberExpression` node to carry both of that file's
+assertions. It cannot, and the failure is silent. The two repairs are in two functions that never
+call each other: the throw is at
+[`:84`](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L84) in
+`evaluateMemberExpression`, and the scope push is at
+[`:110-113`](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L110-L113) in
+`evaluateObjectPattern`. A `MemberExpression` throws from `:84` having executed **no push**, so
+`scopes.length` is unchanged because nothing happened — the assertion passes identically against
+the unfixed code, which is the vacuous setup `CLAUDE.md` describes. Asserting the pop survives a
+throw requires the throw to land *between* the push and the pop, which needs an `ObjectPattern`
+whose `Property.value` throws when walked:
+[`:111`](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L111) is
+`callback(pattern.value, st)`, dispatching to that node type's registered visitor.
+
+**The idiom, stated because three more push sites copy it** (`Program`, `BlockStatement`,
+`ForStatement`, steps 1/2/5). Both push sites are written `st.context?.push(...)`, so the `try`
+opens on the line **after** the push, never around it:
+
+```ts
+const newContext = evaluatePatterns(node.params, st, callback, arrowArgs);  // outside
+st.context?.push(newContext);                                               // outside
+try {
+  return evaluate(node.body, st);
+} finally {
+  st.context?.pop();
+}
+```
+
+A `try` opened one line early is wrong in two ways, neither of which any suite reports: it brings
+the context-building call inside the bracket, where a throw from it is swallowed into a pop; and
+when `st.context` is undefined the optional chain skips the push while the `finally` still runs a
+`pop()` that was never paired. Gate 3 checks the pairing; this is where the line goes.
 
 **Exit criteria**
 - A spec reproduces § 1.3's measurement — one `EvalContext`, an arrow whose body throws, then a
   second evaluation on the same context — and asserts `scopes.length === 0` and that the later read
   returns the source value. It fails when the `finally` is reverted.
-- The `pattern.ts` scope push has a spec entered by a **direct call** to `evaluatePattern` with a
-  hand-built node, asserting the throw, its message, and that `scopes.length` is unchanged after it.
+- The `pattern.ts` repairs have **two** specs, both entered by a **direct call** to
+  `evaluatePattern` with a hand-built node, because one node cannot reach both functions: a
+  `MemberExpression` fixture asserting the throw and its message, and an `ObjectPattern` fixture
+  whose property value throws when walked, asserting `scopes.length` is back to its pre-call value
+  after it. Only the second is evidence about the push, and it fails when that `finally` is
+  reverted.
+- Each `finally` is reverted **separately**, and the step summary names which case goes red for
+  which site — two sites, two reverts, not one revert and a count.
 - `pattern.ts` has no `console.*`; the throw names the node type.
 - Backlog A9 and B2 updated in the same commit.
-- `nx run-many -t lint test build` green.
+- `nx run-many -t lint test build` green **except** for the two downstream pins named in step 0b,
+  which step 0 leaves red on purpose. Amended after step 0 ran: the original criterion said
+  "green", step 0's fix made two pre-existing downstream specs fail *because* it succeeded, and
+  neither the step nor the reviewer may edit a downstream spec under § 2's rule. Step 0 and step 0b
+  are therefore **one commit or two adjacent commits on the same branch**, and the branch is not
+  green until 0b lands.
+
+### Step 0b — The downstream consequences of step 0
+
+**Category: behavioural** (it is step 0's behavioural change, seen from the two consumers).
+**Files**, closed list — six downstream, two repo-level:
+
+| File | What |
+| ---- | ---- |
+| `eval-signals/src/lib/signal-context.spec.ts` | re-pin `:248` to the fixed behaviour |
+| `eval-forms/reactive/src/lib/field-schema.spec.ts` | `:347` and `:327` — item 1, the hard half |
+| `eval-forms/signals/src/lib/evaluate-rule.spec.ts` | `:95`, `:111` — item 2 |
+| `eval-signals/src/lib/eval-signal.memory.spec.ts` | `:231` — item 2 |
+| `eval-signals/src/lib/eval-signal.ts` | comments at `:286`, `:332` — item 3 |
+| `eval-forms/signals/src/lib/evaluate-rule.ts`, `eval-forms/reactive/src/lib/field-schema.ts` | comments at `:36`, `:253` — item 3 |
+| `CLAUDE.md`, `docs/backlog.md` | item 3's stale facts, and anything item 1 files |
+
+**No `public-api.ts`, `index.ts` or `package.json` under either downstream package is on this
+list.** If 0b finds itself needing one, that is a stop-and-replan on the original terms: the
+exception § 2 grants is for specs and comments that describe a defect `eval-core` just fixed, not
+for the downstream surface.
+
+**Why step 0 could not do this itself.** § 2 makes a downstream change a stop-and-replan, and
+`CLAUDE.md` forbids rewriting a spec to match new behaviour. Both are right, and step 0 obeying
+them is the reason this section exists rather than a `git diff` nobody reviewed. The plan sanctions
+the paths; the step does not decide them.
+
+#### The three items, which are not equal
+
+**1. The two failing pins — and only one of them is a re-pin.**
+
+`signal-context.spec.ts:248` is the easy half: it pins an uncontained leak that no longer exists,
+and its own docblock already says the assertions are "pinned as current behaviour, not endorsed"
+and that "a fix in `eval-core` has to update both deliberately". Invert it — the scope stack is
+empty and the later read returns the source value — and the docblock's KNOWN LIMITATION framing
+goes with it.
+
+`field-schema.spec.ts` is **not** a re-pin, and must not be treated as one. Its
+`context composition (§ 3.4.1)` block asserts **one `EvalContext` per field** *through the leak*,
+because the binding hands out no context handle — the block's own comment records that two other
+setups were tried and rejected. With A9 fixed there is no leak to observe by any route, so the
+surviving sibling at `:327` now passes **even under a single shared context**. It is the vacuous
+case its partner at `:347` was written to prevent, and its partner's comment says so in advance.
+
+So 0b does one of two things, and **deleting `:347` while leaving `:327` standing is neither**:
+
+- find a replacement observable for one-context-per-field — something the binding exposes that
+  differs between a shared context and a per-field one; or
+- record plainly in `docs/backlog.md` that § 3.4.1's property is **ungated** from `/reactive`'s
+  public surface, with `:327` either removed or re-labelled as the non-detector it now is.
+
+A deleted `:347` beside an untouched `:327` reads as coverage and is not. That is the specific
+outcome this item exists to forbid.
+
+**2. The three vacuous containment tests — the item that matters to the rest of this phase.**
+
+`evaluate-rule.spec.ts:95` and `:111`, and `eval-signal.memory.spec.ts:231`, all now pass with the
+`finally` in the code they cover **deleted**. Steps 1, 2 and 5 add three more scope-push sites
+(`Program`, `BlockStatement`, `ForStatement`) whose failure mode is precisely a missing `finally`,
+and these are the specs that would catch one from downstream. A phase whose downstream witness is
+asleep for its own idiom's failure mode has no witness — and risk 4 names the per-site review
+burden as the reason detectors matter here more than usual.
+
+Restoring them means giving each a scope that is leaked by something **other** than the two sites
+step 0 fixed — the containment's depth-mark unwind is still correct for any leak, so a spec can
+push a scope on the context before the call and assert the unwind returns to *that* depth, or
+drive a push the guard must still contain. Whatever the construction, the exit criterion is the
+probe, not the green: each must go red with its `finally` deleted.
+
+**3. Four false comments and two stale facts in `CLAUDE.md`.**
+
+Present tense, in live source, all now wrong: `eval-signal.ts:286` and `:332` ("neither uses a
+`try`/`finally`", and the escaped-closure residual "it does not reach" — which step 0 closed),
+`evaluate-rule.ts:36`, `field-schema.ts:253`. And `CLAUDE.md`'s two: the third-invariant paragraph
+saying **neither** push site uses `try`/`finally`, which is now the opposite of the idiom step 0
+recorded; and the console inventory's "four survive tree-shaking into the published bundle", which
+is **three** now that B2 is gone. Nothing in `run-many` flags a wrong comment, which is why they
+are on a file list rather than left to be noticed.
+
+#### The containments themselves stay, and are safe — state this, do not leave it implied
+
+**Both unwind with `while (scopes.length > depth) { pop() }`** — `eval-signal.ts:338`,
+`evaluate-rule.ts:85`. With the leak closed the loop condition is false on entry and the body
+never runs: no double-pop, no drained scope, no new failure mode, one `.length` read per recompute.
+Someone reading "three containment tests are now vacuous" will otherwise assume the *code* is
+broken. It is not; the tests stopped discriminating because the thing they discriminated against
+stopped happening.
+
+#### Removable or only redundant? — **Redundant, and not removable.** Answer this in 0b's restatement
+
+Phase 6 spent a spike placing `evaluateRule`'s choke point, so this is the question 0b must answer
+before it touches either file, and the answer is not "the leak is fixed, delete the guard":
+
+- **The peer range decides it.** `eval-signals` 0.1.0 and `eval-forms` 0.2.0 both declare
+  `"@zvenigora/ng-eval-core": "^0.3.0"`. That caret range **admits 0.3.0 itself** — the leaking
+  version — and will go on admitting it after `eval-core` 0.4.0 ships. A consumer on
+  `eval-signals` 0.1.0 + `eval-core` 0.3.0 is a supported installation today, and removing the
+  containment breaks exactly them. Removal is therefore gated on raising both peer ranges to
+  `>=0.4.0`, which is its own breaking release of two packages and is not this phase's work.
+- **What it still protects, concretely**, so the next person does not delete it as dead: (a) that
+  version skew; (b) the three push sites steps 1, 2 and 5 add, for which it is the backstop while
+  they are being written; (c) `EvalContext.push` / `pop` are **public methods on a published
+  class**, so a leaked scope is reachable without any visitor at all.
+- The escaped-closure residual is the one thing on the old list that is genuinely **gone**: the
+  arrow's push and its `finally` pop now travel together, so it no longer matters when the closure
+  is called. `eval-signal.ts:332`'s "two leaks it does not reach" must lose that half — item 3.
+
+**Exit criteria**
+- `nx run-many -t lint test build` green, all three projects. This is the criterion step 0 could
+  not meet, and the branch is red until it does.
+- Each of the three restored containment specs goes **red with its own `finally` deleted**, named
+  individually — three deletions, three named red sets, on step 0's precedent. A restored spec that
+  passes either way has re-created the problem item 2 exists to fix.
+- `field-schema.spec.ts` § 3.4.1 is either gated by a replacement observable that fails under a
+  shared context, or recorded as ungated in `docs/backlog.md` with `:327` no longer readable as
+  coverage. Not "`:347` deleted".
+- `eval-signal.ts`, `evaluate-rule.ts`, `field-schema.ts` contain no present-tense claim that
+  `eval-core` pushes without a `try`/`finally`; `CLAUDE.md`'s third-invariant paragraph and console
+  count are corrected.
+- Each containment's docblock says it is retained against the `^0.3.0` peer range and the push
+  sites still to come — not that it is contained against a live defect.
+- The diff contains no downstream `public-api.ts`, `index.ts` or `package.json`.
 
 ### Step 1 — The walk boundary: `Program`, `ExpressionStatement`, and E6's bound
 
@@ -824,9 +990,17 @@ this phase left them alone; `ROADMAP.md` Phase 2 marked done; a retrospect.
 | seven statement visitors | **not published** | `internal/visitors/` is not re-exported by `src/public-api.ts` |
 
 **Behavioural changes to already-published paths** — the list the version bump is for: every row of
-§ 1.1's table; the write redirection of § 1.4; `EvalHooks.exit`'s scan bound (§ 3.3); and, if open
-question 8.1 is answered yes, `EvalContext.get`'s treatment of a scope binding whose value is
-`undefined`.
+§ 1.1's table; the write redirection of § 1.4; `EvalHooks.exit`'s scan bound (§ 3.3); **[A9](../backlog.md#a9)'s
+scope-pop repair (step 0)**; and, if open question 8.1 is answered yes, `EvalContext.get`'s
+treatment of a scope binding whose value is `undefined`.
+
+**A9 was missing from that list until step 0 ran, and the omission is instructive.** Step 0 reads
+as a backlog fix, so the plan filed it under preconditions and not under the surface the bump
+covers — while its effect is squarely behavioural on a published path: on a reused `EvalContext`,
+a throwing arrow body used to leave a scope that shadowed a source key for the life of the
+context, and no longer does. Two downstream suites pinned exactly that as known behaviour, which
+is how it surfaced. Step 6's CHANGELOG criteria must therefore carry an A9 line as well as
+§ 1.1's rows.
 
 ---
 
@@ -836,13 +1010,14 @@ Checked at every step, not only at the end.
 
 | # | Gate | How |
 | - | ---- | --- |
-| 1 | Nothing moved outside `eval-core` | `git diff --name-only HEAD` — `modules/eval-core/`, `docs/`, root `CHANGELOG.md`, and `ROADMAP.md` in step 6 only |
+| 1 | Nothing moved outside `eval-core` | `git diff --name-only HEAD` — `modules/eval-core/`, `docs/`, root `CHANGELOG.md`, and `ROADMAP.md` in step 6 only. **Step 0b only**: also the eight downstream paths its § 4 entry names, and nothing else under `modules/eval-signals/` or `modules/eval-forms/` |
 | 2 | § 3.1's arithmetic holds | For each visitor in the diff, enumerate exit paths and state pops and pushes per path, against § 3.1's table |
 | 3 | Every scope push has a `finally` pop | Reviewed on a **reused** `EvalContext`, per `code-reviewer.md` item 3's probe — a spec building its context inline asserts nothing |
 | 4 | No per-walk control-flow state on `EvalState` | § 3.1 chose a stack discipline; a field that a nested `evaluate` could clobber is a stop-and-replan |
 | 5 | Every new assertion is load-bearing | Each step names the inversion it ran and **which** cases went red |
 | 6 | The dispatcher's `default` throws | § 1.7's family gains no fourth member |
-| 7 | Downstream suites are the regression gate | `eval-signals` and `eval-forms` rows of `run-many` — movement is a finding, not an expectation |
+| 7 | Downstream suites are the regression gate | `eval-signals` and `eval-forms` rows of `run-many` — movement is a finding, not an expectation. **Step 0 moved both**, which is what step 0b exists to resolve; from step 1 on, the gate reads as written again |
+| 7a | The downstream witness is awake | Step 0b restores the three containment specs that item 4 of its list found vacuous. Steps 2 and 5 add push sites those specs are the downstream detector for — a green row from an assertion that passes with its guard deleted is not evidence |
 | 8 | Backlog entries move with the work | No step closes without its entries updated |
 
 ---

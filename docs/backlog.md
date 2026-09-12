@@ -89,9 +89,9 @@ release, not a free change.
 | [A6](#a6) | `safeCall` destroys the class of any error thrown through a call | core | fix | Open |
 | [A7](#a7) | `EvalContext.getThis` reads `_original` in its `priorScopes` loop | core | fix | Open |
 | [A8](#a8) | `EvalService._activeStates` grows unboundedly | core | fix | Open, Covered |
-| [A9](#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | Contained, Premise retired — **[Phase 2 step 0](#phase-2-preconditions)** |
+| [A9](#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | **Fixed**, Phase 2 step 0 |
 | [B1](#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | Open, Covered |
-| [B2](#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | Open — **[Phase 2 step 0](#phase-2-preconditions)** |
+| [B2](#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Fixed**, Phase 2 step 0 |
 | [B3](#b3) | Three service-layer `console.*` calls reach the published bundle | core | decision | Open |
 | [B4](#b4) | `eval-core.component.ts` is dead generator scaffold | core | fix | Open |
 | [C1](#c1) | A member-target write escapes the read-only policy | signals | decision | Open, Covered |
@@ -151,6 +151,25 @@ neither needs Phase 2's design settled: A9 is a `try`/`finally` at two sites plu
 the pop survives a throw, B2 is a deletion. The cost asymmetry is what makes them step 0 rather
 than cleanup — fixing A9 first sets the idiom the five new visitors copy; fixing it afterwards
 means auditing seven sites, by which time the two originals have been read as precedent.
+
+**Done, 2026-09-11.** Both entries are Fixed. Two things the estimate got wrong are worth keeping,
+because they are the failure modes this register exists for.
+
+*The criterion could not be met as written.* The plan asked for **one** spec to cover both of
+`pattern.ts`'s repairs, and one cannot — the throw and the scope push are in two functions that
+never call each other, so the `MemberExpression` fixture throws having executed no push and its
+`scopes.length` assertion would have passed against the unfixed code. Two fixtures; the criterion
+was amended in the plan rather than satisfied as written.
+
+*"Strictly-before and small" was true of the code and false of the blast radius.* "B2 is a
+deletion" held. "A9 is a `try`/`finally` at two sites plus specs" held for `eval-core` — and then
+two downstream suites went red, because both libraries had **pinned the leak as known behaviour**
+rather than only working around it. Nothing in this register or the plan predicted that: A9's own
+entry tracked the *containments* and not the *specs describing them*. The work is
+[`statements/phase-2-plan.md`](statements/phase-2-plan.md) step 0b, which the plan had to sanction
+because § 2 makes a downstream edit a stop-and-replan. The general lesson, for the entries still
+open here: an entry that records "two libraries carry workarounds for this" is also recording that
+those libraries have tests asserting the defect, and closing it moves both.
 
 **[E6](#e6) is a constraint on the design, not a queue item.** Bounding `exit`'s scan with a
 mark and choosing the completion-value mechanism are one decision seen twice. Discharging it
@@ -458,11 +477,56 @@ in [`signals/step-4-summary.md` § 5.2](signals/step-4-summary.md); carried forw
 <a id="a9"></a>
 ## A9 — The arrow-scope leak's root cause: no `try`/`finally` at either push site
 
-**Package** core · **Kind** fix · **Status** Contained, Premise retired
+**Package** core · **Kind** fix · **Status** **Fixed** — Phase 2 step 0, 2026-09-11
+
+**Fixed.** Both sites now push, then open a `try` whose `finally` pops. The rest of this entry is
+the record of what the defect was and why it took five phases to get a home; it is no longer
+work. What the fix closes and what it does not:
+
+- The **escaped-closure residual** below is closed. It was the part no downstream containment
+  could reach, because the arrow's push happens when the closure is *called*, which may be after
+  any recompute boundary has run its own `finally`. A pop that travels with the push does not
+  care when the call happens.
+- The two downstream containments — `eval-signals`' snapshot-and-restore around each recompute,
+  `eval-forms`' `evaluateRule` choke point — are **redundant but not removable**, and step 0 did
+  not touch them. Both unwind with `while (scopes.length > depth) { pop() }`, so with the leak
+  closed the loop body simply never runs: no double-pop, no new failure mode. They stay because
+  both packages declare `"@zvenigora/ng-eval-core": "^0.3.0"`, a range that still admits the
+  **leaking** 0.3.0 — so a consumer on `eval-signals` 0.1.0 + `eval-core` 0.3.0 is a supported
+  installation that the guard is still load-bearing for. Removal is gated on raising both peer
+  ranges, which is a breaking release of two packages. They also remain the downstream backstop
+  for the three push sites Phase 2 still adds.
+- **Step 0 left the branch red, on purpose.** Two pre-existing downstream specs pinned the leak as
+  known behaviour and fail because it is fixed — `eval-signals`' `signal-context.spec.ts:248` and
+  `eval-forms`' `field-schema.spec.ts:347`. Editing either from a step scoped to `eval-core` is
+  what § 2 forbids, so the handling is
+  [`statements/phase-2-plan.md`](statements/phase-2-plan.md) **step 0b**, which also covers three
+  containment specs that are now vacuous and four downstream comments that are now false. The
+  second of those matters most: the vacuous specs are the downstream detector for a missing
+  `finally` at the push sites steps 1, 2 and 5 add.
+- It is a **behavioural change to a published path**, carried by Phase 2's `0.4.0` bump: on a
+  reused `EvalContext`, a throwing arrow body used to leave a scope that shadowed a source key of
+  the same name for the life of that context, and no longer does.
+
+**Where the detectors are.** `arrow-function-expression.spec.ts` (three cases, on a *reused*
+`EvalContext` — a fixture building its context inline cannot observe this) and `pattern.spec.ts`'s
+`ObjectPattern` fixture. Reverting each `finally` separately was run, and the red sets are
+disjoint: the arrow revert reddens the three arrow cases and no pattern case; the pattern revert
+reddens the two `ObjectPattern` cases and no arrow case.
+
+**The idiom, for the three push sites Phase 2 still adds.** The `try` opens on the line *after*
+the push, never around it. Both sites write `st.context?.push(...)`, so a `try` opened one line
+early pairs a `finally` pop with a push the optional chain had skipped — and, at the arrow site,
+swallows a throw from `evaluatePatterns` into a pop as well. Neither failure is visible to any
+suite. Recorded in [`statements/phase-2-plan.md`](statements/phase-2-plan.md) § 4 step 0.
+
+---
+
+The defect, as it stood:
 
 The third stack invariant in `CLAUDE.md`: exactly one `st.context.pop()` per
 `st.context.push()`, on every exit path including the ones an exception takes. Only two visitors
-push scopes and **neither uses `try`/`finally`**, so a body that throws skips the pop:
+pushed scopes and **neither used `try`/`finally`**, so a body that threw skipped the pop:
 
 - [`arrow-function-expression.ts:16-18`](../modules/eval-core/src/lib/internal/visitors/arrow-function-expression.ts#L16-L18)
 - [`pattern.ts:110-113`](../modules/eval-core/src/lib/internal/visitors/pattern.ts#L110-L113)
@@ -499,11 +563,15 @@ and is not containable at a recompute boundary by construction: there is no reco
 when it happens.
 
 **Fixing it in `eval-core` is the only thing that closes the residual**, and `phase-3-plan.md`
-§ 3.8.3 says so in as many words while ruling it out of *that* phase's scope.
+§ 3.8.3 says so in as many words while ruling it out of *that* phase's scope. Phase 2 step 0 is
+that fix.
 
 *Recorded*: `CLAUDE.md`; [`signals/phase-3-plan.md` § 3.8.3](signals/phase-3-plan.md);
 [`forms/phase-4-plan.md` § 9.1](forms/phase-4-plan.md).
-*Verified*: source read, 2026-09-06 — no `try` at either site.
+*Verified*: source read, 2026-09-06 — no `try` at either site. Measured on the built package,
+[`statements/phase-2-plan.md` § 1.3](statements/phase-2-plan.md): `scopes.length` **1** after a
+throwing arrow body, and the later read returning the shadowed `'SHADOW'` rather than `'SOURCE'`.
+*Fixed*: 2026-09-11, Phase 2 step 0, with both reverts probed separately.
 
 ---
 
@@ -567,11 +635,28 @@ Behavioural — anything reading `s.constructor` today starts throwing.
 <a id="b2"></a>
 ## B2 — `pattern.ts:83` logs the whole `EvalState`
 
-**Package** core · **Kind** fix · **Status** Open — **[Phase 2 step 0](#phase-2-preconditions)**
+**Package** core · **Kind** fix · **Status** **Fixed** — Phase 2 step 0, 2026-09-11
+
+**Fixed.** The call is gone and the throw now reads
+`` `${pattern.type} is not supported as a binding target.` `` — the node type being the only part
+of the old argument list a caller could act on. Deleting it left `st`, `callback` and `arg`
+unused, so `evaluateMemberExpression` is down to its one remaining parameter; it is
+module-private and both call sites are in `pattern.ts`, so nothing outside the file moved. **Not
+behavioural** — the branch is unreachable, per the three checks below, which is why the count of
+`console.*` reaching the bundle drops from four to three without a consumer seeing anything.
+
+Detector: `pattern.spec.ts`'s `MemberExpression` fixture, which asserts the message *and* spies
+on `console.log`. Reverting both halves reddens that one case and nothing else.
+
+**The remaining three are [B3](#b3)**, and this entry closing does not close that one.
+
+---
+
+The defect, as it stood:
 
 `eval-core` has ~20 `console.*` calls in source. Most are unreachable and tree-shaken; **four
 reach the published FESM bundle**, verified by building and grepping
-`dist/modules/eval-core/fesm2022/`. This entry is one of them; the other three are [B3](#b3).
+`dist/modules/eval-core/fesm2022/`. This entry was one of them; the other three are [B3](#b3).
 
 [`pattern.ts:83`](../modules/eval-core/src/lib/internal/visitors/pattern.ts#L83) is
 `console.log(pattern, st, callback, arg)`, inside `evaluateMemberExpression`, guarded by
@@ -604,7 +689,7 @@ Scope: delete the call and fold anything worth keeping into the throw's message;
 the only part a caller could act on. Not behavioural — the one call that could expose anything
 cannot currently run.
 
-*Verified*: source read, 2026-09-06.
+*Verified*: source read, 2026-09-06. *Fixed*: 2026-09-11, Phase 2 step 0.
 
 <a id="b3"></a>
 ## B3 — Three service-layer `console.*` calls reach the published bundle
