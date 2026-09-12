@@ -222,36 +222,67 @@ describe('createEvalSignal - lifetime and cleanup', () => {
   describe('the arrow-scope containment', () => {
 
     /**
-     * Supersedes the pinned limitation in `signal-context.spec.ts`, which
-     * keeps its assertions: the leak is real and uncontained when a signal
-     * context is driven directly through `EvalService`. The guard lives at
-     * the recompute boundary (S 3.8.3), so it is `createEvalSignal` that has
-     * it.
+     * **Rewritten in Phase 2 step 0b.** This case used to drive the leak
+     * through a throwing arrow body, because `arrow-function-expression.ts`
+     * pushed a scope and popped it with no `try`/`finally`. Step 0 fixed that
+     * ([A9](../../../../docs/backlog.md#a9)) and the case went on passing with
+     * `eval-signal.ts`'s guard **deleted** - a green row reporting coverage it
+     * no longer had.
+     *
+     * The guard is retained, not redundant-and-removable: `eval-signals` 0.1.0
+     * declares `"@zvenigora/ng-eval-core": "^0.3.0"`, a range that admits the
+     * leaking 0.3.0 and will keep admitting it after 0.4.0 ships. See the
+     * `finally` in `eval-signal.ts` for the full list of what it still covers.
+     *
+     * So the leak is now driven the way the guard's third reason names:
+     * `EvalContext.push` and `pop` are **public methods on a published class**,
+     * reachable with no visitor at all. A source function that pushes and does
+     * not pop strands a scope exactly as a push site missing its `finally`
+     * would, and is the one route no fix inside `eval-core`'s visitors can
+     * close.
+     *
+     * `signal-context.spec.ts` holds the other half - the same context driven
+     * straight through `EvalService`, outside any recompute, where step 0's fix
+     * now reaches and this guard never could.
      */
-    it('should contain a throwing arrow function\'s scope to the recompute that made it', () => {
+    it('should contain a scope stranded through the published push to the recompute that made it', () => {
       const context = createSignalContext({
         x: signal('from source'),
-        items: signal([1, 2, 3]),
-        explode: () => { throw new Error('boom'); },
+        // Referenced before its declaration on purpose: this runs only when a
+        // recompute calls it, long after the line below.
+        strand: () => {
+          context.push({ x: 'stranded' });
+
+          return 'ok';
+        },
       });
 
+      // A scope the caller owns, so the depth the guard marks on entry is not
+      // zero. Its key is not `x`: bound to the name the signals read it would
+      // shadow the source for the walk itself, which is a different property.
+      context.push({ marker: 'the caller\'s own scope' });
+
       const plain = create('x', context);
-      const boom = create('items.map(x => explode(x))', context, { onError: 'undefined' });
+      const stranding = create('strand()', context);
 
       expect(plain()).toEqual('from source');
-      expect(boom()).toBeUndefined();
+      expect(stranding()).toEqual('ok');
 
-      // The direct assertion: `arrow-function-expression.ts` pushed `{ x: 1 }`
-      // and never popped it, and the guard put the depth back.
-      expect(context.scopes.length).toEqual(0);
+      // The direct assertion: the recompute stranded `{ x: 'stranded' }` on a
+      // context that outlives it, and the guard put the depth back - to the
+      // caller's mark, not to the bottom.
+      expect(context.scopes.length).toEqual(1);
+      expect(context.get('marker')).toEqual('the caller\'s own scope');
 
       // The end-to-end one (S 6.1). Scopes are step 1 of `EvalContext.get`'s
-      // resolution order, so without the guard this reads 1 - for this
-      // recompute and every one after it, on a context that lives as long as
-      // the signal does.
+      // resolution order, so without the guard this reads `'stranded'` - for
+      // this recompute and every one after it, on a context that lives as long
+      // as the signal does.
       plain.invalidate();
 
       expect(plain()).toEqual('from source');
+
+      context.pop();
     });
 
   });

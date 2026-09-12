@@ -281,30 +281,37 @@ describe('bindFieldProperties', () => {
 
   describe('context composition (plan S 3.4.1)', () => {
 
-    // Asserted through the scope leak S 3.4.1 is *about*, not through an
-    // identity check the binding hands out no handle for. `get` resolves
-    // `scopes` before `lookups`, so a scope left on a shared context would
-    // shadow every other field's key of the same name for the life of the
-    // form.
+    // Asserted through resolution, not through an identity check the binding
+    // hands out no handle for. `get` resolves `scopes` before `lookups`, so a
+    // scope on the context one field's walk is using would shadow every other
+    // field's key of the same name for as long as it is there.
     //
-    // **Getting a leak to happen is the whole difficulty, and two obvious
-    // setups do not.** `arrow-function-expression.ts` pushes a scope and pops
-    // it with no `try`/`finally`, so a body that throws should strand it - but
-    // `((country) => country.x.y)(1)` does not throw at all (no member access
-    // in this evaluator does), and `((country) => country())(1)` throws and is
-    // *contained*: `createEvalSignal` marks `ctx.scopes.length` before the
-    // walk and drains back to it in a `finally` (phase-3-plan S 3.8.3). Both
-    // were measured, and both leave a shared context passing this case.
+    // **Rewritten in Phase 2 step 0b, and the reason is worth keeping.** Until
+    // then this block observed a shared context through the *scope leak*
+    // [A9](../../../../../docs/backlog.md#a9) left behind:
+    // `arrow-function-expression.ts` pushed a parameter scope and popped it
+    // with no `try`/`finally`, so an arrow that escaped the walk and threw when
+    // called later stranded its binding permanently, where a second field could
+    // read it. Step 0 fixed A9. With no leak to observe by any route the case
+    // below went on passing **under a single shared context** - measured, by
+    // hoisting `createFieldContext` out of `bindFieldProperties`' loop - which
+    // made it the vacuous case its own partner had been written to prevent.
     //
-    // What S 3.8.3 names as uncontained is an arrow that **escapes** the walk
-    // and is called later, after the recompute's `finally` has run. Reaching
-    // that through this library's surface needs the escape hatch to be in the
-    // form: a control whose value stores its argument.
-    const escaping = (): {
+    // What replaces it needs no defect at all: the arrow's parameter scope is
+    // on the context *legitimately*, for the duration of the body. Reading
+    // another field from inside that window is the discriminator, and reaching
+    // inside it needs two escape hatches in the form - a control whose value
+    // stores the closure, so it can be called outside any reactive context, and
+    // one that runs while the scope is pushed.
+    const observing = (): {
       form: FormGroup<{ [key: string]: AbstractControl }>;
-      leak: (value: unknown) => void;
+      enter: (value: unknown) => { fromA: unknown; fromB: unknown };
+      attach: (bound: Record<string, FieldProperties>) => void;
     } => {
       let escaped: ((...args: unknown[]) => unknown) | undefined;
+      let bound: Record<string, FieldProperties> | undefined;
+      let fromA: unknown;
+      let fromB: unknown;
 
       const form = group({
         country: new FormControl('CA'),
@@ -312,61 +319,59 @@ describe('bindFieldProperties', () => {
           escaped = fn as (...args: unknown[]) => unknown;
           return true;
         }),
+        // The window. This runs as the arrow's body, so `a`'s parameter scope
+        // is on `a`'s context right now and pops when the body returns.
+        peek: new FormControl((value: unknown) => {
+          fromA = bound?.['a'].text?.();
+          fromB = bound?.['b'].text?.();
+
+          return value;
+        }),
       });
 
-      // Calling it throws - the parameter is bound to a string, and calling a
-      // string is `safeCall`'s "Value is not a function" - which is what skips
-      // the pop and strands the scope on the context.
-      const leak = (value: unknown): void => {
+      // Called from test code rather than from a recompute, so neither read
+      // inside `peek` is nested in another field's reactive context.
+      const enter = (value: unknown): { fromA: unknown; fromB: unknown } => {
         expect(escaped).toBeInstanceOf(Function);
-        expect(() => escaped?.(value)).toThrow();
+        escaped?.(value);
+
+        return { fromA, fromB };
       };
 
-      return { form, leak };
+      return { form, enter, attach: (value) => { bound = value; } };
     };
 
     it('should give each field its own context', () => {
-      const { form, leak } = escaping();
+      const { form, enter, attach } = observing();
 
       const bound = bindFields(
         [
-          { name: 'a', visible: 'keep((country) => country())', text: 'country' },
+          { name: 'a', visible: 'keep((country) => peek(country))', text: 'country' },
           { name: 'b', text: 'country' },
         ],
         form,
         { injector }
       );
 
-      // Reading `a` is what hands the closure out; the order matters.
+      attach(bound);
+
+      // Reading `a.visible` is what hands the closure out; the order matters.
       expect(bound['a'].visible?.()).toBe(true);
-      leak('LEAK');
 
-      expect(bound['b'].text?.()).toBe('CA');
-    });
+      const { fromA, fromB } = enter('SCOPED');
 
-    it('should leave the leak on the context that made it', () => {
-      // The same leak seen from the field that owns it. Without this the case
-      // above passes whenever no leak happened at all - which is what the two
-      // rejected setups above did, and the only reason they were caught.
-      const { form, leak } = escaping();
+      // **The positive control, and it is not decoration.** Without it `fromB`
+      // reading `'CA'` is equally true of a run in which no scope was ever
+      // pushed, the arrow never ran, or `peek` was called outside the window -
+      // every one of which makes the assertion below pass while discriminating
+      // nothing. This says the window is real: read through `a`'s own context,
+      // the pushed parameter shadows the control.
+      expect(fromA).toBe('SCOPED');
 
-      const bound = bindFields(
-        [
-          { name: 'a', visible: 'keep((country) => country())', text: 'country' },
-          { name: 'b', text: 'country' },
-        ],
-        form,
-        { injector }
-      );
-
-      expect(bound['a'].text?.()).toBe('CA');
-
-      expect(bound['a'].visible?.()).toBe(true);
-      leak('LEAK');
-
-      bound['a'].text?.invalidate();
-
-      expect(bound['a'].text?.()).toBe('LEAK');
+      // The assertion. `b` resolves `country` against its own context, which
+      // the scope on `a`'s is not on. Hoist `createFieldContext` out of
+      // `bindFieldProperties`' loop and this reads `'SCOPED'` too.
+      expect(fromB).toBe('CA');
     });
   });
 

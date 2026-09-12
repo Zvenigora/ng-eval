@@ -24,43 +24,52 @@ const compileExpression = (expression: string): stateCallback =>
   compile(parse(expression, defaultParserOptions));
 
 /**
- * The fixture both containment cases share: a model whose `boom` throws on
- * its **first** call only.
+ * The fixture both containment cases share: a model whose `strand` pushes a
+ * scope on the rule's own context and never pops it.
  *
- * Throwing once rather than always is what lets one rule be invoked twice on
- * one context - the failure S 3.6 says actually happens, one `LogicFn`
- * re-invoked by Angular, not two rules meeting. A permanently-throwing `boom`
- * would make the second invocation throw for its own reason and the second
- * read would never be reached.
+ * **Rewritten in Phase 2 step 0b, and the reason is the whole point of the
+ * rewrite.** Until then this fixture drove the leak through a throwing arrow
+ * body, because `arrow-function-expression.ts` pushed a scope and popped it
+ * with no `try`/`finally`. Step 0 fixed that
+ * ([A9](../../../../../docs/backlog.md#a9)), which left both cases below
+ * passing with the `finally` in `evaluate-rule.ts` **deleted** - green, and
+ * evidence of nothing. The containment is still needed (see that `finally`'s
+ * own docblock for the three reasons), so the fixture has to produce a leak
+ * the containment is still the only thing that catches.
  *
- * The arrow's parameter is named `country`, shadowing the model's own key.
- * That is the discriminating condition: a scope left behind holds
- * `country = 1`, and `EvalContext.get` resolves `scopes` **first**, so the
- * next read of `country` on this context returns the arrow's parameter
- * instead of `'US'`. Without the name collision the leak would be invisible
- * and "scopes is 0" would be a claim about a number nothing can move.
+ * `EvalContext.push` and `pop` are **public methods on a published class** -
+ * reason (c), and the one the visitors cannot take away. A model function that
+ * calls `push` and does not pop strands a scope with no visitor involved at
+ * all, which is precisely the shape the guard exists for: version skew onto a
+ * leaking `eval-core` under the `^0.3.0` peer range, a future push site that
+ * lands without its `finally`, or a consumer driving `push` directly.
+ *
+ * The pushed scope binds `country`, shadowing the model's own key. That is the
+ * discriminating condition: `EvalContext.get` resolves `scopes` **first**, so
+ * the next read of `country` on this context returns `'stranded'` instead of
+ * `'US'`. Without the name collision the leak would be invisible and "scopes
+ * is back to its mark" would be a claim about a number nothing can move.
  */
-const throwOnceFixture = () => {
-  let calls = 0;
-
+const strandingFixture = () => {
   const model = signal<Record<string, unknown>>({
     country: 'US',
-    boom: () => {
-      calls += 1;
-
-      if (calls === 1) {
-        throw new Error('boom');
-      }
+    strand: () => {
+      context.push({ country: 'stranded' });
 
       return 'ok';
     },
   });
 
+  // Referenced by `strand` above, which is a closure and runs only once the
+  // walk calls it - long after this line.
   const context = createModelSource(model).createRuleContext();
 
-  // `country` is read at the top level *and* rebound by the arrow's
-  // parameter, so one expression carries both halves of the criterion.
-  const compiled = compileExpression('country + [1].map(country => boom())[0]');
+  // `country` is read at the top level **before** `strand()` runs, so the
+  // first invocation returns `'USok'` whether or not the scope is contained.
+  // What discriminates is the *second* invocation on the same context: with
+  // the strand still standing, its `country` resolves from the scope and the
+  // rule returns `'strandedok'`.
+  const compiled = compileExpression('country + strand()');
 
   return { compiled, context };
 };
@@ -92,28 +101,51 @@ describe('evaluateRule', () => {
     expect(evaluateRule(compileExpression('address.NAME'), context, { caseInsensitive: true })).toBe('Boston');
   });
 
-  it('should leave the scope stack at its pre-walk depth when an arrow body throws', () => {
-    const { compiled, context } = throwOnceFixture();
+  it('should unwind a stranded scope to the caller\'s depth mark, not to zero', () => {
+    const { compiled, context } = strandingFixture();
 
-    expect(context.scopes.length).toBe(0);
+    // A scope the **caller** owns, pushed through the published surface. The
+    // guard unwinds to the depth it marked on entry, not to the bottom - and
+    // that distinction is only observable when the mark is non-zero, which is
+    // why this case pushes one first. `evaluate()` is re-entrant through the
+    // arrow closure, so a depth of zero on entry is not something the helper
+    // may assume.
+    //
+    // Its key is deliberately **not** `country`: a scope bound to the name the
+    // rule reads would shadow the model for the walk itself and the rule would
+    // return the marker instead of `'USok'`, turning a case about the depth
+    // mark into one about resolution order. It is the other case below that
+    // owns the shadowing half.
+    context.push({ marker: "the caller's own scope" });
+    expect(context.scopes.length).toBe(1);
 
-    // The throw is the point: `arrow-function-expression.ts:14-19` pushes a
-    // scope and pops it with no `try`/`finally`, so a body that throws skips
-    // the pop and the scope outlives the walk. The context is per rule and
-    // reused across invocations, so nothing else would ever drain it.
-    expect(() => evaluateRule(compiled, context)).toThrow(/boom/);
+    expect(evaluateRule(compiled, context)).toBe('USok');
 
-    expect(context.scopes.length).toBe(0);
+    // The strand is gone and the caller's scope is not. The length and the
+    // `country` read both fail with the `finally` deleted - 2, and `'stranded'`
+    // resolved from the strand sitting on top. The `marker` read is the other
+    // direction: it fails if the unwind ever drains past its mark.
+    expect(context.scopes.length).toBe(1);
+    expect(context.get('country')).toBe('US');
+    expect(context.get('marker')).toBe("the caller's own scope");
+
+    context.pop();
   });
 
-  it('should resolve its own source key when the same rule is invoked again after a throw', () => {
-    const { compiled, context } = throwOnceFixture();
+  it('should resolve its own source key when the same rule is invoked again after a strand', () => {
+    const { compiled, context } = strandingFixture();
 
-    expect(() => evaluateRule(compiled, context)).toThrow(/boom/);
+    expect(context.scopes.length).toBe(0);
 
-    // The half that discriminates. A leaked scope holds `country = 1`, and
-    // `get` reads `scopes` before `lookups`, so this returns `1` and the
-    // second invocation returns `'1ok'` when containment is removed.
+    expect(evaluateRule(compiled, context)).toBe('USok');
+
+    expect(context.scopes.length).toBe(0);
+
+    // The half that discriminates end to end. A stranded scope holds
+    // `country = 'stranded'`, and `get` reads `scopes` before `lookups`, so
+    // with containment removed this reads `'stranded'` and the second
+    // invocation returns `'strandedok'` - the same rule, the same context,
+    // a different answer because of what the first invocation left behind.
     expect(context.get('country')).toBe('US');
     expect(evaluateRule(compiled, context)).toBe('USok');
   });

@@ -496,14 +496,68 @@ work. What the fix closes and what it does not:
   installation that the guard is still load-bearing for. Removal is gated on raising both peer
   ranges, which is a breaking release of two packages. They also remain the downstream backstop
   for the three push sites Phase 2 still adds.
-- **Step 0 left the branch red, on purpose.** Two pre-existing downstream specs pinned the leak as
-  known behaviour and fail because it is fixed — `eval-signals`' `signal-context.spec.ts:248` and
-  `eval-forms`' `field-schema.spec.ts:347`. Editing either from a step scoped to `eval-core` is
-  what § 2 forbids, so the handling is
-  [`statements/phase-2-plan.md`](statements/phase-2-plan.md) **step 0b**, which also covers three
-  containment specs that are now vacuous and four downstream comments that are now false. The
-  second of those matters most: the vacuous specs are the downstream detector for a missing
-  `finally` at the push sites steps 1, 2 and 5 add.
+- **Step 0 left the branch red, on purpose; step 0b closed it.** Two pre-existing downstream specs
+  pinned the leak as known behaviour and failed because it is fixed — `eval-signals`'
+  `signal-context.spec.ts:248` and `eval-forms`' `field-schema.spec.ts:347`. Editing either from a
+  step scoped to `eval-core` is what § 2 forbids, so the handling was
+  [`statements/phase-2-plan.md`](statements/phase-2-plan.md) **step 0b**, which also covered three
+  containment specs that had gone vacuous and four downstream comments that had gone false. The
+  second of those mattered most: those specs are the downstream detector for a missing `finally`
+  at the push sites steps 1, 2 and 5 add. **Done, 2026-09-12** — all three restored, and all
+  three driven now through `EvalContext.push` / `pop` rather than through the fixed defect,
+  since a public push on a published class is the one route no visitor fix can close. The red
+  sets, named rather than counted, from whole-suite runs:
+  - `evaluate-rule.ts`'s unwind loop removed → **exactly 2**: `evaluateRule` *should unwind a
+    stranded scope to the caller's depth mark, not to zero* and *should resolve its own source
+    key when the same rule is invoked again after a strand*.
+  - the same loop changed to drain to zero rather than to the mark → **exactly 1**: the
+    depth-mark case. This is what makes the caller-pushed `marker` scope load-bearing rather
+    than decorative.
+  - `eval-signal.ts`'s unwind loop removed → **exactly 1**: *should contain a scope stranded
+    through the published push to the recompute that made it*.
+  - step 0's own `finally` reverted in `arrow-function-expression.ts` → **exactly 2**, both in
+    `signal-context.spec.ts`, and **zero** in `eval-forms` — which is the measurement behind
+    the escaped-closure note below.
+- **What step 0b found about `field-schema.spec.ts` § 3.4.1** — recorded because the plan
+  anticipated the opposite outcome and reserved a backlog entry for it. That block asserted
+  "one `EvalContext` per field" *through* the leak, and with the leak gone its surviving case
+  passed under a single shared context (measured, by hoisting `createFieldContext` out of
+  `bindFieldProperties`' loop). The property is **not** ungated: a replacement observable was
+  found that needs no defect at all. An arrow's parameter scope is on its field's context
+  *legitimately* for the duration of the body, so a form control whose value is a function,
+  called as that body, opens a window in which another field can be read — it resolves against
+  the shared scope or not, and that is the discrimination. The case carries a positive control
+  (the same window read through the *owning* field, which must see the pushed binding) so that
+  a run in which no scope was pushed cannot pass it silently.
+- **The escaped-closure claim is now gated, and was briefly not.** This entry, the plan and two
+  containment docblocks all assert the escaped-closure residual is closed. Step 0b's review found
+  nothing asserting it: `arrow-function-expression.spec.ts` drives the arrow as an IIFE *inside*
+  the walk in all its cases, and the one place in the repository that stored an escaped closure,
+  called it after the walk returned and made it throw was `field-schema.spec.ts`'s leak case —
+  retired earlier in 0b because the leak it observed was gone. `signal-context.spec.ts` gained a
+  case for it (*should contain the scope of an arrow that escapes the walk and throws when
+  called*), confirmed red when step 0's `finally` is reverted. Worth keeping as a pattern: the
+  step that *removes* the last observation of a path is the step most likely to be the one
+  newly asserting something about it.
+- **Two stale comments left outside 0b's closed file list**, recorded here rather than edited,
+  because the list is what § 2's exception is scoped to and widening it from inside the step is
+  the condition the plan calls stop-and-replan. Both are present-tense claims that step 0
+  falsified, of exactly the class 0b was convened to remove, and nothing in `run-many` flags
+  either:
+  - `modules/eval-signals/README.md` § "The arrow-scope guard covers `createEvalSignal`, not a
+    raw context" — all three of its clauses are now false, and the third ("an arrow function
+    that escapes the walk and throws when you call it later" still leaks) is contradicted by a
+    comment 0b itself wrote in `eval-signal.ts`. This is **published prose in a shipped
+    package**, so it is the most visible of the family. `readme-examples.spec.ts` does not
+    reach it: that gate runs snippets, it does not check what surrounding prose asserts.
+  - `modules/eval-forms/src/lib/field-context.ts` — motivates one-context-per-field with "an
+    arrow function's leaked scope, say". Hedged rather than false, but its `/reactive` twin in
+    `field-schema.ts` was rewritten in 0b to drop that framing, so the shared core and the
+    adapter now explain the same decision differently.
+
+  Also noted and not acted on: `.claude/agents/code-reviewer.md` carries
+  `pattern.ts:110-113` for the scope push, which step 0 moved. Repository tooling, not a
+  library, and outside every list this phase has.
 - It is a **behavioural change to a published path**, carried by Phase 2's `0.4.0` bump: on a
   reused `EvalContext`, a throwing arrow body used to leave a scope that shadowed a source key of
   the same name for the life of that context, and no longer does.

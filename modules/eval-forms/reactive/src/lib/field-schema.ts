@@ -249,12 +249,13 @@ const validate = (schema: readonly FieldSchema[], group: FormGroup): void => {
  * ```
  *
  * **One `EvalContext` per field, never one shared** (plan S 3.4.1). `get`
- * resolves `scopes` and `original` *before* `lookups`, and
- * `arrow-function-expression.ts` pushes its scope with no `try`/`finally` - so
- * one field's arrow function that throws leaves a scope on the context for the
- * life of the form, and under a shared context it would shadow every other
- * field's key of the same name. The count is N contexts for N fields, and not
- * N x M: the properties of one field resolve against the same names.
+ * resolves `scopes` and `original` *before* `lookups`, and an arrow function's
+ * parameter scope sits on the context for as long as its body runs - so under
+ * a shared context one field's arrow would shadow every other field's key of
+ * the same name for that window, and anything that strands a scope rather than
+ * popping it would do so for the life of the form. The count is N contexts for
+ * N fields, and not N x M: the properties of one field resolve against the
+ * same names.
  *
  * **The field half of each context is empty in this phase.**
  * `createFieldContext` takes two sources and the second is `{}` here. What a

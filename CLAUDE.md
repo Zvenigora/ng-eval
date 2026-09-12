@@ -151,21 +151,30 @@ So there are **three** stack invariants, not one, and a new visitor must satisfy
 - the open-node stack — exactly one `afterVisitor` per `beforeVisitor`, on every exit path
   including the ones an exception takes;
 - the **scope stack** — exactly one `st.context.pop()` per `st.context.push()`, again on
-  every exit path. Only two visitors push scopes (`arrow-function-expression.ts:14-19` and
-  `pattern.ts:110-113`) and **neither uses `try`/`finally`**, so a body that throws skips
-  the pop.
+  every exit path. Only two visitors push scopes (`arrow-function-expression.ts` and
+  `pattern.ts`), and since Phase 2 step 0 (`docs/backlog.md` `BL-A9`) **both pop in a
+  `finally`**. That is the idiom to copy, and the `try` opens on the line *after* the push,
+  never around it: both sites write `st.context?.push(...)`, so a `try` opened one line early
+  would pair a `finally` pop with a push the same optional chain had skipped, and would
+  swallow a throw from the context-building call into a pop as well.
 
 The third differs from the other two in *where it lives*, which is what makes it the
-longest-lived of the three. The value stack and the open-node stack are on `EvalState`,
-which `evaluate` builds per walk and discards after — so corruption there dies with the
-walk that caused it. The scope stack is on `EvalContext`, and a caller may hand the **same**
-`EvalContext` to any number of evaluations (see "Context resolution" below). A leaked scope
-therefore outlives the walk and every later evaluation on that context reads it first, since
-scopes are step 1 of `EvalContext.get`'s resolution order. Nothing drains it.
+longest-lived of the three, and the reason the `finally` is not optional. The value stack and
+the open-node stack are on `EvalState`, which `evaluate` builds per walk and discards after —
+so corruption there dies with the walk that caused it. The scope stack is on `EvalContext`,
+and a caller may hand the **same** `EvalContext` to any number of evaluations (see "Context
+resolution" below). A scope that is pushed and not popped therefore outlives the walk, and
+every later evaluation on that context reads it first, since scopes are step 1 of
+`EvalContext.get`'s resolution order. Nothing in `eval-core` drains it.
 
-This is latent in `eval-core` only because the usual call builds a fresh context per
-evaluation. It is not latent for a caller that reuses one — `@zvenigora/ng-eval-signals`
-does, by design.
+A visitor that pushes without a `finally` is latent in `eval-core` only because the usual
+call builds a fresh context per evaluation. It is not latent for a caller that reuses one —
+`@zvenigora/ng-eval-signals` does, by design, and both downstream libraries still carry a
+depth-mark unwind at their recompute boundary against it (`eval-signal.ts`,
+`evaluate-rule.ts`). Those guards are **retained, not redundant**: both packages declare
+`"@zvenigora/ng-eval-core": "^0.3.0"`, a range that still admits the pre-fix 0.3.0, and
+`EvalContext.push` / `pop` are public methods on a published class, so a scope can be
+stranded with no visitor involved at all.
 
 The second one has a safety net and the first does not, which is the trap. `EvalHooks.exit`
 matches the closing node by **identity** and flushes any frames still open above it, and
@@ -186,13 +195,15 @@ in the result. There is no `await` point inside any visitor. Any feature that ne
 suspend mid-traversal requires redesigning the walker, not just the visitor.
 
 `evaluate()` is also **re-entrant, and the re-entry is deferred**.
-`arrow-function-expression.ts:17` calls `evaluate(node.body, st)` with the *same state*,
+`arrow-function-expression.ts` calls `evaluate(node.body, st)` with the *same state*,
 from inside the closure it pushes as the arrow function's value — so that nested walk runs
 whenever the arrow function is called: during the outer walk, after it has returned, many
-times, or never. It is the only such re-entry in any visitor, and it has its own
-`try`/`catch`. Anything that accumulates per-walk state on `EvalState` therefore cannot
-assume one `evaluate()` call means one walk, and cannot reset that state unconditionally in
-a catch — a nested call would clobber the outer walk's.
+times, or never. It is the only such re-entry in any visitor, and the *nested `evaluate`
+call* brings its own `try`/`catch` with it (distinct from the `try`/`finally` the visitor
+wraps that call in, which is the scope-stack pop above). Anything that accumulates per-walk
+state on `EvalState` therefore cannot assume one `evaluate()` call means one walk, and
+cannot reset that state unconditionally in a catch — a nested call would clobber the outer
+walk's.
 
 ### Context resolution
 
@@ -336,12 +347,13 @@ These apply to all three libraries.
   peer dep, so avoid APIs newer than that in shipped code.
 - **Add no `console.*` to library code. This is a rule for what you write, not a
   description of what is there.** `eval-core` has roughly twenty pre-existing calls in
-  source — `memory-manager.ts`, `eval.service.ts`, `parser.service.ts`, `pattern.ts:83`,
-  `eval-core.component.ts:7` — of which four survive tree-shaking into the published
+  source — `memory-manager.ts`, `eval.service.ts`, `parser.service.ts`,
+  `eval-core.component.ts:7` — of which **three** survive tree-shaking into the published
   bundle. A grep finds all of them; they are inherited, not something a recent change
   introduced. Do not add to them, and do not clean them up in passing either: they are
-  recorded in `docs/backlog.md` as `BL-B2` (the `pattern.ts:83` state dump, a Phase 2
-  precondition), `BL-B3` (the three service-layer calls) and `BL-B4` (the dead component).
+  recorded in `docs/backlog.md` as `BL-B3` (the three service-layer calls) and `BL-B4` (the
+  dead component). `BL-B2` was the fourth — the `pattern.ts:83` state dump — and Phase 2
+  step 0 deleted it, which is what took the count from four to three.
   The one deliberate call is the carve-out — a dev-mode-only diagnostic behind
   `isDevMode()`, for a misuse that fails silently and would otherwise be undiagnosable
   (`eval-signals`' `nested-signal-check.ts:88`, guarded at `:79`). Anything reachable in

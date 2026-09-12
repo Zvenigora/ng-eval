@@ -228,24 +228,29 @@ describe('createSignalContext', () => {
   describe('a throwing arrow function and the reused context', () => {
 
     /**
-     * KNOWN LIMITATION - pinned as current behaviour, not endorsed. Every
-     * assertion below is unchanged from step 1; what step 4 narrowed is the
-     * claim they make.
+     * Re-pinned in Phase 2 step 0b, and the inversion is the point: this case
+     * spent Phases 3-6 asserting a leak, with a docblock saying the
+     * assertions were "pinned as current behaviour, not endorsed" and that a
+     * fix in `eval-core` would have to update both halves deliberately. Phase
+     * 2 step 0 is that fix - [A9](../../../../docs/backlog.md#a9), a
+     * `try`/`finally` at `arrow-function-expression.ts`'s push site - so this
+     * is the deliberate update.
      *
-     * The containment landed at the *recompute boundary* rather than on the
-     * context (plan S 3.8.3): the leak is the absence of a `pop`, and a
-     * context subclass gets no signal for "the walk ended", so only the
-     * caller of `call()` can restore the depth. A signal context driven
-     * straight through `EvalService` - what this case does, and what
-     * `createSignalContext`'s own doc comment shows - is outside any
-     * recompute this library owns, so the leak is still exactly this here.
+     * **What changed is the reach, not the containment.** The leak used to be
+     * uncontained *here specifically*: the guard lives at the recompute
+     * boundary (phase-3-plan S 3.8.3), and a signal context driven straight
+     * through `EvalService` - what this case does, and what
+     * `createSignalContext`'s own doc comment shows - is outside any recompute
+     * this library owns. There was nothing on this path to drain it. Now the
+     * pop travels with the push inside the visitor, so the path needs no
+     * guard: this is the case that shows the fix reaches where the
+     * containment could not.
      *
-     * `eval-signal.memory.spec.ts` holds the other half: the same expression
-     * through `createEvalSignal` leaves the scope stack empty and the source
-     * key intact. A fix in `eval-core` has to update both deliberately (the
-     * `read-hooks.spec.ts` precedent for the `getKey` gaps). See S 3.2, S 7.
+     * `eval-signal.memory.spec.ts` holds the other half - the same expression
+     * through `createEvalSignal`, where the guard is also still in place and
+     * still retained (step 0b item 2).
      */
-    it('should leak the arrow parameter scope into every later evaluation', () => {
+    it('should contain the arrow parameter scope even with no recompute boundary', () => {
       const context = createSignalContext({
         x: signal('from source'),
         items: signal([1, 2, 3]),
@@ -254,22 +259,75 @@ describe('createSignalContext', () => {
 
       expect(service.simpleEval('x', context)).toEqual('from source');
 
-      // `arrow-function-expression.ts:14-19` pushes the parameter scope, calls
-      // `evaluate`, then pops - with no `try`/`finally`. `evaluate` rethrows
-      // (`evaluate.ts:46`), so the pop never runs and `{ x: 1 }` stays on
-      // `EvalContext._scopes`.
+      // `arrow-function-expression.ts` pushes the parameter scope, then calls
+      // `evaluate` inside a `try` whose `finally` pops. `evaluate` rethrows
+      // (`evaluate.ts:46`), so the throw leaves the frame - and the pop runs
+      // on the way out rather than being skipped.
       expect(() => service.simpleEval('items.map(x => explode(x))', context)).toThrow();
+
+      // The direct assertion. Nothing on this path would drain a scope that
+      // survived the throw, so an empty stack here is the visitor's `finally`
+      // and nothing else.
+      expect(context.scopes.length).toEqual(0);
 
       // A *fresh* EvalState, the same EvalContext - the shape this library is
       // built on: one context per signal (S 3.2), one state per recompute
-      // (S 3.3.1). Scopes are step 1 of `get`'s resolution order, so the leaked
-      // binding shadows the source from here on.
-      expect(service.simpleEval('x', context)).toEqual(1);
+      // (S 3.3.1). Scopes are step 1 of `get`'s resolution order, so a stranded
+      // `{ x: 1 }` would shadow the source from here on. It does not.
+      expect(service.simpleEval('x', context)).toEqual('from source');
 
-      // ...and nothing on this path drains it: the context stays poisoned for
-      // its whole life. Under `createEvalSignal` that life is the signal's,
-      // which is why the guard is there and not here.
-      expect(service.simpleEval('x', context)).toEqual(1);
+      // ...and the context stays usable for its whole life, which under
+      // `createEvalSignal` is the signal's.
+      expect(service.simpleEval('x', context)).toEqual('from source');
+    });
+
+    /**
+     * The **escaped-closure** half, and it is the one no containment could
+     * ever have reached. `eval-signal.ts` and `evaluate-rule.ts` both bound a
+     * leak by marking `scopes.length` before the walk and unwinding to it
+     * after, which works only for a push that happens *during* the walk. An
+     * arrow function that escapes - stored by the expression and called by the
+     * consumer later - pushes its parameter scope long after that `finally`
+     * has run, so a missing pop stranded a scope nothing would ever drain.
+     * Both guards' docblocks recorded it as out of reach, in those words.
+     *
+     * Step 0's fix is what closes it, because a pop that travels with the push
+     * in the visitor's own `finally` does not care when the call happens. This
+     * case exists because the diff that made that claim would otherwise have
+     * been the only thing asserting it: `arrow-function-expression.spec.ts`
+     * drives the arrow as an IIFE inside the walk every time, and the
+     * `eval-forms` case that used to store an escaped closure and make it
+     * throw was retired in step 0b once the leak it observed was gone.
+     */
+    it('should contain the scope of an arrow that escapes the walk and throws when called', () => {
+      let escaped: ((...args: unknown[]) => unknown) | undefined;
+
+      const context = createSignalContext({
+        x: signal('from source'),
+        keep: (fn: unknown) => {
+          escaped = fn as (...args: unknown[]) => unknown;
+
+          return true;
+        },
+      });
+
+      // The walk ends here, with the closure handed out and never called.
+      expect(service.simpleEval('keep(x => x())', context)).toEqual(true);
+      expect(context.scopes.length).toEqual(0);
+      expect(escaped).toBeInstanceOf(Function);
+
+      // Called outside any walk, any recompute and any containment. The
+      // parameter binds to a string and calling a string is `safeCall`'s
+      // "Value is not a function" - so the push is followed by a throw, which
+      // is exactly the shape that used to skip the pop.
+      expect(() => escaped?.('ESCAPED')).toThrow();
+
+      // Nothing but the visitor's own `finally` can have popped this.
+      expect(context.scopes.length).toEqual(0);
+
+      // And the source key is intact rather than shadowed by `{ x: 'ESCAPED' }`
+      // for the life of the context.
+      expect(service.simpleEval('x', context)).toEqual('from source');
     });
 
   });
@@ -342,9 +400,11 @@ describe('createSignalContext', () => {
     });
 
     /**
-     * KNOWN GAP - pinned as current behaviour, not endorsed. Same treatment as
-     * the arrow-scope leak above, and for the same reason: a fix has to update
-     * this spec deliberately. See the plan's S 3.6.4 and S 8 q6.
+     * KNOWN GAP - pinned as current behaviour, not endorsed. A fix has to
+     * update this spec deliberately, the way Phase 2 step 0b updated the
+     * arrow-scope cases above once `eval-core` fixed the leak they pinned
+     * (the `read-hooks.spec.ts` precedent for the `getKey` gaps). See the
+     * plan's S 3.6.4 and S 8 q6.
      */
     it('should NOT reject a write whose target is a member of a signal value', () => {
       const user = signal({ name: 'Ada' });

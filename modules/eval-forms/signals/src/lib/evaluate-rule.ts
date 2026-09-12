@@ -33,14 +33,30 @@ import { EvalContext, EvalOptions, EvalState, call, stateCallback } from '@zveni
  * bytes either way (S 3.3's table).
  *
  * **Why the `finally` exists.** The scope stack is the third and longest-lived
- * of `eval-core`'s three stack invariants ([`CLAUDE.md`](../../../../../CLAUDE.md)).
- * `arrow-function-expression.ts:14-19` pushes a scope and pops it with **no**
- * `try`/`finally`, so an arrow body that throws skips the pop - and unlike the
- * value stack and the open-node stack, which live on the per-walk `EvalState`
- * and die with it, scopes live on the `EvalContext`. A rule holds its context
- * across every invocation Angular makes, and `EvalContext.get` resolves
- * `scopes` **first**, so one leaked scope shadows the source key of that name
- * for the life of the form. Nothing else drains it.
+ * of `eval-core`'s three stack invariants ([`CLAUDE.md`](../../../../../CLAUDE.md)):
+ * unlike the value stack and the open-node stack, which live on the per-walk
+ * `EvalState` and die with it, scopes live on the `EvalContext`. A rule holds
+ * its context across every invocation Angular makes, and `EvalContext.get`
+ * resolves `scopes` **first**, so one scope left behind shadows the source key
+ * of that name for the life of the form. Nothing else drains it.
+ *
+ * **Retained, not redundant.** This was written against a specific defect -
+ * `arrow-function-expression.ts` pushed a scope and popped it with no
+ * `try`/`finally`, so an arrow body that threw skipped the pop - and Phase 2
+ * step 0 fixed exactly that
+ * ([backlog A9](../../../../../docs/backlog.md#a9)). The loop stays anyway, for
+ * three reasons that outlive the fix:
+ *
+ *  - `package.json` declares `"@zvenigora/ng-eval-core": "^0.3.0"`. That range
+ *    admits the *leaking* 0.3.0 and will keep admitting it after the fixed
+ *    core ships, so a supported installation can still be running the defect.
+ *    Removal is gated on raising the peer range, which is a breaking release.
+ *  - `EvalContext.push` and `pop` are public methods on a published class: a
+ *    scope can be stranded with no visitor involved at all. That is the route
+ *    `evaluate-rule.spec.ts`'s containment cases now drive, because it is the
+ *    one no fix inside the core's visitors can close.
+ *  - Phase 2 adds further scope-push sites to the core (`Program`,
+ *    `BlockStatement`, `ForStatement`), for which this is the backstop.
  *
  * The unwind is a loop to a **depth mark**, not a single `pop()`: one throw
  * can leave more than one scope open, and unwinding to the bottom would drain

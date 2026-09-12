@@ -283,14 +283,13 @@ export function createEvalSignal(
     // `EvalTrace`, against a walk that allocates per node anyway.
     const state = compiler.createState(ctx, evalOptions);
 
-    // The scope-stack depth, restored below. `arrow-function-expression.ts`
-    // and `pattern.ts` push a scope and pop it without a `try`/`finally`, so
-    // an arrow function whose body throws leaves its parameter binding on the
-    // context - and scopes are step 1 of `EvalContext.get`'s resolution
-    // order, ahead of the adapter's own resolver. On a context rebuilt per
-    // evaluation that dies with the walk; on this one, built once and reused
-    // for the life of the signal, it would shadow the source key of the same
-    // name for every later recompute (S 3.8.3).
+    // The scope-stack depth, restored below. A scope pushed on the context and
+    // not popped outlives the walk, and scopes are step 1 of
+    // `EvalContext.get`'s resolution order, ahead of the adapter's own
+    // resolver. On a context rebuilt per evaluation that dies with the walk; on
+    // this one, built once and reused for the life of the signal, it would
+    // shadow the source key of the same name for every later recompute
+    // (S 3.8.3).
     const depth = ctx.scopes.length;
 
     try {
@@ -323,18 +322,32 @@ export function createEvalSignal(
         dependencies = tracker.dependencies;
       }
     } finally {
-      // Containment, not a fix: the missing `try`/`finally` is `eval-core`'s
-      // and stays there (S 2). This bounds a leak *made during the walk* to
+      // Containment, not a fix. This bounds a leak *made during the walk* to
       // the recompute that made it, using only the published surface -
       // `scopes` and `pop` are both public - and it covers a caller-supplied
       // `EvalContext` as readily as one this factory built. The loop body
       // runs only when a leak happened.
       //
-      // Two leaks it does not reach, both recorded in S 3.8.3: a signal
-      // context driven straight through `EvalService`, which is outside any
-      // recompute; and an arrow function that *escapes* the walk, whose push
-      // and missing pop happen when the consumer calls it, long after this
-      // frame returned.
+      // **Retained, not redundant.** `eval-core` closed its own half in Phase 2
+      // step 0 (backlog A9): both visitor push sites now pop in a
+      // `finally`, so the arrow-function leak this was written against no
+      // longer happens on a current core - including the escaped-closure case
+      // S 3.8.3 recorded as out of reach, whose push and pop now travel
+      // together however long after this frame it is called. What keeps the
+      // loop here is not that defect:
+      //
+      //  - `package.json` declares `"@zvenigora/ng-eval-core": "^0.3.0"`, and
+      //    that range admits the *leaking* 0.3.0 and goes on admitting it
+      //    after the fixed core ships. Removal is gated on raising the peer
+      //    range, which is a breaking release of this package, not a tidy-up.
+      //  - `EvalContext.push` and `pop` are public methods on a published
+      //    class, so a scope can be stranded with no visitor involved at all.
+      //  - Phase 2 adds further scope-push sites to the core (`Program`,
+      //    `BlockStatement`, `ForStatement`), for which this is the backstop.
+      //
+      // It is still not reached by a signal context driven straight through
+      // `EvalService`, which is outside any recompute - `signal-context.spec.ts`
+      // is that case, and it is green on the visitor's `finally` alone.
       while (ctx.scopes.length > depth) {
         ctx.pop();
       }
