@@ -82,6 +82,21 @@ describe('statement semantics (plan § 1.1)', () => {
       // § 1.1: returned 'B' with **1 stranded**.
       expect(run('a; b', { a: 'A', b: 'B' })).toEqual({ value: 'B', stranded: 0 });
     });
+
+    it('should return the block completion value and strand nothing', () => {
+      // § 1.1: returned 2 with **1 stranded**. Moved out of the rejected table
+      // by step 2. The value was already right, so this row is carried by the
+      // stranded count alone - the same accident as `1; 2; 3` above, and the
+      // reason both halves are asserted together.
+      expect(run('{ 1; 2 }')).toEqual({ value: 2, stranded: 0 });
+    });
+
+    it('should return undefined for an empty block', () => {
+      // Not a § 1.1 row - added by step 2 so that the sentinel sweep below has
+      // an empty-block row to name, rather than listing a source that appears
+      // nowhere else in this file.
+      expect(run('{ }')).toEqual({ value: undefined, stranded: 0 });
+    });
   });
 
   describe('rows that throw the dispatcher default', () => {
@@ -98,7 +113,6 @@ describe('statement semantics (plan § 1.1)', () => {
       { source: 'let x = 1; x + 1', type: 'VariableDeclaration', step: 'step 3' },
       { source: 'const y = 2; y', type: 'VariableDeclaration', step: 'step 3' },
       { source: 'let [p, q] = arr', type: 'VariableDeclaration', step: 'step 3', context: { arr: [1, 2] } },
-      { source: '{ 1; 2 }', type: 'BlockStatement', step: 'step 2' },
       { source: 'if (a) { 1 } else { 2 }', type: 'IfStatement', step: 'step 4', context: { a: true } },
       { source: 'for (let i = 0; i < 3; i++) { i }', type: 'ForStatement', step: 'step 5' },
       { source: 'while (false) { 1 }', type: 'WhileStatement', step: 'out of scope (§ 2)' },
@@ -151,7 +165,7 @@ describe('statement semantics (plan § 1.1)', () => {
     });
 
     it('should never return the sentinel from any row above', () => {
-      const returning = ['1 + 2', '1; 2; 3', 'a; b', ' ', ';;', 'a;;b'];
+      const returning = ['1 + 2', '1; 2; 3', 'a; b', '{ 1; 2 }', '{ }', ' ', ';;', 'a;;b'];
 
       for (const source of returning) {
         expect(run(source, { a: 'A', b: 'B' }).value).not.toBe(EMPTY_COMPLETION);

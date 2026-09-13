@@ -9,7 +9,8 @@ import { EMPTY_COMPLETION, EvalState } from '../classes/eval';
  * Walks one statement and returns its completion value.
  *
  * The statement dispatcher for the whole family: `Program` here, and
- * `BlockStatement` once that lands. It is **explicit, and its `default` throws**.
+ * `BlockStatement`, which imports it. It is **explicit, and its `default`
+ * throws**.
  * A node type this library does not implement raises rather than falling through
  * to `acorn-walk`'s base walker, which would visit the subtree as an expression
  * and strand whatever it pushed - `while (false) { 1 }` used to evaluate to `1`
@@ -20,7 +21,9 @@ import { EMPTY_COMPLETION, EvalState } from '../classes/eval';
  * It lives in this module, rather than in one of its own, because `Program` is
  * its first caller and `BlockStatement` its second. **A third importer is when it
  * earns its own file** - otherwise a visitor module has quietly become a utility
- * module that also happens to export a visitor.
+ * module that also happens to export a visitor. `IfStatement` and `ForStatement`
+ * walk a single statement each rather than a list, so whether either counts is a
+ * judgement for the step that adds it.
  *
  * The single `callback` / `popVisitorResult` pair is here rather than in each
  * caller so that § 3.1's rule 2 - one pop per `callback` - is discharged in one
@@ -38,6 +41,7 @@ export const dispatchStatement = (
   switch (statement.type) {
     case 'ExpressionStatement':
     case 'EmptyStatement':
+    case 'BlockStatement':
       callback(statement, st);
       return popVisitorResult(statement, st);
     default:

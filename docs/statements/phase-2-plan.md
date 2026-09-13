@@ -960,10 +960,19 @@ directly is not evidence about a walk.
 
 ### Step 2 — `BlockStatement` and block scoping
 
-**Category: behavioural.** **Files**: one new visitor, `recursive-visitors.ts`, specs.
+**Category: behavioural.** **Files**: one new visitor, `program.ts`, `recursive-visitors.ts`, the
+visitor barrel, specs.
 **`eval-context.ts` is no longer on this list**: § 8.1's presence rule landed in step 1, where the
 value-based scope read turned out to be a live prototype-chain leak rather than a dormant
 `let x;` limitation. Step 2 inherits it working.
+
+> **`program.ts` was missing from this list, and its absence was an omission rather than a
+> prohibition.** § 3.1 decides where the dispatcher lives by counting callers — "`Program` is its
+> first caller (step 1) and `BlockStatement` its second (step 2)" — so this step adds the
+> `BlockStatement` case to `dispatchStatement`'s `switch` by the plan's own design, and cannot reach
+> the new visitor from a nested block without it. The list named the two files a *new* visitor
+> always touches and not the one this particular visitor shares. Added here rather than reported as
+> a deviation at execution time, on the precedent of § 8.1's move.
 
 **Block scoping is deliberately unobservable until step 3.** Nothing binds into a block scope yet,
 and an empty pushed scope changes no lookup, so this step's scope assertions are about **depth and
@@ -979,8 +988,54 @@ criterion here that claims to test shadowing would be testing an empty object.
 - A block whose body throws leaves `ctx.scopes.length` at its pre-walk value, asserted on a
   **reused** `EvalContext` per `code-reviewer.md` item 3, with a second evaluation on that context
   reading the source value afterwards.
+
+  **The later evaluation's arm must read *depth*, not a source key.** A leaked block scope is empty,
+  and since § 8.1 an empty scope binds nothing and therefore shadows nothing — so "reads `a` and
+  still gets `'A'`" passes identically with the `finally` deleted. That is
+  [`program.spec.ts`](../../modules/eval-core/src/lib/internal/visitors/program.spec.ts)'s
+  "resolves outer keys through the empty program scope" defect a second time, in the step that
+  inherited the fix which *caused* it: presence semantics closed the one channel through which an
+  empty scope used to be observable by resolution. The discriminating reading is a context function
+  returning `ctx.scopes.length` on the **second** evaluation, which reads one higher for every scope
+  the first walk stranded. Keep the source-key read as well — it is the criterion as written, and it
+  is the arm that says the leak did not also break resolution — but it is not the detector.
 - A hook registered on `after` for the empty block receives `EMPTY_COMPLETION`, by identity against
-  the exported const (§ 3.1) — the first step at which a statement can produce it.
+  the exported const (§ 3.1).
+
+  > **"the first step at which a statement can produce it" was wrong when it was written, and is
+  > corrected rather than deleted.** `EmptyStatement` pushes the sentinel in step 1, and
+  > `program.spec.ts` already asserts an `after` hook on an empty `Program` receives it by identity.
+  > The block-level assertion still earns its place — it is a different node, reached through a
+  > different visitor's push — but it is a second instance of a contract step 1 established, not the
+  > first.
+- **`x => { 1 }` returns `1`, and `(x => { 1; 2 })(0)` returns `2` with zero stranded values**,
+  pinned as a criterion and not only as a spec. Registering `BlockStatement` changes a **shipped**
+  path that no criterion above reaches:
+  [`arrow-function-expression.ts:17`](../../modules/eval-core/src/lib/internal/visitors/arrow-function-expression.ts#L17)
+  calls `evaluate(node.body, st)` on the `BlockStatement`, so a block-bodied arrow stops returning
+  whatever the base walker stranded and starts returning the block's completion value. § 8.3 settles
+  that divergence and § 3.6.1 makes it a README line in **step 6** — five steps after the behaviour
+  changes. A behavioural change to a published path, tested only by the documentation step, is
+  exactly the gap step 0b was spent closing, and a spec with no criterion behind it reads to the
+  next person as an accident someone pinned.
+
+  **The stranded count is the whole criterion, and the value half of it is vacuous.** *Measured*
+  before step 2, on the same harness § 1.1 used: `(x => { 1 })(0)` → `1` stranded 0,
+  `(x => { 1; 2 })(0)` → `2` stranded **1**, `(x => { })(0)` → `undefined` stranded 0. All three
+  values are already what this step makes them — the single-statement body because the base walker
+  pushes the one value and the inner `evaluate` pops it, and the empty body because `undefined` is
+  what a walk that pushed nothing yields either way. So `x => { 1 }` → `1` passes against an
+  implementation that never registered the visitor, and it is retained only because § 8.3 names that
+  exact form as the divergence a reader will look for. **The multi-statement body is the detector**,
+  and it detects through the count rather than the value, for the same reason `1; 2; 3` needed one
+  in § 1.1: `Stack.pop` returns the last thing pushed, and the last statement is walked last. This
+  is § 3.1's failure mode caught inside the criterion written to prevent it — the first draft of this
+  bullet asserted the value alone and would have shipped a green vacuous check.
+- **A statement type the dispatcher rejects throws from inside an arrow body**:
+  `(x => { while (false) { 1 } })(0)` raises rather than returning `1`. Found in review, and added
+  here for the reason the bullet above exists: it is the half of the block-bodied-arrow change that
+  is *observable*, where the completion values this step was written around turn out to be
+  unchanged. § 3.6.3 covers the class; no criterion reached the arrow-body instance of it.
 - `nx run-many -t lint test build` green.
 
 ### Step 3 — `VariableDeclaration` and scope-aware writes
@@ -1096,8 +1151,27 @@ this phase left them alone; `ROADMAP.md` Phase 2 marked done; a retrospect.
 scope-pop repair (step 0)**; `EvalContext.get`'s treatment of a pushed scope — presence rather than
 value, which **also stops a plain-record scope resolving `Object.prototype` names** (§ 8.1, step 1);
 **`EvalResult.trace` and the `after`-hook stream gaining `Program` and `ExpressionStatement` entries
-on every evaluation** (step 1); and **the merged visitor table, built once and frozen** — every
-evaluation gets faster, and the table is new process-wide shared state (§ 1.8, step 1).
+on every evaluation** (step 1); **the merged visitor table, built once and frozen** — every
+evaluation gets faster, and the table is new process-wide shared state (§ 1.8, step 1); and
+**a block-bodied arrow's body going through `dispatchStatement`** (§ 3.6.1, § 3.6.3, § 8.3, step 2).
+This is the one row of the list that arrives through a path § 1.1's table does not enumerate, since
+that table measures statements at the **top level** and this one is reached from inside an
+expression — which is also why it needs stating twice as carefully:
+
+- Its **completion value becomes a rule rather than a stranded-stack accident**, and for every form
+  this phase supports the value is *unchanged*. Measured: `(x => { 1 })(0)` → `1` before and after,
+  `(x => { 1; 2 })(0)` → `2` before (stranded 1) and after (stranded 0), `(x => { })(0)` →
+  `undefined` before and after. The stranded entry sat *below* the real value on a LIFO stack and
+  was never read. **A CHANGELOG line claiming these values changed would be wrong** — an earlier
+  version of this row said `x => { 1 }` "yielded a stranded base-walker value before", and it did
+  not; it yielded `1`.
+- **A statement type the dispatcher rejects now throws where the base walker previously evaluated
+  it.** Measured with the visitor unregistered: `(x => { while (false) { 1 } })(0)` → `1`,
+  `(x => { if (true) { 1 } })(0)` → `1`, `(x => { let y = 1; y })(0)` → `undefined`; all three now
+  raise `Unsupported statement type: …`. At the top level these already threw in step 1, so **step 2
+  is the first step at which they break inside an expression**. `while` and `function` are permanent
+  per § 2; `if`, `for` and the declarations come back in steps 3 to 5. Pinned in
+  `block-statement.spec.ts`, which is where step 6 transcribes this row from.
 
 **A9 was missing from that list until step 0 ran, and the omission is instructive.** Step 0 reads
 as a backlog fix, so the plan filed it under preconditions and not under the surface the bump
