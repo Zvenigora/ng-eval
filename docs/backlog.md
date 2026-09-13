@@ -84,7 +84,8 @@ release, not a free change.
 | [A1](#a1) | `await-expression.ts` downgrades a sync throw to a promise rejection | core | fix | Open |
 | [A2](#a2) | `update-expression.ts` desyncs the value stack under `preserveParens` | core | fix | Open — standalone, [not a Phase 2 precondition](#phase-2-preconditions) |
 | [A3](#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | Open |
-| [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered |
+| [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered — **wider than it reads; [A10](#a10) argues it is one defect with A10** |
+| [A10](#a10) | `getKey`'s scopes step reports every key present against a plain-object scope | core | fix | Open — **latent, not live**; blocks any fix to [A4](#a4) |
 | [A5](#a5) | Service-layer entry points discard the error they caught — **12 sites, 4 services** | core | fix | Open |
 | [A6](#a6) | `safeCall` destroys the class of any error thrown through a call | core | fix | Open |
 | [A7](#a7) | `EvalContext.getThis` reads `_original` in its `priorScopes` loop | core | fix | Open |
@@ -325,9 +326,87 @@ Both gaps are behavioral changes to an exported method. They matter most to depe
 which keys on what `getKey` returns. See [C3](#c3) for the question of whether `eval-signals`
 should contain this locally, which was assigned to a step and never answered.
 
+**A third divergence was found in Phase 2 step 1 and is filed as [A10](#a10), which argues it is the
+same defect as this one.** If that reading holds, this entry is bigger than it looks: the fix has to
+reach `getKeyValue` in `visitors/utils.ts` as well as `eval-context.ts`, and — the part that matters
+for sequencing — **A10 sits in front of both gaps above**, so a fix to either that leaves A10 in
+place does nothing whenever a scope is pushed, which since step 1 is every evaluation.
+
 *Recorded*: [`side-effects/step-4-summary.md` § 5.2](side-effects/step-4-summary.md);
 [`signals/phase-3-plan.md` § 3.6.4 gap 2](signals/phase-3-plan.md).
-*Verified*: source read, 2026-09-06 — no `lookups` loop, no namespace check.
+*Verified*: source read, 2026-09-06 — no `lookups` loop, no namespace check. The
+`get`/`getKey` disagreement was then *measured* 2026-09-13 under [A10](#a10)'s probe, which
+caught this entry's own third paragraph in the act: with `caseInsensitive` on, a
+case-sensitive `Registry` original and a key spelled `A`, `get` returns `undefined` while
+`getKey` returns `'a'` — the reported key coming from a different source than the value, exactly
+as written here.
+
+<a id="a10"></a>
+## A10 — `getKey`'s scopes step reports **every** key as present against a plain-object scope
+
+**Package** core · **Kind** fix · **Status** Open — **latent, not live.** Both halves of that
+status matter; see "Why it is harmless today" before sizing this
+
+**The shape — the sibling of the defect Phase 2 step 1 fixed, one method over.** Step 1 closed
+`EvalContext.get`'s scopes step reading a plain record by *value*, which walked the prototype chain
+and let an empty scope answer for `toString` and `constructor`. `getKey` has the matching fault and
+did not get the matching fix: its scopes step calls `getContextKey`, which for a plain object calls
+[`getKeyValue`](../modules/eval-core/src/lib/internal/visitors/utils.ts), and `getKeyValue` under
+`caseInsensitive: false` returns `[key, obj[key]]` **without asking whether the object holds the
+key at all**. Any name matches. Since step 1 a scope is pushed on every evaluation, so the first
+step of `getKey`'s resolution order now answers for everything, always.
+
+*Measured* 2026-09-13 against the built package, a plain-object scope pushed on an `EvalContext`
+whose original is a `Registry` holding `a`:
+
+| key | `get` | `getKey` |
+| --- | ----- | -------- |
+| `zzz-never-bound` | `undefined` | **`'zzz-never-bound'`** |
+| `toString` | `undefined` | **`'toString'`** |
+| `a` | `'A'` | `'a'` |
+| *control, no scope pushed* | `undefined` | `undefined` |
+
+The control is what shows the scopes step is the culprit rather than a later one.
+
+**Why it is harmless today, and this half is not a footnote.** Nothing resolves and nothing leaks:
+
+- With `caseInsensitive: false` there is no correction to get wrong. `getKey` returns the key **as
+  written**, which is the same string every later step would have returned for that input, so no
+  consumer reads a spelling it would not otherwise have read.
+- Under `caseInsensitive` the case cannot arise. `fromContext` copies a plain record into a
+  `Registry` when the flag is set, and a `Registry` is Map-backed and answers `undefined` for an
+  unbound name — measured in the same probe. So the shape exists only on the path where it costs
+  nothing.
+
+So this is **not** the security-shaped defect its sibling was. Its sibling let an
+`Object.prototype` member become the *value* of an expression, ahead of `original`, `priorScopes`
+and `lookups`; this one hands back a string the caller already had. Anyone reading "same shape as
+the fix in step 1" and scheduling it as urgent has read half the entry.
+
+**What would make it bite**, and why it should be fixed *with* [A4](#a4) rather than on its own
+schedule: it sits **in front of** every step a fix to A4 would add. A4's namespace gap is repaired
+by teaching `getKey` to correct through a scope's `namespace`; its `lookups` divergence by adding a
+fourth step. Both come after the scopes step — which now returns truthy for every key on every
+evaluation. **A fix to A4 that leaves this in place is a fix that silently does nothing**, and it
+would pass a suite that tests it with no scope pushed.
+
+**One defect or two: one.** [A4](#a4)'s title is already "does not resolve through the same chain
+as `get`", and this is a third way the same method answers a step of that chain differently —
+namespace and `lookups` are about *which sources* are consulted, absent values about *what counts as
+found*, and this about *presence within a source*. The root is shared and structural: `getKey` is a
+parallel re-implementation of `get`'s resolution order rather than a derivation of it, so every
+change to `get` widens the gap without anyone touching `getKey`. Phase 2 step 1 is the
+demonstration — `get`'s scopes step became own-key presence, `getKey`'s did not, and no one edited
+`getKey`. Filing it separately would invite three patches where the repair is one chain answering
+two questions, which is the shape `get`/`getFromScopes`/`hasInScopes` were given in step 1 and is
+the precedent to copy.
+
+It is filed under its own ID rather than folded into A4's prose so that the "harmless today"
+finding has somewhere to live and cannot be lost in a longer entry — not because it is independent
+work.
+
+*Recorded*: Phase 2 step 1, from the review of the `get` fix.
+*Verified*: **measured**, 2026-09-13, on `dist/modules/eval-core` — table above.
 
 <a id="a5"></a>
 ## A5 — Every service-layer entry point discards the error it caught
