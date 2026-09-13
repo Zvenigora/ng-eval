@@ -124,7 +124,7 @@ release, not a free change.
 | [F6](#f6) | CONTRIBUTING's "Code style" describes a config that never existed here | repo | decision (editorial) | Open |
 | [F7](#f7) | Intermittent Jest worker-teardown warning — **no established locus**, possibly Nx/Jest rather than a library | — | fix? | Open — locus corrected 2026-09-09; **not reproducible per project** |
 | [F8](#f8) | `eval-forms@0.2.0` is untagged; CLAUDE.md describes a pre-Phase-6 repo | repo | fix | Open |
-| [F9](#f9) | No gate on document cross-references — the register's own dangling links | repo | fix | Open — deferred by [plan](gates/plan.md) § 8.4 |
+| [F9](#f9) | No gate on document cross-references — the register's own dangling links | repo | fix | Open — deferred by [plan](gates/plan.md) § 8.4; **first concrete instance recorded 2026-09-13** |
 | [F10](#f10) | The drift gate covers documented-**and-imported** symbols only | core, signals, forms | fix | Open — the gap [F3](#f3) leaves |
 | [F11](#f11) | A gated README can only import from its own specifier | core, signals, forms | fix | Open — bounds [F3](#f3) and [F4](#f4) |
 | [R1](#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
@@ -2001,11 +2001,52 @@ compared rather than guessed at:
 - **It is a different claim.** F3 guards the public API surface; this guards document integrity.
   Folding it into `public-api.spec.ts` would put two unrelated claims behind one name, and the
   first person to see that spec red would learn nothing from its name.
-- **Its scope is wider than anything in Track 3** — `docs/` is 20+ files against four READMEs —
+- **Its scope is wider than anything in Track 3** (the documentation gates,
+  [`docs/gates/plan.md`](gates/plan.md)) — `docs/` is 20+ files against four READMEs —
   and it has no natural project to live in, which is the same constraint that settled § 8.1.
 
 **Not deferred on cost.** One cold export-list read measures 344 ms (`eval-core`) and 210–235 ms
 for each other entry, so the gate this would join is well under a second in total.
+
+**First concrete instance, 2026-09-13 — and it is the argument this entry was missing.** Until now
+the case rested on [R4](#r4), two links to a section that was never written: a *broken* reference,
+which a reader notices. This one is worse, because nothing about it looks broken.
+
+[`statements/phase-2-plan.md`](statements/phase-2-plan.md) § 2 excluded work with the row
+*"Everything in `docs/backlog.md` Track 1 / Track 2 — not this phase's subject"*. **This register
+has no Track 1 and no Track 2.** All three Tracks were a sequencing suggestion made in
+conversation — 1 the error-identity group ([A4](#a4), [A5](#a5), [A6](#a6), [A7](#a7), [C3](#c3)),
+2 the write policy ([C1](#c1), [C2](#c2)), 3 the documentation gates — and only the third was ever
+written down. The plan then cited all three as though the reader could look them up.
+
+Provenance, and each step of it is ordinary:
+
+1. **It entered through the commit that introduced the plan** — `2177df1`, which `git log -S "Track 1"`
+   identifies as the only commit in this repository's history to add the phrase. Not inherited from
+   an older layout, not left behind by a rename: written new, in a document being written carefully.
+2. **It was repeated as fact.** The reference was read and summarised downstream, including in this
+   session's own reporting, as though it named a structure — which is how a phrase gets a second
+   citation without ever acquiring a first.
+3. **It survived because a phrase that looks like a citation is not one.** "Track 1 / Track 2" has
+   the shape of a reference to a document that has sections, in a row whose whole job was to
+   exclude work. It is not a `](#anchor)` link, so no link checker of the kind proposed above
+   would have resolved it either — see the scope note below.
+4. **Half the family resolves, which is what made the other half invisible.** "Track 3" *is*
+   recorded here — glossed beside the document list at the top of this file, and the title of every
+   [`docs/gates/`](gates/plan.md) document. A reader who spot-checks the label finds it. One member
+   of a label family resolving lends the others the appearance of resolving, and the check stops
+   there.
+
+**What this instance changes about the gate.** The failure mode is not a dead link but a **live
+reference to a structure that does not exist**, and the proposed checker resolves paths and
+anchors — it would have caught this only if the plan had written the exclusion as a link, which is
+itself the lesson: *a document that excludes work should name the entries, because a named entry is
+checkable and a label is not.* So this instance argues for two things rather than one — the link
+checker as specified, and a convention that scope rows cite IDs. The second is free and is applied
+in the plan, where the row now names A4–A7, C3, C1 and C2 directly.
+
+**Corrected**: the § 2 row names the entries, with the provenance recorded beside it. `CLAUDE.md`
+was checked and never carried the phrase.
 
 **What it would take**, for whoever picks it up: resolve every `](relative/path)` against the
 filesystem, and every `#anchor` against the headings of the target file, over `docs/**/*.md` plus
