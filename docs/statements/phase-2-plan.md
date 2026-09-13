@@ -207,6 +207,44 @@ argument about where the counter lives, not a benchmark — see § 3.4.
 *Measured baseline, for § 3.4's arithmetic:* a compiled `i < 3` evaluates **~1.4 M times per
 second** (0.7 µs per walk, 200,000 runs, both with a fresh state per run and with one reused).
 
+> **What step 1 actually found, and the one-line fix it took.** This section assumed the cost of a
+> new visitor is the work that visitor does. For `Program` that is true and small — the
+> program-level scope is 0.16 µs and the two extra trace entries 0.04 µs. **The cost that dominated
+> was registration itself, and it landed on walks containing no statement node at all.**
+>
+> `walk.recursive` merges its `funcs` over the base walker by calling `walk.make` — allocating an
+> object and copying every entry — **once per `evaluate`, not once per node**. Measured on the built
+> bundle, walking a single `Literal` (one node, so almost pure fixed cost), with the *same*
+> `evaluate.ts` on both sides and three registration lines the only difference:
+>
+> | visitor entries | per-call merge | merged once |
+> | --------------- | -------------- | ----------- |
+> | 19, before the statement visitors | 0.422 µs | — |
+> | 22, with them | **1.045 µs** | **0.226 µs** |
+>
+> Three entries more than doubled it: a cliff, not a slope — the copy crosses a threshold where the
+> engine stops treating the result as a fast-property object. Memoising `getDefaultVisitors()`
+> recovers 0.03 µs of it and is not the fix; the merge is.
+>
+> **Step 1 builds the merged table once** (`evaluate.ts`, both entry points), which is **faster than
+> the pre-statement baseline** rather than slower, and takes the whole class of problem off the
+> table for steps 2–5, which add four more visitors. `2 + 3 * a` goes 0.652 µs → 0.429 µs; the same
+> expression as a `Program` goes 0.759 µs → 0.535 µs.
+>
+> It is one line in a file already on step 1's list, and shipping a measured 2.3× per-walk
+> regression in order to stay inside the original design would have been the wrong trade. Two
+> mechanics are load-bearing and are documented at the call site: the table is **frozen**, because
+> `EvalService` is `providedIn: 'root'` and one mutated entry would reach every later evaluation in
+> the process; and it is built **lazily**, because a module-level `const` deadlocks the flattened
+> bundle — `arrow-function-expression.ts` imports `evaluate`, so the built package throws
+> `Cannot access 'arrowFunctionExpressionVisitor' before initialization` on import. Both were
+> measured, not predicted. `getDefaultVisitors()` still returns a fresh mutable object to every
+> caller, so nothing downstream loses anything.
+>
+> **This is a behavioural change to a published path in its own right** — every evaluation in the
+> library gets faster, and the shared table is new shared state — so it belongs in the `0.4.0`
+> entry beside § 1.1's rows.
+
 ### 1.9 The spike harness
 
 Node 26, ESM, importing `dist/modules/eval-core/fesm2022/zvenigora-ng-eval-core.mjs` after
@@ -330,6 +368,14 @@ walk pushes and pops its own frames.
 `Error('Unsupported statement type: <type>')` rather than falling through to a base walker. This is
 what retires § 1.1's table: `while (false) { 1 }` stops returning `1` and starts saying why, and
 § 1.7's family of silent fall-throughs gains no fourth member.
+
+**It lives in `program.ts`, and the reason is its caller count.** `Program` is its first caller
+(step 1) and `BlockStatement` its second (step 2), so it sits in the module of the first and is
+imported by the second rather than getting a module of its own. **A third importer is when it earns
+one** — until then a shared file would make `internal/visitors/` hold a utility module that also
+exports a visitor, which is how a visitor directory stops being one. The single
+`callback` / `popVisitorResult` pair lives inside it, so § 3.1's rule 2 is discharged in one place
+for every statement list rather than per caller.
 
 **Worked arithmetic**, for the review of every step below:
 
@@ -502,6 +548,21 @@ emit nothing — which is the behaviour § 3.8's table already specifies for "no
 
 `EvalHookBookkeeping` is `@internal` and unexported, so this is not published surface. The cost is
 two array operations per `evaluate` call, guarded by `state.hasHooks`, and none per node.
+
+**Two counters land in step 1, and they cannot be merged — which is the thing to read before
+§ 3.4.** The walk-base stack above and § 3.4's walk-depth counter track the same nesting one level
+apart, and step 5 will see them side by side and be tempted to collapse them. It cannot:
+
+- the **walk bases** are pushed and popped only under `state.hasHooks`, because bounding
+  `EvalHooks.exit` is meaningless when there is nothing to dispatch, and the whole point of the
+  guard is that the default path pays nothing;
+- the **walk-depth counter** must be maintained unconditionally, because § 3.4's budget refills on
+  the outermost `evaluate` entry and a loop has to be bounded whether or not a hook is registered.
+
+One field cannot be both guarded and unguarded, so there are two, and the note lives on
+`EvalState.walkDepth` in the code as well as here. `EvalHooks.walkBase` reads an empty stack as
+base 0 — unbounded, which is the correct answer for a walk that began before any hook existed and
+so pushed no base.
 
 **Probe** (step 1's, and it is § 1.6's spike promoted to a spec), three cases:
 
@@ -836,6 +897,12 @@ before it touches either file, and the answer is not "the leak is fixed, delete 
 `evaluate.ts`, `eval-state.ts`, the `internal/classes/eval` barrel for `EMPTY_COMPLETION`,
 co-located specs, `docs/backlog.md`.
 
+**Four files were added to that list in execution, each with its reason recorded where the decision
+is**: `eval-context.ts` (§ 8.1's rule, moved here from step 2 — see § 8.1); `eval.service.state.spec.ts`
+and `readme-examples.spec.ts` with `modules/eval-core/README.md` (the trace and unwind-event counts
+this step changes — see the exit criteria); and the merged-visitor fix inside `evaluate.ts`, which
+was already listed (§ 1.8).
+
 § 3.1's convention and the `EMPTY` sentinel land here, converted at the `evaluate` boundary per
 rule 4; § 3.3's walk-base bound lands here because this is the step that makes `Program` the walk's
 root; § 3.4's walk-depth counter lands here because the bound and the budget refill read the same
@@ -864,14 +931,26 @@ directly is not evidence about a walk.
   second for a simple expression before and after, on the § 1.8 harness. `internal/performance.spec.ts`
   must be green unchanged, and the number goes in the summary whether or not it is small — this is
   the one thing this phase adds to every evaluation, and `code-reviewer.md` item 8 will ask.
+  *Met, and it found something the criterion was not looking for: the scope costs 0.16 µs and
+  registration cost 0.6 µs, on walks with no statement in them. See § 1.8.*
+- **The trace and hook-event counts this step changes are updated in the specs that pin them, with
+  the old and new values recorded** — `eval.service.state.spec.ts` (trace 5 → 7 for `2 + 3 * a`) and
+  `readme-examples.spec.ts` with its README block (2 → 4 synthesised unwind events for
+  `1 + boom()`). Registering `Program` and `ExpressionStatement` makes them walked nodes rather than
+  base-walker pass-throughs, so both counts move for **every** expression, statements or not. They
+  are step 1's own specs failing on step 1's own change, one layer in from § 1.1's rows, and they
+  are updated deliberately rather than left red — the same treatment step 0b gave the downstream
+  pins. Both belong in the `0.4.0` entry.
 - E6's premise correction is written into `docs/backlog.md` (§ 1.6): Phase 2's design does not make
   it reachable, and the bound landed anyway.
 - `nx run-many -t lint test build` green.
 
 ### Step 2 — `BlockStatement` and block scoping
 
-**Category: behavioural.** **Files**: one new visitor, `recursive-visitors.ts`, `eval-context.ts`
-(§ 8.1's presence rule), specs.
+**Category: behavioural.** **Files**: one new visitor, `recursive-visitors.ts`, specs.
+**`eval-context.ts` is no longer on this list**: § 8.1's presence rule landed in step 1, where the
+value-based scope read turned out to be a live prototype-chain leak rather than a dormant
+`let x;` limitation. Step 2 inherits it working.
 
 **Block scoping is deliberately unobservable until step 3.** Nothing binds into a block scope yet,
 and an empty pushed scope changes no lookup, so this step's scope assertions are about **depth and
@@ -957,9 +1036,17 @@ criterion here that claims to test shadowing would be testing an empty object.
 
 ### Step 6 — Release and records
 
-**Category: behavioural** (the bump itself). **Files**: `modules/eval-core/README.md`,
-`modules/eval-core/src/lib/readme-examples.spec.ts`, `modules/eval-core/package.json`, root
-`CHANGELOG.md`, `docs/backlog.md`, `ROADMAP.md`, `docs/statements/summary.md`.
+**Category: behavioural** (the bump itself). **Files**: `modules/eval-core/README.md`, **the root
+`README.md`**, `modules/eval-core/src/lib/readme-examples.spec.ts`,
+`modules/eval-core/package.json`, root `CHANGELOG.md`, `docs/backlog.md`, `ROADMAP.md`,
+`docs/statements/summary.md`.
+
+**The root `README.md` is on that list because "ESTree Nodes Supported" is in it, not in the module
+README** — checked, at root `README.md`'s § of that name. The original file list named only the
+module README, and § 6 gate 1 does not admit the root README at all, so this step could not have
+added the rows it promises without tripping its own gate. § 6 gate 1 is widened for step 6 only, to
+the same effect as `ROADMAP.md`. § 3.1's "the README's hooks section says so" for
+`EMPTY_COMPLETION` is in the same position and covered by the same widening.
 
 README rows for the seven node types plus § 3.6's six divergences and § 3.4's option; `0.4.0`;
 a `## [eval-core 0.4.0]` entry whose "Changed" section is § 1.1's table read as a migration note;
@@ -987,12 +1074,17 @@ this phase left them alone; `ROADMAP.md` Phase 2 marked done; a retrospect.
 | `EvalContext.setInScope` | method, additive | `internal/classes/eval/eval-context.ts` |
 | `EvalOptions.maxIterations` | option key, additive | `internal/classes/eval/eval-options.ts` |
 | `EMPTY_COMPLETION` | const, additive | `internal/classes/eval/` — reachable in `after` hook events, so recognisable by contract (§ 3.1) |
-| seven statement visitors | **not published** | `internal/visitors/` is not re-exported by `src/public-api.ts` |
+| `EvalHooks.pushWalkBase` / `popWalkBase` / `walkBase` | methods, additive | `internal/classes/eval/eval-hooks.ts` — § 3.3's bound. **`EvalHookBookkeeping` the interface is `@internal` and unexported; these three methods are not**, since `EvalHooks` is published, and an earlier draft of this table said the whole mechanism was unpublished on the strength of the interface alone |
+| `EvalState.walkDepth` / `enterWalk` / `exitWalk` | members, additive, `@internal`-tagged | `internal/classes/eval/eval-state.ts` — § 3.4's refill counter, on the precedent of `hookBookkeeping`, which is public and carries the same tag |
+| seven statement visitors, and `dispatchStatement` | **not published** | `internal/visitors/` is not re-exported by `src/public-api.ts` — verified, not assumed |
 
 **Behavioural changes to already-published paths** — the list the version bump is for: every row of
 § 1.1's table; the write redirection of § 1.4; `EvalHooks.exit`'s scan bound (§ 3.3); **[A9](../backlog.md#a9)'s
-scope-pop repair (step 0)**; and, if open question 8.1 is answered yes, `EvalContext.get`'s
-treatment of a scope binding whose value is `undefined`.
+scope-pop repair (step 0)**; `EvalContext.get`'s treatment of a pushed scope — presence rather than
+value, which **also stops a plain-record scope resolving `Object.prototype` names** (§ 8.1, step 1);
+**`EvalResult.trace` and the `after`-hook stream gaining `Program` and `ExpressionStatement` entries
+on every evaluation** (step 1); and **the merged visitor table, built once and frozen** — every
+evaluation gets faster, and the table is new process-wide shared state (§ 1.8, step 1).
 
 **A9 was missing from that list until step 0 ran, and the omission is instructive.** Step 0 reads
 as a backlog fix, so the plan filed it under preconditions and not under the surface the bump
@@ -1010,7 +1102,7 @@ Checked at every step, not only at the end.
 
 | # | Gate | How |
 | - | ---- | --- |
-| 1 | Nothing moved outside `eval-core` | `git diff --name-only HEAD` — `modules/eval-core/`, `docs/`, root `CHANGELOG.md`, and `ROADMAP.md` in step 6 only. **Step 0b only**: also the eight downstream paths its § 4 entry names, and nothing else under `modules/eval-signals/` or `modules/eval-forms/` |
+| 1 | Nothing moved outside `eval-core` | `git diff --name-only HEAD` — `modules/eval-core/`, `docs/`, root `CHANGELOG.md`, and — **in step 6 only** — `ROADMAP.md` and the root `README.md`, which is where "ESTree Nodes Supported" lives. **Step 0b only**: also the eight downstream paths its § 4 entry names, and nothing else under `modules/eval-signals/` or `modules/eval-forms/` |
 | 2 | § 3.1's arithmetic holds | For each visitor in the diff, enumerate exit paths and state pops and pushes per path, against § 3.1's table |
 | 3 | Every scope push has a `finally` pop | Reviewed on a **reused** `EvalContext`, per `code-reviewer.md` item 3's probe — a spec building its context inline asserts nothing |
 | 4 | No per-walk control-flow state on `EvalState` | § 3.1 chose a stack discipline; a field that a nested `evaluate` could clobber is a stop-and-replan |
@@ -1024,11 +1116,18 @@ Checked at every step, not only at the end.
 
 ## 7. Risks
 
-1. **The behavioural surface is wider than the node list.** Six of § 1.1's twelve rows change value.
-   A consumer whose expression happened to depend on one — most plausibly a multi-statement string
-   that returns its last value — sees a different result after `0.4.0`. **Detector**:
-   `statement-semantics.spec.ts`, built in step 1, pins all twelve rows and is what step 6
-   transcribes. A CHANGELOG entry is a writing task, not a detector, and a row that lands on a third
+1. **The behavioural surface is wider than the node list.** Two numbers, and they are about
+   different things: **six of § 1.1's twelve rows change value by the end of the phase** — that is
+   the endpoint, and what the `0.4.0` migration note is for — while **nine of the twelve throw as of
+   step 1**, because the dispatcher's `default` rejects every statement type later steps implement.
+   The step-1 number is the blast radius during the phase, and it is the larger one: rows 4–9 and 12
+   stop returning a value the moment `Program` is registered and only come back as steps 2–5 land
+   (`{ 1; 2 }` at step 2, the three `let`/`const` rows and `let [p, q]` at step 3, `if` at 4, `for`
+   at 5), while `while` and `function` throw for good (§ 2). A consumer whose expression happened to
+   depend on one — most plausibly a multi-statement string that returns its last value — sees a
+   different result after `0.4.0`. **Detector**: `statement-semantics.spec.ts`, built in step 1,
+   pins all twelve rows and is what step 6 transcribes; every row carries either its final value or
+   the step that replaces its throw, so an intermediate step cannot quietly drop one. A CHANGELOG entry is a writing task, not a detector, and a row that lands on a third
    value — neither the old one nor the intended one — would otherwise ship with the document
    asserting otherwise.
 2. **Scope-aware writes change arrow-parameter assignment** (§ 3.2), which no roadmap document
@@ -1063,6 +1162,46 @@ scope as present whatever its value, so `let x;` shadows; `original`, `priorScop
 keep today's fall-through. § 3.2 carries the decision and names the two consumers the narrowing
 protects — Phase 1's deliberate arrow-parameter resolution, and `eval-forms`' documented
 empty-control behaviour — so that a later widening argues against them by name.
+
+> **Moved from step 2 to step 1 during step 1, and it is a defect fix rather than a feature.** The
+> plan scheduled this with `BlockStatement`, on the reasoning that presence semantics only matter
+> once something binds into a block. That reasoning holds for the `let x;` half and misses the
+> other half entirely: **reading the scope by *value* also means reading a plain record's prototype
+> chain.** `getContextValue` resolves a plain object as `scope[key]`, so an **empty** scope answers
+> for `toString`, `constructor`, `valueOf`, `hasOwnProperty` and `__proto__` — and wins, because
+> scopes are step 1 of `get`'s order and `original`, `priorScopes` and `lookups` are steps 2 to 4.
+>
+> *Measured* on the built bundle, against a `Registry` original that resolves none of them itself:
+> before step 1 every one of those names evaluated to `undefined`; with a program-level scope
+> pushed on every walk, `constructor.name` evaluated to `"Object"` and a `lookups` resolver
+> installed for `toString` was shadowed by `Object.prototype.toString`. No escalation past the
+> pollution guard was found — `constructor.constructor` stays blocked — so this is a resolution
+> defect, not a sandbox escape.
+>
+> Three reasons it moved rather than waiting, and rather than being worked around by pushing a
+> `Registry` instead of a record:
+>
+> 1. **It is the defect.** A `Registry` scope would hide the symptom at the one new push site while
+>    leaving `get` reading prototypes for every other.
+> 2. **It fixes all four push sites at once** — `arrow-function-expression.ts`, `pattern.ts`'s two,
+>    and `Program` — where the `Registry` workaround fixes one. The two pre-existing sites have had
+>    this behaviour all along; only a walk that pushed no scope could avoid it, which is why nothing
+>    caught it until a program scope made it universal.
+> 3. **It keeps the scope stack homogeneous.** § 3.2's premise is that scope objects are plain
+>    records normalised by `fromContext`; a visitor pushing a `Registry` to dodge a resolution bug
+>    makes the stack a mixture of two shapes for a reason unrelated to what the scope is *for*.
+>
+> **A second symptom, recorded because it should disappear with the first and was checked that it
+> does.** `fromContext` copies a plain record into a `Registry` when `caseInsensitive` is set, and a
+> `Registry` is Map-backed — so the prototype names leaked on the case-**sensitive** path and not on
+> the case-insensitive one. Two evaluators, one visitor. Both now ask the same own-key question:
+> the `caseInsensitive` arm of `program.spec.ts`'s probe is green with the fix *and* with it
+> reverted, which is what confirms that arm was never the leaking one.
+>
+> **Implementation**: one private `scopeHolding(key)` pass gated on `hasContextKey`, behind `get`'s
+> step 1, `getFromScopes` and `hasInScopes`, so the three cannot disagree about what the scope stack
+> holds — which is what `hasInScopes`' own docblock had recorded as a deliberate divergence and is
+> now closed. Step 2's file list keeps `eval-context.ts` only if it needs it for something else.
 
 **8.2 — settled: no `var`.** Function-scoped hoisting is a second scoping model beside § 3.2's and
 buys a consumer nothing `let` does not. `var x = 1` throws per § 3.1's dispatcher, which is at least

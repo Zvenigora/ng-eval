@@ -22,5 +22,8 @@ export {getDefaultVisitors} from './recursive-visitors';
 export {assignmentExpressionVisitor} from './assignment-expression';
 export {updateExpressionVisitor} from './update-expression';
 export {arrowFunctionExpressionVisitor} from './arrow-function-expression';
+export {programVisitor, dispatchStatement} from './program';
+export {expressionStatementVisitor} from './expression-statement';
+export {emptyStatementVisitor} from './empty-statement';
 export {evaluatePattern, evaluatePatterns} from './pattern';
 export {getKeyValue, equalIgnoreCase, getValueIgnoreCase} from './utils';

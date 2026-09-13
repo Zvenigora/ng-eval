@@ -109,9 +109,12 @@ export class EvalContext {
    */
   public get(key: unknown): unknown | undefined {
 
-    const scoped = this.getFromScopes(key);
-    if (scoped !== undefined) {
-      return scoped;
+    // Presence, not value: a scope that *binds* the key answers, even when the
+    // value bound is `undefined`. See {@link scopeHolding} for why the two are
+    // not the same question, and what reading the value instead let through.
+    const scope = this.scopeHolding(key);
+    if (scope) {
+      return getContextValue(scope, key);
     }
 
     if (this._original) {
@@ -146,19 +149,60 @@ export class EvalContext {
    * implementation. A second copy of the order would drift - `getKey` already
    * shows what that looks like when it does.
    *
-   * A binding whose value is `undefined` reads as absent here, exactly as it
-   * does in {@link get}, which falls through to the original context for it.
+   * A binding whose value is `undefined` is **found** here, and no longer reads
+   * as absent - see {@link scopeHolding}.
    *
    * @param key - The key to retrieve the value for.
    * @returns The value bound by the innermost scope holding the key, or
-   *   undefined when no pushed scope holds it.
+   *   undefined when no pushed scope holds it. The two cases are no longer
+   *   distinguishable from the return value alone; ask {@link hasInScopes}.
    */
   public getFromScopes(key: unknown): unknown | undefined {
 
+    const scope = this.scopeHolding(key);
+    return scope ? getContextValue(scope, key) : undefined;
+  }
+
+  /**
+   * The innermost pushed scope that **binds** `key`, or undefined when none
+   * does. The single pass behind {@link get}'s step 1, {@link getFromScopes}
+   * and {@link hasInScopes}, so the three cannot disagree about what the scope
+   * stack holds.
+   *
+   * **Binding, not value, and that is the whole point.** Reading the value and
+   * treating `undefined` as absent - which is what this used to do - has two
+   * consequences that look unrelated and are the same bug:
+   *
+   * - `let x;` could not shadow. A scope binding `x` to `undefined` fell
+   *   through to the caller's context, so a declared-but-unset name read
+   *   whatever the consumer happened to have under it.
+   * - **A plain-object scope answered for every `Object.prototype` name.**
+   *   `getContextValue` reads a plain record as `scope[key]`, which walks the
+   *   prototype chain, so an *empty* scope resolved `toString`, `constructor`,
+   *   `valueOf` and friends to the prototype's own members - shadowing
+   *   `original`, `priorScopes` and `lookups`, all four of which come later in
+   *   {@link get}'s order. Empty as a binding surface is not empty as a lookup
+   *   surface. `hasContextKey` is own-properties-only, which closes it.
+   *
+   * The second was invisible while only `arrow-function-expression.ts` and
+   * `pattern.ts` pushed scopes, because a walk that pushed none could not hit
+   * it; a program-level scope on every evaluation made it reachable from every
+   * expression, which is how it was found.
+   *
+   * It also removes an asymmetry between the two scope shapes: `fromContext`
+   * copies a plain record into a `Registry` when `caseInsensitive` is set, and
+   * a `Registry` is Map-backed, so the prototype names leaked on the
+   * case-sensitive path and not on the case-insensitive one. Both now ask the
+   * same own-key question.
+   *
+   * @param key - The key to look for.
+   * @returns The innermost scope binding the key, or undefined.
+   */
+  private scopeHolding(key: unknown): Context | undefined {
+
     for (const scope of this._scopes.asArray()) {
-      const value = getContextValue(scope, key);
-      if (value !== undefined) {
-        return value;
+      if (hasContextKey(scope, key)) {
+        return scope;
       }
     }
 
@@ -169,9 +213,10 @@ export class EvalContext {
    * Whether any scope pushed during this evaluation *binds* the key - the
    * question the read hooks' `scoped` flag asks.
    *
-   * Deliberately about binding rather than about value, which is where it parts
-   * company with {@link getFromScopes}: a parameter bound to `undefined` is
-   * still a parameter, but `get` falls through past it to the original context.
+   * Deliberately about binding rather than about value. It no longer parts
+   * company with {@link getFromScopes} over it: both go through
+   * {@link scopeHolding}, and `get` resolves a scope binding whatever its
+   * value, which is the divergence this docblock used to record as deliberate.
    * Reading the flag off the value would make it depend on the *data* - the
    * same arrow function over `[{ name: 'a' }]` and over `[undefined]` would
    * report different bindings, and a dependency tracker's output would vary
@@ -187,13 +232,7 @@ export class EvalContext {
    */
   public hasInScopes(key: unknown): boolean {
 
-    for (const scope of this._scopes.asArray()) {
-      if (hasContextKey(scope, key)) {
-        return true;
-      }
-    }
-
-    return false;
+    return this.scopeHolding(key) !== undefined;
   }
 
   /**

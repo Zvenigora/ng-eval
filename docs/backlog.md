@@ -114,7 +114,7 @@ release, not a free change.
 | [E3](#e3) | `dependencies` introspection at form scale | forms | phase | Open |
 | [E4](#e4) | Short-circuiting / value-rewriting hooks | core | phase | Open, by design |
 | [E5](#e5) | The options-first style cannot read `hookErrors` | core | decision | Open, Premise retired |
-| [E6](#e6) | `exit` has no mark to bound its scan | core | fix | Open — **[Phase 2 design constraint](#phase-2-preconditions)** |
+| [E6](#e6) | `exit` has no mark to bound its scan | core | fix | **Retired — fixed, Phase 2 step 1; its "Phase 2 makes it reachable" premise was wrong** |
 | [F1](#f1) | No `configurations.ci` on the `test` target — **two projects, not one** | signals, forms | fix + decision | **Retired — fixed, no thresholds** |
 | [F2](#f2) | One `CHANGELOG.md` for three independently-versioned packages | repo | decision | Open |
 | [F3](#f3) | Documented-symbol drift gate — **three packages, four READMEs** | core, signals, forms | fix | **Retired — built and green** |
@@ -143,7 +143,7 @@ worse, or is it merely nearby?*
 | ----- | ----------------------- | ------------- |
 | [A9](#a9) | **Multiplies the construct.** Block scoping means a scope per block per iteration, so a `for` body that throws on iteration 3 leaks three scopes. And five new visitors copy whatever idiom the two existing sites set | **Phase 2 step 0** |
 | [B2](#b2) | **Makes it reachable.** Destructuring declarations and assignment destructuring give a `MemberExpression` a legal binding target, and the branch has a whole-`EvalState` `console.log` in it | **Phase 2 step 0** |
-| [E6](#e6) | **Makes it reachable, but through the design itself.** Loop completion — "skip the rest of the block" — is exactly the unmatched-`after` shape `exit` cannot bound | **A design section of Phase 2's plan**, not a step ahead of it |
+| [E6](#e6) | ~~**Makes it reachable, but through the design itself.** Loop completion — "skip the rest of the block" — is exactly the unmatched-`after` shape `exit` cannot bound~~ — **wrong, corrected in step 1**: skipping a subtree never enters it, so nothing is left open; only abrupt completion produces the shape, and that is out of Phase 2's scope | **A design section of Phase 2's plan**, not a step ahead of it — held, and the bound landed in step 1 anyway |
 | [A2](#a2) | **Nothing.** None of its three members — `(a)++`, `[a, b] = arr`, `({m} = o)` — is more reachable after Phase 2 than before; Phase 2 adds no path into either write visitor's chain | **Standalone fix, whenever** |
 
 **Step 0 is [A9](#a9) + [B2](#b2), one session.** Both are small, both are strictly-before, and
@@ -174,6 +174,12 @@ those libraries have tests asserting the defect, and closing it moves both.
 **[E6](#e6) is a constraint on the design, not a queue item.** Bounding `exit`'s scan with a
 mark and choosing the completion-value mechanism are one decision seen twice. Discharging it
 ahead of the plan would mean designing the mark without knowing what it has to bound.
+
+> **Held, and it paid.** The completion mechanism the plan chose (§ 3.1, a value-stack discipline
+> with no abrupt completion) is what established that Phase 2 does **not** make E6 reachable — the
+> opposite of what E6's own entry claimed. Designing the mark ahead of that would have bounded it
+> against a short-circuit mechanism this phase never built. The bound shipped in step 1 regardless,
+> on the "leaving the trap armed under seven new visitors" argument rather than on reachability.
 
 **[A2](#a2) is not a precondition and should not wait.** The argument for pulling it early was
 precedent — statement dispatchers are the same `if`/`else if`-over-node-types shape and would
@@ -1300,18 +1306,47 @@ would read.
 <a id="e6"></a>
 ## E6 — `exit` has no mark to bound its scan
 
-**Package** core · **Kind** fix · **Status** Open — **[Phase 2 design constraint](#phase-2-preconditions)**
+**Package** core · **Kind** fix · **Status** **Fixed — Phase 2 step 1, 2026-09-12**; the premise
+that Phase 2 makes it reachable was **wrong**, and is corrected below
 
-`EvalHooks.exit` cannot distinguish "absent from this walk" from "absent from the stack", so a node
-open only in an *enclosing* walk would fall into case 2 and the flush would cross the walk boundary.
+`EvalHooks.exit` could not distinguish "absent from this walk" from "absent from the stack", so a
+node open only in an *enclosing* walk fell into case 2 and the flush crossed the walk boundary.
 
 **Unreachable today** — it needs an `afterVisitor` with no matching `beforeVisitor` in the same
 frame, which no visitor produces.
 
-**Phase 2 is what makes it reachable.** Statement support needs a way to short-circuit — "skip the
-rest of the block" — which is an early exit out of a statement list, and that is exactly the shape
-that produces an unmatched `after`. Phase 1 step 3 already wrote that it is "worth not making
-reachable by accident"; Phase 2 is the accident it anticipated.
+> **Premise corrected in execution, and the fix landed anyway.** This entry said "Phase 2 is what
+> makes it reachable", on the reasoning that statement support "needs a way to short-circuit — skip
+> the rest of the block". **It does not, under the design Phase 2 chose.** Skipping a subtree does
+> not produce an unmatched `after`: an untaken `if` branch or a `for` body that never runs is never
+> *entered*, so nothing is left open. Only an **abrupt** completion that abandons a
+> partially-walked child does, and `break` / `continue` / `return` are out of Phase 2's scope
+> ([`statements/phase-2-plan.md`](statements/phase-2-plan.md) § 2). So the phase that makes this
+> reachable is the abrupt-completion phase, not Phase 2 — which is also why that phase cannot
+> inherit this entry's reasoning as a reason to hurry.
+>
+> *Measured* before the fix, driving the published `EvalHooks` directly — enter two nodes, take the
+> mark `evaluate` takes, enter a third, then close the **first**: the open stack drained from depth
+> **3 to 0** past a mark of **2**, synthesising **two** `completed: false` events for frames
+> belonging to the enclosing walk, which a consumer reads as ordinary completions; the nested walk's
+> own `unwindTo(mark)` then had nothing left to unwind. A control with a node never opened stayed a
+> no-op.
+>
+> **Fixed in Phase 2 step 1** rather than deferred to the phase that needs it, for three reasons in
+> order of weight: the failure is silent when it happens; the abrupt-completion phase will be
+> written against seven new statement visitors as precedent, and leaving the trap armed under them
+> is how a residual becomes a defect; and the mechanism already existed one level up (`depth` and
+> `unwindTo`). `evaluate` and `evaluateAsync` now record their mark on
+> `EvalHookBookkeeping.walkBases` — where `exit`, called from a visitor, can see it — and **both** of
+> `exit`'s routes respect it: the `lastIndexOf` scan and the identity fast path. The fast path needs
+> it independently: when a nested walk has opened nothing yet, the top of the stack *is* the
+> enclosing walk's node, so a scan-only bound leaves the boundary crossable by the cheap route and
+> the measurement above does not see it, because that sequence opens a third node first. A node open
+> only in an enclosing walk now falls into case 3 by either route — pop nothing, emit nothing.
+>
+> *Covered*: `eval-hooks.spec.ts`, "the walk base bound". Reverting the bound turns the scan case
+> and the fast-path case red and leaves the never-opened control green; bounding the scan alone
+> turns only the fast-path case red.
 
 Note this is orthogonal to per-state isolation and neither subsumes the other: per-state isolation
 handles *sharing across evaluations*; marks handle *nested walks within one evaluation* — the

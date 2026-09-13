@@ -157,6 +157,29 @@ export interface EvalHookBookkeeping {
    * would be unreachable, which is a dead option rather than a feature.
    */
   readonly timings: Map<AnyNodeTypes, EvalNodeTiming>;
+  /**
+   * One entry per `evaluate` call currently on the JavaScript stack: the
+   * {@link open} depth that call found when it started, innermost last.
+   *
+   * `evaluate` already captured this as a local to hand to
+   * {@link EvalHooks.unwindTo}; it lives here as well because {@link
+   * EvalHooks.exit} needs it too and is called from a visitor, which has no
+   * route to that local. Without it `exit` cannot tell "absent from this walk"
+   * from "absent from the stack" and closes frames belonging to an enclosing
+   * walk.
+   *
+   * Pushed and popped only under `state.hasHooks`, so an evaluation with no
+   * hooks pays nothing for it. An empty stack therefore reads as base 0 -
+   * unbounded, which is the right answer for a walk that began before any hook
+   * existed and so pushed no base.
+   *
+   * This is **not** `EvalState.walkDepth`, and the two cannot be merged: that
+   * counter is unguarded because § 3.4's iteration budget must refill on the
+   * outermost entry whether or not hooks are registered, while these bases are
+   * hook bookkeeping and are absent on the default path by design. A later
+   * phase reading "two counters" should read this paragraph first.
+   */
+  readonly walkBases: number[];
 }
 
 const DEFAULT_POLICY: EvalHookErrorPolicy = 'collect';
@@ -179,6 +202,31 @@ const POLICIES: readonly EvalHookErrorPolicy[] = ['collect', 'throw', 'ignore'];
  */
 export const ASYNC_HOOK_MESSAGE =
   'async hook returned a promise; it will not be awaited';
+
+/**
+ * The completion value of a statement that produced nothing.
+ *
+ * JavaScript's completion-value semantics keep the last **non-empty** value, and
+ * empty is not the same as `undefined`: `{ 'a'; noop() }` is `undefined` because
+ * the call genuinely produced one, while `{ 'a'; ; }` is `'a'` because the empty
+ * statement produced nothing at all. A statement visitor that produced no value
+ * therefore pushes this rather than `undefined`, and an enclosing block keeps the
+ * last value that is not this.
+ *
+ * It never reaches an evaluation's return value: `evaluate` and `evaluateAsync`
+ * convert it to `undefined` at the walk boundary, immediately after popping the
+ * result. It **is** reachable in a hook event, because `afterVisitor` reads the
+ * value positionally off the top of the result stack - so an 'after' hook on a
+ * statement that produced nothing observes this sentinel. Hiding it there is not
+ * available: the alternatives are calling `afterVisitor` before the push, which
+ * reports the neighbour's value, or normalising inside `afterVisitor`, which puts
+ * a per-node cost on the hot path for a case only statements produce.
+ *
+ * Exported for that reason, on the precedent of {@link ASYNC_HOOK_MESSAGE}: a
+ * consumer whose hook receives it can recognise it by identity rather than by
+ * guessing at a value it would have to keep in sync by hand.
+ */
+export const EMPTY_COMPLETION: unique symbol = Symbol('eval-core:empty-completion');
 
 /**
  * Reads the error policy out of the evaluation options. `EvalOptions` is a union
@@ -458,6 +506,21 @@ export class EvalHooks {
    * every genuinely-open enclosing frame, and leave a later real failure with
    * nothing to unwind.
    *
+   * **"Open" means open in *this* walk.** Both routes below are bounded by the
+   * current walk base ({@link EvalHookBookkeeping.walkBases}), so a node open
+   * only in an enclosing walk falls into case 3 by either route - which is the
+   * behaviour case 3 already specifies for "not open at all". `evaluate` is
+   * re-entered with the same state from an arrow-function body, so without the
+   * bound a nested walk closing a node it never opened would flush the
+   * enclosing walk's frames under `completed: false` events a consumer reads as
+   * ordinary completions, and leave that walk's own `unwindTo(mark)` with
+   * nothing left to unwind.
+   *
+   * The bound is needed on the **identity fast path** as much as on the scan:
+   * when a nested walk has opened nothing yet, the top of the stack *is* the
+   * enclosing walk's node, so the cheap route crosses the boundary without ever
+   * reaching the scan.
+   *
    * Popping positionally instead would be correct only if every visitor
    * bracketed its body exactly. `await-expression.ts` does not - it catches a
    * child's synchronous throw and continues to its own `afterVisitor` - so a
@@ -476,16 +539,20 @@ export class EvalHooks {
    */
   public exit(state: EvalState, node: AnyNode): void {
     const open = state.hookBookkeeping.open;
+    const base = this.walkBase(state);
 
-    if (open.length > 0 && open[open.length - 1] === node) {
+    if (open.length > base && open[open.length - 1] === node) {
       open.pop();
       return;
     }
 
     // The innermost occurrence is the one being closed: a node can legitimately
     // be open twice, since an arrow-function body is re-walked on every call.
+    // `lastIndexOf` returns -1 when the node is absent, which the same
+    // comparison rejects - "below this walk's base" and "not open at all" are
+    // the same case here.
     const index = open.lastIndexOf(node);
-    if (index < 0) {
+    if (index < base) {
       return;
     }
 
@@ -509,6 +576,44 @@ export class EvalHooks {
    */
   public depth(state: EvalState): number {
     return state.hookBookkeeping.open.length;
+  }
+
+  /**
+   * Records that a walk is starting at the state's current open depth, and
+   * returns that depth. Called by `evaluate` / `evaluateAsync` on entry, under
+   * their `hasHooks` guard, and paired with {@link popWalkBase} in a `finally`.
+   *
+   * The returned value is the same mark those entry points hand to
+   * {@link unwindTo}, so they capture it once rather than reading the depth
+   * twice.
+   */
+  public pushWalkBase(state: EvalState): number {
+    const bookkeeping = state.hookBookkeeping;
+    const base = bookkeeping.open.length;
+    bookkeeping.walkBases.push(base);
+    return base;
+  }
+
+  /**
+   * Drops the innermost walk base. Called from the `finally` of the `evaluate`
+   * that pushed it, so an entry point whose walk threw still restores the
+   * enclosing walk's bound.
+   */
+  public popWalkBase(state: EvalState): void {
+    state.hookBookkeeping.walkBases.pop();
+  }
+
+  /**
+   * The open depth the innermost walk in progress started at, and the floor
+   * {@link exit} will not reach below.
+   *
+   * Zero when no base has been pushed, which leaves `exit` behaving exactly as
+   * it did before the bound existed - the correct answer for a walk that began
+   * before any hook was registered, since it pushed no base.
+   */
+  public walkBase(state: EvalState): number {
+    const bases = state.hookBookkeeping.walkBases;
+    return bases.length > 0 ? bases[bases.length - 1] : 0;
   }
 
   /**

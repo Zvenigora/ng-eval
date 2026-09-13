@@ -743,6 +743,156 @@ describe('EvalHooks', () => {
     });
   });
 
+  /**
+   * The walk-base bound, and the three cases the Phase 2 plan § 3.3 specifies.
+   *
+   * `evaluate` is re-entered with the same state from an arrow-function body,
+   * so a nested walk shares the open-node stack with the walk that started it.
+   * Without a bound, a nested walk closing a node it never opened reaches down
+   * into the enclosing walk's frames - measured once as a drain from depth 3 to
+   * 0 past a mark of 2, emitting two `completed: false` events a consumer reads
+   * as ordinary completions, and leaving that walk's own `unwindTo(mark)` with
+   * nothing left to unwind.
+   *
+   * These drive `EvalHooks` directly, standing in for `evaluate`'s entry
+   * bookkeeping with `pushWalkBase`, because the sequence needs a nested walk
+   * to close a node the enclosing walk opened - which no visitor in this
+   * library produces today, and which is why the residual survived Phase 1 as a
+   * design note rather than a failing test.
+   */
+  describe('the walk base bound', () => {
+
+    it('should not flush the enclosing walk frames when a nested walk closes its node', () => {
+      // Case 1: the node is open, but below this walk's base - the scan route.
+      const hooks = new EvalHooks();
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('after', '*', (e) => events.push(e));
+
+      // The enclosing walk opens two nodes.
+      hooks.dispatch('before', binary, state);
+      hooks.dispatch('before', identifier, state);
+
+      // A nested walk starts here and opens one of its own.
+      const mark = hooks.pushWalkBase(state);
+      hooks.dispatch('before', member, state);
+
+      expect(mark).toBe(2);
+      expect(hooks.depth(state)).toBe(3);
+
+      // The nested walk closes a node belonging to the enclosing walk.
+      hooks.dispatch('after', binary, state, 3);
+
+      expect(events.filter((e) => e.completed === false)).toEqual([]);
+      expect(hooks.depth(state)).toBe(3);
+
+      // So the nested walk's own unwind still has its frame to close, and the
+      // enclosing walk's two frames survive it.
+      hooks.unwindTo(mark, new Error('boom'), state);
+      hooks.popWalkBase(state);
+
+      expect(hooks.depth(state)).toBe(mark);
+      expect(state.hookBookkeeping.open.map((n) => n.type))
+        .toEqual(['BinaryExpression', 'Identifier']);
+    });
+
+    it('should not pop the enclosing walk node when the nested walk has opened nothing', () => {
+      // Case 2: the identity fast path. The node *is* on top, because the
+      // nested walk has opened nothing yet - so bounding only the scan leaves
+      // the boundary crossable by the cheap route, and case 1's sequence does
+      // not catch it because it opens a third node first.
+      const hooks = new EvalHooks();
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('after', '*', (e) => events.push(e));
+
+      hooks.dispatch('before', binary, state);
+
+      const mark = hooks.pushWalkBase(state);
+
+      expect(hooks.depth(state)).toBe(mark);
+
+      hooks.dispatch('after', binary, state, 3);
+
+      expect(events.filter((e) => e.completed === false)).toEqual([]);
+      expect(hooks.depth(state)).toBe(mark);
+      expect(state.hookBookkeeping.open.map((n) => n.type))
+        .toEqual(['BinaryExpression']);
+    });
+
+    it('should still be a no-op for a node that was never opened', () => {
+      // Case 3, the control: this passes with or without the bound, and it is
+      // here to catch a bound implemented as "never pop" rather than "act
+      // within this walk".
+      const hooks = new EvalHooks();
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('after', '*', (e) => events.push(e));
+
+      hooks.dispatch('before', binary, state);
+      hooks.pushWalkBase(state);
+
+      hooks.dispatch('after', member, state, 'x');
+
+      expect(events.filter((e) => e.completed === false)).toEqual([]);
+      expect(hooks.depth(state)).toBe(1);
+    });
+
+    it('should still flush frames a nested walk left open above its own base', () => {
+      // The other half of "act within this walk": inside the nested walk the
+      // flush is unchanged, so the bound cannot have been implemented by
+      // disabling case 2.
+      const hooks = new EvalHooks();
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('after', '*', (e) => events.push(e));
+
+      hooks.dispatch('before', binary, state);
+      hooks.pushWalkBase(state);
+
+      hooks.dispatch('before', identifier, state);
+      hooks.dispatch('before', member, state);
+      hooks.dispatch('after', identifier, state, 1);
+
+      expect(events.map((e) => e.node.type))
+        .toEqual(['MemberExpression', 'Identifier']);
+      expect(events.map((e) => e.completed)).toEqual([false, true]);
+      expect(hooks.depth(state)).toBe(1);
+    });
+
+    it('should fall back to unbounded behaviour when no walk base was pushed', () => {
+      // A walk that began before any hook existed pushes no base, since the
+      // push is guarded on `hasHooks`. Base 0 is then the honest answer, and it
+      // is exactly the behaviour that shipped before the bound.
+      const hooks = new EvalHooks();
+      const events: EvalNodeHookEvent[] = [];
+      hooks.on('after', '*', (e) => events.push(e));
+
+      hooks.dispatch('before', binary, state);
+      hooks.dispatch('before', identifier, state);
+
+      hooks.dispatch('after', binary, state, 3);
+
+      expect(events.map((e) => e.completed)).toEqual([false, true]);
+      expect(hooks.depth(state)).toBe(0);
+    });
+
+    it('should restore the enclosing bound when a nested walk base is popped', () => {
+      const hooks = new EvalHooks();
+
+      hooks.dispatch('before', binary, state);
+      hooks.pushWalkBase(state);
+      hooks.dispatch('before', identifier, state);
+      hooks.pushWalkBase(state);
+
+      expect(hooks.walkBase(state)).toBe(2);
+
+      hooks.popWalkBase(state);
+
+      expect(hooks.walkBase(state)).toBe(1);
+
+      hooks.popWalkBase(state);
+
+      expect(hooks.walkBase(state)).toBe(0);
+    });
+  });
+
   describe('bookkeeping ordering', () => {
 
     it('should open the node before running before hooks, so a throwing hook cannot omit it', () => {

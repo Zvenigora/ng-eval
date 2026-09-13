@@ -37,6 +37,7 @@ export class EvalState {
   private _isAsync: boolean | undefined;
   private _hooks: EvalHooks | undefined;
   private _hookBookkeeping: EvalHookBookkeeping | undefined;
+  private _walkDepth = 0;
 
   /**
    * Gets the evaluation context.
@@ -137,12 +138,58 @@ export class EvalState {
    * @internal Not part of the published API.
    */
   public get hookBookkeeping(): EvalHookBookkeeping {
-    return (this._hookBookkeeping ??= { open: [], errors: [], timings: new Map() });
+    return (this._hookBookkeeping ??=
+      { open: [], errors: [], timings: new Map(), walkBases: [] });
+  }
+
+  /**
+   * How many `evaluate` / `evaluateAsync` calls on this state are currently on
+   * the JavaScript stack: 0 between evaluations, 1 during an ordinary walk, and
+   * more while a nested walk runs - an arrow-function body is re-entrant
+   * `evaluate` on this same state.
+   *
+   * Maintained by {@link enterWalk} / {@link exitWalk}, which the entry points
+   * pair around their walk, the exit in a `finally` so a throw still restores
+   * the count.
+   *
+   * **Deliberately not merged with `EvalHookBookkeeping.walkBases`**, which
+   * tracks the same nesting one level down. That stack is pushed only under
+   * {@link hasHooks}, because bounding `EvalHooks.exit` is meaningless with no
+   * hooks to dispatch; this counter must be maintained unconditionally, because
+   * § 3.4's iteration budget refills on the outermost entry and a loop is
+   * bounded whether or not anyone is listening. One field cannot be both
+   * guarded and unguarded, so there are two.
+   *
+   * @internal Not part of the published API.
+   */
+  public get walkDepth(): number {
+    return this._walkDepth;
+  }
+
+  /**
+   * Records that a walk is starting on this state and returns the new depth, so
+   * a caller can recognise the outermost entry as `=== 1` without a second
+   * read.
+   *
+   * @internal Not part of the published API.
+   */
+  public enterWalk(): number {
+    return ++this._walkDepth;
+  }
+
+  /**
+   * Records that a walk has finished. Called from the entry point's `finally`.
+   *
+   * @internal Not part of the published API.
+   */
+  public exitWalk(): void {
+    this._walkDepth--;
   }
 
   /**
    * Drops every per-run record this state holds: the collected hook errors, the
-   * open-node stack, and the accumulated timings.
+   * open-node stack, the accumulated timings, and the walk bases bounding
+   * `EvalHooks.exit`.
    *
    * It resets the whole record rather than only the errors, which is why it is
    * not named for them. `EvalHooks.clear` cannot reach any of this - the

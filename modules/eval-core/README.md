@@ -204,7 +204,7 @@ An `'after'` event normally means a visitor finished and pushed a value. When it
 
 These come from two different places, and **the presence of `error` is what tells them apart**. A consumer that reads `completed: false` as "this evaluation failed" will be wrong on the second kind.
 
-**1. Evaluation actually failed.** The unwinder closes every node still open and supplies the `error`:
+**1. Evaluation actually failed.** The unwinder closes every node still open and supplies the `error` — including the statement nodes enclosing the expression, since a program and its statements are walked like anything else:
 
 ```javascript
 const service = inject(EvalService);
@@ -219,7 +219,8 @@ state.hooks.on('after', '*', (e) => {
 
 try { service.eval('1 + boom()', state); } catch { /* rethrown */ }
 
-// seen === [['CallExpression', true], ['BinaryExpression', true]]
+// seen === [['CallExpression', true], ['BinaryExpression', true],
+//           ['ExpressionStatement', true], ['Program', true]]
 // innermost first, each carrying the error that aborted the walk
 ```
 

@@ -1,7 +1,65 @@
-import { EvalState } from '../classes/eval';
+import { EMPTY_COMPLETION, EvalState } from '../classes/eval';
 import * as walk from 'acorn-walk';
 import { getDefaultVisitors, popVisitorResult } from '../visitors';
 import { AnyNode } from 'acorn';
+
+/**
+ * Applies § 3.1's rule 4: the empty-completion sentinel never leaves an
+ * evaluation's return value.
+ *
+ * It is converted here, at the walk boundary, rather than in the `Program`
+ * visitor. `arrow-function-expression.ts` calls `evaluate` on a
+ * `BlockStatement` for a block-bodied arrow, so a conversion sited in `Program`
+ * would let `x => { }` hand the sentinel straight to a consumer. Converting
+ * where the walk ends covers both entry points by construction.
+ */
+const completionValue = (value: unknown): unknown =>
+  value === EMPTY_COMPLETION ? undefined : value;
+
+/**
+ * The merged visitor table every walk dispatches through: this library's
+ * visitors laid over `acorn-walk`'s base walker, built once.
+ *
+ * **`walk.recursive` merges per call, and the merge is not cheap.** Handed a
+ * `funcs` object it calls `walk.make(funcs, base)`, which allocates an object
+ * and copies every entry onto it - once per `evaluate`, not once per node.
+ * Measured on the built bundle, walking a single `Literal`, which visits one
+ * node and so is almost entirely this fixed cost:
+ *
+ * | visitor entries | per-call merge | merged once |
+ * | --------------- | -------------- | ----------- |
+ * | 19 (before statements) | 0.422 us | - |
+ * | 22 (with statements)   | 1.045 us | 0.226 us |
+ *
+ * Three more entries more than doubled it, which is a cliff rather than a
+ * slope - the copy crosses a threshold where the engine stops treating the
+ * result as a fast-property object. Merging once removes the whole class of
+ * problem: it is faster than the pre-statement baseline, and it stops the
+ * remaining statement visitors of this phase from making it worse again.
+ *
+ * `{}` is still passed as `funcs` at the call sites so that `make` has nothing
+ * to copy; the per-walk object is then an empty `Object.create(DEFAULT_VISITORS)`
+ * and every lookup is a prototype hit.
+ *
+ * Frozen, and lazily built, for two different reasons:
+ *
+ * - **Frozen** because this table is shared by every walk in the process -
+ *   `EvalService` is `providedIn: 'root'` - so a visitor that wrote to it would
+ *   reach every later evaluation, including other consumers'. Nothing writes to
+ *   it today; freezing is what keeps that true, turning a silent cross-walk
+ *   mutation into a throw. `getDefaultVisitors()` still returns a **fresh,
+ *   mutable** object to anyone who calls it, so no caller loses anything.
+ * - **Lazily** because a module-level `const` deadlocks the flattened bundle:
+ *   `arrow-function-expression.ts` imports `evaluate`, so this module is
+ *   initialised first and `getDefaultVisitors()` at module scope reads that
+ *   visitor before its binding exists. Measured, not guessed - the built
+ *   package threw `Cannot access 'arrowFunctionExpressionVisitor' before
+ *   initialization` on import.
+ */
+let defaultVisitors: walk.RecursiveVisitors<EvalState> | undefined;
+
+const mergedVisitors = (): walk.RecursiveVisitors<EvalState> =>
+  (defaultVisitors ??= Object.freeze(walk.make<EvalState>(getDefaultVisitors())));
 
 /**
  * Evaluates the given node and returns the result.
@@ -19,14 +77,25 @@ export const evaluate = (node: AnyNode | undefined, state: EvalState)
 
     // Captured inside the `if (node)` block on purpose: callers reach the early
     // return above with a bare state that has no hooks to read. Do not hoist.
-    const mark = state.hasHooks ? state.hooks.depth(state) : 0;
+    //
+    // The mark is recorded on the state as well as held here, so that
+    // `EvalHooks.exit` - called from a visitor, which has no route to this
+    // local - can tell a node open in this walk from one open only in an
+    // enclosing walk. Pushed under the same guard the mark is read under, and
+    // the local `hooked` keeps the pair symmetric if a hook is registered
+    // mid-walk.
+    const hooked = state.hasHooks;
+    const mark = hooked ? state.hooks.pushWalkBase(state) : 0;
+
+    // Unguarded, unlike the walk base above: the iteration budget refills on
+    // the outermost entry whether or not hooks are registered. See
+    // `EvalState.walkDepth` on why these are two fields and not one.
+    state.enterWalk();
 
     try {
-      const visitors: walk.RecursiveVisitors<EvalState> = getDefaultVisitors();
+      walk.recursive(node, state, {}, mergedVisitors());
 
-      walk.recursive(node, state, visitors);
-
-      const value = popVisitorResult(node, state)
+      const value = completionValue(popVisitorResult(node, state))
 
       state.result.stop();
 
@@ -39,11 +108,27 @@ export const evaluate = (node: AnyNode | undefined, state: EvalState)
       // walk left open. Unwinding to the mark rather than to the bottom is what
       // stops a nested evaluate - the arrow-function body runs on this same
       // state - from draining the enclosing walk's open nodes.
+      // Reads `state.hasHooks` rather than the `hooked` local captured above,
+      // and the difference is deliberate but narrow: if a hook was registered
+      // *during* this walk then `hooked` is false, no base was pushed, `mark`
+      // is 0, and this unwinds the whole stack - including an enclosing walk's
+      // frames, which is the boundary crossing the walk base exists to stop.
+      // Left as it was rather than tightened here, because narrowing it would
+      // change what a mid-walk registration observes on an already-published
+      // path, which is not this step's to decide.
       if (state.hasHooks) {
         state.hooks.unwindTo(mark, error, state);
       }
       state.result.setFailure(error);
       throw error;
+    } finally {
+      // Both in a `finally`: a walk that threw still has to restore the
+      // enclosing walk's bound and depth, or every later evaluation on this
+      // state carries this one's nesting.
+      state.exitWalk();
+      if (hooked) {
+        state.hooks.popWalkBase(state);
+      }
     }
   }
 
@@ -129,14 +214,30 @@ export const evaluateAsync = async (ast: AnyNode | undefined, state: EvalState)
 
   // Captured after the `!ast` early return above, for the same reason the sync
   // entry point captures inside its `if (node)` block. Do not hoist.
-  const mark = state.hasHooks ? state.hooks.depth(state) : 0;
+  const hooked = state.hasHooks;
+  const mark = hooked ? state.hooks.pushWalkBase(state) : 0;
+
+  state.enterWalk();
 
   try {
-    const visitors: walk.RecursiveVisitors<EvalState> = getDefaultVisitors();
+    let value: unknown;
 
-    walk.recursive(ast, state, visitors);
+    // The walk bookkeeping is released here rather than in a `finally` on the
+    // outer try, because the walk ends here: everything below this block is
+    // promise resolution on an already-finished traversal. Holding the walk
+    // base and the depth across the `await` would leave an independent
+    // evaluation that interleaved on this state looking like a nested walk -
+    // and § 3.4's budget refills only on the outermost entry.
+    try {
+      walk.recursive(ast, state, {}, mergedVisitors());
 
-    let value = popVisitorResult(ast, state);
+      value = completionValue(popVisitorResult(ast, state));
+    } finally {
+      state.exitWalk();
+      if (hooked) {
+        state.hooks.popWalkBase(state);
+      }
+    }
 
     // Enhanced promise handling - recursively await all promises
     try {

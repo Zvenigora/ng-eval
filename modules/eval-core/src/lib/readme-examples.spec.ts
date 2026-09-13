@@ -327,7 +327,13 @@ describe('documented examples', () => {
 
     try { service.eval('1 + boom()', state); } catch { /* rethrown */ }
 
-    expect(seen).toEqual([['CallExpression', true], ['BinaryExpression', true]]);
+    // Two entries before Phase 2 step 1, four after: `ExpressionStatement` and
+    // `Program` are walked nodes now, so the unwinder closes them too. The
+    // README block above carries the same four.
+    expect(seen).toEqual([
+      ['CallExpression', true], ['BinaryExpression', true],
+      ['ExpressionStatement', true], ['Program', true],
+    ]);
   });
 
   it('should synthesise completed: false without an error for an abandoned child', async () => {

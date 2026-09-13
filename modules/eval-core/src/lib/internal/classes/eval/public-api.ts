@@ -9,6 +9,6 @@ export { EvalScope, EvalScopeOptions } from './eval-scope';
 export { EvalHooks, EvalHookPhase, EvalNodeHook, EvalNodeHookEvent,
          EvalReadHook, EvalReadEvent, EvalReadKind, EvalNodeTiming,
          EvalHookError, EvalHookErrorPolicy, Unsubscribe,
-         ASYNC_HOOK_MESSAGE } from './eval-hooks';
+         ASYNC_HOOK_MESSAGE, EMPTY_COMPLETION } from './eval-hooks';
 export { createTimingHook, EvalTimingHook } from './hooks/timing-hook';
 export { createDependencyTracker, EvalDependencyTracker } from './hooks/dependency-tracker';
