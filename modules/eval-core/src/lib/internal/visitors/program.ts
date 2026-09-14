@@ -39,9 +39,15 @@ export const dispatchStatement = (
 ): unknown => {
 
   switch (statement.type) {
+    // `VariableDeclaration` covers `var` as well, and cannot not: this `switch`
+    // reads the node *type*, and `var x = 1` is a `VariableDeclaration` exactly
+    // as `let x = 1` is. Listing it here is therefore what stopped `var`
+    // reaching the `default:` below; the rejection moved into the visitor,
+    // which can read `kind`.
     case 'ExpressionStatement':
     case 'EmptyStatement':
     case 'BlockStatement':
+    case 'VariableDeclaration':
       callback(statement, st);
       return popVisitorResult(statement, st);
     default:

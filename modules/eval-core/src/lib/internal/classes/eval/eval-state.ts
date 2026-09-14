@@ -38,6 +38,7 @@ export class EvalState {
   private _hooks: EvalHooks | undefined;
   private _hookBookkeeping: EvalHookBookkeeping | undefined;
   private _walkDepth = 0;
+  private _constBindings: WeakMap<Context, Set<unknown>> | undefined;
 
   /**
    * Gets the evaluation context.
@@ -184,6 +185,55 @@ export class EvalState {
    */
   public exitWalk(): void {
     this._walkDepth--;
+  }
+
+  /**
+   * Records that `key` was declared `const` in `scope`, so a later write to it
+   * can be rejected.
+   *
+   * **Keyed by the scope *object*, and beside the scope rather than in it.** A
+   * metadata key written onto the scope record would itself be resolvable as a
+   * binding name - `getContextValue` reads the same surface a declaration binds
+   * into - so `let __kind` would be readable from an expression. A `WeakMap`
+   * hanging off the state has neither problem, and it is checked at the write
+   * site only, so reads pay nothing.
+   *
+   * **The scope passed here must be the one on the stack**, not the record a
+   * visitor built to push: `EvalContext.push` routes through `fromContext`,
+   * which *copies* a plain record into a `Registry` when `caseInsensitive` is
+   * set. Keying on the pre-push record would file every `const` under an object
+   * the write site can never produce, and `caseInsensitive` alone would lose
+   * const-ness silently. `EvalContext.scopeHolding` returns the stack's object,
+   * which is what both sides use.
+   *
+   * The entries die with the scopes: scope objects are created per block entry
+   * and dropped when the block exits, so nothing here outlives the walk even
+   * though the state may.
+   *
+   * @internal Not part of the published API.
+   */
+  public declareConst(scope: Context, key: unknown): void {
+    const bindings = (this._constBindings ??= new WeakMap<Context, Set<unknown>>());
+    const keys = bindings.get(scope);
+    if (keys) {
+      keys.add(key);
+    } else {
+      bindings.set(scope, new Set([key]));
+    }
+  }
+
+  /**
+   * Whether `key` was declared `const` in `scope`.
+   *
+   * Asked by `assignment-expression.ts` and `update-expression.ts` of the scope
+   * the write is about to land in, so an inner `let` of a name an outer scope
+   * declared `const` stays writable - the kind belongs to the binding, not to
+   * the name.
+   *
+   * @internal Not part of the published API.
+   */
+  public isConstBinding(scope: Context, key: unknown): boolean {
+    return !!this._constBindings?.get(scope)?.has(key);
   }
 
   /**

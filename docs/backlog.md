@@ -83,6 +83,7 @@ release, not a free change.
 | -- | ----- | ------- | ---- | ------ |
 | [A1](#a1) | `await-expression.ts` downgrades a sync throw to a promise rejection | core | fix | Open |
 | [A2](#a2) | `update-expression.ts` desyncs the value stack under `preserveParens` | core | fix | Open — standalone, [not a Phase 2 precondition](#phase-2-preconditions) |
+| [A11](#a11) | `evaluateObjectPattern` resolves the *value* name against the argument — renaming **and** nested destructuring bind the wrong key | core | fix | Open — **live on the default path**; found Phase 2 step 3 |
 | [A3](#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | Open |
 | [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered — **wider than it reads; [A10](#a10) argues it is one defect with A10** |
 | [A10](#a10) | `getKey`'s scopes step reports every key present against a plain-object scope | core | fix | Open — **latent, not live**; blocks any fix to [A4](#a4) |
@@ -272,9 +273,83 @@ only one that makes 2 and 3 *work* rather than *report*.
 and requires a throwing `default:` in each, so fixing one of these three in passing would be
 arbitrary rather than principled. It is unblocked and lands whenever someone picks it up.
 
+**"One shape" is a claim about these three, and [A11](#a11) is the reason to say so out loud.**
+A11 is a fourth silent wrong answer in the same layer — renaming destructuring binds the wrong key
+to the wrong value — and it is *not* this shape: no chain is fallen through, a branch matches and
+computes the wrong thing. This entry's title reads like a register of the family and is not one, so
+a reader looking for "the silent-wrong-result entry for `pattern.ts` and the write visitors" must
+read both. Found Phase 2 step 3, 2026-09-13.
+
 *Recorded*: [`side-effects/step-3-summary.md` § 5.1](side-effects/step-3-summary.md) (member 1);
 [`statements/phase-2-plan.md` § 1.7](statements/phase-2-plan.md) (members 2 and 3).
 *Verified*: source read, 2026-09-06; members 2 and 3 measured against `dist/`, 2026-09-10.
+
+<a id="a11"></a>
+## A11 — `evaluateObjectPattern` binds the key from the pattern and the value from the *wrong name*
+
+**Package** core · **Kind** fix · **Status** Open — live on the default path
+
+**Found Phase 2 step 3**, while routing binding writes through the pollution guard. Renaming
+destructuring — `{ a: b }` — is wrong in **both** halves, and has been for as long as the binder has
+existed.
+
+[`evaluateObjectPattern`](../modules/eval-core/src/lib/internal/visitors/pattern.ts) takes the
+binding name from `Property.key`, then pushes the argument as a scope and evaluates `Property.value`
+through `callback` **as an expression**. For `{ a: b }` that resolves the identifier `b` against the
+argument. So it binds `a` to `arg.b`, where JavaScript binds `b` to `arg.a`. Both names are wrong at
+once, which is why the shorthand form works and hides it: `{ a }` has `key` and `value` both naming
+`a`, so resolving the wrong one lands on the right answer.
+
+*Measured 2026-09-13*, against `src` = `{ a: 'VALUE_OF_A', b: 'VALUE_OF_B' }`:
+
+| Expression | JavaScript | This library |
+| ---------- | ---------- | ------------ |
+| `(({a: b}) => b)(src)` | `'VALUE_OF_A'` | **`undefined`** — `b` is not bound at all |
+| `(({a: b}) => a)(src)` | `ReferenceError` | **`'VALUE_OF_B'`** — `a` is bound, to the wrong value |
+| `let { a: b } = src; b` | `'VALUE_OF_A'` | **`undefined`** |
+| `let { a: b } = src; a` | `ReferenceError` | **`'VALUE_OF_B'`** |
+
+**Nested destructuring is the same branch and a second symptom.** `Property.value` of type
+`ObjectPattern` is handed to `callback` just as an `Identifier` is, so acorn-walk's base walker
+descends it as a pattern, pushes nothing, and `popVisitorResult` binds the *outer* key to
+`undefined`. *Measured 2026-09-13* against `src` = `{ a: { b: 'B', c: 'C' } }`:
+
+| Expression | JavaScript | This library |
+| ---------- | ---------- | ------------ |
+| `let { a: { b } } = src; b` | `'B'` | **`undefined`** — nothing named `b` is bound |
+| `let { a: { b } } = src; a` | `ReferenceError` | **`undefined`** — `a` is bound, to nothing |
+
+**The value stack does not desync**, checked specifically because it is the failure that would make
+this urgent: `let { a: { b } } = src; 1` returns `1` with 0 stranded and `scopes.length` 0, and the
+same pattern under a pending operand stays balanced. So this is a wrong *answer*, not corruption,
+which is why it is filed rather than fixed in flight.
+
+**Reachable from arrow parameters, i.e. shipped since before Phase 1**, with no option required.
+Phase 2 step 3 widens *what* reaches it — declarations are a second route to the same code — without
+changing the defect.
+
+**Read this beside [A2](#a2), and re-read A2's framing when you do.** A2 is titled "one shape"
+and its claim is that three instances share a single fix: an `if`/`else if` chain over node types
+with no final `else`. This is a fourth silent wrong answer in the same *layer* and it is **not** that
+shape — nothing falls through a chain here; a branch matches and computes the wrong thing. Two
+consequences:
+
+- A2's "one shape, one decision, two sites" reasoning is about A2's three members and does not
+  extend to cover this. A reader who takes A2 as the register of silent-wrong-results in the pattern
+  and write layer will not find this one in it.
+- Step 3 did add a throwing `default:` to both of `pattern.ts`'s `switch` statements, and it does
+  **not** reach this: the wrong binding is produced by a case that matched.
+
+**The near miss worth recording.** Step 3's own divergence note (plan § 3.6.6) named
+`let { a = 1 } = o` as reaching `evaluatePattern`'s fall-through. It does not — a default in an
+object pattern is `Property.value` of type `AssignmentPattern`, handed to `callback` by the same
+branch described above. The guard placed where node types are *enumerated* missed the path that
+reaches the node through a `callback`, and the example the plan used to justify the guard was on
+that path. Caught because the spec written for it failed; it would otherwise have shipped a
+`default:` that covered two of the three forms it was written for.
+
+*Recorded*: this entry, 2026-09-13.
+*Verified*: measured against the working tree at Phase 2 step 3, 2026-09-13.
 
 <a id="a3"></a>
 ## A3 — `import-expression.ts` has a dead `afterVisitor`

@@ -4,7 +4,7 @@ import {
   blockStatementVisitor, emptyStatementVisitor, expressionStatementVisitor,
   identifierVisitor, literalVisitor, logicalExpressionVisitor,
   memberExpressionVisitor, newExpressionVisitor, objectExpressionVisitor,
-  programVisitor,
+  programVisitor, variableDeclarationVisitor,
   taggedTemplateExpressionVisitor, templateLiteralVisitor,
   thisExpressionVisitor, unaryExpressionVisitor, updateExpressionVisitor
 } from '../../internal/visitors';
@@ -49,6 +49,7 @@ export const getDefaultVisitors = () => {
   visitors['ExpressionStatement'] = expressionStatementVisitor;
   visitors['EmptyStatement'] = emptyStatementVisitor;
   visitors['BlockStatement'] = blockStatementVisitor;
+  visitors['VariableDeclaration'] = variableDeclarationVisitor;
 
   return visitors;
 }

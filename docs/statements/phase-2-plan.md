@@ -40,6 +40,32 @@ per docblock, and four of the five decisions are settled by measurement rather t
 published surface) from a throwaway script outside the repository, deleted afterwards. § 1.9
 records the harness.
 
+### 0.1 A rule this document applies to specs and did not apply to itself
+
+`CLAUDE.md` says a probe checks the assertion and the setup must be checked separately, and § 3.1
+sharpens it for this phase: *where this plan says an assertion is discriminating, it now states the
+implementation that would pass it while being wrong.* That rule was written for **specs**. It was
+not applied to the **exit criteria**, and three of them have now been caught naming a consequence
+rather than a detector — each with a sound assertion over a condition the fixture could not reach:
+
+| Where | The criterion as written | Why it could not fail |
+| ----- | ------------------------ | --------------------- |
+| [`program.spec.ts:150`](../../modules/eval-core/src/lib/internal/visitors/program.spec.ts#L150) | "resolves outer keys through the empty program scope" | § 8.1's presence rule means an empty scope shadows nothing, so the read answers correctly whether or not the scope was popped |
+| Step 2, criterion 3 | "a second evaluation reads the source value afterwards" | the same defect inherited one step later, in the step that landed the fix which caused it |
+| Step 3, the `__proto__` criterion | "asserted by reading the scope's prototype afterwards" | `scope.__proto__ = 1` is a **silent no-op** — `1` is not an object, so an unguarded write leaves the prototype intact and passes |
+
+**The rule, stated for criteria as well as for probes: a criterion naming a property must state the
+implementation that would satisfy it while being wrong.** A property is not a detector. The three
+above are corrected in place rather than deleted, each with the wrong implementation named beside
+it.
+
+**Step 5's teardown criterion was the fourth candidate, and checking it found a fourth instance** —
+so the count is four, not three. It is corrected in § 4 step 5; the short version is that
+`for (…) { … }` leaving `ctx.scopes.length` at its pre-walk value, and returning `2`, are both
+satisfied by a `ForStatement` visitor that **pushes no scope at all**: `let i` would bind into the
+enclosing `Program` scope and `i++` would find it there. Restoring a depth nothing raised is the
+purest form of this mistake, and it was one step away from being written.
+
 ---
 
 ## 1. Findings that shape the design
@@ -478,12 +504,32 @@ try it before falling back to today's `set`. Consequences, stated rather than di
   implementation that wrote the innermost scope unconditionally — or created the binding when absent
   — would route `count = 5` around that override and **silently disable the policy of a published
   library**. Binding-presence, not scope-presence, is what keeps the fallback reachable.
+
+  **The word "silently" was true when written and false by step 3.** It rested on `eval-signals`'
+  write cases running with *no scopes pushed at all* — which step 1 ended, by giving `Program` a
+  scope on every evaluation. Scope-presence is therefore now satisfied by every expression this
+  library evaluates, `count = 5` included. Measured in step 3 by building the wrong implementation:
+  `eval-signals` **10 red**, `eval-forms` **10 red**, `eval-core` **20 red**. The downstream suites
+  *are* detectors for this, and step 3's criterion is corrected below.
+
+  **The in-library cases stay regardless**, and the distinction is worth keeping: a suite that is
+  this step's *regression gate* catching a defect is not the same as a test built to catch it. The
+  downstream rows fail four files away, in two packages this step does not touch, for a reason
+  their own specs do not name.
+
+  **This is § 0.1's shape one level up.** What went stale was not an assertion but a *premise about
+  the fixture* — "no scopes pushed" — which a change three steps earlier had quietly falsified,
+  while the plan went on asserting it in two places.
 - **The blast radius, checked rather than assumed.** Every write case pinned in `eval-signals`'
   specs is a bare identifier the source binds (`count = 5`,
   [`eval-signal.spec.ts:300-330`](../../modules/eval-signals/src/lib/eval-signal.spec.ts#L300-L330)),
   which takes the fallback and still throws; no spec in either downstream library assigns to an
   arrow parameter. So both suites are expected to stay green, and movement in either is a finding
   rather than an expectation to update.
+
+  **This remains true of the *correct* implementation and stopped being true of the wrong one.**
+  Step 3 measured it by inverting `setInScope` to scope-presence: `eval-signals` reddens **10**,
+  `eval-forms` **10**, `eval-core` **20**. See the correction two bullets down.
 - **What it deliberately relaxes**: a write to a binding the expression itself created — an arrow
   parameter, or a `let` from step 3 — no longer throws `SignalContextWriteError` under
   `eval-signals`, because it mutates nothing the consumer owns. That is a prerequisite for `for`'s
@@ -514,11 +560,31 @@ new way to name a property, and the two places a binding is written today write 
 (`object[pattern.name] = arg`) and
 [`pattern.ts:116`](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L116). On a plain
 record `__proto__` is a setter, so `let __proto__ = x` and `let { __proto__: p } = o` would set a
-prototype rather than bind a name. Step 3 routes every binding write through
-`safeSetProperty` from
+prototype rather than bind a name. The guard is
 [`prototype-pollution-guard.ts`](../../modules/eval-core/src/lib/internal/visitors/prototype-pollution-guard.ts),
-which is the same guard `member`, `assignment`, `update` and `object` already use, and its specs say
-which names are rejected. This is a surface this phase widens, so it is stated rather than assumed.
+the same one `member`, `assignment`, `update` and `object` already use, and its specs say which
+names are rejected. This is a surface this phase widens, so it is stated rather than assumed.
+
+**The guard and the dispatch are two decisions, and an earlier version of this paragraph named one
+mechanism for two write shapes.** It said "routes every binding write through `safeSetProperty`",
+which is right for one of the two sites and silently wrong for the other:
+
+- **Rejection is `isDangerousProperty(key)`, at every binding site.** That is the whole of the
+  security decision, and it is shape-independent.
+- **Dispatch depends on what the target is.** `safeSetProperty` finishes with
+  `Object.defineProperty`, which suits the two `pattern.ts` sites: both build plain `{}` records
+  before anything is pushed. It does **not** suit a write into an *already-pushed* scope, which is
+  what `VariableDeclaration` does — `EvalContext.push` routes through `fromContext`, which copies a
+  plain record into a `Registry` when `caseInsensitive` is set, and a `Registry` is Map-backed.
+  `Object.defineProperty` on one defines a property on the **instance** and inserts nothing into the
+  map, so the binding would be written and then not found. Scope writes therefore dispatch through
+  `setContextValue`, which asks the `Registry` question first.
+
+**The failure mode is why this is recorded rather than left to the implementer**: it is silent, it
+is confined to `caseInsensitive`, and every case-sensitive spec passes through it unharmed — a
+plain-record scope takes the `defineProperty` path and behaves. A suite whose scope specs are all
+case-sensitive would report a green `let` that binds nothing for the one option that reshapes the
+scope.
 
 ### 3.3 Decision 3 — bounding `exit`'s scan (E6)
 
@@ -699,6 +765,41 @@ Each of these is a README line, not a defect to be filed later.
    ([:71](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L71)), which would be a fourth
    member of § 1.7's silent-fall-through family arriving in the same phase that promises not to add
    one.
+
+   **There are two sites, not one, and the named example does not reach the one named here.** Step 3
+   found it: a default in an **object** pattern is parsed as `Property.value` of type
+   `AssignmentPattern`, so `evaluateObjectPattern` matches its `Property` case and hands the node to
+   `callback` — walking it as an *expression*. It reaches neither of the module's two `switch`
+   defaults, and `let { a = 1 } = o` bound silently through a `default:` that had just been added
+   for it. The **array** form (`let [a = 1] = arr`) and the **parameter** form (`(a = 1) => a`) do
+   go through `evaluatePatterns` and are covered there. So the fix is a `default:` in each `switch`
+   *and* a check in the `Property` branch.
+
+   The general shape is worth the line: a fall-through guard placed where the type is *enumerated*
+   misses every path that reaches the same node through a `callback` instead — which is how a node
+   type can be "handled" and unhandled at once.
+7. **A binding name on the prototype-pollution blocklist is rejected — including as an arrow
+   function parameter.** `(toString => toString)(1)` returned `1` before step 3 and now throws
+   `Access to dangerous property "toString" is blocked…`; so do `constructor`, `prototype`,
+   `valueOf`, `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable`, `toLocaleString` and the
+   four `__define`/`__lookup` accessors.
+
+   **Found in step 3's review, and it is a shipped path this step widened without meaning to.**
+   § 3.2 routes binding writes through the guard because `__proto__` is a setter on a plain record;
+   the binder it routes (`evaluateIdentifier` in `pattern.ts`) is the *same* one arrow parameters
+   have always used, so the whole 13-name blocklist arrived on a form that had nothing to do with
+   declarations. Of those names only `__proto__` is an actual write vector into a fresh `{}` —
+   `let toString = 1` would have created a harmless own property — so the net is wider than the
+   threat.
+
+   **Kept wide rather than narrowed, and the reason is consistency of the blocklist, not of the
+   threat.** `member`, `assignment`, `update` and `object` already reject all thirteen at their own
+   write sites; a binder that rejected one of them would make "is this name blocked?" depend on
+   which visitor you reached it through, which is harder to reason about than a name nobody should
+   be binding anyway. Narrowing it to the actual write vectors is a real option and is a decision,
+   not a tidy-up — it belongs to whoever revisits the blocklist as a whole (`docs/backlog.md`
+   [B1](../backlog.md#b1) is the other half of that subject). Pinned in
+   `variable-declaration.spec.ts`, so step 6 transcribes it from a green spec.
 
 ---
 
@@ -1040,10 +1141,29 @@ criterion here that claims to test shadowing would be testing an empty object.
 
 ### Step 3 — `VariableDeclaration` and scope-aware writes
 
-**Category: behavioural.** **Files**: one new visitor, `eval-context.ts` (`setInScope`),
+**Category: behavioural.** **Files**: one new visitor, **the visitor barrel
+(`visitors/public-api.ts`)**, **`program.ts`**, `eval-context.ts` (`setInScope`),
 `assignment-expression.ts`, `update-expression.ts`, `pattern.ts` (§ 3.6.6's throwing default and
 § 3.2's guarded binding writes), `eval-state.ts` (the `const`-kind `WeakMap`),
 `recursive-visitors.ts`, specs.
+
+**Two files were missing from this list, both on the precedent step 2 set for `program.ts`.**
+`recursive-visitors.ts` imports from `../../internal/visitors`, so a visitor absent from
+`public-api.ts` cannot be registered at all. And `program.ts` holds `dispatchStatement`, whose
+`switch` must admit `VariableDeclaration` or the statement never reaches the new visitor — the same
+omission step 2 found and recorded, in the same place, one step later. Step 2's correction named
+the general case ("the two files a *new* visitor always touches, and not the one this particular
+visitor shares") and this list still did not carry it, which is why it is written into the general
+form here: **every step that adds a statement type touches `program.ts` and the barrel**, and the
+per-step list should stop being the place that has to remember.
+
+The specs are one new file, `variable-declaration.spec.ts`, plus two **edits that move existing
+assertions rather than weaken them** — the four `VariableDeclaration` rows in
+[`statement-semantics.spec.ts`](../../modules/eval-core/src/lib/internal/statement-semantics.spec.ts)
+leave the rejected table for the returning one, and
+[`block-statement.spec.ts`](../../modules/eval-core/src/lib/internal/visitors/block-statement.spec.ts)'s
+arrow-body row loses its `let y = 1` arm. Both are the step-2 precedent for `{ 1; 2 }`: a row whose
+`step:` field named this step is a row this step is expected to move.
 
 **Exit criteria**
 - `let x = 1; x + 1` returns `2` (§ 1.1 measured `NaN`); `const y = 2; y` returns `2` (measured
@@ -1056,14 +1176,38 @@ criterion here that claims to test shadowing would be testing an empty object.
 - **A write inside a pushed scope that does not bind the key still reaches `EvalContext.set`.**
   The probe is a subclass whose `set` throws, mirroring
   [`signal-context.ts:112-117`](../../modules/eval-signals/src/lib/signal-context.ts#L112-L117);
-  `{ count = 5 }` must throw from it. This is the detector for § 3.2's binding-presence rule, and
-  **no downstream suite is one**: every write case `eval-signals` pins runs with no scopes pushed
-  at all, so the dangerous implementation — write the innermost scope, creating the binding —
-  leaves all three suites green while silently disabling that library's read-only policy.
+  `{ count = 5 }` must throw from it. This is the detector for § 3.2's binding-presence rule.
+
+  > **"…and no downstream suite is one" was wrong, and step 3 measured it.** The reasoning was that
+  > every write case `eval-signals` pins runs with no scopes pushed at all — true until step 1 gave
+  > `Program` a scope on every evaluation, after which scope-presence holds for every expression
+  > this library evaluates. Building the dangerous implementation reddens `eval-signals` **10**,
+  > `eval-forms` **10** and `eval-core` **20**. The criterion stands as a criterion; what is
+  > withdrawn is the claim that nothing else would catch it. The pairing below is what makes the
+  > in-library case discriminating, and is the part that was actually missing.
+- **The other arm: a write to a binding the expression *created* must not reach `set`.**
+  `{ let count = 1; count = 5 }` returns `5` against that same throwing subclass. Without it the
+  criterion above is satisfied by an implementation that never calls `setInScope` at all — which is
+  precisely the pre-step behaviour this step replaces.
 - Reassigning a `const` throws; the message names the binding.
 - Destructuring declarations bind: `let [p, q] = arr` then `p` resolves.
 - `let __proto__ = 1` and `let { __proto__: p } = o` are rejected by the pollution guard rather than
   setting a prototype (§ 3.2), asserted by reading the scope's prototype afterwards.
+
+  **Both halves of that sentence were unreachable as written, and it is § 0.1's third instance.**
+  The wrong implementation it must exclude is *no guard at all*, and `let __proto__ = 1` does not
+  exclude it: `scope.__proto__ = 1` on a plain record is a **silent no-op**, because `1` is not an
+  object and the setter ignores it. An unguarded write leaves the prototype exactly as the criterion
+  demands to find it. `let __proto__ = { evil: 1 }` is the discriminating source — an object value
+  is one the setter accepts — and the criterion carries both: the literal source because § 3.2 names
+  it, and the object-valued one because it is the detector.
+
+  **Reading "the scope's prototype afterwards" is also not available**, for a second and unrelated
+  reason: the guard throws, so the scope is popped by the `finally` before the throw reaches the
+  spec, and there is nothing left on the stack to read. The scope must be **captured mid-walk** —
+  a context function invoked by an earlier statement in the same block, the `depth()` idiom
+  [`block-statement.spec.ts`](../../modules/eval-core/src/lib/internal/visitors/block-statement.spec.ts)
+  already uses — and the prototype read against the captured reference after the walk has unwound.
 - `let { a = 1 } = o` throws naming `AssignmentPattern` (§ 3.6.6) rather than binding nothing.
 - `nx run-many -t lint test build` green, including both downstream suites — a regression gate for
   the write-path change, and explicitly **not** the detector for the criterion above.
@@ -1094,11 +1238,34 @@ criterion here that claims to test shadowing would be testing an empty object.
   **reused** `EvalContext`. `ForStatement` is the visitor with the highest push multiplicity, and
   the backlog's own precondition argument for A9 is a `for` body throwing on iteration 3; step 2
   carries this probe and step 5 is where it matters most.
+- **The loop scope exists.** `for (let i = 0; i < 1; i++) { depth() }` reads **one higher** than the
+  enclosing statement list does, where `depth` is a context function returning `ctx.scopes.length`.
+
+  **§ 0.1's fourth instance, and it is the two criteria above that need it.** The wrong
+  implementation both of them admit is a `ForStatement` visitor that **pushes no scope at all**:
+  `let i` binds into the enclosing `Program` scope, `i++` finds it there through `setInScope`, the
+  loop returns `2`, and a depth that was never raised is trivially restored after a throw. A
+  teardown criterion satisfied by never setting anything up is the purest form of the mistake
+  § 0.1 names, and it is the reason "on a **reused** `EvalContext`" is not by itself enough: the
+  qualifier makes a leak *observable*, it does not make a missing push observable. This criterion is
+  what fails when nothing was pushed.
 - `for (;;) { 1 }` throws within the budget rather than hanging; the spec asserts the throw, and the
   budget is asserted as **per outermost `evaluate()`** two ways: a nested pair of 1,000-iteration
   loops exhausts a 100,000 budget (which a per-loop cap would not), and two successive `evaluate`
   calls on **one** `EvalState` each get a full budget (which a per-state counter would not).
 - `internal/performance.spec.ts` is unchanged and green.
+- **The per-iteration allocation on the write path is measured, and either reduced or accepted with
+  a number beside it.** Raised in step 3's review and left to this step because this is where it
+  multiplies. Each identifier write runs `EvalContext.scopeHolding` twice — once in
+  `assignToBinding` for the `const` check, once inside `setInScope` — and `scopeHolding` goes
+  through `Stack.asArray()`, which copies and reverses. A classic `for` loop therefore does, per
+  iteration: `get(i)` in the test, `get(i)` in the update, and two more scans for the write. Before
+  Phase 2 the write half cost none, because `set` consulted no scope.
+
+  The fix, if the number justifies it, is to let `setInScope` take an already-resolved scope — a
+  widening of a signature § 5 publishes, which is why step 3 did not do it unilaterally. § 1.8 is
+  the reminder that `performance.spec.ts` allows 5 seconds for 100 iterations and will not notice
+  either way, so this criterion asks for a measurement and not for a green suite.
 - No exit criterion here asserts closure capture — § 3.6.5 says why there is nothing to assert.
 - `nx run-many -t lint test build` green.
 
@@ -1140,6 +1307,8 @@ this phase left them alone; `ROADMAP.md` Phase 2 marked done; a retrospect.
 | Symbol | Kind | Where |
 | ------ | ---- | ----- |
 | `EvalContext.setInScope` | method, additive | `internal/classes/eval/eval-context.ts` |
+| `EvalContext.scopeHolding` | method, additive — **was private, made public in step 3** | `internal/classes/eval/eval-context.ts`. The write sites need the *scope* and not just a yes/no: `const` kinds are keyed by scope on `EvalState` (§ 3.2), so a write must know which scope it is about to hit before it decides whether the binding is reassignable. Publishing the existing single pass is what keeps that question answered by the same code as `get`'s step 1; the alternative was a second copy of the innermost-scope walk at the write sites, which is [A4](../backlog.md#a4)/[A10](../backlog.md#a10)'s defect — two copies of one resolution order — reproduced deliberately |
+| `EvalState.declareConst` / `isConstBinding` | methods, additive, `@internal`-tagged | `internal/classes/eval/eval-state.ts` — § 3.2's `const`-kind `WeakMap`, behind two methods rather than an exposed map |
 | `EvalOptions.maxIterations` | option key, additive | `internal/classes/eval/eval-options.ts` |
 | `EMPTY_COMPLETION` | const, additive | `internal/classes/eval/` — reachable in `after` hook events, so recognisable by contract (§ 3.1) |
 | `EvalHooks.pushWalkBase` / `popWalkBase` / `walkBase` | methods, additive | `internal/classes/eval/eval-hooks.ts` — § 3.3's bound. **`EvalHookBookkeeping` the interface is `@internal` and unexported; these three methods are not**, since `EvalHooks` is published, and an earlier draft of this table said the whole mechanism was unpublished on the strength of the interface alone |
@@ -1291,8 +1460,16 @@ empty-control behaviour — so that a later widening argues against them by name
 > now closed. Step 2's file list keeps `eval-context.ts` only if it needs it for something else.
 
 **8.2 — settled: no `var`.** Function-scoped hoisting is a second scoping model beside § 3.2's and
-buys a consumer nothing `let` does not. `var x = 1` throws per § 3.1's dispatcher, which is at least
-loud.
+buys a consumer nothing `let` does not. `var x = 1` throws, which is at least loud.
+
+> **"per § 3.1's dispatcher" was true only until step 3, and the rejection had to move.** The
+> dispatcher switches on `statement.type`, and `var x = 1` is a `VariableDeclaration` exactly as
+> `let x = 1` is — so the moment step 3 adds that type to the allow-list, `var` stops reaching the
+> throwing `default:` and starts reaching the new visitor. The answer is not to special-case the
+> dispatcher on a field it does not read: the visitor rejects any `kind` other than `let` or
+> `const`, with its own message (`Unsupported variable declaration kind: var`). Left as a note
+> rather than a silent edit, because a settled answer that named the wrong mechanism is the kind of
+> thing a later phase inherits as licence — § 0.1's shape, one level up.
 
 **8.3 — settled: keep the divergence.** `x => { 1 }` returns `1` here and `undefined` in
 JavaScript (§ 3.6.1). It replaces today's stranded-value accident with a rule, and throwing would

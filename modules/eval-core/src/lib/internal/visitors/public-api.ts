@@ -26,5 +26,6 @@ export {programVisitor, dispatchStatement} from './program';
 export {expressionStatementVisitor} from './expression-statement';
 export {emptyStatementVisitor} from './empty-statement';
 export {blockStatementVisitor} from './block-statement';
+export {variableDeclarationVisitor, assignToBinding} from './variable-declaration';
 export {evaluatePattern, evaluatePatterns} from './pattern';
 export {getKeyValue, equalIgnoreCase, getValueIgnoreCase} from './utils';

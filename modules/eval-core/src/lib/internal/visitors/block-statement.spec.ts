@@ -305,8 +305,19 @@ describe('blockStatementVisitor', () => {
         .toThrow('Unsupported statement type: WhileStatement');
       expect(() => evaluate(programOf('(x => { if (true) { 1 } })(0)'), state()))
         .toThrow('Unsupported statement type: IfStatement');
-      expect(() => evaluate(programOf('(x => { let y = 1; y })(0)'), state()))
-        .toThrow('Unsupported statement type: VariableDeclaration');
+    });
+
+    it('should evaluate a declaration in an arrow body, which step 3 admitted', () => {
+      // The `let` arm of the row above, moved rather than dropped. It measured
+      // `undefined` before step 2 (the base walker bound nothing), threw
+      // `Unsupported statement type: VariableDeclaration` for one step, and now
+      // returns the binding - so the block-bodied arrow reaches step 3's work
+      // through `arrow-function-expression.ts`'s `evaluate` call on this node,
+      // not through `Program`.
+      const state = EvalState.fromContext({}, {});
+
+      expect(evaluate(programOf('(x => { let y = 1; y })(0)'), state)).toBe(1);
+      expect(state.result.stack.length).toBe(0);
     });
 
     it('should keep the context balanced across a block-bodied arrow', () => {

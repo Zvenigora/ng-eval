@@ -6,6 +6,7 @@ import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 import { evaluateMember } from './member-expression';
 import { safeSetProperty } from './prototype-pollution-guard';
+import { assignToBinding } from './variable-declaration';
 
 const assignmentOperators = {
   '=': (left: number, value: number) => { return left = value; },
@@ -50,7 +51,12 @@ export const assignmentExpressionVisitor = (node: AssignmentExpression, st: Eval
       ? st.context.getKey(node.left.name)
       : node.left.name;
     const value = func(left, right);
-    st.context.set(key, value);
+    // Scope first, the caller's object second. Before Phase 2 this was
+    // `st.context.set(key, value)`, which consults no scope at all - so
+    // `(x => (x = 99))(1)` wrote `99` into the caller's own object and left the
+    // arrow's parameter untouched. See `assignToBinding` for why the fallback
+    // to `set` is load-bearing rather than tidy.
+    assignToBinding(st, key, value, node.left.name);
     pushVisitorResult(node, st, value);
   } else if (node.left.type === 'MemberExpression') {
     const [object, key, ] = evaluateMember(node.left, st, callback);

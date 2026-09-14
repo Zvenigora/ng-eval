@@ -1,5 +1,5 @@
 import { Context, Registry, Stack, fromContext } from '../common';
-import { getContextKey, getContextValue } from '../common/context';
+import { getContextKey, getContextValue, setContextValue } from '../common/context';
 import { EvalLookup } from './eval-lookup';
 import { EvalOptions } from './eval-options';
 import { EvalScope } from './eval-scope';
@@ -195,10 +195,21 @@ export class EvalContext {
    * case-sensitive path and not on the case-insensitive one. Both now ask the
    * same own-key question.
    *
+   * **Public since Phase 2 step 3, and the reason is the write sites.**
+   * `assignment-expression.ts` and `update-expression.ts` need the *scope* and
+   * not a yes/no: `const` kinds are recorded against the scope object on
+   * `EvalState`, so a write has to know which scope it is about to land in
+   * before it can decide whether the binding is reassignable. Publishing the
+   * single pass is what keeps that question answered by the same code as
+   * {@link get}'s step 1. The alternative was a second copy of the
+   * innermost-scope walk at each write site, which is the defect
+   * `docs/backlog.md` A4 and A10 already describe - two copies of one
+   * resolution order, drifting - reproduced on purpose.
+   *
    * @param key - The key to look for.
    * @returns The innermost scope binding the key, or undefined.
    */
-  private scopeHolding(key: unknown): Context | undefined {
+  public scopeHolding(key: unknown): Context | undefined {
 
     for (const scope of this._scopes.asArray()) {
       if (hasContextKey(scope, key)) {
@@ -312,6 +323,53 @@ export class EvalContext {
       const obj = this._original as Record<string, unknown>;
       obj[key as string | number] = value;
     }
+  }
+
+  /**
+   * Assigns to the innermost pushed scope that **binds** `key`, and reports
+   * whether one did.
+   *
+   * The scope-aware half of the write path: `assignment-expression.ts` and
+   * `update-expression.ts` try this first and fall back to {@link set}. Before
+   * Phase 2 they only had {@link set}, which writes `_original` and consults no
+   * scope at all - so `(x => (x = 99))(1)` wrote `99` into the *caller's*
+   * object and left the arrow's parameter scope untouched.
+   *
+   * **Binding-presence, not scope-presence, and the fallback is load-bearing.**
+   * `eval-signals` enforces a read-only policy by subclassing this class and
+   * overriding {@link set} to throw, so every write that reaches the consumer's
+   * data goes through the one method it overrides. An implementation that wrote
+   * the innermost scope unconditionally - or created the binding when it was
+   * absent - would route such a write around that override and silently disable
+   * the policy of a published library, with every suite still green. Returning
+   * false when nothing binds the key is what keeps {@link set} reachable.
+   *
+   * What it deliberately relaxes: a write to a binding the expression itself
+   * created - an arrow parameter, or a `let` - no longer reaches {@link set},
+   * because it mutates nothing the caller owns.
+   *
+   * The write dispatches through `setContextValue` rather than through the
+   * prototype-pollution guard's `safeSetProperty`, and the difference is not
+   * cosmetic: {@link push} normalises a plain record into a `Registry` when
+   * `caseInsensitive` is set, and `Object.defineProperty` on a `Registry` would
+   * define a property on the instance while inserting nothing into its map. No
+   * guard is lost - this method only ever writes a key some scope already
+   * *binds*, and a binding can only have been created through the guarded
+   * declaration path, which rejects every blocklisted name.
+   *
+   * @param key - The key to assign to.
+   * @param value - The value to assign.
+   * @returns True when a pushed scope bound the key and received the write.
+   */
+  public setInScope(key: unknown, value: unknown): boolean {
+
+    const scope = this.scopeHolding(key);
+    if (!scope) {
+      return false;
+    }
+
+    setContextValue(scope, key, value);
+    return true;
   }
 
   /**

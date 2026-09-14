@@ -97,6 +97,47 @@ describe('statement semantics (plan § 1.1)', () => {
       // nowhere else in this file.
       expect(run('{ }')).toEqual({ value: undefined, stranded: 0 });
     });
+
+    it('should resolve a let binding in a later statement', () => {
+      // § 1.1: returned **NaN**. The base walker stranded the initialiser and
+      // `x` resolved to nothing, so `x + 1` added 1 to undefined. Moved out of
+      // the rejected table by step 3, and the only row of this file whose old
+      // value was neither right-by-accident nor a stranded count.
+      expect(run('let x = 1; x + 1')).toEqual({ value: 2, stranded: 0 });
+    });
+
+    it('should resolve a const binding', () => {
+      // § 1.1: returned **undefined**.
+      expect(run('const y = 2; y')).toEqual({ value: 2, stranded: 0 });
+    });
+
+    it('should produce nothing for a declaration alone', () => {
+      // § 1.1: returned **undefined** with 0 stranded, which is the value this
+      // row still has - the change is that it is now a rule (a declaration
+      // pushes the empty-completion sentinel) rather than the base walker
+      // happening to leave nothing behind. The sweep at the end of this file is
+      // what pins that it is the sentinel and not `undefined` on the stack.
+      expect(run('let x = 1')).toEqual({ value: undefined, stranded: 0 });
+    });
+
+    it('should bind a destructuring declaration', () => {
+      // § 1.1: returned **undefined** and bound nothing. The value is unchanged
+      // and the binding is the row: `p` and `q` did not resolve before, which is
+      // why the second half is asserted here rather than left to the visitor
+      // spec.
+      expect(run('let [p, q] = arr', { arr: [1, 2] }))
+        .toEqual({ value: undefined, stranded: 0 });
+      expect(run('let [p, q] = arr; p + q', { arr: [1, 2] }))
+        .toEqual({ value: 3, stranded: 0 });
+    });
+
+    it('should reject var, which no longer reaches the dispatcher default', () => {
+      // Not a § 1.1 row. `var` stays out of this phase (§ 2, question 8.2), and
+      // the rejection moved: the dispatcher switches on node *type*, and `var`
+      // shares `VariableDeclaration` with `let`, so admitting one admitted both.
+      expect(() => run('var x = 1'))
+        .toThrow('Unsupported variable declaration kind: var');
+    });
   });
 
   describe('rows that throw the dispatcher default', () => {
@@ -109,10 +150,6 @@ describe('statement semantics (plan § 1.1)', () => {
     // an optional trailing context silently turns every short row into a test
     // that waits five seconds and fails on timeout.
     const rejected: { source: string, type: string, step: string, context?: Context }[] = [
-      { source: 'let x = 1', type: 'VariableDeclaration', step: 'step 3' },
-      { source: 'let x = 1; x + 1', type: 'VariableDeclaration', step: 'step 3' },
-      { source: 'const y = 2; y', type: 'VariableDeclaration', step: 'step 3' },
-      { source: 'let [p, q] = arr', type: 'VariableDeclaration', step: 'step 3', context: { arr: [1, 2] } },
       { source: 'if (a) { 1 } else { 2 }', type: 'IfStatement', step: 'step 4', context: { a: true } },
       { source: 'for (let i = 0; i < 3; i++) { i }', type: 'ForStatement', step: 'step 5' },
       { source: 'while (false) { 1 }', type: 'WhileStatement', step: 'out of scope (§ 2)' },
@@ -165,7 +202,8 @@ describe('statement semantics (plan § 1.1)', () => {
     });
 
     it('should never return the sentinel from any row above', () => {
-      const returning = ['1 + 2', '1; 2; 3', 'a; b', '{ 1; 2 }', '{ }', ' ', ';;', 'a;;b'];
+      const returning = ['1 + 2', '1; 2; 3', 'a; b', '{ 1; 2 }', '{ }', ' ', ';;', 'a;;b',
+        'let x = 1', 'let x = 1; x + 1', 'const y = 2; y'];
 
       for (const source of returning) {
         expect(run(source, { a: 'A', b: 'B' }).value).not.toBe(EMPTY_COMPLETION);
