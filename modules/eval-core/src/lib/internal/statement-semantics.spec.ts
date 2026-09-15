@@ -98,6 +98,26 @@ describe('statement semantics (plan § 1.1)', () => {
       expect(run('{ }')).toEqual({ value: undefined, stranded: 0 });
     });
 
+    it('should take the branch the test selects', () => {
+      // § 1.1: returned **2** with **2 stranded** - the base walker visited both
+      // branches and the `else` value was pushed last, so the wrong branch won.
+      // Moved out of the rejected table by step 4.
+      //
+      // The value is the *smaller* half of this row. Its companion is the same
+      // row's real content, and lives in `if-statement.spec.ts`: the untaken
+      // branch is not walked, so its calls and assignments no longer run. This
+      // file measures values and stranded counts, which a both-branches
+      // implementation with a selector bolted on would satisfy.
+      expect(run('if (a) { 1 } else { 2 }', { a: true })).toEqual({ value: 1, stranded: 0 });
+      expect(run('if (a) { 1 } else { 2 }', { a: false })).toEqual({ value: 2, stranded: 0 });
+    });
+
+    it('should produce nothing when no branch runs', () => {
+      // Not a § 1.1 row - added by step 4 so the sentinel sweep below has an
+      // untaken-`if` row to name.
+      expect(run('if (false) { 1 }')).toEqual({ value: undefined, stranded: 0 });
+    });
+
     it('should resolve a let binding in a later statement', () => {
       // § 1.1: returned **NaN**. The base walker stranded the initialiser and
       // `x` resolved to nothing, so `x + 1` added 1 to undefined. Moved out of
@@ -150,7 +170,6 @@ describe('statement semantics (plan § 1.1)', () => {
     // an optional trailing context silently turns every short row into a test
     // that waits five seconds and fails on timeout.
     const rejected: { source: string, type: string, step: string, context?: Context }[] = [
-      { source: 'if (a) { 1 } else { 2 }', type: 'IfStatement', step: 'step 4', context: { a: true } },
       { source: 'for (let i = 0; i < 3; i++) { i }', type: 'ForStatement', step: 'step 5' },
       { source: 'while (false) { 1 }', type: 'WhileStatement', step: 'out of scope (§ 2)' },
       { source: 'function f() { return 1 }', type: 'FunctionDeclaration', step: 'out of scope (§ 2)' },
@@ -203,7 +222,21 @@ describe('statement semantics (plan § 1.1)', () => {
 
     it('should never return the sentinel from any row above', () => {
       const returning = ['1 + 2', '1; 2; 3', 'a; b', '{ 1; 2 }', '{ }', ' ', ';;', 'a;;b',
-        'let x = 1', 'let x = 1; x + 1', 'const y = 2; y'];
+        'let x = 1', 'let x = 1; x + 1', 'const y = 2; y',
+        // Step 4's rows. `if (a) { }` and `if (a) ;` reach the conversion by a
+        // *taken* branch whose own completion value is the sentinel, which is a
+        // second route to it and not only a second source.
+        //
+        // **This sweep discriminates nothing about how the sentinel is handled**,
+        // and an earlier comment here claimed one of these rows caught a
+        // normalising implementation. Measured: normalise a taken branch's
+        // sentinel to `undefined` and every row here stays green, because
+        // `undefined` is not the sentinel either. It is a leak guard - the
+        // sentinel must never reach a consumer by any route - and
+        // `if-statement.spec.ts`'s "should propagate the sentinel from a taken
+        // branch that produced nothing" is the one assertion that goes red,
+        // measured as the only one.
+        'if (a) { 1 } else { 2 }', 'if (false) { 1 }', 'if (a) { }', 'if (a) ;'];
 
       for (const source of returning) {
         expect(run(source, { a: 'A', b: 'B' }).value).not.toBe(EMPTY_COMPLETION);

@@ -299,12 +299,35 @@ describe('blockStatementVisitor', () => {
       // unregistered: `while` and `if` both yielded `1`, and `let` yielded
       // `undefined`. At the top level they already threw in step 1, so this is
       // the first step at which they throw from *inside an expression*.
+      //
+      // The measurement covers three arms and one is left: step 3 moved the
+      // `let` arm and step 4 the `if` arm to the returning cases below, as each
+      // was admitted. `while` is permanent per § 2, so this case does not shrink
+      // further.
       const state = () => EvalState.fromContext({}, {});
 
       expect(() => evaluate(programOf('(x => { while (false) { 1 } })(0)'), state()))
         .toThrow('Unsupported statement type: WhileStatement');
-      expect(() => evaluate(programOf('(x => { if (true) { 1 } })(0)'), state()))
-        .toThrow('Unsupported statement type: IfStatement');
+    });
+
+    it('should evaluate an if in an arrow body, which step 4 admitted', () => {
+      // The `if` arm of the row above, moved rather than dropped - the same
+      // treatment step 3 gave the `let` arm. Measured before step 2:
+      // `(x => { if (true) { 1 } })(0)` returned `1` from the base walker's
+      // stranded push; it threw `Unsupported statement type: IfStatement` for
+      // steps 2 and 3; and it now returns `1` again, this time as a rule.
+      //
+      // **So the net over the phase is no change in this value**, and step 6's
+      // CHANGELOG must not read it as one - § 5 records the same correction for
+      // the block-bodied arrow's completion values, where a draft claimed a
+      // change that measurement did not support. What is *not* covered by the
+      // value is the untaken branch, which is `if-statement.spec.ts`'s subject;
+      // the stranded count is asserted here because it is the half a value
+      // assertion never reaches.
+      const state = EvalState.fromContext({}, {});
+
+      expect(evaluate(programOf('(x => { if (true) { 1 } })(0)'), state)).toBe(1);
+      expect(state.result.stack.length).toBe(0);
     });
 
     it('should evaluate a declaration in an arrow body, which step 3 admitted', () => {

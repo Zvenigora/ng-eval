@@ -2,6 +2,7 @@ import {
   arrayExpressionVisitor, arrowFunctionExpressionVisitor, assignmentExpressionVisitor, awaitVisitor, binaryExpressionVisitor,
   callExpressionVisitor,conditionalExpressionVisitor, importExpressionVisitor,
   blockStatementVisitor, emptyStatementVisitor, expressionStatementVisitor,
+  ifStatementVisitor,
   identifierVisitor, literalVisitor, logicalExpressionVisitor,
   memberExpressionVisitor, newExpressionVisitor, objectExpressionVisitor,
   programVisitor, variableDeclarationVisitor,
@@ -50,6 +51,7 @@ export const getDefaultVisitors = () => {
   visitors['EmptyStatement'] = emptyStatementVisitor;
   visitors['BlockStatement'] = blockStatementVisitor;
   visitors['VariableDeclaration'] = variableDeclarationVisitor;
+  visitors['IfStatement'] = ifStatementVisitor;
 
   return visitors;
 }

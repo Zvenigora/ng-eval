@@ -416,6 +416,20 @@ exports a visitor, which is how a visitor directory stops being one. The single
 `callback` / `popVisitorResult` pair lives inside it, so § 3.1's rule 2 is discharged in one place
 for every statement list rather than per caller.
 
+**The condition fired in step 4, and is recorded MET AND DEFERRED — not unmet.** `if-statement.ts`
+is the third importer. It walks a single statement rather than a list, which `program.ts`'s own
+docblock left as "a judgement for the step that adds it", and the judgement is that it counts: the
+rule is about how many modules reach into `program.ts`, not about how many statements each of them
+walks. What defers the move is scheduling and nothing else — no step's file list admits creating
+`internal/visitors/dispatch-statement.ts` and rewriting three imports, and step 4 is not the place
+to widen its own scope. **Declining on that ground is a schedule, so it needs a date:** the move
+lands in **step 6**, whose file list is already the phase's wide one and whose subject is records
+and release, or earlier in any step whose list already includes `program.ts` for another reason.
+Named here rather than left implicit because the alternative is `ForStatement` arriving in step 5 as
+a **fourth** importer against a rule that has now declined to fire twice, at which point the rule
+means nothing. If step 6 does not move it, the reason goes in `docs/backlog.md`, not in a second
+deferral here.
+
 **Worked arithmetic**, for the review of every step below:
 
 | Visitor | Pops | Pushes | Empty-path push |
@@ -710,9 +724,19 @@ on **every** exit path (`code-reviewer.md` item 2), and satisfies § 3.1's arith
 - **`VariableDeclaration`** — for each declarator: walk `init` if present and pop one, else bind
   `undefined`; bind through the existing `evaluatePattern` for the destructuring forms; record the
   declaration kind for `const`. Pushes `EMPTY` always.
-- **`IfStatement`** — walk `test`, pop one; walk exactly one branch or neither; push that branch's
-  value or `EMPTY`. The untaken branch is **not walked**, which is the behavioural fix in § 1.1's
-  table.
+- **`IfStatement`** — walk `test`, pop one; walk exactly one branch or neither, **through
+  `dispatchStatement`**; push that branch's value or `EMPTY`. The untaken branch is **not walked**,
+  which is the behavioural fix in § 1.1's table. A taken branch that produced nothing propagates
+  `EMPTY` — `if (true) { }` pushes the sentinel exactly as `if (false) { 1 }` does, by two different
+  routes.
+
+  **It pushes no scope, and the reason belongs in its docblock rather than only here** (§ 6 gate 3
+  checks every push, so a visitor with no `try`/`finally` has to say why it needs none). Three
+  routes, all closed: a block body gets its scope from `BlockStatement`; a bare declaration body is
+  not legal JavaScript for `let` / `const`, so `if (a) let x = 1` never parses; and `if (a) var x = 1`
+  does parse but is rejected inside `variableDeclarationVisitor`, which reads `kind` and throws
+  before reaching `bindingScope`. So no binding can arrive needing a scope this visitor would have
+  had to push, and it touches `EvalContext` not at all.
 - **`ForStatement`** — push **one** scope for the loop, in a `try`/`finally`; walk `init` once; per
   iteration walk `test` (an absent test is `true`), `body`, then `update`, charging one against
   § 3.4's budget; keep the last non-`EMPTY` body value; push once.
@@ -810,6 +834,16 @@ step leaves all three projects green. Each step states its category — additive
 change to an already-shipped path — because
 [`.claude/skills/step/SKILL.md`](../../.claude/skills/step/SKILL.md) requires it in the § 2
 restatement; the categories are pre-filled here so a step cannot quietly read itself as cleanup.
+
+**Every step that adds a visitor edits `recursive-visitors.ts` *and*
+`internal/visitors/public-api.ts`, and dispatchable statement types also edit `program.ts`.**
+Written here rather than repeated per step because three steps' file lists have now been found
+incomplete in the same way and amended at the start of the session that hit them — step 2 for
+`program.ts`, step 3 for `public-api.ts` and `program.ts`, step 4 for both. A fourth rediscovery in
+step 5 would make the omission a property of this document rather than an accident. `public-api.ts`
+here is the **visitors** barrel, which `src/public-api.ts` does not re-export, so it adds nothing to
+the published surface (§ 5's last row); `recursive-visitors.ts` is what makes the visitor run at
+all, and `program.ts` is what makes it reachable from a statement list.
 
 ### Step 0 — [A9](../backlog.md#a9) and [B2](../backlog.md#b2)
 
@@ -1214,16 +1248,47 @@ arrow-body row loses its `let y = 1` arm. Both are the step-2 precedent for `{ 1
 
 ### Step 4 — `IfStatement`
 
-**Category: behavioural.** **Files**: one new visitor, `recursive-visitors.ts`, specs.
+**Category: behavioural.** **Files**: one new visitor, `recursive-visitors.ts`,
+`internal/visitors/public-api.ts`, `program.ts`, specs — the last three per the rule above, added at
+the start of step 4's session. The specs are three files, not one: the new
+`if-statement.spec.ts`, plus `statement-semantics.spec.ts` and `block-statement.spec.ts`, each of
+which carries an assertion that `if` **throws** and which this step *moves* into a returning case
+rather than deletes, on the precedent step 3 set for the `let` arm.
 
 **Exit criteria**
 - `if (a) { 1 } else { 2 }` with `a` true returns `1` (§ 1.1 measured `2`).
+
+  **This criterion and the next are one detector, and dropping either leaves the other green over
+  the implementation this step replaces.** Alone, this one is satisfied by a visitor that walks
+  **both** branches and then selects by the test — today's base-walker behaviour with a selector
+  bolted on, which is wrong for the reason § 1.1 states plainly: any call or assignment in the
+  untaken branch has already run. The criterion below is what closes it. Recorded here because the
+  failure mode § 0.1 describes is a *later* edit reading the second criterion as redundant with the
+  first and deleting it.
 - **The untaken branch does not run**: a branch containing a `jest.fn` from the context, or an
   assignment, leaves no trace. The implementation this catches is today's — walk both branches and
   select the right value — which passes a value-only assertion and fails this one. Setup: the
   function is in the evaluation context, so the branch is reachable and the call is observable.
 - `if (false) { 1 }` returns `undefined`; `{ 'a'; if (false) { 'b' } }` returns `'a'`. Note this
   pair does **not** discriminate the sentinel — § 3.1 says which case does, and step 2 carries it.
+- **A taken branch that produced nothing propagates the sentinel**, not `undefined`:
+  `{ 'a'; if (true) { } }` returns `'a'`. § 3.1's table says this visitor pushes "the branch taken"'s
+  value, and an empty block's value *is* `EMPTY_COMPLETION` — so the `if` pushes the sentinel on a
+  path where a branch did run, and an `after` hook on the node observes it. Distinct from the
+  criterion above, which covers the no-branch-ran path; an implementation normalising a branch value
+  to `undefined` passes that one and fails this.
+- **A branch reached through `dispatchStatement`, not a raw `callback`.** Asserted behaviourally
+  rather than structurally, and the detector is narrower than the obvious candidates — **this
+  criterion was written naming two cases that measurement then showed discriminate nothing**, which
+  is § 0.1's defect arriving inside the same step that recorded § 0.1's rule for criterion 1.
+  Neither `if (true) { while (false) { 1 } }` nor an `else if` chain can fail: `acorn-walk` finds a
+  *registered* visitor before it reaches its base walker, so a raw `callback` reaches
+  `blockStatementVisitor` (which re-dispatches and rejects `while` one level down) and reaches
+  `ifStatementVisitor` again for the chain. The detector is a **bare branch body of an unregistered
+  type** — `if (a) function f() { }` throwing `Unsupported statement type: FunctionDeclaration` —
+  the one position with no registered visitor between `IfStatement` and the base walker. Measured:
+  swapping in a raw callback reddens that case and no other in the file. The two weaker cases stay,
+  marked as what they are: guarantees worth pinning, not evidence about routing.
 - `nx run-many -t lint test build` green.
 
 ### Step 5 — `ForStatement` and the iteration budget
@@ -1283,6 +1348,13 @@ added the rows it promises without tripping its own gate. § 6 gate 1 is widened
 the same effect as `ROADMAP.md`. § 3.1's "the README's hooks section says so" for
 `EMPTY_COMPLETION` is in the same position and covered by the same widening.
 
+**Also `dispatchStatement`'s move out of `program.ts`**, deferred to this step in § 3.1 when the
+third-importer condition fired in step 4: a new `internal/visitors/dispatch-statement.ts`, with
+`program.ts`, `block-statement.ts`, `if-statement.ts`, `for-statement.ts` and
+`internal/visitors/public-api.ts` following it. A pure refactor, so the existing suite is the gate
+per `CLAUDE.md` and no new spec is owed. If it is dropped, it is dropped into `docs/backlog.md` with
+a reason — not deferred a third time inside this document.
+
 README rows for the seven node types plus § 3.6's six divergences and § 3.4's option; `0.4.0`;
 a `## [eval-core 0.4.0]` entry whose "Changed" section is § 1.1's table read as a migration note;
 confirmation that [A2](../backlog.md#a2) still names all three members of § 1.7's family, and that
@@ -1341,6 +1413,24 @@ expression — which is also why it needs stating twice as carefully:
   is the first step at which they break inside an expression**. `while` and `function` are permanent
   per § 2; `if`, `for` and the declarations come back in steps 3 to 5. Pinned in
   `block-statement.spec.ts`, which is where step 6 transcribes this row from.
+
+  **Step 4 returned the `if` arm of that list, and its net over the phase is no change in value.**
+  `(x => { if (true) { 1 } })(0)` measured `1` before step 2, threw for steps 2 and 3, and returns
+  `1` again — as a rule rather than as a stranded base-walker push. The same correction as the
+  completion-value bullet above: **a CHANGELOG line claiming this value changed would be wrong.**
+  What did change on this path is the untaken branch, which is the next row's subject. Pinned in
+  `block-statement.spec.ts`'s "should evaluate an if in an arrow body".
+
+**Step 4's row — `IfStatement` walks one branch, not both.** § 1.1's `if` row covers the *value*
+(`2` → `1`); this is the part of the same change no value assertion reaches, and it is the one with
+consumer-visible side effects. Before Phase 2 the base walker visited **both** branches regardless
+of the test, so a call, an assignment or a throw in the untaken branch had already happened by the
+time the right value was selected. The CHANGELOG line is about effects, not about `1` versus `2`:
+**an expression whose untaken branch called a context function, wrote a context key, or raised, now
+does none of those.** For a rule author relying on `if (guard) { … } else { sideEffect() }` this is
+the behavioural change of the whole step. Pinned in `if-statement.spec.ts`'s "the untaken branch
+does not run", and its hook-stream case, which is the arm that also catches a branch walked with
+every side effect removed.
 
 **A9 was missing from that list until step 0 ran, and the omission is instructive.** Step 0 reads
 as a backlog fix, so the plan filed it under preconditions and not under the surface the bump

@@ -21,9 +21,16 @@ import { EMPTY_COMPLETION, EvalState } from '../classes/eval';
  * It lives in this module, rather than in one of its own, because `Program` is
  * its first caller and `BlockStatement` its second. **A third importer is when it
  * earns its own file** - otherwise a visitor module has quietly become a utility
- * module that also happens to export a visitor. `IfStatement` and `ForStatement`
- * walk a single statement each rather than a list, so whether either counts is a
- * judgement for the step that adds it.
+ * module that also happens to export a visitor.
+ *
+ * **`if-statement.ts` is that third importer, and the condition is met rather
+ * than dodged.** It walks a single statement rather than a list, which step 4
+ * judged irrelevant: the rule counts the modules reaching in here, not what each
+ * of them walks. The move to `dispatch-statement.ts` is **deferred to step 6**
+ * on scheduling grounds - no step's file list admitted the rewrite - and is
+ * written into the plan's § 3.1 and step 6 so that `ForStatement` does not
+ * arrive in step 5 as a fourth importer against a rule that has declined to fire
+ * twice.
  *
  * The single `callback` / `popVisitorResult` pair is here rather than in each
  * caller so that § 3.1's rule 2 - one pop per `callback` - is discharged in one
@@ -48,6 +55,7 @@ export const dispatchStatement = (
     case 'EmptyStatement':
     case 'BlockStatement':
     case 'VariableDeclaration':
+    case 'IfStatement':
       callback(statement, st);
       return popVisitorResult(statement, st);
     default:
