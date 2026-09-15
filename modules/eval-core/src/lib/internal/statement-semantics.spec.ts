@@ -118,6 +118,18 @@ describe('statement semantics (plan § 1.1)', () => {
       expect(run('if (false) { 1 }')).toEqual({ value: undefined, stranded: 0 });
     });
 
+    it('should run a classic for loop and keep its last body value', () => {
+      // § 1.1: returned **NaN** with **3 stranded**. The base walker walked the
+      // declarator's `id` as a read, so `i` resolved to nothing and `i < 3` was
+      // `undefined < 3` - false - while three head values were left on the
+      // stack. Moved out of the rejected table by step 5.
+      //
+      // The value is only half of this row; the other half is that `i` is not
+      // written into the caller's context, which `for-statement.spec.ts` asserts
+      // against a source object. This file measures values and stranded counts.
+      expect(run('for (let i = 0; i < 3; i++) { i }')).toEqual({ value: 2, stranded: 0 });
+    });
+
     it('should resolve a let binding in a later statement', () => {
       // § 1.1: returned **NaN**. The base walker stranded the initialiser and
       // `x` resolved to nothing, so `x + 1` added 1 to undefined. Moved out of
@@ -170,7 +182,6 @@ describe('statement semantics (plan § 1.1)', () => {
     // an optional trailing context silently turns every short row into a test
     // that waits five seconds and fails on timeout.
     const rejected: { source: string, type: string, step: string, context?: Context }[] = [
-      { source: 'for (let i = 0; i < 3; i++) { i }', type: 'ForStatement', step: 'step 5' },
       { source: 'while (false) { 1 }', type: 'WhileStatement', step: 'out of scope (§ 2)' },
       { source: 'function f() { return 1 }', type: 'FunctionDeclaration', step: 'out of scope (§ 2)' },
     ];

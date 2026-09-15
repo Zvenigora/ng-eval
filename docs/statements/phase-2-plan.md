@@ -66,6 +66,27 @@ satisfied by a `ForStatement` visitor that **pushes no scope at all**: `let i` w
 enclosing `Program` scope and `i++` would find it there. Restoring a depth nothing raised is the
 purest form of this mistake, and it was one step away from being written.
 
+**The correction was itself the fifth instance, and that is the part worth keeping.** The criterion
+written to close the fourth — step 5's "the loop scope exists", added in this section's own
+correction pass — read *"`for (let i = 0; i < 1; i++) { depth() }` reads **one higher** than the
+enclosing statement list does"*. At the top level the enclosing statement list is `Program`, which
+reads `1`; one higher is `2`; and `2` is exactly what the no-push implementation produces
+(`Program` 1, then the body's own `BlockStatement` 2). **The detector written to catch the missing
+push was satisfied by the missing push.** The arithmetic slipped because the body of a `for` is
+itself a block, so the depth the criterion names is two pushes above the enclosing list and not
+one. Corrected in § 4 step 5 to assert **both** body forms, which is what removes the ambiguity: a
+bare body (`for (…) depth()`) reads `2`, one above the enclosing list with no block in the way, and
+a block body reads `3`, one above the `2` a plain `{ depth() }` reads at the same position. Both go
+red when nothing is pushed.
+
+**The count belongs in the rule, because the count is the argument for it.** Five instances in this
+phase, and the fourth occasion in this project on which a check caught its own author — the
+identity-checked `exit` probe, Phase 3 step 4's shared-source pairing fixture, the fourth instance
+above, and now the correction that produced it. A rule that has to be re-derived from a green suite
+each time is not a rule; what makes this one load-bearing is that it keeps firing on the person
+applying it, one level up, in the same pass. Neither "this criterion is about the plan, not a spec"
+nor "this correction was written *under* the rule" is a reason to skip the check.
+
 ---
 
 ## 1. Findings that shape the design
@@ -439,13 +460,38 @@ deferral here.
 | `ExpressionStatement` | 1 (the expression) | 1 (that value) | — |
 | `VariableDeclaration` | one per declarator `init` walked | 1 | always `EMPTY` |
 | `IfStatement` | 1 (test) + 1 (the branch taken, if any) | 1 | `EMPTY` when no branch runs |
-| `ForStatement` | 1 (init, if present) + per iteration: 1 (test) + 1 (body) + 1 (update) | 1 | `EMPTY` when zero iterations |
+| `ForStatement` | 1 (init, if present) + **1 per test evaluated, which is n+1 for n iterations** + per iteration: 1 (body) + 1 (update, if present) | 1 | `EMPTY` when zero iterations |
+
+**The `ForStatement` row's test count is n+1 and an earlier version of this table said n.** It read
+"per iteration: 1 (test) + 1 (body) + 1 (update)", which groups the test with the iteration it
+admits and so loses the **final, falsy** test — a real `callback`/`pop` pair that runs after the
+last body. Rule 2 held literally the whole time (one pop per `callback`, and the code always did
+that); what was wrong was the table a reviewer checks the code *against*, in the direction that
+would have made a correct visitor look like it over-popped. Pinned in `for-statement.spec.ts`'s
+"should evaluate the test once more than the body", which reads `[0, 1, 2, 3]` tests against
+`[0, 1, 2]` bodies.
 
 ### 3.2 Decision 2 — block scoping
 
-**One scope per block entry, and one per loop iteration.** A fresh scope per iteration is what makes
-a closure created inside the body capture that iteration's binding, which is `let`'s defining
-property; reusing one scope for the whole loop is the `var` semantics § 2 excluded.
+**One scope per block entry, and one per loop — not one per iteration.** See § 3.5's `ForStatement`
+bullet for why not, and § 3.6.5 for what would have to change first.
+
+**This paragraph said the opposite until step 5, which is the failure § 0.1 names, one level up.**
+It read: *"one scope per loop **iteration** … a fresh scope per iteration is what makes a closure
+created inside the body capture that iteration's binding, which is `let`'s defining property;
+reusing one scope for the whole loop is the `var` semantics § 2 excluded."* The decision moved in
+§ 3.5 — on the finding that the per-iteration scope buys a property **no spec in this evaluator can
+assert**, because `arrow-function-expression.ts` closures capture `st` and not a scope chain — and
+this paragraph was left standing, naming the shipped design as the excluded one. What makes it worth
+correcting rather than ignoring is *where* it sits: this is the section gate 3 and § 4's scope-push
+rule cite, so it is the paragraph a later phase revisiting block scoping reads first.
+
+The `var` comparison does not survive the correction either, and not only because the design
+changed: one scope for the whole loop is **not** `var` semantics here. `var`'s distinguishing
+property is function-scoped hoisting, which § 2 excludes for a different reason and which
+`variableDeclarationVisitor` rejects on `kind`. What one-scope-per-loop actually costs is
+per-iteration closure capture, which § 3.6.5 records as already absent for reasons that predate
+this phase.
 
 **The idiom is step 0's, applied at every new site**:
 
@@ -682,6 +728,22 @@ throws.**
 | Configurable? | Yes, `maxIterations` on `EvalOptions`. A caller may raise it, or set `Infinity` and own the consequence |
 | Behaviour at the limit | Throw. `Error('Iteration budget exhausted after 100000 iterations')` — a runaway loop that silently returns a partial value is the failure mode this exists to prevent |
 
+**The budget is per `EvalState`, and one level up that is still a multiplier a determined consumer
+can reach.** `chargeIteration` spends the counter of the state the visitor is running on, refilled
+on *that* state's 0 → 1 transition. An arrow value produced by evaluation A and installed into
+evaluation B's context still resolves against A's state; called from inside B's loop body, A's
+`walkDepth` is 0, so every call refills A's budget and B's 100,000 iterations can drive 100,000 of
+them. This is the "per-loop caps multiply" failure the first row rejects, surviving one level above
+where the fix was applied. It needs a consumer to carry a closure between contexts deliberately —
+no path inside this library does it, and `code-reviewer.md` item 6's hazard is the *other*
+direction — so it is recorded rather than defended against. A phase that makes cross-context
+closures ordinary has to revisit where the counter lives.
+
+**It also bounds time and not memory**, which § 3.4 did not consider and step 5's review found:
+`EvalResult.trace` gains an entry per push and is never reset, so a loop's trace grows as
+iterations × nodes and the allocation is paid *before* the throw. `docs/backlog.md`
+[A12](../backlog.md#a12) carries the measurements; `Infinity` is where it bites.
+
 **Why 100,000.** § 1.8 measured ~1.4 M simple walks per second; a loop iteration is roughly three of
 them (test, body, update), so ~2 µs. 100,000 iterations is **~0.2 s** before the throw — short
 enough that a Jest spec fails fast rather than timing out at 5 s, and short enough that a browser
@@ -740,6 +802,18 @@ on **every** exit path (`code-reviewer.md` item 2), and satisfies § 3.1's arith
 - **`ForStatement`** — push **one** scope for the loop, in a `try`/`finally`; walk `init` once; per
   iteration walk `test` (an absent test is `true`), `body`, then `update`, charging one against
   § 3.4's budget; keep the last non-`EMPTY` body value; push once.
+
+  **`init` has two node shapes and they take two routes**, which § 3.1's table does not say because
+  its arithmetic is the same for both. `for (let i = 0; …)` parses `init` as a
+  **`VariableDeclaration`** — a `Statement`, so it goes through `dispatchStatement` and pops the
+  `EMPTY` that visitor pushes. `for (i = 0; …)` parses it as an **`Expression`**, which takes a raw
+  `callback` and pops its value. One pop either way, so the table holds and the difference is
+  invisible to it — which is exactly why it is written into the visitor's docblock instead. What
+  depends on it is the throwing `default`: only the `dispatchStatement` route has one, so a future
+  `init` shape that is a statement this library does not implement is rejected, while an expression
+  shape falls to the base walker as every other expression position does. `body` and the two
+  expression positions are the same split: `body` is a `Statement` and dispatches, `test` and
+  `update` are expressions and do not.
 
   **One scope for the loop, not one per iteration — and the deleted paragraph is worth keeping
   visible.** A draft of this plan specified a fresh scope per iteration, seeded from the head's
@@ -1294,7 +1368,11 @@ rather than deletes, on the precedent step 3 set for the `let` arm.
 ### Step 5 — `ForStatement` and the iteration budget
 
 **Category: behavioural** (additive as a node type; behavioural because § 1.1 measured `NaN` today).
-**Files**: one new visitor, `eval-state.ts`, `eval-options.ts`, `recursive-visitors.ts`, specs.
+**Files**: one new visitor, `eval-state.ts`, `eval-options.ts`, `recursive-visitors.ts`, specs — plus
+`program.ts` and `internal/visitors/public-api.ts` per § 4's preamble, and
+`statement-semantics.spec.ts`, whose `ForStatement` row this step moves out of the rejected table.
+`evaluate.ts` is **not** on the list: `EvalState.enterWalk` already returns the new depth, so § 3.4's
+refill on the 0 → 1 transition lives inside the state and no entry point changes.
 
 **Exit criteria**
 - `for (let i = 0; i < 3; i++) { i }` returns `2`; the counter is **not** written into the caller's
@@ -1303,8 +1381,21 @@ rather than deletes, on the precedent step 3 set for the `let` arm.
   **reused** `EvalContext`. `ForStatement` is the visitor with the highest push multiplicity, and
   the backlog's own precondition argument for A9 is a `for` body throwing on iteration 3; step 2
   carries this probe and step 5 is where it matters most.
-- **The loop scope exists.** `for (let i = 0; i < 1; i++) { depth() }` reads **one higher** than the
-  enclosing statement list does, where `depth` is a context function returning `ctx.scopes.length`.
+- **The loop scope exists**, asserted in **both** body forms, where `depth` is a context function
+  returning `ctx.scopes.length`:
+  - a **bare** body — `for (let i = 0; i < 1; i++) depth()` reads `2`, one higher than the enclosing
+    statement list's `1`;
+  - a **block** body — `for (let i = 0; i < 1; i++) { depth() }` reads `3`, one higher than the `2`
+    a plain `{ depth() }` reads at the same position.
+
+  **Two forms rather than one, because the single-form version of this criterion was § 0.1's fifth
+  instance.** It read "`for (let i = 0; i < 1; i++) { depth() }` reads one higher than the enclosing
+  statement list does" — and at the top level that is `2`, which is precisely what a `ForStatement`
+  pushing **no** scope produces (`Program` 1, the body's own `BlockStatement` 2). The detector
+  written to catch the missing push was satisfied by the missing push: the body of a `for` is itself
+  a block, so the depth named is two pushes above the enclosing list, not one. Each form above now
+  states the number it expects rather than a relation, and both go red when nothing is pushed —
+  `2`/`3` against the no-push implementation's `1`/`2`.
 
   **§ 0.1's fourth instance, and it is the two criteria above that need it.** The wrong
   implementation both of them admit is a `ForStatement` visitor that **pushes no scope at all**:
@@ -1331,6 +1422,38 @@ rather than deletes, on the precedent step 3 set for the `let` arm.
   widening of a signature § 5 publishes, which is why step 3 did not do it unilaterally. § 1.8 is
   the reminder that `performance.spec.ts` allows 5 seconds for 100 iterations and will not notice
   either way, so this criterion asks for a measurement and not for a green suite.
+
+  **The criterion is discharged by measuring and reporting; applying the fix is not this step's to
+  decide.** `setInScope` is **published** — § 5's first row — so changing its parameter list is a
+  shape change on a shipped symbol, which `CLAUDE.md` makes a versioned-release question: an
+  explicit callout, a bump and a `CHANGELOG.md` entry, none of which a step-time judgement can
+  stand in for. So step 5 takes the number, states it here, and **stops**: if it justifies the
+  change, that is a plan amendment and a `eval-context.ts` on step 6's file list, not a widening
+  slipped in under a performance criterion. "Either reduced or accepted with a number beside it" is
+  satisfied by the second branch with the number attached.
+
+  **Measured, and accepted — the second scan is not worth a shape change.** § 1.9's harness, against
+  `dist/` after `build:production`, one `evaluate` of `for (let i = 0; i < 200000; i++) { i }`
+  divided by the iteration count:
+
+  | | per iteration |
+  | - | ------------- |
+  | as shipped, two `scopeHolding` passes per write | **0.897, 0.880, 0.901 µs** |
+  | the one-pass version built and measured | **0.954, 0.922, 1.007 µs** |
+  | one `EvalContext.scopeHolding` in isolation, 2 scopes deep, binding in the innermost | 0.02–0.04 µs |
+  | `2 + 3 * a`, no loop, for scale | 0.615 µs |
+
+  The one-pass version was built by having `assignToBinding` write the scope it had already
+  resolved, which is exactly what widening `setInScope` would buy, and it measured **no faster** —
+  slightly slower, inside a run-to-run spread of roughly ±7 % that swamps the difference. The
+  isolated scan is 2–4 % of an iteration, which is the honest upper bound on the saving and is below
+  what this harness can resolve. The reason is the shape of the data rather than the code: a loop's
+  scope stack is two deep and the counter is bound in the innermost scope, so the "scan" terminates
+  on its first probe and `asArray()` copies a two-element array.
+
+  **So the cost is real and small, and it grows with scope depth rather than with iterations** — a
+  loop nested several blocks down pays more per write than one at the top level. If a later phase
+  makes deep nesting ordinary, this is the measurement to redo rather than a conclusion to inherit.
 - No exit criterion here asserts closure capture — § 3.6.5 says why there is nothing to assert.
 - `nx run-many -t lint test build` green.
 
@@ -1385,6 +1508,7 @@ this phase left them alone; `ROADMAP.md` Phase 2 marked done; a retrospect.
 | `EMPTY_COMPLETION` | const, additive | `internal/classes/eval/` — reachable in `after` hook events, so recognisable by contract (§ 3.1) |
 | `EvalHooks.pushWalkBase` / `popWalkBase` / `walkBase` | methods, additive | `internal/classes/eval/eval-hooks.ts` — § 3.3's bound. **`EvalHookBookkeeping` the interface is `@internal` and unexported; these three methods are not**, since `EvalHooks` is published, and an earlier draft of this table said the whole mechanism was unpublished on the strength of the interface alone |
 | `EvalState.walkDepth` / `enterWalk` / `exitWalk` | members, additive, `@internal`-tagged | `internal/classes/eval/eval-state.ts` — § 3.4's refill counter, on the precedent of `hookBookkeeping`, which is public and carries the same tag |
+| `EvalState.iterationsRemaining` / `chargeIteration` | members, additive, `@internal`-tagged | `internal/classes/eval/eval-state.ts` — § 3.4's budget itself, which this table omitted while listing the `walkDepth` counter that refills it. Same precedent and the same tag. **The tag does not make them unpublished**, and the distinction is the one step 1 already corrected one row above: `EvalHookBookkeeping` the *interface* is `@internal` and unexported, and an earlier draft read that as making `EvalHooks.pushWalkBase` and friends unpublished too — they are public methods on a published class, and so are these. `@internal` states an intent about support, not a fact about reachability; a consumer holding an `EvalState` can call them, and removing one is still a breaking change |
 | seven statement visitors, and `dispatchStatement` | **not published** | `internal/visitors/` is not re-exported by `src/public-api.ts` — verified, not assumed |
 
 **Behavioural changes to already-published paths** — the list the version bump is for: every row of

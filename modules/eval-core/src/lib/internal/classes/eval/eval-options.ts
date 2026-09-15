@@ -52,6 +52,44 @@ export type EvalKnownOptions = {
   trackTime?: boolean;
 
   /**
+   * How many loop iterations one evaluation may run before it throws. Defaults
+   * to `100000`.
+   *
+   * **A bound on non-termination, not a performance knob.** With no `break`,
+   * `continue` or `return` in the language this evaluator implements, the only
+   * way out of `for (;;)` is the budget, and a runaway loop that silently
+   * returned a partial value is the failure this exists to prevent - so
+   * exceeding it raises `Iteration budget exhausted after <n> iterations`.
+   *
+   * **Per outermost `evaluate` call, not per loop and not per state.** Per loop
+   * would not be a bound at all: two nested loops at 100,000 each is 10^10
+   * iterations. Per state would erode one budget across the independent
+   * evaluations of the `createState` + repeated `eval` style, and would leave an
+   * escaped closure - an arrow that outlives its walk - carrying that walk's
+   * spent budget into a later call. A nested walk *during* an evaluation, which
+   * is what an arrow-function body is, shares the remaining budget with its
+   * caller rather than refilling.
+   *
+   * `Infinity` opts out; the consequence is the caller's. The default is sized
+   * in the plan's § 3.4 at roughly 0.2 s of evaluation - long enough to exceed
+   * any hand-written rule, short enough that a browser tab stutters rather than
+   * freezes.
+   *
+   * **It bounds time, not memory, and raising it trades one for the other.**
+   * `EvalResult.trace` gains an entry per value pushed and is never reset, so a
+   * loop's trace grows as iterations x nodes - roughly 700,000 entries for a
+   * 100,000-iteration loop. The allocation happens *before* the throw, so
+   * exhausting the budget costs it in full; and `Infinity` removes the only
+   * thing bounding it, turning a hang into an out-of-memory. `docs/backlog.md`
+   * A12 carries the measurements and the options for bounding it.
+   *
+   * Costs nothing when no loop runs: the counter is charged inside
+   * `for-statement.ts`'s iteration loop and nowhere else, so an expression with
+   * no `for` in it never reaches the instruction.
+   */
+  maxIterations?: number;
+
+  /**
    * A caller-owned {@link EvalHooks} to dispatch through, instead of the empty
    * one the state creates on first access.
    *

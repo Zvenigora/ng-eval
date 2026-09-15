@@ -51,11 +51,18 @@ export const dispatchStatement = (
     // as `let x = 1` is. Listing it here is therefore what stopped `var`
     // reaching the `default:` below; the rejection moved into the visitor,
     // which can read `kind`.
+    //
+    // `ForStatement` is the classic three-part form *only*. `ForOfStatement`,
+    // `ForInStatement`, `WhileStatement` and `DoWhileStatement` are distinct
+    // node types and stay out of the phase (§ 2), so they reach the `default`
+    // below unchanged - unlike `var`, which shares a type with `let` and had to
+    // be rejected one level down.
     case 'ExpressionStatement':
     case 'EmptyStatement':
     case 'BlockStatement':
     case 'VariableDeclaration':
     case 'IfStatement':
+    case 'ForStatement':
       callback(statement, st);
       return popVisitorResult(statement, st);
     default:

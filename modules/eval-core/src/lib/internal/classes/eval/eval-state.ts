@@ -28,6 +28,36 @@ const readTrackTime = (options?: EvalOptions): boolean =>
   !!(options as Record<string, unknown>)?.['trackTime'];
 
 /**
+ * The iteration budget one evaluation gets when the caller names no other.
+ *
+ * Sized in the Phase 2 plan's § 3.4 rather than picked: a loop iteration is
+ * roughly three walks at the measured ~1.4 M simple walks per second, so
+ * ~2 microseconds, and 100,000 of them is ~0.2 s before the throw. Short enough
+ * that a Jest spec fails fast rather than timing out at five seconds, and short
+ * enough that a browser tab stutters rather than freezes - and far above any
+ * expression a rule author writes by hand.
+ */
+const DEFAULT_MAX_ITERATIONS = 100000;
+
+/**
+ * The iteration budget the options ask for, or the default.
+ *
+ * Same cast as the two readers above, same reason. A non-numeric or negative
+ * value falls back rather than throwing: options are a permissive record that
+ * nothing validates, and the budget exists to bound a runaway loop, so a
+ * malformed one must not become a *smaller* bound than the default by accident.
+ * `0` is honoured - a caller forbidding loops entirely is a coherent thing to
+ * ask for - and `Infinity` opts out, which is why the test is not
+ * `Number.isFinite`.
+ */
+const readMaxIterations = (options?: EvalOptions): number => {
+  const value = (options as Record<string, unknown>)?.['maxIterations'];
+  return typeof value === 'number' && !Number.isNaN(value) && value >= 0
+    ? value
+    : DEFAULT_MAX_ITERATIONS;
+};
+
+/**
  * Represents the evaluation state, which includes the context, result, and options.
  */
 export class EvalState {
@@ -38,6 +68,8 @@ export class EvalState {
   private _hooks: EvalHooks | undefined;
   private _hookBookkeeping: EvalHookBookkeeping | undefined;
   private _walkDepth = 0;
+  private _iterationBudget = DEFAULT_MAX_ITERATIONS;
+  private _iterationsRemaining = DEFAULT_MAX_ITERATIONS;
   private _constBindings: WeakMap<Context, Set<unknown>> | undefined;
 
   /**
@@ -172,10 +204,30 @@ export class EvalState {
    * a caller can recognise the outermost entry as `=== 1` without a second
    * read.
    *
+   * **Refills {@link iterationsRemaining} on the outermost entry**, which is
+   * what makes § 3.4's budget per-`evaluate` rather than per-state. It happens
+   * here rather than at the entry points so that both of them - and any later
+   * one - get it without a second copy of the 0 -> 1 test; the depth this
+   * method already owns is the only thing the decision needs.
+   *
    * @internal Not part of the published API.
    */
   public enterWalk(): number {
-    return ++this._walkDepth;
+
+    const depth = ++this._walkDepth;
+
+    // § 3.4's refill, and the 0 -> 1 test is the whole of it. A nested walk -
+    // an arrow-function body, which re-enters `evaluate` on this same state -
+    // shares whatever the enclosing walk has left, so an escaped closure cannot
+    // buy itself a fresh budget by being called again. The options are re-read
+    // per outermost walk rather than in the constructor because they are a
+    // mutable record the caller keeps a reference to.
+    if (depth === 1) {
+      this._iterationBudget = readMaxIterations(this._options);
+      this._iterationsRemaining = this._iterationBudget;
+    }
+
+    return depth;
   }
 
   /**
@@ -185,6 +237,48 @@ export class EvalState {
    */
   public exitWalk(): void {
     this._walkDepth--;
+  }
+
+  /**
+   * How many loop iterations this evaluation may still run.
+   *
+   * Refilled by {@link enterWalk} on the outermost entry from
+   * `options.maxIterations`, defaulting to 100,000, and spent one at a time by
+   * {@link chargeIteration}. `Infinity` when the caller opted out.
+   *
+   * Readable mainly so a spec can assert what a walk charged: nothing in the
+   * library reads it except {@link chargeIteration}, and no expression without a
+   * `for` in it moves it.
+   *
+   * @internal Not part of the published API.
+   */
+  public get iterationsRemaining(): number {
+    return this._iterationsRemaining;
+  }
+
+  /**
+   * Charges one loop iteration against the budget, throwing when it is spent.
+   *
+   * Called from `for-statement.ts`'s iteration loop and **nowhere else**, which
+   * is § 3.4's cost argument in its literal form: the no-loop path does not
+   * execute a cheaper version of this check, it does not reach the call site at
+   * all. The rejected alternative - a per-node fuel counter in `beforeVisitor` -
+   * would have been on the hot path of every evaluation in the library, to bound
+   * a recursion depth this phase does not introduce.
+   *
+   * The message names the **configured** budget rather than the default, since a
+   * caller who set `maxIterations` needs to recognise their own number in it.
+   *
+   * @internal Not part of the published API.
+   */
+  public chargeIteration(): void {
+
+    if (this._iterationsRemaining <= 0) {
+      throw new Error(
+        `Iteration budget exhausted after ${this._iterationBudget} iterations`);
+    }
+
+    this._iterationsRemaining--;
   }
 
   /**

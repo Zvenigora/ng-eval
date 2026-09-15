@@ -84,6 +84,7 @@ release, not a free change.
 | [A1](#a1) | `await-expression.ts` downgrades a sync throw to a promise rejection | core | fix | Open |
 | [A2](#a2) | `update-expression.ts` desyncs the value stack under `preserveParens` | core | fix | Open — standalone, [not a Phase 2 precondition](#phase-2-preconditions) |
 | [A11](#a11) | `evaluateObjectPattern` resolves the *value* name against the argument — renaming **and** nested destructuring bind the wrong key | core | fix | Open — **live on the default path**; found Phase 2 step 3 |
+| [A12](#a12) | `EvalResult.trace` grows per loop iteration — the iteration budget bounds time, not memory | core | fix / decision | Open — **created by Phase 2 step 5**; 700 k items for a 100 k-iteration loop |
 | [A3](#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | Open |
 | [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered — **wider than it reads; [A10](#a10) argues it is one defect with A10** |
 | [A10](#a10) | `getKey`'s scopes step reports every key present against a plain-object scope | core | fix | Open — **latent, not live**; blocks any fix to [A4](#a4) |
@@ -609,6 +610,11 @@ AST, the value stack, the trace and anything a hook closure captured — for the
 application. The cost grows with uptime and with call volume, which is the profile of a
 long-running form or dashboard: exactly this repository's stated audience.
 
+**"The trace" became a much larger term in Phase 2 step 5** — see [A12](#a12). It used to be
+bounded by the expression's node count; with `for` loops registered, one retained state can hold
+hundreds of thousands of trace items. The two entries compound: A12 is how much one state can hold,
+A8 is why it is never released.
+
 **It compounds two other entries.** [`phase-1-plan.md:1095`](side-effects/phase-1-plan.md)
 records that because the `Set` is strong, frames abandoned on the open-node stack keep their AST
 nodes alive "for the life of the service, which is exactly the retention `ngOnDestroy` is called
@@ -786,6 +792,63 @@ that fix.
 [`statements/phase-2-plan.md` § 1.3](statements/phase-2-plan.md): `scopes.length` **1** after a
 throwing arrow body, and the later read returning the shadowed `'SHADOW'` rather than `'SOURCE'`.
 *Fixed*: 2026-09-11, Phase 2 step 0, with both reverts probed separately.
+
+---
+
+<a id="a12"></a>
+## A12 — `EvalResult.trace` grows per loop iteration, so the iteration budget bounds time and not memory
+
+**Package** core · **Kind** fix / decision · **Status** Open — **created by Phase 2 step 5**, found
+in its review
+
+`pushVisitorResult` appends to `st.result.trace` on **every** push
+([`visitor-result.ts:7`](../modules/eval-core/src/lib/internal/visitors/visitor-result.ts#L7)),
+unguarded, and `EvalResult.start()` does not reset the trace — the array is built once in the
+constructor and accumulates for the life of the state.
+
+Before this step the trace was bounded by the expression's **node count**. With `ForStatement`
+registered it is bounded by **iterations × nodes**, which is a different order of quantity from a
+fixed expression. Measured against `dist/` after `build:production`, on the code this step ships:
+
+| source | trace items |
+| ------ | ----------- |
+| `for (let i = 0; i < 100000; i++) { i }`, `maxIterations: Infinity` | **700,007** |
+| `for (;;) { i }`, default budget, to the throw | **300,000** |
+| `for (let i = 0; i < 1000; i++) { i }` three times on one state | 7,007 → 14,014 → 21,021 |
+
+Roughly 45 MB of heap for the first, though heap deltas measured without a forced collection are
+soft; the **item counts are the firm number** and are what a fix would have to bound.
+
+**Two things make this worth an entry rather than a shrug.** The trace **survives the throw** — the
+runaway case pays the whole allocation and *then* raises, so the budget converts a hang into a
+large allocation plus an error rather than into a cheap error. And [A8](#a8) keeps every
+`EvalService`-created state in a strong `Set` for the life of the application, so under `simpleEval`
+that memory is retained. A8 already says a retained state keeps "the trace"; what it could not
+anticipate is that one expression can now put ~700 k items in one.
+
+**`maxIterations: Infinity` is the sharp edge.** The plan's § 3.4 offers it as "a caller may raise
+it, or set `Infinity` and own the consequence", and the consequence it had in mind was a hang. With
+the trace unbounded the consequence is an out-of-memory instead. The option's docblock now says so;
+that is documentation, not a fix.
+
+**Not fixed in step 5, and the reason is scope rather than difficulty.** Capping or per-run
+resetting `EvalTrace` changes what `EvalResult.trace` contains on an already-published path —
+a versioned-release decision, and one that belongs with whoever decides what the trace is *for*
+(it is the dependency-tracking channel `eval-signals` and `eval-forms` were built against). Step 5's
+file list does not admit `eval-result.ts` or `visitor-result.ts`, and widening it under a
+performance observation is the move this register exists to prevent.
+
+**Options, for whoever takes it**: a cap with a documented truncation marker; a
+`trace: false` option; resetting per `evaluate` in `start()` (which changes the documented
+accumulate-across-runs behaviour the `createState` + repeated `eval` style relies on); or
+recording loop bodies once rather than per iteration. None is obviously right, which is why this
+is filed rather than guessed at.
+
+*Found*: 2026-09-14, Phase 2 step 5 review.
+*Measured*: 2026-09-14 against the built package, numbers above, re-run independently of the
+review that raised it.
+*Recorded*: this entry; [`eval-options.ts`](../modules/eval-core/src/lib/internal/classes/eval/eval-options.ts)'s
+`maxIterations` docblock; cross-referenced from [A8](#a8).
 
 ---
 
@@ -1892,6 +1955,20 @@ Measured on this tree, 2026-09-09, every run with `--skip-nx-cache`:
 So it fired twice in roughly a dozen runs, in a multi-target parallel run, and every attempt to
 pin it since — including the same command, and including deliberately loading the machine —
 came back clean.
+
+**New observation, Phase 2 step 5, 2026-09-14: it fired once under `nx run-many -t lint test`, a
+command the table above records as untested rather than as zero.** One firing, on the step's
+baseline run; all targets stayed green; two later `nx run-many -t lint test build` runs in the same
+session came back clean. It was **not** captured with `--output-style=stream`, so the emitting task
+is still unattributed and this adds no locus.
+
+**Recorded rather than folded into the table, because one firing overturns nothing** — the table's
+rows are repeated measurements and this is a single observation of a command they do not cover. What
+it does establish is that the symptom is not specific to the three-target form: `lint test` is
+enough, so the common factor remains *multi-target `run-many`* rather than `build`. The entry's
+locus has already been corrected once on the strength of a claim nobody re-ran; a second wrong
+claim inherited from a single run is exactly what that correction was about, so this stays a dated
+note beside the table and not a row in it.
 
 > **What this replaces.** The entry said: "Confined to `eval-core` — confirmed by running each
 > project separately." **That does not hold today**: run separately, `eval-core` is the *quietest*
