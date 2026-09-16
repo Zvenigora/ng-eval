@@ -1644,6 +1644,8 @@ Two things this collides with, neither blocking:
 
 #### 7.3 The measurement rule this step inherits
 
+*(§ 7.4 below was added after step 7 ran, and sanctions step 8.)*
+
 **A version bump invalidates a `lint` result whose cache key does not capture it.** Step 6 ran
 `nx run-many -t lint test build` after bumping `modules/eval-core/package.json` and was told all
 three projects were green; both downstream `lint` results were replays from before the bump, and
@@ -1657,6 +1659,107 @@ This is the **fourth** cache-versus-measurement incident in this repository and 
 reached the user as a reported fact rather than being caught in the step that made it — which is
 what makes it a rule here instead of a note. Whether these `lint` targets' inputs are misconfigured
 is a separate question, filed with [F12](../backlog.md#f12) and not settled by this step.
+
+> **Settled in the event, in one line.** `nx.json`'s `lint` target declared no dependency inputs at
+> all; `"^production"` fixes it, and step 7 measured both ways. The `--skip-nx-cache` discipline
+> stays regardless — it covers the class, and the fix covers the one instance found.
+
+---
+
+### Step 8 — [F14](../backlog.md#f14)'s stale peer-range citations
+
+**Category: comments and published documentation — no behavioural change, no released surface, no
+version.** **Files**, closed list, all downstream, no executable line among them:
+
+| File | Line | Why it is here |
+| ---- | ---- | -------------- |
+| `eval-forms/signals/src/lib/evaluate-rule.ts` | 50–53 | **the step's reason** — see below |
+| `eval-signals/src/lib/eval-signal.ts` | 339 | stale spelling, travelling with the sanction |
+| `eval-signals/src/lib/eval-signal.memory.spec.ts` | 233 | stale spelling |
+| `eval-forms/signals/src/lib/evaluate-rule.spec.ts` | 44 | stale spelling |
+| `eval-signals/README.md` | 20 | **added mid-step** — see § 8.3 |
+| `eval-forms/README.md` | 70 | **added mid-step** — see § 8.3 |
+
+**No manifest is on this list**, which is the difference from [step 7](#step-7--the-downstream-peer-ranges),
+whose list was manifests only. Nor is any executable line: if step 8 finds itself changing code
+rather than a comment or a document, that is a stop-and-replan.
+
+#### 8.1 The four are not one batch, and scoping them as one is the error to avoid
+
+**Three are stale in spelling.** `eval-signal.ts:339`, `eval-signal.memory.spec.ts:233` and
+`evaluate-rule.spec.ts:44` each name `^0.3.0` as the range and then *reason* that it admits the
+leaking `eval-core` 0.3.0. Step 7 shipped `>=0.3.0 <0.5.0`, which **still admits 0.3.0** — so every
+one of those arguments survives intact and only the quoted string is wrong. Had step 7 chosen
+`^0.4.0` these would have become false; under the range actually shipped they are hygiene. On their
+own they would not be worth a step.
+
+**One is wrong in the direction that gets a live guard deleted.** `evaluate-rule.ts:53` reads
+*"Removal is gated on raising the peer range, which is a breaking release."* That is the
+necessary-vs-sufficient error step 7 corrected in [step 0b](#step-0b--the-downstream-consequences-of-step-0)
+above, reproduced in downstream source — and **it sits in the docblock of the file holding the
+guard**, four lines above the `finally` it describes. A maintainer who raises the peer range, reads
+that sentence, and deletes the loop removes a protection that is still load-bearing: `EvalContext.push`
+and `pop` are public on a published class, so the strand route survives any range. Step 7's probe
+measured the loop's two cases going red without it.
+
+**So the step's justification is that one site**; the other three travel with it because the paths
+are already sanctioned and a second downstream excursion to fix a quoted string would cost more
+than it saves. Stated this way round rather than as "four stale comments" because the two halves
+have different urgency, and a batch framing would let the one that matters be deferred with the
+three that do not.
+
+#### 8.2 What the corrected text has to say
+
+`evaluate-rule.ts`'s three-reason list keeps its shape and loses its third item, which expired:
+`Program`, `BlockStatement` and `ForStatement` all shipped, each popping in a `finally`. The
+first two reasons stay and the **relation between them** is what the rewrite must fix:
+
+- the peer range still admits `eval-core` 0.3.0, which leaks — **true today, and range-dependent**;
+- `EvalContext.push` / `pop` are public on a published class — **true at every version, and the
+  reason removal is not available even at `>=0.4.0`**.
+
+The sentence to delete is the one asserting the first is the gate. `eval-signal.ts:339` carries the
+same list and the same expired third item; it does **not** carry the sufficiency error, so it needs
+the range re-spelled and the third item dropped, and nothing more.
+
+#### 8.3 Two README sites, found mid-step and sanctioned rather than absorbed
+
+[F14](../backlog.md#f14) said four comment sites. Step 8 checked rather than trusting the count and
+found `^0.3.0` asserted in **both published READMEs** as well: `eval-signals/README.md:20` states
+the peer dependencies in prose, and `eval-forms/README.md:70` reproduces the `peerDependencies`
+block verbatim.
+
+**These are worse than the four, and F14 had them the wrong way round.** A comment misleads a
+maintainer reading the source; a README ships in the npm tarball and is the first thing a consumer
+reads. Both now assert a range the manifest does not have, in the direction that says `eval-core`
+0.4.0 is *unsupported* — the exact confusion `eval-signals` 0.1.1 and `eval-forms` 0.2.1 were
+released to remove. A consumer who trusts the README will not take the upgrade the release exists
+to enable.
+
+**Added to § 8's file list by amendment before being touched, not absorbed into it by analogy.** A
+README is neither a comment nor a manifest, so it was outside the list as written; the phase has
+twice decided a new downstream category is worth its own sanction, and reaching for one on the
+grounds that it is "close enough" is the habit those sanctions exist to prevent. The amendment is
+recorded here, in the step, rather than applied silently — the file list is the safety rule, and a
+safety rule edited without a trace is not one.
+
+`eval-forms`' block duplicates five other ranges besides this one and can drift the same way in any
+of them; step 8 re-spells the one it is here for and **checks the other five against the manifest**
+rather than rewriting the block's form, which is a documentation question for whoever owns it.
+
+**Exit criteria**
+- `nx run-many -t lint test build` green, all three projects, `--skip-nx-cache`.
+- No downstream file in the diff but the **six** named, and **no executable line changed in any of
+  them** — checkable as `git diff -- modules/eval-signals modules/eval-forms` containing only
+  comment, docblock and markdown lines.
+- No `package.json` in the diff at all: step 8 releases nothing, and the two patch versions step 7
+  set stay where they are.
+- No string `^0.3.0` remains in either downstream package.
+- Neither containment's docblock claims that raising the peer range makes the guard removable.
+- Both containment probes still red — `evaluateRule`'s `finally` deleted reddens its 2 cases,
+  `eval-signal.ts`'s unwind deleted reddens its 1. A comment-only step has no business moving
+  these, which is exactly why they are the check that it did not.
+- [F14](../backlog.md#f14) closed.
 
 ---
 
@@ -1735,7 +1838,7 @@ Checked at every step, not only at the end.
 
 | # | Gate | How |
 | - | ---- | --- |
-| 1 | Nothing moved outside `eval-core` | `git diff --name-only HEAD` — `modules/eval-core/`, `docs/`, root `CHANGELOG.md`, and — **in step 6 only** — `ROADMAP.md` and the root `README.md`, which is where "ESTree Nodes Supported" lives. **Step 0b only**: also the eight downstream paths its § 4 entry names, and nothing else under `modules/eval-signals/` or `modules/eval-forms/`. **Step 7 only**: `modules/eval-signals/package.json` and `modules/eval-forms/package.json`, and **nothing else** under either — not a source file, not a spec, not a `public-api.ts` or `index.ts`. The two exceptions are disjoint: 0b's list excludes manifests, step 7's is manifests only, and neither admits the other's paths |
+| 1 | Nothing moved outside `eval-core` | `git diff --name-only HEAD` — `modules/eval-core/`, `docs/`, root `CHANGELOG.md`, and — **in step 6 only** — `ROADMAP.md` and the root `README.md`, which is where "ESTree Nodes Supported" lives. **Step 0b only**: also the eight downstream paths its § 4 entry names, and nothing else under `modules/eval-signals/` or `modules/eval-forms/`. **Step 7 only**: `modules/eval-signals/package.json` and `modules/eval-forms/package.json`, and **nothing else** under either — not a source file, not a spec, not a `public-api.ts` or `index.ts`. **Step 8 only**: the four comment sites its § 8 entry names, comment lines only, and **no manifest**. The three exceptions are pairwise disjoint by construction: 0b's list excludes manifests, step 7's is manifests only, step 8's is four comment sites and no manifest — so no step can borrow another's sanction |
 | 2 | § 3.1's arithmetic holds | For each visitor in the diff, enumerate exit paths and state pops and pushes per path, against § 3.1's table |
 | 3 | Every scope push has a `finally` pop | Reviewed on a **reused** `EvalContext`, per `code-reviewer.md` item 3's probe — a spec building its context inline asserts nothing |
 | 4 | No per-walk control-flow state on `EvalState` | § 3.1 chose a stack discipline; a field that a nested `evaluate` could clobber is a stop-and-replan |

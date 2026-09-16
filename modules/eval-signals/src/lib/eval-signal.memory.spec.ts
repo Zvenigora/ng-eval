@@ -229,12 +229,14 @@ describe('createEvalSignal - lifetime and cleanup', () => {
      * `eval-signal.ts`'s guard **deleted** - a green row reporting coverage it
      * no longer had.
      *
-     * The guard is retained, not redundant-and-removable: `eval-signals` 0.1.0
-     * declares `"@zvenigora/ng-eval-core": "^0.3.0"`, a range that admits the
-     * leaking 0.3.0 and will keep admitting it after 0.4.0 ships. See the
-     * `finally` in `eval-signal.ts` for the full list of what it still covers.
+     * The guard is retained, not redundant-and-removable: `eval-signals` 0.1.1
+     * declares `"@zvenigora/ng-eval-core": ">=0.3.0 <0.5.0"`, a range that
+     * admits the leaking 0.3.0 as well as the fixed 0.4.0. That reason is
+     * range-dependent; the durable one is below, and it is why raising the
+     * range would not make the guard removable. See the `finally` in
+     * `eval-signal.ts` for both.
      *
-     * So the leak is now driven the way the guard's third reason names:
+     * So the leak is now driven the way the durable reason names:
      * `EvalContext.push` and `pop` are **public methods on a published class**,
      * reachable with no visitor at all. A source function that pushes and does
      * not pop strands a scope exactly as a push site missing its `finally`

@@ -67,7 +67,7 @@ set of ranges covering both adapters:
   "@angular/forms": ">=19.0.0",
   "rxjs": "^7.8.0",
   "acorn-walk": "^8.3.0",
-  "@zvenigora/ng-eval-core": "^0.3.0",
+  "@zvenigora/ng-eval-core": ">=0.3.0 <0.5.0",
   "@zvenigora/ng-eval-signals": "^0.1.0"
 }
 ```

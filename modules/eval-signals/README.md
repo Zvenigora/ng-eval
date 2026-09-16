@@ -17,7 +17,8 @@ signals library.
 npm install @zvenigora/ng-eval-signals @zvenigora/ng-eval-core
 ```
 
-Peer dependencies: `@angular/core >=19` and `@zvenigora/ng-eval-core ^0.3.0`.
+Peer dependencies: `@angular/core >=19` and `@zvenigora/ng-eval-core >=0.3.0 <0.5.0` — both
+`eval-core` 0.3.0 and 0.4.0 are supported.
 
 ## Quick start
 

@@ -135,7 +135,7 @@ one, which is [F8](#f8)'s subject and now its size.
 | [F11](#f11) | A gated README can only import from its own specifier | core, signals, forms | fix | Open — bounds [F3](#f3) and [F4](#f4) |
 | [F12](#f12) | The downstream peer ranges exclude `eval-core` 0.4.0 — **and fail both downstream `lint` targets** | signals, forms | fix | **Retired — fixed, Phase 2 step 7**; both ranges widened, and `lint`'s cache inputs with them |
 | [F13](#f13) | Nothing gates the README block count `readme-examples.spec.ts` claims | core, signals, forms | test gap | Open — the count has been wrong twice |
-| [F14](#f14) | Four downstream comments cite the retired `^0.3.0` range; one repeats the necessary-vs-sufficient error | signals, forms | fix (comments) | Open — **created by Phase 2 step 7**; stale in spelling, except `evaluate-rule.ts:53` |
+| [F14](#f14) | Six sites cite the retired `^0.3.0` range, two of them in published READMEs | signals, forms | fix (comments, docs) | **Retired — fixed, Phase 2 step 8**; filed as four sites, was six |
 | [R1](#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -2339,8 +2339,49 @@ thing that makes "an entry per package" awkward, and [F8](#f8) is the missing-ta
 <a id="f14"></a>
 ## F14 — Four downstream comments cite a peer range that no longer exists, and one repeats A9's necessary-vs-sufficient error
 
-**Package** signals, forms · **Kind** fix (comments) · **Status** Open — created by Phase 2 step 7,
-2026-09-16
+**Package** signals, forms · **Kind** fix (comments, and **published documentation**) · **Status**
+**Retired — fixed, Phase 2 step 8, 2026-09-16.** Created by step 7 the same day
+
+**Fixed, at six sites — and it was filed as four.** Step 8 checked the count rather than trusting
+it and found `^0.3.0` asserted in **both published READMEs** as well as the four comments:
+
+| File | Line | What it said | |
+| ---- | ---- | ------------ | - |
+| `eval-signals/README.md` | 20 | "Peer dependencies: … `@zvenigora/ng-eval-core ^0.3.0`" | fixed |
+| `eval-forms/README.md` | 70 | a `peerDependencies` block quoting `"@zvenigora/ng-eval-core": "^0.3.0"` | fixed |
+
+**The two the entry missed were the consumer-facing ones, and this entry had them the wrong way
+round.** A comment misleads a maintainer reading the source; a README ships in the npm tarball. Both
+asserted a range the manifest did not have, in the direction that says `eval-core` 0.4.0 is
+*unsupported* — the exact confusion `eval-signals` 0.1.1 and `eval-forms` 0.2.1 were released to
+remove, restated in the document a consumer reads first. **A count written from memory in an entry
+that was itself about a stale claim**, which is [F13](#f13)'s subject arriving in the register
+rather than in a spec docblock.
+
+Step 8's file list was amended in the plan before either README was touched, rather than absorbed by
+analogy — a README is neither a comment nor a manifest. `eval-forms`' block duplicates five other
+ranges; all five were checked against the manifest and were already correct.
+
+These are **worse than the four comments they were filed behind**, and the entry had them the wrong
+way round. A comment misleads a maintainer reading the source; a README ships in the npm tarball and
+is the first thing a consumer reads. Both now state a range the manifest does not have — and state
+it in the direction that tells a reader `eval-core` 0.4.0 is *unsupported*, which is precisely the
+confusion `eval-signals` 0.1.1 and `eval-forms` 0.2.1 were released to remove. `eval-forms`' block
+also reproduces the manifest verbatim, so it reads as authoritative.
+
+**Not fixed by step 8**, whose sanctioned list is the four comment sites and explicitly no other
+downstream path ([plan § 8](statements/phase-2-plan.md#step-8--f14s-four-comment-sites)). A README
+is neither a comment nor a manifest, so it falls outside that list rather than inside it by
+analogy — and a published documentation change is the sort of thing this phase has twice decided is
+worth its own sanction. It needs one.
+
+**What it would take**: re-spell both to `>=0.3.0 <0.5.0`. `eval-forms`' block should be checked
+against the whole manifest while it is open, since it duplicates five other ranges that can drift
+the same way — which is the argument for the block citing the manifest rather than copying it.
+
+---
+
+**The four comment sites, fixed by step 8, 2026-09-16:**
 
 Step 7 widened both peer ranges from `^0.3.0` to `>=0.3.0 <0.5.0` ([F12](#f12)). Four downstream
 comments name the old range by its literal spelling:

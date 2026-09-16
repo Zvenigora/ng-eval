@@ -336,14 +336,19 @@ export function createEvalSignal(
       // together however long after this frame it is called. What keeps the
       // loop here is not that defect:
       //
-      //  - `package.json` declares `"@zvenigora/ng-eval-core": "^0.3.0"`, and
-      //    that range admits the *leaking* 0.3.0 and goes on admitting it
-      //    after the fixed core ships. Removal is gated on raising the peer
-      //    range, which is a breaking release of this package, not a tidy-up.
+      //  - `package.json` declares `"@zvenigora/ng-eval-core":
+      //    ">=0.3.0 <0.5.0"`, and that range admits the *leaking* 0.3.0 as
+      //    well as the fixed 0.4.0. Range-dependent: raising the range past
+      //    0.3.0 would retire this reason and nothing else.
       //  - `EvalContext.push` and `pop` are public methods on a published
       //    class, so a scope can be stranded with no visitor involved at all.
-      //  - Phase 2 adds further scope-push sites to the core (`Program`,
-      //    `BlockStatement`, `ForStatement`), for which this is the backstop.
+      //    True at every version, and therefore the reason this loop is not
+      //    removable at any peer range.
+      //
+      // A third reason expired in 0.4.0: this was the backstop for the
+      // scope-push sites Phase 2 was adding to the core, and `Program`,
+      // `BlockStatement` and `ForStatement` all shipped popping in a
+      // `finally`.
       //
       // It is still not reached by a signal context driven straight through
       // `EvalService`, which is outside any recompute - `signal-context.spec.ts`

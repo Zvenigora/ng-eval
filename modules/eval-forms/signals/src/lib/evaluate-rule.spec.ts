@@ -38,11 +38,13 @@ const compileExpression = (expression: string): stateCallback =>
  * the containment is still the only thing that catches.
  *
  * `EvalContext.push` and `pop` are **public methods on a published class** -
- * reason (c), and the one the visitors cannot take away. A model function that
- * calls `push` and does not pop strands a scope with no visitor involved at
- * all, which is precisely the shape the guard exists for: version skew onto a
- * leaking `eval-core` under the `^0.3.0` peer range, a future push site that
- * lands without its `finally`, or a consumer driving `push` directly.
+ * the reason the visitors cannot take away, and the one that holds at every
+ * `eval-core` version. A model function that calls `push` and does not pop
+ * strands a scope with no visitor involved at all, which is precisely the
+ * shape the guard exists for: version skew onto a leaking `eval-core` under
+ * the `>=0.3.0 <0.5.0` peer range, a future push site that lands without its
+ * `finally`, or a consumer driving `push` directly. Only the first of those
+ * three would be retired by raising the range.
  *
  * The pushed scope binds `country`, shadowing the model's own key. That is the
  * discriminating condition: `EvalContext.get` resolves `scopes` **first**, so
