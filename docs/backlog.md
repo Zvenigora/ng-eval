@@ -71,9 +71,13 @@ release, not a free change.
 
 | Package | Version | Notes |
 | ------- | ------- | ----- |
-| `@zvenigora/ng-eval-core` | 0.3.0 | tagged `eval-core@0.3.0` |
-| `@zvenigora/ng-eval-signals` | 0.1.0 | tagged `eval-signals@0.1.0` |
-| `@zvenigora/ng-eval-forms` | 0.2.0 | **no `eval-forms@0.2.0` tag exists** — see [F8](#f8) |
+| `@zvenigora/ng-eval-core` | 0.4.0 | Phase 2, statements. **No `eval-core@0.4.0` tag exists yet** — [F8](#f8) |
+| `@zvenigora/ng-eval-signals` | 0.1.1 | Phase 2 step 7: peer range only. **No `eval-signals@0.1.1` tag exists yet** — [F8](#f8). 0.1.0 is tagged |
+| `@zvenigora/ng-eval-forms` | 0.2.1 | Phase 2 step 7: peer range only. **Neither `eval-forms@0.2.0` nor `@0.2.1` is tagged** — [F8](#f8) |
+
+**Phase 2 released all three.** `eval-core` 0.4.0 is the phase; the two patch releases carry one
+manifest field each and no code ([F12](#f12)). Three of these five versions want tags and none has
+one, which is [F8](#f8)'s subject and now its size.
 
 ---
 
@@ -125,10 +129,13 @@ release, not a free change.
 | [F5](#f5) | The `js-sha256` peer range is locked to a dead minor | core | decision | Open |
 | [F6](#f6) | CONTRIBUTING's "Code style" describes a config that never existed here | repo | decision (editorial) | Open |
 | [F7](#f7) | Intermittent Jest worker-teardown warning — **no established locus**, possibly Nx/Jest rather than a library | — | fix? | Open — locus corrected 2026-09-09; **not reproducible per project** |
-| [F8](#f8) | `eval-forms@0.2.0` is untagged; CLAUDE.md describes a pre-Phase-6 repo | repo | fix | Open |
+| [F8](#f8) | **Four** untagged published versions; CLAUDE.md half done | repo | fix | Open — **widened by Phase 2**: `eval-core@0.4.0`, `eval-signals@0.1.1`, `eval-forms@0.2.1` join `eval-forms@0.2.0`; systematic, not a slip |
 | [F9](#f9) | No gate on document cross-references — the register's own dangling links | repo | fix | Open — deferred by [plan](gates/plan.md) § 8.4; **first concrete instance recorded 2026-09-13** |
 | [F10](#f10) | The drift gate covers documented-**and-imported** symbols only | core, signals, forms | fix | Open — the gap [F3](#f3) leaves |
 | [F11](#f11) | A gated README can only import from its own specifier | core, signals, forms | fix | Open — bounds [F3](#f3) and [F4](#f4) |
+| [F12](#f12) | The downstream peer ranges exclude `eval-core` 0.4.0 — **and fail both downstream `lint` targets** | signals, forms | fix | **Retired — fixed, Phase 2 step 7**; both ranges widened, and `lint`'s cache inputs with them |
+| [F13](#f13) | Nothing gates the README block count `readme-examples.spec.ts` claims | core, signals, forms | test gap | Open — the count has been wrong twice |
+| [F14](#f14) | Four downstream comments cite the retired `^0.3.0` range; one repeats the necessary-vs-sufficient error | signals, forms | fix (comments) | Open — **created by Phase 2 step 7**; stale in spelling, except `evaluate-rule.ts:53` |
 | [R1](#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -273,6 +280,17 @@ only one that makes 2 and 3 *work* rather than *report*.
 § 1.7 and § 8.4): that phase reviews the same fall-through shape in five new statement dispatchers
 and requires a throwing `default:` in each, so fixing one of these three in passing would be
 arbitrary rather than principled. It is unblocked and lands whenever someone picks it up.
+
+**Confirmed at the close of Phase 2, by measurement rather than by reading the diff.** Step 6 ran
+all three against the pre-phase tree and against 0.4.0: `[a, b] = arr` and `({m} = o)` both return
+`undefined` with the context unchanged and **nothing stranded**, identically before and after; `(a)++`
+needs `preserveParens` and its chain in `update-expression.ts` is untouched. The check is worth
+naming because step 3 *did* edit both write visitors — the identifier branch of
+`assignment-expression.ts` now routes through `assignToBinding`, and `update-expression.ts` with it
+— so "the phase did not touch these files" would have been false while "the phase did not change
+these three behaviours" is true. The two-statement form `[a, b] = arr; a` now runs through `Program`
+and still returns the unchanged `a`, which is the one of the three the statement work could most
+plausibly have disturbed.
 
 **"One shape" is a claim about these three, and [A11](#a11) is the reason to say so out loud.**
 A11 is a fourth silent wrong answer in the same layer — renaming destructuring binds the wrong key
@@ -2047,6 +2065,25 @@ the "active plan" pointer aimed at a document the same file said did not exist.
 
 **Open: the tag, and whether 0.2.0 is actually on npm.**
 
+**Widened by Phase 2, 2026-09-16 — it is now three missing tags, not one.** The phase released
+`eval-core` **0.4.0** (step 6) and, in step 7, `eval-signals` **0.1.1** and `eval-forms` **0.2.1**.
+None of the three is tagged, so `git tag --list` still ends at the same three tags it had before
+Phase 2 opened while three `package.json`s have moved past them.
+
+The entry's original question — *was the tag missed, or was the version never published?* — is now
+asked of four versions at once, and Phase 2 cannot answer it for its own three: this branch is
+unmerged and nothing has been published from it. What Phase 2 does establish is that the gap is
+**systematic rather than a one-off slip**, which is how the entry read at one instance. Three
+consecutive releases across two phases produced zero tags, so nothing in the procedure produces
+them and no gate notices — the same shape as [F3](#f3) and [F4](#f4) before those were built, and
+the argument for a release checklist rather than four individual corrections.
+
+`CONTRIBUTING.md` documents version bumps by hand; whether it documents tagging, and whether
+`nx release` is meant to be doing it (each `project.json` carries a `release.version` block with
+`currentVersionResolver: "git-tag"`, which **reads** tags it may be relying on something else to
+write), is the first thing to check. A resolver that falls back to disk when no tag exists will
+silently keep working while the tags it was configured to read go missing.
+
 <a id="f10"></a>
 ## F10 — The drift gate covers documented-**and-imported** symbols, not documented ones
 
@@ -2206,6 +2243,163 @@ the four READMEs. The anchor half is the one with a real decision in it — this
 some anchors as explicit `<a id="…">` tags and relies on generated heading slugs elsewhere, so a
 checker must handle both or it will false-fail on correct links, which is the shape
 [F3](#f3) § 1.1 rejected.
+
+<a id="f12"></a>
+## F12 — The downstream peer ranges exclude `eval-core` 0.4.0 — **Retired, fixed**
+
+**Package** signals, forms · **Kind** fix (release coordination) · **Status** **Retired — fixed,
+Phase 2 step 7, 2026-09-16.** Created by step 6 the day before
+
+**Fixed.** Both ranges widened to `">=0.3.0 <0.5.0"` — `eval-signals` **0.1.1**, `eval-forms`
+**0.2.1**, both patch releases carrying nothing but the manifest field. `>=0.3.0` rather than
+`^0.4.0` deliberately: see [`statements/phase-2-plan.md`](statements/phase-2-plan.md) § 7.1. The
+short version is that dropping 0.3.0 would have been a breaking release bought for a retirement it
+does not deliver — the containments stay either way, on the public `EvalContext.push`/`pop` route,
+which no peer range touches.
+
+`eval-forms`' `"@zvenigora/ng-eval-signals": "^0.1.0"` needed no change: it already admits 0.1.1.
+
+**The cache half is fixed too, and was the more general defect** — see the entry's last section.
+`nx.json`'s `lint` target gained `"^production"` to its `inputs`.
+
+---
+
+**The entry as it stood, kept because the measurements are the reason the fix took the shape it
+did:**
+
+`modules/eval-signals/package.json:19` and `modules/eval-forms/package.json:22` both declare
+`"@zvenigora/ng-eval-core": "^0.3.0"` as a peer dependency. `^0.3.0` resolves to `>=0.3.0 <0.4.0`,
+so **`eval-core` 0.4.0 is excluded by both**. A consumer who upgrades `eval-core` while holding
+`eval-signals` 0.1.0 or `eval-forms` 0.2.0 gets a peer-dependency conflict.
+
+**It also breaks this repository's own lint, which is how it was found.** `@nx/dependency-checks`
+fails both downstream `lint` targets the moment `modules/eval-core/package.json` reads `0.4.0`:
+
+```
+The version specifier does not contain the installed version of
+"@zvenigora/ng-eval-core" package: 0.4.0   @nx/dependency-checks
+```
+
+Isolated by measurement, not inference: with `eval-core` at `0.3.0` `nx run-many -t lint` is green
+for all three projects; at `0.4.0` `eval-signals:lint` and `eval-forms:lint` fail and nothing else
+changes. **So `eval-core` 0.4.0 cannot be committed with a green lint run until the ranges widen**,
+which is a `CONTRIBUTING.md` precondition for committing at all — and the fix is in two files that
+Phase 2's scope gate ([plan § 6](statements/phase-2-plan.md) gate 1) makes a stop-and-replan.
+Phase 2 step 6 therefore ends with this open rather than working around it.
+
+**It was cached out of sight for most of step 6.** `nx run-many -t lint test build` reported green
+after the bump because both `lint` results were replayed from cache; only `--skip-nx-cache`
+surfaced it. That is worth recording next to [F7](#f7): a cache hit on a target whose input is
+another project's `package.json` is a way for a gate to report a pass it did not run. Whether the
+inputs for these `lint` targets are configured wrongly is a second question this entry does not
+settle.
+
+**It was configured wrongly, and step 7 settled it — one line.** `nx.json`'s `lint` target declared
+`inputs: ["default", <the two eslint configs>]`, and `default` is `{projectRoot}/**/*` plus an empty
+`sharedGlobals` — so **nothing from any dependency**. `@nx/dependency-checks` reads a *sibling
+project's* manifest, so `eval-signals:lint`'s correctness depended on a file its cache key did not
+cover. Adding **`"^production"`** to that `inputs` array brings every dependency's non-spec files,
+`package.json` included, into the key.
+
+*Measured both ways, because "the cache was stale" is not by itself a diagnosis:*
+
+| | cached `nx run-many -t lint` after setting `eval-core` to an **inadmissible** `0.6.0` |
+| --- | --- |
+| **without** `^production` | **`Successfully ran target lint for 3 projects`** — green, replayed, wrong |
+| **with** `^production` | fails both downstream projects, naming `0.6.0` |
+
+The first row is step 6's incident reproduced exactly, on demand.
+
+**`lint` was the only target with this gap**, checked rather than assumed: `build` and
+`@nx/angular:package` already declared `["production", "^production"]`, `@nx/jest:jest` already
+declared `["default", "^production", …]`, and no `project.json` in this repository overrides
+`inputs` for any target. So there is no residual entry to open — this is the whole of the class.
+
+**The cost, stated rather than discovered later**: `lint` now cache-misses whenever any
+*dependency's* non-spec files change, so an `eval-core` source edit invalidates `eval-signals:lint`
+and `eval-forms:lint` as well as its own. That is more misses than before and is the correct
+trade — the alternative is a gate that reports passes it did not run, which is what this entry is.
+
+**Not an incompatibility.** Both libraries' suites run against this repository's `eval-core` source
+on every build and are green at 0.4.0 — including the two behavioural changes that reach them, A9's
+scope-pop repair and the § 3.2 write relaxation. What is stale is the declared range, not the code.
+
+**Why it is recorded rather than fixed here.** Widening the range is an edit to
+`modules/eval-signals/` and `modules/eval-forms/`, which Phase 2's scope gate makes a
+stop-and-replan (plan § 6 gate 1), and a peer-range change is itself a release of those packages —
+so it needs a version, a `CHANGELOG.md` heading and a tag each, which is a release decision and not
+a step-6 tidy-up. It is noted in the 0.4.0 entry so a consumer meets it in the changelog rather
+than in their installer.
+
+**What it would take**: `^0.3.0` → `>=0.3.0 <0.5.0` (or `^0.4.0`, if dropping 0.3.0 support is
+intended — it is not obviously wrong, since neither package needs anything 0.4.0 added), a patch
+bump of each, and an entry per package. [F2](#f2) — one `CHANGELOG.md` for three packages — is the
+thing that makes "an entry per package" awkward, and [F8](#f8) is the missing-tag half.
+
+<a id="f14"></a>
+## F14 — Four downstream comments cite a peer range that no longer exists, and one repeats A9's necessary-vs-sufficient error
+
+**Package** signals, forms · **Kind** fix (comments) · **Status** Open — created by Phase 2 step 7,
+2026-09-16
+
+Step 7 widened both peer ranges from `^0.3.0` to `>=0.3.0 <0.5.0` ([F12](#f12)). Four downstream
+comments name the old range by its literal spelling:
+
+| File | Line | What it says |
+| ---- | ---- | ------------ |
+| `eval-signals/src/lib/eval-signal.ts` | 339 | "`package.json` declares `"@zvenigora/ng-eval-core": "^0.3.0"`, and that range admits the *leaking* 0.3.0" |
+| `eval-signals/src/lib/eval-signal.memory.spec.ts` | 233 | the same claim, in the docblock of a containment spec |
+| `eval-forms/signals/src/lib/evaluate-rule.ts` | 50 | the same claim |
+| `eval-forms/signals/src/lib/evaluate-rule.spec.ts` | 44 | "leaking `eval-core` under the `^0.3.0` peer range" |
+
+**Stale in spelling, not in substance — which is why this is low and not urgent.** Every one of
+them reasons that the range *admits the leaking 0.3.0*, and `>=0.3.0 <0.5.0` still does. Had step 7
+chosen `^0.4.0` these would have become outright false; under the range actually chosen they cite a
+string that no longer appears in the manifest while their argument survives intact.
+
+**One of them is more than a spelling**, and it is the same defect this backlog's
+[A9](#a9)-adjacent planning note carried: `evaluate-rule.ts:53` says *"Removal is gated on raising
+the peer range, which is a breaking release."* That reads as a **sufficient** condition and is only
+a **necessary** one — `EvalContext.push` / `pop` are public methods on a published class, so a
+scope can be stranded at any `eval-core` version and the containment stays load-bearing however the
+range moves. A reader who raises the range and then deletes the guard on the strength of that
+sentence removes a live protection. The same sentence in
+[`statements/phase-2-plan.md`](statements/phase-2-plan.md) step 0b **was** corrected in place by
+step 7; this copy of it was not, because it lives in downstream source.
+
+**Why step 7 did not fix it.** Step 7's sanctioned file list is the two `package.json`s and
+nothing else under either package — not a source file, not a spec (plan § 6 gate 1). Reaching into
+four source files to edit comments is 0b's exception, not step 7's, and the two were written to be
+disjoint on purpose. Fixing this is a comment-only change to four files and wants its own sanction.
+
+**What it would take**: re-spell the range in all four, and rewrite `evaluate-rule.ts:53` to state
+both retention reasons — the peer range still admitting 0.3.0, **and** the public `push`/`pop`
+route, noting that only the second is durable. Plan § 4 step 0b's reworded containment criterion
+has the wording to copy.
+
+<a id="f13"></a>
+## F13 — Nothing gates the README block count `readme-examples.spec.ts` claims
+
+**Package** core, signals, forms · **Kind** test gap · **Status** Open — recorded Phase 2 step 6,
+2026-09-15
+
+Each `readme-examples.spec.ts` opens with a docblock asserting how many fenced blocks its README
+holds and which case covers each. The number is **hand-transcribed**, and nothing compares it to
+the file. `eval-core`'s has now been wrong twice — the plan's "8" and step 2's corrected "11", both
+short by the indented fence inside the `onHookError` bullet — and corrected three times, step 6's
+raise from 12 to 14 being the third.
+
+The failure is quiet in exactly the way the gates track was built to prevent: a block added to a
+README without a case still leaves a green suite and a docblock claiming full coverage, which is
+[F3](#f3)'s own motivating shape one layer over. `grep -c '```javascript'` is the whole measurement.
+
+**Distinct from [F10](#f10) and [F11](#f11)**, which bound what the *drift* gate sees. This one is
+about the *execution* gate ([F4](#f4)) and is not covered by either: F10 is about symbols named but
+not imported, F11 about the specifier a gated block may import from, and neither counts blocks.
+
+**What it would take**: scan each gated README for its fence count and assert it against a constant
+the spec already states, so the count moves deliberately. The root `README.md` stays out — it was
+assessed and dropped by [F4](#f4), and 0 of its 11 blocks are runnable as printed.
 
 ---
 

@@ -1088,6 +1088,20 @@ before it touches either file, and the answer is not "the leak is fixed, delete 
   `eval-signals` 0.1.0 + `eval-core` 0.3.0 is a supported installation today, and removing the
   containment breaks exactly them. Removal is therefore gated on raising both peer ranges to
   `>=0.4.0`, which is its own breaking release of two packages and is not this phase's work.
+
+  > **Corrected in step 7 — this sentence reads as a sufficient condition and is only a necessary
+  > one.** Raising the range retires reason (a) below and **nothing else**. Reason (c) — that
+  > `EvalContext.push` and `pop` are public methods on a published class — is independent of the
+  > peer range: verified against the built `0.4.0` types, both are still on the published
+  > `EvalContext`, so a consumer can strand a scope at 0.4.0 exactly as at 0.3.0. **The
+  > containments therefore stay even at `>=0.4.0`**, and a reader who takes "removal is gated on
+  > raising the peer range" at face value will raise it and then delete a guard that is still
+  > load-bearing. Corrected here rather than only in [§ 7.1](#71-decision--the-range-proposed-030--050-not-040)
+  > because that is the failure mode: the next person reads this gate, not the step that revised it.
+  >
+  > Step 7 in the event chose `>=0.3.0 <0.5.0`, which keeps reason (a) live as well — so both (a)
+  > and (c) hold and the question of removal does not arise. The correction matters anyway, for
+  > whenever the range does move.
 - **What it still protects, concretely**, so the next person does not delete it as dead: (a) that
   version skew; (b) the three push sites steps 1, 2 and 5 add, for which it is the backstop while
   they are being written; (c) `EvalContext.push` / `pop` are **public methods on a published
@@ -1110,6 +1124,23 @@ before it touches either file, and the answer is not "the leak is fixed, delete 
   count are corrected.
 - Each containment's docblock says it is retained against the `^0.3.0` peer range and the push
   sites still to come — not that it is contained against a live defect.
+
+  > **Both halves of this criterion went stale, and step 7 reworded it.** `^0.3.0` is a range that
+  > no longer exists — step 7 widened both to `>=0.3.0 <0.5.0` — and "the push sites still to come"
+  > all shipped, in steps 1, 2 and 5, each with a `finally`. As written, the criterion now asks a
+  > docblock to cite a dead range and a finished future. **Read instead**: *each containment's
+  > docblock states the two reasons it is retained — a peer range that still admits the leaking
+  > `eval-core` 0.3.0, and `EvalContext.push`/`pop` being public on a published class — and does
+  > not claim it is contained against a live defect in the current `eval-core`.* The second reason
+  > is the durable one; it survives any range.
+  >
+  > The four downstream files that cite `^0.3.0` by name
+  > (`eval-signals/src/lib/eval-signal.ts:339`, `eval-signal.memory.spec.ts:233`,
+  > `eval-forms/signals/src/lib/evaluate-rule.ts:50`, `evaluate-rule.spec.ts:44`) are **stale in
+  > spelling only, not in substance**: every one of them says the range "admits the leaking 0.3.0
+  > and goes on admitting it", which `>=0.3.0 <0.5.0` still does. Step 7 did not edit them — its
+  > file list is manifests only — and `evaluate-rule.ts:53` additionally carries this entry's own
+  > necessary-vs-sufficient error. Filed as [F14](../backlog.md#f14).
 - The diff contains no downstream `public-api.ts`, `index.ts` or `package.json`.
 
 ### Step 1 — The walk boundary: `Program`, `ExpressionStatement`, and E6's bound
@@ -1495,6 +1526,138 @@ this phase left them alone; `ROADMAP.md` Phase 2 marked done; a retrospect.
 - The drift gate from `docs/gates/plan.md` step 2 covers any symbol the new README blocks import.
 - `nx run-many -t lint test build` green.
 
+**Step 6's last criterion was not met, and step 7 exists because of it.** The bump to `0.4.0` fails
+`eval-signals:lint` and `eval-forms:lint` on `@nx/dependency-checks` — `^0.3.0` does not admit
+`0.4.0` — and the only fix is inside two downstream `package.json`s, which § 2 and § 6 gate 1 make a
+stop-and-replan. Step 6 stopped rather than reaching across. [F12](../backlog.md#f12) carries the
+measurements. Everything else in step 6's list is done.
+
+---
+
+### Step 7 — The downstream peer ranges
+
+**Category: behavioural, and in two packages this phase does not otherwise touch.** **Files**,
+closed list — two downstream manifests, plus the repo-level records:
+
+| File | What |
+| ---- | ---- |
+| `modules/eval-signals/package.json` | `peerDependencies` → `"@zvenigora/ng-eval-core"`, and `version` if § 7.2 says so |
+| `modules/eval-forms/package.json` | the same two fields |
+| root `CHANGELOG.md` | one heading per package that bumps |
+| `docs/backlog.md` | [F12](../backlog.md#f12) closed; [F8](../backlog.md#f8) revisited, since this creates more untagged versions |
+| `docs/statements/summary.md` | § 1 and § 6 updated — the phase released more than one package |
+
+**This is the skill's hardest stop — a `package.json` in a published downstream project — so the
+plan sanctions the paths before the step opens, exactly as [step 0b](#step-0b--the-downstream-consequences-of-step-0)
+did.** The precedent is deliberate and so is the difference: 0b's sanctioned list explicitly
+excluded `package.json`, on the ground that the exception was for specs and comments describing a
+defect `eval-core` had just fixed. This step's list is *only* manifests. That is not 0b's exception
+widened; it is a second, narrower one, and it exists because step 6 produced a red `lint` that no
+edit inside `eval-core` can clear. **If step 7 finds itself wanting a `public-api.ts`, an
+`index.ts`, or any source or spec file under either package, that is a stop-and-replan on the
+original terms.**
+
+**Why it is a step and not a follow-up.** Two published manifests, a semver judgement, and possibly
+two releases is not a version-string edit, and the phase has already been bitten once by treating a
+release chore as clerical — step 0, whose own plan filed it under preconditions while it was
+squarely behavioural (§ 5). A step gets a restatement, a review and exit criteria; a follow-up gets
+none of those.
+
+#### 7.1 Decision — the range. **Proposed: `>=0.3.0 <0.5.0`, not `^0.4.0`**
+
+The two candidates differ in whether `eval-core` **0.3.0 — the leaking version** — stays admissible.
+0b named `>=0.4.0` as the gate on removing its containments, so the choice has to be answered
+against 0b's three retention reasons by name.
+
+| 0b's reason to retain | Under `>=0.3.0 <0.5.0` | Under `^0.4.0` |
+| --------------------- | ---------------------- | -------------- |
+| **(a)** version skew — a consumer on `eval-signals` 0.1.0 + `eval-core` 0.3.0 is a supported installation, and 0.3.0 leaks | **Live.** 0.3.0 stays admissible, so the containments keep catching the case they were retained for | **Retired.** No supported installation carries the leak |
+| **(b)** backstop for the three push sites steps 1, 2 and 5 add, *while they are being written* | **Expired either way** — all three shipped with a `finally`, and 0b scoped this reason to the writing | **Expired either way** |
+| **(c)** `EvalContext.push` / `pop` are **public methods on a published class**, so a scope can be stranded with no visitor involved | **Live** | **Live — unchanged.** Verified against the built 0.4.0 types: `push(context, options?): void` and `pop(): void` are on the published `EvalContext` |
+
+**The row that decides it is (c), and it is the row 0b's sentence passes over.** 0b says removal "is
+gated on raising both peer ranges to `>=0.4.0`" — true as a *necessary* condition and wrong if read
+as a sufficient one. Reason (c) has nothing to do with the peer range: a consumer holding an
+`EvalContext` can push a scope and never pop it at `0.4.0` exactly as at `0.3.0`. So **`^0.4.0` pays
+a breaking release and does not unlock the removal it would be bought for.** The containments stay
+under either option, and 0b's exit criterion — "each containment's docblock says it is retained
+against the `^0.3.0` peer range and the push sites still to come" — needs rewording either way,
+since both halves of that sentence are now stale.
+
+The rest follows:
+
+- **`>=0.3.0 <0.5.0` is the minimal change that clears the red `lint`**, which is the actual
+  problem. `^0.4.0` clears it too, and also decides something nobody has asked to decide.
+- **A range should describe compatibility, and both packages are compatible with both versions.**
+  They shipped against 0.3.0 and their suites are green against 0.4.0 — including the two
+  behavioural changes that reach them, A9's scope-pop repair and § 3.2's write relaxation.
+- **Dropping 0.3.0 is a separate question from fixing a broken gate**, and bundling the two is the
+  shape this register keeps flagging. If dropping it is wanted, it is worth its own entry and its
+  own release, taken on its merits.
+
+**What would change the recommendation**: evidence that either package *relies* on 0.4.0 behaviour —
+that is, would be incorrect against 0.3.0. § 3.2's relaxation is the one candidate, and it runs the
+other way: `eval-signals` is *stricter* against 0.3.0, not broken. If a later phase gives either
+package a hard 0.4.0 dependency, `^0.4.0` becomes correct and the containments still stay, on (c).
+
+#### 7.2 Decision — whether either package releases. **Proposed: yes, both, as patches**
+
+A peer range lives in the published manifest, so a changed range reaches a consumer only through a
+published version. The honest options are a patch release each, or a manifest edit that sits
+unpublished.
+
+**Proposed: `eval-signals` 0.1.1 and `eval-forms` 0.2.1**, each with its own `## [eval-signals 0.1.1]`
+/ `## [eval-forms 0.2.1]` heading in the root `CHANGELOG.md`. Patch, not minor: under § 7.1's range
+the change is purely *additive admission* — no consumer's working installation stops working, and
+nothing about either package's own surface moves. (Under `^0.4.0` it would not be a patch, which is
+a further cost of that option.)
+
+**So Phase 2 ends by releasing three packages rather than one.** Stated plainly because it is a
+change to what the phase is, and it was not true when the phase opened: § 2's "out of scope"
+reasonably reads as *`eval-core` only*. The phase does not gain downstream *features* — the two
+releases carry one manifest field each — but "Phase 2 shipped `eval-core` 0.4.0" stops being the
+whole sentence, and the summary says so.
+
+Two things this collides with, neither blocking:
+
+- **[F2](../backlog.md#f2)** — one `CHANGELOG.md` for three independently-versioned packages. Three
+  headings in one file for one phase is the sharpest instance of F2 the repository has produced;
+  the step records that rather than solving it.
+- **[F8](../backlog.md#f8)** — `eval-forms@0.2.0` is untagged. This step creates three more
+  versions wanting tags (`eval-core@0.4.0` included). F8's scope grows; step 7 updates it and does
+  not take the tagging on.
+
+**Exit criteria**
+- `nx run-many -t lint test build` green, all three projects, **run with `--skip-nx-cache`** — the
+  criterion step 6 could not meet, and the branch is red until it does. The cache flag is not
+  belt-and-braces: a stale replay is how step 6 reported this green in the first place (§ 7.3).
+- The diff contains **no downstream file but the two `package.json`s**. No `public-api.ts`, no
+  `index.ts`, no source, no spec.
+- Both `peerDependencies` ranges admit `0.4.0`, verified by the lint run rather than by reading.
+- 0b's containments are **untouched**, and each one's docblock no longer claims it is retained
+  against `^0.3.0` — that range will no longer exist. The replacement reason is (a) and (c) as
+  § 7.1 states them, with (b) recorded as expired.
+- Each of the three containment specs still goes **red with its own `finally` deleted** — the probe
+  0b established, re-run, because this step changes the sentence that justifies them and a
+  containment nobody can falsify is 0b item 2 all over again.
+- [F12](../backlog.md#f12) closed; [F8](../backlog.md#f8) updated with the versions this creates.
+
+#### 7.3 The measurement rule this step inherits
+
+**A version bump invalidates a `lint` result whose cache key does not capture it.** Step 6 ran
+`nx run-many -t lint test build` after bumping `modules/eval-core/package.json` and was told all
+three projects were green; both downstream `lint` results were replays from before the bump, and
+`--skip-nx-cache` is what surfaced the failure. `@nx/dependency-checks` reads a *sibling project's*
+manifest, which that target's inputs evidently do not declare.
+
+**So: any step touching a `package.json` verifies with `--skip-nx-cache`.** This applies to step 7
+above all, since two manifests are the whole of its diff.
+
+This is the **fourth** cache-versus-measurement incident in this repository and the first that
+reached the user as a reported fact rather than being caught in the step that made it — which is
+what makes it a rule here instead of a note. Whether these `lint` targets' inputs are misconfigured
+is a separate question, filed with [F12](../backlog.md#f12) and not settled by this step.
+
 ---
 
 ## 5. Published surface added
@@ -1572,13 +1735,13 @@ Checked at every step, not only at the end.
 
 | # | Gate | How |
 | - | ---- | --- |
-| 1 | Nothing moved outside `eval-core` | `git diff --name-only HEAD` — `modules/eval-core/`, `docs/`, root `CHANGELOG.md`, and — **in step 6 only** — `ROADMAP.md` and the root `README.md`, which is where "ESTree Nodes Supported" lives. **Step 0b only**: also the eight downstream paths its § 4 entry names, and nothing else under `modules/eval-signals/` or `modules/eval-forms/` |
+| 1 | Nothing moved outside `eval-core` | `git diff --name-only HEAD` — `modules/eval-core/`, `docs/`, root `CHANGELOG.md`, and — **in step 6 only** — `ROADMAP.md` and the root `README.md`, which is where "ESTree Nodes Supported" lives. **Step 0b only**: also the eight downstream paths its § 4 entry names, and nothing else under `modules/eval-signals/` or `modules/eval-forms/`. **Step 7 only**: `modules/eval-signals/package.json` and `modules/eval-forms/package.json`, and **nothing else** under either — not a source file, not a spec, not a `public-api.ts` or `index.ts`. The two exceptions are disjoint: 0b's list excludes manifests, step 7's is manifests only, and neither admits the other's paths |
 | 2 | § 3.1's arithmetic holds | For each visitor in the diff, enumerate exit paths and state pops and pushes per path, against § 3.1's table |
 | 3 | Every scope push has a `finally` pop | Reviewed on a **reused** `EvalContext`, per `code-reviewer.md` item 3's probe — a spec building its context inline asserts nothing |
 | 4 | No per-walk control-flow state on `EvalState` | § 3.1 chose a stack discipline; a field that a nested `evaluate` could clobber is a stop-and-replan |
 | 5 | Every new assertion is load-bearing | Each step names the inversion it ran and **which** cases went red |
 | 6 | The dispatcher's `default` throws | § 1.7's family gains no fourth member |
-| 7 | Downstream suites are the regression gate | `eval-signals` and `eval-forms` rows of `run-many` — movement is a finding, not an expectation. **Step 0 moved both**, which is what step 0b exists to resolve; from step 1 on, the gate reads as written again |
+| 7 | Downstream suites are the regression gate | `eval-signals` and `eval-forms` rows of `run-many` — movement is a finding, not an expectation. **Step 0 moved both**, which is what step 0b exists to resolve; from step 1 on, the gate reads as written again. **Step 6 moved both `lint` rows** — the version bump against a `^0.3.0` peer range — which is a finding the gate caught working as designed, and is what step 7 resolves. The `test` rows never moved. **It was caught late**: the run that should have caught it replayed both results from cache, so from step 6 on the gate is only satisfied by a `--skip-nx-cache` run whenever a `package.json` is in the diff (§ 7.3) |
 | 7a | The downstream witness is awake | Step 0b restores the three containment specs that item 4 of its list found vacuous. Steps 2 and 5 add push sites those specs are the downstream detector for — a green row from an assertion that passes with its guard deleted is not evidence |
 | 8 | Backlog entries move with the work | No step closes without its entries updated |
 

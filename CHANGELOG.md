@@ -23,6 +23,211 @@ The repository publishes more than one package, and they version independently. 
 
 ---
 
+## [eval-signals 0.1.1] - 2026-09-16
+
+### Changed
+
+- **Peer range widened** to admit `@zvenigora/ng-eval-core` 0.4.0:
+  `"@zvenigora/ng-eval-core": "^0.3.0"` → `">=0.3.0 <0.5.0"`. `^0.3.0` resolves to
+  `>=0.3.0 <0.4.0`, so installing `eval-core` 0.4.0 beside `eval-signals` 0.1.0 raised a
+  peer-dependency conflict. **0.3.0 remains supported** — the range widens rather than moves, so no
+  working installation stops working.
+
+Nothing else changed: no source file, no export, no behaviour. This library works against both
+`eval-core` 0.3.0 and 0.4.0, and its suite runs against both. The two `eval-core` 0.4.0 changes that
+reach it are described under that release — A9's scope-pop repair, and the write relaxation, which
+makes `(x => (x = 5))(1)` return `5` instead of throwing `SignalContextWriteError`. **Both are
+`eval-core` behaviour, visible through this library rather than changed by it**, which is why this
+is a patch.
+
+The depth-mark unwind at this library's recompute boundary is **retained**, for two reasons the
+release does not retire: the widened range still admits the leaking `eval-core` 0.3.0, and
+`EvalContext.push` / `pop` are public methods on a published class, so a scope can be stranded with
+no visitor involved at all. The second reason holds at any peer range.
+
+---
+
+## [eval-forms 0.2.1] - 2026-09-16
+
+### Changed
+
+- **Peer range widened** to admit `@zvenigora/ng-eval-core` 0.4.0:
+  `"@zvenigora/ng-eval-core": "^0.3.0"` → `">=0.3.0 <0.5.0"`, for the reason given under
+  `eval-signals` 0.1.1. **0.3.0 remains supported.**
+
+The `"@zvenigora/ng-eval-signals": "^0.1.0"` range is **unchanged** and needs no change: `^0.1.0`
+resolves to `>=0.1.0 <0.2.0`, which already admits `eval-signals` 0.1.1.
+
+Nothing else changed — no source file, no export, no behaviour, and all three entry points
+(`@zvenigora/ng-eval-forms`, `/reactive`, `/signals`) are untouched. `/signals` still requires
+Angular 22; `/reactive` still works from Angular 19. The depth-mark unwind in `evaluateRule` is
+retained, for the same two reasons given under `eval-signals` 0.1.1.
+
+---
+
+## [eval-core 0.4.0] - 2026-09-15
+
+Phase 2 of the [roadmap](ROADMAP.md): **statement support**. `let` and `const` declarations,
+blocks, `if`/`else` and the classic three-part `for` now evaluate as statements, with JavaScript's
+completion-value semantics. Design, measurements and the questions it settles are in
+`docs/statements/phase-2-plan.md`; the retrospect is in `docs/statements/summary.md`.
+
+**Read the Changed section before upgrading.** Statements were never *unsupported* — they were
+walked as expressions and silently mis-evaluated, so this release changes what a dozen already-working
+expressions return, and rejects a dozen more that used to return a value. If your expressions are
+single expressions (`a + b * c`, `user.name`, `items.filter(…)`), nothing here reaches you.
+
+### Added
+
+- **Seven statement node types**: `Program`, `ExpressionStatement`, `EmptyStatement`,
+  `BlockStatement`, `VariableDeclaration` (`let` / `const`), `IfStatement` and `ForStatement`.
+  Blocks introduce a scope; declarations bind into it and do not write the caller's context object.
+- **`EMPTY_COMPLETION`**, exported. A statement that produces no value — a declaration, an `if`
+  that takes no branch, a `for` that runs zero iterations — pushes this sentinel rather than
+  `undefined`, because JavaScript's completion-value semantics keep the last *non-empty* value and
+  empty is not `undefined`. It never leaves an evaluation's return value, but an `after` hook on a
+  statement node fires before the conversion and **will** see it, so it is exported for identity
+  comparison on the precedent of `ASYNC_HOOK_MESSAGE`. See the
+  [package README](modules/eval-core/README.md#statements-and-the-empty-completion-sentinel).
+- **`maxIterations`** on `EvalOptions`, defaulting to **100,000** iterations per evaluation.
+  Exceeding it raises `Iteration budget exhausted after <n> iterations`. The budget is per
+  outermost `eval` call and shared by every loop in the expression. It bounds **time, not memory**:
+  `result.trace` grows per pushed value and that allocation is paid before the throw.
+- **`EvalContext.setInScope`**, and `EvalContext.scopeHolding` promoted from private — a write
+  needs the scope, not a yes/no, because `const` kinds are keyed by scope.
+- `EvalHooks.pushWalkBase` / `popWalkBase` / `walkBase`, and `EvalState.walkDepth` / `enterWalk` /
+  `exitWalk` / `iterationsRemaining` / `chargeIteration` / `declareConst` / `isConstBinding`. These
+  are `@internal`-tagged: supported for this library's own use, not part of the contract. They are
+  nonetheless reachable on published classes, so they are listed rather than hidden.
+
+### Changed
+
+**Every row below was transcribed from `statement-semantics.spec.ts` and the step-6 audit, both
+run against 0.3.0 and 0.4.0 — not from the design document.**
+
+Expressions that returned a value and now return a **different** value:
+
+| Expression | 0.3.0 | 0.4.0 |
+| ---------- | ----- | ----- |
+| `let x = 1` | `1` | `undefined` |
+| `let x = 1; x + 1` | `NaN` | `2` |
+| `const y = 2; y` | `undefined` | `2` |
+| `if (a) { 1 } else { 2 }`, `a` truthy | `2` | `1` |
+| `if (a) { 1 }`, `a` falsy | `1` | `undefined` |
+| `for (let i = 0; i < 3; i++) { i }` | `NaN` | `2` |
+| `let [p, q] = arr` | the array | `undefined`, and `p` / `q` are now bound |
+
+Expressions that returned a value and now **throw**:
+
+| Expression | 0.3.0 | 0.4.0 |
+| ---------- | ----- | ----- |
+| `while (false) { 1 }` | `1` | `Unsupported statement type: WhileStatement` |
+| `do { 1 } while (false)` | `1` | `Unsupported statement type: DoWhileStatement` |
+| `for (const k in o) { k }` | `undefined` | `Unsupported statement type: ForInStatement` |
+| `for (const v of arr) { v }` | `undefined` | `Unsupported statement type: ForOfStatement` |
+| `switch (1) { case 1: 2 }` | `2` | `Unsupported statement type: SwitchStatement` |
+| `try { 1 } catch (e) { 2 }` | `2` | `Unsupported statement type: TryStatement` |
+| `throw 1` | `1`, throwing nothing | `Unsupported statement type: ThrowStatement` |
+| `x: 1` | `1` | `Unsupported statement type: LabeledStatement` |
+| `break` / `continue` in a loop body | `undefined` | `Unsupported statement type: …` |
+| `function f() { return 1 }` | `1` | `Unsupported statement type: FunctionDeclaration` |
+| `class C {}` | `undefined` | `Unsupported statement type: ClassDeclaration` |
+| `var x = 1` | `1` | `Unsupported variable declaration kind: var` |
+| `const y = 1; y = 2; y` | `2` | `Assignment to constant variable "y".` |
+| `let { a = 1 } = o; a` | `undefined` | `AssignmentPattern is not supported as a binding target.` |
+| `(toString => toString)(1)` | `1` | `Access to dangerous property "toString" is blocked…` |
+
+**The messages above are the ones raised at the top level.** A throw from inside a called arrow
+function is re-wrapped, so `(toString => toString)(1)` is caught as
+`Function call error: Access to dangerous property "toString" is blocked for security reasons`, and
+an unsupported statement inside a block-bodied arrow as
+`Function call error: Unsupported statement type: …`. Match on a substring rather than on the start
+of the message.
+
+The last row is the widest of them: binding writes now share the prototype-pollution blocklist with
+every other write site, so all thirteen blocked names are rejected as **arrow function parameters**
+too — a form that has nothing to do with declarations. Only `__proto__` is an actual write vector;
+the rest is kept wide so that "is this name blocked?" does not depend on which visitor reached it.
+
+**This is a change of kind, not only of coverage.** Before 0.4.0 an unsupported statement was handed
+to `acorn-walk`'s base walker, which walked the subtree as an expression and left whatever it pushed
+on the value stack — which is why `throw 1` evaluated to `1` and threw nothing. There is now an
+explicit dispatcher whose `default` raises.
+
+Expressions whose **value is unchanged** and whose stranded-value count is not — listed because the
+values above make it reasonable to assume otherwise:
+
+| Expression | 0.3.0 | 0.4.0 |
+| ---------- | ----- | ----- |
+| `1 + 2` | `3`, 0 stranded | unchanged |
+| `1; 2; 3` | `3`, **2 stranded** | `3`, 0 stranded |
+| `a; b` | `'B'`, **1 stranded** | `'B'`, 0 stranded |
+| `{ 1; 2 }` | `2`, **1 stranded** | `2`, 0 stranded |
+| `(x => { 1 })(0)`, `(x => { 1; 2 })(0)`, `(x => { })(0)` | `1` / `2` / `undefined` | unchanged |
+| `(x => { if (true) { 1 } })(0)` | `1` | `1` |
+
+A "stranded" value is one the walk pushed that nothing popped, visible as `result.stack.length` after
+an evaluation returns. It was never read, so the value was right by accident; it is now right by rule.
+
+Other behavioural changes on already-shipped paths:
+
+- **A write to a bare identifier consults the scope stack before the caller's context object.**
+  `(x => (x = 99))(1)` used to write `99` into the caller's own context and leave the arrow's
+  parameter untouched; it now writes the parameter. This is what makes `for`'s `i++` work.
+- **A block-bodied arrow's body goes through the statement dispatcher.** Completion values are
+  unchanged for every supported form (the table above), but an unsupported statement inside a block
+  body now throws where the base walker previously evaluated it:
+  `(x => { while (false) { 1 } })(0)` was `1`. In the other direction,
+  `(x => { let y = 1; y })(0)` was `undefined` and is now `1`.
+- **`EvalHooks.exit` bounds its scan to the current walk**, so a nested walk can no longer flush
+  frames belonging to the walk that contains it.
+- **A throwing arrow body no longer strands a scope on a reused `EvalContext`.** Both scope-push
+  sites now pop in a `finally`. Before this, one throwing evaluation left a scope that shadowed a
+  source key for the life of the context — and a context is reused by design in
+  `@zvenigora/ng-eval-signals`. `docs/backlog.md` A9.
+- **`result.trace` and the `after`-hook stream gain `Program` and `ExpressionStatement` entries on
+  every evaluation**, including single-expression ones. Code that counts hook events or trace
+  entries sees two more per walk.
+- The visitor table is built once and frozen at first use rather than merged per `evaluate` call.
+  Every evaluation is faster; the table is process-wide shared state.
+
+### Fixed
+
+- `pattern.ts` no longer writes the whole `EvalState` to the console on a destructuring path
+  (`docs/backlog.md` B2). Three `console.*` calls remain in the published bundle, tracked as B3.
+
+### Upgrading alongside `eval-signals` and `eval-forms`
+
+**Upgrade both downstream packages with it**: `eval-signals` **0.1.1** and `eval-forms` **0.2.1**,
+released alongside this one and documented above. `eval-signals` 0.1.0 and `eval-forms` 0.2.0
+declare `"@zvenigora/ng-eval-core": "^0.3.0"`, which resolves to `>=0.3.0 <0.4.0` and therefore
+**excludes** this release; installing 0.4.0 beside either of them raises a peer-dependency
+conflict. The two patch releases widen the range and change nothing else.
+
+Neither package was ever *incompatible* with 0.4.0 — both suites run against this evaluator on
+every build and are green — so what the conflict reported was a declared range that had not caught
+up. Both continue to support `eval-core` 0.3.0.
+
+### `@zvenigora/ng-eval-signals` — one relaxation, no release
+
+`eval-signals` is **not** re-released and its version is unchanged at 0.1.0; this is what its
+existing code does once it resolves `eval-core` 0.4.0.
+
+A signal context rejects writes to its keys with `SignalContextWriteError`. Because writes now
+consult the scope stack first, **a write to a binding the expression itself created no longer
+throws** — it mutates nothing the consumer owns. Measured, with `count` a signal in the source:
+
+| Expression | with `eval-core` 0.3.0 | with `eval-core` 0.4.0 |
+| ---------- | ---------------------- | ---------------------- |
+| `count = 5` | throws `SignalContextWriteError` | **unchanged** — still throws |
+| `(x => (x = 5))(1)` | throws `SignalContextWriteError` | `5` |
+| `let count = 5; count` | n/a — statements did not evaluate | `5`, and the source's `count` is still `1` |
+
+The read-only guarantee is intact: it covers the keys of the signal context, and an expression's own
+bindings were never among them. This is a prerequisite for `for`'s `i++` to work inside a signal.
+
+---
+
 ## [eval-forms 0.2.0] - 2026-09-06
 
 Phase 6 of the [roadmap](ROADMAP.md): a third entry point, `@zvenigora/ng-eval-forms/signals`, driving Angular [Signal Forms](https://angular.dev/guide/forms/signals) field properties from **string** expressions resolved at runtime — the same proposition as `/reactive`, against Angular's schema-and-model API rather than `FormGroup`. Design, measurements and the questions it settles are in `docs/forms/phase-6-plan.md`; consumer documentation in the [package README](modules/eval-forms/README.md). **`/signals` requires Angular 22 or later.** `/reactive` is unchanged and the shared core changes only additively — one new export, `applyErrorPolicy`, called out below; both still work from Angular 19.

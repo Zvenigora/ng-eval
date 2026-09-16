@@ -13,6 +13,7 @@
       "cache": true,
       "inputs": [
         "default",
+        "^production",
         "{workspaceRoot}/eslint.config.mjs",
         "{workspaceRoot}/eslint.config.js"
       ]
