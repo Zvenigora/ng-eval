@@ -1,6 +1,6 @@
 # Phase 2 — retrospect
 
-Nine steps (0, 0b, 1–7), 2026-09-11 to 2026-09-16, against
+Ten steps (0, 0b, 1–8), 2026-09-11 to 2026-09-16, against
 [`phase-2-plan.md`](phase-2-plan.md).
 
 **The phase released three packages**, which is not what it set out to do:
@@ -16,11 +16,11 @@ The two patch releases exist because `^0.3.0` does not admit `0.4.0`, which brok
 scope" reasonably read as *`eval-core` only* when the phase opened, and that stopped being true at
 the last step.
 
-This document doubles as step 6's record. Steps 1–5 recorded their findings **into the plan**
-rather than into summaries of their own, which is why there are no `step-N-summary.md` files here
-and why this file does not invent five: reconstructing them now would be authoring, not recording.
-The plan is therefore the design record *and* the step log, and its § 3 and § 5 carry corrections
-written at the step that found them.
+This document doubles as the record for steps 6, 7 and 8. Steps 1–5 recorded their findings **into
+the plan** rather than into summaries of their own, which is why there are no `step-N-summary.md`
+files here and why this file does not invent five: reconstructing them now would be authoring, not
+recording. The plan is therefore the design record *and* the step log, and its § 3 and § 5 carry
+corrections written at the step that found them.
 
 ## 1. What shipped
 
@@ -33,16 +33,17 @@ written at the step that found them.
 | **An iteration budget** | `maxIterations`, default 100,000, per outermost `evaluate` entry rather than per state or per loop |
 | **`exit`'s scan bound** | [E6](../backlog.md#e6), landed in step 1 after its premise was measured false |
 | **A9 and B2** | step 0 — `try`/`finally` at both scope-push sites, and the `EvalState` dump deleted from `pattern.ts` |
-
 | **The peer ranges** | step 7 — both widened to `>=0.3.0 <0.5.0`, and `nx.json`'s `lint` inputs gained `^production` so a sibling manifest change can no longer be cached over |
+| **The citations of them** | step 8 — six sites re-spelled, and one gate that would have got a live guard deleted |
 
 Opened along the way: [A11](../backlog.md#a11), [A12](../backlog.md#a12),
-[F13](../backlog.md#f13), [F14](../backlog.md#f14); [F8](../backlog.md#f8) widened from one
-untagged version to four. [F12](../backlog.md#f12) was opened and closed inside the phase.
-Resolved, in the register's own vocabulary:
-[A9](../backlog.md#a9) and [B2](../backlog.md#b2) are **Fixed** (step 0), [E6](../backlog.md#e6)
-and [F12](../backlog.md#f12) are **Retired — fixed** (steps 1 and 7). All four bodies still sit
-above the register's `# Retired` heading, which is where the entries themselves say they belong.
+[F13](../backlog.md#f13); [F8](../backlog.md#f8) widened from one untagged version to four.
+[F12](../backlog.md#f12) and [F14](../backlog.md#f14) were both opened **and closed** inside the
+phase, one step apart each time. Resolved, in the register's own vocabulary:
+[A9](../backlog.md#a9) and [B2](../backlog.md#b2) are **Fixed** (step 0); [E6](../backlog.md#e6),
+[F12](../backlog.md#f12) and [F14](../backlog.md#f14) are **Retired — fixed** (steps 1, 7 and 8).
+All five bodies still sit above the register's `# Retired` heading, which is where the entries
+themselves say they belong.
 
 ## 2. The thing this phase will be remembered for
 
@@ -224,17 +225,8 @@ The execution gate ([F4](../backlog.md#f4)) covers the two new blocks, which too
 
 ## 6. What is left
 
-- [F14](../backlog.md#f14) — **step 7's own residue.** Four downstream comments still cite
-  `^0.3.0`, a range that no longer exists. Three are stale in *spelling* only: they reason that the
-  range admits the leaking `eval-core` 0.3.0, and `>=0.3.0 <0.5.0` still does. The fourth,
-  `evaluate-rule.ts:53`, repeats the necessary-vs-sufficient error step 7 corrected in the plan —
-  "removal is gated on raising the peer range" — and is the one that could get a live guard
-  deleted. Step 7's file list is manifests only, so it could not reach them; a comment-only change
-  to four files, wanting its own sanction.
-- [F8](../backlog.md#f8) — **four untagged versions now, not one**, three of them created by this
-  phase. Worth restating as what it became: three consecutive releases across two phases produced
-  zero tags, so nothing in the procedure writes them and no gate notices. That is a release
-  checklist's absence, not four slips.
+- [F8](../backlog.md#f8) — **four untagged published versions**, three of them created by this
+  phase. The sharpest thing the phase leaves, and § 8 below is why it is not "remember to tag".
 - [A12](../backlog.md#a12) — the budget bounds time, not memory; `result.trace` grows per iteration.
 - [A11](../backlog.md#a11) — renaming and nested destructuring bind the wrong key. Live on the
   default path, found in step 3, and **not caused by this phase** — declarations only widened the
@@ -295,3 +287,59 @@ believed and passed on".
 It belongs beside § 3's findings rather than apart from them. Every one of those was a claim that
 had passed review at the step that made it, and this is the same shape one layer out: the
 verification command is itself a claim, and running it is not the same as it having run.
+
+## 8. What the phase leaves: a procedure with a silencer
+
+[F8](../backlog.md#f8) is the one open item worth naming at length, because the obvious reading of
+it is wrong and the obvious fix would not work.
+
+**Four published versions carry no git tag**: `eval-forms@0.2.0` from Phase 6, and this phase's
+`eval-core@0.4.0`, `eval-signals@0.1.1`, `eval-forms@0.2.1`. The natural conclusion is that nobody
+wrote the procedure down, or that four people forgot. Checked, both are false:
+
+- [`CONTRIBUTING.md`](../../CONTRIBUTING.md) **step 4 specifies it** — the `{projectName}@{version}`
+  format, the `git tag -a` command, and the constraint that the commit be the one the artifact was
+  built from.
+- **It was followed**: `eval-core@0.3.0`, `eval-forms@0.1.0` and `eval-signals@0.1.0` all exist.
+- **All three `project.json`s read those tags** (`currentVersionResolver: "git-tag"`), so they are
+  load-bearing input to the next release's version — the configuration does depend on them.
+
+So the step is specified, understood, and was performed; it has simply been skipped by every
+release for two phases. **What makes that possible is `fallbackCurrentVersionResolver: "disk"`.** A
+missing tag fails nothing. The resolver falls back to the manifest, the next version computes, the
+publish works, and the configuration that was built to depend on tags goes on working without them.
+
+**The tag step has a specification and no forcing function, and it ships with a silencer.** That is
+a different defect from a missing instruction and it wants a different fix: "remember to tag" is
+the remedy for a procedure nobody documented, and this procedure is documented. What would actually
+hold is one of — failing loudly when a tag the resolver is about to read does not exist; writing the
+tag from whatever performs the publish, so the two cannot separate; or gating it the way
+[F3](../backlog.md#f3) and [F4](../backlog.md#f4) were gated, with a check that every version in a
+`modules/*/package.json` has a tag. Only the last catches the four already missing.
+
+It is the same shape as § 7's cache incident and as every finding in § 3: **a mechanism that keeps
+working while the thing it depends on quietly stops being true.** A cache that replays a pass it
+did not run, a docblock that justifies a guard with a reason that expired, a plan row that records
+a transition as an endpoint, a fallback that covers for a tag nobody wrote. The phase spent more
+effort on that class than on statements, and this entry is where it is left standing.
+
+---
+
+## 9. Phase 2, closed
+
+Ten steps. Statement support in `eval-core` 0.4.0 — seven visitors, block scoping, an iteration
+budget, and a dispatcher whose `default` throws instead of silently mis-evaluating. Two patch
+releases downstream to make it installable. Six documentation sites corrected to match.
+
+**What it actually cost was not the visitors.** The evaluation model absorbed statements about as
+the plan predicted: the value stack was already the completion-value mechanism (§ 1.2), no
+completion record was needed, and the three stack invariants held at every new site. What consumed
+the phase was everything *around* the code — the blast radius of a change to a silently-wrong path,
+and the accumulated claims about it. Step 6 was scoped as records and release and produced five
+findings, four of them corrections to claims that had passed review at the step that made them.
+
+**The one number to carry forward**: `eval-core` 0.4.0 changes what **twenty-two rows'** worth of
+already-working expressions return or raise — seven that return a different value, fifteen that now
+throw — against a plan section that enumerated twelve. Every row is measured, before and after, in
+the CHANGELOG, against a pre-phase worktree rather than against the plan. That gap between what a
+phase thinks it changes and what it changes is the phase's real subject.

@@ -2072,17 +2072,34 @@ Phase 2 opened while three `package.json`s have moved past them.
 
 The entry's original question — *was the tag missed, or was the version never published?* — is now
 asked of four versions at once, and Phase 2 cannot answer it for its own three: this branch is
-unmerged and nothing has been published from it. What Phase 2 does establish is that the gap is
-**systematic rather than a one-off slip**, which is how the entry read at one instance. Three
-consecutive releases across two phases produced zero tags, so nothing in the procedure produces
-them and no gate notices — the same shape as [F3](#f3) and [F4](#f4) before those were built, and
-the argument for a release checklist rather than four individual corrections.
+unmerged and nothing has been published from it.
 
-`CONTRIBUTING.md` documents version bumps by hand; whether it documents tagging, and whether
-`nx release` is meant to be doing it (each `project.json` carries a `release.version` block with
-`currentVersionResolver: "git-tag"`, which **reads** tags it may be relying on something else to
-write), is the first thing to check. A resolver that falls back to disk when no tag exists will
-silently keep working while the tags it was configured to read go missing.
+**The mechanism, checked rather than guessed — and it is not "nobody wrote the procedure down".**
+That was the natural reading and it is wrong:
+
+- **The procedure is specified.** [`CONTRIBUTING.md`](../CONTRIBUTING.md) step 4 says to tag and
+  push, gives the `{projectName}@{version}` format, gives the `git tag -a` command, and states the
+  constraint that the commit must be the one the artifact was built from.
+- **It was followed, once per package.** `eval-core@0.3.0`, `eval-forms@0.1.0` and
+  `eval-signals@0.1.0` all exist. This is not a step nobody has ever performed.
+- **All three `project.json`s read those tags** — `currentVersionResolver: "git-tag"` — so the
+  tags are load-bearing input to the next release's version, exactly as CONTRIBUTING says.
+- **And every release since has skipped it**: `eval-forms@0.2.0` from Phase 6, and Phase 2's
+  `eval-core@0.4.0`, `eval-signals@0.1.1`, `eval-forms@0.2.1`. Four consecutive releases across
+  two phases.
+
+**So what is missing is not a writer but a forcing function — and there is an active silencer.**
+`fallbackCurrentVersionResolver: "disk"` means a missing tag never fails anything: the resolver
+falls back to the manifest, the next release computes a plausible version, and the configuration
+that was supposed to depend on tags keeps working without them. A step that is documented,
+manual, unenforced, and whose omission is *masked by design* will be skipped, and was — four times.
+
+That is a sharper finding than "remember to tag", and it points at a different fix. Options, in
+rough order of cost: have the release procedure fail loudly when the tag it is about to read does
+not exist (drop or condition the disk fallback); or add the tag write to whatever runs the publish,
+so the two cannot separate; or gate it, in the shape [F3](#f3) and [F4](#f4) took — a check that
+every version in a `modules/*/package.json` has a corresponding tag. The last is the only one that
+catches the four already missing.
 
 <a id="f10"></a>
 ## F10 — The drift gate covers documented-**and-imported** symbols, not documented ones
