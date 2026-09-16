@@ -118,6 +118,31 @@ service.eval('a + b * c', state);
 state.nodeTimings.get('BinaryExpression');   // { count: 2, total: <ms> }
 ```
 
+### Iteration budget
+
+`for` loops are bounded so that a runaway expression fails fast rather than hanging the caller. The budget is **100,000 iterations per evaluation**, shared by every loop in the expression — a per-loop cap would multiply under nesting and so would not be a bound at all. Exceeding it throws; a runaway loop that silently returns a partial value is the failure mode this exists to prevent.
+
+```javascript
+import { EvalService } from '@zvenigora/ng-eval-core';
+
+const service = inject(EvalService);
+
+service.simpleEval('for (let i = 0; i < 3; i++) { i }'); // 2
+
+// Raise it, lower it, or set Infinity and own the consequence.
+const state = service.createState({}, { maxIterations: 10 });
+
+try {
+  service.eval('for (let i = 0; i < 100; i++) { i }', state);
+} catch (e) {
+  e.message; // 'Iteration budget exhausted after 10 iterations'
+}
+```
+
+The budget is refilled per outermost `eval` call, not per state — so the `createState` + repeated `eval` style does not erode one budget across independent evaluations, and an arrow function that outlives the walk that created it does not carry that walk's spent budget into a later call.
+
+**It bounds time, not memory.** `state.result.trace` gains an entry per pushed value and is never reset, so a long-running loop's trace grows as iterations × nodes and that allocation is paid before the throw. With `maxIterations: Infinity` there is no bound at all; prefer a large finite number.
+
 ### Evaluation hooks
 
 Hooks let you observe an evaluation as it happens: a callback per AST node, or per resolved context read. They are registered on the state's `hooks` registry, so they apply to that **state** — every evaluation you run through it, which under the `createState` + repeated `eval` style is more than one. `EvalService` is a root singleton, but hooks are never held on the service, so one consumer's hooks never reach another's.
@@ -149,6 +174,27 @@ state.hooks.onRead((event) => {
 ```
 
 If you want a dependency set rather than raw events, `createDependencyTracker()` builds one and applies the `scoped` filtering for you.
+
+#### Statements and the empty-completion sentinel
+
+Since 0.4.0 an expression may be a statement list, and a statement that produces no value — a declaration, an `if` that takes no branch, a `for` that runs zero iterations — pushes a sentinel rather than `undefined`. JavaScript's completion-value semantics keep the last *non-empty* value, and empty is not the same as `undefined`: in `a; noop()`, where `noop` returns `undefined`, the result is `undefined` and not `'A'`, because the call genuinely produced a value.
+
+`EMPTY_COMPLETION` never leaves an evaluation's return value — it is converted to `undefined` at the walk boundary — but an `after` hook fires before that conversion, so a hook on a statement node **will** see it. It is exported so you can recognise it by identity rather than by guessing:
+
+```javascript
+import { EMPTY_COMPLETION, EvalService } from '@zvenigora/ng-eval-core';
+
+const service = inject(EvalService);
+const state = service.createState({ a: 1 });
+
+const produced = [];
+state.hooks.on('after', 'VariableDeclaration', (event) => {
+  produced.push(event.value !== EMPTY_COMPLETION);
+});
+
+service.eval('let x = 1; x + a', state); // 2
+produced;                                // [false] - the declaration produced nothing
+```
 
 #### Hooks are synchronous
 

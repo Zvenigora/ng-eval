@@ -231,6 +231,60 @@ The project has been tested with the following node types:
  - `UpdateExpression`
  - `ArrowFunctionExpression` *potentially unsafe* (AssignmentPattern is not implemented)
 
+Statements, since `@zvenigora/ng-eval-core` 0.4.0:
+
+ - `Program`
+ - `ExpressionStatement`
+ - `EmptyStatement`
+ - `BlockStatement`
+ - `VariableDeclaration` — `let` and `const` only; `var` is rejected
+ - `IfStatement`
+ - `ForStatement` — the classic three-part form only
+
+**Every other statement type is rejected with `Unsupported statement type: <type>`.**
+That is a change of kind, not only of coverage: before 0.4.0 an unsupported statement was
+handed to `acorn-walk`'s base walker, which walked the subtree as an expression and left
+whatever it pushed on the value stack — so `throw 1` evaluated to `1` and threw nothing, and
+`switch (1) { case 1: 2 }` evaluated to `2`. See the
+[CHANGELOG](CHANGELOG.md) for the full before/after table.
+
+`WhileStatement`, `DoWhileStatement`, `ForInStatement`, `ForOfStatement`, `SwitchStatement`,
+`TryStatement`, `ThrowStatement`, `LabeledStatement`, `BreakStatement`, `ContinueStatement`,
+`FunctionDeclaration` and `ClassDeclaration` are among the rejected types. The three that
+imply **abrupt completion** and are reachable — `break`, `continue`, `throw` — are out by
+design rather than by schedule: the evaluator has no completion record to carry them, and
+adding one is a redesign of the walker rather than another visitor. `return` never reaches
+the evaluator at all: an expression is parsed outside any function, so `return 1` is a parse
+error (`'return' outside of function`) both before and after 0.4.0.
+
+### How statements differ from JavaScript
+
+Seven deliberate divergences, each a documented rule rather than an accident:
+
+1. **An arrow function with a block body returns the block's completion value**, where
+   JavaScript returns `undefined` without a `return`. `x => { 1 }` yields `1` here. With
+   `return` unsupported, the completion value is the only answer available that is not an
+   error.
+2. **`const` reassignment throws at the write, not at parse time.**
+3. **An unsupported statement type throws**, where before 0.4.0 it returned a value.
+4. **No hoisting.** A `let` binds when its declaration is reached; reading it earlier reads
+   the enclosing context rather than raising a temporal-dead-zone error.
+5. **Closures do not capture their lexical scope.** An arrow resolves its free variables
+   against the context *as it is when it is called*, not as it was where it was written — so
+   `for (let i = 0; i < 3; i++) { fns.push(() => i) }` leaves three functions that all read
+   whatever `i` resolves to at call time. This is pre-existing behaviour that statements
+   neither cause nor worsen.
+6. **A pattern form the binder does not implement throws** rather than binding nothing.
+7. **A binding name on the prototype-pollution blocklist is rejected — including as an arrow
+   function parameter.** `(toString => toString)(1)` returned `1` before 0.4.0 and now
+   throws; so do `constructor`, `prototype`, `valueOf`, `hasOwnProperty`, `isPrototypeOf`,
+   `propertyIsEnumerable`, `toLocaleString` and the four `__define`/`__lookup` accessors.
+   Binding writes share the blocklist with every other write site, which is wider than the
+   threat — only `__proto__` is an actual write vector — and is kept wide so that "is this
+   name blocked?" does not depend on which visitor reached it. Note that a throw from inside a
+   called arrow function is re-wrapped, so this one arrives as
+   `Function call error: Access to dangerous property "toString" is blocked…`.
+
 ## Options
 To change the default behavior of the evaluator, use `options`. Options may be provided as an argument to the function call of `simpleEval`.
 
@@ -257,6 +311,10 @@ Set `trackTime` to `true` to accumulate per-node-type timings, read back from th
 ### Evaluation hooks
 
 Register callbacks that fire per AST node (`state.hooks.on`) and per resolved context read (`state.hooks.onRead`) — the basis for dependency tracking. Documented in the [package README](modules/eval-core/README.md#evaluation-hooks), for the same reason as above.
+
+### Iteration budget
+
+`for` loops are bounded. Set `maxIterations` to raise or lower the default of **100,000** iterations per evaluation; exceeding it throws rather than returning a partial value. Documented in the [package README](modules/eval-core/README.md#iteration-budget), for the same reason as above.
 
 ### Evaluation with state
 Evaluation executes the AST using the given state `eval(ast, state)`. The `state` object includes the context, result, and options. It is in use by visitors functions behind the scene. It could be used to extend the functionality of the evaluator. For example, it can provide the execution history and the time of execution. 

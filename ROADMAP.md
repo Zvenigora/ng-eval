@@ -84,7 +84,39 @@ Key design questions:
 Exit criteria: public API to register/unregister hooks; a "record dependencies read
 during evaluation" example built on it; tests; docs.
 
-### Phase 2 — Statement support: `let`, `if`, `for` (`eval-core`)
+### ✅ Phase 2 — Statement support: `let`, `if`, `for` (`eval-core`) — **done**
+
+**Shipped in `@zvenigora/ng-eval-core` 0.4.0.** Seven visitors — `Program`,
+`ExpressionStatement`, `EmptyStatement`, `BlockStatement`, `VariableDeclaration`, `IfStatement`
+and `ForStatement` — under the completion-value convention of
+[`docs/statements/phase-2-plan.md`](docs/statements/phase-2-plan.md) § 3.1. The plan is the design
+record; [`docs/statements/summary.md`](docs/statements/summary.md) is the retrospect, and the
+[CHANGELOG](CHANGELOG.md) carries the migration note.
+
+**Two things the sketch below got wrong, both recorded because they shaped the phase**:
+
+- **No completion record was needed.** The sketch anticipated "a sentinel/completion value bubbled
+  through `EvalState`". With abrupt completion (`break`, `continue`, `return`, `throw`) out of
+  scope, nothing needs to bubble: an `if` that takes no branch simply pushes `EMPTY_COMPLETION` and
+  returns. Per-walk mutable state on `EvalState` would also have collided with the re-entrant
+  `evaluate()` in `arrow-function-expression.ts`. The stack discipline has no such coupling.
+- **Statements were not unsupported — they were silently mis-evaluated.** The sketch reads as
+  though statements did nothing. They were walked as expressions: `throw 1` evaluated to `1` and
+  threw nothing, `if (a) { 1 } else { 2 }` walked **both** branches and returned the wrong one. That
+  made the phase a behavioural release rather than an additive one, which is the whole shape of its
+  CHANGELOG entry.
+
+**Left out deliberately**: `while`, `do`/`while`, `for...of`, `for...in`, `switch`, `try`, labels,
+function and class declarations, `var`, and everything implying abrupt completion. All now throw
+`Unsupported statement type: <type>` instead of returning an accidental value.
+
+Opened along the way: [A11](docs/backlog.md#a11), [A12](docs/backlog.md#a12),
+[F12](docs/backlog.md#f12) and [F13](docs/backlog.md#f13). Resolved:
+[A9](docs/backlog.md#a9) and [B2](docs/backlog.md#b2) **Fixed** in step 0,
+[E6](docs/backlog.md#e6) **Retired — fixed** in step 1.
+
+<details>
+<summary>The original sketch, kept for the record</summary>
 
 Acorn already parses full `Program`s with statements — `parse.ts` calls `acorn.parse`
 and only *narrows* to a single expression when `extractExpressions` is set
@@ -123,6 +155,8 @@ preconditions" for the argument and for why two further entries are *not* precon
 Exit criteria: `VariableDeclaration` (`let`/`const`), `IfStatement`, `BlockStatement`,
 classic `ForStatement` visitors; multi-statement `Program` evaluation; tests mirroring
 the existing per-visitor test style; README "ESTree Nodes Supported" updated.
+
+</details>
 
 ### ✅ Phase 3 — `@zvenigora/ng-eval-signals` (new module) — **done**
 
@@ -403,14 +437,15 @@ Entries are cited by stable ID — `BL-A8`, not a line number.
    capability, but ordered here deliberately: no version bump, no behavioural change, blocks
    nothing — and F3 and F4 build gates every later phase inherits, so Phase 2 should start
    behind them rather than adding to a queue in front of them.
-6. Phase 2 (statements) — opens with the step 0 above
-   ([BL-A9](docs/backlog.md#a9), [BL-B2](docs/backlog.md#b2)). Otherwise independent — nothing
-   else in this roadmap depends on `let`/`if`/`for`.
+6. ~~Phase 2 (statements)~~ — **done**, shipped in `eval-core` 0.4.0. Opened with the step 0
+   above ([BL-A9](docs/backlog.md#a9), [BL-B2](docs/backlog.md#b2)), both now fixed.
 7. Phase 5 (async signals) — depends on Phase 3, and nothing depends on it. Deferred
-   out of Phase 3 deliberately rather than left undone; it is ordered after Phase 2 because
+   out of Phase 3 deliberately rather than left undone; it was ordered after Phase 2 because
    the sync primitive already composes with `resource` for the promise case, and because
-   [BL-A9](docs/backlog.md#a9) — Phase 2's step 0 — would retire one of its open questions
-   outright.
+   [BL-A9](docs/backlog.md#a9) — Phase 2's step 0 — retires one of its open questions
+   outright. **A9 is now fixed, so that question is answered before Phase 5 opens.**
+   [BL-F12](docs/backlog.md#f12) is the nearer piece of `eval-signals` work: its peer range
+   excludes `eval-core` 0.4.0, and Phase 5 releases that package anyway.
 8. Phase 7 / Phase 8 — reserved above, neither costed nor scheduled.
 
 Unscheduled and independent of all of the above: [BL-A2](docs/backlog.md#a2), a wrong-value

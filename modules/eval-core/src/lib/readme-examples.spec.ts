@@ -3,6 +3,7 @@ import {
   ASYNC_HOOK_MESSAGE,
   CompilerService,
   DiscoveryService,
+  EMPTY_COMPLETION,
   EvalContext,
   EvalHooks,
   EvalScope,
@@ -36,14 +37,15 @@ import {
  * other half — that one gates *what the README says*, this one gates *whether
  * what it says runs*.
  *
- * ## Coverage — all 12 ` ```javascript ` blocks
+ * ## Coverage — all 14 ` ```javascript ` blocks
  *
- * Counted 2026-09-08, **including the indented fence** inside the `onHookError`
- * bullet, which a `^```` scan misses; that miss is why both the plan's "8" and
- * step 2's corrected "11" were one short. Ten cases cover twelve blocks:
- * sections whose later blocks continue an earlier one are a single case, split
- * only where the document declares a fresh start by re-declaring its own
- * bindings.
+ * Counted 2026-09-08 at twelve, **including the indented fence** inside the
+ * `onHookError` bullet, which a `^```` scan misses; that miss is why both the
+ * plan's "8" and step 2's corrected "11" were one short. **Step 6 added two**,
+ * for the two options Phase 2 shipped, and both are covered rather than
+ * excused — so the count is now fourteen blocks under twelve cases. Sections
+ * whose later blocks continue an earlier one are a single case, split only
+ * where the document declares a fresh start by re-declaring its own bindings.
  *
  * | Case | Blocks |
  * | --- | --- |
@@ -52,11 +54,18 @@ import {
  * | Scopes | `### Scopes` |
  * | Per-node timing | `### Per-node timing` |
  * | An adopted registry | the `createTimingHook` block — its own state, because its sentence is about a registry the caller built |
+ * | Iteration budget | `### Iteration budget` — **step 6** |
+ * | The empty-completion sentinel | the `EMPTY_COMPLETION` block under `#### Statements and the empty-completion sentinel` — **step 6** |
  * | Evaluation hooks | `### Evaluation hooks` **+** the `onRead` block **+** the `ASYNC_HOOK_MESSAGE` block, all against one `state` |
  * | Hook errors | the `onHookError: 'collect'` block |
  * | An owned registry's policy | the indented `EvalHooks` block |
  * | A failed evaluation | the `boom` block |
  * | An abandoned child | the `compiler.call` block |
+ *
+ * **The count is hand-transcribed and nothing keeps it honest but this line.**
+ * It has now been wrong twice and corrected three times, which is the argument
+ * for the gate this file is not: `docs/backlog.md` F10 and F11 carry what the
+ * drift gate next door cannot see, and a block-count gate is neither of them.
  *
  * Nothing is uncovered. There are no `sh` or `json` blocks in this file, and no
  * ` ```ts ` fence — this document and the root are `javascript` throughout,
@@ -192,6 +201,45 @@ describe('documented examples', () => {
     expect(typeof state.nodeTimings.get('BinaryExpression')?.total).toBe('number');
     expect(state.nodeTimings.get('Identifier')?.count).toBe(3);
     expect(typeof state.nodeTimings.get('Identifier')?.total).toBe('number');
+  });
+
+  it('should bound a loop at the configured iteration budget', () => {
+    // The `### Iteration budget` block, added by step 6.
+    expect(service.simpleEval('for (let i = 0; i < 3; i++) { i }')).toBe(2);
+
+    const state = service.createState({}, { maxIterations: 10 });
+
+    // The block prints the message from a `catch`; asserting the throw and the
+    // message together is the same claim without the control flow.
+    expect(() => service.eval('for (let i = 0; i < 100; i++) { i }', state))
+      .toThrow('Iteration budget exhausted after 10 iterations');
+  });
+
+  it('should show the empty-completion sentinel to an after hook on a declaration', () => {
+    // The `#### Statements and the empty-completion sentinel` block, added by
+    // step 6.
+    //
+    // **What makes this non-vacuous is the sentinel's *identity*, not the
+    // hook firing.** `event.value !== EMPTY_COMPLETION` is `true` for every
+    // node in the walk except the ones that produced nothing, so a hook
+    // registered on `'*'` would push a list of mostly `true` and prove
+    // nothing. It is registered on `VariableDeclaration` alone, which is the
+    // one node type in this expression whose completion value is the sentinel.
+    const state = service.createState({ a: 1 });
+    const produced: boolean[] = [];
+
+    state.hooks.on('after', 'VariableDeclaration', (event) => {
+      produced.push(event.value !== EMPTY_COMPLETION);
+    });
+
+    expect(service.eval('let x = 1; x + a', state)).toBe(2);
+    expect(produced).toEqual([false]);
+
+    // The prose above the block, which the block itself does not print: the
+    // sentinel is not `undefined`, so a statement that genuinely produced
+    // `undefined` still wins over an earlier value.
+    expect(service.simpleEval('a; noop()', { a: 'A', noop: () => undefined }))
+      .toBeUndefined();
   });
 
   it('should leave an adopted registry unconfigured until the hook is installed', () => {

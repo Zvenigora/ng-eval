@@ -3,7 +3,7 @@ import * as walk from 'acorn-walk';
 import { beforeVisitor } from './before-visitor';
 import { afterVisitor } from './after-visitor';
 import { pushVisitorResult, popVisitorResult } from './visitor-result';
-import { dispatchStatement } from './program';
+import { dispatchStatement } from './dispatch-statement';
 import { EMPTY_COMPLETION, EvalState } from '../classes/eval';
 
 /**
@@ -45,15 +45,15 @@ import { EMPTY_COMPLETION, EvalState } from '../classes/eval';
  * this visitor and the base walker. Measured: swapping in a raw callback reddens
  * that case alone.
  *
- * It is still the right call, for the reason `program.ts` gives rather than for
- * a reason the suite can show: rule 2's single `callback`/`pop` pair lives in one
- * place, so the guarantee holds for whatever bare statement type a later phase
- * registers without this visitor being revisited.
+ * It is still the right call, for the reason `dispatch-statement.ts` gives rather
+ * than for a reason the suite can show: rule 2's single `callback`/`pop` pair
+ * lives in one place, so the guarantee holds for whatever bare statement type a
+ * later phase registers without this visitor being revisited.
  *
- * This is `dispatchStatement`'s **third** importer, which is the condition
- * `program.ts` set for giving it a module of its own. The condition is met; the
- * move is deferred to step 6 on scheduling grounds alone and is recorded in the
- * plan's § 3.1 and step 6, not left to be rediscovered.
+ * This visitor was `dispatchStatement`'s **third** importer, which is the
+ * condition for giving it a module of its own. **Step 6 made that move**: the
+ * dispatcher now lives in `dispatch-statement.ts`, with the rule and its history
+ * in that module's docblock.
  *
  * **It pushes no scope, and there is no `try`/`finally` to pair.** Four routes a
  * binding could arrive by, all closed: a block body gets its scope from

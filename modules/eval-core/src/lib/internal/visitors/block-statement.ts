@@ -3,7 +3,7 @@ import * as walk from 'acorn-walk';
 import { beforeVisitor } from './before-visitor';
 import { afterVisitor } from './after-visitor';
 import { pushVisitorResult } from './visitor-result';
-import { dispatchStatement } from './program';
+import { dispatchStatement } from './dispatch-statement';
 import { EMPTY_COMPLETION, EvalState } from '../classes/eval';
 
 /**

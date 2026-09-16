@@ -1,6 +1,6 @@
 {
   "name": "@zvenigora/ng-eval-core",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "An expression evaluator for Angular",
   "repository": {
     "type": "git",
