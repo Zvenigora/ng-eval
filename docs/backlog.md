@@ -71,13 +71,17 @@ release, not a free change.
 
 | Package | Version | Notes |
 | ------- | ------- | ----- |
-| `@zvenigora/ng-eval-core` | 0.4.0 | Phase 2, statements. **No `eval-core@0.4.0` tag exists yet** — [F8](#f8) |
-| `@zvenigora/ng-eval-signals` | 0.1.1 | Phase 2 step 7: peer range only. **No `eval-signals@0.1.1` tag exists yet** — [F8](#f8). 0.1.0 is tagged |
-| `@zvenigora/ng-eval-forms` | 0.2.1 | Phase 2 step 7: peer range only. **Neither `eval-forms@0.2.0` nor `@0.2.1` is tagged** — [F8](#f8) |
+| `@zvenigora/ng-eval-core` | 0.4.0 | Phase 2, statements. Tagged `eval-core@0.4.0` 2026-09-16, at `7935a78` — [F8](#f8) |
+| `@zvenigora/ng-eval-signals` | 0.1.1 | Phase 2 step 7: peer range only. Tagged `eval-signals@0.1.1` 2026-09-16, at `7935a78` — [F8](#f8) |
+| `@zvenigora/ng-eval-forms` | 0.2.1 | Phase 2 step 7: peer range only. Tagged `eval-forms@0.2.1` 2026-09-16, at `7935a78`; `@0.2.0` tagged the same day — [F8](#f8) |
 
 **Phase 2 released all three.** `eval-core` 0.4.0 is the phase; the two patch releases carry one
-manifest field each and no code ([F12](#f12)). Three of these five versions want tags and none has
-one, which is [F8](#f8)'s subject and now its size.
+manifest field each and no code ([F12](#f12)).
+
+**Every published version now carries a tag, as of 2026-09-16** — the three above plus seven written
+retroactively, all on the remote. That clears [F8](#f8)'s arrears and **not** [F8](#f8): the step
+remains manual and unenforced, the three release tags point one commit behind the build, and the
+entry says what is left.
 
 ---
 
@@ -129,7 +133,7 @@ one, which is [F8](#f8)'s subject and now its size.
 | [F5](#f5) | The `js-sha256` peer range is locked to a dead minor | core | decision | Open |
 | [F6](#f6) | CONTRIBUTING's "Code style" describes a config that never existed here | repo | decision (editorial) | Open |
 | [F7](#f7) | Intermittent Jest worker-teardown warning — **no established locus**, possibly Nx/Jest rather than a library | — | fix? | Open — locus corrected 2026-09-09; **not reproducible per project** |
-| [F8](#f8) | **Four** untagged published versions; CLAUDE.md half done | repo | fix | Open — **widened by Phase 2**: `eval-core@0.4.0`, `eval-signals@0.1.1`, `eval-forms@0.2.1` join `eval-forms@0.2.0`; systematic, not a slip |
+| [F8](#f8) | The release tag step has no forcing function, and ships with a silencer | repo | fix | **Premise retired 2026-09-16** — all ten missing tags written and pushed, so the arrears are cleared; the mechanism is untouched and the entry is live |
 | [F9](#f9) | No gate on document cross-references — the register's own dangling links | repo | fix | Open — deferred by [plan](gates/plan.md) § 8.4; **first concrete instance recorded 2026-09-13** |
 | [F10](#f10) | The drift gate covers documented-**and-imported** symbols only | core, signals, forms | fix | Open — the gap [F3](#f3) leaves |
 | [F11](#f11) | A gated README can only import from its own specifier | core, signals, forms | fix | Open — bounds [F3](#f3) and [F4](#f4) |
@@ -2038,9 +2042,13 @@ does not warn reports nothing, and "most likely an open handle" was a guess that
 locus over twelve restatements.
 
 <a id="f8"></a>
-## F8 — `eval-forms@0.2.0` is untagged, and CLAUDE.md describes a pre-Phase-6 repo
+## F8 — The release tag step has no forcing function, and ships with a silencer
 
-**Package** repo · **Kind** fix · **Status** Open
+**Package** repo · **Kind** fix · **Status** **Premise retired 2026-09-16** — the ten missing tags
+were written and pushed, so the arrears this entry opened on are cleared. **The mechanism is
+untouched and the entry is live**; read the closing note before planning against it. Opened
+2026-09-06 as "`eval-forms@0.2.0` is untagged, and CLAUDE.md describes a pre-Phase-6 repo", which
+is what the two headed sections below are still about
 
 Two drifts between what the repository says about itself and what it is, both found 2026-09-06.
 
@@ -2063,7 +2071,8 @@ That half mattered more than an ordinary stale doc: `CLAUDE.md` is loaded into e
 context, so each new session started from a description of the repository one phase behind, and
 the "active plan" pointer aimed at a document the same file said did not exist.
 
-**Open: the tag, and whether 0.2.0 is actually on npm.**
+**Open: the tag, and whether 0.2.0 is actually on npm.** — *the tag half is done; see the closing
+note. Whether each version is on npm is untouched by tagging and remains unanswered.*
 
 **Widened by Phase 2, 2026-09-16 — it is now three missing tags, not one.** The phase released
 `eval-core` **0.4.0** (step 6) and, in step 7, `eval-signals` **0.1.1** and `eval-forms` **0.2.1**.
@@ -2100,6 +2109,32 @@ not exist (drop or condition the disk fallback); or add the tag write to whateve
 so the two cannot separate; or gate it, in the shape [F3](#f3) and [F4](#f4) took — a check that
 every version in a `modules/*/package.json` has a corresponding tag. The last is the only one that
 catches the four already missing.
+
+**The tag backlog is empty as of 2026-09-16, and nothing above it changed.** Ten tags were written
+and pushed: seven retroactively — `eval-core@0.1.104`, `@0.1.105`, `@0.1.106`, `@0.1.107`, `@0.2.1`,
+`@0.2.2` and `eval-forms@0.2.0` — and three for the versions released this week, `eval-core@0.4.0`,
+`eval-signals@0.1.1` and `eval-forms@0.2.1`. All sixteen tags in the repository are on the remote,
+and every version in the three `modules/*/package.json` manifests and every released version in
+`CHANGELOG.md` now resolves to one.
+
+**That closes the arrears, not the entry.** The three current versions were tagged *because the gap
+was noticed during the release*, not because anything required it — the same manual, unenforced step
+this entry is about, performed once more by a reader who happened to be looking. The diagnosis above
+stands **unchanged**: the procedure is specified in [`CONTRIBUTING.md`](../CONTRIBUTING.md) step 4,
+it is understood, and it has no forcing function. `fallbackCurrentVersionResolver: "disk"` is still
+set in all three `project.json`s and still means a missing tag fails nothing. **The three candidate
+fixes are unchanged and none has been adopted** — with one clause now spent: the gate was the only
+option that caught the versions already missing, and those have been caught by hand instead, so it
+would now be adopted to stop the *next* omission rather than to clear a backlog. The next release
+skips the step exactly as easily as the last four did.
+
+**The three release tags point at `7935a78`, Phase 2's closing commit, and the artifacts were built
+from `615cd49`.** Recorded so the deviation is findable rather than read later as a discrepancy:
+`615cd49` is the `npm audit fix` that follows it and touches **`package-lock.json` only** (one file,
++73/−103), so the published bundles are byte-identical either way and no consumer is affected.
+CONTRIBUTING step 4 nonetheless says the commit must be the one the artifact was built from, and
+these three are one commit behind it. The seven retroactive tags are not part of this: each points
+at its own historic commit and is correct.
 
 <a id="f10"></a>
 ## F10 — The drift gate covers documented-**and-imported** symbols, not documented ones
@@ -2458,6 +2493,18 @@ not imported, F11 about the specifier a gated block may import from, and neither
 **What it would take**: scan each gated README for its fence count and assert it against a constant
 the spec already states, so the count moves deliberately. The root `README.md` stays out — it was
 assessed and dropped by [F4](#f4), and 0 of its 11 blocks are runnable as printed.
+
+**Re-measured 2026-09-16 and both counts are correct** — `eval-core`'s docblock claims 14
+`javascript` blocks and the README holds 14 (13 at line start, plus the indented `onHookError`
+fence a `^```` scan misses); `eval-signals`' claims 9 `ts` and 2 `sh` and the README holds 9 and 2.
+**That is this entry's premise holding, not the gap closing.** Nothing was added that compares
+either number to its file: the fence-reading specs in the repository —
+`export-list.spec.ts` and `public-api.spec.ts`, in all three packages — read their READMEs for
+symbol drift and count no blocks. The counts are correct today because someone re-ran them today,
+which is the same standing this entry's numbers had the last two times they were right and then
+silently were not. Dated because "correct" with no date reads as "fixed" to the next reader, and
+[F7](#f7) is what that costs: a claim nobody re-ran travelled through twelve summaries and had to
+have its locus corrected out from under it.
 
 ---
 

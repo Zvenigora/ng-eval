@@ -1811,6 +1811,18 @@ expression — which is also why it needs stating twice as carefully:
   What did change on this path is the untaken branch, which is the next row's subject. Pinned in
   `block-statement.spec.ts`'s "should evaluate an if in an arrow body".
 
+  **Step 6's audit, 2026-09-16: the `let` arm's endpoint is neither value this row names.** Step 5
+  returned the declarations, and `(x => { let y = 1; y })(0)` ends at **`1`** — not the `undefined`
+  it measured before step 2, and not the throw this row records. Only the `while` arm still throws
+  at 0.4.0; the `if` arm is the paragraph above and is net zero. The correction is dated here rather
+  than written into the row because **the row is not wrong about the step it describes** — it
+  measured step 2 correctly, and a row written mid-phase records a *transition* while a migration
+  note describes an *endpoint*. Nothing in this section's structure distinguishes the two, which is
+  the general finding and not a defect in this row. Found by step 6 auditing § 5 against both trees;
+  the measurement, the table of all three arms, and the reasoning are
+  [`summary.md` § 3.2](summary.md), which stays the record of it. The CHANGELOG acts on the
+  endpoint.
+
 **Step 4's row — `IfStatement` walks one branch, not both.** § 1.1's `if` row covers the *value*
 (`2` → `1`); this is the part of the same change no value assertion reaches, and it is the one with
 consumer-visible side effects. Before Phase 2 the base walker visited **both** branches regardless
@@ -1821,6 +1833,22 @@ does none of those.** For a rule author relying on `if (guard) { … } else { si
 the behavioural change of the whole step. Pinned in `if-statement.spec.ts`'s "the untaken branch
 does not run", and its hook-stream case, which is the arm that also catches a branch walked with
 every side effect removed.
+
+**Step 6's audit, 2026-09-16: the `Object.prototype` clause of that list is net zero, and is not a
+migration row.** The list's `EvalContext.get` entry — presence rather than value, *"which also stops
+a plain-record scope resolving `Object.prototype` names"* — **changes nothing a consumer can
+observe.** `toString`, `constructor`, `hasOwnProperty`, `valueOf` and `isPrototypeOf` resolve
+identically before step 0 and at 0.4.0, across six context shapes: a plain object, no context, a
+`Registry`, a `lookups` resolver over each of those two, and inside an arrow body. The reason is
+that the exposure the presence gate closes is one **step 1 itself opened** — the program scope
+pushed on every walk is new in step 1, and a plain `{}` answering `toString` ahead of `original` is
+new with it. Step 1 measured that regression against a mid-step state and fixed it correctly; what
+it recorded here reads as a change a *consumer* would see, and none does. The gate stays
+load-bearing, and the pre-existing leak it does **not** touch — a plain context object resolving its
+own prototype's names through `original` — is still live. **The CHANGELOG omits it**: a migration
+note that sends a reader hunting a difference that does not exist costs them what one hiding a real
+difference does. Found and measured by step 6; the record is
+[`summary.md` § 3.1](summary.md).
 
 **A9 was missing from that list until step 0 ran, and the omission is instructive.** Step 0 reads
 as a backlog fix, so the plan filed it under preconditions and not under the surface the bump
