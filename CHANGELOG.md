@@ -23,6 +23,96 @@ The repository publishes more than one package, and they version independently. 
 
 ---
 
+## [eval-core 0.5.0] - 2026-09-17
+
+### Fixed
+
+- **Object destructuring now binds the names JavaScript binds.** `evaluateObjectPattern` took
+  the binding name from the pattern's **key** and then resolved the pattern's **value** as an
+  *expression* against the source object. For `{ a: b }` that resolved the identifier `b`
+  against the source and bound the name `a` to whatever came back — both halves wrong at once,
+  where JavaScript binds `b` to `src.a`. Shorthand `{ a }` hid it, because `key` and `value`
+  both name `a`, so resolving the wrong one landed on the right answer.
+
+  Affected, through **both** arrow parameters and `let`/`const` declarations:
+
+  | Pattern | before | now |
+  | ------- | ------ | --- |
+  | `{ a: b }` — read `b` | `undefined` | the source's `a` |
+  | `{ a: b }` — read `a` | the source's `b`, when it had one | not bound |
+  | `{ a: x, b: y }` | neither bound | both bound |
+  | `{ a: { b } }` | nothing bound | the inner `b` |
+  | `{ a: { b: z } }` | nothing bound | the inner `b` |
+  | `{ "a": q }` | `undefined` | the source's `a` |
+  | `{ ["a"]: q }` | `undefined` | the source's `a` |
+
+  **Most consumers saw `undefined` rather than a wrong value.** The wrong-value case needs the
+  renamed-*to* name to exist on the source as well — `{ a: b }` over a source carrying both
+  `a` and `b` — and otherwise the value name resolves to nothing. If you inverted a rename to
+  work around this, remove the inversion.
+
+  Shorthand `{ a }` and array patterns were correct and are unchanged. Defaults (`{ a = 1 }`)
+  continue to throw `AssignmentPattern is not supported as a binding target.`
+
+- **A computed key is now evaluated.** `{ [keyName]: q }` parses with `key` an `Identifier`,
+  and the branch order tested `Identifier` before `computed` — so the key was taken to be the
+  *name it is spelled with* and the source was read at `src.keyName` instead of at
+  `src[keyName]`. The literal form `{ ["a"]: q }` hid it, a `Literal`'s value being its own
+  key. Computed keys are evaluated in the enclosing scope, as in JavaScript.
+
+- **An object rest element now binds the remainder.** `{ a, ...r }` bound the **whole** source
+  to `r`, leaving a key a sibling property had already taken: `(({a, ...r}) => r.a)(src)` was
+  the source's `a` and is now `undefined`. Keys are excluded by their **source** name, so
+  `{ a: x, ...r }` removes `a`. Array rest was already correct. This is the one item here
+  whose old answer was a real value rather than `undefined`, so it is the one a consumer may
+  have been reading without knowing.
+
+### Changed
+
+- **`evaluateObjectPattern` no longer pushes a scope.** It pushed the source so the value
+  could be resolved against it, which was the defect above; the value is now bound as a
+  pattern and nothing reads a scope. No consumer-visible behaviour depends on this, but it
+  means `pattern.ts` is no longer one of the visitors the `BL-A9` push/pop idiom applies to.
+
+- **The prototype-pollution blocklist now applies to the source key on the way in.**
+  `{ __proto__: p }` and `{ constructor: { x } }` are rejected before the source property is
+  read, rather than at the binding write — which is what keeps the guard in front of a nested
+  pattern, where a plain read would have handed `Function` to the recursion. The rejection and
+  its message are unchanged for every form that already threw.
+
+### Upgrading
+
+`0.5.0` is a minor rather than a patch because expression **results change** on the paths
+above: a consumer on `^0.4.0` does not receive it unattended, and should re-run their own
+expression tests when they take it. The two downstream packages widen their peer range to
+admit it in the same change — `eval-signals 0.1.2` and `eval-forms 0.2.2` below — which is
+what `@nx/dependency-checks` requires of a workspace release, and neither carries any other
+change.
+
+---
+
+## [eval-forms 0.2.2] - 2026-09-17
+
+### Changed
+
+- **Peer range widened** to admit `@zvenigora/ng-eval-core` 0.5.0:
+  `>=0.3.0 <0.5.0` → `>=0.3.0 <0.6.0`. Manifest only — no code, no exported symbol and no
+  behaviour of this package changes. The lower bound is unchanged, so 0.3.0 and 0.4.0 remain
+  supported.
+
+---
+
+## [eval-signals 0.1.2] - 2026-09-17
+
+### Changed
+
+- **Peer range widened** to admit `@zvenigora/ng-eval-core` 0.5.0:
+  `>=0.3.0 <0.5.0` → `>=0.3.0 <0.6.0`. Manifest only — no code, no exported symbol and no
+  behaviour of this package changes. The lower bound is unchanged, so 0.3.0 and 0.4.0 remain
+  supported.
+
+---
+
 ## [eval-signals 0.1.1] - 2026-09-16
 
 ### Changed

@@ -229,7 +229,13 @@ The project has been tested with the following node types:
  - `ObjectExpression`
  - `AssignmentExpression`
  - `UpdateExpression`
- - `ArrowFunctionExpression` *potentially unsafe* (AssignmentPattern is not implemented)
+ - `ArrowFunctionExpression` *potentially unsafe* (AssignmentPattern is not implemented, so a
+   destructuring default — `({ a = 1 }) => a` — is rejected rather than defaulted)
+
+Object and array destructuring bind the names JavaScript binds, in parameter lists and in
+`let` / `const` declarations alike: shorthand, renaming, nesting, literal and computed keys,
+and rest elements. **Before `@zvenigora/ng-eval-core` 0.5.0 the renaming forms bound the wrong
+names** — see the `eval-core 0.5.0` entry in [CHANGELOG.md](CHANGELOG.md).
 
 Statements, since `@zvenigora/ng-eval-core` 0.4.0:
 

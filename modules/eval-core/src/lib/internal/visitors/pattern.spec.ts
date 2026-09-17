@@ -16,11 +16,21 @@ import { parse } from '../functions';
  * `({...a.b}) => 1`), at every `ecmaVersion`, so an evaluation-driven spec
  * cannot enter either branch and would report green over nothing.
  *
- * They are two specs rather than one because the two repairs live in two
- * functions that never call each other: the throw is in
- * `evaluateMemberExpression` and the scope push is in `evaluateObjectPattern`.
- * A `MemberExpression` fixture throws having executed no push, so asserting
- * `scopes.length` on it says nothing about the pop.
+ * They are two specs rather than one because they cover two functions that
+ * never call each other: the throw is in `evaluateMemberExpression` and the
+ * binding is in `evaluateObjectPattern`.
+ *
+ * **`evaluateObjectPattern` no longer pushes a scope**, and this file changed
+ * shape with it. Until the A11 repair it pushed the argument and walked
+ * `Property.value` as an *expression* against it; the value is now bound as a
+ * pattern against the source property, so nothing reads a scope and nothing
+ * pushes one. The three cases below that asserted the pop now assert its
+ * absence - which is the stronger claim, and the one that keeps the scope-stack
+ * accounting in `CLAUDE.md` honest now that `arrow-function-expression.ts` is
+ * the only pusher left.
+ *
+ * The semantics of `{ k: v }` are covered by `pattern.destructuring.spec.ts`,
+ * through both of the routes a consumer actually writes.
  */
 
 /**
@@ -82,48 +92,100 @@ describe('evaluatePattern', () => {
   describe('the ObjectPattern branch', () => {
 
     /**
-     * `evaluateObjectPattern` pushes the argument as a scope, walks the
-     * property's value, then pops. A value node whose visitor throws puts the
-     * exception *between* the push and the pop, which is the only arrangement
-     * that makes the pop observable. `o.__proto__` throws from
-     * `member-expression.ts`'s prototype-pollution guard.
+     * A `MemberExpression` in the value position, which the repair made
+     * *reachable*: `Property.value` is now handed to `evaluatePattern`, so it
+     * lands on the same rejecting branch the first spec above enters directly.
+     * Before the repair this node was walked as an expression and evaluated.
      */
-    const throwingValue = (): AnyNode => nodeOf('o.__proto__');
+    const throwingValue = (): AnyNode => nodeOf('o.b');
 
-    it('should pop the scope it pushed when the property value throws', () => {
-      const context = EvalContext.fromContext({ o: { b: 1 } });
-      const state = EvalState.fromContext(context, {});
-      const pattern = objectPatternOver(throwingValue());
-
-      const before = context.scopes.length;
-
-      expect(() => evaluatePattern(pattern, state, callback, { arg: 1 }))
-        .toThrow('dangerous property');
-
-      expect(context.scopes.length).toBe(before);
-    });
-
-    it('should not leave a pushed scope shadowing a source key afterwards', () => {
-      const context = EvalContext.fromContext({ o: { b: 1 }, arg: 'SOURCE' });
-      const state = EvalState.fromContext(context, {});
-      const pattern = objectPatternOver(throwingValue());
-
-      expect(() => evaluatePattern(pattern, state, callback, { arg: 'SHADOW' }))
-        .toThrow('dangerous property');
-
-      expect(context.get('arg')).toBe('SOURCE');
-    });
-
-    it('should pop the scope it pushed when the property value does not throw', () => {
+    it('should bind the value name against the source property', () => {
+      // **This assertion used to read `{ k: 'SHADOW' }`, and that was the
+      // defect, not the intent.** The test's stated subject was the scope pop;
+      // the equality arm quietly ratified A11's swap - the argument was pushed
+      // as a scope, the identifier `arg` resolved against it, and the *key* `k`
+      // was bound to the result. JavaScript binds the name `arg` to the
+      // source's `k`, and the source here has no `k`, so `arg` binds
+      // `undefined`. The key `k` is not a binding name at all.
       const context = EvalContext.fromContext({ arg: 'SOURCE' });
       const state = EvalState.fromContext(context, {});
       const pattern = objectPatternOver(nodeOf('arg'));
 
       expect(evaluatePattern(pattern, state, callback, { arg: 'SHADOW' }))
-        .toEqual({ k: 'SHADOW' });
+        .toEqual({ arg: undefined });
+
+      expect(context.get('arg')).toBe('SOURCE');
+    });
+
+    it('should push no scope while binding', () => {
+      /**
+       * **Observed mid-walk, not merely balanced afterwards.** A computed key
+       * is the one thing in an object pattern still walked as an expression,
+       * so a function called from there runs at the exact point the old code
+       * held a pushed scope. `depth` reports `scopes.length` at call time; a
+       * balanced push/pop would still read `1` here, so this discriminates
+       * where an after-the-fact `scopes.length` check cannot.
+       */
+      const depths: number[] = [];
+      const context: EvalContext = EvalContext.fromContext({
+        keyOf: () => { depths.push(context.scopes.length); return 'k'; },
+      });
+      const state = EvalState.fromContext(context, {});
+
+      const pattern = {
+        type: 'ObjectPattern',
+        start: 0,
+        end: 0,
+        properties: [{
+          type: 'Property',
+          start: 0,
+          end: 0,
+          method: false,
+          shorthand: false,
+          computed: true,
+          kind: 'init',
+          key: nodeOf('keyOf()'),
+          value: { type: 'Identifier', start: 0, end: 0, name: 'bound' },
+        }],
+      } as unknown as ObjectPattern;
+
+      expect(evaluatePattern(pattern, state, callback, { k: 'VALUE' }))
+        .toEqual({ bound: 'VALUE' });
+
+      expect(depths).toEqual([0]);
+      expect(context.scopes.length).toBe(0);
+    });
+
+    it('should leave no scope when a binding target throws', () => {
+      const context = EvalContext.fromContext({ o: { b: 1 } });
+      const state = EvalState.fromContext(context, {});
+      const pattern = objectPatternOver(throwingValue());
+
+      expect(() => evaluatePattern(pattern, state, callback, { k: 1 }))
+        .toThrow('MemberExpression is not supported as a binding target.');
 
       expect(context.scopes.length).toBe(0);
-      expect(context.get('arg')).toBe('SOURCE');
+    });
+
+    it('should reject a blocklisted source key', () => {
+      // The blocklist moved to the *source key* with the repair, and applies
+      // whatever the source is - here there is no source property at all.
+      const state = EvalState.fromContext({}, {});
+      const pattern = {
+        type: 'ObjectPattern',
+        start: 0,
+        end: 0,
+        properties: [{
+          type: 'Property',
+          start: 0, end: 0, method: false, shorthand: false, computed: false,
+          kind: 'init',
+          key: { type: 'Identifier', start: 0, end: 0, name: 'constructor' },
+          value: { type: 'Identifier', start: 0, end: 0, name: 'c' },
+        }],
+      } as unknown as ObjectPattern;
+
+      expect(() => evaluatePattern(pattern, state, callback, undefined))
+        .toThrow('Access to dangerous property "constructor" is blocked for security reasons');
     });
   });
 });

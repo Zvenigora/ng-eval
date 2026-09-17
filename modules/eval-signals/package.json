@@ -1,6 +1,6 @@
 {
   "name": "@zvenigora/ng-eval-signals",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Angular signals for ng-eval expressions",
   "repository": {
     "type": "git",
@@ -16,7 +16,7 @@
   "homepage": "https://github.com/Zvenigora/ng-eval#readme",
   "peerDependencies": {
     "@angular/core": ">=19.0.0",
-    "@zvenigora/ng-eval-core": ">=0.3.0 <0.5.0"
+    "@zvenigora/ng-eval-core": ">=0.3.0 <0.6.0"
   },
   "publishConfig": {
     "access": "public"

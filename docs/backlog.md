@@ -91,7 +91,9 @@ entry says what is left.
 | -- | ----- | ------- | ---- | ------ |
 | [A1](#a1) | `await-expression.ts` downgrades a sync throw to a promise rejection | core | fix | Open |
 | [A2](#a2) | `update-expression.ts` desyncs the value stack under `preserveParens` | core | fix | Open — standalone, [not a Phase 2 precondition](#phase-2-preconditions) |
-| [A11](#a11) | `evaluateObjectPattern` resolves the *value* name against the argument — renaming **and** nested destructuring bind the wrong key | core | fix | Open — **live on the default path**; found Phase 2 step 3 |
+| [A11](#a11) | `evaluateObjectPattern` resolves the *value* name against the argument — renaming **and** nested destructuring bind the wrong key | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17** |
+| [A13](#a13) | An object rest element binds the whole source, not the remainder | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17**; found measuring [A11](#a11) |
+| [A14](#a14) | A computed key in an object pattern is not evaluated — the identifier's spelling is used as the key | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17**; found by a spec written for [A11](#a11) |
 | [A12](#a12) | `EvalResult.trace` grows per loop iteration — the iteration budget bounds time, not memory | core | fix / decision | Open — **created by Phase 2 step 5**; 700 k items for a 100 k-iteration loop |
 | [A3](#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | Open |
 | [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered — **wider than it reads; [A10](#a10) argues it is one defect with A10** |
@@ -303,6 +305,13 @@ computes the wrong thing. This entry's title reads like a register of the family
 a reader looking for "the silent-wrong-result entry for `pattern.ts` and the write visitors" must
 read both. Found Phase 2 step 3, 2026-09-13.
 
+**A11 is fixed as of `eval-core` 0.5.0, and the point above outlived it — twice over.** Repairing
+A11 turned up [A13](#a13) and [A14](#a14) in the same function, both of the branch-matches-and-
+computes-the-wrong-thing shape and neither reachable from this entry's chain-with-no-`else`. So the
+family now has three retired members that this entry never covered, and its warning stands: the
+three members *here* are one shape, and "silent wrong answer in the pattern layer" is a larger set
+than any one entry registers.
+
 *Recorded*: [`side-effects/step-3-summary.md` § 5.1](side-effects/step-3-summary.md) (member 1);
 [`statements/phase-2-plan.md` § 1.7](statements/phase-2-plan.md) (members 2 and 3).
 *Verified*: source read, 2026-09-06; members 2 and 3 measured against `dist/`, 2026-09-10.
@@ -310,7 +319,22 @@ read both. Found Phase 2 step 3, 2026-09-13.
 <a id="a11"></a>
 ## A11 — `evaluateObjectPattern` binds the key from the pattern and the value from the *wrong name*
 
-**Package** core · **Kind** fix · **Status** Open — live on the default path
+**Package** core · **Kind** fix · **Status** **Retired — fixed, `eval-core` 0.5.0, 2026-09-17.**
+`Property.value` is bound as a pattern against the source property instead of being walked as an
+expression against the source object. Covered by
+[`pattern.destructuring.spec.ts`](../modules/eval-core/src/lib/internal/visitors/pattern.destructuring.spec.ts),
+every shape below through both routes. See [A13](#a13) and [A14](#a14), which the repair's own
+specs found in the same function
+
+**The entry's own fixture was the unlucky case, and that is worth carrying forward.** The table
+below measures `{ a: b }` over a source holding **both** `a` and `b`, which makes the defect read as
+"binds `a` to `src.b`" — a wrong *value*. That is the special case. The general rule is that the
+value name resolves to **nothing**, so the ordinary symptom was `undefined` on both sides:
+`({a: x, b: y}) => x` bound neither `x` nor `y` and left `a` and `b` holding `undefined`, because
+neither `x` nor `y` was a source key. A wrong value needs the renamed-*to* name to exist on the
+source as well. This matters twice over — it is why most consumers saw nothing rather than something
+wrong, and it is why a fixture carrying the renamed-to name cannot discriminate the fix: the old code
+would find that name and return a plausible value either way.
 
 **Found Phase 2 step 3**, while routing binding writes through the pollution guard. Renaming
 destructuring — `{ a: b }` — is wrong in **both** halves, and has been for as long as the binder has
@@ -371,8 +395,78 @@ reaches the node through a `callback`, and the example the plan used to justify 
 that path. Caught because the spec written for it failed; it would otherwise have shipped a
 `default:` that covered two of the three forms it was written for.
 
+**The repair, and the two entries it produced.** `Property.value` is now handed to
+`evaluatePattern` with the *source property* as its argument, so an `Identifier` binds that name,
+and a nested `ObjectPattern` or `ArrayPattern` recurses — one change covering renaming, nesting,
+deep renaming and both key spellings at once. Two consequences worth reading before touching the
+function again:
+
+- **The scope push is gone.** `evaluateObjectPattern` pushed the source so the value could resolve
+  against it; that push *was* the defect's mechanism, not a safety measure, and nothing reads a
+  scope once the value is a binding target. `pattern.ts` is therefore no longer one of the visitors
+  [A9](#a9)'s `finally` idiom applies to. Checking that also found `CLAUDE.md`'s "only two visitors
+  push scopes" had been wrong since Phase 2 — which added three — and it is now corrected there
+  with the reason rather than a new number.
+- **The blocklist moved to the source key**, checked before the read. `safeGetProperty` returns
+  early for a non-object target *before* it tests the key, so relying on it would have quietly
+  dropped the existing `(({ valueOf: v }) => v)(o)` rejection when `o` is unbound. Caught by that
+  spec failing.
+
 *Recorded*: this entry, 2026-09-13.
-*Verified*: measured against the working tree at Phase 2 step 3, 2026-09-13.
+*Verified*: measured against the working tree at Phase 2 step 3, 2026-09-13; re-measured against the
+built **0.4.0** bundle 2026-09-16, all six rows reproducing, and fixed 2026-09-17.
+
+<a id="a13"></a>
+## A13 — An object rest element binds the whole source, not the remainder
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed, `eval-core` 0.5.0, 2026-09-17.**
+Opened and closed in the same change
+
+`evaluateRestElement` was handed `arg` itself from `evaluateObjectPattern`'s `RestElement` branch,
+so a key a sibling property had already taken stayed on the rest record. *Measured against the built
+0.4.0 bundle, 2026-09-16*, `src` = `{ a: 'A_VAL', b: 'B_VAL' }`:
+
+| Expression | JavaScript | 0.4.0 |
+| ---------- | ---------- | ----- |
+| `(({a, ...r}) => r.a)(src)` | `undefined` | **`'A_VAL'`** |
+| `(({a, ...r}) => r.b)(src)` | `'B_VAL'` | `'B_VAL'` |
+
+Array rest was correct — `evaluatePatterns` slices, so `[p, ...t]` never saw this. Both routes,
+same as [A11](#a11).
+
+**The one shape in this family whose wrong answer was a real value.** Every other row of A11 and
+[A14](#a14) returned `undefined`, which a consumer notices. This returned the source's own property,
+so an expression reading `r.a` worked and kept working, and nothing would have surfaced it. That is
+why it carries the migration note's only "you may have been relying on this" line.
+
+*Recorded*: found while measuring [A11](#a11) against the built bundle, 2026-09-16 — not by reading
+the function, which had been read several times.
+*Verified*: fixed by excluding the keys taken by sibling properties, **by their source name** rather
+than their binding name, so `{ a: x, ...r }` removes `a`. Covered by `pattern.destructuring.spec.ts`.
+
+<a id="a14"></a>
+## A14 — A computed key in an object pattern is not evaluated
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed, `eval-core` 0.5.0, 2026-09-17.**
+Opened and closed in the same change
+
+`{ [keyName]: q }` parses with `Property.key` an **`Identifier`** and `computed: true`. The key
+branch tested `key.type === 'Identifier'` before it tested `computed`, so it took the identifier's
+**spelling** and read `src.keyName` where JavaScript reads `src[keyName]`.
+
+**Hidden the same way [A11](#a11) was hidden by shorthand.** The literal computed form
+`{ ["a"]: q }` takes the `Literal` branch, and a literal's value *is* the key — so the wrong branch
+produced the right answer, and the only form that exposes it is a computed key that is not a
+literal.
+
+*Recorded*: 2026-09-17. **Found by a spec written for [A11](#a11)**, not by inspection: the
+computed-key case used a decoy context where `keyName` resolved to `'a'` in the enclosing scope and
+to `'DECOY'` on the source, so each way of getting it wrong produced a different value. A fixture
+without the decoy passes over this defect, and the first version of that spec — asserting only
+`{ ["a"]: q }` — did exactly that.
+*Verified*: `computed` is tested first; the key is walked through `callback`, which runs **before**
+the source property is read and with no scope pushed, so it resolves in the enclosing scope as
+JavaScript does. Both arms covered in `pattern.destructuring.spec.ts`.
 
 <a id="a3"></a>
 ## A3 — `import-expression.ts` has a dead `afterVisitor`

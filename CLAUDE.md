@@ -151,12 +151,23 @@ So there are **three** stack invariants, not one, and a new visitor must satisfy
 - the open-node stack — exactly one `afterVisitor` per `beforeVisitor`, on every exit path
   including the ones an exception takes;
 - the **scope stack** — exactly one `st.context.pop()` per `st.context.push()`, again on
-  every exit path. Only two visitors push scopes (`arrow-function-expression.ts` and
-  `pattern.ts`), and since Phase 2 step 0 (`docs/backlog.md` `BL-A9`) **both pop in a
-  `finally`**. That is the idiom to copy, and the `try` opens on the line *after* the push,
-  never around it: both sites write `st.context?.push(...)`, so a `try` opened one line early
-  would pair a `finally` pop with a push the same optional chain had skipped, and would
-  swallow a throw from the context-building call into a pop as well.
+  every exit path. **Four** visitors push scopes — `arrow-function-expression.ts` (the
+  parameter bindings), and `program.ts`, `block-statement.ts` and `for-statement.ts` (a
+  lexical scope each, all three added by Phase 2) — and since Phase 2 step 0
+  (`docs/backlog.md` `BL-A9`) **every one pops in a `finally`**. That is the idiom to copy,
+  and the `try` opens on the line *after* the push, never around it: every site writes
+  `st.context?.push(...)`, so a `try` opened one line early would pair a `finally` pop with a
+  push the same optional chain had skipped, and would swallow a throw from the
+  context-building call into a pop as well.
+
+  **Count them with `grep`, and do not trust the number in this paragraph either.** It said
+  "two — `arrow-function-expression.ts` and `pattern.ts`" from Phase 1 until the A11 repair,
+  through the whole of Phase 2, which added three pushers and removed the one that made the
+  sentence wrong in the other direction. `pattern.ts` pushed the destructuring source as a
+  scope so it could resolve `Property.value` as an expression against it; that *was* the A11
+  defect, so the repair deleted the push and `pattern.ts` is now not a pusher at all. This is
+  the same failure the `beforeVisitor` / `afterVisitor` totals above carry a warning about,
+  in the paragraph immediately before this one.
 
 The third differs from the other two in *where it lives*, which is what makes it the
 longest-lived of the three, and the reason the `finally` is not optional. The value stack and

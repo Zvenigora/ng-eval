@@ -4,7 +4,7 @@ import * as walk from 'acorn-walk';
 import { EvalState } from '../classes/eval';
 import { popVisitorResult } from '.';
 import { BaseContext } from '../classes/common';
-import { safeSetProperty } from './prototype-pollution-guard';
+import { isDangerousProperty, safeGetProperty, safeSetProperty } from './prototype-pollution-guard';
 
 
 // based on evalArrowContext
@@ -125,65 +125,124 @@ const evaluateMemberExpression = (pattern: MemberExpression): BaseContext => {
   return {} as BaseContext;
 }
 
+/**
+ * The keys an object pattern has already consumed, in source-key terms.
+ *
+ * A rest element binds *the remainder*, so it needs the names the sibling
+ * properties took - and it needs them as they appear on the **source**, which
+ * is `Property.key`, not the name each one bound. For `{ a: x, ...r }` the key
+ * removed from `r` is `a`; `x` was never a source key and removing it would
+ * take the wrong property when the source happens to carry that name too.
+ */
+const restOf = (source: unknown, taken: readonly (string | number)[]): BaseContext => {
+  const object = {} as BaseContext;
+
+  if (!source || typeof source !== 'object') {
+    return object;
+  }
+
+  const consumed = new Set<string>(taken.map(key => String(key)));
+
+  for (const key of Object.keys(source as Record<string, unknown>)) {
+    if (!consumed.has(key)) {
+      safeSetProperty(object, key, (source as Record<string, unknown>)[key]);
+    }
+  }
+
+  return object;
+}
+
 const evaluateObjectPattern = (pattern: ObjectPattern, st: EvalState, callback: walk.WalkerCallback<EvalState>, arg: unknown) => {
 
   let context: BaseContext = {};
+  const taken: (string | number)[] = [];
 
   pattern.properties.map((pattern) => {
     switch (pattern.type) {
       case 'Property': {
           let key: string | number;
-          if (pattern.key.type === 'Identifier') {
+          // `computed` is tested first, and that is the whole of a third
+          // defect. `{ [keyName]: q }` parses as `key` an **Identifier** named
+          // `keyName`, so an `Identifier`-first chain took the name it is
+          // spelled with and read `src.keyName` instead of evaluating it and
+          // reading `src[keyName]`. The literal computed form `{ ["a"]: q }`
+          // hid it the way shorthand hid A11 - a `Literal`'s value *is* its
+          // key, so taking the wrong branch landed on the right answer. See
+          // `docs/backlog.md` A14.
+          if (!pattern.computed && pattern.key.type === 'Identifier') {
             key = pattern.key.name;
-          } else if (pattern.key.type === 'Literal') {
+          } else if (!pattern.computed && pattern.key.type === 'Literal') {
             key = pattern.key.value as string | number;
           } else {
+            // Walked **before** the source property is read, and deliberately:
+            // a computed key is an expression of the *enclosing* scope, not of
+            // the object being destructured. `let { [keyName]: v } = src`
+            // resolves `keyName` where the declaration is written, exactly as
+            // JavaScript does. This is the only `callback` left in the module,
+            // and nothing pushes the source as a scope any more, so there is no
+            // arrangement in which it could resolve against the source.
             callback(pattern.key, st);
             key = popVisitorResult(pattern, st) as string | number;
             if (typeof key !== 'string' && typeof key !== 'number')
             throw new Error(`Unsupported property key type: ${pattern.key.type}`);
           }
 
-          // **Where `let { a = 1 } = o` actually lands**, which is not where
-          // it was expected to. A default in an object pattern is parsed as
-          // `Property.value` of type `AssignmentPattern` - so it is handed to
-          // `callback` below and walked as an *expression*, and reaches neither
-          // of this module's two `switch` defaults. Rejecting it there would
-          // have left the object form of the very example that names the
-          // divergence still binding silently; the array form
-          // (`let [a = 1] = arr`) and the parameter form (`(a = 1) => a`) do go
-          // through `evaluatePatterns`, and are covered there.
+          // **Where `let { a = 1 } = o` actually lands**, which is not where it
+          // was expected to. A default in an object pattern is parsed as
+          // `Property.value` of type `AssignmentPattern`, and this branch is
+          // the only thing that sees it: the recursion below would hand it to
+          // `evaluatePattern`, whose `AssignmentPattern` case is commented out,
+          // so it would reach that function's `default` and be rejected with
+          // the same message one frame further down. Kept here so the rejection
+          // is attributable to the object form, and because it predates the
+          // recursion - before it, nothing reached either `switch` at all and
+          // the form bound silently. The array form (`let [a = 1] = arr`) and
+          // the parameter form (`(a = 1) => a`) go through `evaluatePatterns`
+          // and are covered there.
           if (pattern.value.type === 'AssignmentPattern') {
             unsupportedBindingTarget(pattern.value.type);
           }
 
-          const ctx = arg as BaseContext;
+          taken.push(key);
 
-          // `finally`, for the reason given at the other push site in
-          // arrow-function-expression.ts: the scope stack is on EvalContext,
-          // which outlives this walk, so a scope left behind here shadows a
-          // source key on every later evaluation against the same context.
-          // The `try` opens after the push, never around it.
-          st.context?.push(ctx);
-          let value: BaseContext;
-          try {
-            callback(pattern.value, st);
-            value = popVisitorResult(pattern, st) as BaseContext;
-          } finally {
-            st.context?.pop();
+          // Guarded on the way *in*, which is where the blocklist has to sit
+          // now that the value is a binding target rather than an expression.
+          // `let { __proto__: p } = o` and `let { constructor: { x } } = o`
+          // both stop here, and the nested form is why the read is guarded and
+          // not only the binding name below: a plain read would hand `Function`
+          // to the recursion, and `evaluateIdentifier`'s guard would then be
+          // inspecting the *inner* pattern's names, by which point the escape
+          // has happened.
+          //
+          // Tested explicitly rather than left to `safeGetProperty`, which
+          // returns early for a non-object target **before** it checks the key
+          // - so `(({ valueOf: v }) => v)(o)` with `o` unbound would read
+          // `undefined` and bind quietly. The blocklist applies to the source
+          // key whatever the source turns out to be, which is the net the
+          // declaration and arrow-parameter binders already cast.
+          if (isDangerousProperty(key)) {
+            throw new Error(`Access to dangerous property "${String(key)}" is blocked for security reasons`);
           }
 
-          // Guarded for the same reason `evaluateIdentifier` is: the key comes
-          // from the *pattern*, so `let { __proto__: p } = o` names `__proto__`
-          // here and a raw assignment would set this record's prototype.
-          const pair = {} as BaseContext;
-          safeSetProperty(pair, key, value);
+          const value = safeGetProperty(arg, key);
 
-          context = {...context, ...pair};
+          // The binding target, which may be a name, another object pattern,
+          // or an array pattern. Recursion is the whole repair: `Property.value`
+          // is a *pattern* and is bound against the source property, where it
+          // used to be walked as an **expression** against the source object -
+          // which resolved the wrong name and bound the wrong one. See
+          // `docs/backlog.md` A11.
+          const bound = evaluatePattern(pattern.value, st, callback, value);
+
+          context = {...context, ...bound};
         }
         break;
       case 'RestElement': {
-          const object = evaluateRestElement(pattern, st, callback, arg);
+          // The remainder, not the whole source. Acorn requires the rest
+          // element last in an object pattern, so `taken` is complete here.
+          // Binding the whole argument left an already-destructured key on the
+          // rest record - `docs/backlog.md` A13.
+          const object = evaluateRestElement(pattern, st, callback, restOf(arg, taken));
           context = {...context, ...object};
         }
         break;
