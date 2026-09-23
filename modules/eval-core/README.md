@@ -141,7 +141,41 @@ try {
 
 The budget is refilled per outermost `eval` call, not per state — so the `createState` + repeated `eval` style does not erode one budget across independent evaluations, and an arrow function that outlives the walk that created it does not carry that walk's spent budget into a later call.
 
-**It bounds time, not memory.** `state.result.trace` gains an entry per pushed value and is never reset, so a long-running loop's trace grows as iterations × nodes and that allocation is paid before the throw. With `maxIterations: Infinity` there is no bound at all; prefer a large finite number.
+**It bounds time; `maxTraceItems` bounds the memory.** `state.result.trace` gains an entry per pushed value, so before that bound a long-running loop's trace grew as iterations × nodes — 700,007 entries and ~36 MB for a 100,000-iteration loop evaluated through `eval`. That loop is *not* stopped by the default budget: it charges exactly 100,000 and completes. Where the budget does stop a loop, the whole allocation was paid before the throw.
+
+### Bounding the trace
+
+`state.result.trace` records every value the evaluator pushes, and it spans **every evaluation run on one state**, not just the last. `maxTraceItems` bounds how many entries it keeps. It defaults to **10,000** — roughly 0.5 MB, and three orders of magnitude above anything a hand-written expression produces.
+
+```javascript
+const state = service.createState({ a: 10 });
+service.eval('2 + 3 * a', state);
+
+state.result.trace.length;      // 7
+state.result.traceTruncated;    // false
+state.result.tracePushCount;    // 7
+```
+
+The **head** is kept, in order, so `trace[0]` is still the first thing evaluated. Once a push is actually dropped:
+
+- **`state.result.traceTruncated`** turns `true` and stays true — no entry is appended to the trace to say so, because every row in it describes a real node. A walk of exactly `maxTraceItems` pushes leaves it `false`; nothing was lost.
+- **`state.result.tracePushCount`** goes on counting every push, which is the number the trace no longer tells you.
+
+```javascript
+const state = service.createState({}, { maxIterations: Infinity });
+service.eval('for (let i = 0; i < 100000; i++) { i }', state);
+
+state.result.trace.length;      // 10000
+state.result.traceTruncated;    // true
+state.result.tracePushCount;    // 700007
+```
+
+Two values are special, and both are honoured rather than treated as falsy:
+
+- **`0`** disables tracing — `trace.length` stays `0` and `traceTruncated` stays `false`, while `tracePushCount` stays accurate, so a caller who turns tracing off for the allocation keeps the walk-size figure.
+- **`Infinity`** restores the unbounded behaviour exactly.
+
+**`state.result.clearTrace()`** is the only reset. It empties the trace and both counters, in place — the array `state.result.trace` returns is the same instance for the life of the result, so a reference you are holding stays live across the call. Under the `createState` + repeated `eval` style, call it before an evaluation to make the trace describe only that walk.
 
 ### Evaluation hooks
 

@@ -66,8 +66,11 @@ describe('createEvalSignal - lifetime and cleanup', () => {
       expect(distinct).toHaveLength(5);
 
       // The retention half, and the one that fails on a reused state:
-      // `EvalResult.trace` is drained by nothing and holds every node's value,
-      // so a shared state's trace would be 5x the first walk's by now.
+      // `EvalResult.trace` holds every node's value and is drained by nothing
+      // on this path, so a shared state's trace would be 5x the first walk's
+      // by now. `eval-core` 0.6.0 added `clearTrace()` and an `ngOnDestroy`
+      // drain; neither applies here, because these states are built through
+      // `CompilerService` and nothing calls `clearTrace` on them.
       const [first] = distinct;
       expect(first.result.trace.length).toBeGreaterThan(0);
       distinct.forEach((state) =>

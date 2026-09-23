@@ -10,6 +10,56 @@ The repository publishes more than one package, and they version independently. 
 
 ## [Unreleased]
 
+**`@zvenigora/ng-eval-core` — the trace bound, [A12](docs/backlog.md#a12).** Adds four published
+symbols and changes no existing one, so it ships in `eval-core`'s next **minor**: this repository
+has never shipped API in a patch. It is unversioned until that release.
+
+### Added
+
+- **`maxTraceItems`** (`eval-core`), an evaluation option bounding how many entries
+  `EvalResult.trace` keeps. Defaults to **10,000** — roughly 0.5 MB. The **head** is kept in
+  order, so `trace[0]` is still the first value the walk pushed.
+- **`EvalResult.traceTruncated`** (`eval-core`) — `true` once a push has actually been
+  **dropped**, and it stays true. A walk of exactly `maxTraceItems` pushes leaves it `false`,
+  because nothing was lost. No entry is appended to the trace to mark truncation: every row in it
+  describes a real node. Under `maxTraceItems: 0` it also stays `false` — that is tracing turned
+  off, not a trace that lost something.
+- **`EvalResult.tracePushCount`** (`eval-core`) — every push the state made, which is the number
+  the trace no longer tells you once it is truncated. Accurate even when tracing is off.
+- **`EvalResult.clearTrace()`** (`eval-core`) — the only reset for the trace and both counters.
+  It empties the array **in place**, so a consumer holding `state.result.trace` keeps a live
+  reference rather than a stale snapshot.
+
+### Changed
+
+- **`EvalResult.trace` stops growing past 10,000 entries by default** (`eval-core`). It gained an
+  entry per pushed value and was reset by nothing, so a loop's trace grew as iterations × nodes:
+  700,007 entries and ~34 MB for a 100,000-iteration loop — which the default `maxIterations`
+  does not stop, since it charges exactly its budget and completes. Where the budget *does* stop
+  a loop, the whole allocation was paid *before* the throw. The budget bounded time; nothing
+  bounded the memory.
+- **`EvalService.ngOnDestroy` now clears the trace** (`eval-core`) of each state it created,
+  alongside the value stack, the context, the hook registry and the hook bookkeeping.
+- **`@zvenigora/ng-eval-signals`: three comments that said the trace "is drained by nothing" were
+  corrected**, one of them JSDoc on the exported `createEvalSignal`, which ships in that
+  package's `.d.ts`. Documentation only — no exported symbol's shape changed — but it is not
+  nothing, and it belongs in whatever release that package next makes.
+
+### Upgrading
+
+**No expression result changes.** `eval`, `simpleEval` and their async forms return
+byte-identical values under every part of the trace bound. What changes is a diagnostic surface:
+`EvalResult.trace` is bounded where it was not.
+
+**If you read `EvalResult.trace` programmatically**, two things to check. Above 10,000 pushes on
+one state it now stops, and `traceTruncated` is how you detect that — a truncated trace is
+otherwise indistinguishable from a complete one. And the trace spans every evaluation run on a
+state, so the bound is on their **total**; `clearTrace()` is how the `createState` + repeated
+`eval` style gets a trace describing one walk.
+
+**Two values are honoured rather than treated as falsy**: `maxTraceItems: 0` disables tracing
+while keeping `tracePushCount` accurate, and `Infinity` restores the previous behaviour exactly.
+
 ### Fixed
 - **Dependency Security**: Bumped the transitive `fast-uri` dependency (pulled in by `ajv`,
   used by the lint/build tooling) from 3.1.5 to 3.1.7, resolving 4 high-severity Dependabot

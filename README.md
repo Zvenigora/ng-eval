@@ -343,6 +343,7 @@ const result = service.eval(expression, state); // 32
 // read the state if required
 
 console.table(state.result.trace); // display execution history
+state.result.traceTruncated;       // did it stop short? see maxTraceItems
 
 ...
 

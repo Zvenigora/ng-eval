@@ -94,7 +94,11 @@ entry says what is left.
 | [A11](#a11) | `evaluateObjectPattern` resolves the *value* name against the argument — renaming **and** nested destructuring bind the wrong key | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17** |
 | [A13](#a13) | An object rest element binds the whole source, not the remainder | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17**; found measuring [A11](#a11) |
 | [A14](#a14) | A computed key in an object pattern is not evaluated — the identifier's spelling is used as the key | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17**; found by a spec written for [A11](#a11) |
-| [A12](#a12) | `EvalResult.trace` grows per loop iteration — the iteration budget bounds time, not memory | core | fix / decision | Open — **created by Phase 2 step 5**; 700 k items for a 100 k-iteration loop |
+| [A12](#a12) | `EvalResult.trace` grows per loop iteration — the iteration budget bounds time, not memory | core | fix / decision | **Retired — fixed 2026-09-23, unreleased**; under `CHANGELOG.md`'s `[Unreleased]` |
+| [A19](#a19) | A12's fix shipped behind an exit criterion that could not detect its own named wrong implementation | core | decision | Open — the in-repo detector gap; GC-event counting is the untried instrument |
+| [A15](#a15) | The per-walk trace reset, weighed and declined | core | decision | Open — declined for the [A12](#a12) fix, not in general; the argument is in the entry |
+| [A16](#a16) | `EvalTraceItem.start` / `end` are declared and never set | core | decision | Open — a published-surface question, deliberately not ridden along with [A12](#a12) |
+| [A17](#a17) | `EvalService.ngOnDestroy` drains under one `try`, so one throw skips the rest | core | fix | Open — predates the trace work; `clearTrace()` adds a second caller-owned participant |
 | [A3](#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | Open |
 | [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered — **wider than it reads; [A10](#a10) argues it is one defect with A10** |
 | [A10](#a10) | `getKey`'s scopes step reports every key present against a plain-object scope | core | fix | Open — **latent, not live**; blocks any fix to [A4](#a4) |
@@ -726,10 +730,15 @@ AST, the value stack, the trace and anything a hook closure captured — for the
 application. The cost grows with uptime and with call volume, which is the profile of a
 long-running form or dashboard: exactly this repository's stated audience.
 
-**"The trace" became a much larger term in Phase 2 step 5** — see [A12](#a12). It used to be
-bounded by the expression's node count; with `for` loops registered, one retained state can hold
-hundreds of thousands of trace items. The two entries compound: A12 is how much one state can hold,
-A8 is why it is never released.
+**"The trace" became a much larger term in Phase 2 step 5, and [A12](#a12)'s fix shrank it
+again.** It used to be bounded by the expression's node count; with `for` loops registered, one
+retained state could hold hundreds of thousands of trace items. **As of A12's fix — unreleased,
+under `CHANGELOG.md`'s `[Unreleased]` — it is bounded by `maxTraceItems`, default 10,000**, so a
+retained state holds ~0.5 MB of trace rather than ~34 MB, and `EvalService.ngOnDestroy` now
+clears it. The two entries still compound, just by two orders of magnitude less: A12 is how much
+one state can hold, A8 is why it is never released. **A8 is unchanged by that fix** — the `Set`
+still grows, every `simpleEval` still retains its state, and the trace is only one of the things
+a retained state keeps.
 
 **It compounds two other entries.** [`phase-1-plan.md:1095`](side-effects/phase-1-plan.md)
 records that because the `Set` is strong, frames abandoned on the open-node stack keep their AST
@@ -914,17 +923,33 @@ throwing arrow body, and the later read returning the shadowed `'SHADOW'` rather
 <a id="a12"></a>
 ## A12 — `EvalResult.trace` grows per loop iteration, so the iteration budget bounds time and not memory
 
-**Package** core · **Kind** fix / decision · **Status** Open — **created by Phase 2 step 5**, found
-in its review
+**Package** core · **Kind** fix / decision · **Status** **Retired — fixed 2026-09-23, unreleased**;
+ships in `eval-core`'s next release, recorded under [`CHANGELOG.md`](../CHANGELOG.md)'s
+`[Unreleased]`. **Created by Phase 2 step 5**, found in its review
 
-`pushVisitorResult` appends to `st.result.trace` on **every** push
-([`visitor-result.ts:7`](../modules/eval-core/src/lib/internal/visitors/visitor-result.ts#L7)),
-unguarded, and `EvalResult.start()` does not reset the trace — the array is built once in the
-constructor and accumulates for the life of the state.
+**Fixed.** `maxTraceItems` bounds the trace, defaulting to 10,000; `EvalResult.traceTruncated`
+and `tracePushCount` report what the bound cost; `EvalResult.clearTrace()` is the only reset,
+and `EvalService.ngOnDestroy` calls it. The rest of this entry is the record of what the defect
+was and what measuring it produced.
 
-Before this step the trace was bounded by the expression's **node count**. With `ForStatement`
-registered it is bounded by **iterations × nodes**, which is a different order of quantity from a
-fixed expression. Measured against `dist/` after `build:production`, on the code this step ships:
+**The measurements stand as three figures, not one, and none corrects another.** This entry's
+original "roughly 45 MB" was taken **without** a forced collection and says so. The A12 plan's
+§ 1.1 (`docs/trace/plan.md`, on branch `backlog-A12`) measured **34.4 MB** with one, 2026-09-17.
+Step 1 re-measured **34.2 MB** under the same conditions two days later. The 45 is a different
+measurement, not a wrong one; the 34.4 and the 34.2 are the same measurement on two days.
+
+**What the fix did not close, and it is not in this entry.** Exit criterion 6 of the step that
+shipped the bound could not detect its own named wrong implementation — see [A19](#a19). That is
+a defect in a criterion rather than in the trace, which is why it has its own entry.
+
+`pushVisitorResult` appended to `st.result.trace` on **every** push, unguarded, and
+`EvalResult.start()` did not reset the trace — the array is built once in the constructor and
+accumulated for the life of the state.
+
+Before Phase 2 step 5 the trace was bounded by the expression's **node count**. With
+`ForStatement` registered it became bounded by **iterations × nodes**, a different order of
+quantity from a fixed expression — and it is now bounded by `maxTraceItems`. Measured against
+`dist/` after `build:production`, on the code that step shipped:
 
 | source | trace items |
 | ------ | ----------- |
@@ -935,17 +960,19 @@ fixed expression. Measured against `dist/` after `build:production`, on the code
 Roughly 45 MB of heap for the first, though heap deltas measured without a forced collection are
 soft; the **item counts are the firm number** and are what a fix would have to bound.
 
-**Two things make this worth an entry rather than a shrug.** The trace **survives the throw** — the
-runaway case pays the whole allocation and *then* raises, so the budget converts a hang into a
-large allocation plus an error rather than into a cheap error. And [A8](#a8) keeps every
-`EvalService`-created state in a strong `Set` for the life of the application, so under `simpleEval`
-that memory is retained. A8 already says a retained state keeps "the trace"; what it could not
-anticipate is that one expression can now put ~700 k items in one.
+**Two things made this worth an entry rather than a shrug.** The trace **survived the throw** —
+where the budget *did* stop a loop, as in the `for (;;)` row, the runaway case paid the whole
+allocation and *then* raised, so the budget converted a hang into a large allocation plus an
+error rather than into a cheap error. And [A8](#a8) keeps every `EvalService`-created state in a
+strong `Set` for the life of the application, so under `simpleEval` that memory is retained. A8
+already said a retained state keeps "the trace"; what it could not anticipate was that one
+expression could put ~700 k items in one.
 
-**`maxIterations: Infinity` is the sharp edge.** The plan's § 3.4 offers it as "a caller may raise
-it, or set `Infinity` and own the consequence", and the consequence it had in mind was a hang. With
-the trace unbounded the consequence is an out-of-memory instead. The option's docblock now says so;
-that is documentation, not a fix.
+**`maxIterations: Infinity` was the sharp edge.** The plan's § 3.4 offers it as "a caller may
+raise it, or set `Infinity` and own the consequence", and the consequence it had in mind was a
+hang. With the trace unbounded the consequence was an out-of-memory instead. That is no longer
+so: `maxTraceItems` bounds the trace whatever the budget does, and the option's docblock now
+says that rather than the warning it used to carry.
 
 **Not fixed in step 5, and the reason is scope rather than difficulty.** Capping or per-run
 resetting `EvalTrace` changes what `EvalResult.trace` contains on an already-published path —
@@ -953,6 +980,22 @@ a versioned-release decision, and one that belongs with whoever decides what the
 (it is the dependency-tracking channel `eval-signals` and `eval-forms` were built against). Step 5's
 file list does not admit `eval-result.ts` or `visitor-result.ts`, and widening it under a
 performance observation is the move this register exists to prevent.
+
+> **Two of this entry's own reasons for deferring were measured false before the fix** (the A12
+> plan's § 1.2, `docs/trace/plan.md` on branch `backlog-A12`), and both are quoted above, so a
+> reader working from the deferral reasoning should stop here.
+>
+> - **The trace is not the dependency-tracking channel.** That is `createDependencyTracker`
+>   installed on `EvalHooks`, consuming `read` events. **No library code in any of the three
+>   packages reads the trace** — every non-spec hit outside `eval-core` is a doc comment. The
+>   deferral rested on a downstream owner who does not exist.
+> - **Nothing documents accumulate-across-runs.** The root README's example is `createState` +
+>   **one** `eval`, and the package README mentioned the accumulation only to call it a wart.
+>   What *is* documented as per-state running totals is `nodeTimings`, a different accumulator.
+>
+> Neither changes the deferral's *conclusion* — step 5 was right not to widen its file list —
+> but both were load-bearing in the argument for it, and they are the kind of claim a retired
+> entry carries forward unchallenged.
 
 **Options, for whoever takes it**: a cap with a documented truncation marker; a
 `trace: false` option; resetting per `evaluate` in `start()` (which changes the documented
@@ -962,9 +1005,181 @@ is filed rather than guessed at.
 
 *Found*: 2026-09-14, Phase 2 step 5 review.
 *Measured*: 2026-09-14 against the built package, numbers above, re-run independently of the
-review that raised it.
+review that raised it; re-measured against the built 0.5.0 bundle **2026-09-17, all three item
+counts reproducing exactly** (700,007 / 300,000 / 7,007 → 14,014 → 21,021), and **2026-09-19,
+the 700,007 row only**, with the heap at 34.2 MB. Attributed per date rather than to both,
+because only the first run covers all three.
 *Recorded*: this entry; [`eval-options.ts`](../modules/eval-core/src/lib/internal/classes/eval/eval-options.ts)'s
 `maxIterations` docblock; cross-referenced from [A8](#a8).
+*Fixed*: 2026-09-20 on branch `backlog-A12`, steps 1 and 2 of its plan, each probed — ten
+wrong implementations in step 1 and five in step 2. The probe record, with which cases went red
+under each, is the header of
+[`trace-bound.spec.ts`](../modules/eval-core/src/lib/internal/visitors/trace-bound.spec.ts).
+Default path measured unchanged at 598 → 588 ns/walk; the 100k loop 98 → 49 ms and 34.2 →
+0.6 MB. Replayed onto this line 2026-09-23 as three steps, recorded in
+[`docs/trace2/`](trace2/step-1.md).
+
+---
+
+<a id="a15"></a>
+## A15 — The per-walk trace reset, weighed and declined
+
+**Package** core · **Kind** decision · **Status** Open — **decided against for the [A12](#a12)
+fix, not in general**; opened 2026-09-19 by the A12 plan's § 3.1 (`docs/trace/plan.md`, on branch
+`backlog-A12`)
+
+`EvalResult.trace` spans every evaluation run on one state rather than restarting per walk.
+[A12](#a12)'s fix bounds its **total** with `maxTraceItems`; it does not change that span. A reset
+on the outermost walk entry — gated on `walkDepth` 0→1, beside the iteration budget's refill —
+was weighed as part of that fix and declined. This entry is the argument, so the question reads
+as answered rather than missed.
+
+**Declined because it bounds nothing the cap does not.** A head cap bounds `trace.length` however
+many walks run on a state; the reset bounds only the per-walk contribution and leaves the headline
+case — **one** walk, 700,007 items — untouched. It also does nothing for the [A8](#a8)-compounded
+case, since `simpleEval` builds a fresh state per call and every retained state has exactly one
+walk on it.
+
+**The case *for* it is staleness, and it is real.** Under a cap alone a long-lived state saturates:
+once `trace.length` reaches the bound the trace holds the **first** N pushes and never updates
+again. For a form re-evaluating per keystroke at ~20 nodes a rule, a 10,000 bound freezes within a
+few hundred evaluations and the consumer's `console.table` then shows a session's opening minute
+forever. Cap-alone converts an unbounded diagnostic into a bounded stale one.
+
+**What decided it** was neither of those. The reset makes the trace / `after`-hook correspondence
+— pinned by `hooks.spec.ts` — conditional above **one walk**, which the documented
+`createState` + repeated `eval` style reaches on its second call. The cap makes the same
+correspondence conditional above 10,000 pushes in one walk, a size nothing in this workspace
+reaches. Two orders of magnitude of headroom against none. `EvalResult.clearTrace()` (0.6.0) is
+the opt-in remedy for the staleness, so the case for imposing it is weaker again.
+
+**What would reopen it**: a consumer report of a frozen trace, or a decision to give
+`nodeTimings` and the trace one lifetime rather than two — the coherence objection is really about
+*all* the per-state accumulators, and deciding it for one is what that plan declined to do.
+
+*Recorded*: this entry; the A12 plan's § 3.1 (`docs/trace/plan.md`, on branch `backlog-A12`)
+carries the full argument.
+*Verified*: the 700,007-item single walk was **measured** 2026-09-17 against the built 0.5.0
+bundle (`016a313`). The hook-stream side was **read, not measured** — the correspondence is pinned
+by `hooks.spec.ts`'s two assertions, and that hooks fire per node with no bound is derived from
+the dispatcher rather than counted.
+
+---
+
+<a id="a16"></a>
+## A16 — `EvalTraceItem.start` and `end` are declared and never set
+
+**Package** core · **Kind** decision · **Status** Open — opened 2026-09-19, deliberately not
+decided by the [A12](#a12) fix
+
+[`eval-trace.ts`](../modules/eval-core/src/lib/internal/classes/eval/eval-trace.ts)'s
+`EvalTraceItem` declares `start?: number` and `end?: number`. **Nothing in any of the three
+packages ever assigns either** — grepped, not assumed. `EvalTrace.add` sets `type`, `value` and
+optionally `expression`, and no other writer exists.
+
+Both are optional, so nothing breaks either way: a consumer reading them gets `undefined`, which
+is what the type already promises. Removing them from an exported interface **is** a breaking
+change for a consumer who assigns them; keeping them costs nothing but leaves two fields that look
+like a timing facility and are not one.
+
+**Not decided by the trace plan, and the reason is the register's own.** It is a published-surface
+question with no connection to memory, and riding it along inside a bounding change is exactly
+what [A12](#a12)'s own deferral paragraph declined to do with the bound itself. Whoever decides it
+should decide it as a surface question: drop them in a major, populate them, or document them as
+reserved.
+
+*Recorded*: this entry; the A12 plan's § 2 (`docs/trace/plan.md`, on branch `backlog-A12`) lists
+it as out of scope.
+*Verified*: grepped across all three packages 2026-09-17 — `EvalTrace.add` is the only writer of
+an `EvalTraceItem`, and it sets neither field.
+
+---
+
+<a id="a17"></a>
+## A17 — `EvalService.ngOnDestroy` drains under one `try`, so one throw skips the rest
+
+**Package** core · **Kind** fix · **Status** Open — opened 2026-09-19, found reviewing the
+[A12](#a12) fix's step 2
+
+[`eval.service.ts`](../modules/eval-core/src/lib/actual/services/eval.service.ts)'s `ngOnDestroy`
+drains each state inside **one** `try`/`catch`: the value stack, then the trace, then the context,
+then the hook registry, then the hook bookkeeping. A throw from any of them lands in the single
+`catch`, which logs and moves to the next **state** — so every drain *after* the throwing one is
+skipped for that state.
+
+**The order makes it worse than it sounds.** The hook-registration drop is last but one, and the
+method's own comment identifies it as the drain that matters most for retention: a registry the
+caller still holds keeps every state its closures captured reachable. A throw in an earlier drain
+silently costs exactly that.
+
+**Three of the five drains call into objects the caller owns**, which is where a throw comes
+from. `context.clear()` has carried that exposure since before the trace work, and so has
+`hooks.clear()` — [`eval-options.ts`](../modules/eval-core/src/lib/internal/classes/eval/eval-options.ts)'s
+`hooks` docblock says an adopted registry is "adopted as-is and never cloned" and that this
+method empties it. `clearTrace()` (`eval-core` 0.6.0) is the third: `EvalResult.trace` is a
+published getter handing out the live array, so a consumer who `Object.freeze`d it makes
+`this._trace.length = 0` a `TypeError` under module strict mode.
+
+**Not a defect in the change that surfaced it** — it is a property of the method, and it predates
+that change. Filed here rather than in a step summary because the next person to touch
+`ngOnDestroy` will look here.
+
+**Options**: a `try` per drain; or order the drains so the caller-owned calls come last; or keep
+one `try` and document that a hostile caller can skip the rest. The second is the cheapest and
+does not change the method's shape — but note it has to move `hooks.clear()` too, and that is
+the drain this entry calls the one that matters, so "order the caller-owned calls last" and
+"protect the hook drop" are the same requirement rather than two.
+
+*Recorded*: this entry.
+*Verified*: source read 2026-09-19. Not exploited — no probe was written, and the frozen-array
+route is reasoned from `trace`'s published getter rather than demonstrated.
+
+---
+
+<a id="a19"></a>
+## A19 — A12's fix shipped behind a criterion that could not detect its own wrong implementation
+
+**Package** core · **Kind** decision · **Status** Open — opened 2026-09-20; the *gap* is open,
+the fix it guarded is [A12](#a12) and is done
+
+The A12 plan's step 1 exit criterion 6 (`docs/trace/plan.md`, on branch `backlog-A12`) read:
+*"Retention is bounded, not just the count — the § 1.7 `WeakRef` probe over a capped walk,
+showing an intermediate object pushed past the cap is collectable. Wrong implementation: building
+each item and discarding it, which caps `length` while allocating exactly as much."*
+
+**The property does not exclude the wrong implementation.** Build-and-discard constructs the
+trace item and drops it, so the traced object is collectable under it *exactly as* under the
+real guard. Measured blind: **0.6 MB either way**. It is invisible to the specs too — probed
+directly, with build-and-discard in place **all ten of the step's cases passed**. The wall clock
+sees it at 16% (49 ms against 57), which is barely above noise for a nursery-local object that
+dies immediately.
+
+**A `WeakRef` probe is constructible and would not help.** A minting function in the context —
+`make: () => { const o = {}; refs.push(new WeakRef(o)); return o; }`, called past the bound —
+yields weak handles with no surviving strong reference. It would not discriminate, because
+**retention-shaped detectors cannot see an allocation-shaped defect**. That is the finding, and
+it generalises past this criterion.
+
+**The instrument that would see it is GC-event counting**: `perf_hooks`
+`PerformanceObserver` over `entryTypes: ['gc']`, which needs **no `--expose-gc`** — and that
+last point reopens a question the plan closed. Criterion 6 was ruled an out-of-repo measurement
+because Jest has no `global.gc`; a GC-event observer does not need it, so an **in-repo**
+detector may be possible after all. Untried.
+
+**What is actually at risk.** Nothing shipped: the guard returns *before* constructing an item,
+confirmed by reading and by the wall clock. The risk is a future edit reintroducing
+build-and-discard with the whole suite green — the trace bounded, the counters correct, and the
+allocation back.
+
+**This is `phase-2-plan.md` § 0.1's failure inside a plan** — a criterion naming a property
+rather than a detector — which survived drafting, a revision, two review passes and the
+code-reviewer.
+
+*Recorded*: this entry; the reasoning and the measurements are in commit `a3fca2d`'s body and
+`docs/trace/step-1-summary.md` § 4, both on branch `backlog-A12`; the probe table is the header
+of [`trace-bound.spec.ts`](../modules/eval-core/src/lib/internal/visitors/trace-bound.spec.ts).
+*Verified*: probed 2026-09-19 — build-and-discard against step 1's ten cases, zero red; heap
+0.6 MB against 0.6 MB; 49 ms against 57 ms.
 
 ---
 

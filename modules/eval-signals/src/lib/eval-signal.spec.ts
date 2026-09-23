@@ -117,9 +117,12 @@ describe('createEvalSignal', () => {
       const built = statesBuilt(states);
 
       // Asserted directly here rather than through its consequence, which is
-      // what step 4 covers. `EvalResult.trace` is drained by nothing and
-      // `setSuccess` does not clear a previous run's error fields, so a
-      // reused state would grow and would report a stale failure (S 3.3.1).
+      // what step 4 covers. `EvalResult.trace` is drained by nothing on this
+      // path - `eval-core` 0.6.0's `clearTrace()` is opt-in and uncalled here,
+      // and its `ngOnDestroy` drain cannot reach a state built through
+      // `CompilerService` - and `setSuccess` does not clear a previous run's
+      // error fields, so a reused state would grow and would report a stale
+      // failure (S 3.3.1).
       expect(built).toHaveLength(3);
       expect(new Set(built).size).toEqual(3);
 
