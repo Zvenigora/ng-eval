@@ -75,19 +75,60 @@ export type EvalKnownOptions = {
    * any hand-written rule, short enough that a browser tab stutters rather than
    * freezes.
    *
-   * **It bounds time, not memory, and raising it trades one for the other.**
-   * `EvalResult.trace` gains an entry per value pushed and is never reset, so a
-   * loop's trace grows as iterations x nodes - roughly 700,000 entries for a
-   * 100,000-iteration loop. The allocation happens *before* the throw, so
-   * exhausting the budget costs it in full; and `Infinity` removes the only
-   * thing bounding it, turning a hang into an out-of-memory. `docs/backlog.md`
-   * A12 carries the measurements and the options for bounding it.
+   * **It bounds time, not memory** - {@link maxTraceItems} bounds the memory,
+   * and before it existed this option was the only thing between a loop and an
+   * out-of-memory. `EvalResult.trace` gained an entry per value pushed and was
+   * reset by nothing, so a loop's trace grew as iterations x nodes - 700,007
+   * entries for a 100,000-iteration loop, and unbounded under `Infinity`.
+   * **That loop is not stopped by this budget**: it charges exactly the default
+   * 100,000 and completes, so the whole allocation is paid by a walk that
+   * returns normally. Where the budget *does* stop a loop - an unbounded
+   * `for (;;)` - the allocation is already paid when the throw arrives.
+   * {@link maxTraceItems} caps that by default as of 0.6.0; `docs/backlog.md`
+   * A12 is retired and carries the measurements.
    *
    * Costs nothing when no loop runs: the counter is charged inside
    * `for-statement.ts`'s iteration loop and nowhere else, so an expression with
    * no `for` in it never reaches the instruction.
    */
   maxIterations?: number;
+
+  /**
+   * How many values one {@link EvalState}'s trace may hold before it stops
+   * growing. Defaults to `10000`.
+   *
+   * **A bound on memory, not a debugging preference.** `EvalResult.trace` gains
+   * an entry per value pushed and is reset only by `EvalResult.clearTrace()`.
+   * Before this bound, with nothing resetting it at all, a loop's trace grew as
+   * iterations x nodes - 700,007 entries and ~34 MB for a 100,000-iteration
+   * loop, which {@link maxIterations} does **not** stop: that loop charges
+   * exactly the default budget of 100,000 and completes, so the allocation
+   * happened in full on a walk that never raised. The budget bounded time and
+   * left this unbounded; this bounds it.
+   *
+   * **The head is kept, and truncation is reported rather than marked.** The
+   * first `maxTraceItems` pushes survive in order, so `trace[0]` still means
+   * the first thing evaluated. Once the bound is reached
+   * `EvalResult.traceTruncated` turns true and stays true, and
+   * `EvalResult.tracePushCount` goes on counting every push the state made -
+   * which is the number the trace no longer tells you. No synthetic entry is
+   * appended: every row in the trace describes a real node.
+   *
+   * **Per state, not per walk.** The trace spans every evaluation run on one
+   * state, so this bounds their total. `EvalResult.clearTrace()` is how a
+   * caller reusing a state gets a fresh one.
+   *
+   * `0` disables tracing - `trace.length` stays `0`, `traceTruncated` stays
+   * `false`, and `tracePushCount` stays accurate, so the walk-size figure
+   * survives the tracing that was turned off. `Infinity` restores the
+   * unbounded behaviour exactly. Both are honoured rather than treated as
+   * falsy or as opt-outs, the same way {@link maxIterations} honours them.
+   *
+   * Re-read on each outermost `evaluate` call rather than once, because the
+   * options are a mutable record the caller keeps a reference to - the same
+   * reason, and the same moment, as {@link maxIterations}' refill.
+   */
+  maxTraceItems?: number;
 
   /**
    * A caller-owned {@link EvalHooks} to dispatch through, instead of the empty

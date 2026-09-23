@@ -1,3 +1,4 @@
+import { AnyNode } from "acorn";
 import { Stack } from "../common";
 import { EvalContext } from "./eval-context";
 import { EvalOptions } from "./eval-options";
@@ -18,6 +19,8 @@ export class EvalResult {
   private _isSuccess?: boolean;
   private _isUndefined?: boolean;
   private _trace: EvalTrace;
+  private _tracePushCount = 0;
+  private _traceTruncated = false;
   private _context: EvalContext;
   private _startDate?: number;
   private _endDate?: number;
@@ -80,6 +83,33 @@ export class EvalResult {
   }
 
   /**
+   * Whether {@link trace} stopped short of everything this state pushed,
+   * because `options.maxTraceItems` was reached.
+   *
+   * **Latches.** Once true it stays true for the life of the state, because the
+   * trace does: it spans every evaluation run on this result, so a flag that
+   * cleared per walk would describe a different array than the one beside it.
+   *
+   * False under `maxTraceItems: 0`, which is a caller asking for no trace
+   * rather than a trace that lost something.
+   */
+  public get traceTruncated(): boolean {
+    return this._traceTruncated;
+  }
+
+  /**
+   * How many values were pushed for tracing over this state's life - which is
+   * what {@link trace} no longer tells you once {@link traceTruncated} is set.
+   *
+   * Counts pushes, not entries kept, so it goes on rising past the bound, and
+   * it stays accurate under `maxTraceItems: 0` - a caller who disabled tracing
+   * for the allocation still gets the walk-size figure.
+   */
+  public get tracePushCount(): number {
+    return this._tracePushCount;
+  }
+
+  /**
    * Gets the evaluation context.
    */
   public get context(): EvalContext {
@@ -131,6 +161,39 @@ export class EvalResult {
     this._stack = new Stack<UnknownValue>();
     this._trace = new EvalTrace();
     this._context = context;
+  }
+
+  /**
+   * Records one traced push against `limit`, adding it to {@link trace} only
+   * while there is room.
+   *
+   * **The bound is the caller's, and that is the point.** `limit` arrives from
+   * `EvalState.maxTraceItems` - the *walk's* options - because this object
+   * cannot read them: {@link options} returns `this._context.options`, and a
+   * context can be handed to any number of evaluations carrying options none
+   * of them used. Reading the bound here would reproduce the split `CLAUDE.md`
+   * documents for `caseInsensitive`.
+   *
+   * One call, replacing the bare `trace.add` the push helpers made before, so
+   * the guarded path costs an increment and a comparison rather than a second
+   * call per node. `_traceTruncated` is written rather than tested-then-written
+   * for the same reason: it is idempotent, and a write is cheaper than a read
+   * and a branch on a path a runaway loop takes hundreds of thousands of times.
+   *
+   * @internal Not part of the published API.
+   */
+  public addTraceBounded(node: AnyNode, value: unknown, limit: number): void {
+    this._tracePushCount++;
+
+    if (this._trace.length >= limit) {
+      // `limit` 0 is tracing turned off, not a trace that lost something.
+      if (limit > 0) {
+        this._traceTruncated = true;
+      }
+      return;
+    }
+
+    this._trace.add(node, value, this._expression);
   }
 
   /**

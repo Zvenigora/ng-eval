@@ -58,6 +58,34 @@ const readMaxIterations = (options?: EvalOptions): number => {
 };
 
 /**
+ * How many values one state's trace holds when the caller names no other.
+ *
+ * Sized rather than picked: ~0.5 MB at the measured ~51 bytes an item,
+ * which is three orders of magnitude above any
+ * expression written by hand - the largest in this repository's own specs and
+ * READMEs is a handful of nodes - and 70x below the 700,007 items a
+ * 100,000-iteration loop produced unbounded.
+ */
+const DEFAULT_MAX_TRACE_ITEMS = 10000;
+
+/**
+ * The trace bound the options ask for, or the default.
+ *
+ * Same cast and same permissive fallback as {@link readMaxIterations}, for the
+ * same reason: options are a record nothing validates, and a malformed value
+ * must not become a *smaller* bound than the default by accident. `0` is
+ * honoured - a caller who wants no trace at all is asking for something
+ * coherent - and `Infinity` opts out, which is why the test is not
+ * `Number.isFinite`.
+ */
+const readMaxTraceItems = (options?: EvalOptions): number => {
+  const value = (options as Record<string, unknown>)?.['maxTraceItems'];
+  return typeof value === 'number' && !Number.isNaN(value) && value >= 0
+    ? value
+    : DEFAULT_MAX_TRACE_ITEMS;
+};
+
+/**
  * Represents the evaluation state, which includes the context, result, and options.
  */
 export class EvalState {
@@ -70,6 +98,7 @@ export class EvalState {
   private _walkDepth = 0;
   private _iterationBudget = DEFAULT_MAX_ITERATIONS;
   private _iterationsRemaining = DEFAULT_MAX_ITERATIONS;
+  private _maxTraceItems = DEFAULT_MAX_TRACE_ITEMS;
   private _constBindings: WeakMap<Context, Set<unknown>> | undefined;
 
   /**
@@ -225,6 +254,12 @@ export class EvalState {
     if (depth === 1) {
       this._iterationBudget = readMaxIterations(this._options);
       this._iterationsRemaining = this._iterationBudget;
+      // Read here for the second half of the refill's reason, and not for the
+      // first: the trace bound has no per-walk state to restore - it bounds the
+      // state's trace, which spans every walk - but the options are the same
+      // mutable record the caller holds, so a caller who raises it between two
+      // evaluations on a held state is honoured exactly as they are above.
+      this._maxTraceItems = readMaxTraceItems(this._options);
     }
 
     return depth;
@@ -254,6 +289,21 @@ export class EvalState {
    */
   public get iterationsRemaining(): number {
     return this._iterationsRemaining;
+  }
+
+  /**
+   * How many values this state's trace may hold, from `options.maxTraceItems`
+   * and defaulting to 10,000. `0` disables tracing; `Infinity` opts out.
+   *
+   * Filled by {@link enterWalk} on the outermost entry, exactly as the
+   * iteration budget is - so **before the first walk this reports the default**
+   * whatever the options said, and a caller reading it to discover what they
+   * asked for should read it after an evaluation rather than before one.
+   *
+   * Read by `visitor-result.ts`'s two push helpers and nowhere else.
+   */
+  public get maxTraceItems(): number {
+    return this._maxTraceItems;
   }
 
   /**
