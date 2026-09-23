@@ -71,6 +71,14 @@ export class EvalService extends BaseEval implements OnDestroy {
         if (state.result?.stack) {
           state.result.stack.clear();
         }
+        // And the trace, which is the largest thing on the result and was the
+        // one per-state buffer this method did not drain. It survived only
+        // because `_activeStates.clear()` below drops the service's own
+        // reference - but under the documented `createState` + repeated `eval`
+        // style the *caller* holds the state, and for that caller this method
+        // released everything except the trace. `clearTrace` resets its two
+        // counters with it (`docs/backlog.md` A12).
+        state.result?.clearTrace();
         // Clear context if it has a clear method
         if (state.context && typeof state.context === 'object' && 'clear' in state.context && typeof state.context.clear === 'function') {
           (state.context as unknown as { clear(): void }).clear();

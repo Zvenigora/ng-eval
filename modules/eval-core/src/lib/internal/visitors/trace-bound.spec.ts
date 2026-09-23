@@ -18,7 +18,7 @@ import { evaluate, parse } from '../functions';
  * ## The probe record - why these assertions are load-bearing
  *
  * `CLAUDE.md`: *a test that would pass without the code it tests is worse than
- * no test*. Wrong implementations were built and run against these
+ * no test*. Fifteen wrong implementations were built and run against these
  * assertions, and **which** cases went red under each is recorded below.
  *
  * **Read this before weakening, merging or deleting any assertion here.** If
@@ -59,6 +59,28 @@ import { evaluate, parse } from '../functions';
  * past the bound - is O(n) each and hangs the suite at 690,000 x 10,000
  * operations. The probe had to be rewritten as an O(1) index overwrite to run
  * at all.
+ *
+ * ### Step 2 - five probes against `clearTrace()` and the destroy drain
+ *
+ * | Wrong implementation | Red |
+ * | -------------------- | --- |
+ * | `clearTrace()` reassigns instead of emptying in place | **1** - the identity assertion |
+ * | Empties the array, strands both counters | **2** |
+ * | Strands `traceTruncated`, and `addTraceBounded` short-circuits on it | **3** - but the flag assertion fired one step *before* the go-on-tracing assertion ran |
+ * | Tracing latched off by a flag `clearTrace` does not reset | the go-on-tracing assertion **alone**, `Expected 7, Received 0` |
+ * | Remove the `ngOnDestroy` call | **1**, in `eval.service.memory-leaks.spec.ts` - not this file |
+ *
+ * **The third and fourth rows together are the finding.** The go-on-tracing
+ * assertion was written to catch "a clear that strands the flag"; row 3 shows
+ * the flag assertion already catches that one step earlier. Row 4 isolates what
+ * it uniquely backstops: a cleared state that is empty, counted from zero,
+ * identical in instance - and traces nothing ever again. That is why it is not
+ * redundant with the assertions above it.
+ *
+ * The last row's assertion lives in
+ * `actual/services/eval.service.memory-leaks.spec.ts`; its probe is recorded
+ * here because the other four are here and splitting the table would lose the
+ * comparison.
  */
 
 const programOf = (source: string): AnyNode =>
@@ -285,6 +307,64 @@ describe('maxTraceItems', () => {
       // Latched - a third walk does not clear it, and the count keeps going.
       expect(state.result.tracePushCount).toEqual(21);
       expect(state.result.traceTruncated).toEqual(true);
+    });
+  });
+
+  describe('clearTrace', () => {
+
+    /**
+     * One case, three legs, because each closes a wrong implementation the
+     * others pass.
+     *
+     * **The context carries `a` although the loop does not need it.** Leg 1
+     * walks the loop, which binds its own `i`; leg 3 walks `2 + 3 * a` on the
+     * *same state*, and that is where `a` is read. Neither leg makes the
+     * binding look necessary on its own.
+     *
+     * **No `WeakRef` probe here, deliberately** (`docs/backlog.md` A19): every
+     * defect one would catch is length-visible, Jest has no `global.gc`, and
+     * releasing the values is a consequence of emptying the array rather than a
+     * separate claim.
+     */
+    it('should reset the trace and both counters, keep the array, and go on tracing', () => {
+      const state = EvalState.fromContext({ a: 10 }, { maxIterations: Infinity });
+
+      // Leg 1 - the precondition. Without it every assertion below passes on a
+      // trace that was never filled.
+      evaluate(programOf(LOOP), state);
+
+      expect(state.result.trace.length).toEqual(10000);
+      expect(state.result.traceTruncated).toEqual(true);
+      expect(state.result.tracePushCount).toEqual(LOOP_PUSHES);
+
+      // Leg 2. The identity assertion - not the length one - is what excludes
+      // `this._trace = new EvalTrace()`: a reassignment empties the trace and
+      // releases its values just as well, and breaks only the consumer holding
+      // the array the getter has always returned.
+      const array = state.result.trace;
+
+      state.result.clearTrace();
+
+      expect(state.result.trace).toBe(array);
+      expect(state.result.trace.length).toEqual(0);
+      expect(state.result.traceTruncated).toEqual(false);
+      expect(state.result.tracePushCount).toEqual(0);
+
+      // Leg 3 - the state still traces, and counts from zero. **Not** the leg
+      // that catches a stranded `traceTruncated`: leg 2 asserts the flag false
+      // immediately above, so a clear that strands it fails there and this
+      // never runs. Probed, not reasoned - stranding the flag reddened leg 2.
+      //
+      // What this leg uniquely backstops is tracing latched off by anything
+      // else: a guard that short-circuits on a disabled flag `clearTrace` does
+      // not know to reset leaves the state tracing nothing ever again, while
+      // length after the clear is still 0, the counters are still 0 and
+      // identity still holds. Probed that way too - only this leg went red.
+      evaluate(programOf('2 + 3 * a'), state);
+
+      expect(state.result.trace.length).toEqual(7);
+      expect(state.result.tracePushCount).toEqual(7);
+      expect(state.result.traceTruncated).toEqual(false);
     });
   });
 });

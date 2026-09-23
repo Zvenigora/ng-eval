@@ -301,6 +301,8 @@ export class EvalState {
    * asked for should read it after an evaluation rather than before one.
    *
    * Read by `visitor-result.ts`'s two push helpers and nowhere else.
+   *
+   * @internal Not part of the published API.
    */
   public get maxTraceItems(): number {
     return this._maxTraceItems;

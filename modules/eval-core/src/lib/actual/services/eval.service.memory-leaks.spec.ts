@@ -103,6 +103,40 @@ describe('EvalService - Memory Leak Prevention', () => {
       expect(activeStatesAfter.size).toBe(0);
     });
 
+    /**
+     * `ngOnDestroy` drained the value stack, the context, the hook registry and
+     * the hook bookkeeping, and skipped the trace - the largest thing on the
+     * object. It survived only because `_activeStates.clear()` then dropped the
+     * service's own reference, which is why this fixture **keeps a state**:
+     * under the documented `createState` + repeated `eval` style the caller
+     * holds it, and for that caller the method advertised as releasing memory
+     * released everything except this.
+     *
+     * The state is built through `createState` and walked through `eval`
+     * rather than through `simpleEval`, which builds its state internally and
+     * hands nothing back - there would be no caller-held state to assert on.
+     * The non-empty assertions are the precondition: without them every
+     * assertion after the destroy passes on a state that never traced.
+     */
+    it('should drain a caller-held state\'s trace and counters on destroy', () => {
+      // A bound of 3 against 7 pushes, so all three fields are non-empty
+      // before the destroy - the flag included. At the default bound a 7-item
+      // trace never truncates, and the assertion after the destroy would be a
+      // no-op rather than a reset.
+      const state = service.createState({ a: 10 }, { maxTraceItems: 3 });
+      service.eval('2 + 3 * a', state);
+
+      expect(state.result.trace.length).toEqual(3);
+      expect(state.result.traceTruncated).toEqual(true);
+      expect(state.result.tracePushCount).toEqual(7);
+
+      service.ngOnDestroy();
+
+      expect(state.result.trace.length).toEqual(0);
+      expect(state.result.traceTruncated).toEqual(false);
+      expect(state.result.tracePushCount).toEqual(0);
+    });
+
     it('should throw error when using destroyed eval service', () => {
       service.ngOnDestroy();
 

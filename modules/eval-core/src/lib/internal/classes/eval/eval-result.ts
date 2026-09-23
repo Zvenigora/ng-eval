@@ -197,6 +197,39 @@ export class EvalResult {
   }
 
   /**
+   * Empties {@link trace} and resets {@link traceTruncated} and
+   * {@link tracePushCount} - the only reset any of the three has.
+   *
+   * **For the caller who reuses one state.** The trace spans every evaluation
+   * run on this result rather than restarting per walk, which is deliberate
+   * (`docs/backlog.md` A15) and is what `options.maxTraceItems` bounds.
+   * A caller using the `createState` + repeated `eval` style who wants the
+   * trace to describe only the walk they just ran calls this before each one.
+   *
+   * **The array is emptied in place, not replaced.** {@link trace} has always
+   * returned the same instance for the life of the result, so a consumer
+   * holding it - `const t = state.result.trace` - keeps a live reference
+   * across this call rather than a stale snapshot.
+   *
+   * That is the **opposite** of `EvalState.resetHookBookkeeping`, which
+   * replaces its record rather than emptying it so as not to mutate a
+   * collection the caller holds a reference to - and both are right for their
+   * own goal, which is why this says so rather than leaving a reader to find
+   * one of them and read the other as a slip. Emptying in place is what
+   * *releases* memory a caller-held array would otherwise pin, and that is the
+   * whole of A12; replacing here would leave the old array, and every value in
+   * it, alive in the caller's hand.
+   *
+   * Leaves {@link expression} alone: that is one string replaced per
+   * evaluation, not an accumulator.
+   */
+  public clearTrace(): void {
+    this._trace.length = 0;
+    this._tracePushCount = 0;
+    this._traceTruncated = false;
+  }
+
+  /**
    * Starts the evaluation process.
    */
   public start(): void {
