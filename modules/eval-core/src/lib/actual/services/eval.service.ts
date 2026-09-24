@@ -79,10 +79,9 @@ export class EvalService extends BaseEval implements OnDestroy {
         // released everything except the trace. `clearTrace` resets its two
         // counters with it (`docs/backlog.md` A12).
         state.result?.clearTrace();
-        // Clear context if it has a clear method
-        if (state.context && typeof state.context === 'object' && 'clear' in state.context && typeof state.context.clear === 'function') {
-          (state.context as unknown as { clear(): void }).clear();
-        }
+        // The context is not drained here. `state.context` is an `EvalContext`,
+        // which has no `clear`, unless the caller passed in a subclass that
+        // declares one - and that object is the caller's (`docs/backlog.md` A21).
         // Drop hook registrations so a long-lived closure cannot pin a
         // destroyed state. This matters most for a registry the caller passed
         // through `options.hooks` and still holds: one that outlives the
@@ -105,17 +104,12 @@ export class EvalService extends BaseEval implements OnDestroy {
       }
     }
     this._activeStates.clear();
-    
-    // Clean up all active contexts
-    for (const context of this._activeContexts) {
-      try {
-        if (context && typeof context.clear === 'function') {
-          context.clear();
-        }
-      } catch (error) {
-        console.warn('Error cleaning up Context:', error);
-      }
-    }
+
+    // Drop the references, and nothing more. Every entry is an object the
+    // caller passed to `createState` - the argument or its `context` key, never
+    // what `fromContext` built from it - so emptying one destroys data the
+    // caller may still hold (`docs/backlog.md` A21). One the caller no longer
+    // holds is released by this line alone.
     this._activeContexts.clear();
   }
 

@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { EvalService } from './eval.service';
 import { ParserService } from './parser.service';
 import { Registry, Cache } from '../../internal/classes/common';
-import { EvalHooks, EvalState } from '../../internal/classes/eval';
+import { EvalContext, EvalHooks, EvalState } from '../../internal/classes/eval';
 import { AnyNode } from 'acorn';
 
 describe('EvalService - Memory Leak Prevention', () => {
@@ -135,6 +135,79 @@ describe('EvalService - Memory Leak Prevention', () => {
       expect(state.result.trace.length).toEqual(0);
       expect(state.result.traceTruncated).toEqual(false);
       expect(state.result.tracePushCount).toEqual(0);
+    });
+
+    /**
+     * `docs/backlog.md` A21. Every object `createState` tracks in
+     * `_activeContexts` is one the caller passed in - the argument, or its
+     * `context` key - never what `fromContext` built from it. So destroy may
+     * drop the service's reference to each, and may not empty any of them: an
+     * application's registries outlive a root injector torn down in tests, per
+     * SSR request, or by a micro-frontend. `docs/a21/plan.md` names the wrong
+     * implementation each case excludes.
+     */
+    describe('caller-owned contexts (A21)', () => {
+      it('should leave a registry passed to createState intact, and still drain the state', () => {
+        const registry = new Registry<string, number>([['a', 10]]);
+        // A bound of 1 so the trace is non-empty before destroy and the drain
+        // after it is a reset, not a no-op - the service-owned half of this case.
+        const state = service.createState(registry, { maxTraceItems: 1 });
+
+        expect(service.eval('a * 2', state)).toEqual(20);
+        expect(state.result.trace.length).toEqual(1);
+
+        service.ngOnDestroy();
+
+        expect(registry.get('a')).toEqual(10);
+        expect(registry.has('a')).toEqual(true);
+        expect(state.result.trace.length).toEqual(0);
+      });
+
+      it('should leave a registry passed to simpleEval intact', () => {
+        const registry = new Registry<string, number>([['a', 10]]);
+
+        for (let i = 0; i < 3; i++) {
+          expect(service.simpleEval('a + 1', registry)).toEqual(11);
+        }
+
+        service.ngOnDestroy();
+
+        expect(registry.get('a')).toEqual(10);
+      });
+
+      it('should leave a registry nested under a context key intact', () => {
+        const registry = new Registry<string, number>([['a', 10]]);
+        service.createState({ context: registry });
+
+        service.ngOnDestroy();
+
+        expect(registry.get('a')).toEqual(10);
+      });
+
+      it('should not call clear on a caller object that is not a Registry', () => {
+        const clear = jest.fn();
+        const order = { type: 'order', clear, total: 10 };
+
+        expect(service.simpleEval('total * 2', order)).toEqual(20);
+
+        service.ngOnDestroy();
+
+        expect(clear).not.toHaveBeenCalled();
+      });
+
+      it('should not call clear on a caller\'s EvalContext subclass', () => {
+        const clear = jest.fn();
+        class ClearableContext extends EvalContext {
+          clear = clear;
+        }
+        const context = new ClearableContext({ a: 10 }, {});
+
+        expect(service.simpleEval('a + 1', context)).toEqual(11);
+
+        service.ngOnDestroy();
+
+        expect(clear).not.toHaveBeenCalled();
+      });
     });
 
     it('should throw error when using destroyed eval service', () => {

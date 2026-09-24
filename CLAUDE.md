@@ -366,12 +366,13 @@ These apply to all three libraries.
 - **Add no `console.*` to library code. This is a rule for what you write, not a
   description of what is there.** `eval-core` has roughly twenty pre-existing calls in
   source — `memory-manager.ts`, `eval.service.ts`, `parser.service.ts`,
-  `eval-core.component.ts:7` — of which **three** survive tree-shaking into the published
+  `eval-core.component.ts:7` — of which **two** survive tree-shaking into the published
   bundle. A grep finds all of them; they are inherited, not something a recent change
   introduced. Do not add to them, and do not clean them up in passing either: they are
-  recorded in `docs/backlog.md` as `BL-B3` (the three service-layer calls) and `BL-B4` (the
+  recorded in `docs/backlog.md` as `BL-B3` (the two service-layer calls) and `BL-B4` (the
   dead component). `BL-B2` was the fourth — the `pattern.ts:83` state dump — and Phase 2
-  step 0 deleted it, which is what took the count from four to three.
+  step 0 deleted it, which is what took the count from four to three. The `A21` fix took it
+  to two: it deleted the `ngOnDestroy` loop that the third call guarded.
   The one deliberate call is the carve-out — a dev-mode-only diagnostic behind
   `isDevMode()`, for a misuse that fails silently and would otherwise be undiagnosable
   (`eval-signals`' `nested-signal-check.ts:88`, guarded at `:79`). Anything reachable in

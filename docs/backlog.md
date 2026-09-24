@@ -98,9 +98,9 @@ entry says what is left.
 | [A19](#a19) | A12's fix shipped behind an exit criterion that could not detect its own named wrong implementation | core | decision | Open — feasibility answered 2026-09-23: not under current Jest, yes as a Node-against-`dist` gate; open for that decision |
 | [A15](#a15) | The per-walk trace reset, weighed and declined | core | decision | Open — declined for the [A12](#a12) fix, not in general; the argument is in the entry |
 | [A16](#a16) | `EvalTraceItem.start` / `end` are declared and never set | core | decision | Open — a published-surface question, deliberately not ridden along with [A12](#a12) |
-| [A17](#a17) | `EvalService.ngOnDestroy` drains under one `try`, so one throw skips the rest | core | fix | Open — predates the trace work; `clearTrace()` adds a second caller-owned participant |
+| [A17](#a17) | `EvalService.ngOnDestroy` drains under one `try`, so one throw skips the rest | core | fix | Open — predates the trace work; `clearTrace()` adds a second caller-owned participant; four drains since [A21](#a21)'s fix |
 | [A20](#a20) | `EvalService._activeContexts` grows with every distinct `Registry` context | core | fix | Open — [A8](#a8)'s shape on a second field; found sizing A8 |
-| [A21](#a21) | `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts | core | fix | Open — **data loss, observed**; fires on `createState` too, so A8's fix does not reach it |
+| [A21](#a21) | `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts | core | fix | **Fixed 2026-09-23, unreleased**; under `CHANGELOG.md`'s `[Unreleased]` — [`docs/a21/plan.md`](a21/plan.md) |
 | [A3](#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | Open |
 | [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered — **wider than it reads; [A10](#a10) argues it is one defect with A10** |
 | [A10](#a10) | `getKey`'s scopes step reports every key present against a plain-object scope | core | fix | Open — **latent, not live**; blocks any fix to [A4](#a4) |
@@ -111,7 +111,7 @@ entry says what is left.
 | [A9](#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | **Fixed**, Phase 2 step 0 |
 | [B1](#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | Open, Covered |
 | [B2](#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Fixed**, Phase 2 step 0 |
-| [B3](#b3) | Three service-layer `console.*` calls reach the published bundle | core | decision | Open |
+| [B3](#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | Open — the third went with [A21](#a21)'s fix |
 | [B4](#b4) | `eval-core.component.ts` is dead generator scaffold | core | fix | Open |
 | [C1](#c1) | A member-target write escapes the read-only policy | signals | decision | Open, Covered |
 | [C2](#c2) | Detect a write violation at construction, not first recompute | signals | decision | Open |
@@ -1110,8 +1110,9 @@ an `EvalTraceItem`, and it sets neither field.
 [A12](#a12) fix's step 2
 
 [`eval.service.ts`](../modules/eval-core/src/lib/actual/services/eval.service.ts)'s `ngOnDestroy`
-drains each state inside **one** `try`/`catch`: the value stack, then the trace, then the context,
-then the hook registry, then the hook bookkeeping. A throw from any of them lands in the single
+drains each state inside **one** `try`/`catch`: the value stack, then the trace, then the hook
+registry, then the hook bookkeeping. *(Four since [A21](#a21)'s fix, 2026-09-23, which deleted a
+fifth, the context drain, between the trace and the hook registry.)* A throw from any of them lands in the single
 `catch`, which logs and moves to the next **state** — so every drain *after* the throwing one is
 skipped for that state.
 
@@ -1120,9 +1121,11 @@ method's own comment identifies it as the drain that matters most for retention:
 caller still holds keeps every state its closures captured reachable. A throw in an earlier drain
 silently costs exactly that.
 
-**Two of the five drains call into objects the caller owns**, which is where a throw comes
-from. *(Corrected 2026-09-23. This said three and counted `state.context.clear()`, which never
-runs: `EvalContext` has no `clear` method.)* `hooks.clear()` has carried that exposure since
+**Two of the four drains call into objects the caller owns**, which is where a throw comes
+from. *(Corrected 2026-09-23. This said three and counted `state.context.clear()`, on the ground
+that `EvalContext` has no `clear` method. That was nearly right: the call did run for a caller's
+`EvalContext` subclass that declared one, and [A21](#a21)'s spec observed it. A21's fix deleted
+the call the same day, so the count stands at two.)* `hooks.clear()` has carried that exposure since
 before the trace work — [`eval-options.ts`](../modules/eval-core/src/lib/internal/classes/eval/eval-options.ts)'s
 `hooks` docblock says an adopted registry is "adopted as-is and never cloned" and that this
 method empties it. `clearTrace()` (`eval-core` 0.6.0) is the second: `EvalResult.trace` is a
@@ -1258,8 +1261,22 @@ after a second registry.
 <a id="a21"></a>
 ## A21 — `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts
 
-**Package** core · **Kind** fix · **Status** Open — recorded 2026-09-23, found while sizing [A8](#a8).
-**This destroys the caller's data. It is not a leak**
+**Package** core · **Kind** fix · **Status** **Fixed 2026-09-23, unreleased** — recorded the same
+day, found while sizing [A8](#a8). **This destroyed the caller's data. It was not a leak**
+
+**Fixed** by [`docs/a21/plan.md`](a21/plan.md). `ngOnDestroy` no longer calls `clear()` on
+anything the caller supplied. It still drops its references, and still drains each state's
+stack, trace, hooks and bookkeeping. **The fix removed code and recorded nothing new.** Every
+entry in `_activeContexts` was already caller-owned by construction, because `createState` adds
+its argument and never what `fromContext` builds from it. So the service-built context the brief
+assumed was being drained never was. The plan has the argument. The fix deleted two drains: the
+`_activeContexts` loop, and `state.context.clear()` in the per-state loop. The second fired on a
+caller's `EvalContext` subclass that declared `clear`, which that loop cleared a second time. Five
+cases in `eval.service.memory-leaks.spec.ts` reproduce the table below and went red against the
+old code. [A20](#a20)'s retention is untouched, but its fix becomes simpler: see the plan's
+"Effect on siblings".
+
+*The rest of this entry is the defect as recorded.*
 
 `ngOnDestroy` walks [A20](#a20)'s `_activeContexts` and calls `.clear()` on each entry. Those are
 objects the caller supplied and may still hold. `Registry.clear()` empties the registry, so when
@@ -1411,19 +1428,23 @@ cannot currently run.
 *Verified*: source read, 2026-09-06. *Fixed*: 2026-09-11, Phase 2 step 0.
 
 <a id="b3"></a>
-## B3 — Three service-layer `console.*` calls reach the published bundle
+## B3 — Two service-layer `console.*` calls reach the published bundle
 
-**Package** core · **Kind** decision · **Status** Open
+**Package** core · **Kind** decision · **Status** Open — **two, not three, since 2026-09-23**
 
 | Site | Call |
 | ---- | ---- |
 | [`parser.service.ts:67`](../modules/eval-core/src/lib/actual/services/parser.service.ts#L67) | `console.debug('Parser cache cleared…')` |
-| [`eval.service.ts:96`](../modules/eval-core/src/lib/actual/services/eval.service.ts#L96) | `console.warn('Error cleaning up EvalState:', error)` |
-| [`eval.service.ts:108`](../modules/eval-core/src/lib/actual/services/eval.service.ts#L108) | `console.warn('Error cleaning up Context:', error)` |
+| [`eval.service.ts:103`](../modules/eval-core/src/lib/actual/services/eval.service.ts#L103) | `console.warn('Error cleaning up EvalState:', error)` |
+
+The third, `console.warn('Error cleaning up Context:', error)`, guarded `ngOnDestroy`'s loop that
+cleared each tracked context. [A21](#a21)'s fix deleted that loop, since it emptied the caller's
+registries, and the call went with it. That was not clean-up in passing: the call had nothing
+left to guard.
 
 Decide whether these become the `isDevMode()` carve-out (`CLAUDE.md`, Conventions), a no-op, or
-stay. Not behavioural. Note the two `eval.service.ts` calls sit inside `ngOnDestroy`'s cleanup
-loop, which is the same method [A8](#a8) touches — if A8 is fixed, revisit these in the same
+stay. Not behavioural. Note the `eval.service.ts` call sits inside `ngOnDestroy`'s cleanup
+loop, which is the same method [A8](#a8) touches — if A8 is fixed, revisit it in the same
 step rather than separately.
 
 <a id="b4"></a>

@@ -39,7 +39,8 @@ has never shipped API in a patch. It is unversioned until that release.
   a loop, the whole allocation was paid *before* the throw. The budget bounded time; nothing
   bounded the memory.
 - **`EvalService.ngOnDestroy` now clears the trace** (`eval-core`) of each state it created,
-  alongside the value stack, the context, the hook registry and the hook bookkeeping.
+  alongside the value stack, the hook registry and the hook bookkeeping. (Not the context: see
+  *Fixed*, below.)
 - **`@zvenigora/ng-eval-signals`: three comments that said the trace "is drained by nothing" were
   corrected**, one of them JSDoc on the exported `createEvalSignal`, which ships in that
   package's `.d.ts`. Documentation only — no exported symbol's shape changed — but it is not
@@ -61,6 +62,15 @@ state, so the bound is on their **total**; `clearTrace()` is how the `createStat
 while keeping `tracePushCount` accurate, and `Infinity` restores the previous behaviour exactly.
 
 ### Fixed
+- **`EvalService.ngOnDestroy` no longer empties your registries** (`eval-core`,
+  [A21](docs/backlog.md#a21)). It called `clear()` on every context with a `type` passed to
+  `createState`, `simpleEval` or `simpleEvalAsync`, including one nested under a `context`
+  key. So when the root injector was destroyed, in a test, per SSR request or at a
+  micro-frontend's teardown, every `Registry` the application had evaluated against was emptied,
+  even though the application still held it. It also called a `clear` method on any other object
+  passed in that declared one, a caller's `EvalContext` subclass included. It now drops its
+  references to those objects and changes nothing inside them. Each state it created is still
+  drained. No exported symbol changes.
 - **Dependency Security**: Bumped the transitive `fast-uri` dependency (pulled in by `ajv`,
   used by the lint/build tooling) from 3.1.5 to 3.1.7, resolving 4 high-severity Dependabot
   advisories — [GHSA-jqff-g426-hqxp](https://github.com/advisories/GHSA-jqff-g426-hqxp),
