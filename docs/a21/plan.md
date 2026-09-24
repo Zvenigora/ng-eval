@@ -5,8 +5,10 @@ against `6da12da`.
 
 ## Objective
 
-`ngOnDestroy` must stop mutating objects the caller supplied. The service may drop its own
-references to them. It may not empty them.
+`ngOnDestroy` must stop mutating contexts the caller supplied. The service may drop its own
+references to them. It may not empty them. An `EvalHooks` registry adopted through
+`options.hooks` is still cleared. That is deliberate and published; [A21](../backlog.md#a21)
+records why it stays.
 
 ## What the tree says
 
@@ -77,7 +79,7 @@ caller already holds through the state. Worth a backlog entry only if someone as
 has no reader but its own `clear()`. It is pure retention, so A20's fix can delete the field
 outright, `createState` contexts included, instead of riding with A8. A8 is unchanged.
 [A17](../backlog.md#a17) loses one of its five drains. The removed loop takes one of
-[B3](../backlog.md#b3)'s three `console.warn` calls with it. That is not clean-up in passing:
+[B3](../backlog.md#b3)'s three `console.*` calls with it. That is not clean-up in passing:
 the call has nothing left to guard.
 
 ## Scope and files
@@ -109,7 +111,7 @@ wrong implementation it excludes.
 3. **Nested `context` key.** `createState({ context: registry })`. The registry survives.
    *Excludes:* removing only the top-level `add` and keeping the nested one.
 4. **A non-`Registry` caller object.** `{ type: 'order', clear: jest.fn(), … }` passed to
-   `createState`. `clear` is never called. *Excludes:* an exemption keyed on `instanceof
+   `simpleEval`, which reaches `createState`. `clear` is never called. *Excludes:* an exemption keyed on `instanceof
    Registry` or on `isRegistryContext`'s type strings.
 5. **A caller's `EvalContext` subclass with `clear`.** `clear` is never called. *Excludes:*
    removing the `_activeContexts` loop and leaving line 83.

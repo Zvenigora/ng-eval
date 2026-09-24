@@ -104,8 +104,8 @@ describe('EvalService - Memory Leak Prevention', () => {
     });
 
     /**
-     * `ngOnDestroy` drained the value stack, the context, the hook registry and
-     * the hook bookkeeping, and skipped the trace - the largest thing on the
+     * `ngOnDestroy` drained the value stack, the hook registry and the hook
+     * bookkeeping, and skipped the trace - the largest thing on the
      * object. It survived only because `_activeStates.clear()` then dropped the
      * service's own reference, which is why this fixture **keeps a state**:
      * under the documented `createState` + repeated `eval` style the caller
@@ -149,8 +149,9 @@ describe('EvalService - Memory Leak Prevention', () => {
     describe('caller-owned contexts (A21)', () => {
       it('should leave a registry passed to createState intact, and still drain the state', () => {
         const registry = new Registry<string, number>([['a', 10]]);
-        // A bound of 1 so the trace is non-empty before destroy and the drain
-        // after it is a reset, not a no-op - the service-owned half of this case.
+        // A bound of 1 pins the trace's length, so the precondition below is
+        // exact. The trace is non-empty at any bound; the drain after destroy is
+        // the service-owned half of this case.
         const state = service.createState(registry, { maxTraceItems: 1 });
 
         expect(service.eval('a * 2', state)).toEqual(20);

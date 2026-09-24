@@ -68,7 +68,7 @@ while keeping `tracePushCount` accurate, and `Infinity` restores the previous be
   key. So when the root injector was destroyed, in a test, per SSR request or at a
   micro-frontend's teardown, every `Registry` the application had evaluated against was emptied,
   even though the application still held it. It also called a `clear` method on any other object
-  passed in that declared one, a caller's `EvalContext` subclass included. It now drops its
+  passed in that had a `type` key and declared one, a caller's `EvalContext` subclass included. It now drops its
   references to those objects and changes nothing inside them. Each state it created is still
   drained. No exported symbol changes.
 - **Dependency Security**: Bumped the transitive `fast-uri` dependency (pulled in by `ajv`,

@@ -99,7 +99,7 @@ entry says what is left.
 | [A15](#a15) | The per-walk trace reset, weighed and declined | core | decision | Open — declined for the [A12](#a12) fix, not in general; the argument is in the entry |
 | [A16](#a16) | `EvalTraceItem.start` / `end` are declared and never set | core | decision | Open — a published-surface question, deliberately not ridden along with [A12](#a12) |
 | [A17](#a17) | `EvalService.ngOnDestroy` drains under one `try`, so one throw skips the rest | core | fix | Open — predates the trace work; `clearTrace()` adds a second caller-owned participant; four drains since [A21](#a21)'s fix |
-| [A20](#a20) | `EvalService._activeContexts` grows with every distinct `Registry` context | core | fix | Open — [A8](#a8)'s shape on a second field; found sizing A8 |
+| [A20](#a20) | `EvalService._activeContexts` grows with every distinct `Registry` context | core | fix | Open — [A8](#a8)'s shape on a second field; found sizing A8. **Rescoped by [A21](#a21)**: every `EvalContext` enters too; the fix is deleting the field, independent of A8 |
 | [A21](#a21) | `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts | core | fix | **Fixed 2026-09-23, unreleased**; under `CHANGELOG.md`'s `[Unreleased]` — [`docs/a21/plan.md`](a21/plan.md) |
 | [A3](#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | Open |
 | [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered — **wider than it reads; [A10](#a10) argues it is one defect with A10** |
@@ -764,8 +764,9 @@ whose whole point is that the two paths differ.
 
 **The step that fixes this carries [B3](#b3) and [A17](#a17) too.** All three are in
 `ngOnDestroy`, and B3 already asks to be revisited with A8. **[A20](#a20) and [A21](#a21) are the
-same method's siblings**, filed 2026-09-23. A20 should ride with this fix. A21 does not: this
-fix doesn't reach it.
+same method's siblings**, filed 2026-09-23. A21 is fixed (`c86b586`), and it did not need this
+fix. A20 no longer needs to ride with this fix either. Its own fix is now to delete the field,
+and that stands alone. *(Corrected 2026-09-24. This said "A20 should ride with this fix".)*
 
 *Recorded*: originated [`side-effects/phase-1-plan.md:1095`](side-effects/phase-1-plan.md) and
 [`side-effects/step-2-summary.md` § 4.2](side-effects/step-2-summary.md); stated as its own item
@@ -1122,10 +1123,11 @@ caller still holds keeps every state its closures captured reachable. A throw in
 silently costs exactly that.
 
 **Two of the four drains call into objects the caller owns**, which is where a throw comes
-from. *(Corrected 2026-09-23. This said three and counted `state.context.clear()`, on the ground
-that `EvalContext` has no `clear` method. That was nearly right: the call did run for a caller's
-`EvalContext` subclass that declared one, and [A21](#a21)'s spec observed it. A21's fix deleted
-the call the same day, so the count stands at two.)* `hooks.clear()` has carried that exposure since
+from. *(Corrected twice. It first said three, counting `state.context.clear()`. The first
+correction, 2026-09-23, dropped it to two on the ground that the call never runs, because
+`EvalContext` has no `clear` method. That was nearly right. The call did run for a caller's
+`EvalContext` subclass that declared one, and [A21](#a21)'s spec observed it. A21's fix then
+deleted the call, so two stands.)* `hooks.clear()` has carried that exposure since
 before the trace work — [`eval-options.ts`](../modules/eval-core/src/lib/internal/classes/eval/eval-options.ts)'s
 `hooks` docblock says an adopted registry is "adopted as-is and never cloned" and that this
 method empties it. `clearTrace()` (`eval-core` 0.6.0) is the second: `EvalResult.trace` is a
@@ -1227,7 +1229,9 @@ above.
 <a id="a20"></a>
 ## A20 — `EvalService._activeContexts` grows with every distinct `Registry` context
 
-**Package** core · **Kind** fix · **Status** Open — recorded 2026-09-23, found while sizing [A8](#a8)
+**Package** core · **Kind** fix · **Status** Open — recorded 2026-09-23, found while sizing
+[A8](#a8). **Rescoped 2026-09-24 by [A21](#a21)'s fix**: wider, because every `EvalContext`
+enters the set too, and simpler, because the set can now be deleted
 
 [A8](#a8)'s shape, on a different field. `EvalService.createState` adds a context to a second
 strong `Set`, `_activeContexts`
@@ -1236,6 +1240,15 @@ context has a `type` property. `Registry` declares `type = 'Registry'`, so every
 to `createState`, or to `simpleEval` / `simpleEvalAsync` (which call it), is added. A plain
 object nested under a `context` key is added too, if it has a `type`. Nothing removes an entry
 before `ngOnDestroy`.
+
+**Every `EvalContext` is added too.** *(Added 2026-09-24. The paragraph above names only
+registries.)* `EvalContext` declares `type = 'EvalContext'`, so passing one in is enough. That
+includes the pattern `eval-signals` documents, `simpleEval(expr, createSignalContext(...))`
+([`signal-context.ts`](../modules/eval-signals/src/lib/signal-context.ts)). Each signal context
+passed that way is retained, together with its lookup closure and the signal source that closure
+reads, until destroy. It also covers `eval-forms`' field contexts, if a caller passes them to
+`EvalService`. Observed by A21's case 5, where the context loop called `clear` on an `EvalContext`
+subclass, which therefore had to be in the set.
 
 **It grows per *distinct* registry, not per call, unlike A8.** A `Set` dedupes by identity.
 Measured against the built bundle: three `simpleEval` calls on one `Registry` left the set at 1,
@@ -1247,9 +1260,17 @@ urgent than A8's per-call growth, and the same defect.
 and the two share a method. This is the second time this service's state tracking has hidden a
 leak.
 
-**Fix.** The same shape as A8's. Adopting A8's "don't keep `simpleEval`'s state" approach should
-carry `simpleEval`'s contexts with it. **It does not touch [A21](#a21)**, which is a different
-defect with a different fix.
+**Fix — superseded 2026-09-24. Delete the field, independently of A8.** *Previously*: "The same
+shape as A8's. Adopting A8's 'don't keep `simpleEval`'s state' approach should carry
+`simpleEval`'s contexts with it." That would have left every `createState` caller's contexts
+retained. After [A21](#a21)'s fix (`c86b586`), `_activeContexts` has no use but being emptied in
+`ngOnDestroy`. Nothing reads its entries, so it is pure retention. Deleting the field, both
+`add`s and the `clear()` fixes every path at once, and it does not need to ride with A8.
+**One spec changes with it:**
+[`eval.service.memory-leaks.spec.ts:76-89`](../modules/eval-core/src/lib/actual/services/eval.service.memory-leaks.spec.ts#L76-L89),
+"should track and clean up active contexts", reads the private field and pins that it is
+non-empty before destroy. It goes when the field goes. A21's five cases do not read the field and
+stay as they are.
 
 *Recorded*: this entry.
 *Verified*: source read, and measured 2026-09-23 by a script outside the repository against
@@ -1264,8 +1285,8 @@ after a second registry.
 **Package** core · **Kind** fix · **Status** **Fixed 2026-09-23, unreleased** — recorded the same
 day, found while sizing [A8](#a8). **This destroyed the caller's data. It was not a leak**
 
-**Fixed** by [`docs/a21/plan.md`](a21/plan.md). `ngOnDestroy` no longer calls `clear()` on
-anything the caller supplied. It still drops its references, and still drains each state's
+**Fixed** by [`docs/a21/plan.md`](a21/plan.md). `ngOnDestroy` no longer calls `clear()` on any
+context the caller supplied. It still drops its references, and still drains each state's
 stack, trace, hooks and bookkeeping. **The fix removed code and recorded nothing new.** Every
 entry in `_activeContexts` was already caller-owned by construction, because `createState` adds
 its argument and never what `fromContext` builds from it. So the service-built context the brief
@@ -1273,8 +1294,19 @@ assumed was being drained never was. The plan has the argument. The fix deleted 
 `_activeContexts` loop, and `state.context.clear()` in the per-state loop. The second fired on a
 caller's `EvalContext` subclass that declared `clear`, which that loop cleared a second time. Five
 cases in `eval.service.memory-leaks.spec.ts` reproduce the table below and went red against the
-old code. [A20](#a20)'s retention is untouched, but its fix becomes simpler: see the plan's
-"Effect on siblings".
+old code. [A20](#a20)'s retention is untouched, but its fix becomes simpler. A20 says how.
+
+**One caller-owned object is still cleared, on purpose: an `EvalHooks` registry adopted through
+`options.hooks`.** It has the same shape as this defect, and the fix considered it and kept it.
+This is not a gap A21 missed. It is published behaviour: the `hooks` JSDoc in
+[`eval-options.ts`](../modules/eval-core/src/lib/internal/classes/eval/eval-options.ts) says
+clearing is "the one thing the library does *to* an adopted registry". The eval-core README says
+the same, and `eval.service.memory-leaks.spec.ts`'s "should clear a caller-owned registry that
+outlives the service" pins it. It also has a reason that contexts lack. A hook's closure usually
+captures the state it observes, so a registry that outlives the service keeps dead states and
+their AST reachable. And those registrations cannot be dropped selectively. A context holds the
+caller's data, which the service has no business emptying. Reversing the hooks behaviour would be
+a published change and would need its own entry.
 
 *The rest of this entry is the defect as recorded.*
 
