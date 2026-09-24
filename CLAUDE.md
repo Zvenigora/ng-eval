@@ -92,7 +92,14 @@ build before believing a type is sound.
 - Run lint and the full test suite after **every** step, not only at the end.
 - A step is done when its stated exit criteria are met, not when the code looks finished.
 - If a step turns out to be wrong, stop and say so rather than improvising a replacement
-  design. Plan changes are written into the plan document first.
+  design.
+- **A plan correction found during a step lands in that step's own commit**, with the reason
+  in the commit body and in the step report. It gets no commit of its own, and it is not
+  drafted ahead of the step. Scope, file list, chores, cross-references and stale prose are
+  all editable in place by whichever step finds the problem. **The one exception is the exit
+  criteria fixed at the step's confirmation gate: the step running under them cannot amend
+  them.** Evidence: fourteen amendment commits on `backlog-A12` against three steps of shipped
+  work, and the same change on `backlog-A12-attempt2` in four commits.
 
 ## Architecture (`eval-core`)
 
