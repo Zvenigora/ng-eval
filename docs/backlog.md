@@ -146,6 +146,7 @@ entry says what is left.
 | [F12](#f12) | The downstream peer ranges exclude `eval-core` 0.4.0 — **and fail both downstream `lint` targets** | signals, forms | fix | **Retired — fixed, Phase 2 step 7**; both ranges widened, and `lint`'s cache inputs with them |
 | [F13](#f13) | Nothing gates the README block count `readme-examples.spec.ts` claims | core, signals, forms | test gap | Open — the count has been wrong twice |
 | [F14](#f14) | Six sites cite the retired `^0.3.0` range, two of them in published READMEs | signals, forms | fix (comments, docs) | **Retired — fixed, Phase 2 step 8**; filed as four sites, was six |
+| [F15](#f15) | The downstream peer ranges exclude `eval-core` 0.6.0 — **latent until the bump, then both downstream `lint` targets fail** | signals, forms | fix (release coordination) | Open — [F12](#f12)'s shape again; widen to `>=0.3.0 <0.7.0` with or before the bump |
 | [R1](#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -2814,6 +2815,52 @@ which is the same standing this entry's numbers had the last two times they were
 silently were not. Dated because "correct" with no date reads as "fixed" to the next reader, and
 [F7](#f7) is what that costs: a claim nobody re-ran travelled through twelve summaries and had to
 have its locus corrected out from under it.
+
+<a id="f15"></a>
+## F15 — The downstream peer ranges exclude `eval-core` 0.6.0
+
+**Package** signals, forms · **Kind** fix (release coordination) · **Status** Open — **latent**,
+recorded 2026-09-23 by the [A12](#a12) replay. Nothing fails today, and something will fail at
+the moment of the bump
+
+`modules/eval-signals/package.json` and `modules/eval-forms/package.json` both declare
+`"@zvenigora/ng-eval-core": ">=0.3.0 <0.6.0"`. The A12 fix adds four published symbols to
+`eval-core` (`CHANGELOG.md`, `[Unreleased]`). The repository has never shipped API in a patch, so
+that fix ships in **0.6.0**, and both ranges exclude 0.6.0.
+
+**This is [F12](#f12)'s shape, and the failure will look the same.** `@nx/dependency-checks` is
+`'error'` in all three projects' `eslint.config.mjs`. At the moment `modules/eval-core/package.json`
+reads `0.6.0`, it fails `eval-signals:lint` and `eval-forms:lint` with *"The version specifier does
+not contain the installed version"*. **No green state exists between the bump and the widening**,
+and `CONTRIBUTING.md` requires a green lint before any commit. F12 measured this exact case: its
+second table sets `eval-core` to an inadmissible `0.6.0` and records both downstream projects
+failing, naming `0.6.0`. That table measured the `<0.5.0` ranges of the time. This entry has not
+re-measured against `<0.6.0`, because doing so means editing a manifest.
+
+**The fix.** Widen both ranges to `>=0.3.0 <0.7.0`, **in the same commit as the bump or in an
+earlier one**. Before the bump the widening is harmless: 0.5.0 falls within both the old range and
+the new. After the bump it is required. 0.5.0 followed this pattern: `eval-signals` 0.1.2 and
+`eval-forms` 0.2.2 widened in the same change as the bump.
+
+**`nx run-many -t lint` is what catches it.** That gate is reliable now and was not in F12's time.
+F12 found the failure only under `--skip-nx-cache`, because `lint`'s cache key did not cover a
+sibling project's manifest. F12 then added `"^production"` to `nx.json`'s `lint` inputs, so a
+cached run now misses and re-lints when `eval-core`'s `package.json` changes. **CI does not catch
+it**, because CI runs no `lint` target ([`CLAUDE.md`](../CLAUDE.md), § Commands). The local
+`run-many` gate is the only one.
+
+**Not settled here: whether the widening bumps the two downstream packages.** `backlog-A12` at
+`ea23794` widened both ranges without a version bump and recorded that under `[Unreleased]`,
+arguing that a widening forced by another package's bump is not worth a release on its own. F12's
+own fix did the opposite, with patch releases 0.1.1 and 0.2.1. That choice belongs to whoever runs
+the release.
+
+*Recorded*: this entry; `docs/trace2/step-3.md` § "Left for the release", which is where it was
+noted first and where a release would not look.
+*Verified*: both manifests read 2026-09-23, `>=0.3.0 <0.6.0`; `@nx/dependency-checks` is
+`'error'` in `modules/eval-signals/eslint.config.mjs` and `modules/eval-forms/eslint.config.mjs`;
+`nx.json`'s `lint` inputs include `"^production"`. The lint failure itself is inferred from
+F12's measurement, not reproduced here.
 
 ---
 
