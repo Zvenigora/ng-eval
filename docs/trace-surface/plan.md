@@ -34,15 +34,11 @@ sets neither field.
 
 **A19's plain-Node row is from one machine.** CI runs Node 24 and 26, which are two V8s.
 
-**The brief's citation for the `CLAUDE.md` line is to the wrong class.** `docs/trace/plan.md`
-exists only on branch `backlog-A12`. Its § 0.2 "fourth class" is a criterion that "refer[s] to
-real things, and still [is] unsatisfiable in the state its own step creates". A criterion that
-names something which does not exist is the class § 0.2's **second** question catches: "does
-what the criterion refers to exist?" A21's criterion ("a service-built context is *still*
-drained") is the second kind. The line cites the second question, and keeps the brief's
-branch-qualified form. § 0.2 prescribes "halt and amend" for that class, so the line says it
-replaces that. `backlog-A12` is a local branch that is not on `origin`, so no clone can follow
-the citation. The register already cites that branch the same way.
+**The brief named the wrong class for the `CLAUDE.md` line.** It named criteria that refer only
+to real things and still cannot be met in the tree their own step produces. A21's criterion ("a
+service-built context is *still* drained") named a drain that never existed, which is a different
+class: a criterion whose referent does not exist. The line is written for that class. The remedy
+previously prescribed for it was "halt and amend", so the line says the step does not halt.
 
 ## Decisions
 
@@ -73,8 +69,8 @@ bump and no manifest change. [F15](../backlog.md#f15)'s peer ranges belong to th
 
 ## Exit criteria
 
-1. `CLAUDE.md` carries the corrected-not-amended rule. It cites § 0.2 with the branch
-   qualifier, and says weakening a satisfiable criterion stays forbidden.
+1. `CLAUDE.md` carries the corrected-not-amended rule, and says weakening a satisfiable
+   criterion stays forbidden.
 2. A15 and A19 are **Open** with a dated "decided" qualifier and their reopen conditions, and are
    not Retired. A16 is **Retired** with its reason. Each index row matches its entry.
 3. A15's corrected sentence is marked as a correction and quotes the original.
@@ -90,10 +86,10 @@ bump and no manifest change. [F15](../backlog.md#f15)'s peer ranges belong to th
   | Site | Says | After |
   | ---- | ---- | ----- |
   | `eval-result.ts:205` (`clearTrace`) | the span is deliberate, A15 | true |
-  | `trace-bound.spec.ts:189`, `:286` | per-walk reset decided out, A15 | true |
-  | `trace-bound.spec.ts:55` | build-and-discard undetected, filed as A19, "still true" | true |
-  | `trace-bound.spec.ts:324` | no `WeakRef` probe, A19 | true |
-  | `docs/trace2/step-1.md:47` | the probe header cites A12 or A15 | true |
+  | `trace-bound.spec.ts:187`, `:284` | per-walk reset decided out, A15 | true |
+  | `trace-bound.spec.ts:53` | build-and-discard undetected, filed as A19, "still true" | true |
+  | `trace-bound.spec.ts:322` | no `WeakRef` probe, A19 | true |
+  | `docs/trace2/step-1.md:5` | no per-walk reset, A15 | true |
   | `docs/trace2/step-2.md`, `step-3.md` | A15/A16/A19 carried over | historical, true |
   | `eval-trace.ts` (new) | A16 | true |
 
@@ -102,10 +98,10 @@ bump and no manifest change. [F15](../backlog.md#f15)'s peer ranges belong to th
   allocation without retention. A19 cited [F8](../backlog.md#f8) for a shape F8 does not have.
   It also offered a manual re-run the tree cannot supply, and a reversal trigger that nothing can
   fire. All three are gone, and the entry now says plainly that the regression is unguarded. The
-  `CLAUDE.md` bullet did not say how it relates to the gate exception above it, or to § 0.2's
-  "halt and amend". The JSDoc said "per-node timing" for totals per node type. Notes taken: F4
+  `CLAUDE.md` bullet did not say how it relates to the gate exception above it, or to the "halt
+  and amend" remedy. The JSDoc said "per-node timing" for totals per node type. Notes taken: F4
   cited as A16's Retired precedent, `evaluateRule` named beside `eval-signals` in A15, and
-  `trace2/step-1.md:47` added to the table below.
+  `trace2/step-1.md` added to the table above.
 - **Criterion 4:** after `build:production`, both docblocks are in
   `dist/modules/eval-core/types/zvenigora-ng-eval-core.d.ts`, on `EvalTraceItem`.
 - **Gate:** `npx nx run-many -t lint test build --skip-nx-cache` passes for all three projects.

@@ -1,8 +1,9 @@
 # Step 1 — the bound
 
-A replay of `backlog-A12` at `ea23794`, not a new design. The decisions were settled there: the
-10,000 default, a head cap rather than a ring buffer, no truncation marker, the `enterWalk` read,
-no per-walk reset. This step writes them again. It does not argue them again.
+Not a new design. The decisions were settled before this step: the 10,000 default, a head cap
+rather than a ring buffer, no truncation marker, the `enterWalk` read, no per-walk reset. Each is
+argued in its own docblock, and the reset in `docs/backlog.md` A15. This step implements them. It
+does not argue them again.
 
 ## Objective
 
@@ -21,9 +22,9 @@ dropped.
 ## What it does
 
 - **`EvalKnownOptions.maxTraceItems`** defaults to 10,000. `0` disables tracing and `Infinity`
-  restores the unbounded behaviour, and both values are honoured as given. The same step replaces
-  the `maxIterations` docblock with ea23794's corrected text. That text says a 100,000-iteration
-  loop is *not* stopped by the budget.
+  restores the unbounded behaviour, and both values are honoured as given. The same step corrects
+  the `maxIterations` docblock, which now says a 100,000-iteration loop is *not* stopped by the
+  budget.
 - **`EvalState`** has a `readMaxTraceItems` function, a `_maxTraceItems` field and a
   `maxTraceItems` getter. The field is filled in `enterWalk` at depth 1, next to the
   iteration-budget refill. That means the walk's own options are re-read on each outermost walk.
@@ -36,31 +37,23 @@ dropped.
 - **`trace-bound.spec.ts`** holds ten cases in four `describe`s, plus the header recording the
   step-1 probes.
 
-## Where this differs from ea23794, and why
+## Notes
 
-- **Citations of `docs/trace/…` were redirected.** That directory is on `backlog-A12` and not on
-  this branch, so each citation would have pointed at a file that does not exist here. Changed:
-  - `eval-state.ts` `DEFAULT_MAX_TRACE_ITEMS`: "Sized in `docs/trace/plan.md` § 3.4 rather than
-    picked" now reads "Sized rather than picked". The sizing argument follows in the same comment.
-  - `visitor-result.ts` header: the "`docs/trace/plan.md` § 8.3, answered here" clause is removed.
-  - `trace-bound.spec.ts`: the plan § 1.1 / § 3.1 / step-1 citations now point at
-    `docs/backlog.md` A12 or A15. The probe header names the summaries' location as branch
-    `backlog-A12`.
-- **The spec's probe-record header comes from `0488865`, not `ea23794`.** The header was added one
-  commit after ea23794 and exists only in that commit's version of the file. This step keeps the
-  step-1 table from it. Step 2 adds the step-2 table.
+- **Comments cite `docs/backlog.md`, not a plan document.** `DEFAULT_MAX_TRACE_ITEMS` reads
+  "Sized rather than picked", with the sizing argument in the same comment.
+- **The spec's probe-record header** holds the step-1 table. Step 2 adds the step-2 table.
 - **Deferred to step 2**, as the brief splits the work: `@internal` on `EvalState.maxTraceItems`,
   and the `clearTrace` `describe`.
-- **A forward reference for one commit.** The `maxTraceItems` JSDoc is copied verbatim from
-  ea23794, and it names `EvalResult.clearTrace()`, which step 2 adds. It is backticked prose and
-  not a `{@link}`, so it compiles. It is accurate once step 2 lands.
+- **A forward reference for one commit.** The `maxTraceItems` JSDoc names
+  `EvalResult.clearTrace()`, which step 2 adds. It is backticked prose and not a `{@link}`, so it
+  compiles. It is accurate once step 2 lands.
 
 ## What was checked
 
 - `npx nx run-many -t lint test build --skip-nx-cache` passed for all 3 projects, all targets.
-  Test counts: eval-core 1057, eval-signals 129, eval-forms 251. ea23794 had 1059 for eval-core,
-  and the difference is the two cases step 2 adds.
+  Test counts: eval-core 1057, eval-signals 129, eval-forms 251. Step 2's two cases bring
+  eval-core to 1059.
 - The Jest "worker failed to exit gracefully" warning fired once. That is `docs/backlog.md` F7,
   and the entry asks that single runs not be added to it, so it is not added.
-- The probes were carried over, not re-run. Every assertion is character-for-character the same
-  as in ea23794's spec. Only comments changed, as listed above.
+- The probes were not re-run. They were run 2026-09-19 against the same assertions, character
+  for character.

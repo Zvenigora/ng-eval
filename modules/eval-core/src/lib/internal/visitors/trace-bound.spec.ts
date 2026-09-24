@@ -25,12 +25,10 @@ import { evaluate, parse } from '../functions';
  * you are about to remove a case, find it in a `Red` column first: several look
  * redundant and are the only detector for one wrong implementation.
  *
- * Carried from the A12 track's step summaries - `docs/trace/step-1-summary.md`
- * § 3 and `docs/trace/step-2-summary.md` § 2, on branch `backlog-A12` - where
- * the probes were run. The counts are as recorded; the summaries log red
- * *cases* by description rather than by `it` name, so no probe below is mapped
- * to a specific `it` - that mapping was not written down and is not invented
- * here.
+ * The probes were run 2026-09-19 against these same assertions, and not re-run
+ * since. Red *cases* were logged by description rather than by `it` name, so
+ * no probe below is mapped to a specific `it` - that mapping was not written
+ * down and is not invented here.
  *
  * ### Step 1 - ten probes against the guard, the option read and the counters
  *

@@ -942,9 +942,8 @@ and `EvalService.ngOnDestroy` calls it. The rest of this entry is the record of 
 was and what measuring it produced.
 
 **The measurements stand as three figures, not one, and none corrects another.** This entry's
-original "roughly 45 MB" was taken **without** a forced collection and says so. The A12 plan's
-§ 1.1 (`docs/trace/plan.md`, on branch `backlog-A12`) measured **34.4 MB** with one, 2026-09-17.
-Step 1 re-measured **34.2 MB** under the same conditions two days later. The 45 is a different
+original "roughly 45 MB" was taken **without** a forced collection and says so. A measurement
+with one, 2026-09-17, gave **34.4 MB**. The same conditions gave **34.2 MB** two days later. The 45 is a different
 measurement, not a wrong one; the 34.4 and the 34.2 are the same measurement on two days.
 
 **What the fix did not close, and it is not in this entry.** Exit criterion 6 of the step that
@@ -990,9 +989,9 @@ a versioned-release decision, and one that belongs with whoever decides what the
 file list does not admit `eval-result.ts` or `visitor-result.ts`, and widening it under a
 performance observation is the move this register exists to prevent.
 
-> **Two of this entry's own reasons for deferring were measured false before the fix** (the A12
-> plan's § 1.2, `docs/trace/plan.md` on branch `backlog-A12`), and both are quoted above, so a
-> reader working from the deferral reasoning should stop here.
+> **Two of this entry's own reasons for deferring were measured false before the fix** (2026-09-19,
+> by grepping all three packages for readers of the trace and reading both READMEs), and both are
+> quoted above, so a reader working from the deferral reasoning should stop here.
 >
 > - **The trace is not the dependency-tracking channel.** That is `createDependencyTracker`
 >   installed on `EvalHooks`, consuming `read` events. **No library code in any of the three
@@ -1020,8 +1019,8 @@ the 700,007 row only**, with the heap at 34.2 MB. Attributed per date rather tha
 because only the first run covers all three.
 *Recorded*: this entry; [`eval-options.ts`](../modules/eval-core/src/lib/internal/classes/eval/eval-options.ts)'s
 `maxIterations` docblock; cross-referenced from [A8](#a8).
-*Fixed*: 2026-09-20 on branch `backlog-A12`, steps 1 and 2 of its plan, each probed — ten
-wrong implementations in step 1 and five in step 2. The probe record, with which cases went red
+*Fixed*: first implemented 2026-09-19 in two steps, each probed — ten wrong implementations
+against the bound and five against `clearTrace()`. The probe record, with which cases went red
 under each, is the header of
 [`trace-bound.spec.ts`](../modules/eval-core/src/lib/internal/visitors/trace-bound.spec.ts).
 Default path measured unchanged at 598 → 588 ns/walk; the 100k loop 98 → 49 ms and 34.2 →
@@ -1035,8 +1034,8 @@ Default path measured unchanged at 598 → 588 ns/walk; the 100k loop 98 → 49 
 
 **Package** core · **Kind** decision · **Status** Open, **decided 2026-09-24: declined in
 general**, not only for the [A12](#a12) fix. Not Retired, because the reopen conditions at the end
-are live, the same way [D7](#d7) is kept. Opened 2026-09-19 by the A12 plan's § 3.1
-(`docs/trace/plan.md`, on branch `backlog-A12`)
+are live, the same way [D7](#d7) is kept. Opened 2026-09-19, when the [A12](#a12) fix weighed
+the reset and declined it
 
 **Decided 2026-09-24, by [`docs/trace-surface/plan.md`](trace-surface/plan.md): no per-walk
 reset.** The argument below was written for the A12 fix. It was re-checked against the bound
@@ -1085,16 +1084,19 @@ arithmetic. That leaves hundreds of walks of headroom against one. `EvalResult.c
 workspace reaches. Two orders of magnitude of headroom against none." The shipped bound is per
 state, not per walk. `maxTraceItems`' docblock says so, and this entry's staleness paragraph
 depends on it. So the cap bites across walks too, and the documented consumer style does reach
-it. The margin narrows. The ordering does not change, so the conclusion stands. The A12 plan's
-§ 3.1 carries the same sentence and is not corrected, because it lives only on `backlog-A12`.)*
+it. The margin narrows. The ordering does not change, so the conclusion stands.)*
 
 **What would reopen it**: a consumer report of a frozen trace, or a decision to give
 `nodeTimings` and the trace one lifetime rather than two — the coherence objection is really about
-*all* the per-state accumulators, and deciding it for one is what that plan declined to do. Once
+*all* the per-state accumulators, and deciding it for one is what the A12 fix declined to do. Once
 `eval-core`'s next minor ships, reopening it means a behaviour change to a published contract.
 
-*Recorded*: this entry; the A12 plan's § 3.1 (`docs/trace/plan.md`, on branch `backlog-A12`)
-carries the full argument.
+Two further costs were weighed at the time. A reset changes every consumer's trace silently and
+unconditionally, where the cap bites only above a line and reports it. And the choice is
+reversible in one direction only: shipping the cap leaves the reset available later, while
+shipping the reset and regretting it takes a second behavioural change to undo.
+
+*Recorded*: this entry.
 *Verified*: the 700,007-item single walk was **measured** 2026-09-17 against the built 0.5.0
 bundle (`016a313`). The hook-stream side was **read, not measured** — the correspondence is pinned
 by `hooks.spec.ts`'s two assertions, and that hooks fire per node with no bound is derived from
@@ -1143,14 +1145,13 @@ is what the type already promises. Removing them from an exported interface **is
 change for a consumer who assigns them; keeping them costs nothing but leaves two fields that look
 like a timing facility and are not one.
 
-**Not decided by the trace plan, and the reason is the register's own.** It is a published-surface
+**Not decided by the A12 fix, and the reason is the register's own.** It is a published-surface
 question with no connection to memory, and riding it along inside a bounding change is exactly
 what [A12](#a12)'s own deferral paragraph declined to do with the bound itself. Whoever decides it
 should decide it as a surface question: drop them in a major, populate them, or document them as
 reserved.
 
-*Recorded*: this entry; the A12 plan's § 2 (`docs/trace/plan.md`, on branch `backlog-A12`) lists
-it as out of scope.
+*Recorded*: this entry; the A12 fix listed it as out of scope.
 *Verified*: grepped across all three packages 2026-09-17 — `EvalTrace.add` is the only writer of
 an `EvalTraceItem`, and it sets neither field. Re-grepped 2026-09-24 with the same result.
 `eval-trace.ts` has one commit in its history, `c1d6c05` (2024-01-11), which declared both
@@ -1165,7 +1166,7 @@ in the built `.d.ts`.
 ## A17 — `EvalService.ngOnDestroy` drains under one `try`, so one throw skips the rest
 
 **Package** core · **Kind** fix · **Status** Open — opened 2026-09-19, found reviewing the
-[A12](#a12) fix's step 2
+[A12](#a12) fix's `clearTrace()` change
 
 [`eval.service.ts`](../modules/eval-core/src/lib/actual/services/eval.service.ts)'s `ngOnDestroy`
 drains each state inside **one** `try`/`catch`: the value stack, then the trace, then the hook
@@ -1260,8 +1261,8 @@ be re-run from the tree. Its scripts were never committed, and this entry descri
 without supplying it. The same fact rules out a third reversal trigger, "the regression found
 after merge": nothing would find it.
 
-The A12 plan's step 1 exit criterion 6 (`docs/trace/plan.md`, on branch `backlog-A12`) read:
-*"Retention is bounded, not just the count — the § 1.7 `WeakRef` probe over a capped walk,
+The A12 fix's first step shipped under an exit criterion, number 6, that read:
+*"Retention is bounded, not just the count — [a] `WeakRef` probe over a capped walk,
 showing an intermediate object pushed past the cap is collectable. Wrong implementation: building
 each item and discarding it, which caps `length` while allocating exactly as much."*
 
@@ -1280,7 +1281,7 @@ it generalises past this criterion.
 
 **The instrument that would see it is GC-event counting**: `perf_hooks`
 `PerformanceObserver` over `entryTypes: ['gc']`, which needs **no `--expose-gc`** — and that
-last point reopens a question the plan closed. Criterion 6 was ruled an out-of-repo measurement
+last point reopens a question the A12 fix closed. Criterion 6 was ruled an out-of-repo measurement
 because Jest has no `global.gc`; a GC-event observer does not need it, so an **in-repo**
 detector may be possible after all. Untried. *(Tried 2026-09-23; see below.)*
 
@@ -1319,9 +1320,8 @@ allocation back.
 rather than a detector — which survived drafting, a revision, two review passes and the
 code-reviewer.
 
-*Recorded*: this entry; the reasoning and the measurements are in commit `a3fca2d`'s body and
-`docs/trace/step-1-summary.md` § 4, both on branch `backlog-A12`; the probe table is the header
-of [`trace-bound.spec.ts`](../modules/eval-core/src/lib/internal/visitors/trace-bound.spec.ts).
+*Recorded*: this entry, which carries the reasoning and the measurements; the probe table is
+the header of [`trace-bound.spec.ts`](../modules/eval-core/src/lib/internal/visitors/trace-bound.spec.ts).
 *Verified*: probed 2026-09-19 — build-and-discard against step 1's ten cases, zero red; heap
 0.6 MB against 0.6 MB; 49 ms against 57 ms. GC-event counting probed 2026-09-23 from scripts
 outside the repository, against a copy of the guard's logic, in the three environments tabled
@@ -3115,9 +3115,9 @@ cached run now misses and re-lints when `eval-core`'s `package.json` changes. **
 it**, because CI runs no `lint` target ([`CLAUDE.md`](../CLAUDE.md), § Commands). The local
 `run-many` gate is the only one.
 
-**Not settled here: whether the widening bumps the two downstream packages.** `backlog-A12` at
-`ea23794` widened both ranges without a version bump and recorded that under `[Unreleased]`,
-arguing that a widening forced by another package's bump is not worth a release on its own. F12's
+**Not settled here: whether the widening bumps the two downstream packages.** One option is to
+widen both ranges without a version bump and record that under `[Unreleased]`, on the argument
+that a widening forced by another package's bump is not worth a release on its own. F12's
 own fix did the opposite, with patch releases 0.1.1 and 0.2.1. That choice belongs to whoever runs
 the release.
 

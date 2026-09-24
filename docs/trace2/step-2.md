@@ -1,7 +1,8 @@
 # Step 2 — the reset
 
-A replay of `backlog-A12` at `ea23794`. That branch settled `clearTrace` emptying the array in
-place, and no per-walk reset. This step does not reopen either.
+Two decisions were settled before this step: `clearTrace` empties the array in place (its
+docblock says why), and there is no per-walk reset (`docs/backlog.md` A15). This step does not
+reopen either.
 
 ## Objective
 
@@ -35,23 +36,18 @@ after destroy.
   reference to the state, uses a cap of 3 against 7 pushes, and checks that the trace is
   non-empty before destroy, since that is the precondition for the test to mean anything.
 
-## Where this differs from ea23794, and why
+## Notes
 
-- **Citations in `trace-bound.spec.ts` were redirected**, for the same reason as step 1. In the
-  `clearTrace` case, "plan § 4 step 2, criterion 1" is removed, because the three legs are
-  explained right there in the case. The reason for no `WeakRef` probe, "(§ 4 step 2)", now
-  points at `docs/backlog.md` A19, which argues it.
-- **`clearTrace`'s docblock** cited `docs/trace/plan.md` § 3.1 for why the trace spans walks. It now
-  cites `docs/backlog.md` A15, the entry that makes that argument on this branch. A15 lands in
-  step 3, so for one commit this is a forward reference.
-- **The probe header's opening sentence says "Fifteen wrong implementations" again**, as it does
-  in `0488865`, now that both tables are present.
+- **The `clearTrace` case explains its three legs in place.** Its reason for having no `WeakRef`
+  probe cites `docs/backlog.md` A19.
+- **`clearTrace`'s docblock cites `docs/backlog.md` A15** for why the trace spans walks. A15
+  lands in step 3, so for one commit this is a forward reference.
+- **The probe header's opening sentence says "Fifteen wrong implementations"**, now that both
+  tables are present.
 
 ## What was checked
 
 - `npx nx run-many -t lint test build --skip-nx-cache` passed for all 3 projects, all targets.
-  Test counts: eval-core 1059, eval-signals 129, eval-forms 251. ea23794's gate recorded the same
-  three counts.
-- The probes were carried over, not re-run. The new assertions are character-for-character the
-  same as ea23794's. The tree now differs from ea23794 only in the comment citations listed here
-  and in step 1.
+  Test counts: eval-core 1059, eval-signals 129, eval-forms 251.
+- The probes were not re-run. They were run 2026-09-19 against the same assertions, character
+  for character.

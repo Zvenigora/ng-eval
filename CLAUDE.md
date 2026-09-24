@@ -98,13 +98,11 @@ build before believing a type is sound.
   drafted ahead of the step. Scope, file list, chores, cross-references and stale prose are
   all editable in place by whichever step finds the problem. **The one exception is the exit
   criteria fixed at the step's confirmation gate: the step running under them cannot amend
-  them.** Evidence: fourteen amendment commits on `backlog-A12` against three steps of shipped
-  work, and the same change on `backlog-A12-attempt2` in four commits.
+  them.** Evidence: separate amendment commits once took fourteen commits for three steps of
+  shipped work; the same change made this way took four.
 - **A criterion that names something that does not exist is corrected, not amended**, even one
-  fixed at the gate. The step records what it found and why that leg was unsatisfiable. This is
-  the class § 0.2's second question catches (`docs/trace/plan.md`, on branch `backlog-A12`), and
-  this line replaces § 0.2's "halt and amend" for it. A21's brief is the instance. Weakening a
-  criterion that *can* be met stays forbidden.
+  fixed at the gate. The step records what it found and why that leg was unsatisfiable, and does
+  not halt. Weakening a criterion that *can* be met stays forbidden.
 
 ## Architecture (`eval-core`)
 
