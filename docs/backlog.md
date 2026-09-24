@@ -95,9 +95,9 @@ entry says what is left.
 | [A13](#a13) | An object rest element binds the whole source, not the remainder | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17**; found measuring [A11](#a11) |
 | [A14](#a14) | A computed key in an object pattern is not evaluated — the identifier's spelling is used as the key | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17**; found by a spec written for [A11](#a11) |
 | [A12](#a12) | `EvalResult.trace` grows per loop iteration — the iteration budget bounds time, not memory | core | fix / decision | **Retired — fixed 2026-09-23, unreleased**; under `CHANGELOG.md`'s `[Unreleased]` |
-| [A19](#a19) | A12's fix shipped behind an exit criterion that could not detect its own named wrong implementation | core | decision | Open — feasibility answered 2026-09-23: not under current Jest, yes as a Node-against-`dist` gate; open for that decision |
-| [A15](#a15) | The per-walk trace reset, weighed and declined | core | decision | Open — declined for the [A12](#a12) fix, not in general; the argument is in the entry |
-| [A16](#a16) | `EvalTraceItem.start` / `end` are declared and never set | core | decision | Open — a published-surface question, deliberately not ridden along with [A12](#a12) |
+| [A19](#a19) | A12's fix shipped behind an exit criterion that could not detect its own named wrong implementation | core | decision | Open, **decided 2026-09-24: the Node-against-`dist` gate is not built now**; the entry lists what reverses it |
+| [A15](#a15) | The per-walk trace reset, weighed and declined | core | decision | Open, **decided 2026-09-24: declined in general**; the entry lists what reopens it |
+| [A16](#a16) | `EvalTraceItem.start` / `end` are declared and never set | core | decision | **Retired — documented as reserved 2026-09-24, unreleased**; under `CHANGELOG.md`'s `[Unreleased]` |
 | [A17](#a17) | `EvalService.ngOnDestroy` drains under one `try`, so one throw skips the rest | core | fix | Open — predates the trace work; `clearTrace()` adds a second caller-owned participant; four drains since [A21](#a21)'s fix |
 | [A20](#a20) | `EvalService._activeContexts` grows with every distinct `Registry` context | core | fix | Open — [A8](#a8)'s shape on a second field; found sizing A8. **Rescoped by [A21](#a21)**: every `EvalContext` enters too; the fix is deleting the field, independent of A8 |
 | [A21](#a21) | `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts | core | fix | **Fixed 2026-09-23, unreleased**; under `CHANGELOG.md`'s `[Unreleased]` — [`docs/a21/plan.md`](a21/plan.md) |
@@ -1033,9 +1033,24 @@ Default path measured unchanged at 598 → 588 ns/walk; the 100k loop 98 → 49 
 <a id="a15"></a>
 ## A15 — The per-walk trace reset, weighed and declined
 
-**Package** core · **Kind** decision · **Status** Open — **decided against for the [A12](#a12)
-fix, not in general**; opened 2026-09-19 by the A12 plan's § 3.1 (`docs/trace/plan.md`, on branch
-`backlog-A12`)
+**Package** core · **Kind** decision · **Status** Open, **decided 2026-09-24: declined in
+general**, not only for the [A12](#a12) fix. Not Retired, because the reopen conditions at the end
+are live, the same way [D7](#d7) is kept. Opened 2026-09-19 by the A12 plan's § 3.1
+(`docs/trace/plan.md`, on branch `backlog-A12`)
+
+**Decided 2026-09-24, by [`docs/trace-surface/plan.md`](trace-surface/plan.md): no per-walk
+reset.** The argument below was written for the A12 fix. It was re-checked against the bound
+that shipped. Its first ground holds. Its deciding ground holds with its margin corrected (see
+the correction note under it). One new ground was added:
+
+- **The per-state span is now documented contract, not an accident.** A12 wrote it into
+  `maxTraceItems`' docblock ("Per state, not per walk"), into `traceTruncated`'s ("Latches"), into
+  `tracePushCount`'s ("over this state's life"), and into `clearTrace`'s, which cites this entry
+  as the reason the span is deliberate. The package README's "Bounding the trace" and
+  `CHANGELOG.md`'s `[Unreleased]` upgrading note say it too. So a reset would now redefine
+  four symbols, not one getter. That is still free until `eval-core`'s next minor ships, and a
+  behaviour change to a published contract after it. **The decision had to come before that
+  release, because the release publishes the contract.**
 
 `EvalResult.trace` spans every evaluation run on one state rather than restarting per walk.
 [A12](#a12)'s fix bounds its **total** with `maxTraceItems`; it does not change that span. A reset
@@ -1058,13 +1073,25 @@ forever. Cap-alone converts an unbounded diagnostic into a bounded stale one.
 **What decided it** was neither of those. The reset makes the trace / `after`-hook correspondence
 — pinned by `hooks.spec.ts` — conditional above **one walk**, which the documented
 `createState` + repeated `eval` style reaches on its second call. The cap makes the same
-correspondence conditional above 10,000 pushes in one walk, a size nothing in this workspace
-reaches. Two orders of magnitude of headroom against none. `EvalResult.clearTrace()` (0.6.0) is
-the opt-in remedy for the staleness, so the case for imposing it is weaker again.
+correspondence conditional above 10,000 pushes **on one state**. No library code in this
+workspace reaches that across walks: `eval-signals` builds a fresh state per recompute, and
+`eval-forms/signals`' `evaluateRule` builds one per call. (One walk with a loop still reaches
+it, which is A12's headline case.) The documented
+style reaches it after about 500 walks at ~20 nodes each, which is the staleness paragraph's own
+arithmetic. That leaves hundreds of walks of headroom against one. `EvalResult.clearTrace()`
+(0.6.0) is the opt-in remedy for the staleness, so the case for imposing it is weaker again.
+
+*(Corrected 2026-09-24. This read "above 10,000 pushes in one walk, a size nothing in this
+workspace reaches. Two orders of magnitude of headroom against none." The shipped bound is per
+state, not per walk. `maxTraceItems`' docblock says so, and this entry's staleness paragraph
+depends on it. So the cap bites across walks too, and the documented consumer style does reach
+it. The margin narrows. The ordering does not change, so the conclusion stands. The A12 plan's
+§ 3.1 carries the same sentence and is not corrected, because it lives only on `backlog-A12`.)*
 
 **What would reopen it**: a consumer report of a frozen trace, or a decision to give
 `nodeTimings` and the trace one lifetime rather than two — the coherence objection is really about
-*all* the per-state accumulators, and deciding it for one is what that plan declined to do.
+*all* the per-state accumulators, and deciding it for one is what that plan declined to do. Once
+`eval-core`'s next minor ships, reopening it means a behaviour change to a published contract.
 
 *Recorded*: this entry; the A12 plan's § 3.1 (`docs/trace/plan.md`, on branch `backlog-A12`)
 carries the full argument.
@@ -1078,8 +1105,33 @@ the dispatcher rather than counted.
 <a id="a16"></a>
 ## A16 — `EvalTraceItem.start` and `end` are declared and never set
 
-**Package** core · **Kind** decision · **Status** Open — opened 2026-09-19, deliberately not
-decided by the [A12](#a12) fix
+**Package** core · **Kind** decision · **Status** **Retired — decided and documented 2026-09-24,
+unreleased**. Recorded under [`CHANGELOG.md`](../CHANGELOG.md)'s `[Unreleased]`. Opened
+2026-09-19, deliberately not decided by the [A12](#a12) fix
+
+**Decided 2026-09-24, by [`docs/trace-surface/plan.md`](trace-surface/plan.md): documented as
+reserved.** Both fields now have JSDoc saying nothing sets them. It points at `expression` for
+source text and at `EvalState.nodeTimings` for timing. Each field keeps its type. The three
+options, with their costs:
+
+- **Document as reserved** (chosen). Two docblocks that ship in the `.d.ts`, and one
+  `[Unreleased]` line. No shape change, so no bump of its own; it rides the next release. It
+  closes neither other option: filling an optional field later is additive, and dropping it later
+  is the same breaking change it is today.
+- **Populate.** The declaration carries no meaning to populate *with*, so a meaning has to be
+  chosen first. Source offsets would add two properties to every kept item, written on the
+  per-node push path that `performance.spec.ts` gates. Timestamps would add a clock read per push.
+  That is the timing hook's job, and it sits behind `trackTime` for that reason. Either is a
+  feature nobody has asked for.
+- **Drop.** Breaking for code that assigns them, such as a consumer building `EvalTraceItem`
+  literals for a test double. That needs a breaking release, and it gains nothing a reader of
+  the JSDoc does not already have.
+
+**Why Retired, when [D7](#d7) and [A15](#a15) stay Open.** D7 accepts a defect that stands. The
+defect here was two fields that look like a timing facility and are not one, and the JSDoc is
+what removes it. Nothing is left pending and there is no reopen condition to watch. That is
+[F4](#f4)'s root README precedent, decided, dropped and Retired. Populating them would be a new
+feature, and it would get its own entry.
 
 [`eval-trace.ts`](../modules/eval-core/src/lib/internal/classes/eval/eval-trace.ts)'s
 `EvalTraceItem` declares `start?: number` and `end?: number`. **Nothing in any of the three
@@ -1100,7 +1152,12 @@ reserved.
 *Recorded*: this entry; the A12 plan's § 2 (`docs/trace/plan.md`, on branch `backlog-A12`) lists
 it as out of scope.
 *Verified*: grepped across all three packages 2026-09-17 — `EvalTrace.add` is the only writer of
-an `EvalTraceItem`, and it sets neither field.
+an `EvalTraceItem`, and it sets neither field. Re-grepped 2026-09-24 with the same result.
+`eval-trace.ts` has one commit in its history, `c1d6c05` (2024-01-11), which declared both
+fields, so `add` has never set them. `git log -G "trace\.(push|add)\(" -- modules` returns
+`c1d6c05` and `e6192cd`, and both write through `add`, so no other writer has ever existed.
+*Fixed*: 2026-09-24, the docblocks in `eval-trace.ts`. After `build:production` they are present
+in the built `.d.ts`.
 
 ---
 
@@ -1153,10 +1210,55 @@ route is reasoned from `trace`'s published getter rather than demonstrated.
 <a id="a19"></a>
 ## A19 — A12's fix shipped behind a criterion that could not detect its own wrong implementation
 
-**Package** core · **Kind** decision · **Status** Open — opened 2026-09-20. **Feasibility answered
-2026-09-23**: no in-repo detector exists under the current Jest setup, and a Node-against-`dist`
-target would be one. Open for the decision whether to build that target. The fix it guarded is
-[A12](#a12), and that is done
+**Package** core · **Kind** decision · **Status** Open, **decided 2026-09-24: the gate is not
+built now**. Not Retired, because the conditions that would reverse it are live, the same way
+[D7](#d7) is kept. Opened 2026-09-20. **Feasibility answered 2026-09-23**: no in-repo detector
+exists under the current Jest setup, and a Node-against-`dist` target would be one. The fix it
+guarded is [A12](#a12), and that is done
+
+**Decided 2026-09-24, by [`docs/trace-surface/plan.md`](trace-surface/plan.md): the
+Node-against-`dist` gate is not built now.** This is a decision with its reversal conditions,
+not a deferral.
+
+*The case for building it.* It is the only detector this entry found. The defect it detects is
+the one this repository treats as worst: a regression the whole suite passes. CI already runs
+`build` before `test`. The finding also generalises: any allocation-shaped invariant needs the
+same harness, so this gate would be the expensive one and later ones would be cheap.
+
+*The case against, which decides it:*
+
+1. **The defect is minor if it lands.** Build-and-discard costs allocation churn and nothing
+   else: 57 ms against 49 on the 700,007-push walk, and 0.6 MB either way. Memory stays bounded
+   and every result is unchanged. It is not rare. The bound is per state, so a reused state
+   saturates after a few hundred walks ([A15](#a15)), and every push after that takes the
+   discard branch. But a discarded item costs what a kept item cost before the bound existed.
+   The regression brings back the pre-A12 trace's allocation rate but not its retention, and
+   retention was A12's defect.
+2. **The instrument is unproven where the gate would run.** The plain-Node row was measured on
+   one machine, against a copy of the guard. CI runs Node 24 and 26
+   (`.github/workflows/node.js.yml`). Those are two V8s, and the counts depend on their GC
+   scheduling. Eight local runs of 0–1 against 6–15 is a wide margin, but it is not evidence of a
+   margin on a CI runner. A threshold gate that flakes gets its threshold loosened or its target
+   skipped, and then it guards nothing.
+3. **It is a new kind of target**, in [F3](#f3)'s and [F4](#f4)'s class. It would need its own
+   target, a `dependsOn` on `build`, and a threshold someone maintains, all for one guard line.
+
+*What would reverse it.* Any one of these:
+
+- a second allocation-shaped invariant that needs the same instrument, which splits the harness
+  cost;
+- a Node-against-`dist` target built for another reason, which turns this into a case added to
+  that target rather than a gate built for it.
+
+If it is reversed, the gate is filed as its own F-series entry and built as a separate track. It
+is not built under this entry.
+
+*Until then, the regression is unguarded, and nothing in the tree can detect it.* The early
+return before construction in `EvalResult.addTraceBounded` is protected only by review and by
+`trace-bound.spec.ts`'s probe header, which names this entry. The plain-Node measurement cannot
+be re-run from the tree. Its scripts were never committed, and this entry describes the fixture
+without supplying it. The same fact rules out a third reversal trigger, "the regression found
+after merge": nothing would find it.
 
 The A12 plan's step 1 exit criterion 6 (`docs/trace/plan.md`, on branch `backlog-A12`) read:
 *"Retention is bounded, not just the count — the § 1.7 `WeakRef` probe over a capped walk,
@@ -1205,7 +1307,8 @@ defect in the shipped code.
 **Conclusion.** No in-repo detector is possible under the current Jest setup. A target that runs
 Node against `dist/` after `build:production` would be one, subject to confirming the plain-Node
 row against the real `EvalResult`. That target is a new kind of gate, a project closer to [F3](#f3)
-and [F4](#f4) than to this entry. What remains open here is whether to build it.
+and [F4](#f4) than to this entry. What remains open here is whether to build it. *(Answered
+2026-09-24: not now. See the decision at the top of this entry.)*
 
 **What is actually at risk.** Nothing shipped: the guard returns *before* constructing an item,
 confirmed by reading and by the wall clock. The risk is a future edit reintroducing

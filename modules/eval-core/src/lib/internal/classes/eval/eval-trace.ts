@@ -1,7 +1,17 @@
 import { AnyNode } from "acorn";
 
 export interface EvalTraceItem {
+  /**
+   * Reserved, and never set: no item this library produces carries a value
+   * here, and none has since the field was declared (`docs/backlog.md` A16).
+   * It is neither a source offset nor a timestamp. For the node's source text
+   * read `expression`; for timing totals per node type, `EvalState.nodeTimings`,
+   * filled under `trackTime`.
+   */
   start?: number;
+  /**
+   * Reserved, and never set - as `start`.
+   */
   end?: number;
   type: string;
   expression?: string;

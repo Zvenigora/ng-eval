@@ -45,6 +45,11 @@ has never shipped API in a patch. It is unversioned until that release.
   corrected**, one of them JSDoc on the exported `createEvalSignal`, which ships in that
   package's `.d.ts`. Documentation only — no exported symbol's shape changed — but it is not
   nothing, and it belongs in whatever release that package next makes.
+- **`EvalTraceItem.start` and `end` are documented as reserved** (`eval-core`,
+  [A16](docs/backlog.md#a16)). Nothing has ever set either field. Their JSDoc now says so, and
+  points at `expression` and `EvalState.nodeTimings` for the source text and timing they appear
+  to offer. Documentation only — both fields keep their optional `number` type — but the JSDoc
+  ships in the `.d.ts`.
 
 ### Upgrading
 
