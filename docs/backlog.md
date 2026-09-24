@@ -95,10 +95,12 @@ entry says what is left.
 | [A13](#a13) | An object rest element binds the whole source, not the remainder | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17**; found measuring [A11](#a11) |
 | [A14](#a14) | A computed key in an object pattern is not evaluated — the identifier's spelling is used as the key | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17**; found by a spec written for [A11](#a11) |
 | [A12](#a12) | `EvalResult.trace` grows per loop iteration — the iteration budget bounds time, not memory | core | fix / decision | **Retired — fixed 2026-09-23, unreleased**; under `CHANGELOG.md`'s `[Unreleased]` |
-| [A19](#a19) | A12's fix shipped behind an exit criterion that could not detect its own named wrong implementation | core | decision | Open — the in-repo detector gap; GC-event counting is the untried instrument |
+| [A19](#a19) | A12's fix shipped behind an exit criterion that could not detect its own named wrong implementation | core | decision | Open — feasibility answered 2026-09-23: not under current Jest, yes as a Node-against-`dist` gate; open for that decision |
 | [A15](#a15) | The per-walk trace reset, weighed and declined | core | decision | Open — declined for the [A12](#a12) fix, not in general; the argument is in the entry |
 | [A16](#a16) | `EvalTraceItem.start` / `end` are declared and never set | core | decision | Open — a published-surface question, deliberately not ridden along with [A12](#a12) |
 | [A17](#a17) | `EvalService.ngOnDestroy` drains under one `try`, so one throw skips the rest | core | fix | Open — predates the trace work; `clearTrace()` adds a second caller-owned participant |
+| [A20](#a20) | `EvalService._activeContexts` grows with every distinct `Registry` context | core | fix | Open — [A8](#a8)'s shape on a second field; found sizing A8 |
+| [A21](#a21) | `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts | core | fix | Open — **data loss, observed**; fires on `createState` too, so A8's fix does not reach it |
 | [A3](#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | Open |
 | [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered — **wider than it reads; [A10](#a10) argues it is one defect with A10** |
 | [A10](#a10) | `getKey`'s scopes step reports every key present against a plain-object scope | core | fix | Open — **latent, not live**; blocks any fix to [A4](#a4) |
@@ -760,6 +762,11 @@ So a fix is not one file. It is: drain the set at the end of each evaluation (or
 update the `eval-core` spec that pins non-drainage, and update the `eval-signals` contrast probe
 whose whole point is that the two paths differ.
 
+**The step that fixes this carries [B3](#b3) and [A17](#a17) too.** All three are in
+`ngOnDestroy`, and B3 already asks to be revisited with A8. **[A20](#a20) and [A21](#a21) are the
+same method's siblings**, filed 2026-09-23. A20 should ride with this fix. A21 does not: this
+fix doesn't reach it.
+
 *Recorded*: originated [`side-effects/phase-1-plan.md:1095`](side-effects/phase-1-plan.md) and
 [`side-effects/step-2-summary.md` § 4.2](side-effects/step-2-summary.md); stated as its own item
 in [`signals/step-4-summary.md` § 5.2](signals/step-4-summary.md); carried forward in all six
@@ -1113,11 +1120,12 @@ method's own comment identifies it as the drain that matters most for retention:
 caller still holds keeps every state its closures captured reachable. A throw in an earlier drain
 silently costs exactly that.
 
-**Three of the five drains call into objects the caller owns**, which is where a throw comes
-from. `context.clear()` has carried that exposure since before the trace work, and so has
-`hooks.clear()` — [`eval-options.ts`](../modules/eval-core/src/lib/internal/classes/eval/eval-options.ts)'s
+**Two of the five drains call into objects the caller owns**, which is where a throw comes
+from. *(Corrected 2026-09-23. This said three and counted `state.context.clear()`, which never
+runs: `EvalContext` has no `clear` method.)* `hooks.clear()` has carried that exposure since
+before the trace work — [`eval-options.ts`](../modules/eval-core/src/lib/internal/classes/eval/eval-options.ts)'s
 `hooks` docblock says an adopted registry is "adopted as-is and never cloned" and that this
-method empties it. `clearTrace()` (`eval-core` 0.6.0) is the third: `EvalResult.trace` is a
+method empties it. `clearTrace()` (`eval-core` 0.6.0) is the second: `EvalResult.trace` is a
 published getter handing out the live array, so a consumer who `Object.freeze`d it makes
 `this._trace.length = 0` a `TypeError` under module strict mode.
 
@@ -1140,8 +1148,10 @@ route is reasoned from `trace`'s published getter rather than demonstrated.
 <a id="a19"></a>
 ## A19 — A12's fix shipped behind a criterion that could not detect its own wrong implementation
 
-**Package** core · **Kind** decision · **Status** Open — opened 2026-09-20; the *gap* is open,
-the fix it guarded is [A12](#a12) and is done
+**Package** core · **Kind** decision · **Status** Open — opened 2026-09-20. **Feasibility answered
+2026-09-23**: no in-repo detector exists under the current Jest setup, and a Node-against-`dist`
+target would be one. Open for the decision whether to build that target. The fix it guarded is
+[A12](#a12), and that is done
 
 The A12 plan's step 1 exit criterion 6 (`docs/trace/plan.md`, on branch `backlog-A12`) read:
 *"Retention is bounded, not just the count — the § 1.7 `WeakRef` probe over a capped walk,
@@ -1165,7 +1175,32 @@ it generalises past this criterion.
 `PerformanceObserver` over `entryTypes: ['gc']`, which needs **no `--expose-gc`** — and that
 last point reopens a question the plan closed. Criterion 6 was ruled an out-of-repo measurement
 because Jest has no `global.gc`; a GC-event observer does not need it, so an **in-repo**
-detector may be possible after all. Untried.
+detector may be possible after all. Untried. *(Tried 2026-09-23; see below.)*
+
+**Measured 2026-09-23: the observer tells the two apart in plain Node and in neither Jest
+environment.** The fixture was a 700,007-push walk against a cap of 10,000, run once with the real
+guard's logic and once with build-and-discard, counting `gc` entries per walk:
+
+| Environment | Real guard | Build-and-discard | Discriminates |
+| ----------- | ---------- | ----------------- | ------------- |
+| Plain Node, 8 runs | 0–1 | 6–15 | **Yes, every run** |
+| Jest, `jsdom` (the Nx preset's environment), 5 runs | 2, then 0 | 1, then 0 | **No** |
+| Jest, `node` environment, 5 runs | 0 | 0–2 | **No** |
+
+**The cause of the Jest result is unknown.** There are two candidates, and neither was isolated:
+- the JIT eliminating the discarded object by escape analysis in Jest's module wrapper and not in
+  plain Node;
+- `PerformanceObserver` delivering `gc` entries differently inside Jest's `vm` context.
+
+**The measurement's own limit.** All three rows ran against a **copy of the guard's logic** — a
+push function over a plain array — not against the real `EvalResult.addTraceBounded`. So the
+plain-Node row shows the instrument can see the defect's shape. It does not show it sees the
+defect in the shipped code.
+
+**Conclusion.** No in-repo detector is possible under the current Jest setup. A target that runs
+Node against `dist/` after `build:production` would be one, subject to confirming the plain-Node
+row against the real `EvalResult`. That target is a new kind of gate, a project closer to [F3](#f3)
+and [F4](#f4) than to this entry. What remains open here is whether to build it.
 
 **What is actually at risk.** Nothing shipped: the guard returns *before* constructing an item,
 confirmed by reading and by the wall clock. The risk is a future edit reintroducing
@@ -1180,7 +1215,82 @@ code-reviewer.
 `docs/trace/step-1-summary.md` § 4, both on branch `backlog-A12`; the probe table is the header
 of [`trace-bound.spec.ts`](../modules/eval-core/src/lib/internal/visitors/trace-bound.spec.ts).
 *Verified*: probed 2026-09-19 — build-and-discard against step 1's ten cases, zero red; heap
-0.6 MB against 0.6 MB; 49 ms against 57 ms.
+0.6 MB against 0.6 MB; 49 ms against 57 ms. GC-event counting probed 2026-09-23 from scripts
+outside the repository, against a copy of the guard's logic, in the three environments tabled
+above.
+
+---
+
+<a id="a20"></a>
+## A20 — `EvalService._activeContexts` grows with every distinct `Registry` context
+
+**Package** core · **Kind** fix · **Status** Open — recorded 2026-09-23, found while sizing [A8](#a8)
+
+[A8](#a8)'s shape, on a different field. `EvalService.createState` adds a context to a second
+strong `Set`, `_activeContexts`
+([`eval.service.ts`](../modules/eval-core/src/lib/actual/services/eval.service.ts)), whenever the
+context has a `type` property. `Registry` declares `type = 'Registry'`, so every `Registry` passed
+to `createState`, or to `simpleEval` / `simpleEvalAsync` (which call it), is added. A plain
+object nested under a `context` key is added too, if it has a `type`. Nothing removes an entry
+before `ngOnDestroy`.
+
+**It grows per *distinct* registry, not per call, unlike A8.** A `Set` dedupes by identity.
+Measured against the built bundle: three `simpleEval` calls on one `Registry` left the set at 1,
+and a second `Registry` took it to 2. So the growth is in the number of distinct registries an
+application creates over its life, and each one is kept with everything it holds. That is less
+urgent than A8's per-call growth, and the same defect.
+
+**Never mentioned in this register before today**, although it sits four lines below A8's field
+and the two share a method. This is the second time this service's state tracking has hidden a
+leak.
+
+**Fix.** The same shape as A8's. Adopting A8's "don't keep `simpleEval`'s state" approach should
+carry `simpleEval`'s contexts with it. **It does not touch [A21](#a21)**, which is a different
+defect with a different fix.
+
+*Recorded*: this entry.
+*Verified*: source read, and measured 2026-09-23 by a script outside the repository against
+`dist/modules/eval-core` built from this branch: set size 1 after three calls on one registry, 2
+after a second registry.
+
+---
+
+<a id="a21"></a>
+## A21 — `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts
+
+**Package** core · **Kind** fix · **Status** Open — recorded 2026-09-23, found while sizing [A8](#a8).
+**This destroys the caller's data. It is not a leak**
+
+`ngOnDestroy` walks [A20](#a20)'s `_activeContexts` and calls `.clear()` on each entry. Those are
+objects the caller supplied and may still hold. `Registry.clear()` empties the registry, so when
+the root `EvalService` is destroyed, every `Registry` an application ever evaluated against is
+emptied under it.
+
+**Observed, not inferred.** Measured 2026-09-23 against `dist/modules/eval-core` built from this
+branch:
+
+| Path | Before `ngOnDestroy` | After |
+| ---- | -------------------- | ----- |
+| `createState(registry)`, then `eval('a * 2', state)` | `20`; `registry.get('a')` is `10` | `registry.get('a')` is `undefined`, and `has('a')` is `false` |
+| `simpleEval('a + 1', registry)` three times | `registry.get('a')` is `10` | `undefined` |
+| `createState({ a: 10 })`, a plain object | — | `obj.a` is still `10`; untouched |
+
+**It fires on the documented `createState` path, not only through `simpleEval`.** So **A8's
+retention fix does not fix this.** Dropping `simpleEval`'s contexts from the set leaves every
+`createState` caller's registry registered, and emptied at destroy. The fix here is to stop
+clearing objects the caller owns, not to stop keeping them.
+
+**Filed apart from [A20](#a20) on purpose.** One is retention and the other is data loss. They
+differ in urgency and in fix, and filing both under one title is how [A8](#a8) spent a year inside
+a commit called "Memory Leak Fixes (5/6)".
+
+**What was not measured.** Whether any real consumer destroys the root injector while holding a
+registry it goes on using. That happens in tests, in SSR per request, and in micro-frontend
+teardown, but it was not observed in any consumer, and nothing in this repository's downstream
+libraries passes a `Registry` to `EvalService`.
+
+*Recorded*: this entry.
+*Verified*: observed 2026-09-23 by a script outside the repository, as tabled above.
 
 ---
 
