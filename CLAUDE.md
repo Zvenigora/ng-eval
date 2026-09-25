@@ -103,6 +103,8 @@ build before believing a type is sound.
 - **A criterion that names something that does not exist is corrected, not amended**, even one
   fixed at the gate. The step records what it found and why that leg was unsatisfiable, and does
   not halt. Weakening a criterion that *can* be met stays forbidden.
+- **Run every wrong implementation against every case, and read the results case by case**:
+  a criterion can go red, or stay green, for a reason other than the one it names.
 
 ## Architecture (`eval-core`)
 
@@ -367,15 +369,13 @@ These apply to all three libraries.
 - Angular 22 / TypeScript 6 / Nx 23. `@zvenigora/ng-eval-core` declares Angular `>=19` as a
   peer dep, so avoid APIs newer than that in shipped code.
 - **Add no `console.*` to library code. This is a rule for what you write, not a
-  description of what is there.** `eval-core` has roughly twenty pre-existing calls in
-  source — `memory-manager.ts`, `eval.service.ts`, `parser.service.ts`,
-  `eval-core.component.ts:7` — of which **two** survive tree-shaking into the published
-  bundle. A grep finds all of them; they are inherited, not something a recent change
-  introduced. Do not add to them, and do not clean them up in passing either: they are
-  recorded in `docs/backlog.md` as `BL-B3` (the two service-layer calls) and `BL-B4` (the
-  dead component). `BL-B2` was the fourth — the `pattern.ts:83` state dump — and Phase 2
-  step 0 deleted it, which is what took the count from four to three. The `A21` fix took it
-  to two: it deleted the `ngOnDestroy` loop that the third call guarded.
+  description of what is there.** `eval-core` has thirteen pre-existing calls in source —
+  eleven in `memory-manager.ts`, one in `parser.service.ts`, one at
+  `eval-core.component.ts:7` — of which **one** survives tree-shaking into the published
+  bundle: `parser.service.ts`'s cache-timer `console.debug`. A grep finds all of them; they
+  are inherited, not something a recent change introduced. Do not add to them, and do not
+  clean them up in passing either: they are recorded in `docs/backlog.md` as `BL-B3` (the
+  service-layer call, and the history of the ones removed) and `BL-B4` (the dead component).
   The one deliberate call is the carve-out — a dev-mode-only diagnostic behind
   `isDevMode()`, for a misuse that fails silently and would otherwise be undiagnosable
   (`eval-signals`' `nested-signal-check.ts:88`, guarded at `:79`). Anything reachable in

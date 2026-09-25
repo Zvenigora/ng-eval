@@ -98,14 +98,16 @@ describe('createEvalSignal - lifetime and cleanup', () => {
       // through `CompilerService` instead (S 3.3.1).
       //
       // It also pins an `eval-core` defect from this library's suite:
-      // `simpleEval` adds to `_activeStates` and never removes, and the set
-      // drains only in `ngOnDestroy` (docs/backlog.md, `BL-A8`). If that is
-      // ever fixed, this line is the one that goes red, and the assertion
-      // above it is the one that still matters.
+      // `createState` adds to `_activeStates` and never removes, and the set
+      // drains only in `ngOnDestroy` (docs/backlog.md, `BL-A8`). This drove
+      // `simpleEval` until A8's first step stopped it keeping its states,
+      // which took the count to 0 and the contrast with it. The `createState`
+      // half is `docs/a8/plan.md`'s step 2: when it lands this line goes red,
+      // and the assertion above it is the one that still matters.
       const context = createSignalContext({ c });
 
       for (let i = 0; i < 5; i++) {
-        evalService.simpleEval('c + 1', context);
+        evalService.eval('c + 1', evalService.createState(context));
       }
 
       expect(active.size).toEqual(5);

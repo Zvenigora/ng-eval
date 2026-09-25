@@ -29,7 +29,10 @@ export class EvalService extends BaseEval implements OnDestroy {
   /**
    * Override createState to track active states for cleanup. The context is
    * not tracked: it is the caller's, and the state already holds it
-   * (`docs/backlog.md` A20).
+   * (`docs/backlog.md` A20). A state kept here is released only by
+   * `ngOnDestroy`, even once the caller drops it: that half of A8 is open
+   * (`docs/a8/plan.md` step 2). `simpleEval` and `simpleEvalAsync` take theirs
+   * back out when the call returns.
    */
   override createState(context?: EvalContext | Context, options?: EvalOptions): EvalState {
     if (this._isDestroyed) {
@@ -50,29 +53,28 @@ export class EvalService extends BaseEval implements OnDestroy {
   ngOnDestroy(): void {
     this._isDestroyed = true;
     
-    // Clean up all active states
+    // Clean up all active states. The drains share one `try`, so a throw
+    // skips every drain after it: the state's own structures go first, and
+    // the two that reach objects the caller owns go last (`docs/backlog.md`
+    // A17).
     for (const state of this._activeStates) {
       try {
         // Clear the stack in the result
         if (state.result?.stack) {
           state.result.stack.clear();
         }
-        // And the trace, which is the largest thing on the result and was the
-        // one per-state buffer this method did not drain. It survived only
-        // because `_activeStates.clear()` below drops the service's own
-        // reference - but under the documented `createState` + repeated `eval`
-        // style the *caller* holds the state, and for that caller this method
-        // released everything except the trace. `clearTrace` resets its two
-        // counters with it (`docs/backlog.md` A12).
-        state.result?.clearTrace();
-        // The context is not drained here. `state.context` is an `EvalContext`,
-        // which has no `clear`, unless the caller passed in a subclass that
-        // declares one - and that object is the caller's (`docs/backlog.md` A21).
-        // Drop hook registrations so a long-lived closure cannot pin a
-        // destroyed state. This matters most for a registry the caller passed
-        // through `options.hooks` and still holds: one that outlives the
-        // service keeps every state its closures captured reachable. A
-        // state-owned registry would die with its state regardless.
+        // Bookkeeping lives on the state and the registry's `clear` cannot
+        // reach it, so the open-node stack and collected errors need dropping
+        // separately. It replaces the arrays rather than emptying them, so a
+        // caller holding `hookErrors` cannot make it throw.
+        state.resetHookBookkeeping();
+        // Caller-owned from here. Drop hook registrations so a long-lived
+        // closure cannot pin a destroyed state. This matters most for a
+        // registry the caller passed through `options.hooks` and still holds:
+        // one that outlives the service keeps every state its closures
+        // captured reachable. A state-owned registry would die with its state
+        // regardless. It runs before the trace drain because it is the one
+        // that matters for retention.
         //
         // Guarded on `hasHooks` rather than reading `state.hooks`, because that
         // getter builds a registry on first access - allocating inside the
@@ -82,11 +84,21 @@ export class EvalService extends BaseEval implements OnDestroy {
         if (state.hasHooks) {
           state.hooks.clear();
         }
-        // Bookkeeping lives on the state and `clear` cannot reach it, so the
-        // open-node stack and collected errors need dropping separately.
-        state.resetHookBookkeeping();
-      } catch (error) {
-        console.warn('Error cleaning up EvalState:', error);
+        // And the trace, which is the largest thing on the result. Under the
+        // documented `createState` + repeated `eval` style the *caller* holds
+        // the state, and `_activeStates.clear()` below releases nothing for
+        // them. `clearTrace` resets its two counters with it (`docs/backlog.md`
+        // A12). Last, because `trace` hands out the live array: a caller who
+        // froze it makes this throw.
+        state.result?.clearTrace();
+        // The context is not drained here. `state.context` is an `EvalContext`,
+        // which has no `clear`, unless the caller passed in a subclass that
+        // declares one - and that object is the caller's (`docs/backlog.md` A21).
+      } catch {
+        // Silent, and deliberately not the `isDevMode()` carve-out: only the
+        // caller-owned drains above can throw, and a throw costs the caller's
+        // own object and nothing else (`docs/backlog.md` B3). The catch stays so
+        // that one state cannot stop the others being drained.
       }
     }
     this._activeStates.clear();
@@ -106,11 +118,18 @@ export class EvalService extends BaseEval implements OnDestroy {
     try {
       const ast = this.parse(expression);
       const state = this.createState(context, options);
-      if (state?.result && typeof expression === 'string') {
-        state.result.expression = expression;
+      try {
+        if (state?.result && typeof expression === 'string') {
+          state.result.expression = expression;
+        }
+        const value = evaluate(ast, state);
+        return value;
+      } finally {
+        // The caller never receives this state, so the service holds it for
+        // the call and no longer (`docs/backlog.md` A8). It goes through
+        // `createState` anyway, which a subclass may override.
+        this._activeStates.delete(state);
       }
-      const value = evaluate(ast, state);
-      return value;
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(error.message);
@@ -161,11 +180,19 @@ export class EvalService extends BaseEval implements OnDestroy {
     try {
       const ast = this.parse(expression);
       const state = this.createState(context, options);
-      if (state?.result && typeof expression === 'string') {
-        state.result.expression = expression;
+      try {
+        if (state?.result && typeof expression === 'string') {
+          state.result.expression = expression;
+        }
+        const promise = evaluateAsync(ast, state);
+        return promise;
+      } finally {
+        // As in `simpleEval`, and without waiting for the promise: the walk has
+        // run by now, and the pending frame holds the state for as long as the
+        // promise it awaits is reachable. Removing it in a handler would keep a
+        // rejected call's state until destroy (`docs/a8/plan.md` § 1.5).
+        this._activeStates.delete(state);
       }
-      const promise = evaluateAsync(ast, state);
-      return promise;
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(error.message);

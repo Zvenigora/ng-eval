@@ -142,12 +142,14 @@ export type EvalKnownOptions = {
    * `new EvalHooks({ onHookError: 'throw' })`, or `createTimingHook().install`.
    *
    * The one thing the library does *to* an adopted registry is clear it:
-   * `EvalService.ngOnDestroy` empties the registries of the states it created,
-   * this one included, so that a registry outliving the service cannot keep
-   * those states and their AST nodes reachable. Registrations cannot be dropped
-   * selectively - the closures that captured a dead state are indistinguishable
-   * from the rest - so do not share one registry with a state whose lifetime is
-   * meant to outlast the service.
+   * `EvalService.ngOnDestroy` empties the registries of the states its
+   * `createState` handed back to the caller, this one included, so that a registry outliving
+   * the service cannot keep those states and their AST nodes reachable.
+   * Registrations cannot be dropped selectively - the closures that captured a
+   * dead state are indistinguishable from the rest - so do not share one
+   * registry with a state whose lifetime is meant to outlast the service. A
+   * registry passed only to `simpleEval` or `simpleEvalAsync` is not cleared:
+   * the service lets go of those states when the call returns.
    */
   hooks?: EvalHooks;
 
