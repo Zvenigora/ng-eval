@@ -1230,8 +1230,10 @@ route is reasoned from `trace`'s published getter rather than demonstrated.
 **Package** core · **Kind** decision · **Status** Open, **decided 2026-09-24: the gate is not
 built now**. Not Retired, because the conditions that would reverse it are live, the same way
 [D7](#d7) is kept. Opened 2026-09-20. **Feasibility answered 2026-09-23**: no in-repo detector
-exists under the current Jest setup, and a Node-against-`dist` target would be one. The fix it
-guarded is [A12](#a12), and that is done
+*for this allocation-shaped defect* exists under the current Jest setup, and a
+Node-against-`dist` target would be one. *(Narrowed 2026-09-24. This said "no in-repo detector"
+without the qualifier. A GC-forcing retention detector does work in Jest; see "What Jest can
+do" below.)* The fix it guarded is [A12](#a12), and that is done
 
 **Decided 2026-09-24, by [`docs/trace-surface/plan.md`](trace-surface/plan.md): the
 Node-against-`dist` gate is not built now.** This is a decision with its reversal conditions,
@@ -1299,7 +1301,9 @@ it generalises past this criterion.
 `PerformanceObserver` over `entryTypes: ['gc']`, which needs **no `--expose-gc`** — and that
 last point reopens a question the A12 fix closed. Criterion 6 was ruled an out-of-repo measurement
 because Jest has no `global.gc`; a GC-event observer does not need it, so an **in-repo**
-detector may be possible after all. Untried. *(Tried 2026-09-23; see below.)*
+detector may be possible after all. Untried. *(Tried 2026-09-23; see below. And the premise
+was weaker than it looked: Jest has no `global.gc`, but a spec can obtain `gc` itself. See "What
+Jest can do". That would not have saved criterion 6, which failed on shape, not on tooling.)*
 
 **Measured 2026-09-23: the observer tells the two apart in plain Node and in neither Jest
 environment.** The fixture was a 700,007-push walk against a cap of 10,000, run once with the real
@@ -1321,7 +1325,28 @@ push function over a plain array — not against the real `EvalResult.addTraceBo
 plain-Node row shows the instrument can see the defect's shape. It does not show it sees the
 defect in the shipped code.
 
-**Conclusion.** No in-repo detector is possible under the current Jest setup. A target that runs
+**What Jest can do: detect retention.** *(Added 2026-09-24, by [A20](#a20)'s fix.)* The
+conclusion below is about the defect in this entry, and it should not be quoted as "GC-based
+detection is impossible in Jest". A spec can force a full collection itself:
+`v8.setFlagsFromString('--expose-gc')`, then `vm.runInNewContext('gc')`, then
+`setFlagsFromString('--no-expose-gc')` straight away so that contexts Jest builds later get no
+`gc` global. Pair that with a `WeakRef` to an object built in a closure, yield a macrotask, call
+`gc()` and `deref()`. The result is a retention detector that runs in-repo under the `jsdom`
+preset. It is in use in `eval.service.memory-leaks.spec.ts`, in the block `contexts passed in
+are not retained (A20)`. Its `collect` helper is the pattern to copy, and
+[`docs/a20/plan.md`](a20/plan.md) records the probes: remove the `gc()` call and the cases that
+expect a collection go red. It ran green on Node 24.5 and 26.4.
+
+**It does not answer this entry's question**, and that is the distinction that matters.
+Criterion 6 and the build-and-discard regression are **allocation-shaped**. Build-and-discard
+releases the object exactly as the real guard does, so a retention detector passes on both, as
+the `WeakRef` finding above says. A20 was **retention-shaped**: an object kept that should have
+been released. That is the one thing a `WeakRef` sees. So the instrument works, but it does not
+reopen this entry. The decision at the top, to build no Node-against-`dist` gate for now,
+stands on its own three reasons. None of them was "Jest cannot force a GC".
+
+**Conclusion.** No in-repo detector *for this defect* is possible under the current Jest setup.
+*(Narrowed 2026-09-24, as above.)* A target that runs
 Node against `dist/` after `build:production` would be one, subject to confirming the plain-Node
 row against the real `EvalResult`. That target is a new kind of gate, a project closer to [F3](#f3)
 and [F4](#f4) than to this entry. What remains open here is whether to build it. *(Answered
@@ -1359,7 +1384,19 @@ deleted. The service keeps no reference of its own to a context passed in. Five 
 five went red against the old code. The instrument is a `WeakRef`, with `gc` reached through
 `v8.setFlagsFromString` and `vm`, so [A19](#a19)'s "Jest has no `global.gc`" is no obstacle for
 a retention-shaped defect. A19's own conclusion is unaffected: its defect is shaped by
-allocation, not retention.
+allocation, not retention. A19's "What Jest can do" records the technique and that distinction.
+
+**The probes found the plan's own criterion backwards.** The draft said case 4, an
+`EvalContext`, excluded "narrowing the set to `Registry` instances". Running that
+implementation turned cases 1–3 red and left case 4 **green**: a set narrowed to registries
+still holds registries. Case 4's real target is the opposite fix, one scoped to A20's title,
+which exempts registries and keeps tracking everything else. The plan was corrected in the same
+commit. **The practice is worth keeping, not the instance.** It surfaced only because every
+wrong implementation was run against every case, and the result was read per case. The suite
+did go red under that probe, so "the named wrong implementation makes the suite fail" would
+have passed the draft. The same approach found that case 2 is not uniquely load-bearing: its
+probe also turns case 4 red. This is `CLAUDE.md`'s "read **which** tests went red", applied to
+the criteria and not only to the specs.
 
 **For most contexts, the fix changes nothing a consumer can observe yet.** The plan found this,
 and the entry had missed it. A state holds its context, and [A8](#a8)'s `_activeStates` holds
