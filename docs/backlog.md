@@ -3115,11 +3115,18 @@ cached run now misses and re-lints when `eval-core`'s `package.json` changes. **
 it**, because CI runs no `lint` target ([`CLAUDE.md`](../CLAUDE.md), § Commands). The local
 `run-many` gate is the only one.
 
-**Not settled here: whether the widening bumps the two downstream packages.** One option is to
-widen both ranges without a version bump and record that under `[Unreleased]`, on the argument
-that a widening forced by another package's bump is not worth a release on its own. F12's
-own fix did the opposite, with patch releases 0.1.1 and 0.2.1. That choice belongs to whoever runs
-the release.
+**Not settled here: whether the widening bumps the two downstream packages.** Both have been done,
+and each has its own evidence:
+
+- **Widen without a bump.** Done 2026-09-20: both ranges went to `>=0.3.0 <0.7.0` with
+  `eval-core` at 0.6.0, neither downstream version moved, and `nx run-many -t lint test build`
+  passed for all three projects without the cache. The argument: a widening forced by another
+  package's bump is not worth a release on its own. What it shows is that the workspace gate
+  accepts it, not that consumers are served by it.
+- **Bump both.** [F12](#f12)'s fix shipped patch releases 0.1.1 and 0.2.1, tagged 2026-09-16.
+  That is the only one of the two that has actually been published.
+
+That choice belongs to whoever runs the release.
 
 *Recorded*: this entry; `docs/trace2/step-3.md` § "Left for the release", which is where it was
 noted first and where a release would not look.
