@@ -320,9 +320,10 @@ describe('maxTraceItems', () => {
      * binding look necessary on its own.
      *
      * **No `WeakRef` probe here, deliberately** (`docs/backlog.md` A19): every
-     * defect one would catch is length-visible, Jest has no `global.gc`, and
-     * releasing the values is a consequence of emptying the array rather than a
-     * separate claim.
+     * defect one would catch is length-visible, and releasing the values is a
+     * consequence of emptying the array rather than a separate claim. Not
+     * because Jest cannot force a GC: it can, and the A20 block in
+     * `eval.service.memory-leaks.spec.ts` shows how.
      */
     it('should reset the trace and both counters, keep the array, and go on tracing', () => {
       const state = EvalState.fromContext({ a: 10 }, { maxIterations: Infinity });
