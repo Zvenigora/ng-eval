@@ -99,7 +99,7 @@ entry says what is left.
 | [A15](#a15) | The per-walk trace reset, weighed and declined | core | decision | Open, **decided 2026-09-24: declined in general**; the entry lists what reopens it |
 | [A16](#a16) | `EvalTraceItem.start` / `end` are declared and never set | core | decision | **Retired — documented as reserved 2026-09-24, unreleased**; under `CHANGELOG.md`'s `[Unreleased]` |
 | [A17](#a17) | `EvalService.ngOnDestroy` drains under one `try`, so one throw skips the rest | core | fix | Open — predates the trace work; `clearTrace()` adds a second caller-owned participant; four drains since [A21](#a21)'s fix |
-| [A20](#a20) | `EvalService._activeContexts` grows with every distinct `Registry` context | core | fix | Open — [A8](#a8)'s shape on a second field; found sizing A8. **Rescoped by [A21](#a21)**: every `EvalContext` enters too; the fix is deleting the field, independent of A8 |
+| [A20](#a20) | `EvalService._activeContexts` grows with every distinct `Registry` context | core | fix | **Fixed 2026-09-24, unreleased**; the field deleted — [`docs/a20/plan.md`](a20/plan.md). Observable now only under `caseInsensitive`. Other contexts stay retained through their states until [A8](#a8) is fixed |
 | [A21](#a21) | `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts | core | fix | **Fixed 2026-09-23, unreleased**; under `CHANGELOG.md`'s `[Unreleased]` — [`docs/a21/plan.md`](a21/plan.md) |
 | [A3](#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | Open |
 | [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered — **wider than it reads; [A10](#a10) argues it is one defect with A10** |
@@ -622,10 +622,10 @@ services; that was an undercount, corrected here on 2026-09-06 by grepping
 
 | Service | Method | Line | Named in the old entry? |
 | ------- | ------ | ---- | ----------------------- |
-| `EvalService` | `simpleEval` | [135](../modules/eval-core/src/lib/actual/services/eval.service.ts#L135) | yes |
-| `EvalService` | `eval` | [162](../modules/eval-core/src/lib/actual/services/eval.service.ts#L162) | yes |
-| `EvalService` | `simpleEvalAsync` | [190](../modules/eval-core/src/lib/actual/services/eval.service.ts#L190) | **no** |
-| `EvalService` | `evalAsync` | [217](../modules/eval-core/src/lib/actual/services/eval.service.ts#L217) | **no** |
+| `EvalService` | `simpleEval` | [116](../modules/eval-core/src/lib/actual/services/eval.service.ts#L116) | yes |
+| `EvalService` | `eval` | [143](../modules/eval-core/src/lib/actual/services/eval.service.ts#L143) | yes |
+| `EvalService` | `simpleEvalAsync` | [171](../modules/eval-core/src/lib/actual/services/eval.service.ts#L171) | **no** |
+| `EvalService` | `evalAsync` | [198](../modules/eval-core/src/lib/actual/services/eval.service.ts#L198) | **no** |
 | `CompilerService` | `compile` | [181](../modules/eval-core/src/lib/actual/services/compiler.service.ts#L181) | **no** |
 | `CompilerService` | `simpleCall` | [205](../modules/eval-core/src/lib/actual/services/compiler.service.ts#L205) | yes |
 | `CompilerService` | `call` | [231](../modules/eval-core/src/lib/actual/services/compiler.service.ts#L231) | yes |
@@ -723,9 +723,9 @@ written against the corrected behaviour rather than the current one.
 **This entry is why this file exists.** See [R4](#r4) for the cross-references that hid it.
 
 `EvalService.createState` adds every state it builds to a strong `Set`
-([`eval.service.ts:41`](../modules/eval-core/src/lib/actual/services/eval.service.ts#L41)), and
+([`eval.service.ts:42`](../modules/eval-core/src/lib/actual/services/eval.service.ts#L42)), and
 nothing removes an entry. The set is drained only in `ngOnDestroy`
-([`:99`](../modules/eval-core/src/lib/actual/services/eval.service.ts#L99)). `EvalService` is
+([`:92`](../modules/eval-core/src/lib/actual/services/eval.service.ts#L92)). `EvalService` is
 `providedIn: 'root'`, so that is application teardown.
 
 Every `simpleEval` / `simpleEvalAsync` call therefore retains its `EvalState` — and with it the
@@ -748,25 +748,41 @@ records that because the `Set` is strong, frames abandoned on the open-node stac
 nodes alive "for the life of the service, which is exactly the retention `ngOnDestroy` is called
 to prevent". And a leaked scope from [A9](#a9) sits on a context those retained states reference.
 
-**Covered, in a way a fix must plan for.** Two specs read the private field:
+**Covered, in a way a fix must plan for.** Three specs read the private field:
 
-- [`eval.service.memory-leaks.spec.ts:97-103`](../modules/eval-core/src/lib/actual/services/eval.service.memory-leaks.spec.ts#L97-L103)
+- [`eval.service.memory-leaks.spec.ts:84-90`](../modules/eval-core/src/lib/actual/services/eval.service.memory-leaks.spec.ts#L84-L90)
   asserts the set is non-empty before `ngOnDestroy` and empty after — so it pins the current
   behaviour in both directions.
+- The same file's `contexts passed in are not retained (A20)` block *(added 2026-09-24 by
+  [A20](#a20)'s fix)*. Its `collect` helper clears the set by hand before forcing a GC, and its
+  control case, "should still retain the context through A8's state set", asserts that a
+  context **is** still retained when the set is left alone. A fix turns the control red. It is
+  deleted then, together with the clear in `collect`.
 - [`eval-signal.memory.spec.ts:79-102`](../modules/eval-signals/src/lib/eval-signal.memory.spec.ts#L79-L102)
   uses it as a **contrast probe** in a different library: it is the reason `createEvalSignal`
   builds its states through `CompilerService` instead. A fix turns that spec red at one named
   line, and the comment above it says so.
 
 So a fix is not one file. It is: drain the set at the end of each evaluation (or make it weak),
-update the `eval-core` spec that pins non-drainage, and update the `eval-signals` contrast probe
+update the `eval-core` specs that pin non-drainage, and update the `eval-signals` contrast probe
 whose whole point is that the two paths differ.
+
+**A8 now also holds every context passed in.** *(Added 2026-09-24, by [A20](#a20)'s fix.)* A
+state holds its context, so each context passed to `createState`, `simpleEval` or
+`simpleEvalAsync` stays reachable through the state in this set until destroy. `_activeContexts`
+held the same objects for the same lifetime, which is why deleting it changed nothing a consumer
+can observe, except for a `caseInsensitive` context, where the state holds a copy. **So this fix is the one that makes contexts collectable, and its `CHANGELOG.md`
+entry should say so.** A20's control case observes that retention. The `eval-signals`
+documented pattern, `simpleEval(expr, createSignalContext(...))`, is the case worth naming:
+each signal context passed that way is kept, with the signal sources its lookup closure reads.
 
 **The step that fixes this carries [B3](#b3) and [A17](#a17) too.** All three are in
 `ngOnDestroy`, and B3 already asks to be revisited with A8. **[A20](#a20) and [A21](#a21) are the
-same method's siblings**, filed 2026-09-23. A21 is fixed (`c86b586`), and it did not need this
-fix. A20 no longer needs to ride with this fix either. Its own fix is now to delete the field,
-and that stands alone. *(Corrected 2026-09-24. This said "A20 should ride with this fix".)*
+same method's siblings**, filed 2026-09-23. Both are fixed, and neither needed this fix. A21 was
+fixed in `c86b586`. A20 deleted `_activeContexts` ([`docs/a20/plan.md`](a20/plan.md)). *(Corrected
+2026-09-24, twice. It first said "A20 should ride with this fix". Then it said A20's fix stood
+alone. The code change does stand alone, but the benefit depends on this fix: before A20's fix,
+the second set would have kept every context alive even after this set was fixed.)*
 
 *Recorded*: originated [`side-effects/phase-1-plan.md:1095`](side-effects/phase-1-plan.md) and
 [`side-effects/step-2-summary.md` § 4.2](side-effects/step-2-summary.md); stated as its own item
@@ -1332,9 +1348,38 @@ above.
 <a id="a20"></a>
 ## A20 — `EvalService._activeContexts` grows with every distinct `Registry` context
 
-**Package** core · **Kind** fix · **Status** Open — recorded 2026-09-23, found while sizing
-[A8](#a8). **Rescoped 2026-09-24 by [A21](#a21)'s fix**: wider, because every `EvalContext`
-enters the set too, and simpler, because the set can now be deleted
+**Package** core · **Kind** fix · **Status** **Fixed 2026-09-24, unreleased**; under
+`CHANGELOG.md`'s `[Unreleased]` — recorded 2026-09-23, found while sizing [A8](#a8). **Rescoped 2026-09-24 by [A21](#a21)'s
+fix**: wider, because every `EvalContext` enters the set too, and simpler, because the set can
+now be deleted
+
+**Fixed** by [`docs/a20/plan.md`](a20/plan.md). The field, both `add`s and the `clear()` are
+deleted. The service keeps no reference of its own to a context passed in. Five cases in
+`eval.service.memory-leaks.spec.ts` show each context kind being collected by a forced GC, and all
+five went red against the old code. The instrument is a `WeakRef`, with `gc` reached through
+`v8.setFlagsFromString` and `vm`, so [A19](#a19)'s "Jest has no `global.gc`" is no obstacle for
+a retention-shaped defect. A19's own conclusion is unaffected: its defect is shaped by
+allocation, not retention.
+
+**For most contexts, the fix changes nothing a consumer can observe yet.** The plan found this,
+and the entry had missed it. A state holds its context, and [A8](#a8)'s `_activeStates` holds
+every state `createState` builds. The two sets filled in the same call and drained in the same
+`ngOnDestroy`. So almost every context this set held was also reachable through a state, for the
+same lifetime. Four of the specs therefore drop A8's references by hand, and a control case
+leaves them in place and observes the retention. For these contexts, the benefit arrives with
+A8's fix. Without this fix, A8's fix would have left every context that has a `type` alive. A8
+records this now, and the control case is the spec its fix turns red.
+
+**The exception is observable now: `caseInsensitive`.** The plan's draft missed it and the
+code-reviewer found it. Under `caseInsensitive`, `fromContext` copies a plain object into a new
+`Registry`, and the state holds the copy. `'type' in context` added the caller's object itself.
+So a plain object or class instance with a `type`, evaluated case-insensitively, was kept by this
+set alone until destroy. It is now collectable with A8 unchanged. The fifth case shows that
+without holding anything out, and it is what the `CHANGELOG.md` line is for. A second exception
+is contrived: a registry nested under a wrapper's `context` key, where the caller later replaces
+the key.
+
+*The rest of this entry is the defect as recorded.*
 
 [A8](#a8)'s shape, on a different field. `EvalService.createState` adds a context to a second
 strong `Set`, `_activeContexts`
@@ -1370,7 +1415,8 @@ retained. After [A21](#a21)'s fix (`c86b586`), `_activeContexts` has no use but 
 `ngOnDestroy`. Nothing reads its entries, so it is pure retention. Deleting the field, both
 `add`s and the `clear()` fixes every path at once, and it does not need to ride with A8.
 **One spec changes with it:**
-[`eval.service.memory-leaks.spec.ts:76-89`](../modules/eval-core/src/lib/actual/services/eval.service.memory-leaks.spec.ts#L76-L89),
+`eval.service.memory-leaks.spec.ts:76-89` *(as of `cffae78`; deleted by this entry's fix, so no
+longer linked)*,
 "should track and clean up active contexts", reads the private field and pins that it is
 non-empty before destroy. It goes when the field goes. A21's five cases do not read the field and
 stay as they are.
@@ -1570,7 +1616,7 @@ cannot currently run.
 | Site | Call |
 | ---- | ---- |
 | [`parser.service.ts:67`](../modules/eval-core/src/lib/actual/services/parser.service.ts#L67) | `console.debug('Parser cache cleared…')` |
-| [`eval.service.ts:103`](../modules/eval-core/src/lib/actual/services/eval.service.ts#L103) | `console.warn('Error cleaning up EvalState:', error)` |
+| [`eval.service.ts:89`](../modules/eval-core/src/lib/actual/services/eval.service.ts#L89) | `console.warn('Error cleaning up EvalState:', error)` |
 
 The third, `console.warn('Error cleaning up Context:', error)`, guarded `ngOnDestroy`'s loop that
 cleared each tracked context. [A21](#a21)'s fix deleted that loop, since it emptied the caller's

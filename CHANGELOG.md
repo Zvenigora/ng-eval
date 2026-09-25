@@ -76,6 +76,14 @@ while keeping `tracePushCount` accurate, and `Infinity` restores the previous be
   passed in that had a `type` key and declared one, a caller's `EvalContext` subclass included. It now drops its
   references to those objects and changes nothing inside them. Each state it created is still
   drained. No exported symbol changes.
+- **`EvalService` no longer keeps its own reference to the contexts you pass it** (`eval-core`,
+  [A20](docs/backlog.md#a20)). `createState`, `simpleEval` and `simpleEvalAsync` added every
+  context with a `type`, including every `Registry` and `EvalContext`, to a set that nothing read
+  and that emptied only when the service was destroyed. The set is gone. The difference you can
+  see today is under `caseInsensitive`: a plain object or class instance with a `type` field was
+  held by that set alone, and it can now be garbage-collected once you drop it. **Other contexts
+  are still retained until the root injector is destroyed**, through the evaluation state that
+  holds them ([A8](docs/backlog.md#a8)). No exported symbol changes.
 - **Dependency Security**: Bumped the transitive `fast-uri` dependency (pulled in by `ajv`,
   used by the lint/build tooling) from 3.1.5 to 3.1.7, resolving 4 high-severity Dependabot
   advisories — [GHSA-jqff-g426-hqxp](https://github.com/advisories/GHSA-jqff-g426-hqxp),

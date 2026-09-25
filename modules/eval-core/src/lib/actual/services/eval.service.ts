@@ -2,7 +2,7 @@ import { Injectable, OnDestroy, inject } from '@angular/core';
 import { BaseEval } from './base-eval';
 import { ParserService } from './parser.service';
 import { AnyNode } from 'acorn';
-import { Context, Registry } from '../../internal/classes/common';
+import { Context } from '../../internal/classes/common';
 import { EvalContext, EvalOptions, EvalState, defaultParserOptions } from '../../internal/classes/eval';
 import { evaluate, evaluateAsync } from '../../internal/functions';
 
@@ -14,7 +14,6 @@ import { evaluate, evaluateAsync } from '../../internal/functions';
 })
 export class EvalService extends BaseEval implements OnDestroy {
   private _isDestroyed = false;
-  private _activeContexts = new Set<Context>();
   private _activeStates = new Set<EvalState>();
 
   protected override parserService = inject(ParserService);
@@ -28,7 +27,9 @@ export class EvalService extends BaseEval implements OnDestroy {
   }
 
   /**
-   * Override createState to track active contexts and states for cleanup
+   * Override createState to track active states for cleanup. The context is
+   * not tracked: it is the caller's, and the state already holds it
+   * (`docs/backlog.md` A20).
    */
   override createState(context?: EvalContext | Context, options?: EvalOptions): EvalState {
     if (this._isDestroyed) {
@@ -39,22 +40,7 @@ export class EvalService extends BaseEval implements OnDestroy {
     
     // Track active states for cleanup
     this._activeStates.add(state);
-    
-    // Track active contexts
-    if (context && typeof context === 'object') {
-      // Check if it's a Registry-based context (has type property)
-      if ('type' in context) {
-        this._activeContexts.add(context as Registry<unknown, unknown>);
-      }
-      // For EvalContext, check if it has a nested context using bracket notation
-      if ('context' in context) {
-        const nestedContext = (context as Record<string, unknown>)['context'];
-        if (nestedContext && typeof nestedContext === 'object' && 'type' in nestedContext) {
-          this._activeContexts.add(nestedContext as Registry<unknown, unknown>);
-        }
-      }
-    }
-    
+
     return state;
   }
 
@@ -104,13 +90,6 @@ export class EvalService extends BaseEval implements OnDestroy {
       }
     }
     this._activeStates.clear();
-
-    // Drop the references, and nothing more. Every entry is an object the
-    // caller passed to `createState` - the argument or its `context` key, never
-    // what `fromContext` built from it - so emptying one destroys data the
-    // caller may still hold (`docs/backlog.md` A21). One the caller no longer
-    // holds is released by this line alone.
-    this._activeContexts.clear();
   }
 
   /**

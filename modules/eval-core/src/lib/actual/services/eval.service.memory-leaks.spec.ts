@@ -1,4 +1,6 @@
 import { TestBed } from '@angular/core/testing';
+import { setFlagsFromString } from 'v8';
+import { runInNewContext } from 'vm';
 import { EvalService } from './eval.service';
 import { ParserService } from './parser.service';
 import { Registry, Cache } from '../../internal/classes/common';
@@ -73,21 +75,6 @@ describe('EvalService - Memory Leak Prevention', () => {
   });
 
   describe('Context and State Cleanup', () => {
-    it('should track and clean up active contexts', () => {
-      const context = new Registry<string, number>();
-      context.set('value', 123);
-
-      service.simpleEval('value', context);
-
-      const activeContexts = (service as unknown as { _activeContexts: { size: number } })._activeContexts;
-      expect(activeContexts.size).toBeGreaterThan(0);
-
-      service.ngOnDestroy();
-
-      const activeContextsAfter = (service as unknown as { _activeContexts: { size: number } })._activeContexts;
-      expect(activeContextsAfter.size).toBe(0);
-    });
-
     it('should track and clean up active states', () => {
       const context = new Registry<string, string>();
       context.set('msg', 'hello');
@@ -138,10 +125,10 @@ describe('EvalService - Memory Leak Prevention', () => {
     });
 
     /**
-     * `docs/backlog.md` A21. Every object `createState` tracks in
-     * `_activeContexts` is one the caller passed in - the argument, or its
-     * `context` key - never what `fromContext` built from it. So destroy may
-     * drop the service's reference to each, and may not empty any of them: an
+     * `docs/backlog.md` A21. Every context destroy used to clear was one the
+     * caller passed in - the argument, or its `context` key - never what
+     * `fromContext` built from it. So destroy may drop the service's references,
+     * and may not empty any of them: an
      * application's registries outlive a root injector torn down in tests, per
      * SSR request, or by a micro-frontend. `docs/a21/plan.md` names the wrong
      * implementation each case excludes.
@@ -208,6 +195,107 @@ describe('EvalService - Memory Leak Prevention', () => {
         service.ngOnDestroy();
 
         expect(clear).not.toHaveBeenCalled();
+      });
+    });
+
+    /**
+     * `docs/backlog.md` A20. The service kept every context passed in, in a set
+     * nothing read, until destroy. Retention has no behavioural surface short of
+     * the collector, so these cases ask it: each context is built in a closure
+     * that returns only a `WeakRef`, and a full GC runs before the assertion.
+     *
+     * **A8 is held out by hand.** Each state the service builds is in
+     * `_activeStates` until destroy, and a state holds its context - so while
+     * A8 stands, most contexts here are retained through their state however
+     * this set is fixed. `collect` drops those references first. The control
+     * case leaves them in place and observes the retention, which is what shows
+     * the other cases are not vacuous. The `caseInsensitive` case leaves them
+     * in place too, because there the state holds a copy. `docs/a20/plan.md`
+     * names the wrong implementation each case excludes.
+     */
+    describe('contexts passed in are not retained (A20)', () => {
+      // Jest has no `global.gc`. The flag exposes `gc` to contexts created
+      // after it is set, and is cleared again at once so that the contexts
+      // Jest builds for later suites do not get one.
+      setFlagsFromString('--expose-gc');
+      const gc = runInNewContext('gc') as () => void;
+      setFlagsFromString('--no-expose-gc');
+
+      const collect = async (ref: WeakRef<object>, dropStates = true): Promise<object | undefined> => {
+        if (dropStates) {
+          (service as unknown as { _activeStates: Set<EvalState> })._activeStates.clear();
+        }
+        // A `WeakRef` keeps its target alive until the job that created or
+        // read it ends, so the collection has to happen in a later one.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        gc();
+        return ref.deref();
+      };
+
+      const createStateRef = (): WeakRef<object> => {
+        const registry = new Registry<string, number>([['a', 10]]);
+        const state = service.createState(registry);
+        expect(service.eval('a * 2', state)).toEqual(20);
+        return new WeakRef(registry);
+      };
+
+      it('should not retain a registry passed to createState', async () => {
+        expect(await collect(createStateRef())).toBeUndefined();
+      });
+
+      it('should not retain a registry passed to simpleEval', async () => {
+        const ref = (() => {
+          const registry = new Registry<string, number>([['a', 10]]);
+          for (let i = 0; i < 3; i++) {
+            expect(service.simpleEval('a + 1', registry)).toEqual(11);
+          }
+          return new WeakRef(registry);
+        })();
+
+        expect(await collect(ref)).toBeUndefined();
+      });
+
+      it('should not retain a registry nested under a context key', async () => {
+        const ref = (() => {
+          const registry = new Registry<string, number>([['a', 10]]);
+          service.createState({ context: registry });
+          return new WeakRef(registry);
+        })();
+
+        expect(await collect(ref)).toBeUndefined();
+      });
+
+      it('should not retain an EvalContext passed to simpleEval', async () => {
+        const ref = (() => {
+          const context = new EvalContext({ a: 10 }, {});
+          expect(service.simpleEval('a + 1', context)).toEqual(11);
+          return new WeakRef(context);
+        })();
+
+        expect(await collect(ref)).toBeUndefined();
+      });
+
+      /**
+       * The case where the fix is observable while A8 stands, so A8's set is
+       * left alone. Under `caseInsensitive`, `fromContext` copies a plain
+       * object into a new `Registry`, and the state holds the copy. The set
+       * added the caller's object itself, because it has a `type`, and so it
+       * was the only thing keeping that object alive.
+       */
+      it('should not retain a caller object that only the set held', async () => {
+        const ref = (() => {
+          const order = { type: 'order', total: 10 };
+          expect(service.simpleEval('total * 2', order, { caseInsensitive: true })).toEqual(20);
+          return new WeakRef(order);
+        })();
+
+        expect(await collect(ref, false)).toBeUndefined();
+      });
+
+      it('should still retain the context through A8\'s state set', async () => {
+        // The control. If A8 is fixed this goes red: delete it then, and the
+        // `_activeStates` clear in `collect` with it.
+        expect(await collect(createStateRef(), false)).toBeDefined();
       });
     });
 
