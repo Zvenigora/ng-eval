@@ -74,8 +74,8 @@ A8's entry lists three.
      criteria **1.1** and **1.2**.
    The control is left as it is, and its comment is changed to name step 2. It is step 2's red
    spec.
-3. **[`eval-signal.memory.spec.ts:80-114`](../../modules/eval-signals/src/lib/eval-signal.memory.spec.ts#L80-L114)**
-   *(`:80-112` as of `c0c385b`)*, the count of 5. It first asserts that the set stays at `0` while a signal recomputes five
+3. **`eval-signal.memory.spec.ts:80-114`** *(`:80-112` as of `c0c385b`, and `:80-114` as of
+   `10dd98f`. Replaced by step 2, so no longer linked.)*, the count of 5. It first asserts that the set stays at `0` while a signal recomputes five
    times. That is a **behaviour** of `eval-signals`: the factory builds its states through
    `CompilerService`, never `EvalService`. It then runs five `simpleEval` calls and asserts
    `5`. That is a **symptom**, A8 itself, used as a contrast to show that the `0` is not
@@ -451,6 +451,10 @@ purpose, and leaks only the ones it drops.
 
 ## 4. Step 2 — piece 2, not planned here
 
+*Settled 2026-09-25.* [`step-2-decision.md`](step-2-decision.md) answers each point below and
+chose (a): the caller owns the state, and the service stops tracking it.
+[`step-2-plan.md`](step-2-plan.md) implemented it. The bullets are left as the question was put.
+
 Left as a question, with § 3's table as its starting point. Its plan has to settle:
 
 - which of (a)–(c) applies, and whether the unreleased trace drain and the published registry
@@ -461,4 +465,4 @@ Left as a question, with § 3's table as its starting point. Its plan has to set
   tested;
 - what happens to A20's control case and to `eval-signals`' contrast, which both go red under
   any option that stops retention, and whether the contrast becomes a behavioural assertion
-  (§ 1.3.3).
+  (§ 1.3, item 3).

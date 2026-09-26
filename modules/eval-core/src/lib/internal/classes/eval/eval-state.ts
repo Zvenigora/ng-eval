@@ -391,8 +391,7 @@ export class EvalState {
    * not named for them. `EvalHooks.clear` cannot reach any of this - the
    * bookkeeping belongs to the state - so without this method nothing drains
    * the open-node stack at all. Frames left on it keep their AST nodes
-   * reachable for as long as the state is, and `EvalService` holds its states
-   * in a strong `Set`.
+   * reachable for as long as the state is.
    *
    * The errors matter for the same reason under the state-first style:
    * `createState` plus repeated `eval` on one state accumulates them for the

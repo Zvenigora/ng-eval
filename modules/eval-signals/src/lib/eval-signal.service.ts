@@ -43,11 +43,11 @@ import { SignalContextSource } from './signal-context';
  * It injects **nothing from `eval-core`**. The factory resolves
  * `CompilerService` off the injector it is given, so a second injection here
  * would be a field nothing reads; and `EvalService` is deliberately not
- * consumed anywhere in this library - the one thing it was wanted for,
- * `createState` with `ngOnDestroy` cleanup, tracks every state it builds in a
- * strong `Set` drained only on destroy, which is an asset for one long-lived
- * state and an accumulator for the one-per-recompute states this library
- * builds.
+ * consumed anywhere in this library. The one thing it was first wanted for,
+ * `createState` with `ngOnDestroy` cleanup, kept every state it built until
+ * destroy up to `eval-core` 0.5.0: an accumulator for the one-per-recompute
+ * states this library builds. From 0.6.0 `EvalService` keeps none, but what
+ * the factory needs is compile-once, and that is `CompilerService`.
  */
 @Injectable({
   providedIn: 'root'

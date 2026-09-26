@@ -141,15 +141,13 @@ export type EvalKnownOptions = {
    * caller who wants either alongside their own registry sets it there -
    * `new EvalHooks({ onHookError: 'throw' })`, or `createTimingHook().install`.
    *
-   * The one thing the library does *to* an adopted registry is clear it:
-   * `EvalService.ngOnDestroy` empties the registries of the states its
-   * `createState` handed back to the caller, this one included, so that a registry outliving
-   * the service cannot keep those states and their AST nodes reachable.
-   * Registrations cannot be dropped selectively - the closures that captured a
-   * dead state are indistinguishable from the rest - so do not share one
-   * registry with a state whose lifetime is meant to outlast the service. A
-   * registry passed only to `simpleEval` or `simpleEvalAsync` is not cleared:
-   * the service lets go of those states when the call returns.
+   * The library never clears an adopted registry. It is yours for its whole
+   * life, and `EvalService.ngOnDestroy` does not touch it, whichever method you
+   * passed it to. (Up to 0.5.0, destroy cleared the registries of the states
+   * `createState` built.) So a hook that keeps a state, by capturing it or by
+   * storing `event.state`, keeps that state and its context reachable for as
+   * long as the registry is. Release them in the teardown that owns the
+   * registry, with the unsubscribe `on` / `onRead` returned or `hooks.clear()`.
    */
   hooks?: EvalHooks;
 

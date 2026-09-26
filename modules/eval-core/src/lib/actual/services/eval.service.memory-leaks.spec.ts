@@ -83,13 +83,7 @@ describe('EvalService - Memory Leak Prevention', () => {
     const gc = runInNewContext('gc') as () => void;
     setFlagsFromString('--no-expose-gc');
 
-    const activeStates = (): Set<EvalState> =>
-      (service as unknown as { _activeStates: Set<EvalState> })._activeStates;
-
-    const collect = async (ref: WeakRef<object>, dropStates = true): Promise<object | undefined> => {
-      if (dropStates) {
-        activeStates().clear();
-      }
+    const collect = async (ref: WeakRef<object>): Promise<object | undefined> => {
       // A `WeakRef` keeps its target alive until the job that created or
       // read it ends, so the collection has to happen in a later one.
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -98,25 +92,19 @@ describe('EvalService - Memory Leak Prevention', () => {
     };
 
     /**
-     * `ngOnDestroy` drained the value stack, the hook registry and the hook
-     * bookkeeping, and skipped the trace - the largest thing on the
-     * object. It survived only because `_activeStates.clear()` then dropped the
-     * service's own reference, which is why this fixture **keeps a state**:
-     * under the documented `createState` + repeated `eval` style the caller
-     * holds it, and for that caller the method advertised as releasing memory
-     * released everything except this.
+     * `docs/backlog.md` A8, second step (`docs/a8/step-2-plan.md` 2.4). A state
+     * from `createState` is the caller's, and destroy changes nothing on it.
+     * This inverts A12's case, which pinned destroy draining the trace: the
+     * service no longer holds the state, so there is nothing for it to drain,
+     * and a caller who wants the trace emptied calls `clearTrace()`.
      *
-     * The state is built through `createState` and walked through `eval`
-     * rather than through `simpleEval`, which builds its state internally and
-     * hands nothing back - there would be no caller-held state to assert on.
-     * The non-empty assertions are the precondition: without them every
-     * assertion after the destroy passes on a state that never traced.
+     * The non-empty assertions are the precondition: without them the
+     * assertions after the destroy would pass on a state that never traced,
+     * and equally on one a drain had emptied.
      */
-    it('should drain a caller-held state\'s trace and counters on destroy', () => {
-      // A bound of 3 against 7 pushes, so all three fields are non-empty
-      // before the destroy - the flag included. At the default bound a 7-item
-      // trace never truncates, and the assertion after the destroy would be a
-      // no-op rather than a reset.
+    it('should leave a caller-held state\'s trace and counters as they were on destroy (2.4)', () => {
+      // A bound of 3 against 7 pushes, so all three fields are non-default
+      // before the destroy - the flag included - and a drain would reset each.
       const state = service.createState({ a: 10 }, { maxTraceItems: 3 });
       service.eval('2 + 3 * a', state);
 
@@ -126,9 +114,9 @@ describe('EvalService - Memory Leak Prevention', () => {
 
       service.ngOnDestroy();
 
-      expect(state.result.trace.length).toEqual(0);
-      expect(state.result.traceTruncated).toEqual(false);
-      expect(state.result.tracePushCount).toEqual(0);
+      expect(state.result.trace.length).toEqual(3);
+      expect(state.result.traceTruncated).toEqual(true);
+      expect(state.result.tracePushCount).toEqual(7);
     });
 
     /**
@@ -138,14 +126,14 @@ describe('EvalService - Memory Leak Prevention', () => {
      * and may not empty any of them: an
      * application's registries outlive a root injector torn down in tests, per
      * SSR request, or by a micro-frontend. `docs/a21/plan.md` names the wrong
-     * implementation each case excludes.
+     * implementation each case excludes. Since A8's second step the service
+     * keeps nothing at all, so destroy leaves the state alone too.
      */
     describe('caller-owned contexts (A21)', () => {
-      it('should leave a registry passed to createState intact, and still drain the state', () => {
+      it('should leave a registry passed to createState intact, and the state as it was (2.5)', () => {
         const registry = new Registry<string, number>([['a', 10]]);
         // A bound of 1 pins the trace's length, so the precondition below is
-        // exact. The trace is non-empty at any bound; the drain after destroy is
-        // the service-owned half of this case.
+        // exact, and a drain would take it to 0.
         const state = service.createState(registry, { maxTraceItems: 1 });
 
         expect(service.eval('a * 2', state)).toEqual(20);
@@ -155,7 +143,7 @@ describe('EvalService - Memory Leak Prevention', () => {
 
         expect(registry.get('a')).toEqual(10);
         expect(registry.has('a')).toEqual(true);
-        expect(state.result.trace.length).toEqual(0);
+        expect(state.result.trace.length).toEqual(1);
       });
 
       it('should leave a registry passed to simpleEval intact', () => {
@@ -211,16 +199,14 @@ describe('EvalService - Memory Leak Prevention', () => {
      * the collector, so these cases ask it: each context is built in a closure
      * that returns only a `WeakRef`, and a full GC runs before the assertion.
      *
-     * **A8 is held out by hand, for `createState` only.** Each state
-     * `createState` builds is in `_activeStates` until destroy, and a state
-     * holds its context - so while A8's second half stands, a context passed
-     * to `createState` is retained through its state however this set is
-     * fixed. `collect` drops those references first. The control case leaves
-     * them in place and observes the retention, which is what shows the other
-     * cases are not vacuous. The `simpleEval` cases and the `caseInsensitive`
-     * case leave them in place too: `simpleEval` keeps no state since A8's
-     * first step, and under `caseInsensitive` the state holds a copy.
-     * `docs/a20/plan.md` names the wrong implementation each case excludes.
+     * Nothing is held out by hand any more. Until A8's second step every state
+     * `createState` built was kept until destroy, with its context, so these
+     * cases cleared that set before collecting and a control case observed
+     * the retention. The service now keeps no state, so every case runs on the
+     * service as it is. The control became a positive one (2.3): a context
+     * whose state the test still holds is not collected, which is what shows
+     * the others are not vacuous. `docs/a20/plan.md` and `docs/a8/step-2-plan.md`
+     * name the wrong implementation each case excludes.
      */
     describe('contexts passed in are not retained (A20)', () => {
       const createStateRef = (): WeakRef<object> => {
@@ -230,7 +216,7 @@ describe('EvalService - Memory Leak Prevention', () => {
         return new WeakRef(registry);
       };
 
-      it('should not retain a registry passed to createState', async () => {
+      it('should not retain a registry passed to createState (2.1)', async () => {
         expect(await collect(createStateRef())).toBeUndefined();
       });
 
@@ -243,11 +229,11 @@ describe('EvalService - Memory Leak Prevention', () => {
           return new WeakRef(registry);
         })();
 
-        // With A8's set intact since `docs/a8/plan.md` step 1 (its 1.1).
-        expect(await collect(ref, false)).toBeUndefined();
+        // `docs/a8/plan.md`'s 1.1.
+        expect(await collect(ref)).toBeUndefined();
       });
 
-      it('should not retain a registry nested under a context key', async () => {
+      it('should not retain a registry nested under a context key (2.2)', async () => {
         const ref = (() => {
           const registry = new Registry<string, number>([['a', 10]]);
           service.createState({ context: registry });
@@ -264,16 +250,16 @@ describe('EvalService - Memory Leak Prevention', () => {
           return new WeakRef(context);
         })();
 
-        // With A8's set intact since `docs/a8/plan.md` step 1 (its 1.2).
-        expect(await collect(ref, false)).toBeUndefined();
+        // `docs/a8/plan.md`'s 1.2.
+        expect(await collect(ref)).toBeUndefined();
       });
 
       /**
-       * The case where the fix is observable while A8 stands, so A8's set is
-       * left alone. Under `caseInsensitive`, `fromContext` copies a plain
-       * object into a new `Registry`, and the state holds the copy. The set
-       * added the caller's object itself, because it has a `type`, and so it
-       * was the only thing keeping that object alive.
+       * The case where A20's fix was observable while A8 stood. Under
+       * `caseInsensitive`, `fromContext` copies a plain object into a new
+       * `Registry`, and the state holds the copy. The set added the caller's
+       * object itself, because it has a `type`, and so it was the only thing
+       * keeping that object alive.
        */
       it('should not retain a caller object that only the set held', async () => {
         const ref = (() => {
@@ -282,28 +268,39 @@ describe('EvalService - Memory Leak Prevention', () => {
           return new WeakRef(order);
         })();
 
-        expect(await collect(ref, false)).toBeUndefined();
+        expect(await collect(ref)).toBeUndefined();
       });
 
-      it('should still retain the context through A8\'s state set', async () => {
-        // The control. A8's first step left it green, because it goes through
-        // `createState`, not `simpleEval`. `docs/a8/plan.md`'s step 2, the
-        // `createState` half, is the change that turns it red: revisit it
-        // then, and the `_activeStates` clear in `collect` with it.
-        expect(await collect(createStateRef(), false)).toBeDefined();
+      it('should still see a context whose state the caller holds (2.3)', async () => {
+        // The positive control, which replaced the one that observed A8's set
+        // retaining this context. The same fixture as 2.1, except that the
+        // state leaves the closure and is held past `collect`: the context is
+        // reachable, so it must still be there. Without this, 2.1 and 2.2
+        // could not tell a collector that works from a fixture that frees
+        // everything.
+        let held: EvalState | undefined;
+        const ref = (() => {
+          const registry = new Registry<string, number>([['a', 10]]);
+          held = service.createState(registry);
+          expect(service.eval('a * 2', held)).toEqual(20);
+          return new WeakRef(registry);
+        })();
+
+        expect(await collect(ref)).toBeDefined();
+        expect(held?.context).toBeDefined();
       });
     });
 
     /**
      * `docs/backlog.md` A8, first step. `simpleEval` and `simpleEvalAsync`
      * build a state the caller never receives, and the service kept each one
-     * in `_activeStates` until destroy - with its context, its AST and its
-     * trace. The set now holds such a state for the length of the call and no
-     * longer. `createState` is `docs/a8/plan.md`'s step 2, and still tracks.
+     * until destroy - with its context, its AST and its trace. The first step
+     * released it when the call returned; the second step removed the set, so
+     * the service keeps no state at all.
      *
-     * The retention cases leave the set intact and ask the collector, as A20's
-     * do: a state holds its context, so a collected context means no state the
-     * service holds refers to it. Criterion numbers are the plan's.
+     * The retention cases ask the collector, as A20's do: a state holds its
+     * context, so a collected context means nothing the service holds refers
+     * to it. Criterion numbers are `docs/a8/plan.md`'s.
      */
     describe('states simpleEval builds are not retained (A8)', () => {
       const throwing = (): Registry<string, unknown> =>
@@ -332,7 +329,7 @@ describe('EvalService - Memory Leak Prevention', () => {
           return new WeakRef(registry);
         })();
 
-        expect(await collect(ref, false)).toBeUndefined();
+        expect(await collect(ref)).toBeUndefined();
       });
 
       it('should not retain a state simpleEvalAsync built (1.4)', async () => {
@@ -342,7 +339,7 @@ describe('EvalService - Memory Leak Prevention', () => {
           return new WeakRef(registry);
         })();
 
-        expect(await collect(ref, false)).toBeUndefined();
+        expect(await collect(ref)).toBeUndefined();
       });
 
       it('should not retain a state whose simpleEvalAsync promise rejected (1.5)', async () => {
@@ -361,26 +358,7 @@ describe('EvalService - Memory Leak Prevention', () => {
           return new WeakRef(registry);
         })();
 
-        expect(await collect(ref, false)).toBeUndefined();
-      });
-
-      it('should leave nothing in the set after either form, on any exit, and still track createState (1.6)', async () => {
-        service.simpleEval('a + 1', { a: 10 });
-        expect(() => service.simpleEval('boom()', throwing())).toThrow('boom');
-        expect(await service.simpleEvalAsync('a + 1', { a: 10 })).toEqual(11);
-        await expect(service.simpleEvalAsync('fail()', rejecting())).rejects.toThrow('fail');
-
-        expect(activeStates().size).toEqual(0);
-
-        // The control: the half this step leaves alone still tracks, so the
-        // zero above is not a set that no longer fills at all.
-        service.createState({ a: 10 });
-
-        expect(activeStates().size).toEqual(1);
-
-        service.ngOnDestroy();
-
-        expect(activeStates().size).toEqual(0);
+        expect(await collect(ref)).toBeUndefined();
       });
 
       it('should not clear a registry that only simpleEval states adopted (1.7)', () => {
@@ -395,8 +373,9 @@ describe('EvalService - Memory Leak Prevention', () => {
         service.ngOnDestroy();
 
         // Destroy no longer reaches this registry: the state that adopted it
-        // left the service when the call returned. `docs/a8/plan.md` § 2.2 on
-        // why that is not a gap.
+        // left the service when the call returned, and since A8's second step
+        // the service keeps no state at all. `docs/a8/plan.md` § 2.2 weighs the
+        // trade; 2.7 is the same for `createState`.
         expect(hooks.isEmpty).toBe(false);
         expect(hooks.isActive).toBe(true);
 
@@ -436,6 +415,16 @@ describe('EvalService - Memory Leak Prevention', () => {
       expect(() => {
         service.simpleEval('x * 2', context);
       }).toThrow('EvalService has been destroyed');
+    });
+
+    it('should throw from createState and simpleEvalAsync after destruction (2.10)', () => {
+      // The flag is all `ngOnDestroy` still does, and its JSDoc names all three
+      // entry points. The two cases above reach it through `simpleEval` only.
+      // `simpleEvalAsync` is not `async`, so the throw is synchronous.
+      service.ngOnDestroy();
+
+      expect(() => service.createState({ a: 1 })).toThrow('EvalService has been destroyed');
+      expect(() => service.simpleEvalAsync('1 + 1')).toThrow('EvalService has been destroyed');
     });
   });
 
@@ -521,7 +510,7 @@ describe('EvalService - Memory Leak Prevention', () => {
 
   describe('Hook Lifecycle Cleanup', () => {
     // `_hooks` is private and the getter that would reveal it allocates, which
-    // is the thing these tests are checking does not happen. Reaching for the
+    // is the thing the case below checks does not happen. Reaching for the
     // field is the only non-destructive observation available.
     const registryOf = (state: EvalState): EvalHooks | undefined =>
       (state as unknown as { _hooks?: EvalHooks })._hooks;
@@ -533,9 +522,10 @@ describe('EvalService - Memory Leak Prevention', () => {
       });
 
       service.eval('a', state);
-      // A frame the walk never closed - the case § 3.6 documents as unsupported
-      // and the one `ngOnDestroy` performs. Seeded directly because reaching it
-      // through a visitor would depend on a defect rather than on this method.
+      // A frame the walk never closed - the case § 3.6 documents as unsupported,
+      // and the one `resetHookBookkeeping` exists for. Seeded directly because
+      // reaching it through a visitor would depend on a defect rather than on
+      // this method.
       state.hookBookkeeping.open.push(parserService.parse('a') as AnyNode);
 
       expect(state.hookErrors.length).toBeGreaterThan(0);
@@ -567,10 +557,22 @@ describe('EvalService - Memory Leak Prevention', () => {
       expect(state.hookErrors.length).toBe(0);
     });
 
-    it('should clear registered hooks on destruction', () => {
+    /**
+     * `docs/backlog.md` A8, second step (`docs/a8/step-2-plan.md` 2.6-2.8).
+     * From 0.3.0 to 0.5.0 destroy cleared the registry and reset the
+     * bookkeeping of every state `createState` had handed back, and these three
+     * cases pinned that. The service no longer keeps those states, so destroy
+     * reaches none of them: the registrations and the bookkeeping are the
+     * caller's to release, with the unsubscribe `on` returns, `hooks.clear()`
+     * or `resetHookBookkeeping()`.
+     */
+    it('should leave registered hooks in place on destruction (2.6)', () => {
       const state = service.createState({ a: 1 });
       const hooks = state.hooks;
-      hooks.on('before', '*', () => undefined);
+      const seen: string[] = [];
+      hooks.on('before', 'Identifier', (event) => {
+        seen.push((event.node as { name: string }).name);
+      });
       hooks.onRead(() => undefined);
 
       expect(hooks.isActive).toBe(true);
@@ -578,26 +580,34 @@ describe('EvalService - Memory Leak Prevention', () => {
 
       service.ngOnDestroy();
 
-      expect(hooks.isActive).toBe(false);
-      expect(hooks.isEmpty).toBe(true);
-      expect(hooks.hasReadHooks).toBe(false);
+      expect(hooks.isActive).toBe(true);
+      expect(hooks.isEmpty).toBe(false);
+      expect(hooks.hasReadHooks).toBe(true);
+
+      // And it still dispatches. `eval` does not check the destroyed flag.
+      service.eval('a', state);
+
+      expect(seen).toEqual(['a']);
     });
 
-    it('should clear a caller-owned registry that outlives the service', () => {
-      // The retention `ngOnDestroy` exists to prevent: a long-lived registry
-      // whose closure captures the state keeps that state reachable after the
-      // service is gone. A state-owned registry dies with its state anyway.
+    it('should not clear a caller-owned registry that outlives the service (2.7)', () => {
+      // The fixture of the promise 0.3.0 to 0.5.0 published and this step
+      // withdrew: a long-lived registry whose closure captures the state keeps
+      // that state reachable after the service is gone. The registry is the
+      // caller's, and so is releasing it.
       const hooks = new EvalHooks();
       const state = service.createState({ a: 1 }, { hooks });
       hooks.on('after', '*', () => state);
 
+      expect(hooks.isEmpty).toBe(false);
+
       service.ngOnDestroy();
 
-      expect(hooks.isEmpty).toBe(true);
-      expect(hooks.isActive).toBe(false);
+      expect(hooks.isEmpty).toBe(false);
+      expect(hooks.isActive).toBe(true);
     });
 
-    it('should reset hook bookkeeping on destruction', () => {
+    it('should leave hook bookkeeping as it was on destruction (2.8)', () => {
       const state = service.createState({ a: 1 });
       state.hooks.on('before', 'Identifier', () => {
         throw new Error('boom');
@@ -605,109 +615,30 @@ describe('EvalService - Memory Leak Prevention', () => {
       service.eval('a', state);
       state.hookBookkeeping.open.push(parserService.parse('a') as AnyNode);
 
-      expect(state.hookErrors.length).toBeGreaterThan(0);
+      // Non-empty first, or a reset would be indistinguishable from nothing.
+      const errors = state.hookErrors.length;
+      const open = state.hookBookkeeping.open.length;
+      expect(errors).toBeGreaterThan(0);
+      expect(open).toBeGreaterThan(0);
 
       service.ngOnDestroy();
 
-      expect(state.hookErrors.length).toBe(0);
-      expect(state.hookBookkeeping.open.length).toBe(0);
+      expect(state.hookErrors.length).toBe(errors);
+      expect(state.hookBookkeeping.open.length).toBe(open);
     });
 
     it('should not build a hook registry for a state that never used hooks', () => {
+      // The walk's own guards - `hasHooks` in the visitors and in `evaluate` -
+      // keep a hookless walk off `state.hooks`, whose getter builds a registry
+      // on first access. Nothing else observes this: `hasHooks` is `false` for
+      // an empty registry too, and the performance gate's margin would not see
+      // the allocation. Until A8's second step this case also asserted that
+      // destroy allocated none. With no drain, that half had no code under
+      // test, and it was dropped (`docs/a8/step-2-plan.md` § 4).
       const state = service.createState({ a: 1 });
       service.eval('a', state);
 
       expect(registryOf(state)).toBeUndefined();
-
-      service.ngOnDestroy();
-
-      // Touching `state.hooks` during teardown would allocate a registry inside
-      // the method whose job is releasing memory.
-      expect(registryOf(state)).toBeUndefined();
-    });
-  });
-
-  /**
-   * `docs/backlog.md` A17 and B3. The drains share one `try` per state, so a
-   * throw skips every drain after it. Two of them reach objects the caller
-   * owns - the trace, whose getter hands out the live array, and an adopted
-   * registry - and they now run last, the registry first. A caller who froze
-   * the trace makes `clearTrace` throw; that must cost the caller's own trace
-   * and nothing else, silently. Criterion numbers are `docs/a8/plan.md`'s.
-   */
-  describe('a drain that throws (A17, B3)', () => {
-    // A state with a hook registered, collected hook errors, a frame left
-    // open and a frozen, non-empty trace. Freezing an empty array would not
-    // make `length = 0` throw, hence the precondition.
-    const frozenState = (): EvalState => {
-      const state = service.createState({ a: 1 });
-      state.hooks.on('before', 'Identifier', () => {
-        throw new Error('boom');
-      });
-      service.eval('a', state);
-      state.hookBookkeeping.open.push(parserService.parse('a') as AnyNode);
-
-      expect(state.result.trace.length).toBeGreaterThan(0);
-      expect(state.hookErrors.length).toBeGreaterThan(0);
-
-      Object.freeze(state.result.trace);
-      return state;
-    };
-
-    let warn: jest.SpyInstance;
-
-    beforeEach(() => {
-      warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-    });
-
-    afterEach(() => warn.mockRestore());
-
-    it('should clear the hooks when the trace drain throws (3.1)', () => {
-      const state = frozenState();
-      const hooks = state.hooks;
-
-      service.ngOnDestroy();
-
-      // The drain did throw: the frozen trace is untouched.
-      expect(state.result.trace.length).toBeGreaterThan(0);
-      expect(hooks.isEmpty).toBe(true);
-      expect(hooks.isActive).toBe(false);
-    });
-
-    it('should reset the hook bookkeeping when the trace drain throws (3.2)', () => {
-      const state = frozenState();
-
-      service.ngOnDestroy();
-
-      expect(state.result.trace.length).toBeGreaterThan(0);
-      expect(state.hookErrors.length).toBe(0);
-      expect(state.hookBookkeeping.open.length).toBe(0);
-    });
-
-    it('should go on to drain the next state (3.3)', () => {
-      const frozen = frozenState();
-      const next = service.createState({ a: 1 });
-      service.eval('a + 1', next);
-
-      expect(next.result.trace.length).toBeGreaterThan(0);
-
-      service.ngOnDestroy();
-
-      expect(frozen.result.trace.length).toBeGreaterThan(0);
-      expect(next.result.trace.length).toBe(0);
-    });
-
-    it('should not log the throw (3.4)', () => {
-      const state = frozenState();
-      const clearTrace = jest.spyOn(state.result, 'clearTrace');
-
-      service.ngOnDestroy();
-
-      // Not vacuous: the drain reached `clearTrace` and it threw, so the catch
-      // ran. A non-empty trace alone would not show it - a state the drain
-      // never reached keeps its trace too.
-      expect(clearTrace.mock.results.map((result) => result.type)).toEqual(['throw']);
-      expect(warn).not.toHaveBeenCalled();
     });
   });
 });

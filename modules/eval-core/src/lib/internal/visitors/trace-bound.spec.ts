@@ -78,7 +78,10 @@ import { evaluate, parse } from '../functions';
  * The last row's assertion lives in
  * `actual/services/eval.service.memory-leaks.spec.ts`; its probe is recorded
  * here because the other four are here and splitting the table would lose the
- * comparison.
+ * comparison. *(`docs/backlog.md` A8's second step later removed the
+ * `ngOnDestroy` drain itself, before it shipped, and inverted that assertion:
+ * destroy now leaves a caller-held state's trace as it was. The row records
+ * what the probe found at the time.)*
  */
 
 const programOf = (source: string): AnyNode =>

@@ -8,7 +8,9 @@ against `6da12da`.
 `ngOnDestroy` must stop mutating contexts the caller supplied. The service may drop its own
 references to them. It may not empty them. An `EvalHooks` registry adopted through
 `options.hooks` is still cleared. That is deliberate and published; [A21](../backlog.md#a21)
-records why it stays.
+records why it stays. *(Reversed 2026-09-25 by [A8](../backlog.md#a8)'s step 2, which removed
+the drain and with it the registry clear. [A21](../backlog.md#a21) records the reversal and its
+cause.)*
 
 ## What the tree says
 

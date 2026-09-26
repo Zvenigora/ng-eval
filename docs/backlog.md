@@ -98,20 +98,21 @@ entry says what is left.
 | [A19](#a19) | A12's fix shipped behind an exit criterion that could not detect its own named wrong implementation | core | decision | Open, **decided 2026-09-24: the Node-against-`dist` gate is not built now**; the entry lists what reverses it |
 | [A15](#a15) | The per-walk trace reset, weighed and declined | core | decision | Open, **decided 2026-09-24: declined in general**; the entry lists what reopens it |
 | [A16](#a16) | `EvalTraceItem.start` / `end` are declared and never set | core | decision | **Retired — documented as reserved 2026-09-24, unreleased**; under `CHANGELOG.md`'s `[Unreleased]` |
-| [A17](#a17) | `EvalService.ngOnDestroy` drains under one `try`, so one throw skips the rest | core | fix | **Retired — fixed 2026-09-24, unreleased**; drains reordered, caller-owned last — [`docs/a8/plan.md`](a8/plan.md) step 1. A throwing registry `clear` still skips the trace drain, by choice |
-| [A20](#a20) | `EvalService._activeContexts` grows with every distinct `Registry` context | core | fix | **Fixed 2026-09-24, unreleased**; the field deleted — [`docs/a20/plan.md`](a20/plan.md). A context passed to `createState` stays retained through its state until [A8](#a8)'s step 2 |
-| [A21](#a21) | `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts | core | fix | **Fixed 2026-09-23, unreleased**; under `CHANGELOG.md`'s `[Unreleased]` — [`docs/a21/plan.md`](a21/plan.md) |
+| [A17](#a17) | `EvalService.ngOnDestroy` drains under one `try`, so one throw skips the rest | core | fix | **Retired — fixed 2026-09-24, unreleased**; drains reordered, caller-owned last — [`docs/a8/plan.md`](a8/plan.md) step 1. **Subject gone 2026-09-25**: [A8](#a8)'s step 2 removed the drain before it shipped |
+| [A20](#a20) | `EvalService._activeContexts` grows with every distinct `Registry` context | core | fix | **Fixed 2026-09-24, unreleased**; the field deleted — [`docs/a20/plan.md`](a20/plan.md). Contexts passed to `createState` released 2026-09-25 by [A8](#a8)'s step 2, which deleted the control case |
+| [A21](#a21) | `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts | core | fix | **Fixed 2026-09-23, unreleased**; under `CHANGELOG.md`'s `[Unreleased]` — [`docs/a21/plan.md`](a21/plan.md). Its decision to keep the hook-registry clear **reversed 2026-09-25** by [A8](#a8)'s step 2 |
+| [A22](#a22) | Five memory-leaks cases assert nothing about memory | core | test gap | Open — found reviewing [A8](#a8)'s step 2, which made their `ngOnDestroy` call a no-op |
 | [A3](#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | Open |
 | [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered — **wider than it reads; [A10](#a10) argues it is one defect with A10** |
 | [A10](#a10) | `getKey`'s scopes step reports every key present against a plain-object scope | core | fix | Open — **latent, not live**; blocks any fix to [A4](#a4) |
 | [A5](#a5) | Service-layer entry points discard the error they caught — **12 sites, 4 services** | core | fix | Open |
 | [A6](#a6) | `safeCall` destroys the class of any error thrown through a call | core | fix | Open |
 | [A7](#a7) | `EvalContext.getThis` reads `_original` in its `priorScopes` loop | core | fix | Open |
-| [A8](#a8) | `EvalService._activeStates` grows unboundedly | core | fix | Open, Covered — **the `simpleEval` half fixed 2026-09-24, unreleased** ([`docs/a8/plan.md`](a8/plan.md) step 1); the `createState` half is step 2, an ownership decision not yet made |
+| [A8](#a8) | `EvalService._activeStates` grows unboundedly | core | fix | **Retired — fixed 2026-09-25, unreleased**, in two steps: `simpleEval`'s states ([`docs/a8/plan.md`](a8/plan.md)), then the set deleted ([`docs/a8/step-2-plan.md`](a8/step-2-plan.md)). Withdraws the published destroy-time registry clear |
 | [A9](#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | **Fixed**, Phase 2 step 0 |
 | [B1](#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | Open, Covered |
 | [B2](#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Fixed**, Phase 2 step 0 |
-| [B3](#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | Open — **one left**, `parser.service.ts`. The `ngOnDestroy` warn was decided and deleted by [A8](#a8)'s step 1; the third went with [A21](#a21)'s fix |
+| [B3](#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | Open — **one left**, `parser.service.ts`. The `ngOnDestroy` warn was decided and deleted by [A8](#a8)'s step 1, and its silent `catch` went with the drain in step 2; the third went with [A21](#a21)'s fix |
 | [B4](#b4) | `eval-core.component.ts` is dead generator scaffold | core | fix | Open |
 | [C1](#c1) | A member-target write escapes the read-only policy | signals | decision | Open, Covered |
 | [C2](#c2) | Detect a write violation at construction, not first recompute | signals | decision | Open |
@@ -622,10 +623,10 @@ services; that was an undercount, corrected here on 2026-09-06 by grepping
 
 | Service | Method | Line | Named in the old entry? |
 | ------- | ------ | ---- | ----------------------- |
-| `EvalService` | `simpleEval` | [135](../modules/eval-core/src/lib/actual/services/eval.service.ts#L135) | yes |
-| `EvalService` | `eval` | [162](../modules/eval-core/src/lib/actual/services/eval.service.ts#L162) | yes |
-| `EvalService` | `simpleEvalAsync` | [198](../modules/eval-core/src/lib/actual/services/eval.service.ts#L198) | **no** |
-| `EvalService` | `evalAsync` | [225](../modules/eval-core/src/lib/actual/services/eval.service.ts#L225) | **no** |
+| `EvalService` | `simpleEval` | [81](../modules/eval-core/src/lib/actual/services/eval.service.ts#L81) | yes |
+| `EvalService` | `eval` | [108](../modules/eval-core/src/lib/actual/services/eval.service.ts#L108) | yes |
+| `EvalService` | `simpleEvalAsync` | [138](../modules/eval-core/src/lib/actual/services/eval.service.ts#L138) | **no** |
+| `EvalService` | `evalAsync` | [165](../modules/eval-core/src/lib/actual/services/eval.service.ts#L165) | **no** |
 | `CompilerService` | `compile` | [181](../modules/eval-core/src/lib/actual/services/compiler.service.ts#L181) | **no** |
 | `CompilerService` | `simpleCall` | [205](../modules/eval-core/src/lib/actual/services/compiler.service.ts#L205) | yes |
 | `CompilerService` | `call` | [231](../modules/eval-core/src/lib/actual/services/compiler.service.ts#L231) | yes |
@@ -718,36 +719,51 @@ written against the corrected behaviour rather than the current one.
 <a id="a8"></a>
 ## A8 — `EvalService._activeStates` grows unboundedly
 
-**Package** core · **Kind** fix · **Status** Open, Covered — **the `simpleEval` half fixed
-2026-09-24, unreleased**; under `CHANGELOG.md`'s `[Unreleased]`
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-25, unreleased**, both
+halves; under `CHANGELOG.md`'s `[Unreleased]`
 
 **This entry is why this file exists.** See [R4](#r4) for the cross-references that hid it.
 
-**Split into two steps by [`docs/a8/plan.md`](a8/plan.md), and step 1 is done.** `simpleEval`
-and `simpleEvalAsync` now remove their state from the set in a `finally` when the call returns,
-including a walk that throws and a promise that rejects. A caller never receives those states,
-so nobody has to decide who owns them. Eight cases in `eval.service.memory-leaks.spec.ts` cover
-it, the plan's 1.1–1.8. Five of them use A20's `WeakRef` instrument with the set left intact.
-Every wrong
-implementation the plan names was run against every case, and the result was read case by case.
-The plan's § 2.5 has the table. **Step 2, the states `createState` hands back, is open**. It is
-an ownership decision that the plan frames and does not make. Its § 3 has the options, and § 4
-says what that step must settle. Everything below is still true of `createState`.
+**Fixed in two steps.**
+
+- **Step 1** ([`docs/a8/plan.md`](a8/plan.md), 2026-09-24) made `simpleEval` and
+  `simpleEvalAsync` remove their state from the set when the call returned. That included a walk
+  that throws and a promise that rejects.
+- **Step 2** ([`docs/a8/step-2-plan.md`](a8/step-2-plan.md), 2026-09-25) deleted the set.
+  `EvalService` now keeps no state and no context. `ngOnDestroy` marks the service destroyed and
+  drains nothing. Who owns a state that `createState` hands back was an ownership decision, taken
+  in [`docs/a8/step-2-decision.md`](a8/step-2-decision.md). It compared three options: the caller
+  owns the state, weak tracking, and an explicit release. It chose the first.
+
+**Step 2 withdrew a published promise.** From 0.3.0 to 0.5.0, destroy cleared the hook
+registries of the states `createState` built, including the caller's `options.hooks`. Withdrawing
+it reverses [A21](#a21)'s decision to keep the clear. It also removes the drain that
+[A17](#a17) reordered and the `catch` that [B3](#b3) silenced.
+
+**Coverage.** Step 1's cases 1.1–1.5, 1.7 and 1.8 and step 2's 2.1–2.9 cover it, in
+`eval.service.memory-leaks.spec.ts` and `eval-signal.memory.spec.ts`. Every wrong implementation
+each plan names was run against every case, and the results were read case by case. The tables
+are in `plan.md` § 2.5 and `step-2-plan.md` § 6. Step 2's 2.10 pins the destroyed flag, not
+retention. It was added after that run, from the code-reviewer's finding, and was probed against
+P5 alone.
+
+*The rest of this entry is the defect as recorded, with the notes each step added.*
 
 Step 1 carried [A17](#a17) and [B3](#b3)'s `ngOnDestroy` site too, as this entry asked. It also
 narrowed one published sentence. Destroy clears an adopted hook registry only for states that
 `createState` handed back, because it no longer reaches a `simpleEval` state. That is a trade
 with a small cost. A hook that stores `event.state` where only the hook can reach it now keeps
 that state for as long as the caller keeps the registry, and no longer only until destroy. The
-plan's § 2.2 weighs it. Step 2 may reopen it under weak tracking (§ 3).
+plan's § 2.2 weighs it. *Step 2 declined weak tracking, which could have reopened this. It
+extended the same trade to `createState` states instead, so destroy clears no registry at all.*
 
-`EvalService.createState` adds every state it builds to a strong `Set`
-([`eval.service.ts:45`](../modules/eval-core/src/lib/actual/services/eval.service.ts#L45)), and
-nothing removes an entry except `simpleEval`'s and `simpleEvalAsync`'s own. The set is drained only in `ngOnDestroy`
-([`:53`](../modules/eval-core/src/lib/actual/services/eval.service.ts#L53)). `EvalService` is
-`providedIn: 'root'`, so that is application teardown.
+`EvalService.createState` adds every state it builds to a strong `Set` (`eval.service.ts:45`),
+and nothing removes an entry except `simpleEval`'s and `simpleEvalAsync`'s own. The set is
+drained only in `ngOnDestroy` (`:53`). *(Both lines as of `10dd98f`. Step 2 deleted both, so
+they are no longer linked.)* `EvalService` is `providedIn: 'root'`, so that is application
+teardown.
 
-*(Until step 1. Still true of every `createState` state the caller drops.)* Every `simpleEval` /
+*(Until step 1. Then true of every `createState` state the caller dropped, until step 2.)* Every `simpleEval` /
 `simpleEvalAsync` call therefore retains its `EvalState` — and with it the
 AST, the value stack, the trace and anything a hook closure captured — for the life of the
 application. The cost grows with uptime and with call volume, which is the profile of a
@@ -758,10 +774,10 @@ again.** It used to be bounded by the expression's node count; with `for` loops 
 retained state could hold hundreds of thousands of trace items. **As of A12's fix — unreleased,
 under `CHANGELOG.md`'s `[Unreleased]` — it is bounded by `maxTraceItems`, default 10,000**, so a
 retained state holds ~0.5 MB of trace rather than ~34 MB, and `EvalService.ngOnDestroy` now
-clears it. The two entries still compound, just by two orders of magnitude less: A12 is how much
+clears it *(until step 2, which removed that drain with the set)*. The two entries still compound, just by two orders of magnitude less: A12 is how much
 one state can hold, A8 is why it is never released. **A8 is unchanged by that fix** — the `Set`
-still grows, every `simpleEval` still retains its state *(until step 1; `createState`'s still
-do)*, and the trace is only one of the things a retained state keeps.
+still grows, every `simpleEval` still retains its state *(until step 1; `createState`'s did
+until step 2)*, and the trace is only one of the things a retained state keeps.
 
 **It compounds two other entries.** [`phase-1-plan.md:1095`](side-effects/phase-1-plan.md)
 records that because the `Set` is strong, frames abandoned on the open-node stack keep their AST
@@ -772,7 +788,8 @@ to prevent". And a leaked scope from [A9](#a9) sits on a context those retained 
 replaced. The second went red only in its `simpleEval` cases, and its control stayed green
 because it goes through `createState`. The third went red at its count and was re-driven through
 `createState`, which is what its comment always described, so it stays at 5. The control and
-that count are step 2's red specs now. The plan's § 1.3 has each.)* Three specs read the private
+that count were step 2's red specs. The plan's § 1.3 has each. Step 2 deleted the first and
+replaced the second, as the notes below say.)* Three specs read the private
 field:
 
 - `eval.service.memory-leaks.spec.ts:84-90` *(as of `c0c385b`; replaced by step 1, so no longer
@@ -784,16 +801,19 @@ field:
   control case, "should still retain the context through A8's state set", asserts that a
   context **is** still retained when the set is left alone. A fix turns the control red. It is
   deleted then, together with the clear in `collect`. *Step 1:* its two `simpleEval` cases now
-  run with the set intact. The control goes through `createState`, stayed green, and
-  ([`:288`](../modules/eval-core/src/lib/actual/services/eval.service.memory-leaks.spec.ts#L288))
-  is step 2's to turn red. `collect` keeps its clear for the two `createState` cases.
-- [`eval-signal.memory.spec.ts:80-114`](../modules/eval-signals/src/lib/eval-signal.memory.spec.ts#L80-L114)
-  uses it as a **contrast probe** in a different library: it is the reason `createEvalSignal`
-  builds its states through `CompilerService` instead. A fix turns that spec red at one named
-  line, and the comment above it says so. *Step 1:* it drove `simpleEval` and went to `0`. Its
-  comment said `createState`, so it now drives `createState`, and it stays at `5` until step 2
-  ([`:113`](../modules/eval-signals/src/lib/eval-signal.memory.spec.ts#L113)). That count is a
-  symptom. The behaviour it guards is the `0` above it.
+  run with the set intact. The control goes through `createState`, stayed green, and (`:288`) is
+  step 2's to turn red. `collect` keeps its clear for the two `createState` cases. *Step 2:* the
+  control and the clear were deleted, as planned. Every case now runs on the service as it is,
+  and a positive control (2.3), a context whose state the test holds, replaced the old one.
+- `eval-signal.memory.spec.ts:80-114` uses it as a **contrast probe** in a different library: it
+  is the reason `createEvalSignal` builds its states through `CompilerService` instead. A fix turns
+  that spec red at one named line, and the comment above it says so. *Step 1:* it drove
+  `simpleEval` and went to `0`. Its comment said `createState`, so it now drives `createState`,
+  and it stays at `5` until step 2 (`:113`). That count is a symptom. The behaviour it guards is
+  the `0` above it. *Step 2:* with no field to read, the case was replaced by a behavioural one
+  (2.9). Each recompute's state is caught as a `WeakRef`, and all five must be collected except
+  one the test holds. It is not a spy on `EvalService.createState`, which would pin a choice whose
+  reason had gone. *(Line numbers here are as of `10dd98f`, and are no longer linked.)*
 
 So a fix is not one file. It is: drain the set at the end of each evaluation (or make it weak),
 update the `eval-core` specs that pin non-drainage, and update the `eval-signals` contrast probe
@@ -808,8 +828,8 @@ entry should say so.** A20's control case observes that retention. The `eval-sig
 documented pattern, `simpleEval(expr, createSignalContext(...))`, is the case worth naming:
 each signal context passed that way is kept, with the signal sources its lookup closure reads.
 *Step 1 released every context passed to `simpleEval` and `simpleEvalAsync`, that pattern's
-included, and its `CHANGELOG.md` entry says so. A context passed to `createState` is still
-kept.*
+included, and its `CHANGELOG.md` entry says so. Step 2 released every context passed to
+`createState`, once the caller drops the state.*
 
 **The step that fixes this carries [B3](#b3) and [A17](#a17) too.** *(Step 1 carried both.)* All three are in
 `ngOnDestroy`, and B3 already asks to be revisited with A8. **[A20](#a20) and [A21](#a21) are the
@@ -824,7 +844,8 @@ the second set would have kept every context alive even after this set was fixed
 in [`signals/step-4-summary.md` § 5.2](signals/step-4-summary.md); carried forward in all six
 `docs/forms/step-*-summary.md` § 5.3 tails.
 *Verified*: source read, 2026-09-06. Step 1: red first and probed, 2026-09-24
-([`docs/a8/plan.md`](a8/plan.md) § 2.5).
+([`docs/a8/plan.md`](a8/plan.md) § 2.5). Step 2: red first and probed, 2026-09-25
+([`docs/a8/step-2-plan.md`](a8/step-2-plan.md) § 6).
 
 <a id="a9"></a>
 ## A9 — The arrow-scope leak's root cause: no `try`/`finally` at either push site
@@ -990,8 +1011,11 @@ ships in `eval-core`'s next release, recorded under [`CHANGELOG.md`](../CHANGELO
 
 **Fixed.** `maxTraceItems` bounds the trace, defaulting to 10,000; `EvalResult.traceTruncated`
 and `tracePushCount` report what the bound cost; `EvalResult.clearTrace()` is the only reset,
-and `EvalService.ngOnDestroy` calls it. The rest of this entry is the record of what the defect
-was and what measuring it produced.
+and `EvalService.ngOnDestroy` calls it. *(Until [A8](#a8)'s step 2, 2026-09-25. That step
+removed the destroy drain before it shipped, because the service no longer keeps the states it
+drained. `clearTrace()` is now called by nothing in the library, and a caller who wants a trace
+emptied calls it.)* The rest of this entry is the record of what the defect was and what
+measuring it produced.
 
 **The measurements stand as three figures, not one, and none corrects another.** This entry's
 original "roughly 45 MB" was taken **without** a forced collection and says so. A measurement
@@ -1221,6 +1245,11 @@ in the built `.d.ts`.
 `CHANGELOG.md`'s `[Unreleased]` — opened 2026-09-19, found reviewing the [A12](#a12) fix's
 `clearTrace()` change
 
+**Its subject is gone. The drain it reordered was then removed by [A8](#a8)'s step 2, on
+2026-09-25, before either change shipped.** The service no longer keeps any state, so
+`ngOnDestroy` has nothing to drain, and the three cases below were deleted with it. The entry
+stays retired: there is no drain left to fail.
+
 **Fixed** by [A8](#a8)'s step 1 ([`docs/a8/plan.md`](a8/plan.md) § 2.1), using the second option
 below. The order is now the value stack, the hook bookkeeping, the hook registry, and then the
 trace. The state's own structures go first, then the two caller-owned drains, with the one that
@@ -1229,7 +1258,8 @@ freeze the trace and destroy. Two of them failed against the old order. Each pro
 exactly its own case red: trace before hooks, and bookkeeping left last. The third case pins the
 per-state `catch`, which [B3](#b3)'s change had to keep.
 
-**One exposure remains, by choice.** A registry whose `clear` throws, for example a frozen one,
+*(The next paragraph describes the drain as step 1 left it. It lapsed with the drain in step
+2.)* **One exposure remains, by choice.** A registry whose `clear` throws, for example a frozen one,
 still skips the trace drain for that state. The two caller-owned drains cannot both come last.
 The hook clear goes first because it is the one this entry says matters. A `try` per drain
 would close this too. It was not chosen, because the throw can only come from the caller's own
@@ -1257,7 +1287,7 @@ correction, 2026-09-23, dropped it to two on the ground that the call never runs
 deleted the call, so two stands.)* `hooks.clear()` has carried that exposure since
 before the trace work — [`eval-options.ts`](../modules/eval-core/src/lib/internal/classes/eval/eval-options.ts)'s
 `hooks` docblock says an adopted registry is "adopted as-is and never cloned" and that this
-method empties it. `clearTrace()` (`eval-core` 0.6.0) is the second: `EvalResult.trace` is a
+method empties it *(it no longer says the second, since [A8](#a8)'s step 2)*. `clearTrace()` (`eval-core` 0.6.0) is the second: `EvalResult.trace` is a
 published getter handing out the live array, so a consumer who `Object.freeze`d it makes
 `this._trace.length = 0` a `TypeError` under module strict mode.
 
@@ -1445,7 +1475,8 @@ fix**: wider, because every `EvalContext` enters the set too, and simpler, becau
 now be deleted
 
 **Fixed** by [`docs/a20/plan.md`](a20/plan.md). The field, both `add`s and the `clear()` are
-deleted. The service keeps no reference of its own to a context passed in. Five cases in
+deleted. The service keeps no reference of its own to a context passed in, and since [A8](#a8)'s
+step 2 it keeps no state that could hold one either. Five cases in
 `eval.service.memory-leaks.spec.ts` show each context kind being collected by a forced GC, and all
 five went red against the old code. The instrument is a `WeakRef`, with `gc` reached through
 `v8.setFlagsFromString` and `vm`, so [A19](#a19)'s "Jest has no `global.gc`" is no obstacle for
@@ -1475,7 +1506,14 @@ records this now, and the control case is the spec its fix turns red. *(Narrowed
 A8's step 1, [`docs/a8/plan.md`](a8/plan.md). A8 was split. Its first step released
 `simpleEval`'s states, so the two `simpleEval` cases here now run with A8's set intact. The
 control goes through `createState`, so it stayed green, and it is A8's step 2 that turns it red.
-Contexts passed to `createState` are the ones still waiting.)*
+Contexts passed to `createState` are the ones still waiting.)* *(Closed 2026-09-25 by A8's step 2,
+[`docs/a8/step-2-plan.md`](a8/step-2-plan.md). That step deleted `_activeStates`, so every context
+passed to `createState` is now collectable once the caller drops the state. The benefit this
+paragraph waited for has arrived. **The control case is deleted**, and so is `collect`'s
+hand-clear. It was replaced by a positive control, the step's 2.3: a context whose state the test
+still holds is not collected. That is what shows the other cases are not vacuous, now that
+nothing is held out by hand. Cases 1 and 3 run on the service as it is, as the step's 2.1 and
+2.2.)*
 
 **The exception is observable now: `caseInsensitive`.** The plan's draft missed it and the
 code-reviewer found it. Under `caseInsensitive`, `fromContext` copies a plain object into a new
@@ -1543,7 +1581,8 @@ day, found while sizing [A8](#a8). **This destroyed the caller's data. It was no
 
 **Fixed** by [`docs/a21/plan.md`](a21/plan.md). `ngOnDestroy` no longer calls `clear()` on any
 context the caller supplied. It still drops its references, and still drains each state's
-stack, trace, hooks and bookkeeping. **The fix removed code and recorded nothing new.** Every
+stack, trace, hooks and bookkeeping *(until [A8](#a8)'s step 2, which removed that drain: see
+the reversal below)*. **The fix removed code and recorded nothing new.** Every
 entry in `_activeContexts` was already caller-owned by construction, because `createState` adds
 its argument and never what `fromContext` builds from it. So the service-built context the brief
 assumed was being drained never was. The plan has the argument. The fix deleted two drains: the
@@ -1563,6 +1602,23 @@ captures the state it observes, so a registry that outlives the service keeps de
 their AST reachable. And those registrations cannot be dropped selectively. A context holds the
 caller's data, which the service has no business emptying. Reversing the hooks behaviour would be
 a published change and would need its own entry.
+
+**Reversed 2026-09-25, by [A8](#a8)'s step 2.** Destroy no longer clears any registry.
+A21 was right with what it knew then. What changed its premise was A8's step 1, which came after
+it. Step 1 released `simpleEval`'s states when the call returned, so destroy could no longer reach
+a registry passed only to `simpleEval`. **The clear then depended on the entry point**: the same
+registry was cleared if the caller had used `createState`, and not if they had used `simpleEval`.
+Step 2 had to decide who owns a `createState` state. It chose the caller, and the service now
+keeps no state at all ([`docs/a8/step-2-decision.md`](a8/step-2-decision.md)). That resolves the
+asymmetry in the direction A21 itself took for contexts: destroy changes nothing the caller
+passed in, whichever method they passed it to.
+
+A21's reason for keeping the clear is still true. A hook's closure usually captures the state it
+observes. But what it keeps alive is reachable from a registry the caller holds, and the caller
+can release that registry with the unsubscribe `on` returns, or with `hooks.clear()`. The
+reversal is a published change, and it has its own record, though not a new entry: A8's step 2
+carries it, with `CHANGELOG.md`'s *Changed* and *Upgrading* entries. The spec named above was
+inverted to "should not clear a caller-owned registry that outlives the service" (step 2's 2.7).
 
 *The rest of this entry is the defect as recorded.*
 
@@ -1596,6 +1652,40 @@ libraries passes a `Registry` to `EvalService`.
 
 *Recorded*: this entry.
 *Verified*: observed 2026-09-23 by a script outside the repository, as tabled above.
+
+---
+
+<a id="a22"></a>
+## A22 — Five memory-leaks cases assert nothing about memory
+
+**Package** core · **Kind** test gap · **Status** Open — recorded 2026-09-25, found by the
+code-reviewer on [A8](#a8)'s step 2
+
+Five cases in `eval.service.memory-leaks.spec.ts` sit under "Repeated Operations Memory
+Stability" and "Large Data Handling":
+
+- repeated evaluations;
+- repeated async evaluations;
+- complex nested objects;
+- large arrays;
+- objects with many properties.
+
+Each evaluates, checks the result, and then calls `service.ngOnDestroy()`. Three do it inside
+`expect(...).not.toThrow()`, and two do it bare, under `// Should clean up without issues`. Their
+titles say "without memory accumulation" and "without memory leaks". **Nothing in them observes
+memory.** Their result assertions are real, and duplicate what other specs cover. The destroy call
+was always weak evidence: `ngOnDestroy`'s drain swallowed every throw in a per-state `catch`.
+Since A8's step 2, `ngOnDestroy` is a single assignment, so that part now tests nothing at all.
+
+**Not changed by that step, on purpose.** `CLAUDE.md` forbids weakening or deleting an existing
+assertion without asking. Nor was this one of the cases the step's brief named. Options:
+
+- retitle them, and drop the destroy call and its claim;
+- replace them with retention cases on A20's `WeakRef` instrument;
+- delete them as duplicates of the result assertions elsewhere.
+
+*Recorded*: this entry. *Verified*: source read, 2026-09-25, at the working tree of A8's step 2
+(`eval.service.memory-leaks.spec.ts:430-510`).
 
 ---
 
@@ -1735,6 +1825,12 @@ could not have caught. The `catch` stays so that one state cannot stop the rest 
 One case asserts that no warning is logged. It failed against the old warn, and against a warn
 guarded by `isDevMode()`, since Jest runs in dev mode. **`parser.service.ts:67` is still open.**
 It is in a `setInterval` callback, not `ngOnDestroy`, so the A8 step left it alone.
+
+**The silent `catch` is gone too, removed 2026-09-25 by [A8](#a8)'s step 2 before it shipped.**
+That step deleted the drain loop it sat in: the service keeps no state, so `ngOnDestroy` drains
+nothing and nothing in it can throw. The case asserting no warning was deleted with the loop,
+since nothing is left that could log. What ships is the same for this entry: `ngOnDestroy` does
+not call `console.*`. The count below is unchanged.
 
 The third, `console.warn('Error cleaning up Context:', error)`, guarded `ngOnDestroy`'s loop that
 cleared each tracked context. [A21](#a21)'s fix deleted that loop, since it emptied the caller's
@@ -3369,8 +3465,9 @@ defects. It never was, in any revision.
 
 - [`signals/step-4-summary.md` § 5.2](signals/step-4-summary.md) — "Pre-existing `eval-core`, already
   in `ROADMAP.md`'s deferred defects."
-- [`eval-signal.memory.spec.ts:99`](../modules/eval-signals/src/lib/eval-signal.memory.spec.ts#L99) —
-  a comment citing `(ROADMAP.md, "Deferred defects")` beside the assertion that pins the behaviour.
+- `eval-signal.memory.spec.ts:99` — a comment citing `(ROADMAP.md, "Deferred defects")` beside
+  the assertion that pins the behaviour. *(No longer linked. The line had already drifted, and
+  [A8](#a8)'s step 2 replaced that case, comment and all, on 2026-09-25.)*
 
 Six further documents — every `docs/forms/step-*-summary.md` § 5.3 tail — carried the item forward
 without repeating the claim, which is why the item stayed visible while remaining untracked.

@@ -7,14 +7,17 @@ import { EvalContext, EvalOptions, EvalState, defaultParserOptions } from '../..
 import { evaluate, evaluateAsync } from '../../internal/functions';
 
 /**
- * Service for evaluating and parsing expressions with proper memory management.
+ * Service for evaluating and parsing expressions.
+ *
+ * It keeps no reference to anything you pass it or anything it hands back: a
+ * state from `createState`, its context and an `options.hooks` registry are
+ * yours, and are collectable once you drop them (`docs/backlog.md` A8).
  */
 @Injectable({
   providedIn: 'root'
 })
 export class EvalService extends BaseEval implements OnDestroy {
   private _isDestroyed = false;
-  private _activeStates = new Set<EvalState>();
 
   protected override parserService = inject(ParserService);
 
@@ -27,81 +30,29 @@ export class EvalService extends BaseEval implements OnDestroy {
   }
 
   /**
-   * Override createState to track active states for cleanup. The context is
-   * not tracked: it is the caller's, and the state already holds it
-   * (`docs/backlog.md` A20). A state kept here is released only by
-   * `ngOnDestroy`, even once the caller drops it: that half of A8 is open
-   * (`docs/a8/plan.md` step 2). `simpleEval` and `simpleEvalAsync` take theirs
-   * back out when the call returns.
+   * Builds a state for `eval` / `evalAsync`. The service does not keep it:
+   * the state is yours, and so are its context and any `options.hooks`
+   * registry it adopted (`docs/backlog.md` A8, A20). Nothing the service does
+   * later, `ngOnDestroy` included, reaches it.
    */
   override createState(context?: EvalContext | Context, options?: EvalOptions): EvalState {
     if (this._isDestroyed) {
       throw new Error('EvalService has been destroyed and cannot be used');
     }
-    
-    const state = super.createState(context, options);
-    
-    // Track active states for cleanup
-    this._activeStates.add(state);
 
-    return state;
+    return super.createState(context, options);
   }
 
   /**
-   * Clean up resources to prevent memory leaks
+   * Marks the service destroyed, so that `createState`, `simpleEval` and
+   * `simpleEvalAsync` throw from then on. It releases and changes nothing
+   * else: the service holds no state, context or registry to release. Clear
+   * a registry you passed through `options.hooks` in your own teardown, with
+   * the unsubscribe `on` / `onRead` returned or `hooks.clear()`
+   * (`docs/backlog.md` A8).
    */
   ngOnDestroy(): void {
     this._isDestroyed = true;
-    
-    // Clean up all active states. The drains share one `try`, so a throw
-    // skips every drain after it: the state's own structures go first, and
-    // the two that reach objects the caller owns go last (`docs/backlog.md`
-    // A17).
-    for (const state of this._activeStates) {
-      try {
-        // Clear the stack in the result
-        if (state.result?.stack) {
-          state.result.stack.clear();
-        }
-        // Bookkeeping lives on the state and the registry's `clear` cannot
-        // reach it, so the open-node stack and collected errors need dropping
-        // separately. It replaces the arrays rather than emptying them, so a
-        // caller holding `hookErrors` cannot make it throw.
-        state.resetHookBookkeeping();
-        // Caller-owned from here. Drop hook registrations so a long-lived
-        // closure cannot pin a destroyed state. This matters most for a
-        // registry the caller passed through `options.hooks` and still holds:
-        // one that outlives the service keeps every state its closures
-        // captured reachable. A state-owned registry would die with its state
-        // regardless. It runs before the trace drain because it is the one
-        // that matters for retention.
-        //
-        // Guarded on `hasHooks` rather than reading `state.hooks`, because that
-        // getter builds a registry on first access - allocating inside the
-        // method whose job is releasing memory. The guard is exact for this
-        // purpose: it is false only when no hook is registered, and clearing an
-        // empty registry does nothing.
-        if (state.hasHooks) {
-          state.hooks.clear();
-        }
-        // And the trace, which is the largest thing on the result. Under the
-        // documented `createState` + repeated `eval` style the *caller* holds
-        // the state, and `_activeStates.clear()` below releases nothing for
-        // them. `clearTrace` resets its two counters with it (`docs/backlog.md`
-        // A12). Last, because `trace` hands out the live array: a caller who
-        // froze it makes this throw.
-        state.result?.clearTrace();
-        // The context is not drained here. `state.context` is an `EvalContext`,
-        // which has no `clear`, unless the caller passed in a subclass that
-        // declares one - and that object is the caller's (`docs/backlog.md` A21).
-      } catch {
-        // Silent, and deliberately not the `isDevMode()` carve-out: only the
-        // caller-owned drains above can throw, and a throw costs the caller's
-        // own object and nothing else (`docs/backlog.md` B3). The catch stays so
-        // that one state cannot stop the others being drained.
-      }
-    }
-    this._activeStates.clear();
   }
 
   /**
@@ -117,19 +68,14 @@ export class EvalService extends BaseEval implements OnDestroy {
   ): unknown | undefined {
     try {
       const ast = this.parse(expression);
+      // Through `createState`, which a subclass may override, rather than a
+      // private builder (`docs/a8/plan.md` § 2.1).
       const state = this.createState(context, options);
-      try {
-        if (state?.result && typeof expression === 'string') {
-          state.result.expression = expression;
-        }
-        const value = evaluate(ast, state);
-        return value;
-      } finally {
-        // The caller never receives this state, so the service holds it for
-        // the call and no longer (`docs/backlog.md` A8). It goes through
-        // `createState` anyway, which a subclass may override.
-        this._activeStates.delete(state);
+      if (state?.result && typeof expression === 'string') {
+        state.result.expression = expression;
       }
+      const value = evaluate(ast, state);
+      return value;
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(error.message);
@@ -179,20 +125,14 @@ export class EvalService extends BaseEval implements OnDestroy {
   ): Promise<unknown | undefined> {
     try {
       const ast = this.parse(expression);
+      // As in `simpleEval`. The pending frame holds the state for as long as
+      // the promise it awaits is reachable, and nothing else does.
       const state = this.createState(context, options);
-      try {
-        if (state?.result && typeof expression === 'string') {
-          state.result.expression = expression;
-        }
-        const promise = evaluateAsync(ast, state);
-        return promise;
-      } finally {
-        // As in `simpleEval`, and without waiting for the promise: the walk has
-        // run by now, and the pending frame holds the state for as long as the
-        // promise it awaits is reachable. Removing it in a handler would keep a
-        // rejected call's state until destroy (`docs/a8/plan.md` § 1.5).
-        this._activeStates.delete(state);
+      if (state?.result && typeof expression === 'string') {
+        state.result.expression = expression;
       }
+      const promise = evaluateAsync(ast, state);
+      return promise;
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(error.message);

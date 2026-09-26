@@ -173,11 +173,10 @@ export interface EvalSignalOptions {
  * `EvalContext` is the opposite: it is built once and reused, which is what
  * makes per-key tracking possible at all.
  *
- * `eval-core` 0.6.0 adds `EvalResult.clearTrace()` and drains the trace in
- * `EvalService.ngOnDestroy`, and neither reaches these states: they are built
- * through `CompilerService`, so they never enter `EvalService`'s active-state
- * set, and `clearTrace` is opt-in and uncalled here. The decision below is
- * unaffected - a fresh state per recompute is still what bounds this.
+ * `eval-core` 0.6.0 adds `EvalResult.clearTrace()`, which is opt-in and
+ * uncalled here, and nothing else in either library drains these states. The
+ * decision below is unaffected - a fresh state per recompute is still what
+ * bounds this.
  *
  * Reads that happen after the walk returns are not tracked, because they are
  * outside the reactive context - an arrow function that escapes the

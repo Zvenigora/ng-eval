@@ -1,7 +1,9 @@
 import { EnvironmentInjector, createEnvironmentInjector,
   runInInjectionContext, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { CompilerService, EvalContext, EvalHooks, EvalService, EvalState,
+import { setFlagsFromString } from 'v8';
+import { runInNewContext } from 'vm';
+import { CompilerService, EvalContext, EvalHooks, EvalState,
   createDependencyTracker } from '@zvenigora/ng-eval-core';
 import { EvalSignal, EvalSignalOptions, createEvalSignal } from './eval-signal';
 import { SignalContextSource, createSignalContext } from './signal-context';
@@ -36,6 +38,23 @@ describe('createEvalSignal - lifetime and cleanup', () => {
 
   describe('one EvalState per recompute', () => {
 
+    // `eval-core`'s memory spec's instrument. Jest has no `global.gc`: the
+    // flag exposes `gc` to contexts created after it is set, and is cleared
+    // again at once so that the contexts Jest builds for later suites do not
+    // get one.
+    setFlagsFromString('--expose-gc');
+    const gc = runInNewContext('gc') as () => void;
+    setFlagsFromString('--no-expose-gc');
+
+    // Whether each target is still alive. A `WeakRef` keeps its target alive
+    // until the job that created or read it ends, so the collection has to
+    // happen in a later one.
+    const collect = async (refs: WeakRef<object>[]): Promise<boolean[]> => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      gc();
+      return refs.map((ref) => ref.deref() !== undefined);
+    };
+
     /**
      * The states are reached through a read hook's `event.state` rather than
      * through the `createState` spy, so the assertion is about the state the
@@ -68,49 +87,65 @@ describe('createEvalSignal - lifetime and cleanup', () => {
       // The retention half, and the one that fails on a reused state:
       // `EvalResult.trace` holds every node's value and is drained by nothing
       // on this path, so a shared state's trace would be 5x the first walk's
-      // by now. `eval-core` 0.6.0 added `clearTrace()` and an `ngOnDestroy`
-      // drain; neither applies here, because these states are built through
-      // `CompilerService` and nothing calls `clearTrace` on them.
+      // by now. `eval-core` 0.6.0 adds `clearTrace()`, and nothing on this
+      // path calls it; nor does any service drain these states at destroy.
       const [first] = distinct;
       expect(first.result.trace.length).toBeGreaterThan(0);
       distinct.forEach((state) =>
         expect(state.result.trace.length).toEqual(first.result.trace.length));
     });
 
-    it('should leave nothing behind in EvalService\'s active-state set', () => {
-      const evalService = TestBed.inject(EvalService);
-      const active = (evalService as unknown as { _activeStates: { size: number } })._activeStates;
+    /**
+     * What S 3.8 asks of a recompute's state: that nothing keeps it once the
+     * recompute returns. Asked of the collector, as `eval-core`'s memory spec
+     * asks it: a read hook on a registry the test owns catches each state as a
+     * `WeakRef`, and a full GC runs before the assertion.
+     *
+     * This replaced a count of `EvalService`'s private state set, contrasted
+     * with five states driven through `EvalService.createState` - the reason
+     * S 3.3.1 gives for building states through `CompilerService`. `eval-core`
+     * removed the set (docs/backlog.md, `BL-A8`), so the count had nothing left
+     * to read. The behaviour is asserted instead, and it holds whichever
+     * service builds the states. A spy asserting `EvalService` is never called
+     * would pin that choice after its reason had gone.
+     *
+     * The third state is also held by the test, in `held`, and must survive:
+     * that is what shows the other four are collected rather than never
+     * caught. The recomputes run inside a function that returns only the
+     * `WeakRef`s, so no local of this test other than `held` reaches a state
+     * (`BL-A19`'s technique note).
+     */
+    it('should leave no recompute\'s state reachable once it has returned', async () => {
+      let held: EvalState | undefined;
 
-      const c = signal(0);
-      const value = create('c + 1', { c });
+      const refs = (() => {
+        const caught: WeakRef<EvalState>[] = [];
+        const hooks = new EvalHooks();
+        hooks.onRead((event) => {
+          caught.push(new WeakRef(event.state));
+          if (caught.length === 3) {
+            held = event.state;
+          }
+        });
 
-      for (let i = 1; i <= 5; i++) {
-        c.set(i);
-        expect(value()).toEqual(i + 1);
-      }
+        const c = signal(0);
+        const value = create('c + 1', { c }, { eval: { hooks } });
 
-      expect(active.size).toEqual(0);
+        for (let i = 1; i <= 5; i++) {
+          c.set(i);
+          expect(value()).toEqual(i + 1);
+        }
 
-      // Not a vacuous zero: the same five evaluations, driven the way S 3.8
-      // originally proposed - through `EvalService.createState`, whose strong
-      // `Set` drains only in `ngOnDestroy` - are every one of them still
-      // retained. That contrast is the reason the factory builds its states
-      // through `CompilerService` instead (S 3.3.1).
-      //
-      // It also pins an `eval-core` defect from this library's suite:
-      // `createState` adds to `_activeStates` and never removes, and the set
-      // drains only in `ngOnDestroy` (docs/backlog.md, `BL-A8`). This drove
-      // `simpleEval` until A8's first step stopped it keeping its states,
-      // which took the count to 0 and the contrast with it. The `createState`
-      // half is `docs/a8/plan.md`'s step 2: when it lands this line goes red,
-      // and the assertion above it is the one that still matters.
-      const context = createSignalContext({ c });
+        return caught;
+      })();
 
-      for (let i = 0; i < 5; i++) {
-        evalService.eval('c + 1', evalService.createState(context));
-      }
+      // One read per recompute, so one state each.
+      expect(refs).toHaveLength(5);
 
-      expect(active.size).toEqual(5);
+      const live = await collect(refs);
+
+      expect(live).toEqual([false, false, true, false, false]);
+      expect(held).toBeDefined();
     });
 
   });
@@ -198,7 +233,8 @@ describe('createEvalSignal - lifetime and cleanup', () => {
      * is retention and nothing else. A stub `DestroyRef` is not an option
      * either: an explicit provider for it loses to the injector's intrinsic
      * one, checked rather than assumed. So this counts the injector's hooks,
-     * the way `eval-core`'s memory spec counts `_activeStates`.
+     * the way `eval-core`'s memory spec counted `EvalService`'s state set
+     * until that set was removed (docs/backlog.md, `BL-A8`).
      */
     it('should release its registration when destroyed by hand', () => {
       const injector = createEnvironmentInjector([], TestBed.inject(EnvironmentInjector));

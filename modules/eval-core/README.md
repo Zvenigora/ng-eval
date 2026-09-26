@@ -276,7 +276,7 @@ Two things to know about it:
   const state = service.createState(context, { hooks });
   ```
 
-  One thing the library *does* do to a registry you own: `EvalService.ngOnDestroy()` clears the registries of the states its `createState` handed back to you, adopted ones included, so that a registry outliving the service cannot keep those states and their AST nodes reachable. Do not share one registry with a state whose lifetime is meant to outlast the service. A registry passed only to `simpleEval` or `simpleEvalAsync` is not cleared, because the service lets go of those states when the call returns.
+  The library never clears a registry you own. `EvalService.ngOnDestroy()` does not touch it, whichever method you passed it to, and up to 0.5.0 it cleared the registries of the states `createState` built. So a hook that keeps a state, by capturing it or by storing `event.state`, keeps that state and its context reachable for as long as the registry is. Release them in the teardown that owns the registry, such as your component's `ngOnDestroy` or a `DestroyRef.onDestroy` callback: call the unsubscribe that `on` / `onRead` returned, or `hooks.clear()`.
 
 #### `completed: false` events
 
