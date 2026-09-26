@@ -71,9 +71,9 @@ release, not a free change.
 
 | Package | Version | Notes |
 | ------- | ------- | ----- |
-| `@zvenigora/ng-eval-core` | 0.6.0 | A12/A20/A21/B3 fixes. Tagged `@zvenigora/ng-eval-core@0.6.0` at f26f987, published 2026-09-26 |
-| `@zvenigora/ng-eval-signals` | 0.1.3 | Peer range: `^0.3.0 < ^0.7.0`. Tagged `@zvenigora/ng-eval-signals@0.1.3` at f26f987, published 2026-09-26 |
-| `@zvenigora/ng-eval-forms` | 0.2.3 | Peer range: `^0.3.0 < ^0.7.0`. Tagged `@zvenigora/ng-eval-forms@0.2.3` at f26f987, published 2026-09-26 |
+| `@zvenigora/ng-eval-core` | 0.6.0 | A12/A20/A21/B3 fixes. Tagged `eval-core@0.6.0` at f26f987, published 2026-09-26 |
+| `@zvenigora/ng-eval-signals` | 0.1.3 | Peer range: `^0.3.0 < ^0.7.0`. Tagged `eval-signals@0.1.3` at f26f987, published 2026-09-26 |
+| `@zvenigora/ng-eval-forms` | 0.2.3 | Peer range: `^0.3.0 < ^0.7.0`. Tagged `eval-forms@0.2.3` at f26f987, published 2026-09-26 |
 | `@zvenigora/ng-eval-core` | 0.5.0 | A11 fix: object destructuring binding. Tagged `eval-core@0.5.0` 2026-09-17, at `03b5923` |
 | `@zvenigora/ng-eval-core` | 0.4.0 | Phase 2, statements. Tagged `eval-core@0.4.0` 2026-09-16, at `7935a78` — [F8](#f8) |
 | `@zvenigora/ng-eval-signals` | 0.1.2 | Phase 2 step 7: peer range only. Tagged `eval-signals@0.1.2` 2026-09-17, at `03b5923` — [F8](#f8) |
