@@ -101,7 +101,7 @@ entry says what is left.
 | [A17](#a17) | `EvalService.ngOnDestroy` drains under one `try`, so one throw skips the rest | core | fix | **Retired — fixed 2026-09-24, unreleased**; drains reordered, caller-owned last — [`docs/a8/plan.md`](a8/plan.md) step 1. **Subject gone 2026-09-25**: [A8](#a8)'s step 2 removed the drain before it shipped |
 | [A20](#a20) | `EvalService._activeContexts` grows with every distinct `Registry` context | core | fix | **Fixed 2026-09-24, unreleased**; the field deleted — [`docs/a20/plan.md`](a20/plan.md). Contexts passed to `createState` released 2026-09-25 by [A8](#a8)'s step 2, which deleted the control case |
 | [A21](#a21) | `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts | core | fix | **Fixed 2026-09-23, unreleased**; under `CHANGELOG.md`'s `[Unreleased]` — [`docs/a21/plan.md`](a21/plan.md). Its decision to keep the hook-registry clear **reversed 2026-09-25** by [A8](#a8)'s step 2 |
-| [A22](#a22) | Five memory-leaks cases assert nothing about memory | core | test gap | Open — found reviewing [A8](#a8)'s step 2, which made their `ngOnDestroy` call a no-op |
+| [A22](#a22) | Five memory-leaks cases assert nothing about memory | core | test gap | **Retired — consolidated 2026-09-26**: one "destroy does not throw" guard kept, on the async case; the other four retitled to what they test |
 | [A3](#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | Open |
 | [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered — **wider than it reads; [A10](#a10) argues it is one defect with A10** |
 | [A10](#a10) | `getKey`'s scopes step reports every key present against a plain-object scope | core | fix | Open — **latent, not live**; blocks any fix to [A4](#a4) |
@@ -1658,8 +1658,34 @@ libraries passes a `Registry` to `EvalService`.
 <a id="a22"></a>
 ## A22 — Five memory-leaks cases assert nothing about memory
 
-**Package** core · **Kind** test gap · **Status** Open — recorded 2026-09-25, found by the
-code-reviewer on [A8](#a8)'s step 2
+**Package** core · **Kind** test gap · **Status** **Retired — consolidated 2026-09-26** —
+recorded 2026-09-25, found by the code-reviewer on [A8](#a8)'s step 2
+
+**Consolidated, not removed.** "`ngOnDestroy` does not throw" still guards something: a drain
+reintroduced without its per-state `catch`, which is [A17](#a17)'s history. Five copies spread
+across unrelated cases were noise. **One is kept**, in "should handle repeated async
+evaluations, then destroy without throwing". None of the five used hooks or an adopted registry.
+All five evaluate against a `Registry`. The async case is the only one whose states are written
+again when the promise settles, the shape [A8](#a8)'s plan (§ 1.5) found a racing drain could
+corrupt. So it is the richest state shape the five exercise.
+
+The other four lost their destroy calls. Three were retitled to what they test:
+
+| Was | Now |
+| --- | --- |
+| "should handle repeated evaluations without memory accumulation" | "should evaluate repeatedly against a changing registry" |
+| "should clean up complex nested object evaluations" | "should read a deeply nested object" |
+| "should handle large arrays without memory leaks" | "should read the length of a large array" |
+
+The fourth, "should handle objects with many properties", kept its title and lost a comment
+calling it a memory-leak test. The `describe` "Repeated Operations Memory Stability" became
+"Repeated Operations".
+
+**What the kept guard adds is narrow.** Probed with an `ngOnDestroy` that throws every time: 436
+of 1074 `eval-core` cases failed, because TestBed's teardown destroys the service. So the kept
+case earns its place only against a drain that throws on some state shapes and not others.
+
+*The rest of this entry is the gap as recorded.*
 
 Five cases in `eval.service.memory-leaks.spec.ts` sit under "Repeated Operations Memory
 Stability" and "Large Data Handling":

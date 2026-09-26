@@ -272,6 +272,10 @@ describe('EvalService - Memory Leak Prevention', () => {
       });
 
       it('should still see a context whose state the caller holds (2.3)', async () => {
+        // The instrument's only guard. A `collect` that reports everything
+        // collected turns this case alone red (`docs/a8/step-2-plan.md` § 6).
+        // Without it, all eight retention cases would pass vacuously.
+        //
         // The positive control, which replaced the one that observed A8's set
         // retaining this context. The same fixture as 2.1, except that the
         // state leaves the closure and is held past `collect`: the context is
@@ -428,8 +432,8 @@ describe('EvalService - Memory Leak Prevention', () => {
     });
   });
 
-  describe('Repeated Operations Memory Stability', () => {
-    it('should handle repeated evaluations without memory accumulation', () => {
+  describe('Repeated Operations', () => {
+    it('should evaluate repeatedly against a changing registry', () => {
       const context = new Registry<string, number>();
 
       // Perform many evaluations
@@ -438,12 +442,9 @@ describe('EvalService - Memory Leak Prevention', () => {
         const result = service.simpleEval('value * 2', context);
         expect(result).toBe(i * 2);
       }
-
-      // Memory should be stable (hard to test directly, but shouldn't throw)
-      expect(() => service.ngOnDestroy()).not.toThrow();
     });
 
-    it('should handle repeated async evaluations', async () => {
+    it('should handle repeated async evaluations, then destroy without throwing', async () => {
       const context = new Registry<string, number>();
 
       // Perform many async evaluations
@@ -453,10 +454,14 @@ describe('EvalService - Memory Leak Prevention', () => {
         expect(result).toBe(i + 1);
       }
 
+      // The one "destroy does not throw" guard these cases keep
+      // (`docs/backlog.md` A22). It stands against a drain reintroduced without
+      // its per-state `catch` (A17). It sits here because the async form is the
+      // one whose state is written again when the promise settles.
       expect(() => service.ngOnDestroy()).not.toThrow();
     });
 
-    it('should clean up complex nested object evaluations', () => {
+    it('should read a deeply nested object', () => {
       const nestedObject = {
         level1: {
           level2: {
@@ -472,22 +477,17 @@ describe('EvalService - Memory Leak Prevention', () => {
 
       const result = service.simpleEval('nested.level1.level2.level3.value', context);
       expect(result).toBe('deep');
-
-      expect(() => service.ngOnDestroy()).not.toThrow();
     });
   });
 
   describe('Large Data Handling', () => {
-    it('should handle large arrays without memory leaks', () => {
+    it('should read the length of a large array', () => {
       const largeArray = Array.from({ length: 1000 }, (_, i) => i);
       const context = new Registry<string, number[]>();
       context.set('largeArray', largeArray);
 
       const result = service.simpleEval('largeArray.length', context);
       expect(result).toBe(1000);
-
-      // Should clean up without issues
-      service.ngOnDestroy();
     });
 
     it('should handle objects with many properties', () => {
@@ -499,12 +499,8 @@ describe('EvalService - Memory Leak Prevention', () => {
       const context = new Registry<string, Record<string, number>>();
       context.set('largeObject', largeObject);
 
-      // Test accessing properties from the large object (memory leak test, not functionality test)
       const result = service.simpleEval('largeObject.prop0 + largeObject.prop199', context);
       expect(result).toBe(199); // 0 + 199 = 199
-
-      // Should clean up without issues
-      service.ngOnDestroy();
     });
   });
 
