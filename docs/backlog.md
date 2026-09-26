@@ -71,17 +71,18 @@ release, not a free change.
 
 | Package | Version | Notes |
 | ------- | ------- | ----- |
+| `@zvenigora/ng-eval-core` | 0.6.0 | A12/A20/A21/B3 fixes. Tagged `@zvenigora/ng-eval-core@0.6.0` at f26f987, published 2026-09-26 |
+| `@zvenigora/ng-eval-signals` | 0.1.3 | Peer range: `^0.3.0 < ^0.7.0`. Tagged `@zvenigora/ng-eval-signals@0.1.3` at f26f987, published 2026-09-26 |
+| `@zvenigora/ng-eval-forms` | 0.2.3 | Peer range: `^0.3.0 < ^0.7.0`. Tagged `@zvenigora/ng-eval-forms@0.2.3` at f26f987, published 2026-09-26 |
+| `@zvenigora/ng-eval-core` | 0.5.0 | A11 fix: object destructuring binding. Tagged `eval-core@0.5.0` 2026-09-17, at `03b5923` |
 | `@zvenigora/ng-eval-core` | 0.4.0 | Phase 2, statements. Tagged `eval-core@0.4.0` 2026-09-16, at `7935a78` — [F8](#f8) |
+| `@zvenigora/ng-eval-signals` | 0.1.2 | Phase 2 step 7: peer range only. Tagged `eval-signals@0.1.2` 2026-09-17, at `03b5923` — [F8](#f8) |
 | `@zvenigora/ng-eval-signals` | 0.1.1 | Phase 2 step 7: peer range only. Tagged `eval-signals@0.1.1` 2026-09-16, at `7935a78` — [F8](#f8) |
+| `@zvenigora/ng-eval-forms` | 0.2.2 | Phase 2 step 7: peer range only. Tagged `eval-forms@0.2.2` 2026-09-17, at `03b5923` — [F8](#f8) |
 | `@zvenigora/ng-eval-forms` | 0.2.1 | Phase 2 step 7: peer range only. Tagged `eval-forms@0.2.1` 2026-09-16, at `7935a78`; `@0.2.0` tagged the same day — [F8](#f8) |
 
-**Phase 2 released all three.** `eval-core` 0.4.0 is the phase; the two patch releases carry one
-manifest field each and no code ([F12](#f12)).
-
-**Every published version now carries a tag, as of 2026-09-16** — the three above plus seven written
-retroactively, all on the remote. That clears [F8](#f8)'s arrears and **not** [F8](#f8): the step
-remains manual and unenforced, the three release tags point one commit behind the build, and the
-entry says what is left.
+**Every published version now carries a tag** — six above plus seven written retroactively, all tagged
+at commit f26f987 on 2026-09-26.
 
 ---
 
@@ -94,13 +95,13 @@ entry says what is left.
 | [A11](#a11) | `evaluateObjectPattern` resolves the *value* name against the argument — renaming **and** nested destructuring bind the wrong key | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17** |
 | [A13](#a13) | An object rest element binds the whole source, not the remainder | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17**; found measuring [A11](#a11) |
 | [A14](#a14) | A computed key in an object pattern is not evaluated — the identifier's spelling is used as the key | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17**; found by a spec written for [A11](#a11) |
-| [A12](#a12) | `EvalResult.trace` grows per loop iteration — the iteration budget bounds time, not memory | core | fix / decision | **Retired — fixed 2026-09-23, unreleased**; under `CHANGELOG.md`'s `[eval-core 0.6.0]`, prepared and not yet published |
+| [A12](#a12) | `EvalResult.trace` grows per loop iteration — the iteration budget bounds time, not memory | core | fix / decision | **Retired — fixed 2026-09-23, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987 |
 | [A19](#a19) | A12's fix shipped behind an exit criterion that could not detect its own named wrong implementation | core | decision | Open, **decided 2026-09-24: the Node-against-`dist` gate is not built now**; the entry lists what reverses it |
 | [A15](#a15) | The per-walk trace reset, weighed and declined | core | decision | Open, **decided 2026-09-24: declined in general**; the entry lists what reopens it |
-| [A16](#a16) | `EvalTraceItem.start` / `end` are declared and never set | core | decision | **Retired — documented as reserved 2026-09-24, unreleased**; under `CHANGELOG.md`'s `[eval-core 0.6.0]`, prepared and not yet published |
+| [A16](#a16) | `EvalTraceItem.start` / `end` are declared and never set | core | decision | **Retired — documented as reserved 2026-09-24, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987 |
 | [A17](#a17) | `EvalService.ngOnDestroy` drains under one `try`, so one throw skips the rest | core | fix | **Retired — fixed 2026-09-24, unreleased**; drains reordered, caller-owned last — [`docs/a8/plan.md`](a8/plan.md) step 1. **Subject gone 2026-09-25**: [A8](#a8)'s step 2 removed the drain before it shipped |
 | [A20](#a20) | `EvalService._activeContexts` grows with every distinct `Registry` context | core | fix | **Fixed 2026-09-24, unreleased**; the field deleted — [`docs/a20/plan.md`](a20/plan.md). Contexts passed to `createState` released 2026-09-25 by [A8](#a8)'s step 2, which deleted the control case |
-| [A21](#a21) | `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts | core | fix | **Fixed 2026-09-23, unreleased**; under `CHANGELOG.md`'s `[eval-core 0.6.0]`, prepared and not yet published — [`docs/a21/plan.md`](a21/plan.md). Its decision to keep the hook-registry clear **reversed 2026-09-25** by [A8](#a8)'s step 2 |
+| [A21](#a21) | `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts | core | fix | **Fixed 2026-09-23, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987 — [`docs/a21/plan.md`](a21/plan.md). Its decision to keep the hook-registry clear **reversed 2026-09-25** by [A8](#a8)'s step 2 |
 | [A22](#a22) | Five memory-leaks cases assert nothing about memory | core | test gap | **Retired — consolidated 2026-09-26**: one "destroy does not throw" guard kept, on the async case; the other four retitled to what they test |
 | [A3](#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | Open |
 | [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered — **wider than it reads; [A10](#a10) argues it is one defect with A10** |
@@ -149,7 +150,7 @@ entry says what is left.
 | [F12](#f12) | The downstream peer ranges exclude `eval-core` 0.4.0 — **and fail both downstream `lint` targets** | signals, forms | fix | **Retired — fixed, Phase 2 step 7**; both ranges widened, and `lint`'s cache inputs with them |
 | [F13](#f13) | Nothing gates the README block count `readme-examples.spec.ts` claims | core, signals, forms | test gap | Open — the count has been wrong twice |
 | [F14](#f14) | Six sites cite the retired `^0.3.0` range, two of them in published READMEs | signals, forms | fix (comments, docs) | **Retired — fixed, Phase 2 step 8**; filed as four sites, was six |
-| [F15](#f15) | The downstream peer ranges exclude `eval-core` 0.6.0 — **latent until the bump, then both downstream `lint` targets fail** | signals, forms | fix (release coordination) | **Retired — fixed 2026-09-26, prepared and not yet published**; both ranges widened to `>=0.3.0 <0.7.0` with the bump, and both packages bumped: `eval-signals` 0.1.3, `eval-forms` 0.2.3 |
+| [F15](#f15) | The downstream peer ranges exclude `eval-core` 0.6.0 — **latent until the bump, then both downstream `lint` targets fail** | signals, forms | fix (release coordination) | **Retired — fixed and released 2026-09-26**; both ranges widened to `>=0.3.0 <0.7.0`, and both packages released: `eval-signals` 0.1.3 and `eval-forms` 0.2.3, tagged f26f987 |
 | [R1](#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |

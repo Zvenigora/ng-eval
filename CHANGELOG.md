@@ -25,7 +25,7 @@ Nothing here ships in a package.
 
 ---
 
-## [eval-core 0.6.0]
+## [eval-core 0.6.0] - 2026-09-26
 
 **The trace bound, [A12](docs/backlog.md#a12), and `EvalService`'s lifecycle,
 [A8](docs/backlog.md#a8) with [A20](docs/backlog.md#a20), [A21](docs/backlog.md#a21) and
@@ -168,7 +168,7 @@ while keeping `tracePushCount` accurate, and `Infinity` restores the previous be
 
 ---
 
-## [eval-signals 0.1.3]
+## [eval-signals 0.1.3] - 2026-09-26
 
 Released because `eval-core` 0.6.0 falls outside 0.1.2's declared peer range, so installing it
 beside 0.1.2 raises a peer-dependency conflict. Two JSDoc corrections that ship in the `.d.ts`
@@ -194,7 +194,7 @@ ride with the range. No exported symbol's shape and no behaviour of this package
 
 ---
 
-## [eval-forms 0.2.3]
+## [eval-forms 0.2.3] - 2026-09-26
 
 Released because `eval-core` 0.6.0 falls outside 0.2.2's declared peer range, so installing it
 beside 0.2.2 raises a peer-dependency conflict. The range is the whole of the release.
