@@ -108,8 +108,9 @@ export type EvalKnownOptions = {
    *
    * **The head is kept, and truncation is reported rather than marked.** The
    * first `maxTraceItems` pushes survive in order, so `trace[0]` still means
-   * the first thing evaluated. Once the bound is reached
-   * `EvalResult.traceTruncated` turns true and stays true, and
+   * the first thing evaluated. Once a push is actually dropped,
+   * `EvalResult.traceTruncated` turns true and stays true until `clearTrace()`;
+   * a walk of exactly `maxTraceItems` pushes drops none and leaves it false.
    * `EvalResult.tracePushCount` goes on counting every push the state made -
    * which is the number the trace no longer tells you. No synthetic entry is
    * appended: every row in the trace describes a real node.

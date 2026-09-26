@@ -86,9 +86,10 @@ export class EvalResult {
    * Whether {@link trace} stopped short of everything this state pushed,
    * because `options.maxTraceItems` was reached.
    *
-   * **Latches.** Once true it stays true for the life of the state, because the
-   * trace does: it spans every evaluation run on this result, so a flag that
-   * cleared per walk would describe a different array than the one beside it.
+   * **Latches.** Once true it stays true until {@link clearTrace}, however many
+   * evaluations run in between, because the trace does: it spans every
+   * evaluation run on this result, so a flag that cleared per walk would
+   * describe a different array than the one beside it.
    *
    * False under `maxTraceItems: 0`, which is a caller asking for no trace
    * rather than a trace that lost something.
@@ -98,8 +99,9 @@ export class EvalResult {
   }
 
   /**
-   * How many values were pushed for tracing over this state's life - which is
-   * what {@link trace} no longer tells you once {@link traceTruncated} is set.
+   * How many values were pushed for tracing since this result was built or last
+   * cleared by {@link clearTrace} - which is what {@link trace} no longer tells
+   * you once {@link traceTruncated} is set.
    *
    * Counts pushes, not entries kept, so it goes on rising past the bound, and
    * it stays accurate under `maxTraceItems: 0` - a caller who disabled tracing

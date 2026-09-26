@@ -94,13 +94,13 @@ entry says what is left.
 | [A11](#a11) | `evaluateObjectPattern` resolves the *value* name against the argument — renaming **and** nested destructuring bind the wrong key | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17** |
 | [A13](#a13) | An object rest element binds the whole source, not the remainder | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17**; found measuring [A11](#a11) |
 | [A14](#a14) | A computed key in an object pattern is not evaluated — the identifier's spelling is used as the key | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17**; found by a spec written for [A11](#a11) |
-| [A12](#a12) | `EvalResult.trace` grows per loop iteration — the iteration budget bounds time, not memory | core | fix / decision | **Retired — fixed 2026-09-23, unreleased**; under `CHANGELOG.md`'s `[Unreleased]` |
+| [A12](#a12) | `EvalResult.trace` grows per loop iteration — the iteration budget bounds time, not memory | core | fix / decision | **Retired — fixed 2026-09-23, unreleased**; under `CHANGELOG.md`'s `[eval-core 0.6.0]`, prepared and not yet published |
 | [A19](#a19) | A12's fix shipped behind an exit criterion that could not detect its own named wrong implementation | core | decision | Open, **decided 2026-09-24: the Node-against-`dist` gate is not built now**; the entry lists what reverses it |
 | [A15](#a15) | The per-walk trace reset, weighed and declined | core | decision | Open, **decided 2026-09-24: declined in general**; the entry lists what reopens it |
-| [A16](#a16) | `EvalTraceItem.start` / `end` are declared and never set | core | decision | **Retired — documented as reserved 2026-09-24, unreleased**; under `CHANGELOG.md`'s `[Unreleased]` |
+| [A16](#a16) | `EvalTraceItem.start` / `end` are declared and never set | core | decision | **Retired — documented as reserved 2026-09-24, unreleased**; under `CHANGELOG.md`'s `[eval-core 0.6.0]`, prepared and not yet published |
 | [A17](#a17) | `EvalService.ngOnDestroy` drains under one `try`, so one throw skips the rest | core | fix | **Retired — fixed 2026-09-24, unreleased**; drains reordered, caller-owned last — [`docs/a8/plan.md`](a8/plan.md) step 1. **Subject gone 2026-09-25**: [A8](#a8)'s step 2 removed the drain before it shipped |
 | [A20](#a20) | `EvalService._activeContexts` grows with every distinct `Registry` context | core | fix | **Fixed 2026-09-24, unreleased**; the field deleted — [`docs/a20/plan.md`](a20/plan.md). Contexts passed to `createState` released 2026-09-25 by [A8](#a8)'s step 2, which deleted the control case |
-| [A21](#a21) | `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts | core | fix | **Fixed 2026-09-23, unreleased**; under `CHANGELOG.md`'s `[Unreleased]` — [`docs/a21/plan.md`](a21/plan.md). Its decision to keep the hook-registry clear **reversed 2026-09-25** by [A8](#a8)'s step 2 |
+| [A21](#a21) | `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts | core | fix | **Fixed 2026-09-23, unreleased**; under `CHANGELOG.md`'s `[eval-core 0.6.0]`, prepared and not yet published — [`docs/a21/plan.md`](a21/plan.md). Its decision to keep the hook-registry clear **reversed 2026-09-25** by [A8](#a8)'s step 2 |
 | [A22](#a22) | Five memory-leaks cases assert nothing about memory | core | test gap | **Retired — consolidated 2026-09-26**: one "destroy does not throw" guard kept, on the async case; the other four retitled to what they test |
 | [A3](#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | Open |
 | [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered — **wider than it reads; [A10](#a10) argues it is one defect with A10** |
@@ -149,7 +149,7 @@ entry says what is left.
 | [F12](#f12) | The downstream peer ranges exclude `eval-core` 0.4.0 — **and fail both downstream `lint` targets** | signals, forms | fix | **Retired — fixed, Phase 2 step 7**; both ranges widened, and `lint`'s cache inputs with them |
 | [F13](#f13) | Nothing gates the README block count `readme-examples.spec.ts` claims | core, signals, forms | test gap | Open — the count has been wrong twice |
 | [F14](#f14) | Six sites cite the retired `^0.3.0` range, two of them in published READMEs | signals, forms | fix (comments, docs) | **Retired — fixed, Phase 2 step 8**; filed as four sites, was six |
-| [F15](#f15) | The downstream peer ranges exclude `eval-core` 0.6.0 — **latent until the bump, then both downstream `lint` targets fail** | signals, forms | fix (release coordination) | Open — [F12](#f12)'s shape again; widen to `>=0.3.0 <0.7.0` with or before the bump |
+| [F15](#f15) | The downstream peer ranges exclude `eval-core` 0.6.0 — **latent until the bump, then both downstream `lint` targets fail** | signals, forms | fix (release coordination) | **Retired — fixed 2026-09-26, prepared and not yet published**; both ranges widened to `>=0.3.0 <0.7.0` with the bump, and both packages bumped: `eval-signals` 0.1.3, `eval-forms` 0.2.3 |
 | [R1](#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -720,7 +720,7 @@ written against the corrected behaviour rather than the current one.
 ## A8 — `EvalService._activeStates` grows unboundedly
 
 **Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-25, unreleased**, both
-halves; under `CHANGELOG.md`'s `[Unreleased]`
+halves; under `CHANGELOG.md`'s `[eval-core 0.6.0]`, prepared and not yet published
 
 **This entry is why this file exists.** See [R4](#r4) for the cross-references that hid it.
 
@@ -772,7 +772,7 @@ long-running form or dashboard: exactly this repository's stated audience.
 **"The trace" became a much larger term in Phase 2 step 5, and [A12](#a12)'s fix shrank it
 again.** It used to be bounded by the expression's node count; with `for` loops registered, one
 retained state could hold hundreds of thousands of trace items. **As of A12's fix — unreleased,
-under `CHANGELOG.md`'s `[Unreleased]` — it is bounded by `maxTraceItems`, default 10,000**, so a
+under `CHANGELOG.md`'s `[eval-core 0.6.0]` — it is bounded by `maxTraceItems`, default 10,000**, so a
 retained state holds ~0.5 MB of trace rather than ~34 MB, and `EvalService.ngOnDestroy` now
 clears it *(until step 2, which removed that drain with the set)*. The two entries still compound, just by two orders of magnitude less: A12 is how much
 one state can hold, A8 is why it is never released. **A8 is unchanged by that fix** — the `Set`
@@ -1006,8 +1006,8 @@ throwing arrow body, and the later read returning the shadowed `'SHADOW'` rather
 ## A12 — `EvalResult.trace` grows per loop iteration, so the iteration budget bounds time and not memory
 
 **Package** core · **Kind** fix / decision · **Status** **Retired — fixed 2026-09-23, unreleased**;
-ships in `eval-core`'s next release, recorded under [`CHANGELOG.md`](../CHANGELOG.md)'s
-`[Unreleased]`. **Created by Phase 2 step 5**, found in its review
+ships in `eval-core` 0.6.0, recorded under [`CHANGELOG.md`](../CHANGELOG.md)'s
+`[eval-core 0.6.0]`, prepared and not yet published. **Created by Phase 2 step 5**, found in its review
 
 **Fixed.** `maxTraceItems` bounds the trace, defaulting to 10,000; `EvalResult.traceTruncated`
 and `tracePushCount` report what the bound cost; `EvalResult.clearTrace()` is the only reset,
@@ -1122,7 +1122,7 @@ the correction note under it). One new ground was added:
   `maxTraceItems`' docblock ("Per state, not per walk"), into `traceTruncated`'s ("Latches"), into
   `tracePushCount`'s ("over this state's life"), and into `clearTrace`'s, which cites this entry
   as the reason the span is deliberate. The package README's "Bounding the trace" and
-  `CHANGELOG.md`'s `[Unreleased]` upgrading note say it too. So a reset would now redefine
+  `CHANGELOG.md`'s `[eval-core 0.6.0]` upgrading note say it too. So a reset would now redefine
   four symbols, not one getter. That is still free until `eval-core`'s next minor ships, and a
   behaviour change to a published contract after it. **The decision had to come before that
   release, because the release publishes the contract.**
@@ -1184,7 +1184,8 @@ the dispatcher rather than counted.
 ## A16 — `EvalTraceItem.start` and `end` are declared and never set
 
 **Package** core · **Kind** decision · **Status** **Retired — decided and documented 2026-09-24,
-unreleased**. Recorded under [`CHANGELOG.md`](../CHANGELOG.md)'s `[Unreleased]`. Opened
+unreleased**. Recorded under [`CHANGELOG.md`](../CHANGELOG.md)'s `[eval-core 0.6.0]`, prepared
+and not yet published. Opened
 2026-09-19, deliberately not decided by the [A12](#a12) fix
 
 **Decided 2026-09-24, by [`docs/trace-surface/plan.md`](trace-surface/plan.md): documented as
@@ -1193,7 +1194,7 @@ source text and at `EvalState.nodeTimings` for timing. Each field keeps its type
 options, with their costs:
 
 - **Document as reserved** (chosen). Two docblocks that ship in the `.d.ts`, and one
-  `[Unreleased]` line. No shape change, so no bump of its own; it rides the next release. It
+  `CHANGELOG.md` line. No shape change, so no bump of its own; it rides the next release. It
   closes neither other option: filling an optional field later is additive, and dropping it later
   is the same breaking change it is today.
 - **Populate.** The declaration carries no meaning to populate *with*, so a meaning has to be
@@ -1241,8 +1242,9 @@ in the built `.d.ts`.
 <a id="a17"></a>
 ## A17 — `EvalService.ngOnDestroy` drains under one `try`, so one throw skips the rest
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-24, unreleased**; under
-`CHANGELOG.md`'s `[Unreleased]` — opened 2026-09-19, found reviewing the [A12](#a12) fix's
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-24, and never
+released**: [A8](#a8)'s step 2 removed the drain before it shipped, so no `CHANGELOG.md` entry
+describes this fix — opened 2026-09-19, found reviewing the [A12](#a12) fix's
 `clearTrace()` change
 
 **Its subject is gone. The drain it reordered was then removed by [A8](#a8)'s step 2, on
@@ -1470,7 +1472,7 @@ above.
 ## A20 — `EvalService._activeContexts` grows with every distinct `Registry` context
 
 **Package** core · **Kind** fix · **Status** **Fixed 2026-09-24, unreleased**; under
-`CHANGELOG.md`'s `[Unreleased]` — recorded 2026-09-23, found while sizing [A8](#a8). **Rescoped 2026-09-24 by [A21](#a21)'s
+`CHANGELOG.md`'s `[eval-core 0.6.0]`, prepared and not yet published — recorded 2026-09-23, found while sizing [A8](#a8). **Rescoped 2026-09-24 by [A21](#a21)'s
 fix**: wider, because every `EvalContext` enters the set too, and simpler, because the set can
 now be deleted
 
@@ -3382,11 +3384,31 @@ silently were not. Dated because "correct" with no date reads as "fixed" to the 
 have its locus corrected out from under it.
 
 <a id="f15"></a>
-## F15 — The downstream peer ranges exclude `eval-core` 0.6.0
+## F15 — The downstream peer ranges exclude `eval-core` 0.6.0 — **Retired, fixed**
 
-**Package** signals, forms · **Kind** fix (release coordination) · **Status** Open — **latent**,
-recorded 2026-09-23 by the [A12](#a12) replay. Nothing fails today, and something will fail at
-the moment of the bump
+**Package** signals, forms · **Kind** fix (release coordination) · **Status** **Retired — fixed
+by the 0.6.0 release preparation, 2026-09-26**, prepared and not yet published. Recorded
+2026-09-23 by the [A12](#a12) replay
+
+**Fixed.** Both ranges widened to `">=0.3.0 <0.7.0"` in the same commit that bumps `eval-core` to
+0.6.0, and **both downstream packages bumped**: `eval-signals` **0.1.3**, `eval-forms` **0.2.3**.
+That settles the question this entry left open, and 0.5.0's precedent settled it the same way. A
+widening without a bump would pass the workspace gate, but it would leave consumers on
+`eval-signals` 0.1.2 and `eval-forms` 0.2.2, whose published manifests declare `<0.6.0` and
+exclude the new `eval-core`. So publishing `eval-core` 0.6.0 forces both patches. `eval-signals`
+0.1.3 also carries two JSDoc corrections that ship in its `.d.ts`. `eval-forms` 0.2.3 carries the
+range alone. The lower bound stays `>=0.3.0`, for [F12](#f12)'s reason.
+
+Both packages' READMEs quoted the range too, and both still said `<0.5.0`, because 0.1.2 and
+0.2.2 widened the manifests and not the READMEs. That is [F14](#f14)'s class again. The same
+commit brings both to `<0.7.0`.
+
+The lint failure this entry predicted was not reproduced: the widening went in with the bump, so
+no commit ever held the failing state.
+
+---
+
+**The entry as it stood:**
 
 `modules/eval-signals/package.json` and `modules/eval-forms/package.json` both declare
 `"@zvenigora/ng-eval-core": ">=0.3.0 <0.6.0"`. The A12 fix adds four published symbols to

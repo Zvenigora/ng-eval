@@ -10,50 +10,67 @@ The repository publishes more than one package, and they version independently. 
 
 ## [Unreleased]
 
-**`@zvenigora/ng-eval-core` — the trace bound, [A12](docs/backlog.md#a12), and `EvalService`'s
-lifecycle, [A8](docs/backlog.md#a8) with [A20](docs/backlog.md#a20), [A21](docs/backlog.md#a21)
-and [B3](docs/backlog.md#b3).** Adds four published symbols and changes the shape of none, so it
-ships in `eval-core`'s next **minor**: this repository has never shipped API in a patch. It does
-withdraw one documented behaviour, `EvalService.ngOnDestroy` clearing your hook registries, and
-*Upgrading* says what to do instead. It is unversioned until that release.
+Nothing here ships in a package.
+
+### Fixed
+- **Dependency Security**: Bumped the transitive `fast-uri` dependency (pulled in by `ajv`,
+  used by the lint/build tooling) from 3.1.5 to 3.1.7, resolving 4 high-severity Dependabot
+  advisories — [GHSA-jqff-g426-hqxp](https://github.com/advisories/GHSA-jqff-g426-hqxp),
+  [GHSA-f65p-4m7j-42xc](https://github.com/advisories/GHSA-f65p-4m7j-42xc),
+  [GHSA-fph4-wmhf-6fwf](https://github.com/advisories/GHSA-fph4-wmhf-6fwf), and
+  [GHSA-5jgf-p345-68v8](https://github.com/advisories/GHSA-5jgf-p345-68v8). `ajv`'s own
+  declared range (`^3.0.1`) already permitted the patched version, so only
+  `package-lock.json` needed updating — no published package's runtime dependencies are
+  affected.
+
+---
+
+## [eval-core 0.6.0]
+
+**The trace bound, [A12](docs/backlog.md#a12), and `EvalService`'s lifecycle,
+[A8](docs/backlog.md#a8) with [A20](docs/backlog.md#a20), [A21](docs/backlog.md#a21) and
+[B3](docs/backlog.md#b3).** A **minor** rather than a patch: it adds four published symbols and
+changes the shape of none, and this repository has never shipped API in a patch. It does withdraw
+one documented behaviour, `EvalService.ngOnDestroy` clearing your hook registries, and
+*Upgrading* says what to do instead. `eval-signals 0.1.3` and `eval-forms 0.2.3` below widen
+their peer ranges to admit it.
 
 ### Added
 
-- **`maxTraceItems`** (`eval-core`), an evaluation option bounding how many entries
-  `EvalResult.trace` keeps. Defaults to **10,000** — roughly 0.5 MB. The **head** is kept in
-  order, so `trace[0]` is still the first value the walk pushed.
-- **`EvalResult.traceTruncated`** (`eval-core`) — `true` once a push has actually been
-  **dropped**, and it stays true. A walk of exactly `maxTraceItems` pushes leaves it `false`,
+- **`maxTraceItems`**, an evaluation option bounding how many entries `EvalResult.trace` keeps.
+  Defaults to **10,000** — roughly 0.5 MB. The **head** is kept in order, so `trace[0]` is still
+  the first value the walk pushed.
+- **`EvalResult.traceTruncated`** — `true` once a push has actually been **dropped**, and it
+  stays true until `clearTrace()`. A walk of exactly `maxTraceItems` pushes leaves it `false`,
   because nothing was lost. No entry is appended to the trace to mark truncation: every row in it
   describes a real node. Under `maxTraceItems: 0` it also stays `false` — that is tracing turned
   off, not a trace that lost something.
-- **`EvalResult.tracePushCount`** (`eval-core`) — every push the state made, which is the number
-  the trace no longer tells you once it is truncated. Accurate even when tracing is off.
-- **`EvalResult.clearTrace()`** (`eval-core`) — the only reset for the trace and both counters.
-  It empties the array **in place**, so a consumer holding `state.result.trace` keeps a live
-  reference rather than a stale snapshot.
+- **`EvalResult.tracePushCount`** — every push the state made since it was built or last
+  cleared, which is the number the trace no longer tells you once it is truncated. Accurate even
+  when tracing is off.
+- **`EvalResult.clearTrace()`** — the only reset for the trace and both counters. It empties the
+  array **in place**, so a consumer holding `state.result.trace` keeps a live reference rather
+  than a stale snapshot.
+- `EvalResult.addTraceBounded` and `EvalState.maxTraceItems`. These are `@internal`-tagged:
+  supported for this library's own use, not part of the contract, and not counted in the four
+  above. They are nonetheless reachable on published classes, so they are listed rather than
+  hidden.
 
 ### Changed
 
-- **`EvalResult.trace` stops growing past 10,000 entries by default** (`eval-core`). It gained an
+- **`EvalResult.trace` stops growing past 10,000 entries by default**. It gained an
   entry per pushed value and was reset by nothing, so a loop's trace grew as iterations × nodes:
   700,007 entries and ~34 MB for a 100,000-iteration loop — which the default `maxIterations`
   does not stop, since it charges exactly its budget and completes. Where the budget *does* stop
   a loop, the whole allocation was paid *before* the throw. The budget bounded time; nothing
   bounded the memory.
-- **`@zvenigora/ng-eval-signals`: comments about `eval-core`'s trace and `EvalService`'s
-  cleanup were corrected.** Two of them are JSDoc that ships in that package's `.d.ts`. The one
-  on the exported `createEvalSignal` no longer cites a destroy-time trace drain that does not
-  ship. The one on `EvalSignalService` no longer describes `EvalService`'s state set, which is
-  gone ([A8](docs/backlog.md#a8)). Documentation only — no exported symbol's shape changed — but
-  it is not nothing, and it belongs in whatever release that package next makes.
-- **`EvalTraceItem.start` and `end` are documented as reserved** (`eval-core`,
-  [A16](docs/backlog.md#a16)). Nothing has ever set either field. Their JSDoc now says so, and
+- **`EvalTraceItem.start` and `end` are documented as reserved**
+  ([A16](docs/backlog.md#a16)). Nothing has ever set either field. Their JSDoc now says so, and
   points at `expression` and `EvalState.nodeTimings` for the source text and timing they appear
   to offer. Documentation only — both fields keep their optional `number` type — but the JSDoc
   ships in the `.d.ts`.
 - **⚠️ `EvalService.ngOnDestroy` no longer clears any hook registry, and drains nothing**
-  (`eval-core`, [A8](docs/backlog.md#a8)). **This withdraws documented behaviour.** From 0.3.0
+  ([A8](docs/backlog.md#a8)). **This withdraws documented behaviour.** From 0.3.0
   to 0.5.0, destroy cleared the value stack, the hook registrations and the hook bookkeeping of
   every state the service had built, and that included an `EvalHooks` registry you passed through
   `options.hooks`. It follows from the fix below: the service now keeps no state, so at destroy
@@ -64,8 +81,8 @@ withdraw one documented behaviour, `EvalService.ngOnDestroy` clearing your hook 
   state, or a `createState` state whose hook bookkeeping you relied on destroy to reset.
   *Upgrading* says what to do instead. The `hooks` JSDoc, which ships in the `.d.ts`, and the
   README no longer make the promise.
-- **`EvalService.ngOnDestroy` no longer logs to `console.warn`** (`eval-core`,
-  [B3](docs/backlog.md#b3)). The warn reported a drain that threw, and there is no drain.
+- **`EvalService.ngOnDestroy` no longer logs to `console.warn`**
+  ([B3](docs/backlog.md#b3)). The warn reported a drain that threw, and there is no drain.
 
 ### Upgrading
 
@@ -117,8 +134,9 @@ state, so the bound is on their **total**; `clearTrace()` is how the `createStat
 while keeping `tracePushCount` accurate, and `Infinity` restores the previous behaviour exactly.
 
 ### Fixed
-- **`EvalService.ngOnDestroy` no longer empties your registries** (`eval-core`,
-  [A21](docs/backlog.md#a21)). It called `clear()` on every context with a `type` passed to
+
+- **`EvalService.ngOnDestroy` no longer empties your registries**
+  ([A21](docs/backlog.md#a21)). It called `clear()` on every context with a `type` passed to
   `createState`, `simpleEval` or `simpleEvalAsync`, including one nested under a `context`
   key. So when the root injector was destroyed, in a test, per SSR request or at a
   micro-frontend's teardown, every `Registry` the application had evaluated against was emptied,
@@ -127,7 +145,7 @@ while keeping `tracePushCount` accurate, and `Infinity` restores the previous be
   now changes nothing inside them, and since the two entries below it holds no reference to them
   either. No exported symbol changes.
 - **Under `caseInsensitive`, a context object with a `type` field is no longer kept alive by
-  `EvalService`** (`eval-core`, [A20](docs/backlog.md#a20)). `createState`, `simpleEval` and
+  `EvalService`** ([A20](docs/backlog.md#a20)). `createState`, `simpleEval` and
   `simpleEvalAsync` added every context with a `type`, including every `Registry` and
   `EvalContext`, to a set that nothing read and that emptied only when the service was destroyed.
   The set is gone. On its own that changed only one case. Under `caseInsensitive`, a plain object
@@ -135,8 +153,8 @@ while keeping `tracePushCount` accurate, and `Infinity` restores the previous be
   thing holding the original. It can now be garbage-collected once you drop it. Every other
   context is released by the next entry, which removes the evaluation states that held them.
   No exported symbol changes.
-- **`EvalService` no longer keeps any evaluation state until the application ends** (`eval-core`,
-  [A8](docs/backlog.md#a8)). It added every state it built, through `simpleEval`,
+- **`EvalService` no longer keeps any evaluation state until the application ends**
+  ([A8](docs/backlog.md#a8)). It added every state it built, through `simpleEval`,
   `simpleEvalAsync` or `createState`, to a set that emptied only in `ngOnDestroy`. So each
   state was kept for the life of the root injector, including one you had finished with and
   dropped. That meant the parsed expression, the trace (up to `maxTraceItems`), and the context
@@ -147,15 +165,50 @@ while keeping `tracePushCount` accurate, and `Infinity` restores the previous be
   collectable once you drop it. Either way your context goes with it, once nothing else holds it.
   No exported symbol changes. The one documented behaviour this withdraws, destroy clearing your
   hook registries, is under *Changed* and *Upgrading*.
-- **Dependency Security**: Bumped the transitive `fast-uri` dependency (pulled in by `ajv`,
-  used by the lint/build tooling) from 3.1.5 to 3.1.7, resolving 4 high-severity Dependabot
-  advisories — [GHSA-jqff-g426-hqxp](https://github.com/advisories/GHSA-jqff-g426-hqxp),
-  [GHSA-f65p-4m7j-42xc](https://github.com/advisories/GHSA-f65p-4m7j-42xc),
-  [GHSA-fph4-wmhf-6fwf](https://github.com/advisories/GHSA-fph4-wmhf-6fwf), and
-  [GHSA-5jgf-p345-68v8](https://github.com/advisories/GHSA-5jgf-p345-68v8). `ajv`'s own
-  declared range (`^3.0.1`) already permitted the patched version, so only
-  `package-lock.json` needed updating — no published package's runtime dependencies are
-  affected.
+
+---
+
+## [eval-signals 0.1.3]
+
+Released because `eval-core` 0.6.0 falls outside 0.1.2's declared peer range, so installing it
+beside 0.1.2 raises a peer-dependency conflict. Two JSDoc corrections that ship in the `.d.ts`
+ride with the range. No exported symbol's shape and no behaviour of this package changes.
+
+### Changed
+
+- **Peer range widened** to admit `@zvenigora/ng-eval-core` 0.6.0:
+  `>=0.3.0 <0.6.0` → `>=0.3.0 <0.7.0`. The lower bound is unchanged, so 0.3.0 to 0.5.0 remain
+  supported. The README's peer-dependency line now states the new range. It had said
+  `>=0.3.0 <0.5.0` since 0.1.1, because 0.1.2 widened the manifest and not the README.
+- **The JSDoc on `createEvalSignal` and on `EvalSignalService` now describes `eval-core` 0.6.0.**
+  Both ship in this package's `.d.ts`. Documentation only.
+  - `createEvalSignal` said `EvalResult.trace` "is drained by nothing". `eval-core` 0.6.0 adds
+    `EvalResult.clearTrace()`, so it now says the trace is drained by nothing *this library
+    calls*, and that `clearTrace()` is opt-in and uncalled here. A fresh `EvalState` per
+    recompute is still what bounds the trace, and the factory is unchanged.
+  - `EvalSignalService` said `EvalService` "tracks every state it builds in a strong `Set`
+    drained only on destroy". `eval-core` 0.6.0 removes that set
+    ([A8](docs/backlog.md#a8)). It now says `EvalService` kept its states until destroy up to
+    0.5.0 and keeps none from 0.6.0, and that what the factory needs is compile-once, which is
+    `CompilerService`.
+
+---
+
+## [eval-forms 0.2.3]
+
+Released because `eval-core` 0.6.0 falls outside 0.2.2's declared peer range, so installing it
+beside 0.2.2 raises a peer-dependency conflict. The range is the whole of the release.
+
+### Changed
+
+- **Peer range widened** to admit `@zvenigora/ng-eval-core` 0.6.0:
+  `>=0.3.0 <0.6.0` → `>=0.3.0 <0.7.0`. Manifest only — no code, no exported symbol and no
+  behaviour of this package changes, and all three entry points (`@zvenigora/ng-eval-forms`,
+  `/reactive`, `/signals`) are untouched. The lower bound is unchanged, so 0.3.0 to 0.5.0 remain
+  supported. The `peerDependencies` block quoted in the README now shows the new range. It had
+  shown `>=0.3.0 <0.5.0` since 0.2.1, because 0.2.2 widened the manifest and not the README.
+
+The `"@zvenigora/ng-eval-signals": "^0.1.0"` range is unchanged: it already admits 0.1.3.
 
 ---
 
