@@ -1684,6 +1684,10 @@ calling it a memory-leak test. The `describe` "Repeated Operations Memory Stabil
 **What the kept guard adds is narrow.** Probed with an `ngOnDestroy` that throws every time: 436
 of 1074 `eval-core` cases failed, because TestBed's teardown destroys the service. So the kept
 case earns its place only against a drain that throws on some state shapes and not others.
+A17's own case, a drain reaching caller-owned objects, needs no new fixture: 2.4–2.8
+(`docs/a8/step-2-plan.md`) each destroy with a caller-held state or registry. A drain that
+mutates it breaks their assertions, and step 2's probe table shows this for P0 and P2. A drain
+that throws on it fails their unguarded `ngOnDestroy()` call.
 
 *The rest of this entry is the gap as recorded.*
 
