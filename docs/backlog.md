@@ -71,18 +71,18 @@ release, not a free change.
 
 | Package | Version | Notes |
 | ------- | ------- | ----- |
-| `@zvenigora/ng-eval-core` | 0.6.0 | A12/A20/A21/B3 fixes. Tagged `eval-core@0.6.0` at f26f987, published 2026-09-26 |
-| `@zvenigora/ng-eval-signals` | 0.1.3 | Peer range: `^0.3.0 < ^0.7.0`. Tagged `eval-signals@0.1.3` at f26f987, published 2026-09-26 |
-| `@zvenigora/ng-eval-forms` | 0.2.3 | Peer range: `^0.3.0 < ^0.7.0`. Tagged `eval-forms@0.2.3` at f26f987, published 2026-09-26 |
-| `@zvenigora/ng-eval-core` | 0.5.0 | A11 fix: object destructuring binding. Tagged `eval-core@0.5.0` 2026-09-17, at `03b5923` |
+| `@zvenigora/ng-eval-core` | 0.6.0 | [A8](#a8)/[A12](#a12)/[A20](#a20)/[A21](#a21)/[B3](#b3) fixes — [A8](#a8) is the headline, and the only one withdrawing published behaviour (`EvalService.ngOnDestroy` no longer drains). Tagged `eval-core@0.6.0` at f26f987, published 2026-09-26 |
+| `@zvenigora/ng-eval-signals` | 0.1.3 | Peer range widened to `>=0.3.0 <0.7.0`; also updates the `createEvalSignal` / `EvalSignalService` JSDoc (ships in the `.d.ts`) for `eval-core` 0.6.0. Tagged `eval-signals@0.1.3` at f26f987, published 2026-09-26 |
+| `@zvenigora/ng-eval-forms` | 0.2.3 | Peer range widened to `>=0.3.0 <0.7.0`; the range is the whole of the release. Tagged `eval-forms@0.2.3` at f26f987, published 2026-09-26 |
+| `@zvenigora/ng-eval-core` | 0.5.0 | A11 fix: object destructuring binding. Tagged `eval-core@0.5.0` 2026-09-17, at `016a313` |
 | `@zvenigora/ng-eval-core` | 0.4.0 | Phase 2, statements. Tagged `eval-core@0.4.0` 2026-09-16, at `7935a78` — [F8](#f8) |
-| `@zvenigora/ng-eval-signals` | 0.1.2 | Phase 2 step 7: peer range only. Tagged `eval-signals@0.1.2` 2026-09-17, at `03b5923` — [F8](#f8) |
+| `@zvenigora/ng-eval-signals` | 0.1.2 | Phase 2 step 7: peer range only. Tagged `eval-signals@0.1.2` 2026-09-17, at `016a313` — [F8](#f8) |
 | `@zvenigora/ng-eval-signals` | 0.1.1 | Phase 2 step 7: peer range only. Tagged `eval-signals@0.1.1` 2026-09-16, at `7935a78` — [F8](#f8) |
-| `@zvenigora/ng-eval-forms` | 0.2.2 | Phase 2 step 7: peer range only. Tagged `eval-forms@0.2.2` 2026-09-17, at `03b5923` — [F8](#f8) |
+| `@zvenigora/ng-eval-forms` | 0.2.2 | Phase 2 step 7: peer range only. Tagged `eval-forms@0.2.2` 2026-09-17, at `016a313` — [F8](#f8) |
 | `@zvenigora/ng-eval-forms` | 0.2.1 | Phase 2 step 7: peer range only. Tagged `eval-forms@0.2.1` 2026-09-16, at `7935a78`; `@0.2.0` tagged the same day — [F8](#f8) |
 
-**Every published version now carries a tag** — six above plus seven written retroactively, all tagged
-at commit f26f987 on 2026-09-26.
+**Every published version now carries a tag** — the nine above (three at f26f987, three at `016a313`,
+three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, all on the remote.
 
 ---
 
