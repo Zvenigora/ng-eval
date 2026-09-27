@@ -121,7 +121,7 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [D3](#d3) | Per-registration `caseInsensitive` reaches one of three levers | forms | decision | Open, Covered |
 | [D4](#d4) | A top-level model key holding a signal is returned un-called | forms | fix or doc | Open, partly documented |
 | [D5](#d5) | Two dead lookups run ahead of ours on every resolution | forms | fix (perf) | Open |
-| [D6](#d6) | The `typeof key === 'string'` guard is unfalsifiable by the suite | forms | decision | Open |
+| [D6](#d6) | `/signals` diverged from upstream on non-string keys — filed as "the `typeof` guard is unfalsifiable", measured false | forms | fix | **Retired — fixed 2026-09-26**; ships with the next `eval-forms` release |
 | [D7](#d7) | `toSignal`'s `assertNotInReactiveContext` throws out of the mirror | forms | accepted | Open, documented |
 | [D8](#d8) | `warnOnNestedSignals` runs once, at construction | forms | accepted | Open, documented |
 | [D9](#d9) | § 3.4.3's precedence rule is untested end to end | forms | test gap | Open, Premise retired |
@@ -2211,14 +2211,53 @@ the gate for.
 *Recorded*: [`forms/phase-6-step-2-summary.md` § 5.2](forms/phase-6-step-2-summary.md).
 
 <a id="d6"></a>
-## D6 — The `typeof key === 'string'` guard is unfalsifiable by the suite
+## D6 — `/signals` diverged from upstream on non-string keys
 
-**Package** forms · **Kind** decision · **Status** Open
+**Package** forms · **Kind** fix · **Status** **Retired — fixed 2026-09-26**; ships with the next
+`eval-forms` release
 
-Removing it changes no observable: `readProperty(model, 42, …)` returns `undefined` anyway and a
-`Map` entry under a non-string key is unreadable. Belt and braces, kept — but its docblock
-overstates the harm, and by `CLAUDE.md`'s own rule an assertion that cannot fail is worth less than
-no assertion. Either make the docblock honest about what it is, or find the case that falsifies it.
+*Filed as* "The `typeof key === 'string'` guard is unfalsifiable by the suite". The guard was
+falsifiable; the suite just had no case that reached it.
+
+`/signals`' model lookup (`model-source.ts`, in `createRuleContext`) passed a string key to the memo
+and resolved anything else `undefined`. A non-string does reach it: `this` evaluates to the context
+itself, and `member-expression.ts` hands the context a computed key raw, so `this[42]` asks the
+lookup for the number `42`. Upstream's `resolve` (`eval-signals`' `signal-context.ts:127-144`)
+finds it — `hasOwnProperty` coerces the number to `"42"` — and runs its case-variant fallback for
+strings only, so it never throws. `/reactive` inherits that lookup. So `this[42]` against a model
+holding `"42"` gave the value through `/reactive` and `createSignalContext`, and `undefined` through
+`/signals`.
+
+*Fixed* 2026-09-26: a number key resolves through `keySignal(String(key))`, so `this[42]` and
+`this["42"]` read one memo entry and agree with upstream; string keys are unchanged; anything else
+still resolves `undefined`. `readProperty` keeps `key: string`. **One divergence is kept, not
+matched**: upstream would find a *symbol*-keyed own property on its source, and `/signals` resolves
+every symbol `undefined`. The comment at the lookup says so. *Covered*: `model-source.spec.ts`,
+"non-string keys", four cases, each comparing `/signals`' result with `createSignalContext` walked by
+`eval-core` over the same values, and naming the value too. The memo-sharing case counts `model()`
+reads through a `Proxy` on the model signal — one per memo entry — with a two-key calibration arm
+that reads 2. Probed:
+
+| Implementation | number key held | same, `caseInsensitive` | absent, `caseInsensitive` | one memo entry |
+| -------------- | --------------- | ----------------------- | ------------------------- | -------------- |
+| the original guard | **red** (`undefined`) | **red** (`undefined`) | green | **red** (value differs from upstream) |
+| bare cast, no `String()` | green | green | **red** (`TypeError`) | **red** (2 reads, not 1) |
+
+The rest of the `eval-forms` suite stayed green under both probes. *Changelog*: `[Unreleased]`.
+
+*The premise as filed, **measured false** 2026-09-26*: "Removing it changes no observable:
+`readProperty(model, 42, …)` returns `undefined` anyway and a `Map` entry under a non-string key is
+unreadable." `readProperty`'s `hasOwnProperty` finds `"42"` from `42`, and its case-variant fallback
+calls `key.toLowerCase()` without checking the type. Measured through the walk, with the guard and
+with it replaced by a cast:
+
+| `this[42]`, model | with the guard | cast, no guard |
+| ----------------- | -------------- | -------------- |
+| holds `"42"` | `undefined` | `"forty-two"` |
+| lacks `"42"`, `caseInsensitive` | `undefined` | throws `TypeError: key.toLowerCase is not a function` |
+
+The suite of 251 stayed green under the cast, so "unfalsifiable *by the suite*" was true. What made
+the guard look like belt and braces was the gap in the suite, not the code.
 
 *Recorded*: [`forms/phase-6-step-2-summary.md` § 5.2](forms/phase-6-step-2-summary.md).
 

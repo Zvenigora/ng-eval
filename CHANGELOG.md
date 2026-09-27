@@ -10,9 +10,13 @@ The repository publishes more than one package, and they version independently. 
 
 ## [Unreleased]
 
-Nothing here ships in a package.
+Nothing here ships in a package unless the entry names one.
 
 ### Fixed
+- **eval-forms `/signals`, number keys**: `this[42]` against a model holding `"42"` resolved
+  `undefined`, where `/reactive` and `createSignalContext` resolve the value. A number key now
+  resolves as its string spelling, through the same memo entry as `this["42"]`, with or without
+  `caseInsensitive`. A symbol key still resolves `undefined`. `docs/backlog.md` D6.
 - **Dependency Security**: Bumped the transitive `fast-uri` dependency (pulled in by `ajv`,
   used by the lint/build tooling) from 3.1.5 to 3.1.7, resolving 4 high-severity Dependabot
   advisories — [GHSA-jqff-g426-hqxp](https://github.com/advisories/GHSA-jqff-g426-hqxp),

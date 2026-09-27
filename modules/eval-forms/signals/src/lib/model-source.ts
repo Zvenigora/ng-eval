@@ -157,10 +157,22 @@ export const createModelSource = <TModel extends object>(
     // The resolver's parameter is deliberately unannotated. `EvalLookup` is
     // `(key: unknown, …) => unknown` and a parameter position is
     // contravariant under `strict`, so `(key: string) => …` does not compile;
-    // upstream writes it the same way for the same reason. The `typeof`
-    // narrowing is therefore not defensive padding - without it a non-string
-    // key would be coerced into the memo as a spurious entry.
-    context.lookups.push((key) => (typeof key === 'string' ? keySignal(key)() : undefined));
+    // upstream writes it the same way for the same reason.
+    //
+    // The narrowing decides which keys reach the memo, and it matches
+    // upstream's `resolve` for both kinds an expression can produce. A string
+    // passes as is. A number - `this[42]` is how a walk hands a lookup one,
+    // since `this` is the context and a computed key arrives raw - is spelled
+    // as the string JavaScript's own property access coerces it to, so
+    // `this[42]` and `this["42"]` share one memo entry and resolve as upstream
+    // does. Passed raw it would make a second entry under the number, and
+    // under `caseInsensitive` throw from `toLowerCase`. Anything else - a
+    // symbol - resolves `undefined`, where upstream would find a symbol-keyed
+    // own property (`docs/backlog.md` `BL-D6`).
+    context.lookups.push((key) => {
+      const name = typeof key === 'string' ? key : typeof key === 'number' ? String(key) : undefined;
+      return name === undefined ? undefined : keySignal(name)();
+    });
 
     return context;
   };

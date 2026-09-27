@@ -1,10 +1,12 @@
-import { computed, signal } from '@angular/core';
+import { WritableSignal, computed, signal } from '@angular/core';
+import { EvalContext, EvalOptions, EvalState, call, compile, defaultParserOptions, parse } from '@zvenigora/ng-eval-core';
 // `createSignalContext` and `SignalContextWriteError` are not on the
 // adapter's import list (plan S 5), which governs **non-spec** files. They are
 // load-bearing here rather than convenient: the first is the resolver
 // `readProperty` re-implements and cannot otherwise be compared against, and
 // the second is the class `createFieldContext` is chosen for.
 import { SignalContextWriteError, createSignalContext } from '@zvenigora/ng-eval-signals';
+import { evaluateRule } from './evaluate-rule';
 import { createModelSource } from './model-source';
 
 // The source adapter, asserted on the observables this step can actually
@@ -206,6 +208,98 @@ describe('createModelSource', () => {
         }
       }
     );
+  });
+
+  describe('non-string keys', () => {
+
+    // `docs/backlog.md` `BL-D6`. A computed member whose object is the context
+    // is how an expression hands a lookup a key that is not a string: `this`
+    // evaluates to the context itself, and `member-expression.ts` passes the
+    // computed key through raw. The string-keyed drift gate above cannot reach it, so
+    // these cases walk the expression through both adapters instead - ours
+    // through `evaluateRule`, upstream through `eval-core` directly - and
+    // compare. Each also names the value, so the two agreeing on a wrong
+    // answer does not pass.
+    const walk = (expression: string, context: EvalContext, options?: EvalOptions): unknown =>
+      call(compile(parse(expression, defaultParserOptions)), EvalState.fromContext(context, options));
+
+    const both = (expression: string, values: Record<string, unknown>, options?: EvalOptions) => {
+      const model = signal<Record<string, unknown>>({ ...values });
+      const ours = createModelSource(model, options).createRuleContext();
+      const upstream = createSignalContext({ ...values }, options);
+
+      return {
+        ours: evaluateRule(compile(parse(expression, defaultParserOptions)), ours, options),
+        upstream: walk(expression, upstream, options),
+      };
+    };
+
+    it('should resolve a number key the model holds, as upstream does', () => {
+      const { ours, upstream } = both('this[42]', { '42': 'forty-two' });
+
+      expect(ours).toBe(upstream);
+      expect(ours).toBe('forty-two');
+    });
+
+    it('should resolve a number key the model holds under caseInsensitive, as upstream does', () => {
+      const { ours, upstream } = both('this[42]', { '42': 'forty-two' }, { caseInsensitive: true });
+
+      expect(ours).toBe(upstream);
+      expect(ours).toBe('forty-two');
+    });
+
+    it('should resolve an absent number key to undefined under caseInsensitive, as upstream does', () => {
+      // The case-variant fallback lowercases the key. Upstream runs it for
+      // strings only; a number reaching it would throw a `TypeError` out of
+      // the walk rather than resolve.
+      const { ours, upstream } = both('this[42]', { country: 'US' }, { caseInsensitive: true });
+
+      expect(ours).toBe(upstream);
+      expect(ours).toBeUndefined();
+    });
+
+    it('should share one memo entry between a number key and its string spelling', () => {
+      // The memo is private, and the resolver returns a value, so the two
+      // spellings agreeing on the value says nothing about how many entries
+      // they made. What does observe it is the model read: each memo entry is
+      // a `computed` that reads `model()` once when first evaluated. So the
+      // model is counted through a `Proxy`, which forwards everything else to
+      // the real signal.
+      let reads = 0;
+      const counted = <T>(model: WritableSignal<T>): WritableSignal<T> =>
+        new Proxy(model, {
+          apply: (target, thisArg, args) => {
+            reads++;
+            return Reflect.apply(target, thisArg, args);
+          },
+        });
+
+      const values = { '42': 'forty-two', '43': 'forty-three' };
+      const evaluate = (expression: string): unknown =>
+        evaluateRule(
+          compile(parse(expression, defaultParserOptions)),
+          createModelSource(counted(signal<Record<string, unknown>>({ ...values }))).createRuleContext()
+        );
+      const upstream = (expression: string): unknown =>
+        walk(expression, createSignalContext({ ...values }));
+
+      // Each `evaluate` builds a fresh source, so each count is one
+      // evaluation's entries and nothing else.
+      const shared = '[this["42"], this[42]]';
+      reads = 0;
+      const result = evaluate(shared);
+
+      expect(result).toEqual(upstream(shared));
+      expect(result).toEqual(['forty-two', 'forty-two']);
+      expect(reads).toBe(1);
+
+      // The calibration arm: two distinct keys make two entries, so the
+      // counter is shown able to read 2 in this fixture.
+      reads = 0;
+
+      expect(evaluate('[this["42"], this[43]]')).toEqual(['forty-two', 'forty-three']);
+      expect(reads).toBe(2);
+    });
   });
 
   describe('the memo', () => {
