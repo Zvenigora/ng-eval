@@ -133,7 +133,7 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [E3](#e3) | `dependencies` introspection at form scale | forms | phase | Open |
 | [E4](#e4) | Short-circuiting / value-rewriting hooks | core | phase | Open, by design |
 | [E5](#e5) | The options-first style cannot read `hookErrors` | core | decision | Open, Premise retired |
-| [E6](#e6) | `exit` has no mark to bound its scan | core | fix | **Retired — fixed, Phase 2 step 1; its "Phase 2 makes it reachable" premise was wrong** |
+| [E6](#e6) | `exit` has no mark to bound its scan | core | fix | **Retired — fixed, Phase 2 step 1**; released in `eval-core` 0.4.0; its "Phase 2 makes it reachable" premise was wrong |
 | [F1](#f1) | No `configurations.ci` on the `test` target — **two projects, not one** | signals, forms | fix + decision | **Retired — fixed, no thresholds** |
 | [F2](#f2) | One `CHANGELOG.md` for three independently-versioned packages | repo | decision | Open |
 | [F3](#f3) | Documented-symbol drift gate — **three packages, four READMEs** | core, signals, forms | fix | **Retired — built and green** |
@@ -2424,8 +2424,9 @@ would read.
 <a id="e6"></a>
 ## E6 — `exit` has no mark to bound its scan
 
-**Package** core · **Kind** fix · **Status** **Fixed — Phase 2 step 1, 2026-09-12**; the premise
-that Phase 2 makes it reachable was **wrong**, and is corrected below
+**Package** core · **Kind** fix · **Status** **Retired — fixed** — Phase 2 step 1, 2026-09-12; released
+in `eval-core` 0.4.0. The premise that Phase 2 makes it reachable was **wrong**, and is corrected
+below
 
 `EvalHooks.exit` could not distinguish "absent from this walk" from "absent from the stack", so a
 node open only in an *enclosing* walk fell into case 2 and the flush crossed the walk boundary.
