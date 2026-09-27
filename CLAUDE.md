@@ -10,14 +10,14 @@ independently and **all three published to npm** under the `@zvenigora` scope, e
 
 - **`@zvenigora/ng-eval-core`** (`modules/eval-core`) — a JavaScript expression
   parser/evaluator built on `acorn` + `acorn-walk`, exposed as Angular DI services.
-  Published at **0.3.0**. This is where nearly all the code is.
+  Published at **0.6.0**. This is where nearly all the code is.
 - **`@zvenigora/ng-eval-signals`** (`modules/eval-signals`) — expression → Angular
-  `Signal`, built on the first library's published surface. Published at **0.1.0**,
-  by Phase 3.
+  `Signal`, built on the first library's published surface. Published at **0.1.3**;
+  Phase 3 shipped 0.1.0.
 - **`@zvenigora/ng-eval-forms`** (`modules/eval-forms`) — Angular form field properties
   driven by expressions that arrive as strings at runtime, built on the other two.
-  Published at **0.2.0**, by Phase 6. It ships **three entry points from one package**: the
-  shared core at `@zvenigora/ng-eval-forms`, the Reactive Forms adapter at
+  Published at **0.2.3**; Phase 6 shipped 0.2.0. It ships **three entry points from one
+  package**: the shared core at `@zvenigora/ng-eval-forms`, the Reactive Forms adapter at
   `@zvenigora/ng-eval-forms/reactive`, and the Signal Forms adapter at
   `@zvenigora/ng-eval-forms/signals`, which requires Angular 22.
 
@@ -25,9 +25,10 @@ independently and **all three published to npm** under the `@zvenigora` scope, e
 without a breaking release, in any of the three; "nothing has shipped yet" no longer
 applies to any of them.
 
-Phases 1, 3, 4 and 6 are complete and their plan documents are design records rather than
-active work. `ROADMAP.md` plans statement support in `eval-core` (Phase 2) and async
-signals (Phase 5), and reserves Phases 7 and 8 without specifying them.
+Phases 1, 2, 3, 4 and 6 are complete and their plan documents are design records rather than
+active work. Phase 2 shipped as `eval-core` 0.4.0, and its plan is
+`docs/statements/phase-2-plan.md`. What `ROADMAP.md` has left is async signals (Phase 5),
+and Phases 7 and 8, which it reserves without specifying them.
 
 **Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left
 unfixed, decisions logged rather than made, gaps in what the suite can catch — is in
@@ -73,14 +74,20 @@ build before believing a type is sound.
 
 ## Working from a plan
 
-- Active work is driven by a plan document under `docs/`. **There is no active plan right
-  now** — Phase 6 closed with `eval-forms` 0.2.0 and no phase has opened since, so
-  `.claude/skills/step/SKILL.md` targets a finished document. The next phase writes its plan
-  first; until it exists, the brief is that phase's section of `ROADMAP.md`.
+- Active work is driven by a plan document under `docs/`. **Work runs per backlog item or
+  batch**, each with its own plan under `docs/<item>/` — as in `docs/a8/`, `docs/a20/`,
+  `docs/a21/` and `docs/trace-surface/`. `.claude/skills/step/SKILL.md` still targets a
+  finished document; it is retargeted with the next batch's plan.
+- **A small item's plan and step land in one commit.**
+- **One retrospect per track; no per-step summaries.**
+- **Anything left for later work goes in `docs/backlog.md`; a commit body never carries it
+  forward.**
+- **The gate is `npx nx run-many -t lint test build --skip-nx-cache`.**
 - The completed plans are design records, not work in progress, and each remains the
   reference for its library — they record findings about this codebase that are not
   obvious from reading files in isolation:
   - `docs/side-effects/phase-1-plan.md` — Phase 1, the hook contract (its § 9 and § 9.1).
+  - `docs/statements/phase-2-plan.md` — Phase 2, statements.
   - `docs/signals/phase-3-plan.md` — Phase 3; its § 9 is the downstream contract
     `eval-forms` is entitled to rely on, and § 3.2.2 the construct-once finding.
   - `docs/forms/phase-4-plan.md` — Phase 4; its § 9 designs Phase 6 and § 9.1 states
@@ -89,7 +96,7 @@ build before believing a type is sound.
   Their open questions are settled unless the document says otherwise. Two of them number
   a § 9 and a § 9.1 on unrelated subjects, so name the document when citing one.
 - **Execute one numbered step per session.** Do not begin step N+1 in the same session.
-- Run lint and the full test suite after **every** step, not only at the end.
+- Run the gate (above) after **every** step, not only at the end.
 - A step is done when its stated exit criteria are met, not when the code looks finished.
 - If a step turns out to be wrong, stop and say so rather than improvising a replacement
   design.
@@ -195,7 +202,7 @@ call builds a fresh context per evaluation. It is not latent for a caller that r
 `@zvenigora/ng-eval-signals` does, by design, and both downstream libraries still carry a
 depth-mark unwind at their recompute boundary against it (`eval-signal.ts`,
 `evaluate-rule.ts`). Those guards are **retained, not redundant**: both packages declare
-`"@zvenigora/ng-eval-core": "^0.3.0"`, a range that still admits the pre-fix 0.3.0, and
+`"@zvenigora/ng-eval-core": ">=0.3.0 <0.7.0"`, a range that still admits the pre-fix 0.3.0, and
 `EvalContext.push` / `pop` are public methods on a published class, so a scope can be
 stranded with no visitor involved at all.
 
@@ -326,7 +333,7 @@ These apply to all three libraries.
 - Prefer purely additive changes. All three packages are published, so altering an
   exported symbol's shape is a **breaking release**: it needs an explicit callout in the
   response, a version bump, and an entry in the **root `CHANGELOG.md`** under a heading
-  naming the package (`## [eval-forms 0.1.1]`). There are no per-module changelogs.
+  naming the package (`## [eval-forms 0.2.3]`). There are no per-module changelogs.
 
 ## Conventions
 

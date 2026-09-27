@@ -49,10 +49,8 @@ step 2's machinery should cover it is open.
 
 ### Work in flight
 
-[`docs/gates/plan.md`](gates/plan.md) — "Track 3", the documentation and CI gates — plans
-[F1](#f1), [F3](#f3), [F4](#f4), [F7](#f7) and [D10](#d10) as five steps. It ships no exported
-symbol and bumps no version, and it is ordered ahead of Phase 2 because F3 and F4 build gates
-every later phase inherits. [D11](#d11) was deliberately left out of it; that entry says why.
+Nothing is in flight. The last track, "Track 3" ([`docs/gates/plan.md`](gates/plan.md)), is
+closed; its retrospect is [`docs/gates/summary.md`](gates/summary.md).
 
 ### Status vocabulary
 
@@ -76,9 +74,9 @@ release, not a free change.
 | `@zvenigora/ng-eval-forms` | 0.2.3 | Peer range widened to `>=0.3.0 <0.7.0`; the range is the whole of the release. Tagged `eval-forms@0.2.3` at f26f987, published 2026-09-26 |
 | `@zvenigora/ng-eval-core` | 0.5.0 | A11 fix: object destructuring binding. Tagged `eval-core@0.5.0` 2026-09-17, at `016a313` |
 | `@zvenigora/ng-eval-core` | 0.4.0 | Phase 2, statements. Tagged `eval-core@0.4.0` 2026-09-16, at `7935a78` — [F8](#f8) |
-| `@zvenigora/ng-eval-signals` | 0.1.2 | Phase 2 step 7: peer range only. Tagged `eval-signals@0.1.2` 2026-09-17, at `016a313` — [F8](#f8) |
+| `@zvenigora/ng-eval-signals` | 0.1.2 | The `eval-core` 0.5.0 ([A11](#a11)) release: peer range only. Tagged `eval-signals@0.1.2` 2026-09-17, at `016a313` — [F8](#f8) |
 | `@zvenigora/ng-eval-signals` | 0.1.1 | Phase 2 step 7: peer range only. Tagged `eval-signals@0.1.1` 2026-09-16, at `7935a78` — [F8](#f8) |
-| `@zvenigora/ng-eval-forms` | 0.2.2 | Phase 2 step 7: peer range only. Tagged `eval-forms@0.2.2` 2026-09-17, at `016a313` — [F8](#f8) |
+| `@zvenigora/ng-eval-forms` | 0.2.2 | The `eval-core` 0.5.0 ([A11](#a11)) release: peer range only. Tagged `eval-forms@0.2.2` 2026-09-17, at `016a313` — [F8](#f8) |
 | `@zvenigora/ng-eval-forms` | 0.2.1 | Phase 2 step 7: peer range only. Tagged `eval-forms@0.2.1` 2026-09-16, at `7935a78`; `@0.2.0` tagged the same day — [F8](#f8) |
 
 **Every published version now carries a tag** — the nine above (three at f26f987, three at `016a313`,
@@ -99,9 +97,9 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [A19](#a19) | A12's fix shipped behind an exit criterion that could not detect its own named wrong implementation | core | decision | Open, **decided 2026-09-24: the Node-against-`dist` gate is not built now**; the entry lists what reverses it |
 | [A15](#a15) | The per-walk trace reset, weighed and declined | core | decision | Open, **decided 2026-09-24: declined in general**; the entry lists what reopens it |
 | [A16](#a16) | `EvalTraceItem.start` / `end` are declared and never set | core | decision | **Retired — documented as reserved 2026-09-24, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987 |
-| [A17](#a17) | `EvalService.ngOnDestroy` drains under one `try`, so one throw skips the rest | core | fix | **Retired — fixed 2026-09-24, unreleased**; drains reordered, caller-owned last — [`docs/a8/plan.md`](a8/plan.md) step 1. **Subject gone 2026-09-25**: [A8](#a8)'s step 2 removed the drain before it shipped |
-| [A20](#a20) | `EvalService._activeContexts` grows with every distinct `Registry` context | core | fix | **Fixed 2026-09-24, unreleased**; the field deleted — [`docs/a20/plan.md`](a20/plan.md). Contexts passed to `createState` released 2026-09-25 by [A8](#a8)'s step 2, which deleted the control case |
-| [A21](#a21) | `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts | core | fix | **Fixed 2026-09-23, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987 — [`docs/a21/plan.md`](a21/plan.md). Its decision to keep the hook-registry clear **reversed 2026-09-25** by [A8](#a8)'s step 2 |
+| [A17](#a17) | `EvalService.ngOnDestroy` drains under one `try`, so one throw skips the rest | core | fix | **Retired — fixed 2026-09-24, never released**; drains reordered, caller-owned last — [`docs/a8/plan.md`](a8/plan.md) step 1. **Subject gone 2026-09-25**: [A8](#a8)'s step 2 removed the drain before it shipped |
+| [A20](#a20) | `EvalService._activeContexts` grows with every distinct `Registry` context | core | fix | **Retired — fixed 2026-09-24, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987; the field deleted — [`docs/a20/plan.md`](a20/plan.md). Contexts passed to `createState` released 2026-09-25 by [A8](#a8)'s step 2, which deleted the control case |
+| [A21](#a21) | `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts | core | fix | **Retired — fixed 2026-09-23, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987 — [`docs/a21/plan.md`](a21/plan.md). Its decision to keep the hook-registry clear **reversed 2026-09-25** by [A8](#a8)'s step 2 |
 | [A22](#a22) | Five memory-leaks cases assert nothing about memory | core | test gap | **Retired — consolidated 2026-09-26**: one "destroy does not throw" guard kept, on the async case; the other four retitled to what they test |
 | [A3](#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | Open |
 | [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered — **wider than it reads; [A10](#a10) argues it is one defect with A10** |
@@ -109,10 +107,10 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [A5](#a5) | Service-layer entry points discard the error they caught — **12 sites, 4 services** | core | fix | Open |
 | [A6](#a6) | `safeCall` destroys the class of any error thrown through a call | core | fix | Open |
 | [A7](#a7) | `EvalContext.getThis` reads `_original` in its `priorScopes` loop | core | fix | Open |
-| [A8](#a8) | `EvalService._activeStates` grows unboundedly | core | fix | **Retired — fixed 2026-09-25, unreleased**, in two steps: `simpleEval`'s states ([`docs/a8/plan.md`](a8/plan.md)), then the set deleted ([`docs/a8/step-2-plan.md`](a8/step-2-plan.md)). Withdraws the published destroy-time registry clear |
-| [A9](#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | **Fixed**, Phase 2 step 0 |
+| [A8](#a8) | `EvalService._activeStates` grows unboundedly | core | fix | **Retired — fixed 2026-09-25, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987, in two steps: `simpleEval`'s states ([`docs/a8/plan.md`](a8/plan.md)), then the set deleted ([`docs/a8/step-2-plan.md`](a8/step-2-plan.md)). Withdraws the published destroy-time registry clear |
+| [A9](#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B1](#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | Open, Covered |
-| [B2](#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Fixed**, Phase 2 step 0 |
+| [B2](#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | Open — **one left**, `parser.service.ts`. The `ngOnDestroy` warn was decided and deleted by [A8](#a8)'s step 1, and its silent `catch` went with the drain in step 2; the third went with [A21](#a21)'s fix |
 | [B4](#b4) | `eval-core.component.ts` is dead generator scaffold | core | fix | Open |
 | [C1](#c1) | A member-target write escapes the read-only policy | signals | decision | Open, Covered |
@@ -721,8 +719,8 @@ written against the corrected behaviour rather than the current one.
 <a id="a8"></a>
 ## A8 — `EvalService._activeStates` grows unboundedly
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-25, unreleased**, both
-halves; under `CHANGELOG.md`'s `[eval-core 0.6.0]`, prepared and not yet published
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-25, released 2026-09-26**, both
+halves; `eval-core` 0.6.0, tagged f26f987, under `CHANGELOG.md`'s `[eval-core 0.6.0]`
 
 **This entry is why this file exists.** See [R4](#r4) for the cross-references that hid it.
 
@@ -773,8 +771,8 @@ long-running form or dashboard: exactly this repository's stated audience.
 
 **"The trace" became a much larger term in Phase 2 step 5, and [A12](#a12)'s fix shrank it
 again.** It used to be bounded by the expression's node count; with `for` loops registered, one
-retained state could hold hundreds of thousands of trace items. **As of A12's fix — unreleased,
-under `CHANGELOG.md`'s `[eval-core 0.6.0]` — it is bounded by `maxTraceItems`, default 10,000**, so a
+retained state could hold hundreds of thousands of trace items. **As of A12's fix — released 2026-09-26,
+`eval-core` 0.6.0 — it is bounded by `maxTraceItems`, default 10,000**, so a
 retained state holds ~0.5 MB of trace rather than ~34 MB, and `EvalService.ngOnDestroy` now
 clears it *(until step 2, which removed that drain with the set)*. The two entries still compound, just by two orders of magnitude less: A12 is how much
 one state can hold, A8 is why it is never released. **A8 is unchanged by that fix** — the `Set`
@@ -852,7 +850,8 @@ in [`signals/step-4-summary.md` § 5.2](signals/step-4-summary.md); carried forw
 <a id="a9"></a>
 ## A9 — The arrow-scope leak's root cause: no `try`/`finally` at either push site
 
-**Package** core · **Kind** fix · **Status** **Fixed** — Phase 2 step 0, 2026-09-11
+**Package** core · **Kind** fix · **Status** **Retired — fixed** — Phase 2 step 0, 2026-09-11; released in
+`eval-core` 0.4.0
 
 **Fixed.** Both sites now push, then open a `try` whose `finally` pops. The rest of this entry is
 the record of what the defect was and why it took five phases to get a home; it is no longer
@@ -1007,9 +1006,9 @@ throwing arrow body, and the later read returning the shadowed `'SHADOW'` rather
 <a id="a12"></a>
 ## A12 — `EvalResult.trace` grows per loop iteration, so the iteration budget bounds time and not memory
 
-**Package** core · **Kind** fix / decision · **Status** **Retired — fixed 2026-09-23, unreleased**;
-ships in `eval-core` 0.6.0, recorded under [`CHANGELOG.md`](../CHANGELOG.md)'s
-`[eval-core 0.6.0]`, prepared and not yet published. **Created by Phase 2 step 5**, found in its review
+**Package** core · **Kind** fix / decision · **Status** **Retired — fixed 2026-09-23, released 2026-09-26**;
+`eval-core` 0.6.0, tagged f26f987, recorded under [`CHANGELOG.md`](../CHANGELOG.md)'s
+`[eval-core 0.6.0]`. **Created by Phase 2 step 5**, found in its review
 
 **Fixed.** `maxTraceItems` bounds the trace, defaulting to 10,000; `EvalResult.traceTruncated`
 and `tracePushCount` report what the bound cost; `EvalResult.clearTrace()` is the only reset,
@@ -1186,8 +1185,8 @@ the dispatcher rather than counted.
 ## A16 — `EvalTraceItem.start` and `end` are declared and never set
 
 **Package** core · **Kind** decision · **Status** **Retired — decided and documented 2026-09-24,
-unreleased**. Recorded under [`CHANGELOG.md`](../CHANGELOG.md)'s `[eval-core 0.6.0]`, prepared
-and not yet published. Opened
+released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987. Recorded under
+[`CHANGELOG.md`](../CHANGELOG.md)'s `[eval-core 0.6.0]`. Opened
 2026-09-19, deliberately not decided by the [A12](#a12) fix
 
 **Decided 2026-09-24, by [`docs/trace-surface/plan.md`](trace-surface/plan.md): documented as
@@ -1473,8 +1472,8 @@ above.
 <a id="a20"></a>
 ## A20 — `EvalService._activeContexts` grows with every distinct `Registry` context
 
-**Package** core · **Kind** fix · **Status** **Fixed 2026-09-24, unreleased**; under
-`CHANGELOG.md`'s `[eval-core 0.6.0]`, prepared and not yet published — recorded 2026-09-23, found while sizing [A8](#a8). **Rescoped 2026-09-24 by [A21](#a21)'s
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-24, released 2026-09-26**;
+`eval-core` 0.6.0, tagged f26f987, under `CHANGELOG.md`'s `[eval-core 0.6.0]` — recorded 2026-09-23, found while sizing [A8](#a8). **Rescoped 2026-09-24 by [A21](#a21)'s
 fix**: wider, because every `EvalContext` enters the set too, and simpler, because the set can
 now be deleted
 
@@ -1580,8 +1579,8 @@ after a second registry.
 <a id="a21"></a>
 ## A21 — `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts
 
-**Package** core · **Kind** fix · **Status** **Fixed 2026-09-23, unreleased** — recorded the same
-day, found while sizing [A8](#a8). **This destroyed the caller's data. It was not a leak**
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-23, released 2026-09-26**;
+`eval-core` 0.6.0, tagged f26f987 — recorded the same day, found while sizing [A8](#a8). **This destroyed the caller's data. It was not a leak**
 
 **Fixed** by [`docs/a21/plan.md`](a21/plan.md). `ngOnDestroy` no longer calls `clear()` on any
 context the caller supplied. It still drops its references, and still drains each state's
@@ -1783,7 +1782,8 @@ Behavioural — anything reading `s.constructor` today starts throwing.
 <a id="b2"></a>
 ## B2 — `pattern.ts:83` logs the whole `EvalState`
 
-**Package** core · **Kind** fix · **Status** **Fixed** — Phase 2 step 0, 2026-09-11
+**Package** core · **Kind** fix · **Status** **Retired — fixed** — Phase 2 step 0, 2026-09-11; released in
+`eval-core` 0.4.0
 
 **Fixed.** The call is gone and the throw now reads
 `` `${pattern.type} is not supported as a binding target.` `` — the node type being the only part
@@ -3389,7 +3389,8 @@ have its locus corrected out from under it.
 ## F15 — The downstream peer ranges exclude `eval-core` 0.6.0 — **Retired, fixed**
 
 **Package** signals, forms · **Kind** fix (release coordination) · **Status** **Retired — fixed
-by the 0.6.0 release preparation, 2026-09-26**, prepared and not yet published. Recorded
+by the 0.6.0 release preparation, 2026-09-26**; released the same day in `eval-signals` 0.1.3
+and `eval-forms` 0.2.3, tagged f26f987. Recorded
 2026-09-23 by the [A12](#a12) replay
 
 **Fixed.** Both ranges widened to `">=0.3.0 <0.7.0"` in the same commit that bumps `eval-core` to
