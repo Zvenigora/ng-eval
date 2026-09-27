@@ -112,7 +112,7 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [B1](#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | Open, Covered |
 | [B2](#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | Open — **one left**, `parser.service.ts`. The `ngOnDestroy` warn was decided and deleted by [A8](#a8)'s step 1, and its silent `catch` went with the drain in step 2; the third went with [A21](#a21)'s fix |
-| [B4](#b4) | `eval-core.component.ts` is dead generator scaffold | core | fix | Open |
+| [B4](#b4) | `eval-core.component.ts` is dead generator scaffold | core | fix | **Retired — fixed 2026-09-26**; no published artifact changed — the bundle and `.d.ts` are byte-identical |
 | [C1](#c1) | A member-target write escapes the read-only policy | signals | decision | Open, Covered |
 | [C2](#c2) | Detect a write violation at construction, not first recompute | signals | decision | Open |
 | [C3](#c3) | Whether `eval-signals` should work around [A4](#a4) locally | signals | decision | Open — **decision point passed unrecorded** |
@@ -1883,8 +1883,10 @@ keeps only the rule, the current count and where the calls are tracked.)* Four c
 tree-shaking when this register was opened. [B2](#b2)'s `pattern.ts:83` state dump was the
 fourth, and Phase 2 step 0 deleted it: three. A21's fix deleted the context loop's warn: two.
 A8's step 1 deleted `ngOnDestroy`'s remaining warn: one, `parser.service.ts:67`. Counted
-2026-09-25 in the built `fesm2022` bundle, not in source. Source still holds thirteen calls, and
-tree-shaking removes the rest.
+2026-09-25 in the built `fesm2022` bundle, not in source. Source then held thirteen calls, and
+tree-shaking removes the rest. [B4](#b4)'s deletion of the dead component took one of them,
+`eval-core.component.ts:7`, which was never in the bundle: **twelve** in source since 2026-09-26
+(eleven in `memory-manager.ts`, one in `parser.service.ts`), by grep, and still one in the bundle.
 
 *As recorded, before the `ngOnDestroy` site was decided above; it now applies to
 `parser.service.ts:67` alone.* Decide whether these become the `isDevMode()` carve-out
@@ -1895,13 +1897,21 @@ step rather than separately.
 <a id="b4"></a>
 ## B4 — `eval-core.component.ts` is dead generator scaffold
 
-**Package** core · **Kind** fix · **Status** Open
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-26**; no published artifact
+changed
 
-[`modules/eval-core/src/lib/eval-core/`](../modules/eval-core/src/lib/eval-core/) holds an empty
-`EvalCoreComponent` plus a stray `ngEval()` that parses `"1 + 1"` and logs the result. Nothing
-imports it but its own spec, and it is **not** in the FESM bundle, so this is dead source rather
-than a published-surface problem. It carries a template, a stylesheet and a spec with it — four
-files.
+`modules/eval-core/src/lib/eval-core/` held an empty `EvalCoreComponent` plus a stray `ngEval()`
+that parsed `"1 + 1"` and logged the result. Nothing imported it but its own spec, and it was
+**not** in the FESM bundle, so this was dead source rather than a published-surface problem. It
+carried a template, a stylesheet and a spec with it — four files.
+
+*Fixed* 2026-09-26: the directory deleted, all four files. *Verified*:
+`grep -rn "EvalCoreComponent\|ngEval\b\|eval-core.component" modules/` finds nothing; `eval-core`'s
+tests went from 1074 to 1073 in 58 suites, down exactly the spec's one case and one suite. **The
+"not in the bundle" claim held**: the built `fesm2022` bundle, its source map and the `.d.ts` are
+byte-identical to a build of the parent commit, and neither build names the component, `ngEval` or
+its selector. The `console.log` at `eval-core.component.ts:7` went with it — see [B3](#b3) for the
+source count.
 
 ---
 

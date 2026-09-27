@@ -376,13 +376,13 @@ These apply to all three libraries.
 - Angular 22 / TypeScript 6 / Nx 23. `@zvenigora/ng-eval-core` declares Angular `>=19` as a
   peer dep, so avoid APIs newer than that in shipped code.
 - **Add no `console.*` to library code. This is a rule for what you write, not a
-  description of what is there.** `eval-core` has thirteen pre-existing calls in source —
-  eleven in `memory-manager.ts`, one in `parser.service.ts`, one at
-  `eval-core.component.ts:7` — of which **one** survives tree-shaking into the published
-  bundle: `parser.service.ts`'s cache-timer `console.debug`. A grep finds all of them; they
-  are inherited, not something a recent change introduced. Do not add to them, and do not
-  clean them up in passing either: they are recorded in `docs/backlog.md` as `BL-B3` (the
-  service-layer call, and the history of the ones removed) and `BL-B4` (the dead component).
+  description of what is there.** `eval-core` has twelve pre-existing calls in source —
+  eleven in `memory-manager.ts` and one in `parser.service.ts` — of which **one** survives
+  tree-shaking into the published bundle: `parser.service.ts`'s cache-timer `console.debug`.
+  A grep finds all of them; they are inherited, not something a recent change introduced. Do
+  not add to them, and do not clean them up in passing either: the service-layer call is
+  recorded in `docs/backlog.md` as `BL-B3`, with the history of the ones removed. A
+  thirteenth went with the dead component it sat in (`BL-B4`, retired).
   The one deliberate call is the carve-out — a dev-mode-only diagnostic behind
   `isDevMode()`, for a misuse that fails silently and would otherwise be undiagnosable
   (`eval-signals`' `nested-signal-check.ts:88`, guarded at `:79`). Anything reachable in
