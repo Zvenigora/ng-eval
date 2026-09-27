@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { Injectable, Injector, OnDestroy, inject } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AbstractControl, FormControl, FormGroup } from '@angular/forms';
@@ -20,6 +22,16 @@ import {
 } from '../public-api';
 
 /**
+ * The ` ```ts ` fences in `modules/eval-forms/README.md` from
+ * `## Quick start — Reactive Forms (/reactive)` up to, not including,
+ * `## Signal Forms — /signals`.
+ */
+const README_REACTIVE_TS_BLOCKS = 10;
+
+/** The ` ```ts ` fences in `docs/forms/worked-example.md`. */
+const WORKED_EXAMPLE_TS_BLOCKS = 11;
+
+/**
  * Executes the snippets in `modules/eval-forms/README.md` and
  * `docs/forms/worked-example.md`.
  *
@@ -29,32 +41,64 @@ import {
  * the practice that missed them, five times, so this step promotes it to a
  * gate for this package.
  *
- * **What it is not.** It does not read the markdown. Nothing connects these
- * cases to the files they name except a human keeping them in step, so this is
- * strictly **narrower** than `ROADMAP.md`'s deferred documented-symbol drift
- * gate, which scans the fenced blocks and would catch a symbol renamed out from
- * under a README. The two are not substitutes and neither supersedes the other:
- * that one gates *what the README says*, this one gates *whether what it says
- * runs*.
+ * **What it is not.** It reads the markdown only to count the blocks in its
+ * two scopes, in the last case below (`docs/backlog.md` F13). Nothing connects
+ * these cases to the blocks they name except a human keeping them in step, so
+ * this is strictly **narrower** than `ROADMAP.md`'s deferred documented-symbol
+ * drift gate, which scans the fenced blocks and would catch a symbol renamed
+ * out from under a README. The two are not substitutes and neither supersedes
+ * the other: that one gates *what the README says*, this one gates *whether
+ * what it says runs*.
  *
- * It also does not cover every block. Covered: the `/reactive` `ts` blocks
- * that are runnable, and the shared core's two `Coercion` blocks - which live
- * here rather than under `src/lib/` because a spec there could not import
- * `bindFieldProperties` to sit beside them, and splitting two blocks into a
- * third file buys nothing. Not covered: the `html` template blocks, the `json`
- * manifest block, and the `interface FieldSchema` declaration - none of which
- * executes, and a transcription that padded them into something that did would
- * be asserting against code the README does not contain.
+ * **Coverage, `README_REACTIVE_TS_BLOCKS`**: the README's ` ```ts ` blocks
+ * from `## Quick start — Reactive Forms (/reactive)` up to, not including,
+ * `## Signal Forms — /signals`. The range holds two of the shared core's
+ * sections as well, `## Coercion` and `## When a rule fails`, and their blocks
+ * live here rather than under `src/lib/` because a spec there could not import
+ * `bindFieldProperties` to sit beside them.
  *
- * **One `/reactive` block is deliberately covered elsewhere**, and this
+ * Executed here, in document order:
+ *
+ * 1. `## Quick start`, both blocks - **one case**; the second reads the
+ *    binding the first builds.
+ * 2. `## Coercion`, the `toVisible` block.
+ * 3. `## Coercion`, the `toText` block.
+ * 4. `## When a rule fails`, the `applyErrorPolicy` block - two cases
+ *    (`docs/backlog.md` D10).
+ * 5. `### {emitEvent: false} freezes a value`.
+ * 6. `### The key set is not reactive`.
+ *
+ * Executed by `signals/src/lib/readme-examples.spec.ts` instead, and this
  * sentence exists because the file's location would otherwise imply it is
- * here (Phase 6 step 7, plan revision 19 item 2). The README's "Expressions
- * are not validated" block - `visible: "constructor"` binding cleanly and
- * rendering a data-less field - is executed by
- * `signals/src/lib/readme-examples.spec.ts`, paired in one case with the
- * `/signals` registration that throws on the same authored string. The claim
- * is the *asymmetry*, so the pair is the assertion: split across two files,
- * either half could drift without the pair failing.
+ * here (Phase 6 step 7, plan revision 19 item 2):
+ *
+ * - `### Expressions are not validated` - `visible: "constructor"` binding
+ *   cleanly and rendering a data-less field - paired in one case with the
+ *   `/signals` registration that throws on the same authored string. The
+ *   claim is the *asymmetry*, so the pair is the assertion: split across two
+ *   files, either half could drift without the pair failing.
+ *
+ * Not covered:
+ *
+ * - `## The field schema`'s `interface FieldSchema` declaration, which does
+ *   not execute; a transcription that padded it into something that did would
+ *   be asserting against code the README does not contain.
+ * - `## Lifetime`'s block, a fragment: `schema` and `form` are free and `// …`
+ *   elides the program. What it says - `destroy()` releases the binding, and
+ *   is idempotent - is executed by the Quick start case and by the worked
+ *   example's S 8, not by a transcription of this block.
+ *
+ * **Coverage, `WORKED_EXAMPLE_TS_BLOCKS`**: every ` ```ts ` block in
+ * `docs/forms/worked-example.md`, all executed. S 1's form runs as
+ * constructed inside S 3's service, which is where the document says it is
+ * built; S 2's schema is transcribed verbatim; S 3 is the service; and the
+ * eight blocks of SS 4-8 run as one program in one case.
+ *
+ * **Out of scope for both counts**: the README's intro block, above its first
+ * `##`; `## Versions`' `json` block; the `sh` blocks; and the `html` template
+ * blocks in both files, which are counted by neither constant because they are
+ * not ` ```ts `. What is gated is the count. Which case covers which block, the
+ * lists above, is still kept in step by hand.
  *
  * **What this file supplies that the documents do not print**, listed in full
  * because `ROADMAP.md`'s rejection of transcribed snippets turns on exactly
@@ -549,5 +593,85 @@ describe('documented examples', () => {
 
       counted.destroy();
     });
+  });
+});
+
+interface FencedBlock {
+  readonly language: string;
+  /** 1-based line of the opening fence. */
+  readonly line: number;
+  /** The headings the block sits under, indexed by level - 1. */
+  readonly headings: readonly string[];
+}
+
+/**
+ * Every fenced block in a markdown text, with the headings it sits under.
+ *
+ * A fence opens on three or more backticks or tildes at **any** indentation,
+ * so one inside a list item counts, and closes on the next bare run of the
+ * same character at least as long. Lines inside a block are neither fences
+ * nor headings. The same reader as `signals/src/lib/readme-examples.spec.ts`,
+ * copied because a spec here may not import across entry points by a
+ * relative path.
+ */
+const fencedBlocks = (markdown: string): readonly FencedBlock[] => {
+  const blocks: FencedBlock[] = [];
+  const headings: string[] = [];
+  let closing: RegExp | undefined;
+
+  markdown.split(/\r?\n/).forEach((line, index) => {
+    if (closing) {
+      if (closing.test(line)) {
+        closing = undefined;
+      }
+      return;
+    }
+    const heading = /^(#{1,6})\s+(.*)$/.exec(line);
+    if (heading) {
+      headings.length = heading[1].length - 1;
+      headings[heading[1].length - 1] = heading[2].trim();
+      return;
+    }
+    const fence = /^\s*(`{3,}|~{3,})\s*([^\s`]*)/.exec(line);
+    if (fence) {
+      closing = new RegExp(`^\\s*${fence[1][0]}{${fence[1].length},}\\s*$`);
+      blocks.push({ language: fence[2], line: index + 1, headings: [...headings] });
+    }
+  });
+
+  return blocks;
+};
+
+describe('README block count (docs/backlog.md F13)', () => {
+
+  const read = (relative: string): string[] =>
+    fs.readFileSync(path.join(__dirname, relative), 'utf8').split(/\r?\n/);
+
+  it('should hold README_REACTIVE_TS_BLOCKS ts blocks from the /reactive quick start to /signals', () => {
+    const lines = read('../../../README.md');
+    const from = lines.indexOf('## Quick start — Reactive Forms (`/reactive`)');
+    const to = lines.indexOf('## Signal Forms — `/signals`');
+
+    // The bounds are headings, so a renamed one must fail here rather than
+    // silently widen or empty the range.
+    expect(from).toBeGreaterThanOrEqual(0);
+    expect(to).toBeGreaterThan(from);
+
+    // Lines, not a bare number, so a failure names the blocks it counted.
+    const ts = fencedBlocks(lines.slice(from, to).join('\n'))
+      .filter((block) => block.language === 'ts')
+      .map((block) => `README.md:${from + block.line}`);
+
+    expect(ts).toHaveLength(README_REACTIVE_TS_BLOCKS);
+  });
+
+  it('should hold WORKED_EXAMPLE_TS_BLOCKS ts blocks in the worked example', () => {
+    const lines = read('../../../../../docs/forms/worked-example.md');
+
+    const ts = fencedBlocks(lines.join('\n'))
+      .filter((block) => block.language === 'ts')
+      .map((block) => `worked-example.md:${block.line}`);
+
+    expect(ts).toHaveLength(WORKED_EXAMPLE_TS_BLOCKS);
   });
 });

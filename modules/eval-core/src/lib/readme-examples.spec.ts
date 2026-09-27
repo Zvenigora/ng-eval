@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { TestBed } from '@angular/core/testing';
 import {
   ASYNC_HOOK_MESSAGE,
@@ -12,6 +14,9 @@ import {
   ParserService,
   createTimingHook,
 } from '../public-api';
+
+/** The ` ```javascript ` fences in `modules/eval-core/README.md`, indented ones included. */
+const README_JAVASCRIPT_BLOCKS = 16;
 
 /**
  * Executes the snippets in `modules/eval-core/README.md`.
@@ -32,20 +37,23 @@ import {
  * is the pattern, and `modules/eval-signals/src/lib/readme-examples.spec.ts`,
  * which is the same gate one package over.
  *
- * **What it is not.** It does not read the markdown; nothing keeps a case and
- * the block it mirrors in step but a human. `src/public-api.spec.ts` is the
- * other half — that one gates *what the README says*, this one gates *whether
- * what it says runs*.
+ * **What it is not.** It reads the markdown only to count its blocks, in the
+ * last case below; nothing keeps a case and the block it mirrors in step but a
+ * human. `src/public-api.spec.ts` is the other half — that one gates *what the
+ * README says*, this one gates *whether what it says runs*.
  *
- * ## Coverage — all 14 ` ```javascript ` blocks
+ * ## Coverage — every ` ```javascript ` block, `README_JAVASCRIPT_BLOCKS` of them
  *
  * Counted 2026-09-08 at twelve, **including the indented fence** inside the
  * `onHookError` bullet, which a `^```` scan misses; that miss is why both the
  * plan's "8" and step 2's corrected "11" were one short. **Step 6 added two**,
  * for the two options Phase 2 shipped, and both are covered rather than
- * excused — so the count is now fourteen blocks under twelve cases. Sections
- * whose later blocks continue an earlier one are a single case, split only
- * where the document declares a fresh start by re-declaring its own bindings.
+ * excused. **A12's documentation added two more**, the `### Bounding the
+ * trace` blocks, with no case, and this docblock went on claiming full
+ * coverage until the count case below first read the file; both are covered
+ * now. Sections whose later blocks continue an earlier one are a single case,
+ * split only where the document declares a fresh start by re-declaring its own
+ * bindings.
  *
  * | Case | Blocks |
  * | --- | --- |
@@ -55,6 +63,8 @@ import {
  * | Per-node timing | `### Per-node timing` |
  * | An adopted registry | the `createTimingHook` block — its own state, because its sentence is about a registry the caller built |
  * | Iteration budget | `### Iteration budget` — **step 6** |
+ * | Bounding the trace | the first `### Bounding the trace` block — **F13** |
+ * | A truncated trace | the second, which re-declares `state` and so starts fresh — **F13** |
  * | The empty-completion sentinel | the `EMPTY_COMPLETION` block under `#### Statements and the empty-completion sentinel` — **step 6** |
  * | Evaluation hooks | `### Evaluation hooks` **+** the `onRead` block **+** the `ASYNC_HOOK_MESSAGE` block, all against one `state` |
  * | Hook errors | the `onHookError: 'collect'` block |
@@ -62,10 +72,11 @@ import {
  * | A failed evaluation | the `boom` block |
  * | An abandoned child | the `compiler.call` block |
  *
- * **The count is hand-transcribed and nothing keeps it honest but this line.**
- * It has now been wrong twice and corrected three times, which is the argument
- * for the gate this file is not: `docs/backlog.md` F10 and F11 carry what the
- * drift gate next door cannot see, and a block-count gate is neither of them.
+ * **The count is `README_JAVASCRIPT_BLOCKS`, and the last case holds it to the
+ * file** (`docs/backlog.md` F13): it reads the README and counts its
+ * ` ```javascript ` fences at any indentation. Hand-transcribed, it was wrong
+ * three times. What is gated is the count. Which case covers which block, the
+ * table above, is still kept in step by hand.
  *
  * Nothing is uncovered. There are no `sh` or `json` blocks in this file, and no
  * ` ```ts ` fence — this document and the root are `javascript` throughout,
@@ -213,6 +224,28 @@ describe('documented examples', () => {
     // message together is the same claim without the control flow.
     expect(() => service.eval('for (let i = 0; i < 100; i++) { i }', state))
       .toThrow('Iteration budget exhausted after 10 iterations');
+  });
+
+  it('should keep the whole trace of a walk under the default bound', () => {
+    // The first `### Bounding the trace` block, which A12's documentation
+    // added with no case (docs/backlog.md F13).
+    const state = service.createState({ a: 10 });
+    service.eval('2 + 3 * a', state);
+
+    expect(state.result.trace.length).toBe(7);
+    expect(state.result.traceTruncated).toBe(false);
+    expect(state.result.tracePushCount).toBe(7);
+  });
+
+  it('should keep the head of a trace past the default bound and count every push', () => {
+    // The second block. It re-declares `state`, so it is a fresh start and its
+    // own case. Nothing sets `maxTraceItems`, so the 10000 is the default.
+    const state = service.createState({}, { maxIterations: Infinity });
+    service.eval('for (let i = 0; i < 100000; i++) { i }', state);
+
+    expect(state.result.trace.length).toBe(10000);
+    expect(state.result.traceTruncated).toBe(true);
+    expect(state.result.tracePushCount).toBe(700007);
   });
 
   it('should show the empty-completion sentinel to an after hook on a declaration', () => {
@@ -402,5 +435,63 @@ describe('documented examples', () => {
     await arrow().catch(() => undefined);
 
     expect(seen).toEqual([['MemberExpression', false]]);
+  });
+});
+
+interface FencedBlock {
+  readonly language: string;
+  /** 1-based line of the opening fence. */
+  readonly line: number;
+  /** The headings the block sits under, indexed by level - 1. */
+  readonly headings: readonly string[];
+}
+
+/**
+ * Every fenced block in a markdown text.
+ *
+ * A fence opens on three or more backticks or tildes at **any** indentation,
+ * so the one inside the `onHookError` bullet counts, and closes on the next
+ * bare run of the same character at least as long. Lines inside a block are
+ * neither fences nor headings.
+ */
+const fencedBlocks = (markdown: string): readonly FencedBlock[] => {
+  const blocks: FencedBlock[] = [];
+  const headings: string[] = [];
+  let closing: RegExp | undefined;
+
+  markdown.split(/\r?\n/).forEach((line, index) => {
+    if (closing) {
+      if (closing.test(line)) {
+        closing = undefined;
+      }
+      return;
+    }
+    const heading = /^(#{1,6})\s+(.*)$/.exec(line);
+    if (heading) {
+      headings.length = heading[1].length - 1;
+      headings[heading[1].length - 1] = heading[2].trim();
+      return;
+    }
+    const fence = /^\s*(`{3,}|~{3,})\s*([^\s`]*)/.exec(line);
+    if (fence) {
+      closing = new RegExp(`^\\s*${fence[1][0]}{${fence[1].length},}\\s*$`);
+      blocks.push({ language: fence[2], line: index + 1, headings: [...headings] });
+    }
+  });
+
+  return blocks;
+};
+
+describe('README block count (docs/backlog.md F13)', () => {
+
+  it('should hold README_JAVASCRIPT_BLOCKS javascript blocks', () => {
+    const readme = fs.readFileSync(path.join(__dirname, '../../README.md'), 'utf8');
+
+    // Lines, not a bare number, so a failure names the blocks it counted.
+    const javascript = fencedBlocks(readme)
+      .filter((block) => block.language === 'javascript')
+      .map((block) => `README.md:${block.line}`);
+
+    expect(javascript).toHaveLength(README_JAVASCRIPT_BLOCKS);
   });
 });

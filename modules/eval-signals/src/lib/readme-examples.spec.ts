@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { CompilerService, EvalService } from '@zvenigora/ng-eval-core';
@@ -11,6 +13,12 @@ import {
   createSignalContext,
 } from '../public-api';
 
+/** The ` ```ts ` fences in `modules/eval-signals/README.md`. */
+const README_TS_BLOCKS = 9;
+
+/** The ` ```sh ` fences in the same file. */
+const README_SH_BLOCKS = 2;
+
 /**
  * Executes the snippets in `modules/eval-signals/README.md`.
  *
@@ -22,17 +30,20 @@ import {
  * `modules/eval-forms/reactive/src/lib/readme-examples.spec.ts`, which is the
  * pattern, including this docstring's discipline.
  *
- * **What it is not.** It does not read the markdown. Nothing keeps a case and
- * the block it mirrors in step but a human. The drift gate in
+ * **What it is not.** It reads the markdown only to count its fenced blocks, in
+ * the last case below. Nothing keeps a case and the block it mirrors in step
+ * but a human. The drift gate in
  * `src/public-api.spec.ts` is the other half and neither supersedes the other:
  * that one gates *what the README says*, this one gates *whether what it says
  * runs*.
  *
- * ## Coverage — all 9 ` ```ts ` blocks accounted for
+ * ## Coverage — every ` ```ts ` block accounted for
  *
- * The README has **9** `ts` blocks and **2** `sh` blocks (install commands and
- * the `nx` targets, which are not covered). Counted 2026-09-08, after this step
- * completed four fragments in the document itself.
+ * The README has `README_TS_BLOCKS` `ts` blocks and `README_SH_BLOCKS` `sh`
+ * blocks (install commands and the `nx` targets, which are not covered). The
+ * last case below reads the file and counts both (`docs/backlog.md` F13), so
+ * neither constant can go stale silently. What is gated is the count. Which
+ * case covers which block, the lists below, is still kept in step by hand.
  *
  * Executed here, in document order:
  *
@@ -58,7 +69,7 @@ import {
  *   `resource` example this document does not otherwise make. The statement
  *   above it — the promise arriving as the signal's value — is the part that is
  *   this library's claim, and it *is* executed.
- * - The two `sh` blocks: `npm install`, and the three `nx` targets.
+ * - The `sh` blocks: `npm install`, and the three `nx` targets.
  *
  * ## The defect this step fixed in the README, rather than around
  *
@@ -286,5 +297,68 @@ describe('documented examples', () => {
 
       expect(total()).toBe(30);
     });
+  });
+});
+
+interface FencedBlock {
+  readonly language: string;
+  /** 1-based line of the opening fence. */
+  readonly line: number;
+  /** The headings the block sits under, indexed by level - 1. */
+  readonly headings: readonly string[];
+}
+
+/**
+ * Every fenced block in a markdown text.
+ *
+ * A fence opens on three or more backticks or tildes at **any** indentation,
+ * so one inside a list item counts, and closes on the next bare run of the
+ * same character at least as long. Lines inside a block are neither fences
+ * nor headings. The same reader as `eval-core`'s `readme-examples.spec.ts`,
+ * copied because no spec may import out of another project
+ * (`export-list.spec.ts` records why).
+ */
+const fencedBlocks = (markdown: string): readonly FencedBlock[] => {
+  const blocks: FencedBlock[] = [];
+  const headings: string[] = [];
+  let closing: RegExp | undefined;
+
+  markdown.split(/\r?\n/).forEach((line, index) => {
+    if (closing) {
+      if (closing.test(line)) {
+        closing = undefined;
+      }
+      return;
+    }
+    const heading = /^(#{1,6})\s+(.*)$/.exec(line);
+    if (heading) {
+      headings.length = heading[1].length - 1;
+      headings[heading[1].length - 1] = heading[2].trim();
+      return;
+    }
+    const fence = /^\s*(`{3,}|~{3,})\s*([^\s`]*)/.exec(line);
+    if (fence) {
+      closing = new RegExp(`^\\s*${fence[1][0]}{${fence[1].length},}\\s*$`);
+      blocks.push({ language: fence[2], line: index + 1, headings: [...headings] });
+    }
+  });
+
+  return blocks;
+};
+
+describe('README block count (docs/backlog.md F13)', () => {
+
+  // Lines, not bare numbers, so a failure names the blocks it counted.
+  const linesIn = (language: string): string[] =>
+    fencedBlocks(fs.readFileSync(path.join(__dirname, '../../README.md'), 'utf8'))
+      .filter((block) => block.language === language)
+      .map((block) => `README.md:${block.line}`);
+
+  it('should hold README_TS_BLOCKS ts blocks', () => {
+    expect(linesIn('ts')).toHaveLength(README_TS_BLOCKS);
+  });
+
+  it('should hold README_SH_BLOCKS sh blocks', () => {
+    expect(linesIn('sh')).toHaveLength(README_SH_BLOCKS);
   });
 });

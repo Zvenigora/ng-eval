@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { Injector, WritableSignal, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormControl, FormGroup } from '@angular/forms';
@@ -16,20 +18,30 @@ import { bindFieldProperties } from '@zvenigora/ng-eval-forms/reactive';
 import { SignalContextWriteError } from '@zvenigora/ng-eval-signals';
 import { ExpressionRules, TEXT, createExpressionRules } from '../public-api';
 
+/** The fenced blocks under `modules/eval-forms/README.md`'s `## Signal Forms — /signals`, any language. */
+const README_SIGNALS_BLOCKS = 5;
+
+/** The fenced blocks under the same file's `### Expressions are not validated`, a `/reactive` section. */
+const README_ASYMMETRY_BLOCKS = 1;
+
 /**
  * Executes the runnable snippets in `modules/eval-forms/README.md`'s
- * **`/signals`** sections, plus the one `/reactive` block whose whole subject
- * is the difference between the two entry points.
+ * **`/signals`** sections, every block under `## Signal Forms — /signals`
+ * (`README_SIGNALS_BLOCKS`), plus the `/reactive` block under
+ * `### Expressions are not validated` (`README_ASYMMETRY_BLOCKS`), whose whole
+ * subject is the difference between the two entry points.
  *
  * **Why this exists.** The counterpart file under `reactive/src/lib/` records
  * it: Phase 1 step 5 found two documented snippets that did not run as
  * printed and Phase 3 found three more, all five shipped because nothing
  * executed them. This is the same gate for the entry point Phase 6 adds.
  *
- * **What it is not.** It does not read the markdown - nothing connects these
- * cases to the blocks they transcribe except a human keeping them in step, so
- * it is strictly narrower than `ROADMAP.md`'s deferred documented-symbol drift
- * gate. It gates *whether what the README says runs*, not *what it says*.
+ * **What it is not.** It reads the markdown only to count the blocks in those
+ * two sections, in the last case below (`docs/backlog.md` F13) - nothing
+ * connects these cases to the blocks they transcribe except a human keeping
+ * them in step, so it is strictly narrower than `ROADMAP.md`'s deferred
+ * documented-symbol drift gate. It gates *whether what the README says runs*,
+ * not *what it says*.
  *
  * **What this file supplies that the document does not print**, listed in full
  * because `ROADMAP.md`'s rejection of transcribed snippets turns on exactly
@@ -390,5 +402,68 @@ describe('documented examples - /signals', () => {
 
       expect(() => buildForm(model, s)).toThrow(/Object\.prototype/);
     });
+  });
+});
+
+interface FencedBlock {
+  readonly language: string;
+  /** 1-based line of the opening fence. */
+  readonly line: number;
+  /** The headings the block sits under, indexed by level - 1. */
+  readonly headings: readonly string[];
+}
+
+/**
+ * Every fenced block in a markdown text, with the headings it sits under.
+ *
+ * A fence opens on three or more backticks or tildes at **any** indentation,
+ * so one inside a list item counts, and closes on the next bare run of the
+ * same character at least as long. Lines inside a block are neither fences
+ * nor headings, so a `#` comment in a shell block opens no section. The same
+ * reader as `eval-core`'s `readme-examples.spec.ts`, copied because no spec
+ * may import out of another project (`src/export-list.spec.ts` records why).
+ */
+const fencedBlocks = (markdown: string): readonly FencedBlock[] => {
+  const blocks: FencedBlock[] = [];
+  const headings: string[] = [];
+  let closing: RegExp | undefined;
+
+  markdown.split(/\r?\n/).forEach((line, index) => {
+    if (closing) {
+      if (closing.test(line)) {
+        closing = undefined;
+      }
+      return;
+    }
+    const heading = /^(#{1,6})\s+(.*)$/.exec(line);
+    if (heading) {
+      headings.length = heading[1].length - 1;
+      headings[heading[1].length - 1] = heading[2].trim();
+      return;
+    }
+    const fence = /^\s*(`{3,}|~{3,})\s*([^\s`]*)/.exec(line);
+    if (fence) {
+      closing = new RegExp(`^\\s*${fence[1][0]}{${fence[1].length},}\\s*$`);
+      blocks.push({ language: fence[2], line: index + 1, headings: [...headings] });
+    }
+  });
+
+  return blocks;
+};
+
+describe('README block count (docs/backlog.md F13)', () => {
+
+  // Lines, not bare numbers, so a failure names the blocks it counted.
+  const linesUnder = (heading: string): string[] =>
+    fencedBlocks(fs.readFileSync(path.join(__dirname, '../../../README.md'), 'utf8'))
+      .filter((block) => block.headings.includes(heading))
+      .map((block) => `README.md:${block.line}`);
+
+  it('should hold README_SIGNALS_BLOCKS blocks under the /signals section', () => {
+    expect(linesUnder('Signal Forms — `/signals`')).toHaveLength(README_SIGNALS_BLOCKS);
+  });
+
+  it('should hold README_ASYMMETRY_BLOCKS block under Expressions are not validated', () => {
+    expect(linesUnder('Expressions are not validated')).toHaveLength(README_ASYMMETRY_BLOCKS);
   });
 });

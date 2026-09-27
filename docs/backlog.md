@@ -146,7 +146,7 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [F10](#f10) | The drift gate covers documented-**and-imported** symbols only | core, signals, forms | fix | Open — the gap [F3](#f3) leaves |
 | [F11](#f11) | A gated README can only import from its own specifier | core, signals, forms | fix | Open — bounds [F3](#f3) and [F4](#f4) |
 | [F12](#f12) | The downstream peer ranges exclude `eval-core` 0.4.0 — **and fail both downstream `lint` targets** | signals, forms | fix | **Retired — fixed, Phase 2 step 7**; both ranges widened, and `lint`'s cache inputs with them |
-| [F13](#f13) | Nothing gates the README block count `readme-examples.spec.ts` claims | core, signals, forms | test gap | Open — the count has been wrong twice |
+| [F13](#f13) | Nothing gates the README block count `readme-examples.spec.ts` claims | core, signals, forms | test gap | **Retired — fixed 2026-09-27**, test only; all four specs gated. The gate's first run found `eval-core`'s count wrong a third time |
 | [F14](#f14) | Six sites cite the retired `^0.3.0` range, two of them in published READMEs | signals, forms | fix (comments, docs) | **Retired — fixed, Phase 2 step 8**; filed as four sites, was six |
 | [F15](#f15) | The downstream peer ranges exclude `eval-core` 0.6.0 — **latent until the bump, then both downstream `lint` targets fail** | signals, forms | fix (release coordination) | **Retired — fixed and released 2026-09-26**; both ranges widened to `>=0.3.0 <0.7.0`, and both packages released: `eval-signals` 0.1.3 and `eval-forms` 0.2.3, tagged f26f987 |
 | [F16](#f16) | Workspace dependency advisories — **9 moderate on the workspace's Angular 22.0.8**, and a temporary `smol-toml` override under `nx` | repo | fix | Open |
@@ -3461,8 +3461,83 @@ has the wording to copy.
 <a id="f13"></a>
 ## F13 — Nothing gates the README block count `readme-examples.spec.ts` claims
 
-**Package** core, signals, forms · **Kind** test gap · **Status** Open — recorded Phase 2 step 6,
-2026-09-15
+**Package** core, signals, forms · **Kind** test gap · **Status** **Retired — fixed 2026-09-27**,
+test only; all four specs gated. Recorded Phase 2 step 6, 2026-09-15
+
+*Fixed* 2026-09-27. In all four specs, `eval-core`, `eval-signals`, `eval-forms/signals` and
+`eval-forms/reactive`, the docblock's count is now a named constant that the docblock cites rather
+than restates. A new case in each reads the document from disk and counts the blocks the docblock
+says it counts:
+
+| Spec | Counts | Constant |
+| ---- | ------ | -------- |
+| `eval-core` | ` ```javascript ` fences, whole file | `README_JAVASCRIPT_BLOCKS` = 16 |
+| `eval-signals` | ` ```ts ` and ` ```sh ` fences, whole file | `README_TS_BLOCKS` = 9, `README_SH_BLOCKS` = 2 |
+| `eval-forms/signals` | every fence under `## Signal Forms — /signals`, and under `### Expressions are not validated` | `README_SIGNALS_BLOCKS` = 5, `README_ASYMMETRY_BLOCKS` = 1 |
+| `eval-forms/reactive` | ` ```ts ` fences from `## Quick start — Reactive Forms (/reactive)` up to, not including, `## Signal Forms — /signals`; and ` ```ts ` fences in `docs/forms/worked-example.md`, whole file | `README_REACTIVE_TS_BLOCKS` = 10, `WORKED_EXAMPLE_TS_BLOCKS` = 11 |
+
+A fence opens on three or more backticks or tildes at **any** indentation, so the fence inside
+`eval-core`'s `onHookError` bullet, which a `^```` scan misses, is counted. Headings are read only
+outside blocks. The reader is copied into each spec, because no spec may import out of another
+project (`export-list.spec.ts`) or across entry points by a relative path. Every docblock said it
+"does not read the markdown", and each now says it reads the markdown only to count blocks.
+`/signals`' docblock names no fence language, so its count takes every language in its two
+sections. Today every block there is `ts`.
+
+**`/reactive`'s scope was decided for this gate.** Its docblock had stated none: it covered "the
+`/reactive` `ts` blocks that are runnable, and the shared core's two `Coercion` blocks", which
+matches no heading boundary. It is now the heading range above, and it takes in the two shared-core
+sections between them, `## Coercion` and `## When a rule fails`. The docblock lists the 10 README
+blocks so they add up. 7 are executed there. `### Expressions are not validated` is executed by
+the `/signals` spec, as its docblock says. Two are not covered: `interface FieldSchema`, a
+declaration, and `## Lifetime`'s block. That block is a fragment with a free `schema` and `form`
+and an elided `// …`, and what it claims, that `destroy()` releases and is idempotent, is executed
+by the Quick start case and the worked example's § 8. All 11 worked-example blocks are executed.
+§ 1's form runs as constructed inside § 3's service, which is where the document says it is built.
+Named out of scope: the README's intro block, `## Versions`, the `sh` blocks, and `html` in both
+files.
+
+**The gate's first run found `eval-core`'s count wrong a third time.** The docblock claimed 14
+blocks and full coverage, and the README held 16: `f660c0d` (A12's documentation, 2026-09-23) added
+the two `### Bounding the trace` blocks with no case. This is the failure the entry predicted, a
+block added without a case under a green suite. Both blocks are covered now, as two cases
+because the second re-declares `state`. So `eval-core` went from 1073 to 1076: those two and the
+count case. [F3](#f3) excluded a block-count assertion from the *drift* gate because the fix it
+invites is bumping the number. Here the first failure was investigated, and the fix was cases.
+
+**What is gated is the count, not the case-to-block mapping**, which stays prose in each
+docblock. A mapping gate is not worth building. Its useful form executes each block as printed,
+which is [F3](#f3)'s "considered and rejected" case: a transcription is written to work, so it would
+not have caught the fragment defects that motivated the gates. Its cheap form checks that each case
+cites a heading that exists, fires on every edit that moves a heading, and gates almost nothing.
+
+*Probed* on working copies of the documents, each probe reverted:
+
+| Probe | `eval-core` | `eval-signals` | `eval-forms/signals` |
+| ----- | ----------- | -------------- | -------------------- |
+| (a) indented fence added in a list item, counted scope | **red**, 17 ≠ 16 | **red**, `ts` 10 ≠ 9 | **red**, section 6 ≠ 5 |
+| (b) one counted block deleted | **red**, 15 ≠ 16 (the indented `EvalHooks` fence) | **red**, `ts` 8 ≠ 9 (`## Options`, counted and uncovered) | **red**, section 4 ≠ 5 (the Reuse block) |
+| (b′) the other constant's block deleted | — | **red**, `sh` 1 ≠ 2 | **red**, asymmetry 0 ≠ 1 |
+| (c) block added in an uncounted language or section | green (a ` ```ts ` block) | green (a ` ```json ` block) | green (` ```ts ` blocks just before `## Signal Forms — /signals` and under `## What is not here`, the H2 after its section)¹ |
+
+| Probe | `README_REACTIVE_TS_BLOCKS` | `WORKED_EXAMPLE_TS_BLOCKS` |
+| ----- | --------------------------- | -------------------------- |
+| (a) indented ` ```ts ` fence added in a list item | **red**, 11 ≠ 10 (a bullet under `## When a rule fails`) | **red**, 12 ≠ 11 (a bullet under "What this example deliberately does not show") |
+| (b) one counted block deleted | **red**, 9 ≠ 10 (`### The key set is not reactive`, covered) | **red**, 10 ≠ 11 (§ 8) |
+| (c) block added outside the count | green (a ` ```ts ` block just before the `/reactive` H2, and an indented ` ```html ` block inside the range) | green (a ` ```json ` block) |
+
+In every red run only the targeted count went red, and the `/signals` counts stayed green in each
+`/reactive` probe. Where a case executes the deleted block, as in `eval-core`'s `EvalHooks` case,
+`/signals`' two Reuse cases and its asymmetry case, `/reactive`'s key-set case and the worked
+example's §§ 4–8 case, that case stayed green. That measures this entry's premise directly.
+
+¹ Run before `/reactive` was gated. The first of those two blocks now sits inside `/reactive`'s
+range and would redden `README_REACTIVE_TS_BLOCKS`, which is correct: it is the last section before
+`## Signal Forms — /signals`.
+
+---
+
+**The entry as it stood:**
 
 Each `readme-examples.spec.ts` opens with a docblock asserting how many fenced blocks its README
 holds and which case covers each. The number is **hand-transcribed**, and nothing compares it to
