@@ -151,6 +151,7 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [F13](#f13) | Nothing gates the README block count `readme-examples.spec.ts` claims | core, signals, forms | test gap | Open — the count has been wrong twice |
 | [F14](#f14) | Six sites cite the retired `^0.3.0` range, two of them in published READMEs | signals, forms | fix (comments, docs) | **Retired — fixed, Phase 2 step 8**; filed as four sites, was six |
 | [F15](#f15) | The downstream peer ranges exclude `eval-core` 0.6.0 — **latent until the bump, then both downstream `lint` targets fail** | signals, forms | fix (release coordination) | **Retired — fixed and released 2026-09-26**; both ranges widened to `>=0.3.0 <0.7.0`, and both packages released: `eval-signals` 0.1.3 and `eval-forms` 0.2.3, tagged f26f987 |
+| [F16](#f16) | Workspace dependency advisories — **9 moderate on the workspace's Angular 22.0.8**, and a temporary `smol-toml` override under `nx` | repo | fix | Open |
 | [R1](#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -3456,6 +3457,73 @@ noted first and where a release would not look.
 `'error'` in `modules/eval-signals/eslint.config.mjs` and `modules/eval-forms/eslint.config.mjs`;
 `nx.json`'s `lint` inputs include `"^production"`. The lint failure itself is inferred from
 F12's measurement, not reproduced here.
+
+<a id="f16"></a>
+## F16 — Workspace dependency advisories
+
+**Package** repo · **Kind** fix · **Status** Open. Recorded 2026-09-26, by the commit that cleared
+the Dependabot high alert
+
+**None of this reaches a consumer.** Every package below is a root workspace dependency. No
+`modules/*/package.json` depends on `nx` or `smol-toml`. The published peer ranges
+(`@angular/core >=19.0.0` in all three, plus `@angular/forms >=19.0.0` in `eval-forms`) admit the
+patched Angular versions and do not pin the vulnerable ones. So the work here is on the workspace's
+own toolchain, and no release is needed for it.
+
+**Two parts, and they are unrelated.**
+
+**1. The moderates that remain: 9, all Angular framework packages at 22.0.8.** Two advisories
+account for all of them:
+
+| Advisory | Reported on | Patched in |
+| -------- | ----------- | ---------- |
+| GHSA-p297-fm68-3q8c (`HttpTransferCache` information leak) | `@angular/common` | 22.1.1 |
+| GHSA-hh8m-fm6v-7cvg (host-binding sanitization bypass) | `@angular/core`, `@angular/compiler` | 22.1.0 |
+
+Audit flags the other six only as dependents of those three: `@angular/animations`,
+`@angular/compiler-cli`, `@angular/forms`, `@angular/platform-browser`,
+`@angular/platform-browser-dynamic` and `@angular/router`. The eight framework packages are in the
+root `package.json`'s `dependencies`, pinned exactly at `22.0.8`, and `@angular/compiler-cli` is a
+`devDependency` pinned at `22.0.8` too.
+
+**Bumping the eight framework packages alone does not resolve.** Measured 2026-09-26 on npm 12.0.1:
+
+```sh
+npm install --package-lock-only --save-exact \
+  @angular/animations@22.2.0 @angular/common@22.2.0 @angular/compiler@22.2.0 \
+  @angular/core@22.2.0 @angular/forms@22.2.0 @angular/platform-browser@22.2.0 \
+  @angular/platform-browser-dynamic@22.2.0 @angular/router@22.2.0
+```
+
+It exits 1 with `ERESOLVE could not resolve`. The resolver reports `Found:
+@angular/animations@22.0.8`, held as a `peerOptional` of `@angular/platform-browser@22.0.8`, which
+`@angular-devkit/build-angular@22.0.9` and its nested `@angular/build@22.0.9` both reach through
+`peerOptional @angular/platform-browser@"^22.0.0"`. The conflicting peer is
+`@angular/core@22.2.0`, required exactly by `@angular/animations@22.2.0`. The command left out
+`@angular/compiler-cli`, `@angular/language-service`, `@angular/cli` and the devkit packages, which
+are all still at 22.0.x. What the measurement shows is that the eight-package bump does not resolve
+on its own. It was not re-run with those packages included, so it does not show which set does.
+The expected fix is a workspace Angular minor upgrade that moves the framework, `@angular/cli` and
+the devkit packages together, not a lockfile edit. `npm audit fix --force` proposes
+per-package bumps to 22.2.0 and warns they fall outside the stated dependency range. It was
+not run.
+
+**2. The `smol-toml` override is temporary.** GHSA-7w5x-hrqm-74c2 (`smol-toml <=1.7.0`, DoS on
+malformed TOML) was the only high: 12 `npm audit` findings from one advisory (one Dependabot
+alert), and the other 11 were `nx`/`@nx/*` flagged as its dependents. `smol-toml` enters only
+through `nx`, which pins it exactly (`1.6.1` in both 23.1.1 and 23.2.1, the latest stable on
+2026-09-26), so upgrading `nx` would not have fixed it.
+`package.json` therefore carries `"smol-toml": "^1.7.1"` inside `overrides.nx`, beside the existing
+`brace-expansion` override. That resolved to 1.9.0.
+
+**Remove the override** once a stable `nx` depends on `smol-toml >= 1.7.1`. The 23.3.0 prereleases
+already do. The lockfile will keep recording `nx`'s own declared `"smol-toml": "1.6.1"` under
+`node_modules/nx` while the override is in place. That line is `nx`'s manifest copied into the
+lockfile, not an installed version. `node_modules/smol-toml` is the entry to check.
+
+*Recorded*: this entry; `package.json` `overrides.nx`.
+*Verified*: `npm audit --package-lock-only`, 2026-09-26. Before the override: 12 high, 9 moderate.
+After: 0 high, 0 critical, 9 moderate, as listed above.
 
 ---
 
