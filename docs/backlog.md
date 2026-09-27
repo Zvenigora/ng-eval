@@ -139,7 +139,7 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [F3](#f3) | Documented-symbol drift gate — **three packages, four READMEs** | core, signals, forms | fix | **Retired — built and green** |
 | [F4](#f4) | README-execution gate for `eval-core` and `eval-signals` | core, signals | fix / decide-then-drop | **Retired** — both package READMEs gated; root **assessed and dropped** |
 | [F5](#f5) | The `js-sha256` peer range is locked to a dead minor | core | decision | Open |
-| [F6](#f6) | CONTRIBUTING's "Code style" describes a config that never existed here | repo | decision (editorial) | Open |
+| [F6](#f6) | CONTRIBUTING's "Code style" describes a config that never existed here | repo | decision (editorial) | **Retired — fixed 2026-09-26**; the table replaced by a paragraph pointing at the four flat configs |
 | [F7](#f7) | Intermittent Jest worker-teardown warning — **no established locus**, possibly Nx/Jest rather than a library | — | fix? | Open — locus corrected 2026-09-09; **not reproducible per project** |
 | [F8](#f8) | The release tag step has no forcing function, and ships with a silencer | repo | fix | **Premise retired 2026-09-16** — all ten missing tags written and pushed, so the arrears are cleared; the mechanism is untouched and the entry is live |
 | [F9](#f9) | No gate on document cross-references — the register's own dangling links | repo | fix | Open — deferred by [plan](gates/plan.md) § 8.4; **first concrete instance recorded 2026-09-13** |
@@ -2825,9 +2825,21 @@ an exported package's `peerDependencies`, so it needs a `CHANGELOG.md` entry and
 <a id="f6"></a>
 ## F6 — CONTRIBUTING's "Code style" describes a config that never existed here
 
-**Package** repo · **Kind** decision (editorial) · **Status** Open
+**Package** repo · **Kind** decision (editorial) · **Status** **Retired — fixed 2026-09-26**; the
+table replaced by a paragraph that points at the configs
 
-[`CONTRIBUTING.md:42`](../CONTRIBUTING.md#L42) links to `.eslintrc.json`. That file does not exist —
+*Fixed* 2026-09-26, taking the second option below: the dead link and the thirteen-rule table
+are gone, and "Code style" is now one paragraph naming the four `eslint.config.mjs` files, the
+`@nx` flat presets each layer spreads, the three rules the configs add themselves (module
+boundaries by scope tag, the `zvenigora` selector prefixes, `@nx/dependency-checks`), and
+`npm run lint`. Each claim was checked against the four configs, the `tags` in each
+`project.json` and the root `package.json`'s `lint` script before it was written. It
+deliberately does not enumerate the rule set, for the reason the last paragraph gives. *Verified*:
+`CONTRIBUTING.md` no longer mentions `.eslintrc.json`; every file it names exists; lint green.
+
+*As recorded:*
+
+`CONTRIBUTING.md:42` linked to `.eslintrc.json`. That file does not exist —
 Phase 1's tooling work replaced it with flat config, and the workspace now has four:
 `eslint.config.mjs` at the root and one per module. The link is dead.
 
