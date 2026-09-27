@@ -227,6 +227,52 @@ describe('createFieldContext', () => {
     });
   });
 
+  describe('precedence under caseInsensitive', () => {
+
+    // docs/backlog.md D9. The block above covers plan S 3.4.3's two layers in
+    // this library end to end with exact keys; these two cases repeat the
+    // collision and the form-only read with the key spelled differently from
+    // the expression, so both halves must agree on what a key *is* before
+    // either can win. Installing the form half first reddens the collision and
+    // leaves the form-only read green.
+    //
+    // S 3.4.3's third layer - an `Object.prototype` name resolving through the
+    // empty `original` ahead of both - is upstream's, as `field-context.ts`
+    // records, and is not asserted here.
+
+    const options = { caseInsensitive: true };
+
+    it('should resolve a key in both sources to the field under caseInsensitive', () => {
+      // The *form* holds the expression's exact spelling and the field does
+      // not. `resolve` prefers an exact match only within one source; each
+      // lookup finishes its own resolution before the next is asked, so the
+      // field wins by layer and not by spelling.
+      const formSource = { value: 'form', Country: 'CA' };
+      const fieldSource = { VALUE: 'field', label: 'Region' };
+      const context = createFieldContext(formSource, fieldSource, options);
+
+      expect(service.simpleEval('value', context, options)).toEqual('field');
+
+      // Calibration: without the option the two keys do not collide, so the
+      // case above is a collision only because of the correction.
+      expect(service.simpleEval('value', createFieldContext(formSource, fieldSource)))
+        .toEqual('form');
+    });
+
+    it('should resolve a key only in the form source to the form value under caseInsensitive', () => {
+      const formSource = { value: 'form', Country: 'CA' };
+      const fieldSource = { VALUE: 'field', label: 'Region' };
+      const context = createFieldContext(formSource, fieldSource, options);
+
+      expect(service.simpleEval('country', context, options)).toEqual('CA');
+
+      // Calibration, as above: the key is spelled differently enough that
+      // only the correction finds it.
+      expect(service.simpleEval('country', createFieldContext(formSource, fieldSource)))
+        .toBeUndefined();
+    });
+  });
+
   describe('the live key set', () => {
 
     // Plan S 3.4.2's two-part rule. Both halves are asserted, or the rule is

@@ -124,7 +124,7 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [D6](#d6) | `/signals` diverged from upstream on non-string keys — filed as "the `typeof` guard is unfalsifiable", measured false | forms | fix | **Retired — fixed 2026-09-26**; ships with the next `eval-forms` release |
 | [D7](#d7) | `toSignal`'s `assertNotInReactiveContext` throws out of the mirror | forms | accepted | Open, documented |
 | [D8](#d8) | `warnOnNestedSignals` runs once, at construction | forms | accepted | Open, documented |
-| [D9](#d9) | § 3.4.3's precedence rule is untested end to end | forms | test gap | Open, Premise retired |
+| [D9](#d9) | § 3.4.3's precedence rule is untested end to end | forms | test gap | **Retired — premise false: covered end to end since 7fbef49; the `caseInsensitive` pair added 2026-09-27, test only** |
 | [D10](#d10) | `applyErrorPolicy` has no runnable README block | forms | docs | **Retired — fixed**, and it created [F3](#f3)'s third gate's subject |
 | [D11](#d11) | `/signals` has no worked example | forms | docs | Open |
 | [D12](#d12) | ~20 specs discard the binding and never call `destroy()` | forms | test hygiene | Open |
@@ -2290,7 +2290,47 @@ failing to reach `/signals` for a different reason.
 <a id="d9"></a>
 ## D9 — § 3.4.3's precedence rule is untested end to end
 
-**Package** forms · **Kind** test gap · **Status** Open, Premise retired
+**Package** forms · **Kind** test gap · **Status** **Retired — premise false: covered end to end
+since 7fbef49; the `caseInsensitive` pair added 2026-09-27, test only**
+
+**The premise was false when it was filed.** `field-context.spec.ts`'s `precedence` block, added by
+`7fbef49` (Phase 4 step 2, 2026-08-17), already walked the rule end to end. It builds
+`createFieldContext` with a non-empty field source and evaluates it through `eval-core`'s
+`simpleEval`. "Should resolve a colliding key to the field" asserts that the field wins a collision,
+and "should resolve a form key through the pushed lookup" asserts a form-only key over a non-empty
+field source. "End to end" in the step-4 note meant *through a `/reactive` binding*, which no path
+produces, and not *through the evaluator*, which was covered. The probe below shows those older
+cases were load-bearing.
+
+**Added 2026-09-27**: the one leg the older cases did not reach, `caseInsensitive` with the key
+spelled differently from the expression. `field-context.spec.ts`, "precedence under
+`caseInsensitive`", two cases. In the collision the *form* holds the expression's exact spelling
+and the field does not, so the field wins by layer and not by exact match. Both cases carry a
+calibration arm without the option, which shows the spelling differs enough that only the
+correction finds the key. No published artifact changed.
+
+**Two layers of three.** The third, an `Object.prototype` name resolving through the empty
+`original` ahead of both sources, is upstream's (`eval-signals`' `createSignalContext` and
+`eval-core`'s `EvalContext.get`), as `field-context.ts`'s own comment records. It is named here and
+not tested.
+
+*Probed* by installing the form half first (the two `createSignalContext` calls in
+`field-context.ts` swapped), against the whole `eval-forms` suite, then reverted:
+
+| Case | Since | form half first |
+| ---- | ----- | --------------- |
+| should resolve a colliding key to the field | `7fbef49` | **red** (`"form"`) |
+| should show the form value once the field key is removed | `7fbef49` | **red** (`"form"`, on the first assertion) |
+| should give precedence back to the field when its value appears | `7fbef49` | **red** (`"form"` after the field value appears) |
+| should fall through to the form value for a field key holding undefined | `7fbef49` | green: the form wins it under either order |
+| key in both sources → field, `caseInsensitive` | 2026-09-27 | **red** (`"form"`, on the main assertion; calibration arm green) |
+| key only in the form source → form, `caseInsensitive` | 2026-09-27 | green |
+
+Nothing else in the suite moved: 4 red of 257.
+
+**The entry as it stood:**
+
+**Status** Open, Premise retired
 
 The three-layer precedence rule (field keys win) has no end-to-end coverage.
 
