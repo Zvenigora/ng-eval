@@ -101,7 +101,7 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [A20](#a20) | `EvalService._activeContexts` grows with every distinct `Registry` context | core | fix | **Retired — fixed 2026-09-24, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987; the field deleted — [`docs/a20/plan.md`](a20/plan.md). Contexts passed to `createState` released 2026-09-25 by [A8](#a8)'s step 2, which deleted the control case |
 | [A21](#a21) | `EvalService.ngOnDestroy` empties the caller's own `Registry` contexts | core | fix | **Retired — fixed 2026-09-23, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987 — [`docs/a21/plan.md`](a21/plan.md). Its decision to keep the hook-registry clear **reversed 2026-09-25** by [A8](#a8)'s step 2 |
 | [A22](#a22) | Five memory-leaks cases assert nothing about memory | core | test gap | **Retired — consolidated 2026-09-26**: one "destroy does not throw" guard kept, on the async case; the other four retitled to what they test |
-| [A3](#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | Open |
+| [A3](#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | **Retired — fixed 2026-09-26**; ships with the next `eval-core` release — the FESM bundle loses the one line |
 | [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered — **wider than it reads; [A10](#a10) argues it is one defect with A10** |
 | [A10](#a10) | `getKey`'s scopes step reports every key present against a plain-object scope | core | fix | Open — **latent, not live**; blocks any fix to [A4](#a4) |
 | [A5](#a5) | Service-layer entry points discard the error they caught — **12 sites, 4 services** | core | fix | Open |
@@ -230,7 +230,8 @@ several of these visible at all. [A6](#a6) was surfaced by Phase 6 step 3. [A8](
 [A9](#a9) were never recorded in the roadmap at all.
 
 **Identity-checked `exit`** (§ 3.8 of the Phase 1 plan) means the hook layer stays balanced in
-spite of [A1](#a1)–[A3](#a3), so none is urgent — but none is gone either, and the value stack
+spite of [A1](#a1) and [A2](#a2), so neither is urgent — but neither is gone either ([A3](#a3)
+is, retired 2026-09-26), and the value stack
 is a separate stack that is not protected by it. Do not read balanced hook events as evidence
 that a visitor is correctly bracketed.
 
@@ -479,14 +480,20 @@ JavaScript does. Both arms covered in `pattern.destructuring.spec.ts`.
 <a id="a3"></a>
 ## A3 — `import-expression.ts` has a dead `afterVisitor`
 
-**Package** core · **Kind** fix (cosmetic) · **Status** Open
+**Package** core · **Kind** fix (cosmetic) · **Status** **Retired — fixed 2026-09-26**; ships with
+the next `eval-core` release
 
-`importExpressionVisitor` calls it after an unconditional throw
-([`import-expression.ts:13-15`](../modules/eval-core/src/lib/internal/visitors/import-expression.ts#L13-L15)),
-so the line can never run. Nothing breaks. Tidy when that visitor is next touched.
+`importExpressionVisitor` called it after an unconditional throw
+([`import-expression.ts:12`](../modules/eval-core/src/lib/internal/visitors/import-expression.ts#L12)),
+so the line could never run. Nothing broke.
 
 *Recorded*: [`side-effects/step-3-summary.md` § 5.1](side-effects/step-3-summary.md).
 *Verified*: source read, 2026-09-06.
+
+*Fixed* 2026-09-26: the line deleted, and its `afterVisitor` import with it, which lint then
+reported unused. Nothing else in the visitor changed. **The published artifact does change**: the
+built `fesm2022` bundle, compared against a build of the parent commit, differs by exactly that
+one line (and its source map with it); the `.d.ts` is byte-identical. Test counts unchanged.
 
 <a id="a4"></a>
 ## A4 — `EvalContext.getKey` cannot case-correct a namespace, and does not resolve through the same chain as `get`
