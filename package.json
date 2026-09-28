@@ -103,6 +103,11 @@
     "unrs-resolver@1.12.2": true
   },
   "nx": {
-    "includedScripts": []
+    "includedScripts": [],
+    "targets": {
+      "test": {
+        "command": "node tools/doc-links.mjs"
+      }
+    }
   }
 }

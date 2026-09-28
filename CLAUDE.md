@@ -63,6 +63,12 @@ with no project filter, so each covers all three projects. CI
 `npm test` — so it covers all three projects' build and test targets, and no project's
 lint.
 
+`test` also runs on a fourth project, the workspace root (`@zvenigora/ng-eval`), whose only
+`test` target is `node tools/doc-links.mjs`, declared in the root `package.json`'s `nx.targets`.
+That is the document cross-reference gate (`docs/backlog.md` F9). It fails on a relative link
+in any tracked `*.md` whose file or `#anchor` does not resolve, so a doc-only edit can turn
+`npm test`, CI and the gate red.
+
 **A green `test` run is not a type-check.** Jest compiles per file through `tsconfig.spec`
 and is more permissive than `tsconfig.lib` — Phase 3 step 3 shipped an `EvalOptions` index
 read that the whole suite accepted and `build:production` rejected (`TS7053`), so run the

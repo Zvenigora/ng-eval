@@ -44,8 +44,8 @@ session by reading the links back. That is the fourth time in this project a che
 its own author inside a session of being written; the first three became
 [`docs/forms/phase-6-plan.md`](forms/phase-6-plan.md) §§ 0.2.1–0.2.3. It argues for a
 **mechanical link check** over this file's cross-references rather than a rule telling people
-to be careful — see [`docs/gates/plan.md`](gates/plan.md) § 8.4, where the question of whether
-step 2's machinery should cover it is open.
+to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it was built
+2026-09-28 as `tools/doc-links.mjs`, which retired [F9](#f9).
 
 ### Work in flight
 
@@ -142,7 +142,7 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [F6](#f6) | CONTRIBUTING's "Code style" describes a config that never existed here | repo | decision (editorial) | **Retired — fixed 2026-09-26**; the table replaced by a paragraph pointing at the four flat configs |
 | [F7](#f7) | Intermittent Jest worker-teardown warning — **no established locus**, possibly Nx/Jest rather than a library | — | fix? | Open — locus corrected 2026-09-09; **not reproducible per project** |
 | [F8](#f8) | The release tag step has no forcing function, and ships with a silencer | repo | fix | **Premise retired 2026-09-16** — all ten missing tags written and pushed, so the arrears are cleared; the mechanism is untouched and the entry is live |
-| [F9](#f9) | No gate on document cross-references — the register's own dangling links | repo | fix | Open — deferred by [plan](gates/plan.md) § 8.4; **first concrete instance recorded 2026-09-13** |
+| [F9](#f9) | No gate on document cross-references — the register's own dangling links | repo | fix | **Retired — fixed 2026-09-28**; `tools/doc-links.mjs`, the workspace root's `test` target, so `npm test` and CI run it. Deferred 2026-09-07 by [plan](gates/plan.md) § 8.4 |
 | [F10](#f10) | The drift gate covers documented-**and-imported** symbols only | core, signals, forms | fix | Open — the gap [F3](#f3) leaves |
 | [F11](#f11) | A gated README can only import from its own specifier | core, signals, forms | fix | Open — bounds [F3](#f3) and [F4](#f4) |
 | [F12](#f12) | The downstream peer ranges exclude `eval-core` 0.4.0 — **and fail both downstream `lint` targets** | signals, forms | fix | **Retired — fixed, Phase 2 step 7**; both ranges widened, and `lint`'s cache inputs with them |
@@ -2186,7 +2186,8 @@ is `keySignal(key)()` with no `isSignal` step
 
 Near-unreachable for Signal Forms, whose models are plain data.
 
-**Partly discharged.** [`README.md:661`](../modules/eval-forms/README.md#L661) documents the shape,
+**Partly discharged.** [`README.md` § Two things that are not available
+here](../modules/eval-forms/README.md#two-things-that-are-not-available-here) documents the shape,
 but attributes it to "the member visitor" — which is the *nested* read mechanism
 (`{ user: { name: signal('a') } }`), not this one. For a top-level key no member visitor is
 involved: `keySignal('ready')()` returns the inner signal function directly. The README also does
@@ -3208,10 +3209,61 @@ imported** symbols, so an exported symbol named only in prose is unwatched. F10 
 are gated" is entitled to mean.
 
 <a id="f9"></a>
-## F9 — No gate on document cross-references
+## F9 — No gate on document cross-references — **Retired, fixed**
 
-**Package** repo · **Kind** fix · **Status** Open — considered and deferred by
+**Package** repo · **Kind** fix · **Status** **Retired — fixed 2026-09-28**: `tools/doc-links.mjs`,
+the workspace root's `test` target. Considered and deferred by
 [`docs/gates/plan.md`](gates/plan.md) § 8.4, step 2, 2026-09-07
+
+**The gate.** `tools/doc-links.mjs` reads the tracked `*.md` files (`git ls-files`) using only Node
+built-ins. It resolves every relative `](path)` and `](path#anchor)` link, and every `#anchor`-only
+link. The target file must exist relative to the linking file. The anchor must be a GitHub heading
+slug (with `-1`, `-2` for duplicates) or an explicit `<a id>` in the target. A `#L…` anchor on a
+`.md` target is an error, because GitHub renders no line anchors in markdown. A `#L…` anchor on any
+other file is checked against the end of the file only. Links in fenced blocks and inline code,
+links with a scheme and reference-style definitions are skipped. A broken link prints
+`file:line: target — reason` and exits 1.
+
+**Where it lives, and why § 8.4's objection no longer holds.** It is the `test` target of the
+workspace root, `@zvenigora/ng-eval`, declared in the root `package.json`'s `nx.targets` as
+`node tools/doc-links.mjs`. So `nx run-many -t test`, `npm test` and CI all run it, with no project
+filter to add. § 8.4 deferred it because it had no natural project, and folding it into
+`public-api.spec.ts` would have put two unrelated claims behind one name. [§ 8.1](gates/plan.md)
+had also measured that a spec outside a project runs under no `nx test` target. All three
+assumed the gate had to be a Jest spec in one of the libraries. The root has been an Nx project
+all along, with only `nx-release-publish` on it, so a plain Node target there makes its own claim
+under its own name. Its scope, every tracked `*.md`, matches the project's scope, the whole
+workspace. It needs no Jest config and no helper import across the boundary rule. It is
+uncached, so it has no `inputs` to keep right.
+
+**Measured before it was built**, on 2026-09-27: 115 files and 970 links, 5 of them dangling and
+all 5 missing anchors. Three were `.md#L…` line anchors whose lines had drifted: 661 → 682 in the
+`eval-forms` README, 555 → 576 there, and 102 → 103 in the `eval-signals` README. Two were
+heading slugs written by hand that never matched: `step-8--f14s-four-comment-sites` from 03b5923,
+and `…030--050…` from 737ebab, where GitHub renders `…030-050…`. All five are fixed by the commit
+that added the gate, which pointed the three line anchors at the headings now holding the cited
+text. **The slugger was compared against GitHub, not trusted.** Every heading in the 7 files that
+anchors point into (265 headings) matched GitHub's rendered `id`s. That comparison caught one bug
+before the gate shipped: `_` inside a code span was being stripped as emphasis, which broke the
+[R1](#r1) heading. A full scan takes about 80 ms, and about 180 ms through `nx`.
+
+**What it does not see, and why neither is gated.**
+
+- **Line-anchor drift into source files.** A `#L…` anchor into a `.ts` file passes as long as the
+  line exists. Blaming each linking line and comparing the cited line then and now found **46 of 88
+  drifted** on 2026-09-27. Of those, 38 are in design records (36 in
+  [`statements/phase-2-plan.md`](statements/phase-2-plan.md), 2 in [`a20/plan.md`](a20/plan.md)),
+  which cite the code as it was when they were written and are left that way by design. The other
+  8 are in this register. The check needs history to run: about 4.7 s, and it needs the full
+  history. CI's `actions/checkout@v5` makes a depth-1 clone, where blame cannot attribute a
+  line. It also cannot tell drift that is wrong from drift a record is meant to have. So it stays
+  a measurement, not a gate. A live document that cites code should use a heading anchor or a
+  SHA-pinned link.
+- **References that are not links.** The "Track 1 / Track 2" instance below had no link syntax,
+  so there was nothing to resolve. A label is not machine-checkable. The guard is the
+  convention this entry already recorded, that scope rows cite entry IDs.
+
+*As recorded before the fix:*
 
 Nothing resolves a `](path#anchor)` link in this repository's documents against the filesystem or
 against the target's headings. The evidence for wanting one is this register's own history: the
@@ -3410,7 +3462,7 @@ confusion `eval-signals` 0.1.1 and `eval-forms` 0.2.1 were released to remove. `
 also reproduces the manifest verbatim, so it reads as authoritative.
 
 **Not fixed by step 8**, whose sanctioned list is the four comment sites and explicitly no other
-downstream path ([plan § 8](statements/phase-2-plan.md#step-8--f14s-four-comment-sites)). A README
+downstream path ([plan § 8](statements/phase-2-plan.md#step-8--f14s-stale-peer-range-citations)). A README
 is neither a comment nor a manifest, so it falls outside that list rather than inside it by
 analogy — and a published documentation change is the sort of thing this phase has twice decided is
 worth its own sanction. It needs one.

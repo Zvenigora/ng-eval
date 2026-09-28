@@ -1096,7 +1096,7 @@ before it touches either file, and the answer is not "the leak is fixed, delete 
   > `EvalContext`, so a consumer can strand a scope at 0.4.0 exactly as at 0.3.0. **The
   > containments therefore stay even at `>=0.4.0`**, and a reader who takes "removal is gated on
   > raising the peer range" at face value will raise it and then delete a guard that is still
-  > load-bearing. Corrected here rather than only in [§ 7.1](#71-decision--the-range-proposed-030--050-not-040)
+  > load-bearing. Corrected here rather than only in [§ 7.1](#71-decision--the-range-proposed-030-050-not-040)
   > because that is the failure mode: the next person reads this gate, not the step that revised it.
   >
   > Step 7 in the event chose `>=0.3.0 <0.5.0`, which keeps reason (a) live as well — so both (a)

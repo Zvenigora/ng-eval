@@ -52,7 +52,8 @@ interfaces and type aliases have no runtime presence.
 
 Measured against the current tree:
 
-- [`modules/eval-forms/README.md:555`](../../modules/eval-forms/README.md#L555) documents
+- [`modules/eval-forms/README.md` § Reuse a schema function, not a schema
+  value](../../modules/eval-forms/README.md#reuse-a-schema-function-not-a-schema-value) documents
   `import { ExpressionRules } from '@zvenigora/ng-eval-forms/signals'`.
 - `ExpressionRules` is `export interface` at
   [`signals/src/lib/rules.ts:60`](../../modules/eval-forms/signals/src/lib/rules.ts#L60).
@@ -136,7 +137,7 @@ this.quantity.set(4);
 this.total();              // 40  — recomputed
 ```
 
-and `## Dependency introspection` at [:102](../../modules/eval-signals/README.md#L102) then prints
+and [`## Dependency introspection`](../../modules/eval-signals/README.md#dependency-introspection) then prints
 
 ```ts
 const total = createEvalSignal('price * quantity', { price, quantity, shipping },
