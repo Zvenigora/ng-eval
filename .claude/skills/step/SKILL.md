@@ -120,7 +120,7 @@ After I confirm:
 ### 4. Verify
 
 ```sh
-npx nx run-many -t lint test build
+npx nx run-many -t lint test build --skip-nx-cache --output-style=static
 ```
 
 All must be clean, with the same exception § 1 allows and on the same terms. The

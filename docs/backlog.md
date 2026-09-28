@@ -149,7 +149,7 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [F13](#f13) | Nothing gates the README block count `readme-examples.spec.ts` claims | core, signals, forms | test gap | **Retired — fixed 2026-09-27**, test only; all four specs gated. The gate's first run found `eval-core`'s count wrong a third time |
 | [F14](#f14) | Six sites cite the retired `^0.3.0` range, two of them in published READMEs | signals, forms | fix (comments, docs) | **Retired — fixed, Phase 2 step 8**; filed as four sites, was six |
 | [F15](#f15) | The downstream peer ranges exclude `eval-core` 0.6.0 — **latent until the bump, then both downstream `lint` targets fail** | signals, forms | fix (release coordination) | **Retired — fixed and released 2026-09-26**; both ranges widened to `>=0.3.0 <0.7.0`, and both packages released: `eval-signals` 0.1.3 and `eval-forms` 0.2.3, tagged f26f987 |
-| [F16](#f16) | Workspace dependency advisories — **9 moderate on the workspace's Angular 22.0.8**, and a temporary `smol-toml` override under `nx` | repo | fix | Open |
+| [F16](#f16) | Workspace dependency advisories — 9 moderate on the workspace's Angular 22.0.8, and a **temporary `smol-toml` override under `nx`** | repo | fix | Open — **part 1 retired 2026-09-27**: `nx` 23.2.1, Angular 22.1.8 / 22.1.9, `npm audit` 0 at every severity. Part 2, the override, is live until a stable `nx` depends on `smol-toml >= 1.7.1` |
 | [R1](#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -3646,8 +3646,8 @@ F12's measurement, not reproduced here.
 <a id="f16"></a>
 ## F16 — Workspace dependency advisories
 
-**Package** repo · **Kind** fix · **Status** Open. Recorded 2026-09-26, by the commit that cleared
-the Dependabot high alert
+**Package** repo · **Kind** fix · **Status** Open — **part 1 retired 2026-09-27**, part 2 open.
+Recorded 2026-09-26, by the commit that cleared the Dependabot high alert
 
 **None of this reaches a consumer.** Every package below is a root workspace dependency. No
 `modules/*/package.json` depends on `nx` or `smol-toml`. The published peer ranges
@@ -3657,8 +3657,43 @@ own toolchain, and no release is needed for it.
 
 **Two parts, and they are unrelated.**
 
-**1. The moderates that remain: 9, all Angular framework packages at 22.0.8.** Two advisories
-account for all of them:
+**1. The 9 Angular moderates — Retired 2026-09-27, fixed.** `npx nx migrate 23.2.1` moved `nx`
+and every `@nx/*` package from 23.1.1 to 23.2.1, and with them the whole Angular set, each pinned
+exactly in the root `package.json`:
+
+| Packages | Before | After |
+| -------- | ------ | ----- |
+| The eight framework packages, `@angular/compiler-cli`, `@angular/language-service` | 22.0.8 | 22.1.8 |
+| `@angular/cli`, `@angular-devkit/build-angular` / `core` / `schematics`, `@schematics/angular`, and the nested `@angular/build` | 22.0.9 | 22.1.9 |
+| `ng-packagr` | 22.0.2 | 22.1.1 |
+| `angular-eslint` and the three `@angular-eslint/*` | 22.1.0 (`angular-eslint` was `^22.0.0`) | 22.5.0 |
+| `zone.js` | 0.16.2 | 0.16.3 |
+
+The two version lines are Angular's own. The framework and the CLI tooling carry separate patch
+counters, and 22.1.8 and 22.1.9 are the latest of each in the 22.1 line. Both are past both
+advisories below. `npm audit --package-lock-only` then reported **0 at every severity**. The three
+migrations 23.2.1 ships (`nx` `23-2-0-set-cache-on-executor-target-defaults` and `@nx/js`'s two
+pnpm cache migrations) ran and changed nothing. No Angular migration applied between 22.0 and
+22.1. The gate kept its counts (1076 / 131 / 261), and `dist/`'s declarations changed only in
+Angular-generated `ɵprov` metadata.
+
+Two things the next `nx migrate` here will hit, since part 2 is likely removed by one:
+
+- **The upgrade still did not resolve under a plain `npm install`.** Moving the whole set together
+  was necessary, as predicted below, but it was not sufficient. `npm install` failed `ERESOLVE`
+  against the locked 22.0.x peer set, first on the `@angular-eslint/*` peers and, with those
+  uninstalled, on `@angular/animations` as below. It went through with `npm install --force`. The
+  result was then checked: a plain `npm install` on it left `package-lock.json` byte-identical,
+  and `npm ls --all` reported no `invalid` entry that the 22.0.x tree did not already have (`vite`'s
+  optional peers `@types/node` and `yaml`).
+- **On Windows, `nx migrate` can silently bump only `nx`.** It resolves its own installed version by
+  testing whether `nx/package.json`'s resolved path `startsWith` the workspace root, case
+  sensitively. When `NX_WORKSPACE_ROOT_PATH` spells the drive `d:` and Node resolves it as `D:`, the
+  test fails and the whole `@nx/*` package group is skipped, with no warning. Correcting the variable's case
+  fixed it.
+
+*As recorded 2026-09-26:* **The moderates that remain: 9, all Angular framework packages at
+22.0.8.** Two advisories account for all of them:
 
 | Advisory | Reported on | Patched in |
 | -------- | ----------- | ---------- |
@@ -3706,9 +3741,14 @@ already do. The lockfile will keep recording `nx`'s own declared `"smol-toml": "
 `node_modules/nx` while the override is in place. That line is `nx`'s manifest copied into the
 lockfile, not an installed version. `node_modules/smol-toml` is the entry to check.
 
+**Still live on 23.2.1.** Re-checked 2026-09-27, after part 1 moved the workspace onto `nx`
+23.2.1. `nx` still declares `"smol-toml": "1.6.1"`, and `node_modules/smol-toml` resolves to 1.9.0
+under the override. Both overrides in `overrides.nx` stay.
+
 *Recorded*: this entry; `package.json` `overrides.nx`.
 *Verified*: `npm audit --package-lock-only`, 2026-09-26. Before the override: 12 high, 9 moderate.
-After: 0 high, 0 critical, 9 moderate, as listed above.
+After: 0 high, 0 critical, 9 moderate, as listed above. Again 2026-09-27, after part 1: 0 at every
+severity.
 
 ---
 
