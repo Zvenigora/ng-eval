@@ -276,8 +276,8 @@ node downstream of it pops its neighbour's value.
 
 | # | Expression | Needs an option? | What happens today |
 | - | ---------- | ---------------- | ------------------ |
-| 1 | `(a)++` | `preserveParens: true` | `argument.type === 'ParenthesizedExpression'`; neither branch of [`update-expression.ts:19-37`](../modules/eval-core/src/lib/internal/visitors/update-expression.ts#L19-L37) matches. Pushes nothing |
-| 2 | `[a, b] = arr` | **no** | `left.type === 'ArrayPattern'`; neither branch of [`assignment-expression.ts:46-63`](../modules/eval-core/src/lib/internal/visitors/assignment-expression.ts#L46-L63) matches |
+| 1 | `(a)++` | `preserveParens: true` | `argument.type === 'ParenthesizedExpression'`; neither branch of [`update-expression.ts:20-42`](../modules/eval-core/src/lib/internal/visitors/update-expression.ts#L20-L42) matches. Pushes nothing |
+| 2 | `[a, b] = arr` | **no** | `left.type === 'ArrayPattern'`; neither branch of [`assignment-expression.ts:47-69`](../modules/eval-core/src/lib/internal/visitors/assignment-expression.ts#L47-L69) matches |
 | 3 | `({m} = o)` | **no** | `left.type === 'ObjectPattern'`; same chain, same fall-through |
 
 *Measured 2026-09-10*, against the built package: 2 and 3 both return `undefined`, throw nothing,
@@ -501,7 +501,7 @@ one line (and its source map with it); the `.d.ts` is byte-identical. Test count
 **Package** core · **Kind** fix · **Status** Open, Covered
 
 Two related gaps in one method
-([`eval-context.ts:233-259`](../modules/eval-core/src/lib/internal/classes/eval/eval-context.ts#L233-L259)),
+([`eval-context.ts:283-309`](../modules/eval-core/src/lib/internal/classes/eval/eval-context.ts#L283-L309)),
 both surfaced by Phase 1 step 4's read hooks, which report `getKey`'s answer as the key that was
 read.
 
@@ -706,7 +706,7 @@ behavioural change to what escapes a call.
 
 **Package** core · **Kind** fix · **Status** Open
 
-[`eval-context.ts:209-213`](../modules/eval-core/src/lib/internal/classes/eval/eval-context.ts#L209-L213)
+[`eval-context.ts:262-267`](../modules/eval-core/src/lib/internal/classes/eval/eval-context.ts#L262-L267)
 calls `getContextValue(this._original, key)` inside the loop over `this._priorScopes`, where it
 should read `scope`. So the loop re-tests the original context on every iteration: it can only
 ever succeed for a key `_original` already holds — in which case the preceding block has returned
@@ -963,8 +963,8 @@ The third stack invariant in `CLAUDE.md`: exactly one `st.context.pop()` per
 `st.context.push()`, on every exit path including the ones an exception takes. Only two visitors
 pushed scopes and **neither used `try`/`finally`**, so a body that threw skipped the pop:
 
-- [`arrow-function-expression.ts:16-18`](../modules/eval-core/src/lib/internal/visitors/arrow-function-expression.ts#L16-L18)
-- [`pattern.ts:110-113`](../modules/eval-core/src/lib/internal/visitors/pattern.ts#L110-L113)
+- [`arrow-function-expression.ts:16-18` at `ef5ac2b`](https://github.com/Zvenigora/ng-eval/blob/ef5ac2b4be987577a868baf2cd48739d5d55a1be/modules/eval-core/src/lib/internal/visitors/arrow-function-expression.ts#L16-L18)
+- [`pattern.ts:110-113` at `ef5ac2b`](https://github.com/Zvenigora/ng-eval/blob/ef5ac2b4be987577a868baf2cd48739d5d55a1be/modules/eval-core/src/lib/internal/visitors/pattern.ts#L110-L113)
 
 **Why this outlives the walk.** The value stack and the open-node stack are on `EvalState`, which
 `evaluate` builds per walk and discards. The scope stack is on `EvalContext`, and one
@@ -1813,7 +1813,7 @@ The defect, as it stood:
 reach the published FESM bundle**, verified by building and grepping
 `dist/modules/eval-core/fesm2022/`. This entry was one of them; the other three are [B3](#b3).
 
-[`pattern.ts:83`](../modules/eval-core/src/lib/internal/visitors/pattern.ts#L83) is
+[`pattern.ts:83` at `ef5ac2b`](https://github.com/Zvenigora/ng-eval/blob/ef5ac2b4be987577a868baf2cd48739d5d55a1be/modules/eval-core/src/lib/internal/visitors/pattern.ts#L83) is
 `console.log(pattern, st, callback, arg)`, inside `evaluateMemberExpression`, guarded by
 `if (pattern.type === 'MemberExpression')`, and the *next* line is
 `throw new Error('evaluateMemberExpression is not implemented.')`. So it is not per-node work:
@@ -3254,7 +3254,16 @@ before the gate shipped: `_` inside a code span was being stripped as emphasis, 
   drifted** on 2026-09-27. Of those, 38 are in design records (36 in
   [`statements/phase-2-plan.md`](statements/phase-2-plan.md), 2 in [`a20/plan.md`](a20/plan.md)),
   which cite the code as it was when they were written and are left that way by design. The other
-  8 are in this register. The check needs history to run: about 4.7 s, and it needs the full
+  8 are in this register, and were re-pointed 2026-09-28:
+  - 4 moved to where the cited code now lives ([A2](#a2)'s two chains, [A4](#a4)'s `getKey`, and
+    [A7](#a7)'s prior-scopes loop, whose original range had started three lines early).
+  - 3 became SHA-pinned links to `ef5ac2b`, because the code they cite is gone ([A9](#a9)'s two
+    unguarded push sites, and [B2](#b2)'s `console.log`).
+  - 1 was left alone. [R1](#r1)'s export is still on line 12, and the line only gained
+    `EMPTY_COMPLETION`.
+
+  That last one is also a limit of the measurement itself: a changed line can still hold the code
+  it cites, so 46 overstates the real drift. The check needs history to run: about 4.7 s, and it needs the full
   history. CI's `actions/checkout@v5` makes a depth-1 clone, where blame cannot attribute a
   line. It also cannot tell drift that is wrong from drift a record is meant to have. So it stays
   a measurement, not a gate. A live document that cites code should use a heading anchor or a
