@@ -341,10 +341,10 @@ export function createEvalSignal(
       // together however long after this frame it is called. What keeps the
       // loop here is not that defect:
       //
-      //  - `package.json` declares `"@zvenigora/ng-eval-core":
-      //    ">=0.3.0 <0.5.0"`, and that range admits the *leaking* 0.3.0 as
-      //    well as the fixed 0.4.0. Range-dependent: raising the range past
-      //    0.3.0 would retire this reason and nothing else.
+      //  - The `@zvenigora/ng-eval-core` peer range in
+      //    `modules/eval-signals/package.json` admits the *leaking* 0.3.0.
+      //    Range-dependent: raising its lower bound past 0.3.0 would retire
+      //    this reason and nothing else.
       //  - `EvalContext.push` and `pop` are public methods on a published
       //    class, so a scope can be stranded with no visitor involved at all.
       //    True at every version, and therefore the reason this loop is not

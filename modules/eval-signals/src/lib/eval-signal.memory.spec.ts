@@ -270,12 +270,11 @@ describe('createEvalSignal - lifetime and cleanup', () => {
      * `eval-signal.ts`'s guard **deleted** - a green row reporting coverage it
      * no longer had.
      *
-     * The guard is retained, not redundant-and-removable: `eval-signals` 0.1.1
-     * declares `"@zvenigora/ng-eval-core": ">=0.3.0 <0.5.0"`, a range that
-     * admits the leaking 0.3.0 as well as the fixed 0.4.0. That reason is
-     * range-dependent; the durable one is below, and it is why raising the
-     * range would not make the guard removable. See the `finally` in
-     * `eval-signal.ts` for both.
+     * The guard is retained, not redundant-and-removable: the
+     * `@zvenigora/ng-eval-core` peer range in `modules/eval-signals/package.json`
+     * admits the leaking 0.3.0. That reason is range-dependent; the durable one
+     * is below, and it is why raising the range's lower bound would not make
+     * the guard removable. See the `finally` in `eval-signal.ts` for both.
      *
      * So the leak is now driven the way the durable reason names:
      * `EvalContext.push` and `pop` are **public methods on a published class**,

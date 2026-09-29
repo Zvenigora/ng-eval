@@ -48,10 +48,10 @@ import { EvalContext, EvalOptions, EvalState, call, stateCallback } from '@zveni
  * two reasons that outlive the fix - and they are not the same *kind* of
  * reason, which is the part an earlier version of this docblock got wrong:
  *
- *  - `package.json` declares `"@zvenigora/ng-eval-core": ">=0.3.0 <0.5.0"`.
- *    That range admits the *leaking* 0.3.0 as well as the fixed 0.4.0, so a
- *    supported installation can still be running the defect. **Range-dependent**:
- *    it would stop being true if the range were ever raised past 0.3.0.
+ *  - The `@zvenigora/ng-eval-core` peer range in `modules/eval-forms/package.json`
+ *    admits the *leaking* 0.3.0, so a supported installation can still be
+ *    running the defect. **Range-dependent**: it would stop being true if the
+ *    range's lower bound were ever raised past 0.3.0.
  *  - `EvalContext.push` and `pop` are public methods on a published class: a
  *    scope can be stranded with no visitor involved at all. That is the route
  *    `evaluate-rule.spec.ts`'s containment cases now drive, because it is the
