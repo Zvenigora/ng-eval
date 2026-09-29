@@ -232,7 +232,7 @@ describe('createSignalContext', () => {
      * spent Phases 3-6 asserting a leak, with a docblock saying the
      * assertions were "pinned as current behaviour, not endorsed" and that a
      * fix in `eval-core` would have to update both halves deliberately. Phase
-     * 2 step 0 is that fix - [A9](../../../../docs/backlog.md#a9), a
+     * 2 step 0 is that fix - [A9](../../../../docs/backlog-retired.md#a9), a
      * `try`/`finally` at `arrow-function-expression.ts`'s push site - so this
      * is the deliberate update.
      *

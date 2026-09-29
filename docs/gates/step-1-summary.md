@@ -1,7 +1,7 @@
 # Track 3, step 1 — the CI test configuration, and the coverage decision
 
 Executed 2026-09-07 against [`docs/gates/plan.md`](plan.md) § 4 step 1. Covers
-[`docs/backlog.md`](../backlog.md) [F1](../backlog.md#f1), now retired.
+[`docs/backlog.md`](../backlog.md) [F1](../backlog-retired.md#f1), now retired.
 
 ## 1. What changed
 

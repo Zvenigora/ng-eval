@@ -1,7 +1,7 @@
 # Track 3 Plan — the documentation and CI gates
 
-Covers [`docs/backlog.md`](../backlog.md) entries [F1](../backlog.md#f1), [F3](../backlog.md#f3),
-[F4](../backlog.md#f4), [F7](../backlog.md#f7) and [D10](../backlog.md#d10).
+Covers [`docs/backlog.md`](../backlog.md) entries [F1](../backlog-retired.md#f1), [F3](../backlog-retired.md#f3),
+[F4](../backlog-retired.md#f4), [F7](../backlog.md#f7) and [D10](../backlog-retired.md#d10).
 
 Not a roadmap phase. It ships no capability, adds no exported symbol, and bumps no version. It
 is ordered ahead of Phase 2 in [`ROADMAP.md`](../../ROADMAP.md) § "Suggested order" for one
@@ -112,7 +112,7 @@ line is the one line where that stops being true. It must be enumerated, not glo
 
 This does **not** overturn "do `eval-signals` first" — § 1.3 leaves that conclusion standing on
 a different footing — but the stated reason is retired, and
-[`docs/backlog.md` F4](../backlog.md#f4) should not be read as still asserting it.
+[`docs/backlog.md` F4](../backlog-retired.md#f4) should not be read as still asserting it.
 
 ### 1.3 `eval-signals`' README has a live defect, and finding it re-derived this section
 
@@ -179,7 +179,7 @@ linear — but "already in the shape the gate wants" overstates it by one preamb
 F3 was written closing Phase 1, when `eval-core` was the only published package, and says
 "every symbol a README imports from `@zvenigora/ng-eval-core`… in **both** `README.md` and
 `modules/eval-core/README.md`". Nothing widened it when two more packages shipped — the same
-drift [F1](../backlog.md#f1) carried for two phases.
+drift [F1](../backlog-retired.md#f1) carried for two phases.
 
 Measured inventory of `import { … } from '@zvenigora/…'` lines:
 
@@ -231,14 +231,14 @@ rejecting a block count.
 
 ### In scope
 
-- **[F1](../backlog.md#f1)** — a `configurations.ci` block on the `test` target of
+- **[F1](../backlog-retired.md#f1)** — a `configurations.ci` block on the `test` target of
   `eval-signals` and `eval-forms`, plus the decision on coverage thresholds.
-- **[F3](../backlog.md#f3)** — the documented-symbol drift gate, its export-list source, and its
+- **[F3](../backlog-retired.md#f3)** — the documented-symbol drift gate, its export-list source, and its
   package scope.
-- **[F4](../backlog.md#f4)** — the README-execution gate for `eval-signals`, then the
+- **[F4](../backlog-retired.md#f4)** — the README-execution gate for `eval-signals`, then the
   decide-or-drop for `eval-core`.
 - **[F7](../backlog.md#f7)** — the Jest worker warning, timeboxed, with a drop rule.
-- **[D10](../backlog.md#d10)** — a runnable README block for `applyErrorPolicy`, which folds into
+- **[D10](../backlog-retired.md#d10)** — a runnable README block for `applyErrorPolicy`, which folds into
   an existing spec rather than creating anything. `eval-forms` has **two** README-execution specs
   (`reactive/` and `signals/`); this goes in `reactive/`'s, for the reason step 5 gives.
 
@@ -253,8 +253,8 @@ rejecting a block count.
   narrative authoring, not a gate, and gating it afterwards would then be a sixth step. It
   belongs with whoever next has a reason to document `/signals` end to end. Bundling it here
   would double the plan to buy something none of the other entries need.
-- **Every other backlog entry.** [F2](../backlog.md#f2) (one changelog for three packages),
-  [F5](../backlog.md#f5) (the `js-sha256` range), [F6](../backlog.md#f6) (CONTRIBUTING's rule
+- **Every other backlog entry.** [F2](../backlog-retired.md#f2) (one changelog for three packages),
+  [F5](../backlog.md#f5) (the `js-sha256` range), [F6](../backlog-retired.md#f6) (CONTRIBUTING's rule
   table) and [F8](../backlog.md#f8) (the missing tag) are all tooling or docs, and all four are
   *decisions about policy* rather than gates. They share no file and no mechanism with anything
   here.
@@ -328,7 +328,7 @@ worth having:
 | **F4** execution gate | no | yes | A documented snippet that does not run as printed |
 
 Neither supersedes the other and nothing but a human keeps a snippet and its case in step. That
-last sentence is [F4](../backlog.md#f4)'s own limitation, restated rather than solved.
+last sentence is [F4](../backlog-retired.md#f4)'s own limitation, restated rather than solved.
 
 ### 3.4 The coverage decision — recommended shape, decided in step 1
 
@@ -368,7 +368,7 @@ answer — into `docs/backlog.md` F1.
   > `--skip-nx-cache`: `nx test eval-signals --configuration=ci` exits 0, runs the suite, and
   > silently produces no coverage — Nx ignores an unknown configuration rather than rejecting it.
   > So the discriminator is coverage emitted, not exit status, and F1's own "that command does
-  > not exist" understated the gap: the failure was **silent**, not loud. See [F1](../backlog.md#f1).
+  > not exist" understated the gap: the failure was **silent**, not loud. See [F1](../backlog-retired.md#f1).
 - The three baseline coverage numbers are in the step summary.
 - F1's entry records the threshold decision and its ground, and is marked Retired if nothing is
   left open.
@@ -742,7 +742,7 @@ for `import { … } from '<specifier>'` and resolves each name. Resolving `](pat
 the filesystem and against the target's anchors is the same shape of scan over the same files,
 and [`docs/backlog.md`](../backlog.md)'s preamble now records the evidence for wanting it: the
 commit that created that register shipped two links to a section it had not written — in the
-commit arguing that dangling cross-references are how [A8](../backlog.md#a8) hid for five phases.
+commit arguing that dangling cross-references are how [A8](../backlog-retired.md#a8) hid for five phases.
 
 Two things make this a question rather than a sixth step. It is a **different gate** — nothing to
 do with the public API surface F3 exists to guard — so folding it into `public-api.spec.ts` would
@@ -751,7 +751,7 @@ wider than anything else here. **Decide in step 2**, once the scan helper exists
 known. If it is deferred, it goes into `docs/backlog.md` as its own entry rather than staying a
 paragraph in a plan — which is the failure the register was built to stop.
 
-**Settled in step 2: deferred, and recorded as [F9](../backlog.md#f9).** The two reasons above
+**Settled in step 2: deferred, and recorded as [F9](../backlog-retired.md#f9).** The two reasons above
 both survived contact with the helper, and building it added a third. The machinery does not
 transfer as cleanly as the shape suggests: the export-list reader — the part that was the
 unknown — is no help at all to a link checker, which needs only `fs` and a heading-to-anchor

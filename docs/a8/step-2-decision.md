@@ -1,7 +1,7 @@
 # A8 step 2 — who owns a state that `createState` hands back
 
 The decision [`plan.md`](plan.md) § 3 frames and § 4 leaves open, for
-[`docs/backlog.md`](../backlog.md) [A8](../backlog.md#a8)'s second half. Drafted against
+[`docs/backlog.md`](../backlog.md) [A8](../backlog-retired.md#a8)'s second half. Drafted against
 `10dd98f`, the commit that finished step 1.
 
 **Decided 2026-09-25: (a), with both flagged costs accepted.**
@@ -133,7 +133,7 @@ unsubscribe that `on` returns. The one thing only the service can release is its
 and under (a) that reference does not exist.
 
 That completes a direction this repository has already taken twice.
-[A21](../backlog.md#a21) decided that destroy "has no business emptying" a caller's context.
+[A21](../backlog-retired.md#a21) decided that destroy "has no business emptying" a caller's context.
 Step 1 decided that a `simpleEval` registry is the caller's to clear (§ 2.2). After step 1,
 whether destroy clears your registry depends on **which entry point you used**. (a) removes that
 asymmetry: destroy does nothing to anything you passed in, whichever method you passed it to. (b)
@@ -185,7 +185,7 @@ built the states.
   implementing step inverts the ones that describe destroy's reach, for example "should **not**
   clear a caller-owned registry that outlives the service". It deletes the ones that describe a
   drain that no longer exists (3.1–3.4).
-- [A21](../backlog.md#a21)'s recorded decision to keep the registry clear "deliberately" is
+- [A21](../backlog-retired.md#a21)'s recorded decision to keep the registry clear "deliberately" is
   reversed. Its reason, that a hook's closure usually captures the state it observes, is true, but
   what it keeps alive is the caller's registry.
 

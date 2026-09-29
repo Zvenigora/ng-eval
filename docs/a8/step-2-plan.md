@@ -1,6 +1,6 @@
 # A8 step 2 — `EvalService` stops tracking the states `createState` hands back
 
-Plan and step in one, for [`docs/backlog.md`](../backlog.md) [A8](../backlog.md#a8)'s second
+Plan and step in one, for [`docs/backlog.md`](../backlog.md) [A8](../backlog-retired.md#a8)'s second
 half. It implements option (a) from [`step-2-decision.md`](step-2-decision.md), as decided on
 2026-09-25. Drafted against `10dd98f`.
 
@@ -8,7 +8,7 @@ half. It implements option (a) from [`step-2-decision.md`](step-2-decision.md), 
 
 - The registry clear, published in the `hooks` JSDoc and the README from 0.3.0 to 0.5.0, is
   withdrawn.
-- [A21](../backlog.md#a21)'s decision to keep that clear is reversed.
+- [A21](../backlog-retired.md#a21)'s decision to keep that clear is reversed.
 
 ## 1. Objective
 
@@ -282,7 +282,7 @@ the last, which is recorded:
   - four line links in [A5](../backlog.md#a5) into `eval.service.ts`, re-pointed to the moved
     `throw` sites;
   - three sentences in A8's entry still in the present tense;
-  - two in [A17](../backlog.md#a17)'s, now marked as history;
+  - two in [A17](../backlog-retired.md#a17)'s, now marked as history;
   - a comment in the memory spec saying `ngOnDestroy` abandons frames;
   - `plan.md`'s link to the replaced `eval-signals` case, and R4's link to a line that no longer
     exists, both unlinked;
@@ -291,7 +291,7 @@ the last, which is recorded:
   - 2.9's docblock, which said no local reaches a state while `held` does.
 - **Coverage:** `createState` and `simpleEvalAsync` after destroy were untested, although the
   new JSDoc promises it. That is 2.10.
-- **Not fixed, recorded as [A22](../backlog.md#a22):** five older cases whose only destroy-related
+- **Not fixed, recorded as [A22](../backlog-retired.md#a22):** five older cases whose only destroy-related
   claim, "`ngOnDestroy` does not throw", became vacuous when `ngOnDestroy` became one assignment.
   They predate the step, and `CLAUDE.md` asks before deleting or weakening an assertion.
 
@@ -348,7 +348,7 @@ of each hit.
   pointers to the decision and to this plan.
 - **Added after the code-reviewer:**
   - `eval-state.ts`: `resetHookBookkeeping`'s JSDoc, which ships in the `.d.ts`;
-  - `docs/backlog.md`: A5's four line links, R4's link, a new entry [A22](../backlog.md#a22) with
+  - `docs/backlog.md`: A5's four line links, R4's link, a new entry [A22](../backlog-retired.md#a22) with
     its index row, and the remaining stale sentences in A8 and A17;
   - `docs/a8/plan.md`: § 1.3's `eval-signals` link and the § 1.3.3 citation;
   - `docs/a8/step-2-decision.md`: a correction note on its draft *Upgrading*.

@@ -1,11 +1,11 @@
 # Trace surface — decide A15, A16 and A19
 
 Plan and step in one, for [`docs/backlog.md`](../backlog.md) [A15](../backlog.md#a15),
-[A16](../backlog.md#a16) and [A19](../backlog.md#a19). Drafted against `ee6b43d`.
+[A16](../backlog-retired.md#a16) and [A19](../backlog.md#a19). Drafted against `ee6b43d`.
 
 ## Objective
 
-Close the three open questions [A12](../backlog.md#a12)'s trace work left open. Two are
+Close the three open questions [A12](../backlog-retired.md#a12)'s trace work left open. Two are
 decisions recorded in the register. One ships a JSDoc change. The same commit adds one line to
 `CLAUDE.md` separating a corrected criterion from an amended one.
 
@@ -65,7 +65,7 @@ previously prescribed for it was "halt and amend", so the line says the step doe
 - `docs/trace-surface/plan.md`: this file
 
 **Category:** docs. The JSDoc ships in the `.d.ts`, and no exported shape changes, so there is no
-bump and no manifest change. [F15](../backlog.md#f15)'s peer ranges belong to the batch release.
+bump and no manifest change. [F15](../backlog-retired.md#f15)'s peer ranges belong to the batch release.
 
 ## Exit criteria
 

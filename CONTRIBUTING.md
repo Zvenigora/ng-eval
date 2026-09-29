@@ -112,7 +112,7 @@ All three packages publish to the public npm registry under the `@zvenigora` sco
 
    A changelog heading does not prove a publish. Five `eval-core` versions were
    changelogged and never published, and nothing caught it until the changelog was checked
-   against this list ([F2](docs/backlog.md#f2)). If the version is missing, do not tag it.
+   against this list ([F2](docs/backlog-retired.md#f2)). If the version is missing, do not tag it.
 5. Tag the release and push the tag. The format is `{projectName}@{version}` over the **Nx
    project name**, matching `release.releaseTag.pattern` in `nx.json`. Tag only the packages
    this release actually publishes:
@@ -180,7 +180,7 @@ What remains unadopted is the **full `nx release` flow**, not any single piece o
 command bundles versioning, changelog generation, a release commit, tagging and publishing
 into one run. The changelogs are no longer in its way: since 2026-09-28 each package keeps
 its own `modules/<name>/CHANGELOG.md`, the per-project layout `nx release changelog`
-maintains ([F2](docs/backlog.md#f2)). They are still written by hand, and adopting the flow
+maintains ([F2](docs/backlog-retired.md#f2)). They are still written by hand, and adopting the flow
 would mean reconciling its generated entries with them. What is not settled is the flow
 itself: no release has yet been cut through it end to end. The manual procedure above is the
 one that has actually been exercised, so it stays the documented path until that changes.

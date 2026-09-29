@@ -1,15 +1,15 @@
 # A21 — stop `EvalService.ngOnDestroy` clearing caller-owned contexts
 
-Plan and step in one, for [`docs/backlog.md`](../backlog.md) [A21](../backlog.md#a21). Drafted
+Plan and step in one, for [`docs/backlog.md`](../backlog.md) [A21](../backlog-retired.md#a21). Drafted
 against `6da12da`.
 
 ## Objective
 
 `ngOnDestroy` must stop mutating contexts the caller supplied. The service may drop its own
 references to them. It may not empty them. An `EvalHooks` registry adopted through
-`options.hooks` is still cleared. That is deliberate and published; [A21](../backlog.md#a21)
-records why it stays. *(Reversed 2026-09-25 by [A8](../backlog.md#a8)'s step 2, which removed
-the drain and with it the registry clear. [A21](../backlog.md#a21) records the reversal and its
+`options.hooks` is still cleared. That is deliberate and published; [A21](../backlog-retired.md#a21)
+records why it stays. *(Reversed 2026-09-25 by [A8](../backlog-retired.md#a8)'s step 2, which removed
+the drain and with it the registry clear. [A21](../backlog-retired.md#a21) records the reversal and its
 cause.)*
 
 ## What the tree says
@@ -31,7 +31,7 @@ copied from a plain object under `caseInsensitive`, via `Registry.fromObject`, a
 absent context. Both are stored at `EvalContext._original`. Neither is ever the argument, so
 neither enters the set. The other drain, `state.context.clear()` in the per-state loop
 ([`:83-85`](../../modules/eval-core/src/lib/actual/services/eval.service.ts)), targets an
-`EvalContext`, and `EvalContext` has no `clear` ([A17](../backlog.md#a17) records this). So:
+`EvalContext`, and `EvalContext` has no `clear` ([A17](../backlog-retired.md#a17) records this). So:
 
 - **Every entry in `_activeContexts` is caller-owned.** Nothing needs recording. The
   distinction is structural.
@@ -69,7 +69,7 @@ Two deletions in `ngOnDestroy`. Nothing is added.
   business.
 - The `state.context.clear()` call in the per-state loop. That is an edit inside the loop that
   iterates `_activeStates`, not to the set. **Membership, additions and the set's drain are
-  untouched** ([A8](../backlog.md#a8), [A20](../backlog.md#a20)).
+  untouched** ([A8](../backlog-retired.md#a8), [A20](../backlog-retired.md#a20)).
 
 **Not done: adding a drain for the service-built `Registry`.** It would be new behaviour, not a
 fix. It is also not recoverable at destroy time: `state.context.original` looks the same whether
@@ -77,10 +77,10 @@ fix. It is also not recoverable at destroy time: `state.context.original` looks 
 record taken at `createState`. And it would release only a shallow copy of a context that the
 caller already holds through the state. Worth a backlog entry only if someone asks for it.
 
-**Effect on siblings.** [A20](../backlog.md#a20) becomes easier. After this step `_activeContexts`
+**Effect on siblings.** [A20](../backlog-retired.md#a20) becomes easier. After this step `_activeContexts`
 has no reader but its own `clear()`. It is pure retention, so A20's fix can delete the field
 outright, `createState` contexts included, instead of riding with A8. A8 is unchanged.
-[A17](../backlog.md#a17) loses one of its five drains. The removed loop takes one of
+[A17](../backlog-retired.md#a17) loses one of its five drains. The removed loop takes one of
 [B3](../backlog.md#b3)'s three `console.*` calls with it. That is not clean-up in passing:
 the call has nothing left to guard.
 

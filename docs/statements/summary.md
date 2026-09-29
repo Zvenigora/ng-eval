@@ -12,7 +12,7 @@ Ten steps (0, 0b, 1–8), 2026-09-11 to 2026-09-16, against
 | `@zvenigora/ng-eval-forms` | **0.2.1** | one peer-range field, no code |
 
 The two patch releases exist because `^0.3.0` does not admit `0.4.0`, which broke both downstream
-`lint` targets the moment `eval-core`'s version moved ([F12](../backlog.md#f12)). § 2's "out of
+`lint` targets the moment `eval-core`'s version moved ([F12](../backlog-retired.md#f12)). § 2's "out of
 scope" reasonably read as *`eval-core` only* when the phase opened, and that stopped being true at
 the last step.
 
@@ -31,17 +31,17 @@ corrections written at the step that found them.
 | **Block scoping** | a scope per block, per `for` head; `const` kinds in a `WeakMap` keyed by scope rather than a resolvable key on the record |
 | **The statement dispatcher** | explicit, `default` throws. Moved to `dispatch-statement.ts` in step 6, its fourth importer |
 | **An iteration budget** | `maxIterations`, default 100,000, per outermost `evaluate` entry rather than per state or per loop |
-| **`exit`'s scan bound** | [E6](../backlog.md#e6), landed in step 1 after its premise was measured false |
+| **`exit`'s scan bound** | [E6](../backlog-retired.md#e6), landed in step 1 after its premise was measured false |
 | **A9 and B2** | step 0 — `try`/`finally` at both scope-push sites, and the `EvalState` dump deleted from `pattern.ts` |
 | **The peer ranges** | step 7 — both widened to `>=0.3.0 <0.5.0`, and `nx.json`'s `lint` inputs gained `^production` so a sibling manifest change can no longer be cached over |
 | **The citations of them** | step 8 — six sites re-spelled, and one gate that would have got a live guard deleted |
 
-Opened along the way: [A11](../backlog.md#a11), [A12](../backlog.md#a12),
-[F13](../backlog.md#f13); [F8](../backlog.md#f8) widened from one untagged version to four.
-[F12](../backlog.md#f12) and [F14](../backlog.md#f14) were both opened **and closed** inside the
+Opened along the way: [A11](../backlog-retired.md#a11), [A12](../backlog-retired.md#a12),
+[F13](../backlog-retired.md#f13); [F8](../backlog.md#f8) widened from one untagged version to four.
+[F12](../backlog-retired.md#f12) and [F14](../backlog-retired.md#f14) were both opened **and closed** inside the
 phase, one step apart each time. Resolved, in the register's own vocabulary:
-[A9](../backlog.md#a9) and [B2](../backlog.md#b2) are **Fixed** (step 0); [E6](../backlog.md#e6),
-[F12](../backlog.md#f12) and [F14](../backlog.md#f14) are **Retired — fixed** (steps 1, 7 and 8).
+[A9](../backlog-retired.md#a9) and [B2](../backlog-retired.md#b2) are **Fixed** (step 0); [E6](../backlog-retired.md#e6),
+[F12](../backlog-retired.md#f12) and [F14](../backlog-retired.md#f14) are **Retired — fixed** (steps 1, 7 and 8).
 All five bodies still sit above the register's `# Retired` heading, which is where the entries
 themselves say they belong.
 
@@ -160,7 +160,7 @@ that had no reason to look at it. **It is the phase's third count correction** �
 (8 → 11 → 12, and 12 → 14 in this step). Three instances in one phase is the argument that
 hand-transcribed counts in prose are a category, not a series of slips: the `ForStatement` one
 would have made a correct visitor look like it over-popped, and the block count silently claims
-coverage that may not exist. [F13](../backlog.md#f13) gates the one that is mechanically
+coverage that may not exist. [F13](../backlog-retired.md#f13) gates the one that is mechanically
 checkable; the other two are not, and the only defence is that a count is a claim like any other.
 
 ### 3.5 The relaxation the plan predicted, demonstrated rather than argued
@@ -187,12 +187,12 @@ statements in general.
 **It is in the CHANGELOG and pinned by nothing.** No spec in either library asserts it — adding one
 means editing `modules/eval-signals/`, which this phase's scope gate makes a stop-and-replan. A
 consumer-visible behaviour documented in a published changelog and held by no test is a gap; it is
-the kind of thing [F13](../backlog.md#f13)'s neighbours exist for, and whoever releases
-`eval-signals` next (Phase 5, or [F12](../backlog.md#f12)) should pin it there.
+the kind of thing [F13](../backlog-retired.md#f13)'s neighbours exist for, and whoever releases
+`eval-signals` next (Phase 5, or [F12](../backlog-retired.md#f12)) should pin it there.
 
 ## 4. The gates track caught its first real case, on its own repository
 
-[F3](../backlog.md#f3)'s drift gate has a three-way check: a symbol that **is exported**, is
+[F3](../backlog-retired.md#f3)'s drift gate has a three-way check: a symbol that **is exported**, is
 documented in the **root** README, and is **absent** from the package README. It was built in the
 gates track and had never fired on a release.
 
@@ -202,9 +202,9 @@ is the one that ships nowhere. That is the gate working as designed rather than 
 around — and the probe confirms it is awake: renaming the import to `EMPTY_COMPLETION_XX` reddens
 `public-api.spec.ts` with the exact line and symbol.
 
-The execution gate ([F4](../backlog.md#f4)) covers the two new blocks, which took
+The execution gate ([F4](../backlog-retired.md#f4)) covers the two new blocks, which took
 `readme-examples.spec.ts` from twelve blocks to fourteen. The count is hand-transcribed and now
-[F13](../backlog.md#f13).
+[F13](../backlog-retired.md#f13).
 
 ## 5. What the plan got right, worth keeping
 
@@ -227,8 +227,8 @@ The execution gate ([F4](../backlog.md#f4)) covers the two new blocks, which too
 
 - [F8](../backlog.md#f8) — **four untagged published versions**, three of them created by this
   phase. The sharpest thing the phase leaves, and § 8 below is why it is not "remember to tag".
-- [A12](../backlog.md#a12) — the budget bounds time, not memory; `result.trace` grows per iteration.
-- [A11](../backlog.md#a11) — renaming and nested destructuring bind the wrong key. Live on the
+- [A12](../backlog-retired.md#a12) — the budget bounds time, not memory; `result.trace` grows per iteration.
+- [A11](../backlog-retired.md#a11) — renaming and nested destructuring bind the wrong key. Live on the
   default path, found in step 3, and **not caused by this phase** — declarations only widened the
   route to it.
 - [A2](../backlog.md#a2) — confirmed untouched by measurement at step 6, not by reading the diff:
@@ -314,7 +314,7 @@ a different defect from a missing instruction and it wants a different fix: "rem
 the remedy for a procedure nobody documented, and this procedure is documented. What would actually
 hold is one of — failing loudly when a tag the resolver is about to read does not exist; writing the
 tag from whatever performs the publish, so the two cannot separate; or gating it the way
-[F3](../backlog.md#f3) and [F4](../backlog.md#f4) were gated, with a check that every version in a
+[F3](../backlog-retired.md#f3) and [F4](../backlog-retired.md#f4) were gated, with a check that every version in a
 `modules/*/package.json` has a tag. Only the last catches the four already missing.
 
 It is the same shape as § 7's cache incident and as every finding in § 3: **a mechanism that keeps

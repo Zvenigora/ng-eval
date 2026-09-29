@@ -1,7 +1,7 @@
 # A8 — `EvalService._activeStates` retains every state until `ngOnDestroy`
 
-Plan for [`docs/backlog.md`](../backlog.md) [A8](../backlog.md#a8), the register's founding
-entry, with [A17](../backlog.md#a17) and [B3](../backlog.md#b3) carried in the same method.
+Plan for [`docs/backlog.md`](../backlog.md) [A8](../backlog-retired.md#a8), the register's founding
+entry, with [A17](../backlog-retired.md#a17) and [B3](../backlog.md#b3) carried in the same method.
 Drafted against `c0c385b`.
 
 **Two steps, and this document executes only the first.** Step 1 is piece 1: the states
@@ -9,7 +9,7 @@ Drafted against `c0c385b`.
 `createState` hands back. It is an ownership decision this plan frames and does not make. § 3
 argues for the split.
 
-[A20](../backlog.md#a20) is a precondition that has been met, not a sibling of this fix. Before
+[A20](../backlog-retired.md#a20) is a precondition that has been met, not a sibling of this fix. Before
 A20's fix, `_activeContexts` held every context with a `type`, and it would have kept those
 contexts alive after any fix here.
 
@@ -41,7 +41,7 @@ The drain runs four calls per state inside one `try`, in this order: `stack.clea
 
 | State | Who can still reach it at destroy | What the drain changes |
 | ----- | --------------------------------- | ---------------------- |
-| Built by `createState`, still held by the caller | the caller | Everything. The trace drain ([A12](../backlog.md#a12)) and the hook clear exist for this case, and both are pinned |
+| Built by `createState`, still held by the caller | the caller | Everything. The trace drain ([A12](../backlog-retired.md#a12)) and the hook clear exist for this case, and both are pinned |
 | Built by `createState`, dropped by the caller | only the set | Nothing anyone can observe. The drain empties an object that only the drain can reach, and `clear()` then releases it. **This is piece 2** |
 | Built by `simpleEval`, call returned | only the set, unless it escaped (§ 1.4) | Nothing, unless it escaped. **This is piece 1** |
 | Built by `simpleEvalAsync`, promise pending | the set and the async frame | It drains a state that a walk has yet to finish with: see § 1.5 |

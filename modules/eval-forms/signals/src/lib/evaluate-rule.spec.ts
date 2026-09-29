@@ -31,7 +31,7 @@ const compileExpression = (expression: string): stateCallback =>
  * rewrite.** Until then this fixture drove the leak through a throwing arrow
  * body, because `arrow-function-expression.ts` pushed a scope and popped it
  * with no `try`/`finally`. Step 0 fixed that
- * ([A9](../../../../../docs/backlog.md#a9)), which left both cases below
+ * ([A9](../../../../../docs/backlog-retired.md#a9)), which left both cases below
  * passing with the `finally` in `evaluate-rule.ts` **deleted** - green, and
  * evidence of nothing. The containment is still needed (see that `finally`'s
  * own docblock for the three reasons), so the fixture has to produce a leak

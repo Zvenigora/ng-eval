@@ -10,7 +10,7 @@
  * over the empty set — the shape § 1.5's floor exists to reject. The obligation
  * was recorded in `reactive/src/public-api.spec.ts`'s docstring and in F3
  * rather than left implicit, and step 5 discharges it because
- * [D10](../../../docs/backlog.md#d10) creates the subject: the
+ * [D10](../../../docs/backlog-retired.md#d10) creates the subject: the
  * `applyErrorPolicy` block added to `modules/eval-forms/README.md` is the
  * first import through `@zvenigora/ng-eval-forms` in any README.
  *

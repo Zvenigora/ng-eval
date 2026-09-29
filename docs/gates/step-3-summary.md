@@ -1,7 +1,7 @@
 # Track 3, step 3 — the README-execution gate for `eval-signals`
 
 Executed 2026-09-08 against [`docs/gates/plan.md`](plan.md) § 4 step 3. Covers the
-`eval-signals` half of [`docs/backlog.md`](../backlog.md) [F4](../backlog.md#f4); the
+`eval-signals` half of [`docs/backlog.md`](../backlog.md) [F4](../backlog-retired.md#f4); the
 `eval-core` half is step 4's decision.
 
 ## 1. What changed
@@ -139,6 +139,6 @@ Both materialised, so the condition has a real subject in this file and needed n
   later step wants that import printed, it should extend the gate in the same commit.
 
   **Recorded as [F11](../backlog.md#f11)** rather than left here, and cross-linked from both
-  [F3](../backlog.md#f3) and [F4](../backlog.md#f4): a limit a reader meets only in a step
+  [F3](../backlog-retired.md#f3) and [F4](../backlog-retired.md#f4): a limit a reader meets only in a step
   summary is a limit nobody meets. With [F10](../backlog.md#f10) it is the second coverage bound
   this track found from inside the work rather than from planning.

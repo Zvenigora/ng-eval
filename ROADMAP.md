@@ -110,10 +110,10 @@ record; [`docs/statements/summary.md`](docs/statements/summary.md) is the retros
 function and class declarations, `var`, and everything implying abrupt completion. All now throw
 `Unsupported statement type: <type>` instead of returning an accidental value.
 
-Opened along the way: [A11](docs/backlog.md#a11), [A12](docs/backlog.md#a12),
-[F12](docs/backlog.md#f12) and [F13](docs/backlog.md#f13). Resolved:
-[A9](docs/backlog.md#a9) and [B2](docs/backlog.md#b2) **Fixed** in step 0,
-[E6](docs/backlog.md#e6) **Retired — fixed** in step 1.
+Opened along the way: [A11](docs/backlog-retired.md#a11), [A12](docs/backlog-retired.md#a12),
+[F12](docs/backlog-retired.md#f12) and [F13](docs/backlog-retired.md#f13). Resolved:
+[A9](docs/backlog-retired.md#a9) and [B2](docs/backlog-retired.md#b2) **Fixed** in step 0,
+[E6](docs/backlog-retired.md#e6) **Retired — fixed** in step 1.
 
 <details>
 <summary>The original sketch, kept for the record</summary>
@@ -143,12 +143,12 @@ introduce **control flow** that the current visitor-returns-a-value model
 defects. See [`docs/backlog.md`](docs/backlog.md#phase-2-preconditions) § "Phase 2
 preconditions" for the argument and for why two further entries are *not* preconditions.
 
-- **Step 0 — [BL-A9](docs/backlog.md#a9) and [BL-B2](docs/backlog.md#b2), one session.** A9 is
+- **Step 0 — [BL-A9](docs/backlog-retired.md#a9) and [BL-B2](docs/backlog-retired.md#b2), one session.** A9 is
   the missing `try`/`finally` at both scope-push sites: block scoping means a scope per block
   per iteration, so a `for` body that throws leaks one per iteration, and the five new visitors
   below would copy whatever idiom the two existing sites set. B2 is a `console.log` of the whole
   `EvalState` sitting in a branch that destructuring declarations make reachable.
-- **[BL-E6](docs/backlog.md#e6) is a design constraint of this phase, not a step ahead of it.**
+- **[BL-E6](docs/backlog-retired.md#e6) is a design constraint of this phase, not a step ahead of it.**
   Bounding `exit`'s scan with a mark and choosing the loop-completion mechanism are one
   decision; this phase's plan document owns both.
 
@@ -294,7 +294,7 @@ Key design questions, all inherited from § 3.7 and none costed:
   the correct restore point depends on where the walk ends relative to the promise. This is
   the one open question with a correctness consequence — the context is reused for the life of
   the signal, so an uncontained leak permanently shadows a source key. Fixing
-  [BL-A9](docs/backlog.md#a9) in `eval-core` would remove the question rather than answer it.
+  [BL-A9](docs/backlog-retired.md#a9) in `eval-core` would remove the question rather than answer it.
 - The spec harness: every reactivity assertion in `eval-signals` is a recompute count around a
   synchronous read, and effects are scheduled.
 - Three gaps the sync path leaves for it to close: an expression cannot use `await`, promises
@@ -378,7 +378,7 @@ or in the adapter; it does not get to skip the decision. The escaped-closure res
 survives either way and is not this phase's to solve.
 
 > **Discharged.** Phase 6 built the choke point (`evaluateRule`), so this precondition is met.
-> The `eval-core` defect it contains is still open as [BL-A9](docs/backlog.md#a9), and the
+> The `eval-core` defect it contains is still open as [BL-A9](docs/backlog-retired.md#a9), and the
 > escaped-closure residual survives — see that entry rather than reading this paragraph as
 > pending work.
 
@@ -419,7 +419,7 @@ features deferred to phases not yet specified; and the tooling and documentation
 
 It moved out of this file on 2026-09-06. Until then these were nine sections here, six plan
 and step documents under `docs/`, and several code comments — and the most serious entry
-([`BL-A8`](docs/backlog.md#a8), an unbounded retention in `EvalService`) was in none of them
+([`BL-A8`](docs/backlog-retired.md#a8), an unbounded retention in `EvalService`) was in none of them
 while two documents asserted it was in this one. Read that entry's preamble before adding a
 deferral anywhere other than the backlog.
 
@@ -431,20 +431,20 @@ Entries are cited by stable ID — `BL-A8`, not a line number.
 2. ~~Phase 3 (signals)~~ — **done**, shipped in `eval-signals` 0.1.0; unblocks 4.
 3. ~~Phase 4 (forms)~~ — **done**, shipped in `eval-forms` 0.1.0; unblocks 6.
 4. ~~Phase 6 (`/signals` entry point)~~ — **done**, shipped in `eval-forms` 0.2.0.
-5. The documentation and CI gates — [BL-F3](docs/backlog.md#f3),
-   [BL-F4](docs/backlog.md#f4), [BL-F1](docs/backlog.md#f1), [BL-F7](docs/backlog.md#f7),
-   [BL-D10](docs/backlog.md#d10) / [BL-D11](docs/backlog.md#d11). Not a phase and not new
+5. The documentation and CI gates — [BL-F3](docs/backlog-retired.md#f3),
+   [BL-F4](docs/backlog-retired.md#f4), [BL-F1](docs/backlog-retired.md#f1), [BL-F7](docs/backlog.md#f7),
+   [BL-D10](docs/backlog-retired.md#d10) / [BL-D11](docs/backlog.md#d11). Not a phase and not new
    capability, but ordered here deliberately: no version bump, no behavioural change, blocks
    nothing — and F3 and F4 build gates every later phase inherits, so Phase 2 should start
    behind them rather than adding to a queue in front of them.
 6. ~~Phase 2 (statements)~~ — **done**, shipped in `eval-core` 0.4.0. Opened with the step 0
-   above ([BL-A9](docs/backlog.md#a9), [BL-B2](docs/backlog.md#b2)), both now fixed.
+   above ([BL-A9](docs/backlog-retired.md#a9), [BL-B2](docs/backlog-retired.md#b2)), both now fixed.
 7. Phase 5 (async signals) — depends on Phase 3, and nothing depends on it. Deferred
    out of Phase 3 deliberately rather than left undone; it was ordered after Phase 2 because
    the sync primitive already composes with `resource` for the promise case, and because
-   [BL-A9](docs/backlog.md#a9) — Phase 2's step 0 — retires one of its open questions
+   [BL-A9](docs/backlog-retired.md#a9) — Phase 2's step 0 — retires one of its open questions
    outright. **A9 is now fixed, so that question is answered before Phase 5 opens.**
-   [BL-F12](docs/backlog.md#f12) is the nearer piece of `eval-signals` work: its peer range
+   [BL-F12](docs/backlog-retired.md#f12) is the nearer piece of `eval-signals` work: its peer range
    excludes `eval-core` 0.4.0, and Phase 5 releases that package anyway.
 8. Phase 7 / Phase 8 — reserved above, neither costed nor scheduled.
 

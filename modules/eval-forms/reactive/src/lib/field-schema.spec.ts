@@ -288,7 +288,7 @@ describe('bindFieldProperties', () => {
     //
     // **Rewritten in Phase 2 step 0b, and the reason is worth keeping.** Until
     // then this block observed a shared context through the *scope leak*
-    // [A9](../../../../../docs/backlog.md#a9) left behind:
+    // [A9](../../../../../docs/backlog-retired.md#a9) left behind:
     // `arrow-function-expression.ts` pushed a parameter scope and popped it
     // with no `try`/`finally`, so an arrow that escaped the walk and threw when
     // called later stranded its binding permanently, where a second field could

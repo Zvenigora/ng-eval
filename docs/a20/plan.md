@@ -1,14 +1,14 @@
 # A20 — delete `EvalService._activeContexts`
 
-Plan and step in one, for [`docs/backlog.md`](../backlog.md) [A20](../backlog.md#a20). Drafted
+Plan and step in one, for [`docs/backlog.md`](../backlog.md) [A20](../backlog-retired.md#a20). Drafted
 against `cffae78`.
 
 ## Objective
 
 `EvalService` must keep no reference of its own to a context passed to `createState`,
-`simpleEval` or `simpleEvalAsync`. After [A21](../backlog.md#a21)'s fix, `_activeContexts` does
+`simpleEval` or `simpleEvalAsync`. After [A21](../backlog-retired.md#a21)'s fix, `_activeContexts` does
 nothing but hold those references until `ngOnDestroy`, so this step deletes it.
-`_activeStates` is [A8](../backlog.md#a8), and this step leaves it as it is.
+`_activeStates` is [A8](../backlog-retired.md#a8), and this step leaves it as it is.
 
 ## What the tree says
 

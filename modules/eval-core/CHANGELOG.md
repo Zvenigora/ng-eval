@@ -16,8 +16,8 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [0.6.0] - 2026-09-26
 
-**The trace bound, [A12](../../docs/backlog.md#a12), and `EvalService`'s lifecycle,
-[A8](../../docs/backlog.md#a8) with [A20](../../docs/backlog.md#a20), [A21](../../docs/backlog.md#a21) and
+**The trace bound, [A12](../../docs/backlog-retired.md#a12), and `EvalService`'s lifecycle,
+[A8](../../docs/backlog-retired.md#a8) with [A20](../../docs/backlog-retired.md#a20), [A21](../../docs/backlog-retired.md#a21) and
 [B3](../../docs/backlog.md#b3).** A **minor** rather than a patch: it adds four published symbols and
 changes the shape of none, and this repository has never shipped API in a patch. It does withdraw
 one documented behaviour, `EvalService.ngOnDestroy` clearing your hook registries, and
@@ -54,12 +54,12 @@ their peer ranges to admit it.
   a loop, the whole allocation was paid *before* the throw. The budget bounded time; nothing
   bounded the memory.
 - **`EvalTraceItem.start` and `end` are documented as reserved**
-  ([A16](../../docs/backlog.md#a16)). Nothing has ever set either field. Their JSDoc now says so, and
+  ([A16](../../docs/backlog-retired.md#a16)). Nothing has ever set either field. Their JSDoc now says so, and
   points at `expression` and `EvalState.nodeTimings` for the source text and timing they appear
   to offer. Documentation only — both fields keep their optional `number` type — but the JSDoc
   ships in the `.d.ts`.
 - **⚠️ `EvalService.ngOnDestroy` no longer clears any hook registry, and drains nothing**
-  ([A8](../../docs/backlog.md#a8)). **This withdraws documented behaviour.** From 0.3.0
+  ([A8](../../docs/backlog-retired.md#a8)). **This withdraws documented behaviour.** From 0.3.0
   to 0.5.0, destroy cleared the value stack, the hook registrations and the hook bookkeeping of
   every state the service had built, and that included an `EvalHooks` registry you passed through
   `options.hooks`. It follows from the fix below: the service now keeps no state, so at destroy
@@ -78,13 +78,13 @@ their peer ranges to admit it.
 **No expression result changes.** `eval`, `simpleEval` and their async forms return
 byte-identical values. What changes is two surfaces around the result:
 
-- **Diagnostics.** `EvalResult.trace` is bounded where it was not ([A12](../../docs/backlog.md#a12)).
+- **Diagnostics.** `EvalResult.trace` is bounded where it was not ([A12](../../docs/backlog-retired.md#a12)).
 - **`EvalService`'s lifecycle: what it keeps, and what `ngOnDestroy` touches.** The service no
   longer keeps anything you pass it or anything it hands back. That means no state, whether from
-  `simpleEval`, `simpleEvalAsync` or `createState`, and no context ([A8](../../docs/backlog.md#a8),
-  [A20](../../docs/backlog.md#a20)). Each is collectable once you drop it. `ngOnDestroy` marks the
+  `simpleEval`, `simpleEvalAsync` or `createState`, and no context ([A8](../../docs/backlog-retired.md#a8),
+  [A20](../../docs/backlog-retired.md#a20)). Each is collectable once you drop it. `ngOnDestroy` marks the
   service destroyed and does nothing else. It drains no state, empties none of your registries
-  or contexts ([A21](../../docs/backlog.md#a21)), and no longer logs ([B3](../../docs/backlog.md#b3)).
+  or contexts ([A21](../../docs/backlog-retired.md#a21)), and no longer logs ([B3](../../docs/backlog.md#b3)).
 
 The first is covered by the trace paragraphs below. For the second, two changes can ask
 something of you, and the next two paragraphs say what: the hook registries destroy no longer
@@ -92,7 +92,7 @@ clears, and the hook bookkeeping it no longer resets.
 
 **If you relied on `EvalService.ngOnDestroy()` to clear an `EvalHooks` registry you passed
 through `options.hooks`**, it no longer does, whichever method you passed it to
-([A8](../../docs/backlog.md#a8)). From 0.3.0 to 0.5.0, the `hooks` JSDoc said:
+([A8](../../docs/backlog-retired.md#a8)). From 0.3.0 to 0.5.0, the `hooks` JSDoc said:
 
 > `EvalService.ngOnDestroy` empties the registries of the states it created, this one included,
 > so that a registry outliving the service cannot keep those states and their AST nodes
@@ -125,7 +125,7 @@ while keeping `tracePushCount` accurate, and `Infinity` restores the previous be
 ### Fixed
 
 - **`EvalService.ngOnDestroy` no longer empties your registries**
-  ([A21](../../docs/backlog.md#a21)). It called `clear()` on every context with a `type` passed to
+  ([A21](../../docs/backlog-retired.md#a21)). It called `clear()` on every context with a `type` passed to
   `createState`, `simpleEval` or `simpleEvalAsync`, including one nested under a `context`
   key. So when the root injector was destroyed, in a test, per SSR request or at a
   micro-frontend's teardown, every `Registry` the application had evaluated against was emptied,
@@ -134,7 +134,7 @@ while keeping `tracePushCount` accurate, and `Infinity` restores the previous be
   now changes nothing inside them, and since the two entries below it holds no reference to them
   either. No exported symbol changes.
 - **Under `caseInsensitive`, a context object with a `type` field is no longer kept alive by
-  `EvalService`** ([A20](../../docs/backlog.md#a20)). `createState`, `simpleEval` and
+  `EvalService`** ([A20](../../docs/backlog-retired.md#a20)). `createState`, `simpleEval` and
   `simpleEvalAsync` added every context with a `type`, including every `Registry` and
   `EvalContext`, to a set that nothing read and that emptied only when the service was destroyed.
   The set is gone. On its own that changed only one case. Under `caseInsensitive`, a plain object
@@ -143,7 +143,7 @@ while keeping `tracePushCount` accurate, and `Infinity` restores the previous be
   context is released by the next entry, which removes the evaluation states that held them.
   No exported symbol changes.
 - **`EvalService` no longer keeps any evaluation state until the application ends**
-  ([A8](../../docs/backlog.md#a8)). It added every state it built, through `simpleEval`,
+  ([A8](../../docs/backlog-retired.md#a8)). It added every state it built, through `simpleEval`,
   `simpleEvalAsync` or `createState`, to a set that emptied only in `ngOnDestroy`. So each
   state was kept for the life of the root injector, including one you had finished with and
   dropped. That meant the parsed expression, the trace (up to `maxTraceItems`), and the context

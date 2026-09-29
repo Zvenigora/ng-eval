@@ -1,7 +1,7 @@
 # Phase 2 Plan — statement support in `eval-core`
 
 Implements [`ROADMAP.md`](../../ROADMAP.md) § "Phase 2 — Statement support: `let`, `if`, `for`",
-and closes [`docs/backlog.md`](../backlog.md) [A9](../backlog.md#a9) and [B2](../backlog.md#b2) as
+and closes [`docs/backlog.md`](../backlog.md) [A9](../backlog-retired.md#a9) and [B2](../backlog-retired.md#b2) as
 its step 0, per that file's [Phase 2 preconditions](../backlog.md#phase-2-preconditions).
 
 **Target**: `@zvenigora/ng-eval-core` (`modules/eval-core`), published at **0.3.0**.
@@ -144,7 +144,7 @@ just a value on the stack the enclosing block pops. The mechanism is a disciplin
 
 ### 1.3 A9, measured: one throwing arrow body shadows a source key for the life of the context
 
-[A9](../backlog.md#a9) is recorded as *Verified: source read* — read, not run. Run, on the built
+[A9](../backlog-retired.md#a9) is recorded as *Verified: source read* — read, not run. Run, on the built
 package:
 
 | Probe | `ctx.scopes.length` after | A later `evaluate('x')` on the same context |
@@ -197,7 +197,7 @@ two agree.
 
 [`docs/side-effects/phase-1-plan.md` § 3.8](../side-effects/phase-1-plan.md) specifies `exit`'s
 three cases and records the residual: *"`exit` has no mark, so it cannot tell 'absent from this
-walk' from 'absent from the stack'."* [E6](../backlog.md#e6) carries it forward and says Phase 2 is
+walk' from 'absent from the stack'."* [E6](../backlog-retired.md#e6) carries it forward and says Phase 2 is
 what makes it reachable.
 
 *Measured*, driving the published `EvalHooks` directly — enter two nodes (the enclosing walk), take
@@ -320,7 +320,7 @@ actually run.
   already implements, and scope-aware writes for assignment and update (§ 3.2).
 - `IfStatement`, including `else if` chains.
 - `ForStatement` — the classic three-part form — with the iteration bound of § 3.4.
-- [A9](../backlog.md#a9) and [B2](../backlog.md#b2), as step 0.
+- [A9](../backlog-retired.md#a9) and [B2](../backlog-retired.md#b2), as step 0.
 - Bounding both of `EvalHooks.exit`'s routes — the scan and the identity fast path (§ 3.3).
 - README "ESTree Nodes Supported" rows, a `CHANGELOG.md` entry, the `0.4.0` bump, and the backlog
   entries this phase moves.
@@ -329,7 +329,7 @@ actually run.
 
 | Not in this phase | Why |
 | ----------------- | --- |
-| `break`, `continue`, `return` | Abrupt completion is a completion **record** with a type, not a value on a stack — a different mechanism from § 3.1, and the one that makes [E6](../backlog.md#e6) reachable. A phase of its own |
+| `break`, `continue`, `return` | Abrupt completion is a completion **record** with a type, not a value on a stack — a different mechanism from § 3.1, and the one that makes [E6](../backlog-retired.md#e6) reachable. A phase of its own |
 | `while`, `do…while`, `for…of`, `for…in` | `ROADMAP.md` defers them behind the classic `for` explicitly. They are cheap once § 3.1–§ 3.4 exist, and they are not free before |
 | `var` | Function-scoped hoisting is a second scoping model beside § 3.2's. Open question 8.2 |
 | `function` declarations, classes, `try`/`catch`, `switch`, labels | No design in this phase reaches them; each throws per § 3.1's dispatcher |
@@ -349,7 +349,7 @@ documentation gates — and only the third was ever recorded: it is glossed in
 Tracks 1 and 2 never were, so this row pointed at a grouping nobody could look up and excluded
 nothing checkable.
 
-**That asymmetry is the reason it survived, and is why it is [F9](../backlog.md#f9)'s first
+**That asymmetry is the reason it survived, and is why it is [F9](../backlog-retired.md#f9)'s first
 instance**: one member of a label family resolving is what lends the other two the appearance of
 resolving. A reader who checks "Track 3" finds it and stops checking.
 
@@ -648,7 +648,7 @@ scope.
 
 ### 3.3 Decision 3 — bounding `exit`'s scan (E6)
 
-**Settled together with § 3.1, as [E6](../backlog.md#e6) asks.** The completion mechanism chosen
+**Settled together with § 3.1, as [E6](../backlog-retired.md#e6) asks.** The completion mechanism chosen
 there is what decides this: because there is no abrupt completion, no visitor in this phase abandons
 a partially-walked child, and **Phase 2 does not make E6 reachable** (§ 1.6). E6's own text says the
 opposite, so this phase corrects that premise rather than inheriting it.
@@ -742,7 +742,7 @@ closures ordinary has to revisit where the counter lives.
 **It also bounds time and not memory**, which § 3.4 did not consider and step 5's review found:
 `EvalResult.trace` gains an entry per push and is never reset, so a loop's trace grows as
 iterations × nodes and the allocation is paid *before* the throw. `docs/backlog.md`
-[A12](../backlog.md#a12) carries the measurements; `Infinity` is where it bites.
+[A12](../backlog-retired.md#a12) carries the measurements; `Infinity` is where it bites.
 
 **Why 100,000.** § 1.8 measured ~1.4 M simple walks per second; a loop iteration is roughly three of
 them (test, body, update), so ~2 µs. 100,000 iterations is **~0.2 s** before the throw — short
@@ -919,7 +919,7 @@ here is the **visitors** barrel, which `src/public-api.ts` does not re-export, s
 the published surface (§ 5's last row); `recursive-visitors.ts` is what makes the visitor run at
 all, and `program.ts` is what makes it reachable from a statement list.
 
-### Step 0 — [A9](../backlog.md#a9) and [B2](../backlog.md#b2)
+### Step 0 — [A9](../backlog-retired.md#a9) and [B2](../backlog-retired.md#b2)
 
 **Category: behavioural.** **Files**: `arrow-function-expression.ts`, `pattern.ts`, a spec for each,
 `docs/backlog.md`.
@@ -1140,7 +1140,7 @@ before it touches either file, and the answer is not "the leak is fixed, delete 
   > spelling only, not in substance**: every one of them says the range "admits the leaking 0.3.0
   > and goes on admitting it", which `>=0.3.0 <0.5.0` still does. Step 7 did not edit them — its
   > file list is manifests only — and `evaluate-rule.ts:53` additionally carries this entry's own
-  > necessary-vs-sufficient error. Filed as [F14](../backlog.md#f14).
+  > necessary-vs-sufficient error. Filed as [F14](../backlog-retired.md#f14).
 - The diff contains no downstream `public-api.ts`, `index.ts` or `package.json`.
 
 ### Step 1 — The walk boundary: `Program`, `ExpressionStatement`, and E6's bound
@@ -1529,7 +1529,7 @@ this phase left them alone; `ROADMAP.md` Phase 2 marked done; a retrospect.
 **Step 6's last criterion was not met, and step 7 exists because of it.** The bump to `0.4.0` fails
 `eval-signals:lint` and `eval-forms:lint` on `@nx/dependency-checks` — `^0.3.0` does not admit
 `0.4.0` — and the only fix is inside two downstream `package.json`s, which § 2 and § 6 gate 1 make a
-stop-and-replan. Step 6 stopped rather than reaching across. [F12](../backlog.md#f12) carries the
+stop-and-replan. Step 6 stopped rather than reaching across. [F12](../backlog-retired.md#f12) carries the
 measurements. Everything else in step 6's list is done.
 
 ---
@@ -1544,7 +1544,7 @@ closed list — two downstream manifests, plus the repo-level records:
 | `modules/eval-signals/package.json` | `peerDependencies` → `"@zvenigora/ng-eval-core"`, and `version` if § 7.2 says so |
 | `modules/eval-forms/package.json` | the same two fields |
 | root `CHANGELOG.md` | one heading per package that bumps |
-| `docs/backlog.md` | [F12](../backlog.md#f12) closed; [F8](../backlog.md#f8) revisited, since this creates more untagged versions |
+| `docs/backlog.md` | [F12](../backlog-retired.md#f12) closed; [F8](../backlog.md#f8) revisited, since this creates more untagged versions |
 | `docs/statements/summary.md` | § 1 and § 6 updated — the phase released more than one package |
 
 **This is the skill's hardest stop — a `package.json` in a published downstream project — so the
@@ -1620,7 +1620,7 @@ whole sentence, and the summary says so.
 
 Two things this collides with, neither blocking:
 
-- **[F2](../backlog.md#f2)** — one `CHANGELOG.md` for three independently-versioned packages. Three
+- **[F2](../backlog-retired.md#f2)** — one `CHANGELOG.md` for three independently-versioned packages. Three
   headings in one file for one phase is the sharpest instance of F2 the repository has produced;
   the step records that rather than solving it.
 - **[F8](../backlog.md#f8)** — `eval-forms@0.2.0` is untagged. This step creates three more
@@ -1640,7 +1640,7 @@ Two things this collides with, neither blocking:
 - Each of the three containment specs still goes **red with its own `finally` deleted** — the probe
   0b established, re-run, because this step changes the sentence that justifies them and a
   containment nobody can falsify is 0b item 2 all over again.
-- [F12](../backlog.md#f12) closed; [F8](../backlog.md#f8) updated with the versions this creates.
+- [F12](../backlog-retired.md#f12) closed; [F8](../backlog.md#f8) updated with the versions this creates.
 
 #### 7.3 The measurement rule this step inherits
 
@@ -1658,7 +1658,7 @@ above all, since two manifests are the whole of its diff.
 This is the **fourth** cache-versus-measurement incident in this repository and the first that
 reached the user as a reported fact rather than being caught in the step that made it — which is
 what makes it a rule here instead of a note. Whether these `lint` targets' inputs are misconfigured
-is a separate question, filed with [F12](../backlog.md#f12) and not settled by this step.
+is a separate question, filed with [F12](../backlog-retired.md#f12) and not settled by this step.
 
 > **Settled in the event, in one line.** `nx.json`'s `lint` target declared no dependency inputs at
 > all; `"^production"` fixes it, and step 7 measured both ways. The `--skip-nx-cache` discipline
@@ -1666,7 +1666,7 @@ is a separate question, filed with [F12](../backlog.md#f12) and not settled by t
 
 ---
 
-### Step 8 — [F14](../backlog.md#f14)'s stale peer-range citations
+### Step 8 — [F14](../backlog-retired.md#f14)'s stale peer-range citations
 
 **Category: comments and published documentation — no behavioural change, no released surface, no
 version.** **Files**, closed list, all downstream, no executable line among them:
@@ -1724,7 +1724,7 @@ the range re-spelled and the third item dropped, and nothing more.
 
 #### 8.3 Two README sites, found mid-step and sanctioned rather than absorbed
 
-[F14](../backlog.md#f14) said four comment sites. Step 8 checked rather than trusting the count and
+[F14](../backlog-retired.md#f14) said four comment sites. Step 8 checked rather than trusting the count and
 found `^0.3.0` asserted in **both published READMEs** as well: `eval-signals/README.md:20` states
 the peer dependencies in prose, and `eval-forms/README.md:70` reproduces the `peerDependencies`
 block verbatim.
@@ -1759,7 +1759,7 @@ rather than rewriting the block's form, which is a documentation question for wh
 - Both containment probes still red — `evaluateRule`'s `finally` deleted reddens its 2 cases,
   `eval-signal.ts`'s unwind deleted reddens its 1. A comment-only step has no business moving
   these, which is exactly why they are the check that it did not.
-- [F14](../backlog.md#f14) closed.
+- [F14](../backlog-retired.md#f14) closed.
 
 ---
 
@@ -1778,7 +1778,7 @@ rather than rewriting the block's form, which is a documentation question for wh
 | seven statement visitors, and `dispatchStatement` | **not published** | `internal/visitors/` is not re-exported by `src/public-api.ts` — verified, not assumed |
 
 **Behavioural changes to already-published paths** — the list the version bump is for: every row of
-§ 1.1's table; the write redirection of § 1.4; `EvalHooks.exit`'s scan bound (§ 3.3); **[A9](../backlog.md#a9)'s
+§ 1.1's table; the write redirection of § 1.4; `EvalHooks.exit`'s scan bound (§ 3.3); **[A9](../backlog-retired.md#a9)'s
 scope-pop repair (step 0)**; `EvalContext.get`'s treatment of a pushed scope — presence rather than
 value, which **also stops a plain-record scope resolving `Object.prototype` names** (§ 8.1, step 1);
 **`EvalResult.trace` and the `after`-hook stream gaining `Program` and `ExpressionStatement` entries

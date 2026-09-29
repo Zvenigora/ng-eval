@@ -30,7 +30,7 @@ ride with the range. No exported symbol's shape and no behaviour of this package
     recompute is still what bounds the trace, and the factory is unchanged.
   - `EvalSignalService` said `EvalService` "tracks every state it builds in a strong `Set`
     drained only on destroy". `eval-core` 0.6.0 removes that set
-    ([A8](../../docs/backlog.md#a8)). It now says `EvalService` kept its states until destroy up to
+    ([A8](../../docs/backlog-retired.md#a8)). It now says `EvalService` kept its states until destroy up to
     0.5.0 and keeps none from 0.6.0, and that what the factory needs is compile-once, which is
     `CompilerService`.
 

@@ -44,7 +44,7 @@ import { EvalContext, EvalOptions, EvalState, call, stateCallback } from '@zveni
  * `arrow-function-expression.ts` pushed a scope and popped it with no
  * `try`/`finally`, so an arrow body that threw skipped the pop - and Phase 2
  * step 0 fixed exactly that
- * ([backlog A9](../../../../../docs/backlog.md#a9)). The loop stays anyway, for
+ * ([backlog A9](../../../../../docs/backlog-retired.md#a9)). The loop stays anyway, for
  * two reasons that outlive the fix - and they are not the same *kind* of
  * reason, which is the part an earlier version of this docblock got wrong:
  *

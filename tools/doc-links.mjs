@@ -1,8 +1,12 @@
-// Document cross-reference gate (docs/backlog.md F9).
+// Document cross-reference gate (docs/backlog-retired.md F9).
 //
-// Resolves every relative markdown link in the tracked *.md files: the target file must exist
-// relative to the linking file, and a `#anchor` must exist in the target, either as a GitHub
-// heading slug or as an explicit `<a id="…">`. Runs as the root project's `test` target.
+// Resolves every relative markdown link in the tracked *.md files, and in the comment lines of the
+// tracked *.ts files: the target file must exist relative to the linking file, and a `#anchor` must
+// exist in the target, either as a GitHub heading slug or as an explicit `<a id="…">`. Runs as the
+// root project's `test` target.
+//
+// A .ts comment line is one whose first non-space characters are `*`, `/**` or `//`. Every other
+// .ts line is code and is never parsed, since `fns[i](x)` has a link's shape.
 //
 // Skipped: links inside fenced code blocks and inline code, links with a scheme (http, mailto,
 // …), and reference-style definitions. Not seen: whether a `#L…` line anchor into a source file
@@ -16,9 +20,14 @@ import { fileURLToPath } from 'node:url';
 const started = process.hrtime.bigint();
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-const files = execFileSync('git', ['ls-files', '*.md'], { cwd: root, encoding: 'utf8' })
+const files = execFileSync('git', ['ls-files', '*.md', '*.ts'], { cwd: root, encoding: 'utf8' })
   .split('\n')
   .filter(Boolean);
+
+/** A .ts file's comment lines, with every code line blanked so line numbers are preserved. */
+function commentLines(text) {
+  return text.split(/\r?\n/).map((line) => (/^\s*(?:\*|\/\*\*|\/\/)/.test(line) ? line : ''));
+}
 
 /** The file's lines, with fenced code blocks blanked so line numbers are preserved. */
 function unfencedLines(text) {
@@ -100,16 +109,20 @@ function anchorsOf(file) {
 
 const errors = [];
 let checked = 0;
+let checkedTs = 0;
 
 for (const file of files) {
   const abs = join(root, file);
-  unfencedLines(readFileSync(abs, 'utf8')).forEach((rawLine, i) => {
+  const isTs = file.endsWith('.ts');
+  const text = readFileSync(abs, 'utf8');
+  (isTs ? commentLines(text) : unfencedLines(text)).forEach((rawLine, i) => {
     const line = withoutInlineCode(rawLine);
     if (/^ {0,3}\[[^\]]+\]:\s+\S/.test(line)) return; // reference-style definition
     for (const m of line.matchAll(/\]\(\s*<?([^)\s>]+)>?(?:\s+["'][^"']*["'])?\s*\)/g)) {
       const target = m[1];
       if (/^[a-z][a-z0-9+.-]*:/i.test(target)) continue; // http(s), mailto, …
       checked++;
+      if (isTs) checkedTs++;
       const fail = (reason) => errors.push(`${file}:${i + 1}: ${target} — ${reason}`);
 
       const hash = target.indexOf('#');
@@ -157,5 +170,5 @@ for (const file of files) {
 
 const ms = Number(process.hrtime.bigint() - started) / 1e6;
 for (const error of errors) console.error(error);
-console.log(`doc-links: ${files.length} files, ${checked} links, ${errors.length} dangling (${Math.round(ms)} ms)`);
+console.log(`doc-links: ${files.length} files, ${checked} links (${checkedTs} in .ts comments), ${errors.length} dangling (${Math.round(ms)} ms)`);
 process.exitCode = errors.length ? 1 : 0;

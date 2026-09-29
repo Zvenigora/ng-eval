@@ -1,7 +1,7 @@
 # Track 3, step 4 — `eval-core`: assessed, split, one gated and one dropped
 
 Executed 2026-09-08 against [`docs/gates/plan.md`](plan.md) § 4 step 4. Completes
-[`docs/backlog.md`](../backlog.md) [F4](../backlog.md#f4).
+[`docs/backlog.md`](../backlog.md) [F4](../backlog-retired.md#f4).
 
 ## 1. The inventory, stated before the decision
 

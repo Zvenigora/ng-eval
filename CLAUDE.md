@@ -36,6 +36,8 @@ unfixed, decisions logged rather than made, gaps in what the suite can catch —
 before recording a deferral anywhere else: the register exists because the most serious
 entry in it spent five phases invisible while two documents claimed it was tracked.
 
+**Retiring a backlog entry moves it to `docs/backlog-retired.md`; the index stays whole in `backlog.md`, and the doc-links gate lists the inbound links to re-point.**
+
 ## Commands
 
 Prefer `nx` over the underlying tooling (see `AGENTS.md` for the workspace-wide Nx rules).
@@ -66,8 +68,10 @@ lint.
 `test` also runs on a fourth project, the workspace root (`@zvenigora/ng-eval`), whose only
 `test` target is `node tools/doc-links.mjs`, declared in the root `package.json`'s `nx.targets`.
 That is the document cross-reference gate (`docs/backlog.md` F9). It fails on a relative link
-in any tracked `*.md` whose file or `#anchor` does not resolve, so a doc-only edit can turn
-`npm test`, CI and the gate red.
+in any tracked `*.md`, or in a comment line of any tracked `*.ts`, whose file or `#anchor` does
+not resolve, so a doc-only or comment-only edit can turn `npm test`, CI and the gate red. A
+`.ts` line counts as a comment only if it starts with `*`, `/**` or `//`; code lines are never
+parsed.
 
 **A green `test` run is not a type-check.** Jest compiles per file through `tsconfig.spec`
 and is more permissive than `tsconfig.lib` — Phase 3 step 3 shipped an `EvalOptions` index

@@ -266,7 +266,7 @@ describe('createEvalSignal - lifetime and cleanup', () => {
      * **Rewritten in Phase 2 step 0b.** This case used to drive the leak
      * through a throwing arrow body, because `arrow-function-expression.ts`
      * pushed a scope and popped it with no `try`/`finally`. Step 0 fixed that
-     * ([A9](../../../../docs/backlog.md#a9)) and the case went on passing with
+     * ([A9](../../../../docs/backlog-retired.md#a9)) and the case went on passing with
      * `eval-signal.ts`'s guard **deleted** - a green row reporting coverage it
      * no longer had.
      *

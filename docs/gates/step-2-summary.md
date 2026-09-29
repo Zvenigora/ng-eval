@@ -1,8 +1,8 @@
 # Track 3, step 2 — the export-list helper and the drift gate
 
 Executed 2026-09-07 against [`docs/gates/plan.md`](plan.md) § 4 step 2. Covers
-[`docs/backlog.md`](../backlog.md) [F3](../backlog.md#f3), now retired, and opens
-[F9](../backlog.md#f9).
+[`docs/backlog.md`](../backlog.md) [F3](../backlog-retired.md#f3), now retired, and opens
+[F9](../backlog-retired.md#f9).
 
 ## 1. What changed
 
@@ -212,7 +212,7 @@ exists for. A first-line-only reader drops both statements whole — and still s
 three-way check, whose finding set only *shrinks*. Only the explicitly named multi-line cases
 catch it. The floor is a floor; it is not a scanner test.
 
-## 6. § 8.4 — decided: deferred, and recorded as [F9](../backlog.md#f9)
+## 6. § 8.4 — decided: deferred, and recorded as [F9](../backlog-retired.md#f9)
 
 The document-cross-reference check is **not** built here. Now that the machinery exists the
 comparison can be made rather than guessed: the reader — the part that was the unknown — is no
@@ -244,7 +244,7 @@ failure the register was built to stop.
 ## 8. Noticed, not fixed
 
 - **The bare `@zvenigora/ng-eval-forms` specifier has no gate**, because no README imports from
-  it and the check would assert over the empty set. [D10](../backlog.md#d10) creates the subject
+  it and the check would assert over the empty set. [D10](../backlog-retired.md#d10) creates the subject
   in step 5, which makes the third `eval-forms` gate step 5's obligation. Recorded in
   `reactive/src/public-api.spec.ts`'s docstring as well as in F3, so the step that adds the
   import meets the note in the file it edits.

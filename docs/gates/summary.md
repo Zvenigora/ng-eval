@@ -1,8 +1,8 @@
 # Track 3 — retrospect
 
 Five steps, 2026-09-07 to 2026-09-09, against [`plan.md`](plan.md). Covers
-[`docs/backlog.md`](../backlog.md) [F1](../backlog.md#f1), [F3](../backlog.md#f3),
-[F4](../backlog.md#f4), [F7](../backlog.md#f7) and [D10](../backlog.md#d10).
+[`docs/backlog.md`](../backlog.md) [F1](../backlog-retired.md#f1), [F3](../backlog-retired.md#f3),
+[F4](../backlog-retired.md#f4), [F7](../backlog.md#f7) and [D10](../backlog-retired.md#d10).
 
 This document doubles as step 5's record; the step was small enough that a separate
 `step-5-summary.md` would have been padding, and steps 1–4 have their own.
@@ -17,7 +17,7 @@ This document doubles as step 5's record; the step was small enough that a separ
 | **F7** | Locus corrected: not an `eval-core` property, and possibly not a library defect. Left open, with the measurements |
 | **D10** | `applyErrorPolicy`'s block and its two cases — which created the subject for F3's third `eval-forms` gate |
 
-Opened along the way: [F9](../backlog.md#f9) (document cross-references, deferred with the
+Opened along the way: [F9](../backlog-retired.md#f9) (document cross-references, deferred with the
 comparison that settled it), [F10](../backlog.md#f10) (the gate covers documented-**and-imported**
 symbols), [F11](../backlog.md#f11) (a gated README can only import from its own specifier).
 
@@ -63,7 +63,7 @@ the warning fired twice in about a dozen runs, only under multi-target `run-many
 recur. The claim travelled through **twelve** step summaries, each restating it as "pre-existing;
 carried unchanged" — because re-running it was nobody's step.
 
-[A8](../backlog.md#a8) failed the same way through **five phases** — carried in six step
+[A8](../backlog-retired.md#a8) failed the same way through **five phases** — carried in six step
 summaries — invisible while two documents claimed it was tracked. That is the reason
 `docs/backlog.md` exists. (Six is the summary count, not the phase count; the register's own
 preamble owns both numbers, and getting them the wrong way round here would have been this
@@ -118,7 +118,7 @@ Stated together, because "the READMEs are gated" is now easy to over-read:
 - **Nothing keeps a case and the block it mirrors in step but a human.** Editing a printed value
   in a README turns nothing red; the execution gates catch the *library* drifting from what a
   case transcribed. That is F4's own limitation, restated in every docstring rather than solved.
-- **The root `README.md` is ungated**, by decision — see [F4](../backlog.md#f4) and
+- **The root `README.md` is ungated**, by decision — see [F4](../backlog-retired.md#f4) and
   [`step-4-summary.md`](step-4-summary.md) § 3 — and it is the file where two of the five
   motivating defects shipped.
 - **A fifth README that no gate reads** would be noticed by nothing. That is the plan's risk 7, a
