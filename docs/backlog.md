@@ -127,7 +127,7 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [D9](#d9) | § 3.4.3's precedence rule is untested end to end | forms | test gap | **Retired — premise false: covered end to end since 7fbef49; the `caseInsensitive` pair added 2026-09-27, test only** |
 | [D10](#d10) | `applyErrorPolicy` has no runnable README block | forms | docs | **Retired — fixed**, and it created [F3](#f3)'s third gate's subject |
 | [D11](#d11) | `/signals` has no worked example | forms | docs | Open |
-| [D12](#d12) | ~20 specs discard the binding and never call `destroy()` | forms | test hygiene | Open |
+| [D12](#d12) | ~20 specs discard the binding and never call `destroy()` | forms | test hygiene | **Retired — fixed 2026-09-28, test only**; the release paths the discard-style specs rely on are now pinned by `field-schema.memory.spec.ts` |
 | [E1](#e1) | Form-state keys across both adapters | forms | phase | Open — **no phase reserved** |
 | [E2](#e2) | Arrays — `applyEach` at `/signals`, `FormArray` at `/reactive` | forms | phase | Open |
 | [E3](#e3) | `dependencies` introspection at form scale | forms | phase | Open |
@@ -2404,7 +2404,85 @@ document `/signals` end to end.
 <a id="d12"></a>
 ## D12 — ~20 specs discard the binding and never call `destroy()`
 
-**Package** forms · **Kind** test hygiene · **Status** Open
+**Package** forms · **Kind** test hygiene · **Status** **Retired — fixed 2026-09-28, test only;
+the release paths the discard-style specs rely on are now pinned by
+`field-schema.memory.spec.ts`**
+
+`modules/eval-forms/reactive/src/lib/field-schema.memory.spec.ts`, four cases, using
+`eval-signals`' `eval-signal.memory.spec.ts` technique unchanged: `gc` from `--expose-gc` in a new
+`vm` context, a `setTimeout` before collecting, and every target built inside a helper that returns
+only `WeakRef`s and catches its own errors. No published artifact changed; `dist/` is byte-identical.
+
+1. **`destroy()`, caller's injector alive**: the `FormGroup` and both bound signals are collected.
+2. **The `DestroyRef` net, caller's injector destroyed, no `destroy()`**: the test holds the group,
+   and the caller's *injector* is collected.
+3. **Calibration, neither release**: (a) with the injector alive, the group and both signals are
+   retained; (b) with the group held, the injector is retained.
+
+**The targets are not the `FormGroup` throughout, for two measured reasons.**
+
+- *Case 2 cannot use it.* `R3Injector.destroy()` swaps its hook list for an empty one before
+  running it, so a destroyed injector drops the registration whatever the callback does, and a
+  group nothing else holds is collected either way. A group-target case stayed green with the
+  registration removed and with its callback a no-op. The net's real work runs the other way. The
+  group's `group.events` subscriber reaches the mirror's `options`, which names the binding's child
+  scope, and the scope's `parent` is the caller's injector. The callback destroys the scope and
+  cuts that chain, so it is asserted from a group that outlives the injector: the component-injector
+  case the net exists for.
+- *Case 1 needs the signals too.* With only `destroy()`'s `release?.()` removed, so the
+  registration stays on the injector, a group-only case stayed green: once `destroy()` has run, the
+  signals and the scope have let go of what reached the group. What that leftover registration
+  keeps is the destroyed signals, through `created`, so case 1 asserts them as well.
+
+So calibration 3 is two cases, one per target.
+
+*Probed* against the whole `eval-forms` suite, each probe reverted before the next:
+
+| Case | (a1) `destroy` body no-op | (a2) returned `destroy` no-op | (a3) `release?.()` removed | (b1) registration removed | (b2) callback no-op |
+| ---- | ------------------------- | ----------------------------- | -------------------------- | ------------------------- | ------------------- |
+| 1. `destroy()`, injector alive | **red** | **red** | **red** (group collected, both signals retained) | green | green |
+| 2. net, injector destroyed | **red** | green | green | **red** | **red** |
+| 3a. calibration, injector alive | green | green | green | **red** | green |
+| 3b. calibration, group held | green | green | green | green | green |
+| rest of the suite | 10 red | 7 red | **0 red** | 1 red | 1 red |
+| total of 266 | 12 | 8 | 1 | 3 | 2 |
+
+The suite at this commit has 265 `eval-forms` tests. The probes ran with a 266th: the temporary
+group-target case that measured the first bullet above, deleted afterwards, and it was green in
+every probe.
+
+Read case by case:
+
+- **(a2) and (b2) are the two probes asked for, and each reads as predicted.** (a2) turns case 1
+  red and leaves 2 and 3 green. (b2) turns case 2 red and leaves 1 and 3 green.
+- **(a1) also turns case 2 red, and cannot do otherwise.** The net's callback *is* `destroy()`, so
+  emptying its body disables both paths. The prediction that case 2 stays green was unsatisfiable,
+  and (a2) was added to separate the caller's path from the net's.
+- **(b1) also turns 3a red, and cannot do otherwise.** What retains the group while the injector
+  lives *is* the registration, so removing it makes the calibration's retention disappear with it.
+  (b2) keeps the registration and empties the callback, which separates the two.
+- **(a3) is the reason this file exists.** A registration left on a live injector after
+  `destroy()` is red here and nowhere else in the suite. The teardown cases in
+  `field-schema.spec.ts` count subscriptions and `destroy` calls, and a leftover registration
+  changes neither of them.
+- The one pre-existing case red under (b1) and (b2), "should release the mirror when the injector
+  it was given is destroyed", already covered the net's *subscription* release by count. So the
+  premise below was partly false: the un-destroyed path's subscriptions were watched. Retention
+  was not.
+
+*Flake check*: the file run 5 times in a row, 4 of 4 green each time.
+
+**The ~20 discard-style specs were left as they are.** They were never the gap. The gap was that
+the path they rely on had no assertion, and it has one now. Adding `destroy()` to each would move
+them off the net's path onto the one every teardown case already covers. It would also stop them
+modelling what a consumer who forgets `destroy()` does, which is the case the net exists for.
+
+`/signals` has no counterpart and gets no cases: `createExpressionRules` registers with no
+`DestroyRef` and has no `destroy()` (`rules.ts`, its JSDoc).
+
+**The entry as it stood:**
+
+**Status** Open
 
 They get collected at TestBed teardown through the `DestroyRef` net, which is an improvement and
 **also means the suite would not notice a leak on the un-destroyed path**. Pre-existing style.
