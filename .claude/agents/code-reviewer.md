@@ -201,10 +201,10 @@ Work through these in order. They are ranked by how badly they fail and how quie
     versioned release rather than a free correction — read each package's current version from
     its own `modules/*/package.json` rather than from any document, this one included. When
     the diff changes a symbol, three things must be present or the finding is that they are
-    missing: an explicit callout in the step's report, a version bump, and an entry in the
-    **root `CHANGELOG.md`** under a heading naming the package — `## [eval-forms 0.1.1]`,
-    matching the convention that file records from `eval-signals 0.1.0` onward. There are no
-    per-module changelogs; do not ask for one.
+    missing: an explicit callout in the step's report, a version bump, and an entry in
+    **that package's own `modules/<name>/CHANGELOG.md`**, headed by the bare version —
+    `## [0.1.1] - <date>`. The root `CHANGELOG.md` only lists the three and records workspace
+    changes; a package release entered there is misfiled.
 
 11. **Test integrity.** Assertions loosened or deleted, `eslint-disable` added, `any`
     introduced, a spec rewritten to match new behaviour rather than the behaviour being

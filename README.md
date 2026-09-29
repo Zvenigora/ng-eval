@@ -235,7 +235,8 @@ The project has been tested with the following node types:
 Object and array destructuring bind the names JavaScript binds, in parameter lists and in
 `let` / `const` declarations alike: shorthand, renaming, nesting, literal and computed keys,
 and rest elements. **Before `@zvenigora/ng-eval-core` 0.5.0 the renaming forms bound the wrong
-names** — see the `eval-core 0.5.0` entry in [CHANGELOG.md](CHANGELOG.md).
+names** — see the 0.5.0 entry in `eval-core`'s
+[CHANGELOG.md](modules/eval-core/CHANGELOG.md#050---2026-09-17).
 
 Statements, since `@zvenigora/ng-eval-core` 0.4.0:
 
@@ -252,7 +253,7 @@ That is a change of kind, not only of coverage: before 0.4.0 an unsupported stat
 handed to `acorn-walk`'s base walker, which walked the subtree as an expression and left
 whatever it pushed on the value stack — so `throw 1` evaluated to `1` and threw nothing, and
 `switch (1) { case 1: 2 }` evaluated to `2`. See the
-[CHANGELOG](CHANGELOG.md) for the full before/after table.
+[CHANGELOG](modules/eval-core/CHANGELOG.md#040---2026-09-15) for the full before/after table.
 
 `WhileStatement`, `DoWhileStatement`, `ForInStatement`, `ForOfStatement`, `SwitchStatement`,
 `TryStatement`, `ThrowStatement`, `LabeledStatement`, `BreakStatement`, `ContinueStatement`,

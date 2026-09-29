@@ -26,8 +26,8 @@ every consumer downstream of it*.
   type — is in scope whenever the plan calls for it.
 - A change to an **existing exported symbol's shape**, or to the behaviour of an
   already-shipped path, is a versioned release of that package: it needs an explicit callout
-  in the step's report, a version bump, and an entry in the root `CHANGELOG.md` under a
-  heading naming the package (`## [eval-core 0.4.0]`).
+  in the step's report, a version bump, and an entry in that package's own
+  `modules/<name>/CHANGELOG.md` (`## [0.4.0] - 2026-09-15`).
 
 **Every step says which of those two it is, in its § 2 restatement.** Step 0 is the case that
 proves the requirement is needed: `docs/backlog.md` A9's `try`/`finally` changes what a
@@ -148,7 +148,7 @@ and the third category above moves none by construction.
 git diff --name-only HEAD
 ```
 
-Every path must be under `modules/eval-core/`, under `docs/`, or the root `CHANGELOG.md`. A
+Every path must be under `modules/eval-core/` (its `CHANGELOG.md` included) or under `docs/`. A
 path under `modules/eval-signals/` or `modules/eval-forms/` is a **stop-and-replan**, not a
 judgement call — a `public-api.ts`, an `index.ts` or a `package.json` there most of all.
 Report it and stop.

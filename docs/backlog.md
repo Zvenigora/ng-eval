@@ -65,7 +65,8 @@ closed; its retrospect is [`docs/gates/summary.md`](gates/summary.md).
 ### Publication status
 
 All three packages are published to npm, so every behavioural entry below is a versioned
-release, not a free change.
+release, not a free change. Each package's release notes are in its own
+`modules/<name>/CHANGELOG.md`. The root `CHANGELOG.md` points at them ([F2](#f2)).
 
 | Package | Version | Notes |
 | ------- | ------- | ----- |
@@ -135,7 +136,7 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [E5](#e5) | The options-first style cannot read `hookErrors` | core | decision | Open, Premise retired |
 | [E6](#e6) | `exit` has no mark to bound its scan | core | fix | **Retired — fixed, Phase 2 step 1**; released in `eval-core` 0.4.0; its "Phase 2 makes it reachable" premise was wrong |
 | [F1](#f1) | No `configurations.ci` on the `test` target — **two projects, not one** | signals, forms | fix + decision | **Retired — fixed, no thresholds** |
-| [F2](#f2) | One `CHANGELOG.md` for three independently-versioned packages | repo | decision | Open |
+| [F2](#f2) | One `CHANGELOG.md` for three independently-versioned packages | repo | decision | **Retired — decided 2026-09-28**: one `modules/<name>/CHANGELOG.md` per package; `nx release` still unadopted. `eval-core` had five changelogged versions npm never received |
 | [F3](#f3) | Documented-symbol drift gate — **three packages, four READMEs** | core, signals, forms | fix | **Retired — built and green** |
 | [F4](#f4) | README-execution gate for `eval-core` and `eval-signals` | core, signals | fix / decide-then-drop | **Retired** — both package READMEs gated; root **assessed and dropped** |
 | [F5](#f5) | The `js-sha256` peer range is locked to a dead minor | core | decision | Open |
@@ -2707,14 +2708,17 @@ branch coverage is the interesting number and is worth its own look — it is th
 `ROADMAP`-deferred defects, and low branch coverage is where an unfixed branch hides.
 
 <a id="f2"></a>
-## F2 — One `CHANGELOG.md` for three independently-versioned packages
+## F2 — One `CHANGELOG.md` for three independently-versioned packages — **Retired, decided**
 
-**Package** repo · **Kind** decision · **Status** Open
+**Package** repo · **Kind** decision · **Status** **Retired — decided 2026-09-28: one changelog per
+package**, `modules/<name>/CHANGELOG.md`, written by hand. The full `nx release` flow stays unadopted
 
 There is one `CHANGELOG.md` at the workspace root and three packages that version separately. The
 heading convention answers it well enough to read the file unambiguously: a release of a non-core
-package is titled with the package name, `## [eval-signals 0.1.0]`, while `eval-core` keeps the bare
-`## [0.3.0]` form its history already used.
+package is titled with the package name, `## [eval-signals 0.1.0]`. **Corrected 2026-09-28**: this
+said `eval-core` keeps the bare `## [0.3.0]` form, which was true only up to 0.3.0. Every
+`eval-core` heading from 0.4.0 onward is prefixed, `## [eval-core 0.4.0]`, so the bare form marks
+only the pre-0.4.0 history.
 
 Two things make it worth logging:
 
@@ -2732,6 +2736,41 @@ changelogs — but adopting it means adopting the full `nx release` flow, which 
 existing single file rather than starting clean. Deciding that is the work.
 
 Related: [F8](#f8), which is the same class of drift reaching the git tags.
+
+**Decided 2026-09-28: one changelog per package.** Each package's entries moved to
+`modules/<name>/CHANGELOG.md` with their text unchanged. Three things changed in the move: the
+package prefix left each heading, relative links were re-based to the new location, and every
+version that is not on npm was marked "(not published to npm)". The root `CHANGELOG.md` is now a
+pointer to the three, plus a "Workspace (not published)" section for tooling changes that ship
+in no package. The split was made **without** adopting `nx release`. Its layout is the one
+`nx release changelog` writes, so the split does not stand in the way of adopting it later. The
+flow itself is still unmade, for the reason CONTRIBUTING gives: no release has been cut through
+it end to end.
+
+A package-level `CHANGELOG.md` is **not** copied into `dist/`, so it does not reach the npm
+tarball. ng-packagr's default assets are `LICENSE` and `README.md` only
+(`write-package.transform.js`), and no `ng-package.json` here declares `assets`. The changelogs
+are read on GitHub, as the root file was. Verified by building all three, 2026-09-28.
+
+**The npm drift, checked against `npm view <pkg> versions` on 2026-09-28, was wider than recorded
+above:**
+
+| Package | Changelogged, not on npm | On npm, no entry |
+| ------- | ------------------------ | ---------------- |
+| `eval-core` | 0.1.0, 0.2.0, 0.2.3, 0.2.4, 0.2.5 | 0.1.104, 0.1.105, 0.1.106, 0.1.107 |
+| `eval-signals` | none | none |
+| `eval-forms` | none | none |
+
+The five are marked in `modules/eval-core/CHANGELOG.md`, and its preamble names the four without
+writing entries for them. The procedure gap this entry named is closed as a step rather than a
+gate: CONTRIBUTING's release procedure now runs `npm view <pkg> versions` after publishing and
+before tagging, and does not tag a version the registry does not list. Nothing checks mechanically
+that a changelog heading matches a published version.
+
+*Verified*: 21 release headings in the old file, 12 in `eval-core`'s, 4 in `eval-signals`' and 5
+in `eval-forms`'. A throwaway script compared each old entry with its new copy, byte for byte
+after resolving every relative link to a repository path. All 21 matched. The script failed on
+a one-word edit, and on 7 entries when it compared links without resolving them.
 
 <a id="f3"></a>
 ## F3 — Documented-symbol drift gate

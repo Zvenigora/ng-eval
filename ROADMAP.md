@@ -91,7 +91,7 @@ during evaluation" example built on it; tests; docs.
 and `ForStatement` — under the completion-value convention of
 [`docs/statements/phase-2-plan.md`](docs/statements/phase-2-plan.md) § 3.1. The plan is the design
 record; [`docs/statements/summary.md`](docs/statements/summary.md) is the retrospect, and the
-[CHANGELOG](CHANGELOG.md) carries the migration note.
+[CHANGELOG](modules/eval-core/CHANGELOG.md#040---2026-09-15) carries the migration note.
 
 **Two things the sketch below got wrong, both recorded because they shaped the phase**:
 

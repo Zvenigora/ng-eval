@@ -87,8 +87,10 @@ All three packages publish to the public npm registry under the `@zvenigora` sco
 ### Procedure
 
 1. Bump the `version` field in the package's own `modules/<name>/package.json` by hand, and
-   add the matching entry to the root `CHANGELOG.md`, naming which package the entry is for
-   — there is one changelog for all three, while versions are per package.
+   add the matching entry to that package's own `modules/<name>/CHANGELOG.md`, moving its
+   `[Unreleased]` items under the new version's heading. Each package has its own changelog,
+   as it has its own version. The root `CHANGELOG.md` only lists the three, and records
+   workspace changes that ship in no package.
 2. Run the full gate — `npm run lint`, `npm test`, `npm run build`. Publishing an unbuilt or
    stale `dist/` is the failure this ordering exists to prevent, and a green `npm test` is
    **not** a type-check: only `build` runs `tsconfig.lib`.
@@ -102,7 +104,16 @@ All three packages publish to the public npm registry under the `@zvenigora` sco
 
    No `--registry` or `--access` flag should be needed. If either is, treat it as a
    configuration bug and fix the configuration rather than passing the flag — see below.
-4. Tag the release and push the tag. The format is `{projectName}@{version}` over the **Nx
+4. Confirm the registry lists the version you just published, before tagging it:
+
+   ```bash
+   npm view @zvenigora/ng-eval-core versions
+   ```
+
+   A changelog heading does not prove a publish. Five `eval-core` versions were
+   changelogged and never published, and nothing caught it until the changelog was checked
+   against this list ([F2](docs/backlog.md#f2)). If the version is missing, do not tag it.
+5. Tag the release and push the tag. The format is `{projectName}@{version}` over the **Nx
    project name**, matching `release.releaseTag.pattern` in `nx.json`. Tag only the packages
    this release actually publishes:
 
@@ -167,8 +178,9 @@ have published `modules/eval-core` — a directory holding source and no build o
 
 What remains unadopted is the **full `nx release` flow**, not any single piece of it. That
 command bundles versioning, changelog generation, a release commit, tagging and publishing
-into one run, and two things are not yet settled for it: there is one root `CHANGELOG.md`
-serving three independently-versioned packages (see ROADMAP, "Deferred tooling — one
-`CHANGELOG.md` for three independently-versioned packages"), and no release has yet been cut
-through it end to end. The manual procedure above is the one that has actually been
-exercised, so it stays the documented path until that changes.
+into one run. The changelogs are no longer in its way: since 2026-09-28 each package keeps
+its own `modules/<name>/CHANGELOG.md`, the per-project layout `nx release changelog`
+maintains ([F2](docs/backlog.md#f2)). They are still written by hand, and adopting the flow
+would mean reconciling its generated entries with them. What is not settled is the flow
+itself: no release has yet been cut through it end to end. The manual procedure above is the
+one that has actually been exercised, so it stays the documented path until that changes.

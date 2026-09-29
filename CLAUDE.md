@@ -339,8 +339,9 @@ These apply to all three libraries.
   their barrels list modules directly, and `eval-forms` has one barrel per entry point.
 - Prefer purely additive changes. All three packages are published, so altering an
   exported symbol's shape is a **breaking release**: it needs an explicit callout in the
-  response, a version bump, and an entry in the **root `CHANGELOG.md`** under a heading
-  naming the package (`## [eval-forms 0.2.3]`). There are no per-module changelogs.
+  response, a version bump, and an entry in **that package's own
+  `modules/<name>/CHANGELOG.md`** (`## [0.2.3] - 2026-09-26`, no package prefix). The root
+  `CHANGELOG.md` only lists the three, plus workspace changes that ship in no package.
 
 ## Conventions
 
