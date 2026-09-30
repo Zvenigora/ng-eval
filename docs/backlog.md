@@ -111,7 +111,7 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [A10](#a10) | `getKey`'s scopes step reports every key present against a plain-object scope | core | fix | Open — **latent, not live**; blocks any fix to [A4](#a4) |
 | [A5](#a5) | Service-layer entry points discard the error they caught — **12 sites, 4 services** | core | fix | Open |
 | [A6](#a6) | `safeCall` destroys the class of any error thrown through a call | core | fix | Open |
-| [A7](#a7) | `EvalContext.getThis` reads `_original` in its `priorScopes` loop | core | fix | Open |
+| [A7](#a7) | `EvalScopeOptions.thisArg` is documented and never applied — `getThis`'s `priorScopes` loop is dead, and `ns.fn()` never reaches it | core | decision, then fix | Open — **rewritten 2026-09-29**, when the 0.6.1 fix was measured; held for `eval-core` 0.7.0 |
 | [A8](backlog-retired.md#a8) | `EvalService._activeStates` grows unboundedly | core | fix | **Retired — fixed 2026-09-25, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987, in two steps: `simpleEval`'s states ([`docs/a8/plan.md`](a8/plan.md)), then the set deleted ([`docs/a8/step-2-plan.md`](a8/step-2-plan.md)). Withdraws the published destroy-time registry clear |
 | [A9](backlog-retired.md#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B1](#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | Open, Covered |
@@ -537,9 +537,64 @@ behavioural change to what escapes a call.
 *Verified*: source read, 2026-09-06.
 
 <a id="a7"></a>
-## A7 — `EvalContext.getThis` reads the wrong object in its `priorScopes` loop
+## A7 — `EvalScopeOptions.thisArg` is documented and never applied
 
-**Package** core · **Kind** fix · **Status** Open
+**Package** core · **Kind** decision, then fix · **Status** Open. **Rewritten 2026-09-29** from
+"`EvalContext.getThis` reads the wrong object in its `priorScopes` loop", when the fix planned for
+`eval-core` 0.6.1 was measured and did not hold
+
+**What it is.** `EvalScopeOptions.thisArg` is declared in
+[`eval-scope.ts`](../modules/eval-core/src/lib/internal/classes/eval/eval-scope.ts) and advertised
+in the package README's Scopes section, and nothing in `eval-core`'s source reads it. A grep for
+`thisArg` under `modules/eval-core/src` finds the declaration, its default, specs that set it, and
+unrelated parameters of the same name: the registries' `forEach`, `safeCall`, and the `EvalLookup`
+type's second parameter. So a scope's `thisArg` never becomes a
+call's receiver on any path.
+
+**The documented path cannot show it.** `ns.fn()` resolves `ns` through `EvalScope.get`, which
+returns `scope.context` on a namespace match. The member hop `.fn` then reads a plain object, so
+the call's receiver is the scope's own object, whatever `thisArg` says. Every case in the suite
+sets `thisArg` to that same object, so none can tell the difference. *Probed 2026-09-29*: in
+`readme-examples.spec.ts`, the prior-scope case with `thisArg` set to `{ name: 'Other' }` stays
+green (15 of 15), and still returns `'Miss Kitty says meow 3 times'`. Read, not probed, for
+`eval.service.scope.spec.ts` (both cases) and `dependency-tracker.spec.ts`'s prior-scope case:
+each sets `thisArg` to the scope's own object, and the latter calls no method at all.
+
+**`getThis`'s `priorScopes` loop is dead.** `getThis` is reached only for `this.fn()`: `this`
+evaluates to the `EvalContext`, and the member visitor calls `getThis` only when its receiver is
+that context
+([`member-expression.ts:91-111`](../modules/eval-core/src/lib/internal/visitors/member-expression.ts#L91-L111)).
+A bare `fn()` takes `call-expression.ts`'s path, which passes the context as `this`. The loop tests
+`_original` rather than the scope, so it can match only a key the block before it has already
+returned for. Two repairs were measured:
+
+- **The one-word fix does not compile.** `getContextValue(scope, key)` fails `build:production`
+  with `TS2345: Argument of type 'EvalScope' is not assignable to parameter of type 'Context |
+  undefined'`. Forced through, it would read a property of the `EvalScope` object itself
+  (`type`, `context`, `get`), not of the scope's data.
+- **The two-line fix works and reaches the wrong path.** Reading `scope.get(key)` and returning
+  `scope.options.thisArg` builds, and `eval-core`'s suite is green with two cases added (1078).
+  But it applies `thisArg` only to `this.fn()` where a *global* scope supplies `fn`. The
+  documented `ns.fn()` never reaches `getThis`.
+
+**The `lookups` loop returns the lookup function itself.** For a key only a lookup resolves,
+`getThis` returns `lookup`, so `this.fn()` calls `fn` with the resolver as `this`. **It is pinned
+downstream**:
+[`signal-context.spec.ts:157-167`](../modules/eval-signals/src/lib/signal-context.spec.ts#L157-L167)
+asserts `getThis('one')` is `context.lookups[0]`. So a fix that changes it moves an `eval-signals`
+spec as well, which is the [A9](backlog-retired.md#a9) lesson in "Phase 2 preconditions" above.
+
+**The decision is what `thisArg` means on both paths**: `ns.fn()` through a namespace, and
+`this.fn()` through a global scope or a lookup. Either answer changes a call's receiver, which is
+behavioural, so it is held for `eval-core` 0.7.0 rather than a patch. Until then the package README
+says `thisArg` is accepted and not applied (2026-09-29).
+
+*Recorded*: this entry, rewritten from a failed fix for `eval-core` 0.6.1.
+*Verified*: the one-word fix built 2026-09-29 (TS2345); the two-line fix run against `eval-core`'s
+suite, 1078 green; the README case probed with a foreign `thisArg`, green. The two other specs
+were read; the `lookups` receiver was read, and `eval-signals` pins it.
+
+**The entry as it stood:**
 
 [`eval-context.ts:262-267`](../modules/eval-core/src/lib/internal/classes/eval/eval-context.ts#L262-L267)
 calls `getContextValue(this._original, key)` inside the loop over `this._priorScopes`, where it

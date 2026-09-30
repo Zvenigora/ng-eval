@@ -42,7 +42,9 @@ expressions.length;   // 2
 
 ### Scopes — `EvalContext`, `EvalScope`, `EvalScopeOptions`
 
-An evaluation context may carry prior scopes, each with its own `namespace`, `thisArg` and case sensitivity. Bare identifiers are read from the context itself; a namespaced scope is reached through its namespace.
+An evaluation context may carry prior scopes, each with its own `namespace` and case sensitivity. Bare identifiers are read from the context itself; a namespaced scope is reached through its namespace.
+
+`EvalScopeOptions` also accepts `thisArg`, but it is not currently applied: no call uses it as `this`. A method reached through a namespace, such as `cat.action(...)` below, is called with the scope's own object as `this`. The example sets `thisArg` to that same object, so its output does not depend on it.
 
 ```javascript
 import { EvalContext, EvalScope, EvalScopeOptions,

@@ -175,7 +175,7 @@ describe('documented examples', () => {
     expect(expressions?.length).toBe(2);
   });
 
-  it('should evaluate through a prior scope with its own namespace and thisArg', () => {
+  it('should evaluate through a prior scope with its own namespace', () => {
     const cat = {
       name: 'Miss Kitty',
       num: 3,
