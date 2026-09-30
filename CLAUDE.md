@@ -84,11 +84,13 @@ build before believing a type is sound.
 
 ## Working from a plan
 
-- Work runs per backlog item or batch. **An item or batch needing more than one commit gets a
-  plan under `docs/<item>/`** — as in `docs/a8/`, `docs/a20/`, `docs/a21/` and
+- Work runs per backlog item or batch. **A plan document is for one item that needs more than
+  one commit**, under `docs/<item>/` — as in `docs/a8/`, `docs/a20/`, `docs/a21/` and
   `docs/trace-surface/`. **A one-commit item gets no plan document: its exit criteria live in
-  the prompt, and its backlog entry records what verified it.** `.claude/skills/step/SKILL.md`
-  still targets a finished document; it is retargeted with the next batch's plan.
+  the prompt, and its backlog entry records what verified it.** **Neither does a batch of
+  independent one-commit items**, however many commits it runs to: each item's exit criteria
+  live in the prompt, as the A3/B4/D6/F6, D9/F13 and F2 batches did. `.claude/skills/step/SKILL.md`
+  still targets a finished document; it is retargeted with the next item's plan.
 - **One retrospect per track; no per-step summaries.**
 - **Anything left for later work goes in `docs/backlog.md`; a commit body never carries it
   forward.**
