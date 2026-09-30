@@ -679,13 +679,15 @@ Neither is about resolution. Every key an expression can name resolves, at any s
 `caseInsensitive` allows, whether or not the model held it when the form was built — there is
 no `invalidate()` at this entry point and nothing to call it on.
 
-- **The nested-signal diagnostic does not reach `/signals`.** A model property holding a signal
-  — `{ user: { name: signal('a') } }` — is read un-called by the member visitor, and
+- **The nested-signal diagnostic does not reach `/signals`.** A *nested* property holding a
+  signal — `{ user: { name: signal('a') } }` — is read un-called by the member visitor, and
   `@zvenigora/ng-eval-signals`' dev-mode warning never fires here. That shape is precisely what
   the upstream scan reports, so the check is neither switched off nor blind to it: it runs over
   the *source record* a context is built from, and this adapter hands it an empty one. Every
   model key resolves through a lookup instead, where nothing scans. Widening the scan would not
-  recover it.
+  recover it. A *top-level* key holding a signal is not this case: `{ ready: signal(false) }`
+  resolves `ready` to `false`, as `createSignalContext` resolves it, and a rule naming `ready`
+  re-runs when that signal changes.
 - **The form's key set is not enumerable from upstream**, because the memo is deliberately
   private. That is the fix rather than the cost: an enumerable record is exactly what froze a
   case-insensitively matched key to its first spelling for the life of the form. It is the

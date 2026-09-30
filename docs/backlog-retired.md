@@ -1099,6 +1099,53 @@ source count.
 
 # D. `eval-forms`
 
+<a id="d4"></a>
+## D4 — A top-level model key holding a signal is returned un-called
+
+**Package** forms · **Kind** fix or doc · **Status** **Retired — fixed 2026-09-29**; ships with
+`eval-forms` 0.2.4. Took the fix, not the doc
+
+*Fixed* 2026-09-29: `/signals`' model lookup now ends the way upstream's does, with
+`isSignal(value) ? value() : value`, so `{ ready: signal(false) }` resolves `ready` to `false`. The
+call runs in the rule's own derivation, so a rule naming `ready` re-derives when that signal
+changes, with the model unchanged. The README bullet this entry cited now says the member-visitor
+caveat is the *nested* shape, and that a top-level signal resolves as `createSignalContext`
+resolves it.
+
+*Verified*: three cases in `model-source.spec.ts`, written first, each comparing `/signals` with
+`createSignalContext` over the same source and naming the value. Against the unfixed lookup the
+first two were red (`[Function getter]` where `false` was expected). `eval-forms` 265 → 268.
+Probes, each against the whole `eval-forms` suite:
+
+| Wrong implementation | Red |
+| -------------------- | --- |
+| No unwrap (return the value as is) | 2 of 267: the two signal cases, nothing else. Run before the third case was written; that case returns the function uncalled and passes against this break, by design |
+| Call every function, not only signals | 3 of 268: the plain-function case, plus two `evaluate-rule.spec.ts` strand cases whose model holds a function. The third D4 case was added for this probe: before it, only those two unrelated cases caught it |
+| Unwrap with `untracked(value)` | 1 of 268: the re-derive case only |
+
+The `.d.ts` files are byte-identical to a build before the change; the `/signals` FESM changes.
+
+**The entry as it stood:**
+
+Upstream's lookup is `resolve(...)` then `isSignal(value) ? value() : value`
+([`signal-context.ts:200`](../modules/eval-signals/src/lib/signal-context.ts#L200)); this adapter's
+is `keySignal(key)()` with no `isSignal` step
+([`model-source.ts:131-146`](../modules/eval-forms/signals/src/lib/model-source.ts#L131-L146)). So
+`model = signal({ ready: signal(false) })` resolves `ready` to a truthy function here and to
+`false` through `/reactive`.
+
+Near-unreachable for Signal Forms, whose models are plain data.
+
+**Partly discharged.** [`README.md` § Two things that are not available
+here](../modules/eval-forms/README.md#two-things-that-are-not-available-here) documents the shape,
+but attributes it to "the member visitor" — which is the *nested* read mechanism
+(`{ user: { name: signal('a') } }`), not this one. For a top-level key no member visitor is
+involved: `keySignal('ready')()` returns the inner signal function directly. The README also does
+not state the `/reactive` divergence, which is the part a consumer moving between adapters would
+hit. Either correct the attribution and add the divergence, or add the `isSignal` step.
+
+*Recorded*: [`forms/phase-6-step-2-summary.md` § 5.2](forms/phase-6-step-2-summary.md).
+
 <a id="d6"></a>
 ## D6 — `/signals` diverged from upstream on non-string keys
 

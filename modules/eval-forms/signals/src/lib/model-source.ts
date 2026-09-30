@@ -1,4 +1,4 @@
-import { Signal, WritableSignal, computed } from '@angular/core';
+import { Signal, WritableSignal, computed, isSignal } from '@angular/core';
 import { EvalContext, EvalOptions } from '@zvenigora/ng-eval-core';
 import { createFieldContext } from '@zvenigora/ng-eval-forms';
 
@@ -100,8 +100,10 @@ export interface ModelSource {
  *
  * - The nested-signal diagnostic does not reach this adapter.
  *   `findNestedSignals` only reports a key whose value `isPlainObject`, and
- *   every value here is a `computed`. A model property holding a signal is
- *   read un-called by the member visitor and nothing warns.
+ *   every value here is a `computed`. A *nested* property holding a signal -
+ *   `{ user: { name: signal('a') } }` - is read un-called by the member
+ *   visitor and nothing warns. A top-level key holding one is called, as
+ *   upstream's lookup does.
  * - Enumeration of the form's keys is not available upstream, because the
  *   memo is deliberately private. That is the fix rather than a cost: the
  *   record being enumerable by upstream's `resolve` is precisely what
@@ -169,9 +171,16 @@ export const createModelSource = <TModel extends object>(
     // under `caseInsensitive` throw from `toLowerCase`. Anything else - a
     // symbol - resolves `undefined`, where upstream would find a symbol-keyed
     // own property (`docs/backlog.md` `BL-D6`).
+    //
+    // A value that is itself a signal is called, as upstream's lookup does
+    // (`isSignal(value) ? value() : value`), so `{ ready: signal(false) }`
+    // resolves `ready` to `false` rather than to a truthy function. The call
+    // happens in the rule's own derivation, so the rule tracks the inner
+    // signal as well as the key's computed (`docs/backlog.md` `BL-D4`).
     context.lookups.push((key) => {
       const name = typeof key === 'string' ? key : typeof key === 'number' ? String(key) : undefined;
-      return name === undefined ? undefined : keySignal(name)();
+      const value = name === undefined ? undefined : keySignal(name)();
+      return isSignal(value) ? value() : value;
     });
 
     return context;

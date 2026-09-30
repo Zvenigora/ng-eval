@@ -302,6 +302,53 @@ describe('createModelSource', () => {
     });
   });
 
+  describe('a top-level signal value', () => {
+
+    // `docs/backlog.md` `BL-D4`. Upstream's lookup calls a value that is a
+    // signal (`isSignal(value) ? value() : value`), so `ready` below resolves
+    // to what the signal holds. Without the same step here it resolves to the
+    // signal function itself, which is truthy whatever it holds - so the
+    // fixture holds `false`, the value that separates the two. Each case also
+    // names the value, so the adapters agreeing on a wrong answer does not
+    // pass.
+    it('should resolve a key holding a signal to its value, as upstream does', () => {
+      const ready = signal(false);
+      const ours = createModelSource(signal<Record<string, unknown>>({ ready })).createRuleContext();
+      const upstream = createSignalContext({ ready });
+
+      expect(ours.get('ready')).toBe(upstream.get('ready'));
+      expect(ours.get('ready')).toBe(false);
+    });
+
+    it('should re-derive when the signal a key holds changes, as upstream does', () => {
+      // The model itself never changes here, so only the inner signal's read
+      // can be what re-derives the consumer.
+      const ready = signal(false);
+      const ours = createModelSource(signal<Record<string, unknown>>({ ready })).createRuleContext();
+      const upstream = createSignalContext({ ready });
+      const derivedOurs = computed(() => ours.get('ready'));
+      const derivedUpstream = computed(() => upstream.get('ready'));
+
+      expect(derivedOurs()).toBe(false);
+
+      ready.set(true);
+
+      expect(derivedOurs()).toBe(derivedUpstream());
+      expect(derivedOurs()).toBe(true);
+    });
+
+    it('should return a plain function value uncalled, as upstream does', () => {
+      // The over-reaching direction: an unwrap that calls every function
+      // passes both cases above, and turns a model method into its result.
+      const greet = () => 'hi';
+      const ours = createModelSource(signal<Record<string, unknown>>({ greet })).createRuleContext();
+      const upstream = createSignalContext({ greet });
+
+      expect(ours.get('greet')).toBe(upstream.get('greet'));
+      expect(ours.get('greet')).toBe(greet);
+    });
+  });
+
   describe('the memo', () => {
 
     it('should return one computed per key across two reads of a late key', () => {

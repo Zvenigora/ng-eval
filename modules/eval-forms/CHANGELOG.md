@@ -13,6 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `undefined`, where `/reactive` and `createSignalContext` resolve the value. A number key now
   resolves as its string spelling, through the same memo entry as `this["42"]`, with or without
   `caseInsensitive`. A symbol key still resolves `undefined`. `docs/backlog.md` D6.
+- **eval-forms `/signals`, a top-level key holding a signal**: `{ ready: signal(false) }`
+  resolved `ready` to the signal function itself, which is truthy whatever it holds, where
+  `createSignalContext` resolves it to `false`. The value is now called, as upstream does, and a
+  rule naming `ready` re-runs when that signal changes. A plain function value is still returned
+  uncalled. `docs/backlog.md` D4.
 
 ---
 

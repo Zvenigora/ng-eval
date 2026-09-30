@@ -124,7 +124,7 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [D1](#d1) | The throwing-subscriber premise is false in both halves | forms | fix + decision | Open, Premise retired |
 | [D2](#d2) | Should `/reactive` reject prototype-shadowed identifiers too? | forms | decision, breaking | Open |
 | [D3](#d3) | Per-registration `caseInsensitive` reaches one of three levers | forms | decision | Open, Covered |
-| [D4](#d4) | A top-level model key holding a signal is returned un-called | forms | fix or doc | Open, partly documented |
+| [D4](backlog-retired.md#d4) | A top-level model key holding a signal is returned un-called | forms | fix or doc | **Retired — fixed 2026-09-29**; ships with `eval-forms` 0.2.4. `/signals` unwraps it as upstream does, and the README bullet is corrected |
 | [D5](#d5) | Two dead lookups run ahead of ours on every resolution | forms | fix (perf) | Open |
 | [D6](backlog-retired.md#d6) | `/signals` diverged from upstream on non-string keys — filed as "the `typeof` guard is unfalsifiable", measured false | forms | fix | **Retired — fixed 2026-09-26**; ships with the next `eval-forms` release |
 | [D7](#d7) | `toSignal`'s `assertNotInReactiveContext` throws out of the mirror | forms | accepted | Open, documented |
@@ -1161,30 +1161,6 @@ silently reverses it.
 
 *Recorded*: [`forms/phase-6-plan.md` § 3.5.3](forms/phase-6-plan.md).
 
-<a id="d4"></a>
-## D4 — A top-level model key holding a signal is returned un-called
-
-**Package** forms · **Kind** fix or doc · **Status** Open, partly documented
-
-Upstream's lookup is `resolve(...)` then `isSignal(value) ? value() : value`
-([`signal-context.ts:200`](../modules/eval-signals/src/lib/signal-context.ts#L200)); this adapter's
-is `keySignal(key)()` with no `isSignal` step
-([`model-source.ts:131-146`](../modules/eval-forms/signals/src/lib/model-source.ts#L131-L146)). So
-`model = signal({ ready: signal(false) })` resolves `ready` to a truthy function here and to
-`false` through `/reactive`.
-
-Near-unreachable for Signal Forms, whose models are plain data.
-
-**Partly discharged.** [`README.md` § Two things that are not available
-here](../modules/eval-forms/README.md#two-things-that-are-not-available-here) documents the shape,
-but attributes it to "the member visitor" — which is the *nested* read mechanism
-(`{ user: { name: signal('a') } }`), not this one. For a top-level key no member visitor is
-involved: `keySignal('ready')()` returns the inner signal function directly. The README also does
-not state the `/reactive` divergence, which is the part a consumer moving between adapters would
-hit. Either correct the attribution and add the divergence, or add the `isSignal` step.
-
-*Recorded*: [`forms/phase-6-step-2-summary.md` § 5.2](forms/phase-6-step-2-summary.md).
-
 <a id="d5"></a>
 ## D5 — Two dead lookups run ahead of ours on every resolution
 
@@ -1221,8 +1197,10 @@ a state a later phase may want to revisit, not a closed question.
 A nested-signal value added to a source *afterwards* gets no dev-mode diagnostic, so the one misuse
 `eval-signals` detects for us goes undetected on exactly the path Phase 4 chose (a live source).
 Small — the shape is a developer mistake in the *source*, not in a server-supplied schema — but a
-direct consequence of choosing a live source. Related to [D4](#d4), which is the same diagnostic
-failing to reach `/signals` for a different reason.
+direct consequence of choosing a live source. Related to [D4](backlog-retired.md#d4), which was
+filed as the same diagnostic failing to reach `/signals` for a different reason. D4's top-level
+case is fixed. The nested case, where the diagnostic does not reach `/signals`, is unchanged and
+documented in the package README.
 
 *Recorded*: [`forms/phase-4-plan.md` § 3.5.6](forms/phase-4-plan.md).
 
