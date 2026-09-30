@@ -9,12 +9,18 @@ import { runInNewContext } from 'vm';
 import { FieldProperties, bindFieldProperties } from '../public-api';
 
 /**
- * The two release paths a binding has, asked of the collector: `destroy()`,
- * and the `DestroyRef` net that calls it when the caller's injector dies.
- * The specs that bind and never call `destroy()` rely on the second, and
- * until this file nothing observed either as retention - the teardown cases
- * in `field-schema.spec.ts` count subscriptions and `destroy` calls, which a
- * registration left on the caller's injector does not change.
+ * `destroy()`'s release path, asked of the collector: with the caller's
+ * injector alive, `destroy()` must let go of the group and the bound signals,
+ * including the registration it made on that injector's `DestroyRef`. The
+ * teardown cases in `field-schema.spec.ts` count subscriptions and `destroy`
+ * calls, which a registration left behind does not change.
+ *
+ * The other path, the `DestroyRef` net that runs when the caller's injector
+ * dies, is covered by `field-schema.spec.ts`'s subscription count ("should
+ * release the mirror when the injector it was given is destroyed"), not here.
+ * Retention on that path is transient: its injector-target cases were removed
+ * because their result depended on how fast the collector ran
+ * (docs/backlog-retired.md D12, 2026-09-29).
  *
  * `/signals` has no counterpart: `createExpressionRules` registers with no
  * `DestroyRef` and has no `destroy()` (`rules.ts`).
@@ -91,7 +97,7 @@ describe('bindFieldProperties - release paths (docs/backlog.md D12)', () => {
   };
 
   /**
-   * The injector-alive half. What holds the binding here is the registration
+   * With the caller's injector alive, what holds the binding is the registration
    * `bindFieldProperties` makes on the caller's `DestroyRef`
    * (`field-schema.ts`, the `unregister` assignment): its callback closes
    * over `destroy`, and `destroy` over `created` - every bound signal.
@@ -128,47 +134,6 @@ describe('bindFieldProperties - release paths (docs/backlog.md D12)', () => {
     };
   };
 
-  /**
-   * The injector-dies half. **The target is the caller's injector, and the
-   * test holds the group** - the case the `DestroyRef` net exists for: a form
-   * that outlives the component or route injector its binding was wired to.
-   *
-   * A `FormGroup` target cannot observe this path. `R3Injector.destroy()`
-   * replaces its hook list with an empty one before running the old one, so a
-   * destroyed injector releases the registration whether or not the callback
-   * released anything, and a group nothing else holds is collected either
-   * way. Measured: a group-target case stayed green with the registration
-   * removed, and again with its callback made a no-op.
-   *
-   * What the callback does release runs the other way, from the group:
-   * `group.events` holds the mirror's `sync` subscriber, `sync` shares
-   * `createControlSource`'s closure with `open`, which reads
-   * `options.injector` - the binding's child scope - and the scope's `parent`
-   * is this injector. The callback destroys the scope, the scope's
-   * `takeUntilDestroyed` drops the subscriber, and the chain is cut.
-   */
-  const injectorUnder = (
-    destroyInjector: boolean
-  ): { group?: FormGroup; ref?: WeakRef<EnvironmentInjector>; error?: string } => {
-    try {
-      const injector = createEnvironmentInjector([], root);
-      const { group, error } = bindOver(injector, false);
-
-      if (!group) {
-        return { error };
-      }
-
-      if (destroyInjector) {
-        injector.destroy();
-      }
-
-      return { group, ref: new WeakRef(injector) };
-
-    } catch (error) {
-      return { error: String(error) };
-    }
-  };
-
   it('should release the group and the signals on destroy() while the caller\'s injector lives', async () => {
     const injector = createEnvironmentInjector([], root);
 
@@ -184,21 +149,7 @@ describe('bindFieldProperties - release paths (docs/backlog.md D12)', () => {
     injector.destroy();
   });
 
-  it('should release the caller\'s injector from the group when that injector is destroyed', async () => {
-    const { group, ref, error } = injectorUnder(true);
-
-    expect(error).toBeUndefined();
-
-    const live = await collect(ref ? [ref] : []);
-
-    expect(live).toEqual([false]);
-
-    // Read after the collection, so the group is held across it - the form
-    // that outlives the injector.
-    expect(group).toBeDefined();
-  });
-
-  describe('calibration: with neither release, each target is retained', () => {
+  describe('calibration: without destroy(), the targets are retained', () => {
 
     it('should keep the group and the signals while the caller\'s injector lives and destroy() is not called', async () => {
       const injector = createEnvironmentInjector([], root);
@@ -213,17 +164,6 @@ describe('bindFieldProperties - release paths (docs/backlog.md D12)', () => {
       expect(live).toEqual([true, true, true]);
 
       injector.destroy();
-    });
-
-    it('should keep the caller\'s injector while the group lives and neither is destroyed', async () => {
-      const { group, ref, error } = injectorUnder(false);
-
-      expect(error).toBeUndefined();
-
-      const live = await collect(ref ? [ref] : []);
-
-      expect(live).toEqual([true]);
-      expect(group).toBeDefined();
     });
 
   });

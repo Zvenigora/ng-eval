@@ -1298,8 +1298,23 @@ new gap; worth revisiting if the core's surface grows.
 ## D12 — ~20 specs discard the binding and never call `destroy()`
 
 **Package** forms · **Kind** test hygiene · **Status** **Retired — fixed 2026-09-28, test only;
-the release paths the discard-style specs rely on are now pinned by
-`field-schema.memory.spec.ts`**
+`destroy()`'s release path is pinned by `field-schema.memory.spec.ts`, and the `DestroyRef` net's
+by `field-schema.spec.ts`'s subscription count.** Corrected 2026-09-29, below
+
+**2026-09-29: cases 2 and 3b removed, not tuned. Their result depended on how fast the collector
+ran.** CI's `build (24.x)` job on `01a2c30` failed (its log was not read here). Case 2's failure
+reproduces on a 2-core Linux
+machine under Node 24, with three `nx run-many -t test --skip-nx-cache` runs in parallel: as
+committed (one `setTimeout(0)` and one `gc()`), case 2 was red in 3 of 3 loaded runs and green
+when run alone. With `collect()` looping up to ten rounds, case 2 went green and calibration 3b
+went red in 2 of 3 loaded runs. The injector was collected with neither release applied, so its
+retention on this path is transient and neither case isolates the net. No number of rounds makes
+both reliable, so both were deleted, with `injectorUnder`. Cases 1 and 3a were green in every
+loaded run under both variants and are unchanged, as is `collect()`. The net stays covered by the
+subscription-count case named in the last bullet below, which went red under (b1) and (b2). The
+probe table below is kept as the record: its rows 2 and 3b no longer exist. The loaded
+reproduction was run on a 2-core machine on purpose. On a 20-core workstation, three parallel
+gates start 20+ Node processes each and exhaust memory; do not run it there.
 
 `modules/eval-forms/reactive/src/lib/field-schema.memory.spec.ts`, four cases, using
 `eval-signals`' `eval-signal.memory.spec.ts` technique unchanged: `gc` from `--expose-gc` in a new

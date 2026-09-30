@@ -132,7 +132,7 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [D9](backlog-retired.md#d9) | § 3.4.3's precedence rule is untested end to end | forms | test gap | **Retired — premise false: covered end to end since 7fbef49; the `caseInsensitive` pair added 2026-09-27, test only** |
 | [D10](backlog-retired.md#d10) | `applyErrorPolicy` has no runnable README block | forms | docs | **Retired — fixed**, and it created [F3](backlog-retired.md#f3)'s third gate's subject |
 | [D11](#d11) | `/signals` has no worked example | forms | docs | Open |
-| [D12](backlog-retired.md#d12) | ~20 specs discard the binding and never call `destroy()` | forms | test hygiene | **Retired — fixed 2026-09-28, test only**; the release paths the discard-style specs rely on are now pinned by `field-schema.memory.spec.ts` |
+| [D12](backlog-retired.md#d12) | ~20 specs discard the binding and never call `destroy()` | forms | test hygiene | **Retired — fixed 2026-09-28, test only**; `destroy()`'s release path is pinned by `field-schema.memory.spec.ts`, the net's by `field-schema.spec.ts`'s subscription count. Injector-path memory cases removed 2026-09-29: timing-dependent |
 | [E1](#e1) | Form-state keys across both adapters | forms | phase | Open — **no phase reserved** |
 | [E2](#e2) | Arrays — `applyEach` at `/signals`, `FormArray` at `/reactive` | forms | phase | Open |
 | [E3](#e3) | `dependencies` introspection at form scale | forms | phase | Open |
