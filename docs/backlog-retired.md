@@ -1540,6 +1540,10 @@ A package-level `CHANGELOG.md` is **not** copied into `dist/`, so it does not re
 tarball. ng-packagr's default assets are `LICENSE` and `README.md` only
 (`write-package.transform.js`), and no `ng-package.json` here declares `assets`. The changelogs
 are read on GitHub, as the root file was. Verified by building all three, 2026-09-28.
+*(Superseded 2026-09-29: each `ng-package.json` now declares `"assets": ["CHANGELOG.md"]`, so
+every package's changelog is copied into `dist/modules/<name>/` and ships in its tarball, first in
+`eval-core` 0.6.1 and `eval-forms` 0.2.4. Its relative links into `docs/` do not resolve on npm;
+they do on GitHub.)*
 
 **The npm drift, checked against `npm view <pkg> versions` on 2026-09-28, was wider than recorded
 above:**
