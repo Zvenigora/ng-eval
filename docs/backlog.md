@@ -143,7 +143,7 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [F2](backlog-retired.md#f2) | One `CHANGELOG.md` for three independently-versioned packages | repo | decision | **Retired — decided 2026-09-28**: one `modules/<name>/CHANGELOG.md` per package; `nx release` still unadopted. `eval-core` had five changelogged versions npm never received |
 | [F3](backlog-retired.md#f3) | Documented-symbol drift gate — **three packages, four READMEs** | core, signals, forms | fix | **Retired — built and green** |
 | [F4](backlog-retired.md#f4) | README-execution gate for `eval-core` and `eval-signals` | core, signals | fix / decide-then-drop | **Retired** — both package READMEs gated; root **assessed and dropped** |
-| [F5](#f5) | The `js-sha256` peer range is locked to a dead minor | core | decision | Open |
+| [F5](backlog-retired.md#f5) | The `js-sha256` peer range is locked to a dead minor | core | decision | **Retired — decided and fixed 2026-09-29**; ships with `eval-core` 0.6.1. Range widened to `^0.10.1 \|\| ^0.11.0 \|\| ^0.12.0 \|\| ^1.0.0`, tested at 0.10.1 and 1.0.0 |
 | [F6](backlog-retired.md#f6) | CONTRIBUTING's "Code style" describes a config that never existed here | repo | decision (editorial) | **Retired — fixed 2026-09-26**; the table replaced by a paragraph pointing at the four flat configs |
 | [F7](#f7) | Intermittent Jest worker-teardown warning — **no established locus**, possibly Nx/Jest rather than a library | — | fix? | Open — locus corrected 2026-09-09; **not reproducible per project** |
 | [F8](#f8) | The release tag step has no forcing function, and ships with a silencer | repo | fix | **Premise retired 2026-09-16** — all ten missing tags written and pushed, so the arrears are cleared; the mechanism is untouched and the entry is live |
@@ -1352,32 +1352,6 @@ would read.
 ---
 
 # F. Tooling and docs
-
-<a id="f5"></a>
-## F5 — The `js-sha256` peer range is locked to a dead minor
-
-**Package** core · **Kind** decision · **Status** Open
-
-`modules/eval-core/package.json:20` declares `js-sha256: ^0.10.1` as a peer. Because the package is
-still `0.x`, a caret range there is locked to the **minor**, so `^0.10.1` admits `0.10.x` and nothing
-else. Upstream has since published `0.11.0`, `0.11.1`, `0.12.0` and `1.0.0`, and `1.0.0` is `latest`
-— so every version a consumer would naturally reach for is outside the declared range.
-
-The peer is real, not vestigial. There is exactly one call site —
-`modules/eval-core/src/lib/internal/classes/common/cache.ts:53`, which hashes a `namespace:value`
-template string into a cache key.
-
-**What a consumer sees.** A clean `npm install` is fine: npm's automatic peer installation picks
-`0.10.1`. The failure is the *other* order — a consumer whose tree already contains `js-sha256@1`
-gets an `ERESOLVE overriding peer dependency` warning naming `@zvenigora/ng-eval-core`, and npm keeps
-their version, so the library runs against a major it never declared. A warning rather than an error.
-
-**The decision.** Widening to `^0.10.1 || ^0.11.0 || ^0.12.0 || ^1.0.0` needs the `sha256` call
-signature checked against `1.0.0` first. The alternative is to stop depending on a hash library for
-what is a cache key: the value is never persisted, compared across processes, or relied on for
-integrity, so a non-cryptographic hash computed in-repo would remove a peer dependency from the
-published surface entirely, and the one call site makes that a contained change. Either way it alters
-an exported package's `peerDependencies`, so it needs a `CHANGELOG.md` entry and a version bump.
 
 <a id="f7"></a>
 ## F7 — An intermittent Jest worker-teardown warning with no established locus

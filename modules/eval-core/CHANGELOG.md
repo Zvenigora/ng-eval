@@ -13,6 +13,10 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 ## [Unreleased]
 
 ### Changed
+- **The `js-sha256` peer range is widened** from `^0.10.1` to
+  `^0.10.1 || ^0.11.0 || ^0.12.0 || ^1.0.0`. On `0.x` a caret range admits only its own minor, so
+  a project already on `js-sha256` 1.0.0, the current `latest`, got an npm peer warning naming this
+  package. No code changed; tested against 0.10.1 and 1.0.0. [F5](../../docs/backlog-retired.md#f5).
 - **`ParserService` no longer logs when its periodic cleanup clears the parse cache.** The
   `console.debug('Parser cache cleared to prevent memory leaks')` is gone; the cache is still
   cleared on the same condition. The published bundle now makes no `console.*` call.

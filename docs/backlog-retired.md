@@ -1735,6 +1735,57 @@ in its docstring** — a blanket "self-contained" claim is how an unlisted subst
 
 Both are narrower than [F3](#f3) and neither supersedes it: they run code, they do not read markdown.
 
+<a id="f5"></a>
+## F5 — The `js-sha256` peer range is locked to a dead minor
+
+**Package** core · **Kind** decision · **Status** **Retired — decided and fixed 2026-09-29**; ships
+with `eval-core` 0.6.1. The peer range widened, not the dependency dropped
+
+**Decided: widen.** `eval-core`'s peer range is now `^0.10.1 || ^0.11.0 || ^0.12.0 || ^1.0.0`, and
+the workspace's own `js-sha256` moved from `^0.10.1` to an exact `1.0.0`. The in-repo hash was not
+taken. The widening needed no source change, and `cache.ts`'s import is unchanged: 1.0.0 still
+exports a named `sha256` with the same `(message) => string` shape, now behind an `exports` map with
+separate ESM, CommonJS and Node entry points.
+
+*Verified* 2026-09-29, on both ends of the range:
+
+- **1.0.0**: the full gate green, with the counts unchanged (`eval-core` 1076). `lint` includes
+  `@nx/dependency-checks`, which accepts the new range against the installed 1.0.0. The built
+  bundle still imports `{ sha256 } from 'js-sha256'`, and every `.d.ts` is byte-identical to a
+  build before the change. 1.0.0's `sha256(':1 + 2 * a')` equals Node's `crypto` SHA-256 hex, so
+  cache keys do not change.
+- **0.10.1**, installed with `--no-save`: `nx test eval-core --skip-nx-cache` green, 1076 in 58
+  suites. Then restored to 1.0.0.
+
+The two middle minors, 0.11.x and 0.12.x, were not installed. Their changelog entries are bug
+and packaging fixes.
+
+`npm audit --package-lock-only` reports the same 10 findings (7 moderate, 3 high, in `js-yaml`,
+`undici` and `webpack-dev-middleware`) before and after the bump. None is in `js-sha256`.
+
+**The entry as it stood:**
+
+`modules/eval-core/package.json:20` declares `js-sha256: ^0.10.1` as a peer. Because the package is
+still `0.x`, a caret range there is locked to the **minor**, so `^0.10.1` admits `0.10.x` and nothing
+else. Upstream has since published `0.11.0`, `0.11.1`, `0.12.0` and `1.0.0`, and `1.0.0` is `latest`
+— so every version a consumer would naturally reach for is outside the declared range.
+
+The peer is real, not vestigial. There is exactly one call site —
+`modules/eval-core/src/lib/internal/classes/common/cache.ts:53`, which hashes a `namespace:value`
+template string into a cache key.
+
+**What a consumer sees.** A clean `npm install` is fine: npm's automatic peer installation picks
+`0.10.1`. The failure is the *other* order — a consumer whose tree already contains `js-sha256@1`
+gets an `ERESOLVE overriding peer dependency` warning naming `@zvenigora/ng-eval-core`, and npm keeps
+their version, so the library runs against a major it never declared. A warning rather than an error.
+
+**The decision.** Widening to `^0.10.1 || ^0.11.0 || ^0.12.0 || ^1.0.0` needs the `sha256` call
+signature checked against `1.0.0` first. The alternative is to stop depending on a hash library for
+what is a cache key: the value is never persisted, compared across processes, or relied on for
+integrity, so a non-cryptographic hash computed in-repo would remove a peer dependency from the
+published surface entirely, and the one call site makes that a contained change. Either way it alters
+an exported package's `peerDependencies`, so it needs a `CHANGELOG.md` entry and a version bump.
+
 <a id="f6"></a>
 ## F6 — CONTRIBUTING's "Code style" describes a config that never existed here
 

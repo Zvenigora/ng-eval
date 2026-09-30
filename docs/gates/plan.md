@@ -254,7 +254,7 @@ rejecting a block count.
   belongs with whoever next has a reason to document `/signals` end to end. Bundling it here
   would double the plan to buy something none of the other entries need.
 - **Every other backlog entry.** [F2](../backlog-retired.md#f2) (one changelog for three packages),
-  [F5](../backlog.md#f5) (the `js-sha256` range), [F6](../backlog-retired.md#f6) (CONTRIBUTING's rule
+  [F5](../backlog-retired.md#f5) (the `js-sha256` range), [F6](../backlog-retired.md#f6) (CONTRIBUTING's rule
   table) and [F8](../backlog.md#f8) (the missing tag) are all tooling or docs, and all four are
   *decisions about policy* rather than gates. They share no file and no mechanism with anything
   here.
