@@ -12,6 +12,15 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+---
+
+## [0.6.1] - 2026-09-29
+
+**A patch: two manifest-and-hygiene fixes, [F5](../../docs/backlog-retired.md#f5) and
+[B3](../../docs/backlog-retired.md#b3), a dead line removed, and a README correction.** No
+published symbol is added and none changes shape. `eval-signals` 0.1.3 and `eval-forms` admit it
+unchanged: both declare `>=0.3.0 <0.7.0`.
+
 ### Changed
 - **The `js-sha256` peer range is widened** from `^0.10.1` to
   `^0.10.1 || ^0.11.0 || ^0.12.0 || ^1.0.0`. On `0.x` a caret range admits only its own minor, so
@@ -21,6 +30,23 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   `console.debug('Parser cache cleared to prevent memory leaks')` is gone; the cache is still
   cleared on the same condition. The published bundle now makes no `console.*` call.
   [B3](../../docs/backlog-retired.md#b3).
+- **Built with Angular 22.1.** The published `.d.ts` declares each service's `ɵprov` as
+  `ɵɵInjectableDeclaration<any>`, where 0.6.0, built with Angular 22.0, declared it with the
+  service's own type (`ɵɵInjectableDeclaration<ParserService>`, and so on for `EvalService`,
+  `CompilerService` and `DiscoveryService`). This is Angular's generated injection metadata, not
+  this package's API, and those four lines are the whole `.d.ts` difference from 0.6.0.
+- **`CHANGELOG.md` now ships in the package**, beside `README.md`. Its links into the repository's
+  `docs/` resolve on GitHub, not on npm.
+
+### Fixed
+- **The `import()` visitor's dead `afterVisitor` call is removed.** It followed an unconditional
+  throw, so it never ran. Behaviour is unchanged; the bundle loses that one line.
+  [A3](../../docs/backlog-retired.md#a3).
+- **The README no longer presents `EvalScopeOptions.thisArg` as applied.** `thisArg` is accepted
+  and is not currently applied: a method reached through a scope's namespace, such as
+  `cat.action()`, is called with the scope's own object as `this`, whatever `thisArg` holds.
+  Nothing changes at runtime; the README's Scopes section now says this. What `thisArg` should
+  mean is open, as [A7](../../docs/backlog.md#a7), and answering it changes a call's receiver.
 
 ---
 

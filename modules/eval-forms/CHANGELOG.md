@@ -8,16 +8,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+---
+
+## [0.2.4] - 2026-09-29
+
+**Two `/signals` fixes that bring its model lookup into line with `createSignalContext`,
+[D6](../../docs/backlog-retired.md#d6) and [D4](../../docs/backlog-retired.md#d4).** A patch: no
+exported symbol changes, and the `.d.ts` files are byte-identical to 0.2.3's. `/reactive` and the
+shared core entry point are unchanged. The peer ranges are unchanged, and
+`>=0.3.0 <0.7.0` already admits `eval-core` 0.6.1.
+
 ### Fixed
 - **eval-forms `/signals`, number keys**: `this[42]` against a model holding `"42"` resolved
   `undefined`, where `/reactive` and `createSignalContext` resolve the value. A number key now
   resolves as its string spelling, through the same memo entry as `this["42"]`, with or without
-  `caseInsensitive`. A symbol key still resolves `undefined`. `docs/backlog.md` D6.
+  `caseInsensitive`. A symbol key still resolves `undefined`.
+  [D6](../../docs/backlog-retired.md#d6).
 - **eval-forms `/signals`, a top-level key holding a signal**: `{ ready: signal(false) }`
   resolved `ready` to the signal function itself, which is truthy whatever it holds, where
   `createSignalContext` resolves it to `false`. The value is now called, as upstream does, and a
   rule naming `ready` re-runs when that signal changes. A plain function value is still returned
-  uncalled. `docs/backlog.md` D4.
+  uncalled. The README's note on the nested-signal diagnostic now separates this top-level case
+  from the nested one, which is unchanged. [D4](../../docs/backlog-retired.md#d4).
+
+### Changed
+- **Built with Angular 22.1.** Unlike `eval-core`, this package's `.d.ts` carries no `ɵprov`
+  declaration, so the upgrade changes none of its types.
+- **`CHANGELOG.md` now ships in the package**, beside `README.md`. Its links into the repository's
+  `docs/` resolve on GitHub, not on npm.
 
 ---
 
