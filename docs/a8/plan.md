@@ -1,7 +1,7 @@
 # A8 — `EvalService._activeStates` retains every state until `ngOnDestroy`
 
 Plan for [`docs/backlog.md`](../backlog.md) [A8](../backlog-retired.md#a8), the register's founding
-entry, with [A17](../backlog-retired.md#a17) and [B3](../backlog.md#b3) carried in the same method.
+entry, with [A17](../backlog-retired.md#a17) and [B3](../backlog-retired.md#b3) carried in the same method.
 Drafted against `c0c385b`.
 
 **Two steps, and this document executes only the first.** Step 1 is piece 1: the states

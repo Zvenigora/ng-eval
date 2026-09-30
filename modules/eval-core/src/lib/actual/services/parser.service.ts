@@ -64,7 +64,6 @@ export class ParserService implements OnDestroy {
           // Keep cache size within bounds by clearing if it gets too large
           if (this._cache.size > this._cache.maxCacheSize * 0.8) {
             this._cache.clear();
-            console.debug('Parser cache cleared to prevent memory leaks');
           }
         }
       }, 5 * 60 * 1000); // 5 minutes

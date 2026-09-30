@@ -81,7 +81,7 @@ caller already holds through the state. Worth a backlog entry only if someone as
 has no reader but its own `clear()`. It is pure retention, so A20's fix can delete the field
 outright, `createState` contexts included, instead of riding with A8. A8 is unchanged.
 [A17](../backlog-retired.md#a17) loses one of its five drains. The removed loop takes one of
-[B3](../backlog.md#b3)'s three `console.*` calls with it. That is not clean-up in passing:
+[B3](../backlog-retired.md#b3)'s three `console.*` calls with it. That is not clean-up in passing:
 the call has nothing left to guard.
 
 ## Scope and files

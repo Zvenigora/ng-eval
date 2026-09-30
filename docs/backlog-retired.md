@@ -200,7 +200,7 @@ halves; `eval-core` 0.6.0, tagged f26f987, under `CHANGELOG.md`'s `[eval-core 0.
 **Step 2 withdrew a published promise.** From 0.3.0 to 0.5.0, destroy cleared the hook
 registries of the states `createState` built, including the caller's `options.hooks`. Withdrawing
 it reverses [A21](#a21)'s decision to keep the clear. It also removes the drain that
-[A17](#a17) reordered and the `catch` that [B3](backlog.md#b3) silenced.
+[A17](#a17) reordered and the `catch` that [B3](#b3) silenced.
 
 **Coverage.** Step 1's cases 1.1–1.5, 1.7 and 1.8 and step 2's 2.1–2.9 cover it, in
 `eval.service.memory-leaks.spec.ts` and `eval-signal.memory.spec.ts`. Every wrong implementation
@@ -211,7 +211,7 @@ P5 alone.
 
 *The rest of this entry is the defect as recorded, with the notes each step added.*
 
-Step 1 carried [A17](#a17) and [B3](backlog.md#b3)'s `ngOnDestroy` site too, as this entry asked. It also
+Step 1 carried [A17](#a17) and [B3](#b3)'s `ngOnDestroy` site too, as this entry asked. It also
 narrowed one published sentence. Destroy clears an adopted hook registry only for states that
 `createState` handed back, because it no longer reaches a `simpleEval` state. That is a trade
 with a small cost. A hook that stores `event.state` where only the hook can reach it now keeps
@@ -293,7 +293,7 @@ each signal context passed that way is kept, with the signal sources its lookup 
 included, and its `CHANGELOG.md` entry says so. Step 2 released every context passed to
 `createState`, once the caller drops the state.*
 
-**The step that fixes this carries [B3](backlog.md#b3) and [A17](#a17) too.** *(Step 1 carried both.)* All three are in
+**The step that fixes this carries [B3](#b3) and [A17](#a17) too.** *(Step 1 carried both.)* All three are in
 `ngOnDestroy`, and B3 already asks to be revisited with A8. **[A20](#a20) and [A21](#a21) are the
 same method's siblings**, filed 2026-09-23. Both are fixed, and neither needed this fix. A21 was
 fixed in `c86b586`. A20 deleted `_activeContexts` ([`docs/a20/plan.md`](a20/plan.md)). *(Corrected
@@ -646,7 +646,7 @@ trace. The state's own structures go first, then the two caller-owned drains, wi
 matters for retention ahead of the other. Three cases in `eval.service.memory-leaks.spec.ts`
 freeze the trace and destroy. Two of them failed against the old order. Each probe order turned
 exactly its own case red: trace before hooks, and bookkeeping left last. The third case pins the
-per-state `catch`, which [B3](backlog.md#b3)'s change had to keep.
+per-state `catch`, which [B3](#b3)'s change had to keep.
 
 *(The next paragraph describes the drain as step 1 left it. It lapsed with the drain in step
 2.)* **One exposure remains, by choice.** A registry whose `clear` throws, for example a frozen one,
@@ -971,7 +971,7 @@ behavioural** — the branch is unreachable, per the three checks below, which i
 Detector: `pattern.spec.ts`'s `MemberExpression` fixture, which asserts the message *and* spies
 on `console.log`. Reverting both halves reddens that one case and nothing else.
 
-**The remaining three are [B3](backlog.md#b3)**, and this entry closing does not close that one.
+**The remaining three are [B3](#b3)**, and this entry closing does not close that one.
 
 ---
 
@@ -979,7 +979,7 @@ The defect, as it stood:
 
 `eval-core` has ~20 `console.*` calls in source. Most are unreachable and tree-shaken; **four
 reach the published FESM bundle**, verified by building and grepping
-`dist/modules/eval-core/fesm2022/`. This entry was one of them; the other three are [B3](backlog.md#b3).
+`dist/modules/eval-core/fesm2022/`. This entry was one of them; the other three are [B3](#b3).
 
 [`pattern.ts:83` at `ef5ac2b`](https://github.com/Zvenigora/ng-eval/blob/ef5ac2b4be987577a868baf2cd48739d5d55a1be/modules/eval-core/src/lib/internal/visitors/pattern.ts#L83) is
 `console.log(pattern, st, callback, arg)`, inside `evaluateMemberExpression`, guarded by
@@ -1014,6 +1014,68 @@ cannot currently run.
 
 *Verified*: source read, 2026-09-06. *Fixed*: 2026-09-11, Phase 2 step 0.
 
+<a id="b3"></a>
+## B3 — Two service-layer `console.*` calls reach the published bundle
+
+**Package** core · **Kind** decision · **Status** **Retired — fixed 2026-09-29**; ships with
+`eval-core` 0.6.1. The last call deleted, and the published bundle has none. Was one since
+2026-09-24, two since 2026-09-23
+
+**Decided and fixed 2026-09-29: the cache-timer call is deleted.** It did not qualify for the
+`isDevMode()` carve-out, for the same reason as the `ngOnDestroy` site below: clearing the parser
+cache is the service doing its job, not a misuse that fails silently. The `clear()` stays; only
+the `console.debug` after it went. No spec referenced it.
+
+*Verified*: `console.` in `eval-core` source now finds eleven calls, all in `memory-manager.ts`.
+The built `fesm2022` bundle has **no** `console.` call. A grep for `console.` there finds three
+lines, and all three are comments: two in `timing-hook.ts`'s docblock, which ships in the bundle,
+and one in `pattern.ts`, recording the [B2](#b2) dump that was removed. Test counts unchanged.
+
+**The entry as it stood:**
+
+| Site | Call |
+| ---- | ---- |
+| ~~`parser.service.ts:67`~~ | ~~`console.debug('Parser cache cleared…')`~~ *(deleted 2026-09-29, above)* |
+| ~~`eval.service.ts:89`~~ | ~~`console.warn('Error cleaning up EvalState:', error)`~~ *(deleted 2026-09-24, below)* |
+
+**The `ngOnDestroy` site is decided: deleted, and the `catch` is now silent.** [A8](#a8)'s
+step 1 did it, as the last paragraph here asked ([`docs/a8/plan.md`](a8/plan.md) § 2.1). It did
+not qualify for the `isDevMode()` carve-out. After [A17](#a17)'s reorder, only the two drains
+that reach a caller's object can throw: a frozen trace, or a registry whose `clear` throws. A
+throw costs only that object. The carve-out is for a misuse that harms something the caller
+could not have caught. The `catch` stays so that one state cannot stop the rest being drained.
+One case asserts that no warning is logged. It failed against the old warn, and against a warn
+guarded by `isDevMode()`, since Jest runs in dev mode. **`parser.service.ts:67` is still open.**
+It is in a `setInterval` callback, not `ngOnDestroy`, so the A8 step left it alone.
+
+**The silent `catch` is gone too, removed 2026-09-25 by [A8](#a8)'s step 2 before it shipped.**
+That step deleted the drain loop it sat in: the service keeps no state, so `ngOnDestroy` drains
+nothing and nothing in it can throw. The case asserting no warning was deleted with the loop,
+since nothing is left that could log. What ships is the same for this entry: `ngOnDestroy` does
+not call `console.*`. The count below is unchanged.
+
+The third, `console.warn('Error cleaning up Context:', error)`, guarded `ngOnDestroy`'s loop that
+cleared each tracked context. [A21](#a21)'s fix deleted that loop, since it emptied the caller's
+registries, and the call went with it. That was not clean-up in passing: the call had nothing
+left to guard.
+
+**How the published bundle's count moved.** *(Moved here 2026-09-25 from `CLAUDE.md`, which now
+keeps only the rule, the current count and where the calls are tracked.)* Four calls survived
+tree-shaking when this register was opened. [B2](#b2)'s `pattern.ts:83` state dump was the
+fourth, and Phase 2 step 0 deleted it: three. A21's fix deleted the context loop's warn: two.
+A8's step 1 deleted `ngOnDestroy`'s remaining warn: one, `parser.service.ts:67`. Counted
+2026-09-25 in the built `fesm2022` bundle, not in source. Source then held thirteen calls, and
+tree-shaking removes the rest. [B4](#b4)'s deletion of the dead component took one of them,
+`eval-core.component.ts:7`, which was never in the bundle: **twelve** in source since 2026-09-26
+(eleven in `memory-manager.ts`, one in `parser.service.ts`), by grep, and still one in the bundle.
+*(2026-09-29: eleven in source and none in the bundle, above.)*
+
+*As recorded, before the `ngOnDestroy` site was decided above; it now applies to
+`parser.service.ts:67` alone.* Decide whether these become the `isDevMode()` carve-out
+(`CLAUDE.md`, Conventions), a no-op, or stay. Not behavioural. Note the `eval.service.ts` call sits inside `ngOnDestroy`'s cleanup
+loop, which is the same method [A8](#a8) touches — if A8 is fixed, revisit it in the same
+step rather than separately.
+
 <a id="b4"></a>
 ## B4 — `eval-core.component.ts` is dead generator scaffold
 
@@ -1030,7 +1092,7 @@ carried a template, a stylesheet and a spec with it — four files.
 tests went from 1074 to 1073 in 58 suites, down exactly the spec's one case and one suite. **The
 "not in the bundle" claim held**: the built `fesm2022` bundle, its source map and the `.d.ts` are
 byte-identical to a build of the parent commit, and neither build names the component, `ngEval` or
-its selector. The `console.log` at `eval-core.component.ts:7` went with it — see [B3](backlog.md#b3) for the
+its selector. The `console.log` at `eval-core.component.ts:7` went with it — see [B3](#b3) for the
 source count.
 
 ---

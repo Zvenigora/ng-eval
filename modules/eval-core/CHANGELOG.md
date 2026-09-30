@@ -12,13 +12,19 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Changed
+- **`ParserService` no longer logs when its periodic cleanup clears the parse cache.** The
+  `console.debug('Parser cache cleared to prevent memory leaks')` is gone; the cache is still
+  cleared on the same condition. The published bundle now makes no `console.*` call.
+  [B3](../../docs/backlog-retired.md#b3).
+
 ---
 
 ## [0.6.0] - 2026-09-26
 
 **The trace bound, [A12](../../docs/backlog-retired.md#a12), and `EvalService`'s lifecycle,
 [A8](../../docs/backlog-retired.md#a8) with [A20](../../docs/backlog-retired.md#a20), [A21](../../docs/backlog-retired.md#a21) and
-[B3](../../docs/backlog.md#b3).** A **minor** rather than a patch: it adds four published symbols and
+[B3](../../docs/backlog-retired.md#b3).** A **minor** rather than a patch: it adds four published symbols and
 changes the shape of none, and this repository has never shipped API in a patch. It does withdraw
 one documented behaviour, `EvalService.ngOnDestroy` clearing your hook registries, and
 *Upgrading* says what to do instead. `eval-signals 0.1.3` and `eval-forms 0.2.3` below widen
@@ -71,7 +77,7 @@ their peer ranges to admit it.
   *Upgrading* says what to do instead. The `hooks` JSDoc, which ships in the `.d.ts`, and the
   README no longer make the promise.
 - **`EvalService.ngOnDestroy` no longer logs to `console.warn`**
-  ([B3](../../docs/backlog.md#b3)). The warn reported a drain that threw, and there is no drain.
+  ([B3](../../docs/backlog-retired.md#b3)). The warn reported a drain that threw, and there is no drain.
 
 ### Upgrading
 
@@ -84,7 +90,7 @@ byte-identical values. What changes is two surfaces around the result:
   `simpleEval`, `simpleEvalAsync` or `createState`, and no context ([A8](../../docs/backlog-retired.md#a8),
   [A20](../../docs/backlog-retired.md#a20)). Each is collectable once you drop it. `ngOnDestroy` marks the
   service destroyed and does nothing else. It drains no state, empties none of your registries
-  or contexts ([A21](../../docs/backlog-retired.md#a21)), and no longer logs ([B3](../../docs/backlog.md#b3)).
+  or contexts ([A21](../../docs/backlog-retired.md#a21)), and no longer logs ([B3](../../docs/backlog-retired.md#b3)).
 
 The first is covered by the trace paragraphs below. For the second, two changes can ask
 something of you, and the next two paragraphs say what: the hook registries destroy no longer

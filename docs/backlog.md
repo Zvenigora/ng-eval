@@ -74,7 +74,7 @@ release, not a free change. Each package's release notes are in its own
 
 | Package | Version | Notes |
 | ------- | ------- | ----- |
-| `@zvenigora/ng-eval-core` | 0.6.0 | [A8](backlog-retired.md#a8)/[A12](backlog-retired.md#a12)/[A20](backlog-retired.md#a20)/[A21](backlog-retired.md#a21)/[B3](#b3) fixes — [A8](backlog-retired.md#a8) is the headline, and the only one withdrawing published behaviour (`EvalService.ngOnDestroy` no longer drains). Tagged `eval-core@0.6.0` at f26f987, published 2026-09-26 |
+| `@zvenigora/ng-eval-core` | 0.6.0 | [A8](backlog-retired.md#a8)/[A12](backlog-retired.md#a12)/[A20](backlog-retired.md#a20)/[A21](backlog-retired.md#a21)/[B3](backlog-retired.md#b3) fixes — [A8](backlog-retired.md#a8) is the headline, and the only one withdrawing published behaviour (`EvalService.ngOnDestroy` no longer drains). Tagged `eval-core@0.6.0` at f26f987, published 2026-09-26 |
 | `@zvenigora/ng-eval-signals` | 0.1.3 | Peer range widened to `>=0.3.0 <0.7.0`; also updates the `createEvalSignal` / `EvalSignalService` JSDoc (ships in the `.d.ts`) for `eval-core` 0.6.0. Tagged `eval-signals@0.1.3` at f26f987, published 2026-09-26 |
 | `@zvenigora/ng-eval-forms` | 0.2.3 | Peer range widened to `>=0.3.0 <0.7.0`; the range is the whole of the release. Tagged `eval-forms@0.2.3` at f26f987, published 2026-09-26 |
 | `@zvenigora/ng-eval-core` | 0.5.0 | A11 fix: object destructuring binding. Tagged `eval-core@0.5.0` 2026-09-17, at `016a313` |
@@ -116,7 +116,7 @@ three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions, a
 | [A9](backlog-retired.md#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B1](#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | Open, Covered |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
-| [B3](#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | Open — **one left**, `parser.service.ts`. The `ngOnDestroy` warn was decided and deleted by [A8](backlog-retired.md#a8)'s step 1, and its silent `catch` went with the drain in step 2; the third went with [A21](backlog-retired.md#a21)'s fix |
+| [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; ships with `eval-core` 0.6.1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
 | [B4](backlog-retired.md#b4) | `eval-core.component.ts` is dead generator scaffold | core | fix | **Retired — fixed 2026-09-26**; no published artifact changed — the bundle and `.d.ts` are byte-identical |
 | [C1](#c1) | A member-target write escapes the read-only policy | signals | decision | Open, Covered |
 | [C2](#c2) | Detect a write violation at construction, not first recompute | signals | decision | Open |
@@ -901,54 +901,6 @@ Behavioural — anything reading `s.constructor` today starts throwing.
 
 *Recorded*: [`SECURITY.md:432`](../SECURITY.md).
 *Verified*: source read, 2026-09-06.
-
-<a id="b3"></a>
-## B3 — Two service-layer `console.*` calls reach the published bundle
-
-**Package** core · **Kind** decision · **Status** Open — **one, since 2026-09-24**; two since
-2026-09-23
-
-| Site | Call |
-| ---- | ---- |
-| [`parser.service.ts:67`](../modules/eval-core/src/lib/actual/services/parser.service.ts#L67) | `console.debug('Parser cache cleared…')` |
-| ~~`eval.service.ts:89`~~ | ~~`console.warn('Error cleaning up EvalState:', error)`~~ *(deleted 2026-09-24, below)* |
-
-**The `ngOnDestroy` site is decided: deleted, and the `catch` is now silent.** [A8](backlog-retired.md#a8)'s
-step 1 did it, as the last paragraph here asked ([`docs/a8/plan.md`](a8/plan.md) § 2.1). It did
-not qualify for the `isDevMode()` carve-out. After [A17](backlog-retired.md#a17)'s reorder, only the two drains
-that reach a caller's object can throw: a frozen trace, or a registry whose `clear` throws. A
-throw costs only that object. The carve-out is for a misuse that harms something the caller
-could not have caught. The `catch` stays so that one state cannot stop the rest being drained.
-One case asserts that no warning is logged. It failed against the old warn, and against a warn
-guarded by `isDevMode()`, since Jest runs in dev mode. **`parser.service.ts:67` is still open.**
-It is in a `setInterval` callback, not `ngOnDestroy`, so the A8 step left it alone.
-
-**The silent `catch` is gone too, removed 2026-09-25 by [A8](backlog-retired.md#a8)'s step 2 before it shipped.**
-That step deleted the drain loop it sat in: the service keeps no state, so `ngOnDestroy` drains
-nothing and nothing in it can throw. The case asserting no warning was deleted with the loop,
-since nothing is left that could log. What ships is the same for this entry: `ngOnDestroy` does
-not call `console.*`. The count below is unchanged.
-
-The third, `console.warn('Error cleaning up Context:', error)`, guarded `ngOnDestroy`'s loop that
-cleared each tracked context. [A21](backlog-retired.md#a21)'s fix deleted that loop, since it emptied the caller's
-registries, and the call went with it. That was not clean-up in passing: the call had nothing
-left to guard.
-
-**How the published bundle's count moved.** *(Moved here 2026-09-25 from `CLAUDE.md`, which now
-keeps only the rule, the current count and where the calls are tracked.)* Four calls survived
-tree-shaking when this register was opened. [B2](backlog-retired.md#b2)'s `pattern.ts:83` state dump was the
-fourth, and Phase 2 step 0 deleted it: three. A21's fix deleted the context loop's warn: two.
-A8's step 1 deleted `ngOnDestroy`'s remaining warn: one, `parser.service.ts:67`. Counted
-2026-09-25 in the built `fesm2022` bundle, not in source. Source then held thirteen calls, and
-tree-shaking removes the rest. [B4](backlog-retired.md#b4)'s deletion of the dead component took one of them,
-`eval-core.component.ts:7`, which was never in the bundle: **twelve** in source since 2026-09-26
-(eleven in `memory-manager.ts`, one in `parser.service.ts`), by grep, and still one in the bundle.
-
-*As recorded, before the `ngOnDestroy` site was decided above; it now applies to
-`parser.service.ts:67` alone.* Decide whether these become the `isDevMode()` carve-out
-(`CLAUDE.md`, Conventions), a no-op, or stay. Not behavioural. Note the `eval.service.ts` call sits inside `ngOnDestroy`'s cleanup
-loop, which is the same method [A8](backlog-retired.md#a8) touches — if A8 is fixed, revisit it in the same
-step rather than separately.
 
 ---
 
