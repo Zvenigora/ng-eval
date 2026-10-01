@@ -1744,6 +1744,34 @@ is invisible to per-state isolation by construction.
 *Recorded*: [`side-effects/step-3-summary.md` § 5.2](side-effects/step-3-summary.md);
 [`side-effects/phase-1-plan.md` § 3.8](side-effects/phase-1-plan.md).
 
+<a id="e5"></a>
+## E5 — The options-first style cannot read `hookErrors`
+
+**Package** core · **Kind** decision · **Status** **Retired — decided 2026-09-30: closed with
+documentation**; the README note ships with `eval-core` 0.7.0
+
+With errors on the state, the options-first style (`simpleEval(expr, ctx, { hooks })`) has no way
+to read them: the consumer holds the `EvalHooks` but never sees the `EvalState` that
+`BaseEval.createState` built. The state-first style is unaffected. It argued for an `onHookError`
+*callback* form of the option, or for `simpleEval` to surface the state.
+
+**Premise retired.** Phase 1 deferred the design explicitly: "neither is worth designing before
+Phase 3 shows which style consumers actually use." Phase 3, Phase 4 and Phase 6 have all shipped,
+and **all three consume state-first** — `createEvalSignal` calls the free `call(fn, state)`, and
+`eval-forms` routes everything through `evaluateRule`. The blocking condition was discharged and
+the evidence it was waiting for existed.
+
+*Recorded*: [`side-effects/phase-1-plan.md` § 3.6](side-effects/phase-1-plan.md), line 476.
+
+*Decided* 2026-09-30: **closed, with documentation, and no API.** Every consumer that exists reads
+state-first, and the two routes a consumer needs are already there: `createState` plus `eval` to
+read `state.hookErrors`, or `onHookError: 'throw'` on the `EvalHooks` it passes, so a faulty hook
+fails the evaluation instead of being collected. Neither a callback form of the option nor a
+`simpleEval` that returns its state is built. The `eval-core` README's "Hook errors" section says
+so, in the bullet that already sent readers to the state-first style; it now names the limit as
+deliberate and gives the `'throw'` route too. What reopens it: a consumer that needs options-first
+calls *and* collected hook errors, which neither route serves.
+
 ---
 
 # F. Tooling and docs

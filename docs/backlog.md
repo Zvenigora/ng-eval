@@ -145,7 +145,7 @@ all on the remote.
 | [E2](#e2) | Arrays — `applyEach` at `/signals`, `FormArray` at `/reactive` | forms | phase | Open |
 | [E3](#e3) | `dependencies` introspection at form scale | forms | phase | Open |
 | [E4](#e4) | Short-circuiting / value-rewriting hooks | core | phase | Open, by design |
-| [E5](#e5) | The options-first style cannot read `hookErrors` | core | decision | Open, Premise retired |
+| [E5](backlog-retired.md#e5) | The options-first style cannot read `hookErrors` | core | decision | **Retired — decided 2026-09-30: closed with documentation**; no API. The README names the two routes, state-first or `onHookError: 'throw'` |
 | [E6](backlog-retired.md#e6) | `exit` has no mark to bound its scan | core | fix | **Retired — fixed, Phase 2 step 1**; released in `eval-core` 0.4.0; its "Phase 2 makes it reachable" premise was wrong |
 | [F1](backlog-retired.md#f1) | No `configurations.ci` on the `test` target — **two projects, not one** | signals, forms | fix + decision | **Retired — fixed, no thresholds** |
 | [F2](backlog-retired.md#f2) | One `CHANGELOG.md` for three independently-versioned packages | repo | decision | **Retired — decided 2026-09-28**: one `modules/<name>/CHANGELOG.md` per package; `nx release` still unadopted. `eval-core` had five changelogged versions npm never received |
@@ -1064,28 +1064,6 @@ without touching `EvalNodeHook`'s signature or any existing consumer. Kept here 
 not lost in a tidying edit.
 
 *Recorded*: [`side-effects/phase-1-plan.md` § 8](side-effects/phase-1-plan.md).
-
-<a id="e5"></a>
-## E5 — The options-first style cannot read `hookErrors`
-
-**Package** core · **Kind** decision · **Status** Open, Premise retired
-
-With errors on the state, the options-first style (`simpleEval(expr, ctx, { hooks })`) has no way
-to read them: the consumer holds the `EvalHooks` but never sees the `EvalState` that
-`BaseEval.createState` built. The state-first style is unaffected. It argues for an `onHookError`
-*callback* form of the option, or for `simpleEval` to surface the state.
-
-**Premise retired.** Phase 1 deferred the design explicitly: "neither is worth designing before
-Phase 3 shows which style consumers actually use." Phase 3, Phase 4 and Phase 6 have all shipped,
-and **all three consume state-first** — `createEvalSignal` calls the free `call(fn, state)`, and
-`eval-forms` routes everything through `evaluateRule`. The blocking condition is discharged and the
-evidence it was waiting for exists.
-
-So this is now an ordinary decision with an answer available, not a wait. Nobody went back to it
-because the deferral was recorded in a plan document's § 3.6 rather than anywhere a later phase
-would read.
-
-*Recorded*: [`side-effects/phase-1-plan.md` § 3.6](side-effects/phase-1-plan.md), line 476.
 
 ---
 

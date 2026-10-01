@@ -265,7 +265,7 @@ state.hookErrors; // [{ phase, nodeType, error }, ...]
 
 Two things to know about it:
 
-- **Reading `hookErrors` requires the state-first style.** `simpleEval` builds its state internally and never hands it back, so there is nowhere to read them from. Use `createState` plus `eval`.
+- **Options-first calls cannot read collected hook errors, by design.** `simpleEval(expr, context, { hooks })` builds its state internally and never hands it back, so errors collected on it are out of reach. To read them, use the state-first style — `createState`, then `eval` — and read `state.hookErrors`. Or have a faulty hook fail the evaluation instead, with `onHookError: 'throw'` set on the `EvalHooks` you pass (see the next point).
 - **Passing both `hooks` and `onHookError` silently ignores `onHookError`.** A registry you pass through `options.hooks` is yours, and it keeps the policy it was constructed with; options never reconfigure an adopted registry. Pass the policy where the registry is built instead:
 
   ```javascript
