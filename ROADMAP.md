@@ -448,7 +448,7 @@ Entries are cited by stable ID — `BL-A8`, not a line number.
    excludes `eval-core` 0.4.0, and Phase 5 releases that package anyway.
 8. Phase 7 / Phase 8 — reserved above, neither costed nor scheduled.
 
-Unscheduled and independent of all of the above: the `eval-core`
-error-identity minor ([BL-A4](docs/backlog.md#a4), [BL-A7](docs/backlog.md#a7),
-[BL-C3](docs/backlog.md#c3)), which wants appetite for a version bump.
-[BL-A5](docs/backlog-retired.md#a5) and [BL-A6](docs/backlog-retired.md#a6) are fixed for 0.7.0.
+Unscheduled and independent of all of the above: what is left of the `eval-core`
+error-identity group, [BL-A4](docs/backlog.md#a4) and [BL-C3](docs/backlog.md#c3), which wants
+appetite for a version bump. [BL-A5](docs/backlog-retired.md#a5),
+[BL-A6](docs/backlog-retired.md#a6) and [BL-A7](docs/backlog-retired.md#a7) are fixed for 0.7.0.

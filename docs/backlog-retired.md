@@ -400,6 +400,73 @@ block counts are unchanged. The root README's note quoting the prefix is put in 
 **Probe** — the wrapping restored: `eval-core` 2 failed / 1101 (both new-or-rewritten cases),
 `eval-forms` 2 failed / 267 (the new case and the rewritten README case), `eval-signals` 0 / 131.
 
+<a id="a7"></a>
+## A7 — `EvalScopeOptions.thisArg` is documented and never applied
+
+**Package** core · **Kind** decision, then fix · **Status** **Retired — decided and fixed
+2026-09-30, never released**; held for `eval-core` 0.7.0. **Rewritten 2026-09-29** from
+"`EvalContext.getThis` reads the wrong object in its `priorScopes` loop", when the fix planned for
+`eval-core` 0.6.1 was measured and did not hold
+
+**What it was.** `EvalScopeOptions.thisArg` was declared in
+[`eval-scope.ts`](../modules/eval-core/src/lib/internal/classes/eval/eval-scope.ts) and advertised
+in the package README's Scopes section, and nothing in `eval-core`'s source read it. So a scope's
+`thisArg` never became a call's receiver on any path.
+
+**The documented path could not show it.** `ns.fn()` resolves `ns` through `EvalScope.get`, which
+returns `scope.context` on a namespace match. The member hop `.fn` then reads a plain object, so
+the call's receiver was the scope's own object, whatever `thisArg` said. Every case in the suite
+set `thisArg` to that same object, so none could tell the difference. *Probed 2026-09-29*: the
+README case with `thisArg` set to `{ name: 'Other' }` stayed green.
+
+**`getThis`'s `priorScopes` loop was dead.** `getThis` is reached only for `this.fn()`, from the
+member visitor's context branch
+([`member-expression.ts`](../modules/eval-core/src/lib/internal/visitors/member-expression.ts)).
+The loop tested `_original` rather than the scope, so it could match only a key the block before it
+had already returned for. The one-word repair, `getContextValue(scope, key)`, fails to compile
+(TS2345: an `EvalScope` is not a `Context`); the two-line repair, `scope.get(key)` returning
+`scope.options.thisArg`, builds and is green, but reaches only `this.fn()` — the documented
+`ns.fn()` never reaches `getThis`.
+
+**The `lookups` loop returned the lookup function itself**, so `this.fn()` for a lookup-resolved
+key ran with the resolver as `this`, and `eval-signals`' `signal-context.spec.ts` pinned it.
+
+*Recorded*: this entry, rewritten from a failed fix for `eval-core` 0.6.1; originally
+[`signals/phase-3-plan.md`](signals/phase-3-plan.md), Phase 3 step 2.
+*Verified*: the one-word fix built 2026-09-29 (TS2345); the two-line fix run against `eval-core`'s
+suite, 1078 green; the README case probed with a foreign `thisArg`, green.
+
+*Decided and fixed* 2026-09-30: **`thisArg` is the receiver for methods reached through a scope**,
+and a bare namespace still evaluates to the scope's object. Both hold, so no option needed
+choosing between them. Three changes:
+
+- **`ns.fn()`** — `call-expression.ts`'s `scopeReceiver` maps a call's receiver to a prior scope's
+  `thisArg` when the receiver **is** that scope's object, by identity; the first scope holding the
+  object answers. It is done at the call and nowhere earlier, because `evaluateMember`'s first slot
+  is also the target of `ns.x = v`, and a write belongs on the scope's object. One length check
+  per member call when no prior scope is registered.
+- **`this.fn()`** — `getThis`'s prior-scope loop asks `scope.get(key)` and returns that scope's
+  `thisArg`, undefined when it sets none, so the member visitor's fallback applies as before.
+- **Lookups** — the loop is deleted: a lookup is a resolver, not an object holding the key, so
+  `getThis` answers nothing and `this.fn()` receives the fallback, the context.
+
+Not changed: a bare `fn()` still receives the context, and the member visitor's `EvalScope`
+branch — an `EvalScope` *instance* used as a value — still passes the instance.
+
+Specs: `eval.service.scope-this.spec.ts`, seven cases — (a) `cat.whoAmI()` with a foreign
+`thisArg` → it; (b) unset → the scope's object; (c) `this.fn()` through a global scope → `thisArg`;
+(d) `cat` → the scope's object, and `cat === self` holds; (e) `this.fn()` through a lookup → the
+context, not the lookup; and two guards, `cat.name` reads and `cat.label = "x"` writes the scope's
+object, not `thisArg`. The README's Scopes example now uses `thisArg: { name: 'Mister Whiskers' }`
+and prints `'Mister Whiskers says meow 3 times'`, and its caveat is gone. `eval-signals`'
+`signal-context.spec.ts` case that pinned the lookup receiver is rewritten to the new one: no
+receiver from `getThis`, and `this.probe()` receives the context.
+
+**Probes**, against 1109: `thisArg` ignored on both paths — 3 failed, (a), (c) and the README
+case; the rejected alternative, `EvalScope.get` returning `thisArg` for the namespace — 5 failed,
+(d), both guards, (a) and the README case; the lookups loop restored — 1 failed, (e), and
+`eval-signals` 1 failed / 131, the rewritten case.
+
 <a id="a8"></a>
 ## A8 — `EvalService._activeStates` grows unboundedly
 
@@ -2163,7 +2230,7 @@ before the gate shipped: `_` inside a code span was being stripped as emphasis, 
   which cite the code as it was when they were written and are left that way by design. The other
   8 are in this register, and were re-pointed 2026-09-28:
   - 4 moved to where the cited code now lives ([A2](#a2)'s two chains, [A4](backlog.md#a4)'s `getKey`, and
-    [A7](backlog.md#a7)'s prior-scopes loop, whose original range had started three lines early).
+    [A7](#a7)'s prior-scopes loop, whose original range had started three lines early).
   - 3 became SHA-pinned links to `ef5ac2b`, because the code they cite is gone ([A9](#a9)'s two
     unguarded push sites, and [B2](#b2)'s `console.log`).
   - 1 was left alone. [R1](#r1)'s export is still on line 12, and the line only gained
@@ -2212,7 +2279,7 @@ which a reader notices. This one is worse, because nothing about it looks broken
 [`statements/phase-2-plan.md`](statements/phase-2-plan.md) § 2 excluded work with the row
 *"Everything in `docs/backlog.md` Track 1 / Track 2 — not this phase's subject"*. **This register
 has no Track 1 and no Track 2.** All three Tracks were a sequencing suggestion made in
-conversation — 1 the error-identity group ([A4](backlog.md#a4), [A5](#a5), [A6](#a6), [A7](backlog.md#a7), [C3](backlog.md#c3)),
+conversation — 1 the error-identity group ([A4](backlog.md#a4), [A5](#a5), [A6](#a6), [A7](#a7), [C3](backlog.md#c3)),
 2 the write policy ([C1](backlog.md#c1), [C2](backlog.md#c2)), 3 the documentation gates — and only the third was ever
 written down. The plan then cited all three as though the reader could look them up.
 

@@ -154,17 +154,28 @@ describe('createSignalContext', () => {
       expect(seen[0]).toBe(context);
     });
 
-    it('should report the resolver as getThis for a lookup-resolved key', () => {
-      const context = createSignalContext({ one: signal(1) });
+    it('should report no receiver for a lookup-resolved key, so this.fn() gets the context', () => {
+      // Up to eval-core 0.6.x `getThis` answered a lookup-resolved key with the
+      // lookup function itself, so `this.fn()` ran with the resolver as `this`;
+      // this case pinned that. Since 0.7.0 a lookup is not an object that holds
+      // the key and answers nothing, and the member visitor falls back to the
+      // context (`docs/backlog-retired.md` A7).
+      const seen: unknown[] = [];
+      const probe = function (this: unknown) { seen.push(this); return 1; };
+      const context = createSignalContext({ one: signal(1), probe: signal(probe) });
 
-      // Pin that a resolver exists and that getThis discriminates, first:
-      // with no lookup registered both sides of the identity check below are
-      // `undefined` and it would pass against an adapter that registers none.
+      // Pin that the keys are lookup-resolved first - the condition under
+      // which the resolver used to answer. With no lookup registered,
+      // `getThis` would be `undefined` against any version.
       expect(context.lookups).toHaveLength(1);
-      expect(context.getThis('one')).toEqual(expect.any(Function));
-      expect(context.getThis('missing')).toBeUndefined();
+      expect(context.get('one')).toBe(1);
+      expect(context.getThis('one')).toBeUndefined();
 
-      expect(context.getThis('one')).toBe(context.lookups[0]);
+      service.simpleEval('this.probe()', context);
+
+      expect(seen).toHaveLength(1);
+      expect(seen[0]).toBe(context);
+      expect(seen[0]).not.toBe(context.lookups[0]);
     });
 
   });

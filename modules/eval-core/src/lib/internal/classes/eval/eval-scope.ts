@@ -5,6 +5,11 @@ export interface EvalScopeOptions {
   global?: boolean;
   caseInsensitive?: boolean;
   namespace?: string;
+  /**
+   * The `this` for a method called on the scope's own object (`ns.fn()`), or
+   * for `this.fn()` when this scope supplies `fn`. Unset, `ns.fn()` receives
+   * the scope's object. Applied since 0.7.0; accepted and ignored before.
+   */
   thisArg?: unknown;
 }
 

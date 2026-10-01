@@ -190,13 +190,16 @@ describe('documented examples', () => {
       global: false,
       caseInsensitive: false,
       namespace: 'cat',
-      thisArg: cat
+      thisArg: { name: 'Mister Whiskers' }
     };
     evalContext.priorScopes.push(EvalScope.fromObject(cat, catOptions));
 
     const result = service.simpleEval('cat.action(args, cat.num, "times")', evalContext);
 
-    expect(result).toBe('Miss Kitty says meow 3 times');
+    // A `thisArg` other than the scope's object, so the output depends on it:
+    // with `thisArg: cat`, as up to 0.6.x, the case passed whether or not it
+    // was applied (`docs/backlog-retired.md` A7).
+    expect(result).toBe('Mister Whiskers says meow 3 times');
   });
 
   it('should accumulate per-node-type timings for a state that owns its registry', () => {

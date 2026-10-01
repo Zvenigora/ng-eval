@@ -131,6 +131,36 @@ const safeCall = (
 };
 
 /**
+ * The receiver for a method called on `object`: a prior scope's `thisArg` when
+ * `object` is that scope's own object, `object` otherwise.
+ *
+ * `ns.fn()` reaches `fn` through the namespace, which evaluates to the scope's
+ * object and has to keep doing so - `ns` alone, or `ns === x`, must not see
+ * `thisArg`. So the substitution is made here, at the call, and nowhere
+ * earlier: `evaluateMember`'s first slot is also the target of `ns.x = v`, and
+ * a write belongs on the scope's object. Matched by identity, so it follows the
+ * object rather than the name it was reached by; the first scope holding the
+ * object answers, as in `EvalContext.get`. Up to 0.6.x `thisArg` was never
+ * applied (`docs/backlog-retired.md` A7).
+ *
+ * `this.fn()` does not need this: `EvalContext.getThis` answers it.
+ *
+ * A call with no prior scopes pays one length check.
+ */
+const scopeReceiver = (st: EvalState, object: unknown): unknown => {
+  const priorScopes = st.context?.priorScopes;
+  if (!priorScopes?.length) {
+    return object;
+  }
+  for (const scope of priorScopes) {
+    if (scope.context === object) {
+      return scope.options.thisArg ?? object;
+    }
+  }
+  return object;
+};
+
+/**
  * Enhanced call expression visitor with security checks
  */
 export const callExpressionVisitor = (node: CallExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
@@ -142,7 +172,7 @@ export const callExpressionVisitor = (node: CallExpression, st: EvalState, callb
   if (node.callee.type === 'MemberExpression') {
     const [object, propertyName, fn] = evaluateMember(node.callee, st, callback);
     const functionName = typeof propertyName === 'string' ? propertyName : undefined;
-    const value = safeCall(fn, object, args, node.callee.optional, functionName);
+    const value = safeCall(fn, scopeReceiver(st, object), args, node.callee.optional, functionName);
     pushVisitorResult(node, st, value);
   } else {
     callback(node.callee, st);

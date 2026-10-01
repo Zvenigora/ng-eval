@@ -247,10 +247,22 @@ export class EvalContext {
   }
 
   /**
-   * Retrieves the `this` value of the specified key from the evaluation context.
-   * The value is searched in the original context, prior scopes, and lookup functions.
+   * Retrieves the `this` value a call of the specified key receives through
+   * `this.key()`.
+   *
+   * - A key the original context holds: the original context.
+   * - A key a prior scope resolves: that scope's `thisArg`, or undefined when
+   *   it sets none. The first scope that resolves the key answers, as in
+   *   {@link get}.
+   * - A key only a lookup resolves, or none: undefined. A lookup is a resolver,
+   *   not an object that holds the key.
+   *
+   * Undefined means "no receiver of its own", and the member visitor then falls
+   * back to the object it was evaluating. Up to 0.6.x the prior-scope step
+   * re-tested the original context and could never answer, and the lookup step
+   * returned the lookup function itself (`docs/backlog-retired.md` A7).
    * @param key - The key to retrieve the value for.
-   * @returns The `this` value associated with the key, or undefined if not found.
+   * @returns The `this` value associated with the key, or undefined.
    */
   public getThis(key: unknown): unknown | undefined {
     if (this._original) {
@@ -260,15 +272,8 @@ export class EvalContext {
       }
     }
     for (const scope of this._priorScopes) {
-      const value = getContextValue(this._original, key);
-      if (value !== undefined) {
-        return scope;
-      }
-    }
-    for (const lookup of this._lookups) {
-      const value = lookup(key, this, this._options);
-      if (value !== undefined) {
-        return lookup;
+      if (scope.get(key) !== undefined) {
+        return scope.options.thisArg;
       }
     }
     return undefined;

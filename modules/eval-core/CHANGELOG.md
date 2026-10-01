@@ -46,7 +46,7 @@ unchanged: both declare `>=0.3.0 <0.7.0`.
   and is not currently applied: a method reached through a scope's namespace, such as
   `cat.action()`, is called with the scope's own object as `this`, whatever `thisArg` holds.
   Nothing changes at runtime; the README's Scopes section now says this. What `thisArg` should
-  mean is open, as [A7](../../docs/backlog.md#a7), and answering it changes a call's receiver.
+  mean is open, as [A7](../../docs/backlog-retired.md#a7), and answering it changes a call's receiver.
 
 ---
 
