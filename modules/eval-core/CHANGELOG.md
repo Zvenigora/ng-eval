@@ -14,7 +14,7 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ---
 
-## [0.6.1] - 2026-09-29
+## [0.6.1] - 2026-09-30
 
 **A patch: two manifest-and-hygiene fixes, [F5](../../docs/backlog-retired.md#f5) and
 [B3](../../docs/backlog-retired.md#b3), a dead line removed, and a README correction.** No

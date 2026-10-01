@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## [0.2.4] - 2026-09-29
+## [0.2.4] - 2026-09-30
 
 **Two `/signals` fixes that bring its model lookup into line with `createSignalContext`,
 [D6](../../docs/backlog-retired.md#d6) and [D4](../../docs/backlog-retired.md#d4).** A patch: no
