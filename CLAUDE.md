@@ -223,12 +223,13 @@ The second one has a safety net and the first does not, which is the trap. `Eval
 matches the closing node by **identity** and flushes any frames still open above it, and
 `evaluate` / `evaluateAsync` unwind to a depth mark in their `catch`. A visitor that
 swallows a child's throw between its own `beforeVisitor` and `afterVisitor` — which
-`await-expression.ts` does — therefore looks perfectly healthy to the hook layer while the
-*value* stack is silently one entry out, and every downstream node reads the wrong operand.
-Making the hook stack self-correcting made value-stack corruption quieter, not louder: do
-not read balanced hook events as evidence that a visitor is correctly bracketed. See
-`docs/side-effects/phase-1-plan.md` § 3.8 and `docs/backlog.md` § A — `BL-A1` is the
-`await-expression.ts` case specifically.
+`await-expression.ts` did until `eval-core` 0.7.0 — therefore looks perfectly healthy to the
+hook layer while the *value* stack is silently one entry out, and every downstream node reads
+the wrong operand. Making the hook stack self-correcting made value-stack corruption quieter,
+not louder: do not read balanced hook events as evidence that a visitor is correctly
+bracketed. See `docs/side-effects/phase-1-plan.md` § 3.8 and `docs/backlog-retired.md`
+`BL-A1`, the `await-expression.ts` case and its fix: the operand is evaluated outside any
+`Promise` executor and its throw is left to propagate, as in every other visitor.
 
 ### Sync vs. async
 

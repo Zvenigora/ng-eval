@@ -70,7 +70,7 @@ const README_JAVASCRIPT_BLOCKS = 16;
  * | Hook errors | the `onHookError: 'collect'` block |
  * | An owned registry's policy | the indented `EvalHooks` block |
  * | A failed evaluation | the `boom` block |
- * | An abandoned child | the `compiler.call` block |
+ * | A synchronous throw under `await` | the `compiler.call` block |
  *
  * **The count is `README_JAVASCRIPT_BLOCKS`, and the last case holds it to the
  * file** (`docs/backlog.md` F13): it reads the README and counts its
@@ -417,7 +417,7 @@ describe('documented examples', () => {
     ]);
   });
 
-  it('should synthesise completed: false without an error for an abandoned child', async () => {
+  it('should synthesise completed: false with an error for a synchronous throw under await', () => {
     const compiler = TestBed.inject(CompilerService);
 
     const state = service.createState({ obj: {} });
@@ -432,9 +432,9 @@ describe('documented examples', () => {
 
     expect(seen).toEqual([]);
 
-    await arrow().catch(() => undefined);
+    expect(() => arrow()).toThrow(/dangerous property/);
 
-    expect(seen).toEqual([['MemberExpression', false]]);
+    expect(seen).toEqual([['MemberExpression', true], ['AwaitExpression', true]]);
   });
 });
 

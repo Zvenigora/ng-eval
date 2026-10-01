@@ -101,7 +101,7 @@ all on the remote.
 
 | ID | Entry | Package | Kind | Status |
 | -- | ----- | ------- | ---- | ------ |
-| [A1](#a1) | `await-expression.ts` downgrades a sync throw to a promise rejection | core | fix | Open |
+| [A1](backlog-retired.md#a1) | `await-expression.ts` downgrades a sync throw to a promise rejection | core | fix | **Retired — fixed 2026-09-30, never released**; held for `eval-core` 0.7.0 |
 | [A2](#a2) | `update-expression.ts` desyncs the value stack under `preserveParens` | core | fix | Open — standalone, [not a Phase 2 precondition](#phase-2-preconditions) |
 | [A11](backlog-retired.md#a11) | `evaluateObjectPattern` resolves the *value* name against the argument — renaming **and** nested destructuring bind the wrong key | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17** |
 | [A13](backlog-retired.md#a13) | An object rest element binds the whole source, not the remainder | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17**; found measuring [A11](backlog-retired.md#a11) |
@@ -234,7 +234,7 @@ own schedule regardless of whether Phase 2 ever starts.
 Recorded rather than fixed: each is a **behavioral** change, and the phase that surfaced it was
 scoped to be additive.
 
-[A1](#a1)–[A3](backlog-retired.md#a3) came out of the Phase 1 hook work
+[A1](backlog-retired.md#a1)–[A3](backlog-retired.md#a3) came out of the Phase 1 hook work
 ([`side-effects/phase-1-plan.md`](side-effects/phase-1-plan.md)) and are in the visitors.
 [A4](#a4) is in `EvalContext` and was surfaced by Phase 1 step 4's read hooks. [A5](#a5) and
 [A7](#a7) were surfaced by Phase 3 step 2 ([`signals/phase-3-plan.md`](signals/phase-3-plan.md))
@@ -243,35 +243,10 @@ several of these visible at all. [A6](#a6) was surfaced by Phase 6 step 3. [A8](
 [A9](backlog-retired.md#a9) were never recorded in the roadmap at all.
 
 **Identity-checked `exit`** (§ 3.8 of the Phase 1 plan) means the hook layer stays balanced in
-spite of [A1](#a1) and [A2](#a2), so neither is urgent — but neither is gone either ([A3](backlog-retired.md#a3)
-is, retired 2026-09-26), and the value stack
+spite of [A1](backlog-retired.md#a1) and [A2](#a2), so neither was urgent — [A3](backlog-retired.md#a3)
+is retired 2026-09-26 and A1 2026-09-30, and the value stack
 is a separate stack that is not protected by it. Do not read balanced hook events as evidence
 that a visitor is correctly bracketed.
-
-<a id="a1"></a>
-## A1 — `await-expression.ts` downgrades a synchronous throw to a promise rejection
-
-**Package** core · **Kind** fix · **Status** Open
-
-`awaitVisitor` wraps `callback(node.argument, st)` in a `try`/`catch` inside a `Promise`
-executor ([`await-expression.ts:36-79`](../modules/eval-core/src/lib/internal/visitors/await-expression.ts#L36-L79)),
-so a child that throws synchronously — a prototype-pollution guard rejection, for instance —
-does not propagate. It becomes a rejected promise that only surfaces when something awaits it,
-and the visitor continues to its own `pushVisitorResult`. In the async path a security rejection
-therefore arrives as a rejected value rather than a throw, and in the sync path it may never be
-observed at all.
-
-This is also the visitor that makes [A9](backlog-retired.md#a9)'s class of defect quiet: it swallows a child's
-throw between its own `beforeVisitor` and `afterVisitor`, so it looks healthy to the hook layer
-while the **value** stack is silently one entry out, and every downstream node reads the wrong
-operand.
-
-Fixing it means moving the `callback` out of the executor, which changes what `evalAsync` throws
-and when — a breaking change for anyone catching the current shape, so it needs its own step and
-a version bump.
-
-*Recorded*: [`side-effects/step-3-summary.md` § 5.1](side-effects/step-3-summary.md).
-*Verified*: source read, 2026-09-06.
 
 <a id="a2"></a>
 ## A2 — Three silent fall-throughs in the two write visitors, one shape

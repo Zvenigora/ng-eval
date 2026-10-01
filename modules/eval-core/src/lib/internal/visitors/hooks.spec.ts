@@ -293,12 +293,14 @@ describe('visitor hooks', () => {
     });
   });
 
-  describe('a visitor that swallows its child throw', () => {
+  describe('an await whose operand throws synchronously', () => {
 
-    // awaitVisitor catches a synchronous child throw, turns it into a promise
-    // rejection and carries on to its own afterVisitor, so the child is still
-    // open when the parent closes. A positional pop would close the child's
-    // frame under the parent's name and leak one frame onto the state forever.
+    // Up to eval-core 0.6.x awaitVisitor swallowed this throw: it turned it
+    // into a promise rejection and carried on to its own afterVisitor, with the
+    // child still open when the parent closed - the one built-in visitor that
+    // did (`docs/backlog-retired.md` A1). Since 0.7.0 the throw propagates
+    // through a nested walk (the arrow body) and then the enclosing one, so
+    // both unwinders run and each must close only its own frames.
     const expression = 'call(async () => await obj.__proto__)';
 
     const stateFor = (recorder: Recorder): EvalState => recorder.state({
@@ -307,24 +309,22 @@ describe('visitor hooks', () => {
     });
 
     /**
-     * Evaluates and keeps the downgraded rejection handled. Its shape is pinned
-     * by the first case below; the rest care only about the hook bookkeeping.
+     * Evaluates and swallows the throw. Its shape is pinned by the first case
+     * below; the rest care only about the hook bookkeeping.
      */
     const run = (state: EvalState): void => {
-      const result = evaluate(nodeOf(expression), state) as Promise<unknown>;
-      result.catch(() => undefined);
+      try {
+        evaluate(nodeOf(expression), state);
+      } catch {
+        // pinned by the first case
+      }
     };
 
-    it('should leave nothing open after the walk', async () => {
+    it('should throw and leave nothing open after the walk', () => {
       const recorder = new Recorder();
       const state = stateFor(recorder);
 
-      // The guard rejection is downgraded to a rejected promise by awaitVisitor
-      // rather than thrown - the behaviour recorded in ROADMAP.md as deferred.
-      // Awaiting it here keeps the rejection handled instead of leaving it to
-      // the test environment, and pins the current shape while it stands.
-      await expect(evaluate(nodeOf(expression), state) as Promise<unknown>)
-        .rejects.toThrow(/dangerous property/);
+      expect(() => evaluate(nodeOf(expression), state)).toThrow(/dangerous property/);
 
       expect(recorder.hooks.depth(state)).toBe(0);
       expect(state.hookBookkeeping.open).toEqual([]);
@@ -343,16 +343,22 @@ describe('visitor hooks', () => {
       expect(recorder.beforeTypes.slice().sort()).toEqual(recorder.afterTypes.slice().sort());
     });
 
-    it('should close the abandoned member expression as incomplete', () => {
+    it('should close every open node as failed, innermost first, each with an error', () => {
       const recorder = new Recorder();
       const state = stateFor(recorder);
 
       run(state);
 
+      // The nested walk unwinds the arrow body's two nodes, then the
+      // enclosing walk unwinds the call. None is closed without an error,
+      // which is what the abandoned-child shape looked like.
       expect(recorder.beforeTypes).toContain('MemberExpression');
-      expect(recorder.unwound.map((e) => e.node.type)).toEqual(['MemberExpression']);
-      expect(recorder.unwound[0].value).toBeUndefined();
-      expect(recorder.unwound[0].error).toBeUndefined();
+      expect(recorder.unwound.map((e) => e.node.type))
+        .toEqual(['MemberExpression', 'AwaitExpression', 'CallExpression']);
+      for (const event of recorder.unwound) {
+        expect(event.value).toBeUndefined();
+        expect(event.error).toBeInstanceOf(Error);
+      }
     });
 
     it('should not strand a frame into the next evaluation on the same state', () => {

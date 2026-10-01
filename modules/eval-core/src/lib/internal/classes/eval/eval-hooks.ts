@@ -522,10 +522,12 @@ export class EvalHooks {
    * reaching the scan.
    *
    * Popping positionally instead would be correct only if every visitor
-   * bracketed its body exactly. `await-expression.ts` does not - it catches a
-   * child's synchronous throw and continues to its own `afterVisitor` - so a
-   * positional pop closes the child's frame under the parent's name, drops the
-   * child's `after` entirely, and leaks one frame onto the state for good.
+   * bracketed its body exactly. Up to 0.6.x `await-expression.ts` did not - it
+   * caught a child's synchronous throw and continued to its own
+   * `afterVisitor` - so a positional pop closed the child's frame under the
+   * parent's name, dropped the child's `after` entirely, and leaked one frame
+   * onto the state for good. Since 0.7.0 no built-in visitor does that, and the
+   * identity match stays as the guard against the next one.
    *
    * The synthesised events carry no `value` (the node never pushed one) and no
    * `error` (nothing threw; the frames are being closed because an enclosing

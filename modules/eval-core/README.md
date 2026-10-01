@@ -306,7 +306,9 @@ try { service.eval('1 + boom()', state); } catch { /* rethrown */ }
 // innermost first, each carrying the error that aborted the walk
 ```
 
-**2. An enclosing visitor moved on without its child.** The node is flushed when the enclosing one closes, and there is **no** `error` — nothing was reported as thrown, and the evaluation may still produce a value:
+**2. An enclosing visitor moved on without its child.** The node is flushed when the enclosing one closes, and there is **no** `error` — nothing was reported as thrown, and the evaluation may still produce a value.
+
+Up to 0.6.x an `await` whose operand threw synchronously did this: it turned the throw into a rejected promise and closed without its operand. Since 0.7.0 no built-in visitor does — the throw propagates, so the same expression is now the first kind:
 
 ```javascript
 import { CompilerService, EvalService } from '@zvenigora/ng-eval-core';
@@ -323,10 +325,13 @@ state.hooks.on('after', '*', (e) => {
 
 const fn = compiler.compile('async () => await obj.__proto__');
 const arrow = compiler.call(fn, state); // returns the closure; seen === []
-await arrow().catch(() => undefined);   // the body runs here
+try { arrow(); } catch { /* the body runs here, and throws synchronously */ }
 
-// seen === [['MemberExpression', false]] - completed: false, but no error
+// seen === [['MemberExpression', true], ['AwaitExpression', true]]
+// up to 0.6.x: [['MemberExpression', false]] - completed: false, but no error
 ```
+
+The second kind stays in the hook contract.
 
 So: test for the `error` property, not for `completed === false`.
 

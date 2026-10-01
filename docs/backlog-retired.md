@@ -8,6 +8,45 @@ evidence, in their original order and section. There is no index here: the one i
 
 # A. `eval-core` — visitor, context and service defects
 
+<a id="a1"></a>
+## A1 — `await-expression.ts` downgrades a synchronous throw to a promise rejection
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-30, never released**; held
+for `eval-core` 0.7.0
+
+`awaitVisitor` wrapped `callback(node.argument, st)` in a `try`/`catch` inside a `Promise`
+executor ([`await-expression.ts`](../modules/eval-core/src/lib/internal/visitors/await-expression.ts)),
+so a child that throws synchronously — a prototype-pollution guard rejection, for instance —
+did not propagate. It became a rejected promise that only surfaced when something awaited it,
+and the visitor continued to its own `pushVisitorResult`. In the async path a security rejection
+therefore arrived as a rejected value rather than a throw, and in the sync path it may never have
+been observed at all.
+
+This was also the visitor that made [A9](#a9)'s class of defect quiet: it swallowed a child's
+throw between its own `beforeVisitor` and `afterVisitor`, so it looked healthy to the hook layer
+while the **value** stack was silently one entry out.
+
+*Recorded*: [`side-effects/step-3-summary.md` § 5.1](side-effects/step-3-summary.md).
+*Verified*: source read, 2026-09-06.
+
+*Fixed* 2026-09-30: the `callback` and its pop moved out of the executor and are left uncaught,
+as in every other visitor, so the throw propagates and `evaluate`'s `catch` unwinds the open
+nodes. What happens once the value exists is unchanged: the timeout race, and the
+"at position" suffix on an asynchronous rejection. A synchronous throw under `await` now throws
+from `simpleEval` / `eval`, and `evalAsync` rejects with the guard's own error object.
+
+Specs: `eval.service.await.spec.ts`, four cases. **Probe** — the executor wrapping restored:
+6 failed / 1080 — the three sync-throw cases (`simpleEval`, `eval`, `evalAsync` by identity) and
+the three pre-existing cases rewritten below; the position case stays green. **Second probe** —
+the position suffix dropped: 1 failed / 1080, the position case alone.
+
+**Five pre-existing cases pinned the old shape and were rewritten, not deleted**: four in
+`hooks.spec.ts`'s describe for a visitor that swallows its child throw, now "an await whose
+operand throws synchronously", and the README's second `completed: false` example with its
+`readme-examples.spec.ts` case. That example was the only built-in route to a `completed: false`
+event *without* an error; the README now shows the same expression producing the first kind,
+and says the second kind stays in the hook contract.
+
 <a id="a11"></a>
 ## A11 — `evaluateObjectPattern` binds the key from the pattern and the value from the *wrong name*
 
