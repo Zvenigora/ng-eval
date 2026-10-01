@@ -163,8 +163,8 @@ JavaScript does. Both arms covered in `pattern.destructuring.spec.ts`.
 <a id="a3"></a>
 ## A3 — `import-expression.ts` has a dead `afterVisitor`
 
-**Package** core · **Kind** fix (cosmetic) · **Status** **Retired — fixed 2026-09-26**; ships with
-the next `eval-core` release
+**Package** core · **Kind** fix (cosmetic) · **Status** **Retired — fixed 2026-09-26**;
+released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1
 
 `importExpressionVisitor` called it after an unconditional throw
 ([`import-expression.ts:12`](../modules/eval-core/src/lib/internal/visitors/import-expression.ts#L12)),
@@ -1017,8 +1017,8 @@ cannot currently run.
 <a id="b3"></a>
 ## B3 — Two service-layer `console.*` calls reach the published bundle
 
-**Package** core · **Kind** decision · **Status** **Retired — fixed 2026-09-29**; ships with
-`eval-core` 0.6.1. The last call deleted, and the published bundle has none. Was one since
+**Package** core · **Kind** decision · **Status** **Retired — fixed 2026-09-29**;
+released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last call deleted, and the published bundle has none. Was one since
 2026-09-24, two since 2026-09-23
 
 **Decided and fixed 2026-09-29: the cache-timer call is deleted.** It did not qualify for the
@@ -1102,8 +1102,8 @@ source count.
 <a id="d4"></a>
 ## D4 — A top-level model key holding a signal is returned un-called
 
-**Package** forms · **Kind** fix or doc · **Status** **Retired — fixed 2026-09-29**; ships with
-`eval-forms` 0.2.4. Took the fix, not the doc
+**Package** forms · **Kind** fix or doc · **Status** **Retired — fixed 2026-09-29**;
+released 2026-09-30 in `eval-forms` 0.2.4, tagged 587ebf1. Took the fix, not the doc
 
 *Fixed* 2026-09-29: `/signals`' model lookup now ends the way upstream's does, with
 `isSignal(value) ? value() : value`, so `{ ready: signal(false) }` resolves `ready` to `false`. The
@@ -1149,8 +1149,8 @@ hit. Either correct the attribution and add the divergence, or add the `isSignal
 <a id="d6"></a>
 ## D6 — `/signals` diverged from upstream on non-string keys
 
-**Package** forms · **Kind** fix · **Status** **Retired — fixed 2026-09-26**; ships with the next
-`eval-forms` release
+**Package** forms · **Kind** fix · **Status** **Retired — fixed 2026-09-26**;
+released 2026-09-30 in `eval-forms` 0.2.4, tagged 587ebf1
 
 *Filed as* "The `typeof key === 'string'` guard is unfalsifiable by the suite". The guard was
 falsifiable; the suite just had no case that reached it.
@@ -1804,8 +1804,8 @@ Both are narrower than [F3](#f3) and neither supersedes it: they run code, they 
 <a id="f5"></a>
 ## F5 — The `js-sha256` peer range is locked to a dead minor
 
-**Package** core · **Kind** decision · **Status** **Retired — decided and fixed 2026-09-29**; ships
-with `eval-core` 0.6.1. The peer range widened, not the dependency dropped
+**Package** core · **Kind** decision · **Status** **Retired — decided and fixed 2026-09-29**;
+released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The peer range widened, not the dependency dropped
 
 **Decided: widen.** `eval-core`'s peer range is now `^0.10.1 || ^0.11.0 || ^0.12.0 || ^1.0.0`, and
 the workspace's own `js-sha256` moved from `^0.10.1` to an exact `1.0.0`. The in-repo hash was not

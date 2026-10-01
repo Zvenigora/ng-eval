@@ -9,6 +9,12 @@ module.exports = {
       {
         tsconfig: '<rootDir>/tsconfig.spec.json',
         stringifyContentPathRegex: '\\.(html|svg)$',
+        // TS151001 is ts-jest's advice to enable `esModuleInterop`, printed once
+        // per worker. The base tsconfig turns it off on purpose, and enabling it
+        // for specs alone would let them accept default imports the library
+        // build rejects. eval-signals and eval-forms never print it because
+        // they set `isolatedModules`.
+        diagnostics: { ignoreCodes: [151001] },
       },
     ],
   },

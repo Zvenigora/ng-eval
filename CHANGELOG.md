@@ -20,6 +20,20 @@ which gained "(not published to npm)". This file now holds only changes that shi
 Workspace tooling: nothing here reaches a consumer, so nothing here is versioned.
 
 ### Fixed
+- **Dependency security, 2026-09-30**: `npm audit` 22 → 0. Angular 22.2.1 (framework) / 22.2.0
+  (CLI and devkit), `jest-preset-angular` 17.0.1, `axios` and a higher `brace-expansion` floor
+  under `overrides.nx`, in-range updates of `brace-expansion`, `undici` and `fast-uri`, and the
+  unused `verdaccio` removed. `ng-packagr` stays at 22.1.1 so the published `.d.ts` files do not
+  change. `docs/backlog.md` F16.
+- **eval-core's tests no longer print ts-jest's TS151001 advice** once per worker. It is silenced
+  in `modules/eval-core/jest.config.ts`; the reason is in the comment there.
+
+### Changed
+- **Each package now carries a copy of the root `LICENSE`** (`modules/*/LICENSE`), which
+  ng-packagr includes by default, so the next release of each package ships it. Earlier releases
+  declared `"license": "MIT"` in the manifest and shipped no file. ng-packagr refuses an asset
+  outside the project root, so a copy is the only way short of a build script; keep the four
+  files identical.
 - **Dependency Security**: Bumped the transitive `fast-uri` dependency (pulled in by `ajv`,
   used by the lint/build tooling) from 3.1.5 to 3.1.7, resolving 4 high-severity Dependabot
   advisories — [GHSA-jqff-g426-hqxp](https://github.com/advisories/GHSA-jqff-g426-hqxp),
