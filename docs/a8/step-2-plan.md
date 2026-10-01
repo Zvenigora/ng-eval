@@ -279,7 +279,7 @@ the last, which is recorded:
   - `EvalSignalService`'s JSDoc said "`EvalService` no longer keeps them", but it ships under an
     `eval-core` peer range that admits versions that do. It now says "from 0.6.0".
 - **Stale records:**
-  - four line links in [A5](../backlog.md#a5) into `eval.service.ts`, re-pointed to the moved
+  - four line links in [A5](../backlog-retired.md#a5) into `eval.service.ts`, re-pointed to the moved
     `throw` sites;
   - three sentences in A8's entry still in the present tense;
   - two in [A17](../backlog-retired.md#a17)'s, now marked as history;

@@ -38,17 +38,11 @@ export class DiscoveryService extends BaseEval {
    */
   extract(expression: string | AnyNode | undefined,
     searchType: AnyNodeTypes): AnyNode[] | undefined {
-    try {
-      const ast = this.parse(expression);
-      const value = extract(ast, searchType);
-      return value;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(error.message);
-      } else {
-        throw error;
-      }
-    }
+    // No `catch`: a parse error leaves as acorn raised it, type and `pos` intact
+    // (`docs/backlog-retired.md` A5).
+    const ast = this.parse(expression);
+    const value = extract(ast, searchType);
+    return value;
   }
 
 }

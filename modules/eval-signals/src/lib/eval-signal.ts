@@ -298,10 +298,12 @@ export function createEvalSignal(
     const depth = ctx.scopes.length;
 
     try {
-      // The free `call`, deliberately, and not `CompilerService.call`: that
-      // one catches and rethrows `new Error(error.message)`, which would
-      // destroy the `SignalContextWriteError` type the caller selects on and
-      // leave nothing but a message to match.
+      // The free `call`, deliberately, and not `CompilerService.call`: up to
+      // `eval-core` 0.6.x that one caught and rethrew a bare `Error` with the
+      // message alone, which would destroy the `SignalContextWriteError` type
+      // the caller selects on and leave nothing but a message to match. 0.7.0
+      // rethrows the original, but the peer range still admits the versions
+      // that do not.
       if (!trackDependencies) {
         return call(fn, state);
       }

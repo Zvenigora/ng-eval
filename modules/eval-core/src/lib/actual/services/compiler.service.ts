@@ -134,54 +134,51 @@ export class CompilerService extends BaseEval implements OnDestroy {
    * @throws Error if there is an error during compilation.
    */
   compile(expression: string | AnyNode | undefined): stateCallback | undefined {
-    try {
-      const cacheKey = this.generateCacheKey(expression);
-      
-      // Check cache first
-      const cached = this._compilationCache.get(cacheKey);
-      if (cached?.sync) {
-        // Update access order for LRU
-        this.updateAccessOrder(cacheKey);
-        cached.accessCount++;
-        
-        // Check if entry is still fresh
-        const age = performance.now() - cached.timestamp;
-        if (age < this._cacheTTL) {
-          return cached.sync;
-        }
+    // No `catch`, here or in the five methods below: an error leaves as it was
+    // thrown. Each used to raise a bare `Error` carrying only the message in its
+    // place, or a fixed message for a thrown non-`Error`
+    // (`docs/backlog-retired.md` A5).
+    const cacheKey = this.generateCacheKey(expression);
+
+    // Check cache first
+    const cached = this._compilationCache.get(cacheKey);
+    if (cached?.sync) {
+      // Update access order for LRU
+      this.updateAccessOrder(cacheKey);
+      cached.accessCount++;
+
+      // Check if entry is still fresh
+      const age = performance.now() - cached.timestamp;
+      if (age < this._cacheTTL) {
+        return cached.sync;
       }
-      
-      // Compile fresh
-      const ast = this.parse(expression);
-      const fn = _compile(ast);
-      
-      if (fn) {
-        // Cache the result
-        const existingCache = this._compilationCache.get(cacheKey) || {
-          timestamp: performance.now(),
-          accessCount: 0
-        };
-        
-        existingCache.sync = fn;
-        existingCache.timestamp = performance.now();
-        existingCache.accessCount++;
-        
-        this._compilationCache.set(cacheKey, existingCache);
-        this.updateAccessOrder(cacheKey);
-        
-        // Cleanup if cache is getting too large
-        if (this._compilationCache.size > this._maxCacheSize * 1.2) {
-          this.cleanupCache();
-        }
-      }
-      
-      return fn;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(error.message);
-      }
-      throw new Error('error in compile');
     }
+
+    // Compile fresh
+    const ast = this.parse(expression);
+    const fn = _compile(ast);
+
+    if (fn) {
+      // Cache the result
+      const existingCache = this._compilationCache.get(cacheKey) || {
+        timestamp: performance.now(),
+        accessCount: 0
+      };
+
+      existingCache.sync = fn;
+      existingCache.timestamp = performance.now();
+      existingCache.accessCount++;
+
+      this._compilationCache.set(cacheKey, existingCache);
+      this.updateAccessOrder(cacheKey);
+
+      // Cleanup if cache is getting too large
+      if (this._compilationCache.size > this._maxCacheSize * 1.2) {
+        this.cleanupCache();
+      }
+    }
+
+    return fn;
   }
 
   /**
@@ -196,17 +193,9 @@ export class CompilerService extends BaseEval implements OnDestroy {
              context?: EvalContext | Context,
              options?: EvalOptions) {
     if (fn) {
-      try {
-        const state = this.createState(context, options);
-        const value = _call(fn, state);
-        return value;
-      } catch (error) {
-        if (error instanceof Error) {
-          throw new Error(error.message);
-        } else {
-          throw new Error('call');
-        }
-      }
+      const state = this.createState(context, options);
+      const value = _call(fn, state);
+      return value;
     }
     return undefined;
   }
@@ -223,16 +212,8 @@ export class CompilerService extends BaseEval implements OnDestroy {
   call(fn: stateCallback | undefined,
        state: EvalState) {
     if (fn) {
-      try {
-        const value = _call(fn, state);
-        return value;
-      } catch (error) {
-        if (error instanceof Error) {
-          throw new Error(error.message);
-        } else {
-          throw new Error('call');
-        }
-      }
+      const value = _call(fn, state);
+      return value;
     }
     return undefined;
   }
@@ -244,54 +225,47 @@ export class CompilerService extends BaseEval implements OnDestroy {
    * @throws Error if there is an error during compilation.
    */
   compileAsync(expression: string | AnyNode | undefined): stateCallbackAsync | undefined {
-    try {
-      const cacheKey = this.generateCacheKey(expression);
-      
-      // Check cache first
-      const cached = this._compilationCache.get(cacheKey);
-      if (cached?.async) {
-        // Update access order for LRU
-        this.updateAccessOrder(cacheKey);
-        cached.accessCount++;
-        
-        // Check if entry is still fresh
-        const age = performance.now() - cached.timestamp;
-        if (age < this._cacheTTL) {
-          return cached.async;
-        }
+    const cacheKey = this.generateCacheKey(expression);
+
+    // Check cache first
+    const cached = this._compilationCache.get(cacheKey);
+    if (cached?.async) {
+      // Update access order for LRU
+      this.updateAccessOrder(cacheKey);
+      cached.accessCount++;
+
+      // Check if entry is still fresh
+      const age = performance.now() - cached.timestamp;
+      if (age < this._cacheTTL) {
+        return cached.async;
       }
-      
-      // Compile fresh
-      const ast = this.parse(expression);
-      const fn = _compileAsync(ast);
-      
-      if (fn) {
-        // Cache the result
-        const existingCache = this._compilationCache.get(cacheKey) || {
-          timestamp: performance.now(),
-          accessCount: 0
-        };
-        
-        existingCache.async = fn;
-        existingCache.timestamp = performance.now();
-        existingCache.accessCount++;
-        
-        this._compilationCache.set(cacheKey, existingCache);
-        this.updateAccessOrder(cacheKey);
-        
-        // Cleanup if cache is getting too large
-        if (this._compilationCache.size > this._maxCacheSize * 1.2) {
-          this.cleanupCache();
-        }
-      }
-      
-      return fn;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(error.message);
-      }
-      throw new Error('error in compileAsync');
     }
+
+    // Compile fresh
+    const ast = this.parse(expression);
+    const fn = _compileAsync(ast);
+
+    if (fn) {
+      // Cache the result
+      const existingCache = this._compilationCache.get(cacheKey) || {
+        timestamp: performance.now(),
+        accessCount: 0
+      };
+
+      existingCache.async = fn;
+      existingCache.timestamp = performance.now();
+      existingCache.accessCount++;
+
+      this._compilationCache.set(cacheKey, existingCache);
+      this.updateAccessOrder(cacheKey);
+
+      // Cleanup if cache is getting too large
+      if (this._compilationCache.size > this._maxCacheSize * 1.2) {
+        this.cleanupCache();
+      }
+    }
+
+    return fn;
   }
 
   /**
@@ -306,17 +280,10 @@ export class CompilerService extends BaseEval implements OnDestroy {
                         context?: EvalContext | Context,
                         options?: EvalOptions) {
     if (fn) {
-      try {
-        const state = this.createState(context, options);
-        const promise = _callAsync(fn, state);
-        const value = await promise;
-        return value;
-      } catch (error) {
-        if (error instanceof Error) {
-          throw new Error(error.message);
-        }
-        throw new Error('error in callAsync');
-      }
+      const state = this.createState(context, options);
+      const promise = _callAsync(fn, state);
+      const value = await promise;
+      return value;
     }
     return undefined;
   }
@@ -333,16 +300,9 @@ export class CompilerService extends BaseEval implements OnDestroy {
   async callAsync(fn: stateCallbackAsync | undefined,
                   state: EvalState) {
     if (fn) {
-      try {
-        const promise = _callAsync(fn, state);
-        const value = await promise;
-        return value;
-      } catch (error) {
-        if (error instanceof Error) {
-          throw new Error(error.message);
-        }
-        throw new Error('error in callAsync');
-      }
+      const promise = _callAsync(fn, state);
+      const value = await promise;
+      return value;
     }
     return undefined;
   }

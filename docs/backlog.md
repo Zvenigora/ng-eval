@@ -117,7 +117,7 @@ all on the remote.
 | [A3](backlog-retired.md#a3) | `import-expression.ts` has a dead `afterVisitor` | core | fix | **Retired — fixed 2026-09-26**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1 — the FESM bundle loses the one line |
 | [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered — **wider than it reads; [A10](#a10) argues it is one defect with A10** |
 | [A10](#a10) | `getKey`'s scopes step reports every key present against a plain-object scope | core | fix | Open — **latent, not live**; blocks any fix to [A4](#a4) |
-| [A5](#a5) | Service-layer entry points discard the error they caught — **12 sites, 4 services** | core | fix | Open |
+| [A5](backlog-retired.md#a5) | Service-layer entry points discard the error they caught — **12 sites, 4 services** | core | fix | **Retired — fixed 2026-09-30, never released**; held for `eval-core` 0.7.0. The original is rethrown |
 | [A6](#a6) | `safeCall` destroys the class of any error thrown through a call | core | fix | Open |
 | [A7](#a7) | `EvalScopeOptions.thisArg` is documented and never applied — `getThis`'s `priorScopes` loop is dead, and `ns.fn()` never reaches it | core | decision, then fix | Open — **rewritten 2026-09-29**, when the 0.6.1 fix was measured; held for `eval-core` 0.7.0 |
 | [A8](backlog-retired.md#a8) | `EvalService._activeStates` grows unboundedly | core | fix | **Retired — fixed 2026-09-25, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987, in two steps: `simpleEval`'s states ([`docs/a8/plan.md`](a8/plan.md)), then the set deleted ([`docs/a8/step-2-plan.md`](a8/step-2-plan.md)). Withdraws the published destroy-time registry clear |
@@ -241,7 +241,7 @@ scoped to be additive.
 
 [A1](backlog-retired.md#a1)–[A3](backlog-retired.md#a3) came out of the Phase 1 hook work
 ([`side-effects/phase-1-plan.md`](side-effects/phase-1-plan.md)) and are in the visitors.
-[A4](#a4) is in `EvalContext` and was surfaced by Phase 1 step 4's read hooks. [A5](#a5) and
+[A4](#a4) is in `EvalContext` and was surfaced by Phase 1 step 4's read hooks. [A5](backlog-retired.md#a5) and
 [A7](#a7) were surfaced by Phase 3 step 2 ([`signals/phase-3-plan.md`](signals/phase-3-plan.md))
 — the first consumer to reuse one `EvalContext` across many evaluations, which is what makes
 several of these visible at all. [A6](#a6) was surfaced by Phase 6 step 3. [A8](backlog-retired.md#a8) and
@@ -373,71 +373,16 @@ work.
 *Recorded*: Phase 2 step 1, from the review of the `get` fix.
 *Verified*: **measured**, 2026-09-13, on `dist/modules/eval-core` — table above.
 
-<a id="a5"></a>
-## A5 — Every service-layer entry point discards the error it caught
-
-**Package** core · **Kind** fix · **Status** Open
-
-Each catches and `throw new Error(error.message)`. That replaces the thrown object: its **type**,
-its `cause`, its stack and any property it carried are gone, and the caller receives a bare
-`Error` whose only surviving information is the message string.
-
-**Twelve sites across four services.** The roadmap entry this replaces named six methods in two
-services; that was an undercount, corrected here on 2026-09-06 by grepping
-`throw new Error(error.message)` across `modules/`:
-
-| Service | Method | Line | Named in the old entry? |
-| ------- | ------ | ---- | ----------------------- |
-| `EvalService` | `simpleEval` | [81](../modules/eval-core/src/lib/actual/services/eval.service.ts#L81) | yes |
-| `EvalService` | `eval` | [108](../modules/eval-core/src/lib/actual/services/eval.service.ts#L108) | yes |
-| `EvalService` | `simpleEvalAsync` | [138](../modules/eval-core/src/lib/actual/services/eval.service.ts#L138) | **no** |
-| `EvalService` | `evalAsync` | [165](../modules/eval-core/src/lib/actual/services/eval.service.ts#L165) | **no** |
-| `CompilerService` | `compile` | [181](../modules/eval-core/src/lib/actual/services/compiler.service.ts#L181) | **no** |
-| `CompilerService` | `simpleCall` | [205](../modules/eval-core/src/lib/actual/services/compiler.service.ts#L205) | yes |
-| `CompilerService` | `call` | [231](../modules/eval-core/src/lib/actual/services/compiler.service.ts#L231) | yes |
-| `CompilerService` | `compileAsync` | [291](../modules/eval-core/src/lib/actual/services/compiler.service.ts#L291) | **no** |
-| `CompilerService` | `simpleCallAsync` | [316](../modules/eval-core/src/lib/actual/services/compiler.service.ts#L316) | yes |
-| `CompilerService` | `callAsync` | [342](../modules/eval-core/src/lib/actual/services/compiler.service.ts#L342) | yes |
-| `DiscoveryService` | `extract` | [47](../modules/eval-core/src/lib/actual/services/discovery.service.ts#L47) | **no — service not mentioned** |
-| `ParserService` | `parse` | [130](../modules/eval-core/src/lib/actual/services/parser.service.ts#L130) | **no — service not mentioned** |
-
-The blast radius is double what was written down, and it includes the **parser**, so a syntax
-error loses its type and position properties the same way an evaluation error does.
-
-`evaluate` / `evaluateAsync` do not do this — they rethrow the original untouched — so the loss
-is entirely in the service wrappers, and the free `call` / `callAsync` from `internal/functions`
-are the same functions without it.
-
-Consequences, in order of how quietly they fail:
-
-- A caller cannot select an error by type. `instanceof` against any custom error class is false
-  after one of these calls, so the only discriminator left is matching the message — which
-  couples the caller to wording and breaks silently when it changes.
-- A `catch` block cannot re-raise with context, because `cause` is already gone.
-- Stack traces point at the service method rather than at the visitor that threw.
-
-Rethrowing the original object, or wrapping it with `cause` set, are both candidates; the second
-preserves the current type for callers who already depend on getting an `Error`. Behavioural
-across twelve exported methods, so it needs its own step and a version bump.
-
-Phase 3 routes around it rather than waiting: `createEvalSignal` calls the free `call(fn, state)`
-so `SignalContextWriteError` survives to the factory
-([`signals/phase-3-plan.md` § 3.6.3](signals/phase-3-plan.md)). That routing does **not** save
-[A6](#a6).
-
-*Recorded*: [`signals/phase-3-plan.md` § 3.6.3](signals/phase-3-plan.md).
-*Verified*: grep + source read, 2026-09-06.
-
 <a id="a6"></a>
 ## A6 — `safeCall` destroys the class of any error thrown *through* a call
 
 **Package** core · **Kind** fix · **Status** Open
 
-[A5](#a5) one layer down, and on a path no caller can route around. `safeCall` catches whatever
+[A5](backlog-retired.md#a5) one layer down, and on a path no caller can route around. `safeCall` catches whatever
 the callee threw and re-raises ``new Error(`Function call error: ${error.message}`)``
 ([`call-expression.ts:124-129`](../modules/eval-core/src/lib/internal/visitors/call-expression.ts#L124-L129)),
 so an error crossing a call frame arrives as a bare `Error` carrying only a decorated message.
-Same consequences as [A5](#a5)'s — but calling the free `call(fn, state)` does not help, because
+Same consequences as [A5](backlog-retired.md#a5)'s — but calling the free `call(fn, state)` does not help, because
 this wrapper is inside the walk itself.
 
 **Surfaced by Phase 6 step 3, which is where it stops being abstract.** `applyErrorPolicy`

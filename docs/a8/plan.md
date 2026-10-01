@@ -118,7 +118,7 @@ Yes, in three ways. None of them runs through the service.
   states it created". Step 1 narrows both to "the states `createState` handed back". § 2.2
   weighs what that costs.
 - **An error.** A hook error under `onHookError: 'throw'` rejects `simpleEvalAsync` with the
-  original error. `simpleEval` rethrows `new Error(message)` instead ([A5](../backlog.md#a5)).
+  original error. `simpleEval` rethrows `new Error(message)` instead ([A5](../backlog-retired.md#a5)).
   Only the caller holds that error, and it points at no state.
 
 The registry itself holds no reference to a state. The walk bases and the open-node stack live

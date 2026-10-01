@@ -336,7 +336,7 @@ actually run.
 | Default values in patterns (`let {a = 1} = o`) | `AssignmentPattern` is commented out in `pattern.ts` ([:43-47](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L43-L47), [:67-68](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L67-L68)) and is its own work |
 | The fall-through family of § 1.7 — `(a)++`, `[a, b] = arr`, `({m} = o)` | Defects this phase measured but did not create. Recorded together in [A2](../backlog-retired.md#a2); § 8.4 says why fixing one of three here would be arbitrary |
 | `@zvenigora/ng-eval-signals`, `@zvenigora/ng-eval-forms` | Dependencies. A step that needs a change in either is a stop-and-replan — **with one sanctioned exception, step 0b**, which exists because step 0 hit exactly that condition and the plan, not the step, has to decide it. 0b's file list is closed and enumerated in § 4; every other step keeps the original rule |
-| The error-identity group — [A4](../backlog.md#a4), [A5](../backlog.md#a5), [A6](../backlog.md#a6), [A7](../backlog.md#a7), [C3](../backlog.md#c3) — and the write-policy pair, [C1](../backlog.md#c1) and [C2](../backlog.md#c2) | Not this phase's subject. [A10](../backlog.md#a10), opened in step 1, is argued to be the same defect as A4 and is out with it |
+| The error-identity group — [A4](../backlog.md#a4), [A5](../backlog-retired.md#a5), [A6](../backlog.md#a6), [A7](../backlog.md#a7), [C3](../backlog.md#c3) — and the write-policy pair, [C1](../backlog.md#c1) and [C2](../backlog.md#c2) | Not this phase's subject. [A10](../backlog.md#a10), opened in step 1, is argued to be the same defect as A4 and is out with it |
 
 [A2](../backlog-retired.md#a2) was the one deliberate maybe, and is settled at § 8.4: out.
 

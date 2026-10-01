@@ -286,6 +286,68 @@ reported unused. Nothing else in the visitor changed. **The published artifact d
 built `fesm2022` bundle, compared against a build of the parent commit, differs by exactly that
 one line (and its source map with it); the `.d.ts` is byte-identical. Test counts unchanged.
 
+<a id="a5"></a>
+## A5 — Every service-layer entry point discards the error it caught
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-30, never released**; held
+for `eval-core` 0.7.0
+
+Each caught and raised a new `Error` built from `error.message` alone. That replaced the thrown
+object: its **type**, its `cause`, its stack and any property it carried were gone, and the caller
+received a bare `Error` whose only surviving information was the message string.
+
+**Twelve sites across four services.** The roadmap entry this replaced named six methods in two
+services; that was an undercount, corrected on 2026-09-06 by grepping across `modules/`:
+
+| Service | Method | Named in the old entry? |
+| ------- | ------ | ----------------------- |
+| `EvalService` | `simpleEval` | yes |
+| `EvalService` | `eval` | yes |
+| `EvalService` | `simpleEvalAsync` | **no** |
+| `EvalService` | `evalAsync` | **no** |
+| `CompilerService` | `compile` | **no** |
+| `CompilerService` | `simpleCall` | yes |
+| `CompilerService` | `call` | yes |
+| `CompilerService` | `compileAsync` | **no** |
+| `CompilerService` | `simpleCallAsync` | yes |
+| `CompilerService` | `callAsync` | yes |
+| `DiscoveryService` | `extract` | **no — service not mentioned** |
+| `ParserService` | `parse` | **no — service not mentioned** |
+
+It included the **parser**, so a syntax error lost its type and position properties the same way
+an evaluation error did. `evaluate` / `evaluateAsync` never did this, so the loss was entirely in
+the service wrappers. Rethrowing the original, or wrapping it with `cause` set, were the
+candidates.
+
+Phase 3 routed around it: `createEvalSignal` calls the free `call(fn, state)` so
+`SignalContextWriteError` survives to the factory
+([`signals/phase-3-plan.md` § 3.6.3](signals/phase-3-plan.md)). That routing did **not** save
+[A6](backlog.md#a6), and it stays, since the downstream peer ranges still admit the versions with the defect.
+
+*Recorded*: [`signals/phase-3-plan.md` § 3.6.3](signals/phase-3-plan.md).
+*Verified*: grep + source read, 2026-09-06.
+
+*Fixed* 2026-09-30, by decision: **rethrow the original**. The twelve `try`/`catch` blocks are
+deleted rather than reduced to `catch (error) { throw error; }`, which ESLint's
+`no-useless-catch` rejects and which is the same thing. Three of the sites also replaced a thrown
+non-`Error` with a fixed message (`'call'`, `'error in compile'`, `'error in callAsync'`); that
+value now propagates as thrown too. Grep afterwards: no rebuild from `error.message` in
+`actual/services/`.
+
+Two facts the table did not show. `simpleEvalAsync` and `evalAsync` only ever caught a **parse**
+error: their walk runs inside the `async` `evaluateAsync`, whose rejection never passes through the
+service's `catch`. And that parse error is thrown synchronously, not rejected — unchanged.
+
+Specs: `services.error-identity.spec.ts`, one case per site, twelve. A walk error is thrown from an
+accessor on the context, so no call frame — and so no [A6](backlog.md#a6) — stands between it and the
+service; it must arrive as the same object, of its class, with its `cause` and an extra property.
+A parse error must arrive as acorn's `SyntaxError` with `pos`. **Probes**, against 1100:
+`CompilerService.call`'s wrapper restored — 1 failed, that case alone; `ParserService.parse`
+wrapping with `cause` set, the rejected alternative — 6 failed, every parse-error case, since all
+six reach the parser.
+
+`eval-signals`' comment on why it uses the free `call` is put in the past tense.
+
 <a id="a8"></a>
 ## A8 — `EvalService._activeStates` grows unboundedly
 
@@ -2098,7 +2160,7 @@ which a reader notices. This one is worse, because nothing about it looks broken
 [`statements/phase-2-plan.md`](statements/phase-2-plan.md) § 2 excluded work with the row
 *"Everything in `docs/backlog.md` Track 1 / Track 2 — not this phase's subject"*. **This register
 has no Track 1 and no Track 2.** All three Tracks were a sequencing suggestion made in
-conversation — 1 the error-identity group ([A4](backlog.md#a4), [A5](backlog.md#a5), [A6](backlog.md#a6), [A7](backlog.md#a7), [C3](backlog.md#c3)),
+conversation — 1 the error-identity group ([A4](backlog.md#a4), [A5](#a5), [A6](backlog.md#a6), [A7](backlog.md#a7), [C3](backlog.md#c3)),
 2 the write policy ([C1](backlog.md#c1), [C2](backlog.md#c2)), 3 the documentation gates — and only the third was ever
 written down. The plan then cited all three as though the reader could look them up.
 

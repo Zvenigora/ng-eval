@@ -117,20 +117,14 @@ export class ParserService implements OnDestroy {
     }
     
     if (expr) {
-      try {
-        const parserOptions = { ...this.parserOptions, ...options };
-        const isCache = this.parserOptions.cacheSize && this._cache;
-        const ast = isCache
-          ? this.fromCacheOrParse(expr, parserOptions)
-          : _parse(expr, parserOptions);
-        return ast;
-      } catch (error) {
-        if (error instanceof Error) {
-          throw new Error(error.message);
-        } else {
-          throw error;
-        }
-      }
+      // No `catch`: a syntax error leaves as acorn raised it, a `SyntaxError`
+      // with `pos` and `loc` (`docs/backlog-retired.md` A5).
+      const parserOptions = { ...this.parserOptions, ...options };
+      const isCache = this.parserOptions.cacheSize && this._cache;
+      const ast = isCache
+        ? this.fromCacheOrParse(expr, parserOptions)
+        : _parse(expr, parserOptions);
+      return ast;
     }
     return undefined;
   }

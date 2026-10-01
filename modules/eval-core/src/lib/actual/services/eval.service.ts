@@ -66,23 +66,19 @@ export class EvalService extends BaseEval implements OnDestroy {
              context?: EvalContext | Context,
              options?: EvalOptions
   ): unknown | undefined {
-    try {
-      const ast = this.parse(expression);
-      // Through `createState`, which a subclass may override, rather than a
-      // private builder (`docs/a8/plan.md` § 2.1).
-      const state = this.createState(context, options);
-      if (state?.result && typeof expression === 'string') {
-        state.result.expression = expression;
-      }
-      const value = evaluate(ast, state);
-      return value;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(error.message);
-      } else {
-        throw error;
-      }
+    // No `catch`: an error leaves this method as it was thrown, class, `cause`
+    // and properties intact. Each entry point here and in the other services
+    // used to raise a bare `Error` carrying only the message in its place
+    // (`docs/backlog-retired.md` A5).
+    const ast = this.parse(expression);
+    // Through `createState`, which a subclass may override, rather than a
+    // private builder (`docs/a8/plan.md` § 2.1).
+    const state = this.createState(context, options);
+    if (state?.result && typeof expression === 'string') {
+      state.result.expression = expression;
     }
+    const value = evaluate(ast, state);
+    return value;
   }
 
   /**
@@ -96,20 +92,12 @@ export class EvalService extends BaseEval implements OnDestroy {
   eval(expression: string | AnyNode | undefined,
        state: EvalState
   ): unknown | undefined {
-    try {
-      const ast = this.parse(expression);
-      if (state?.result && typeof expression === 'string') {
-        state.result.expression = expression;
-      }
-      const value = evaluate(ast, state);
-      return value;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(error.message);
-      } else {
-        throw error;
-      }
+    const ast = this.parse(expression);
+    if (state?.result && typeof expression === 'string') {
+      state.result.expression = expression;
     }
+    const value = evaluate(ast, state);
+    return value;
   }
 
   /**
@@ -123,23 +111,15 @@ export class EvalService extends BaseEval implements OnDestroy {
                   context?: EvalContext | Context,
                   options?: EvalOptions
   ): Promise<unknown | undefined> {
-    try {
-      const ast = this.parse(expression);
-      // As in `simpleEval`. The pending frame holds the state for as long as
-      // the promise it awaits is reachable, and nothing else does.
-      const state = this.createState(context, options);
-      if (state?.result && typeof expression === 'string') {
-        state.result.expression = expression;
-      }
-      const promise = evaluateAsync(ast, state);
-      return promise;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(error.message);
-      } else {
-        throw error;
-      }
+    const ast = this.parse(expression);
+    // As in `simpleEval`. The pending frame holds the state for as long as
+    // the promise it awaits is reachable, and nothing else does.
+    const state = this.createState(context, options);
+    if (state?.result && typeof expression === 'string') {
+      state.result.expression = expression;
     }
+    const promise = evaluateAsync(ast, state);
+    return promise;
   }
 
   /**
@@ -153,20 +133,12 @@ export class EvalService extends BaseEval implements OnDestroy {
   evalAsync(expression: string | AnyNode | undefined,
             state: EvalState
   ): Promise<unknown | undefined> {
-    try {
-      const ast = this.parse(expression);
-      if (state?.result && typeof expression === 'string') {
-        state.result.expression = expression;
-      }
-      const promise = evaluateAsync(ast, state);
-      return promise;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(error.message);
-      } else {
-        throw error;
-      }
+    const ast = this.parse(expression);
+    if (state?.result && typeof expression === 'string') {
+      state.result.expression = expression;
     }
+    const promise = evaluateAsync(ast, state);
+    return promise;
   }
 
 }
