@@ -10,6 +10,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.2.5] - 2026-10-01
+
+Released because `eval-core` 0.7.0 falls outside 0.2.4's declared peer range. No exported symbol
+changes, and the `.d.ts` files are byte-identical to 0.2.4's.
+
+### Changed
+- **Peer range widened** to admit `@zvenigora/ng-eval-core` 0.7.0:
+  `>=0.3.0 <0.7.0` → `>=0.3.0 <0.8.0`. The lower bound is unchanged, so 0.3.0 to 0.6.1 remain
+  supported. The `peerDependencies` block quoted in the README shows the new range. The
+  `"@zvenigora/ng-eval-signals": "^0.1.0"` range is unchanged: it already admits 0.1.4.
+- **With `eval-core` 0.7.0, a write nested inside a call is rethrown by `applyErrorPolicy`, in
+  every mode.** `[1].map(x => (country = 'CA'))` now reaches it as `SignalContextWriteError`,
+  like a direct assignment, where it arrived as a plain `Error` and was routed by the policy —
+  under the default `'undefined'`, a blank field with nothing in the console. `/reactive` gets the
+  same through `createEvalSignal`'s own bypass. The README's "When a rule fails" no longer
+  describes this as the guarantee's one boundary, and says the boundary returns with an
+  `eval-core` older than 0.7.0. [A6](../../docs/backlog-retired.md#a6).
+- **`LICENSE` ships in the package** for the first time.
+
+---
+
 ## [0.2.4] - 2026-09-30
 
 **Two `/signals` fixes that bring its model lookup into line with `createSignalContext`,

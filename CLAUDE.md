@@ -215,7 +215,7 @@ call builds a fresh context per evaluation. It is not latent for a caller that r
 `@zvenigora/ng-eval-signals` does, by design, and both downstream libraries still carry a
 depth-mark unwind at their recompute boundary against it (`eval-signal.ts`,
 `evaluate-rule.ts`). Those guards are **retained, not redundant**: both packages declare
-`"@zvenigora/ng-eval-core": ">=0.3.0 <0.7.0"`, a range that still admits the pre-fix 0.3.0, and
+`"@zvenigora/ng-eval-core": ">=0.3.0 <0.8.0"`, a range that still admits the pre-fix 0.3.0, and
 `EvalContext.push` / `pop` are public methods on a published class, so a scope can be
 stranded with no visitor involved at all.
 

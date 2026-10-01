@@ -10,6 +10,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.1.4] - 2026-10-01
+
+Released because `eval-core` 0.7.0 falls outside 0.1.3's declared peer range. No exported
+symbol's shape changes, and no code in this package behaves differently; what `eval-core` 0.7.0
+changes reaches through it as described below.
+
+### Changed
+
+- **Peer range widened** to admit `@zvenigora/ng-eval-core` 0.7.0:
+  `>=0.3.0 <0.7.0` → `>=0.3.0 <0.8.0`. The lower bound is unchanged, so 0.3.0 to 0.6.1 remain
+  supported — which is also why `createEvalSignal` still calls the free `call` and still unwinds
+  a stranded scope itself. The README's peer-dependency line now states the new range.
+- **With `eval-core` 0.7.0, `this.fn()` over a `createSignalContext` context receives the
+  context.** Every source key is resolved by the context's lookup, and `EvalContext.getThis` used
+  to report that lookup function as the receiver; it now answers `undefined` for a lookup-resolved
+  key, so the call falls back to the context, as a bare `fn()` already did.
+  [A7](../../docs/backlog-retired.md#a7).
+- **With `eval-core` 0.7.0, a write nested inside a call bypasses `onError`.**
+  `[1].map(x => (country = 'CA'))` reaches `createEvalSignal` as `SignalContextWriteError` and is
+  rethrown in every mode, like a direct assignment. It used to arrive as a plain `Error` and be
+  routed by `onError`. [A6](../../docs/backlog-retired.md#a6).
+- **Built with Angular 22.1 or later.** The `.d.ts` declares `EvalSignalService.ɵprov` as
+  `ɵɵInjectableDeclaration<any>`, where 0.1.3, built with Angular 22.0, declared it with the
+  service's own type. This is Angular's generated injection metadata, not this package's API, and
+  that one line is the whole `.d.ts` difference from 0.1.3.
+- **`LICENSE` and `CHANGELOG.md` ship in the package** for the first time.
+
+---
+
 ## [0.1.3] - 2026-09-26
 
 Released because `eval-core` 0.6.0 falls outside 0.1.2's declared peer range, so installing it

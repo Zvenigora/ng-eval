@@ -393,7 +393,7 @@ const result = service.simpleEval(expression, evalContext); // 'Miss Kitty says 
 
 ## Packages in This Repo
 
-This repository publishes two libraries. Everything above documents the first.
+This repository publishes three libraries. Everything above documents the first.
 
 - **[`@zvenigora/ng-eval-core`](modules/eval-core/README.md)** — the expression parser and
   evaluator this README describes.
@@ -403,8 +403,13 @@ This repository publishes two libraries. Everything above documents the first.
   dependency tracking. Built on `ng-eval-core`; see its
   [README](modules/eval-signals/README.md) for the factory, the DI service, dependency
   introspection, lifetime and limitations.
-
-A third, `@zvenigora/ng-eval-forms`, is planned — see the [roadmap](ROADMAP.md).
+- **[`@zvenigora/ng-eval-forms`](modules/eval-forms/README.md)** — Angular form field
+  properties driven by expressions that arrive as strings at runtime: `visible` and `text`, plus
+  `disabled` at `/signals`. One package, two adapters: Reactive Forms at
+  `@zvenigora/ng-eval-forms/reactive`, and Signal Forms at `@zvenigora/ng-eval-forms/signals`,
+  which needs Angular 22. Built on the other two; see its
+  [README](modules/eval-forms/README.md) for the field schema, coercion, error policy and
+  reactivity.
 
 ## Related Packages
 Depending on your specific use-case, there are other

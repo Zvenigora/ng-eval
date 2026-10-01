@@ -14,6 +14,61 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ---
 
+## [0.7.0] - 2026-10-01
+
+**Errors keep their identity, `thisArg` is applied, and three silent outcomes now throw —
+[A1](../../docs/backlog-retired.md#a1), [A2](../../docs/backlog-retired.md#a2),
+[A5](../../docs/backlog-retired.md#a5), [A6](../../docs/backlog-retired.md#a6) and
+[A7](../../docs/backlog-retired.md#a7).** A breaking minor. No exported symbol changes shape — the
+`.d.ts` differs from 0.6.1 in documentation comments only — but what several methods throw, and
+the `this` some calls receive, change. `eval-signals` 0.1.4 and `eval-forms` 0.2.5 widen their
+peer ranges to admit it.
+
+### Breaking
+- **Errors are no longer rewrapped.** The twelve service entry points — `EvalService`,
+  `CompilerService`, `DiscoveryService` and `ParserService` — and the evaluator's call and `new`
+  wrappers rethrow what they caught, where each raised a new `Error` carrying only the message. A
+  custom error keeps its class, `stack`, `cause` and properties, so `instanceof` works; a syntax
+  error is acorn's `SyntaxError`, with `pos` and `loc`. Messages lose the prefixes a throw used to
+  get: `Function call error: ` from inside a called function, and `Constructor error: ` from
+  inside a constructor. A thrown non-`Error` value propagates as thrown, where `CompilerService`
+  replaced it with a fixed message (`'call'`, `'error in compile'`, `'error in callAsync'`). Code
+  that matched a prefix or the message should select on the error itself.
+  [A5](../../docs/backlog-retired.md#a5), [A6](../../docs/backlog-retired.md#a6).
+- **A synchronous throw under `await` throws synchronously.** `await obj.__proto__` became a
+  rejected promise: `simpleEval` and `eval` returned it instead of throwing, and the walk went on
+  with the operand still open. It now throws from the sync entry points, and `evalAsync` rejects
+  with the original error. An asynchronous rejection still carries ` at position <start>-<end>`.
+  Hooks see a failed walk: the operand and the `await` close with `completed: false` and an
+  `error`, where the operand used to close with no `error`.
+  [A1](../../docs/backlog-retired.md#a1).
+- **Destructuring assignment throws instead of silently doing nothing.** `[a, b] = arr` and
+  `({ m } = o)` returned `undefined` and left the context unchanged. They now throw
+  `Unsupported assignment target: ArrayPattern` / `ObjectPattern`, before either side is
+  evaluated. [A2](../../docs/backlog-retired.md#a2).
+- **`(a)++` works under `preserveParens`**, and so do `(a) = 1` and `(o.x)++`: a parenthesised
+  write target is unwrapped. Each used to push no value, so the nodes around it read the wrong
+  operands. Any other unsupported update target throws `Unsupported update target: <type>`.
+  [A2](../../docs/backlog-retired.md#a2).
+- **`EvalScopeOptions.thisArg` is applied.** A method called on a scope's own object —
+  `cat.action()` through the namespace `cat` — receives the scope's `thisArg` as `this`, and
+  `this.fn()` receives the `thisArg` of the prior scope that supplies `fn`. With no `thisArg`,
+  `cat.action()` still receives the scope's object. `cat` itself still evaluates to the scope's
+  object, and `cat.x` reads and writes it, not `thisArg`. `EvalContext.getThis` answers with
+  that `thisArg`, and answers `undefined` for a key only a lookup resolves, where it returned the
+  lookup function: `this.fn()` for such a key now receives the context. The README's Scopes
+  example now uses a `thisArg` other than the scope's object.
+  [A7](../../docs/backlog-retired.md#a7).
+
+### Changed
+- **The README says options-first calls cannot read collected hook errors, by design.**
+  `simpleEval(expr, context, { hooks })` never hands back its state: read `state.hookErrors`
+  after `createState` and `eval`, or set `onHookError: 'throw'` on the `EvalHooks` you pass.
+  Decided rather than built: [E5](../../docs/backlog-retired.md#e5).
+- **`LICENSE` ships in the package**, which declared `"license": "MIT"` and shipped no file.
+
+---
+
 ## [0.6.1] - 2026-09-30
 
 **A patch: two manifest-and-hygiene fixes, [F5](../../docs/backlog-retired.md#f5) and
