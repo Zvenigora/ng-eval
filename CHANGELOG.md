@@ -19,6 +19,11 @@ which gained "(not published to npm)". This file now holds only changes that shi
 
 Workspace tooling: nothing here reaches a consumer, so nothing here is versioned.
 
+### Removed
+- **`@angular/animations` and `@angular/platform-browser-dynamic`**, 2026-09-30: both deprecated
+  in Angular 22.2 and imported nowhere in the repository, leftovers of the workspace scaffold. No
+  published package depended on either.
+
 ### Fixed
 - **Dependency security, 2026-09-30**: `npm audit` 22 → 0. Angular 22.2.1 (framework) / 22.2.0
   (CLI and devkit), `jest-preset-angular` 17.0.1, `axios` and a higher `brace-expansion` floor
