@@ -102,7 +102,7 @@ all on the remote.
 | ID | Entry | Package | Kind | Status |
 | -- | ----- | ------- | ---- | ------ |
 | [A1](backlog-retired.md#a1) | `await-expression.ts` downgrades a sync throw to a promise rejection | core | fix | **Retired — fixed 2026-09-30, never released**; held for `eval-core` 0.7.0 |
-| [A2](#a2) | `update-expression.ts` desyncs the value stack under `preserveParens` | core | fix | Open — standalone, [not a Phase 2 precondition](#phase-2-preconditions) |
+| [A2](backlog-retired.md#a2) | `update-expression.ts` desyncs the value stack under `preserveParens` | core | fix | **Retired — fixed 2026-09-30, never released**; held for `eval-core` 0.7.0. Parentheses unwrapped, any other target throws |
 | [A11](backlog-retired.md#a11) | `evaluateObjectPattern` resolves the *value* name against the argument — renaming **and** nested destructuring bind the wrong key | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17** |
 | [A13](backlog-retired.md#a13) | An object rest element binds the whole source, not the remainder | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17**; found measuring [A11](backlog-retired.md#a11) |
 | [A14](backlog-retired.md#a14) | A computed key in an object pattern is not evaluated — the identifier's spelling is used as the key | core | fix | **Retired — fixed, `eval-core` 0.5.0, 2026-09-17**; found by a spec written for [A11](backlog-retired.md#a11) |
@@ -181,7 +181,7 @@ worse, or is it merely nearby?*
 | [A9](backlog-retired.md#a9) | **Multiplies the construct.** Block scoping means a scope per block per iteration, so a `for` body that throws on iteration 3 leaks three scopes. And five new visitors copy whatever idiom the two existing sites set | **Phase 2 step 0** |
 | [B2](backlog-retired.md#b2) | **Makes it reachable.** Destructuring declarations and assignment destructuring give a `MemberExpression` a legal binding target, and the branch has a whole-`EvalState` `console.log` in it | **Phase 2 step 0** |
 | [E6](backlog-retired.md#e6) | ~~**Makes it reachable, but through the design itself.** Loop completion — "skip the rest of the block" — is exactly the unmatched-`after` shape `exit` cannot bound~~ — **wrong, corrected in step 1**: skipping a subtree never enters it, so nothing is left open; only abrupt completion produces the shape, and that is out of Phase 2's scope | **A design section of Phase 2's plan**, not a step ahead of it — held, and the bound landed in step 1 anyway |
-| [A2](#a2) | **Nothing.** None of its three members — `(a)++`, `[a, b] = arr`, `({m} = o)` — is more reachable after Phase 2 than before; Phase 2 adds no path into either write visitor's chain | **Standalone fix, whenever** |
+| [A2](backlog-retired.md#a2) | **Nothing.** None of its three members — `(a)++`, `[a, b] = arr`, `({m} = o)` — is more reachable after Phase 2 than before; Phase 2 adds no path into either write visitor's chain | **Standalone fix, whenever** |
 
 **Step 0 is [A9](backlog-retired.md#a9) + [B2](backlog-retired.md#b2), one session.** Both are small, both are strictly-before, and
 neither needs Phase 2's design settled: A9 is a `try`/`finally` at two sites plus specs proving
@@ -218,7 +218,7 @@ ahead of the plan would mean designing the mark without knowing what it has to b
 > against a short-circuit mechanism this phase never built. The bound shipped in step 1 regardless,
 > on the "leaving the trap armed under seven new visitors" argument rather than on reachability.
 
-**[A2](#a2) is not a precondition and should not wait.** The argument for pulling it early was
+**[A2](backlog-retired.md#a2) is not a precondition and should not wait.** The argument for pulling it early was
 precedent — statement dispatchers are the same `if`/`else if`-over-node-types shape and would
 copy the silent fall-through. That is a reason to fix it, not a reason to put it in step 0: its
 fix is a `ParenthesizedExpression` visitor, which is a new node type with registration, a
@@ -226,6 +226,11 @@ co-located spec and a README row — feature-shaped work in a step whose whole v
 small and strictly-before. "Correct before imitated" is served by the fix *existing*, not by it
 living in step 0. It is a real wrong-value bug with a real route to it, so it should land on its
 own schedule regardless of whether Phase 2 ever starts.
+
+> **Landed 2026-09-30, for `eval-core` 0.7.0, and not as a new visitor.** Unwrapping the
+> parentheses inside the two write visitors was enough — `acorn-walk`'s base walker already passes
+> through `ParenthesizedExpression` for a value — and a throwing default closed the two
+> destructuring members.
 
 ---
 
@@ -243,75 +248,10 @@ several of these visible at all. [A6](#a6) was surfaced by Phase 6 step 3. [A8](
 [A9](backlog-retired.md#a9) were never recorded in the roadmap at all.
 
 **Identity-checked `exit`** (§ 3.8 of the Phase 1 plan) means the hook layer stays balanced in
-spite of [A1](backlog-retired.md#a1) and [A2](#a2), so neither was urgent — [A3](backlog-retired.md#a3)
-is retired 2026-09-26 and A1 2026-09-30, and the value stack
+spite of [A1](backlog-retired.md#a1) and [A2](backlog-retired.md#a2), so neither was urgent — [A3](backlog-retired.md#a3)
+is retired 2026-09-26 and A1 and A2 2026-09-30, and the value stack
 is a separate stack that is not protected by it. Do not read balanced hook events as evidence
 that a visitor is correctly bracketed.
-
-<a id="a2"></a>
-## A2 — Three silent fall-throughs in the two write visitors, one shape
-
-**Package** core · **Kind** fix · **Status** Open
-
-**Widened 2026-09-10 from one member to three**, while planning Phase 2. The entry previously
-described `(a)++` alone, which read as a single exotic bug behind a non-default parser option. It is
-one instance of a shape that appears **twice in the code and three times in behaviour**, and two of
-the three need no option at all.
-
-The shape: an `if`/`else if` chain over the node types a write visitor knows how to handle, with
-**no final `else`** — so an unhandled type reaches `afterVisitor` having pushed nothing, and every
-node downstream of it pops its neighbour's value.
-
-| # | Expression | Needs an option? | What happens today |
-| - | ---------- | ---------------- | ------------------ |
-| 1 | `(a)++` | `preserveParens: true` | `argument.type === 'ParenthesizedExpression'`; neither branch of [`update-expression.ts:20-42`](../modules/eval-core/src/lib/internal/visitors/update-expression.ts#L20-L42) matches. Pushes nothing |
-| 2 | `[a, b] = arr` | **no** | `left.type === 'ArrayPattern'`; neither branch of [`assignment-expression.ts:47-69`](../modules/eval-core/src/lib/internal/visitors/assignment-expression.ts#L47-L69) matches |
-| 3 | `({m} = o)` | **no** | `left.type === 'ObjectPattern'`; same chain, same fall-through |
-
-*Measured 2026-09-10*, against the built package: 2 and 3 both return `undefined`, throw nothing,
-and leave the context **unchanged** — destructuring assignment is silently a no-op, which is a wrong
-answer on the default path rather than an untidy bracket.
-
-**Why this is one entry and not three.** The fix is one decision — what a write visitor does with a
-target it does not handle — applied at two sites. Handling `ParenthesizedExpression` alone leaves
-the two default-path members live; adding a `default:` that throws fixes all three and changes what
-`[a, b] = arr` does from "nothing" to "a diagnostic", which is the behavioural half that needs a
-version bump. Implementing destructuring assignment properly is a third, larger option and is the
-only one that makes 2 and 3 *work* rather than *report*.
-
-**Phase 2 deliberately left this alone** ([`statements/phase-2-plan.md`](statements/phase-2-plan.md)
-§ 1.7 and § 8.4): that phase reviews the same fall-through shape in five new statement dispatchers
-and requires a throwing `default:` in each, so fixing one of these three in passing would be
-arbitrary rather than principled. It is unblocked and lands whenever someone picks it up.
-
-**Confirmed at the close of Phase 2, by measurement rather than by reading the diff.** Step 6 ran
-all three against the pre-phase tree and against 0.4.0: `[a, b] = arr` and `({m} = o)` both return
-`undefined` with the context unchanged and **nothing stranded**, identically before and after; `(a)++`
-needs `preserveParens` and its chain in `update-expression.ts` is untouched. The check is worth
-naming because step 3 *did* edit both write visitors — the identifier branch of
-`assignment-expression.ts` now routes through `assignToBinding`, and `update-expression.ts` with it
-— so "the phase did not touch these files" would have been false while "the phase did not change
-these three behaviours" is true. The two-statement form `[a, b] = arr; a` now runs through `Program`
-and still returns the unchanged `a`, which is the one of the three the statement work could most
-plausibly have disturbed.
-
-**"One shape" is a claim about these three, and [A11](backlog-retired.md#a11) is the reason to say so out loud.**
-A11 is a fourth silent wrong answer in the same layer — renaming destructuring binds the wrong key
-to the wrong value — and it is *not* this shape: no chain is fallen through, a branch matches and
-computes the wrong thing. This entry's title reads like a register of the family and is not one, so
-a reader looking for "the silent-wrong-result entry for `pattern.ts` and the write visitors" must
-read both. Found Phase 2 step 3, 2026-09-13.
-
-**A11 is fixed as of `eval-core` 0.5.0, and the point above outlived it — twice over.** Repairing
-A11 turned up [A13](backlog-retired.md#a13) and [A14](backlog-retired.md#a14) in the same function, both of the branch-matches-and-
-computes-the-wrong-thing shape and neither reachable from this entry's chain-with-no-`else`. So the
-family now has three retired members that this entry never covered, and its warning stands: the
-three members *here* are one shape, and "silent wrong answer in the pattern layer" is a larger set
-than any one entry registers.
-
-*Recorded*: [`side-effects/step-3-summary.md` § 5.1](side-effects/step-3-summary.md) (member 1);
-[`statements/phase-2-plan.md` § 1.7](statements/phase-2-plan.md) (members 2 and 3).
-*Verified*: source read, 2026-09-06; members 2 and 3 measured against `dist/`, 2026-09-10.
 
 <a id="a4"></a>
 ## A4 — `EvalContext.getKey` cannot case-correct a namespace, and does not resolve through the same chain as `get`

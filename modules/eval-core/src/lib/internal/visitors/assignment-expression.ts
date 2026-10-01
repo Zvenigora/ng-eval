@@ -7,6 +7,7 @@ import { afterVisitor } from './after-visitor';
 import { evaluateMember } from './member-expression';
 import { safeSetProperty } from './prototype-pollution-guard';
 import { assignToBinding } from './variable-declaration';
+import { unwrapParentheses } from './utils';
 
 const assignmentOperators = {
   '=': (left: number, value: number) => { return left = value; },
@@ -32,6 +33,19 @@ export const assignmentExpressionVisitor = (node: AssignmentExpression, st: Eval
 
   beforeVisitor(node, st);
 
+  // `(a) = 1` under `preserveParens` arrives wrapped (`docs/backlog-retired.md`
+  // A2). Any target other than an identifier or a member - destructuring,
+  // `[a, b] = arr` and `({m} = o)` - used to fall out of the chain below having
+  // pushed nothing, silently changing nothing. It is rejected here, above the
+  // operands rather than as the chain's final `else`, so that neither side is
+  // evaluated for an assignment that cannot happen: a right-hand side with an
+  // effect would otherwise run first. Pushes nothing: `evaluate`'s `catch`
+  // closes the open nodes.
+  const target = unwrapParentheses(node.left);
+  if (target.type !== 'Identifier' && target.type !== 'MemberExpression') {
+    throw new Error(`Unsupported assignment target: ${target.type}`);
+  }
+
   callback(node.left, st);
 
   const left = popVisitorResult(node, st) as number;
@@ -46,20 +60,20 @@ export const assignmentExpressionVisitor = (node: AssignmentExpression, st: Eval
     throw new Error(`Unsupported assignment operator: ${node.operator}`);
   } else if (!st.context) {
     throw new Error(`Context is not set.`);
-  } else if (node.left.type === 'Identifier') {
+  } else if (target.type === 'Identifier') {
     const key = st.options?.caseInsensitive
-      ? st.context.getKey(node.left.name)
-      : node.left.name;
+      ? st.context.getKey(target.name)
+      : target.name;
     const value = func(left, right);
     // Scope first, the caller's object second. Before Phase 2 this was
     // `st.context.set(key, value)`, which consults no scope at all - so
     // `(x => (x = 99))(1)` wrote `99` into the caller's own object and left the
     // arrow's parameter untouched. See `assignToBinding` for why the fallback
     // to `set` is load-bearing rather than tidy.
-    assignToBinding(st, key, value, node.left.name);
+    assignToBinding(st, key, value, target.name);
     pushVisitorResult(node, st, value);
-  } else if (node.left.type === 'MemberExpression') {
-    const [object, key, ] = evaluateMember(node.left, st, callback);
+  } else if (target.type === 'MemberExpression') {
+    const [object, key, ] = evaluateMember(target, st, callback);
     const value = func(left, right);
     
     // Use safe property assignment to prevent prototype pollution

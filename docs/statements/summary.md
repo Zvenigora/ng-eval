@@ -231,7 +231,7 @@ The execution gate ([F4](../backlog-retired.md#f4)) covers the two new blocks, w
 - [A11](../backlog-retired.md#a11) — renaming and nested destructuring bind the wrong key. Live on the
   default path, found in step 3, and **not caused by this phase** — declarations only widened the
   route to it.
-- [A2](../backlog.md#a2) — confirmed untouched by measurement at step 6, not by reading the diff:
+- [A2](../backlog-retired.md#a2) — confirmed untouched by measurement at step 6, not by reading the diff:
   step 3 *did* edit both write visitors, so "the phase did not touch these files" would have been
   false while "the phase did not change these three behaviours" is true.
 - The multiplier one level up ([`phase-2-plan.md`](phase-2-plan.md) § 3.4, not § 3.4 of this

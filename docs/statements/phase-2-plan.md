@@ -221,7 +221,7 @@ what to do about that.
 
 ### 1.7 There are three silent fall-throughs in this family, not one
 
-[A2](../backlog.md#a2) records `update-expression.ts`'s `if`/`else if` chain pushing nothing on its
+[A2](../backlog-retired.md#a2) records `update-expression.ts`'s `if`/`else if` chain pushing nothing on its
 third path
 ([`update-expression.ts:19-37`](../../modules/eval-core/src/lib/internal/visitors/update-expression.ts#L19-L37)).
 The same shape is in `assignment-expression.ts`
@@ -231,7 +231,7 @@ The same shape is in `assignment-expression.ts`
 
 *Measured:* `[a, b] = arr` and `({m} = o)` both return `undefined`, throw nothing, and leave the
 context **unchanged** — destructuring assignment is silently a no-op today. Third in the family; all
-three now live in [A2](../backlog.md#a2), whose entry was rewritten to name them rather than read as
+three now live in [A2](../backlog-retired.md#a2), whose entry was rewritten to name them rather than read as
 one bug (§ 8.4).
 
 This matters to the phase for one reason: the statement visitors are `switch`-over-node-type
@@ -334,11 +334,11 @@ actually run.
 | `var` | Function-scoped hoisting is a second scoping model beside § 3.2's. Open question 8.2 |
 | `function` declarations, classes, `try`/`catch`, `switch`, labels | No design in this phase reaches them; each throws per § 3.1's dispatcher |
 | Default values in patterns (`let {a = 1} = o`) | `AssignmentPattern` is commented out in `pattern.ts` ([:43-47](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L43-L47), [:67-68](../../modules/eval-core/src/lib/internal/visitors/pattern.ts#L67-L68)) and is its own work |
-| The fall-through family of § 1.7 — `(a)++`, `[a, b] = arr`, `({m} = o)` | Defects this phase measured but did not create. Recorded together in [A2](../backlog.md#a2); § 8.4 says why fixing one of three here would be arbitrary |
+| The fall-through family of § 1.7 — `(a)++`, `[a, b] = arr`, `({m} = o)` | Defects this phase measured but did not create. Recorded together in [A2](../backlog-retired.md#a2); § 8.4 says why fixing one of three here would be arbitrary |
 | `@zvenigora/ng-eval-signals`, `@zvenigora/ng-eval-forms` | Dependencies. A step that needs a change in either is a stop-and-replan — **with one sanctioned exception, step 0b**, which exists because step 0 hit exactly that condition and the plan, not the step, has to decide it. 0b's file list is closed and enumerated in § 4; every other step keeps the original rule |
 | The error-identity group — [A4](../backlog.md#a4), [A5](../backlog.md#a5), [A6](../backlog.md#a6), [A7](../backlog.md#a7), [C3](../backlog.md#c3) — and the write-policy pair, [C1](../backlog.md#c1) and [C2](../backlog.md#c2) | Not this phase's subject. [A10](../backlog.md#a10), opened in step 1, is argued to be the same defect as A4 and is out with it |
 
-[A2](../backlog.md#a2) was the one deliberate maybe, and is settled at § 8.4: out.
+[A2](../backlog-retired.md#a2) was the one deliberate maybe, and is settled at § 8.4: out.
 
 **That row used to read "Everything in `docs/backlog.md` Track 1 / Track 2", and the entries are
 named here because those two Tracks are not written down anywhere.** All three Tracks were a
@@ -1511,7 +1511,7 @@ a reason — not deferred a third time inside this document.
 
 README rows for the seven node types plus § 3.6's six divergences and § 3.4's option; `0.4.0`;
 a `## [eval-core 0.4.0]` entry whose "Changed" section is § 1.1's table read as a migration note;
-confirmation that [A2](../backlog.md#a2) still names all three members of § 1.7's family, and that
+confirmation that [A2](../backlog-retired.md#a2) still names all three members of § 1.7's family, and that
 this phase left them alone; `ROADMAP.md` Phase 2 marked done; a retrospect.
 
 **Exit criteria**
@@ -1983,7 +1983,7 @@ buys a consumer nothing `let` does not. `var x = 1` throws, which is at least lo
 JavaScript (§ 3.6.1). It replaces today's stranded-value accident with a rule, and throwing would
 remove a form that works today for some inputs. README line, not a defect.
 
-**8.4 — settled: A2 stays out.** [A2](../backlog.md#a2)'s entry is rewritten to name all three
+**8.4 — settled: A2 stays out.** [A2](../backlog-retired.md#a2)'s entry is rewritten to name all three
 members of the fall-through family — `(a)++`, `[a, b] = arr`, `({m} = o)` — so that "fixing one of
 three is arbitrary" is checkable against the entry rather than a judgement made here. Step 6 no
 longer files a new entry; it confirms that rewrite landed.

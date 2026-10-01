@@ -1,4 +1,21 @@
+import { AnyNode } from "acorn";
 import { BaseContext } from "../classes/common/context";
+
+/**
+ * Strips the `ParenthesizedExpression` wrappers acorn keeps around a node
+ * under `preserveParens`, so `(a)` and `((a))` are handled as `a`. A walk
+ * passes through them without help, since `acorn-walk`'s base visitor does;
+ * only a visitor that branches on a child's *type* has to unwrap it first.
+ * @param node - The node, possibly parenthesised.
+ * @returns The innermost node that is not a `ParenthesizedExpression`.
+ */
+export const unwrapParentheses = (node: AnyNode): AnyNode => {
+  let inner = node;
+  while (inner.type === 'ParenthesizedExpression') {
+    inner = inner.expression;
+  }
+  return inner;
+}
 
 /**
  * Retrieves the key-value pair from an object based on the provided key.

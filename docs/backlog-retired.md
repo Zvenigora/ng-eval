@@ -47,6 +47,75 @@ operand throws synchronously", and the README's second `completed: false` exampl
 event *without* an error; the README now shows the same expression producing the first kind,
 and says the second kind stays in the hook contract.
 
+<a id="a2"></a>
+## A2 — Three silent fall-throughs in the two write visitors, one shape
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-30, never released**; held
+for `eval-core` 0.7.0
+
+**Widened 2026-09-10 from one member to three**, while planning Phase 2. The entry previously
+described `(a)++` alone, which read as a single exotic bug behind a non-default parser option. It is
+one instance of a shape that appears **twice in the code and three times in behaviour**, and two of
+the three need no option at all.
+
+The shape: an `if`/`else if` chain over the node types a write visitor knows how to handle, with
+**no final `else`** — so an unhandled type reaches `afterVisitor` having pushed nothing, and every
+node downstream of it pops its neighbour's value.
+
+| # | Expression | Needs an option? | What happened |
+| - | ---------- | ---------------- | ------------- |
+| 1 | `(a)++` | `preserveParens: true` | `argument.type === 'ParenthesizedExpression'`; neither branch of [`update-expression.ts`](../modules/eval-core/src/lib/internal/visitors/update-expression.ts) matched. Pushed nothing |
+| 2 | `[a, b] = arr` | **no** | `left.type === 'ArrayPattern'`; neither branch of [`assignment-expression.ts`](../modules/eval-core/src/lib/internal/visitors/assignment-expression.ts) matched |
+| 3 | `({m} = o)` | **no** | `left.type === 'ObjectPattern'`; same chain, same fall-through |
+
+*Measured 2026-09-10*, against the built package: 2 and 3 both return `undefined`, throw nothing,
+and leave the context **unchanged** — destructuring assignment is silently a no-op, which is a wrong
+answer on the default path rather than an untidy bracket.
+
+**Why this is one entry and not three.** The fix is one decision — what a write visitor does with a
+target it does not handle — applied at two sites. Handling `ParenthesizedExpression` alone leaves
+the two default-path members live; adding a `default:` that throws fixes all three and changes what
+`[a, b] = arr` does from "nothing" to "a diagnostic", which is the behavioural half that needs a
+version bump. Implementing destructuring assignment properly is a third, larger option and is the
+only one that makes 2 and 3 *work* rather than *report*.
+
+**Phase 2 deliberately left this alone** ([`statements/phase-2-plan.md`](statements/phase-2-plan.md)
+§ 1.7 and § 8.4): that phase reviews the same fall-through shape in five new statement dispatchers
+and requires a throwing `default:` in each, so fixing one of these three in passing would be
+arbitrary rather than principled.
+
+**Confirmed at the close of Phase 2, by measurement rather than by reading the diff.** Step 6 ran
+all three against the pre-phase tree and against 0.4.0: `[a, b] = arr` and `({m} = o)` both return
+`undefined` with the context unchanged and **nothing stranded**, identically before and after; `(a)++`
+needs `preserveParens` and its chain in `update-expression.ts` is untouched. The two-statement form
+`[a, b] = arr; a` ran through `Program` and still returned the unchanged `a`.
+
+**"One shape" is a claim about these three, and [A11](#a11) is the reason to say so out loud.**
+A11 is a fourth silent wrong answer in the same layer — renaming destructuring binds the wrong key
+to the wrong value — and it is *not* this shape: no chain is fallen through, a branch matches and
+computes the wrong thing. Repairing A11 turned up [A13](#a13) and [A14](#a14), both of that second
+shape. "Silent wrong answer in the pattern layer" is a larger set than any one entry registered.
+
+*Recorded*: [`side-effects/step-3-summary.md` § 5.1](side-effects/step-3-summary.md) (member 1);
+[`statements/phase-2-plan.md` § 1.7](statements/phase-2-plan.md) (members 2 and 3).
+*Verified*: source read, 2026-09-06; members 2 and 3 measured against `dist/`, 2026-09-10.
+
+*Fixed* 2026-09-30, by the decision this entry named — a throwing default, not destructuring
+assignment. Both visitors unwrap `ParenthesizedExpression` first (`unwrapParentheses` in
+`visitors/utils.ts`), so `(a)++`, `--((a))`, `(o.x)++` and `(a) = 7` work under `preserveParens`;
+`(a) = 7` was a fourth member nobody had listed, the same fall-through in the assignment chain.
+Any other target throws `Unsupported assignment target: <type>` /
+`Unsupported update target: <type>` and pushes nothing. In `assignment-expression.ts` the check
+sits **above** the operands rather than as the chain's final `else`, so neither side is evaluated
+for an assignment that cannot happen. `[a, b] = arr; a` now throws.
+
+Specs: `write-targets.spec.ts`, eight cases. **Probes**, each against 1088: both throwing defaults
+removed — 4 failed, exactly the four unhandled-target cases; the unwrap removed — 4 failed, exactly
+the four parenthesised cases; the assignment check moved after the right operand — 1 failed, the
+"evaluates neither side" case. The update visitor's default is reached only by a hand-built node:
+acorn rejects every source that would reach it. The root README's node list now says what the two
+write visitors accept.
+
 <a id="a11"></a>
 ## A11 — `evaluateObjectPattern` binds the key from the pattern and the value from the *wrong name*
 
@@ -106,7 +175,7 @@ which is why it is filed rather than fixed in flight.
 Phase 2 step 3 widens *what* reaches it — declarations are a second route to the same code — without
 changing the defect.
 
-**Read this beside [A2](backlog.md#a2), and re-read A2's framing when you do.** A2 is titled "one shape"
+**Read this beside [A2](#a2), and re-read A2's framing when you do.** A2 is titled "one shape"
 and its claim is that three instances share a single fix: an `if`/`else if` chain over node types
 with no final `else`. This is a fourth silent wrong answer in the same *layer* and it is **not** that
 shape — nothing falls through a chain here; a branch matches and computes the wrong thing. Two
@@ -1979,7 +2048,7 @@ before the gate shipped: `_` inside a code span was being stripped as emphasis, 
   [`statements/phase-2-plan.md`](statements/phase-2-plan.md), 2 in [`a20/plan.md`](a20/plan.md)),
   which cite the code as it was when they were written and are left that way by design. The other
   8 are in this register, and were re-pointed 2026-09-28:
-  - 4 moved to where the cited code now lives ([A2](backlog.md#a2)'s two chains, [A4](backlog.md#a4)'s `getKey`, and
+  - 4 moved to where the cited code now lives ([A2](#a2)'s two chains, [A4](backlog.md#a4)'s `getKey`, and
     [A7](backlog.md#a7)'s prior-scopes loop, whose original range had started three lines early).
   - 3 became SHA-pinned links to `ef5ac2b`, because the code they cite is gone ([A9](#a9)'s two
     unguarded push sites, and [B2](#b2)'s `console.log`).
