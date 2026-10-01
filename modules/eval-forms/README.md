@@ -363,15 +363,13 @@ Two things are **not** routed through `options.onError`, in either adapter:
   dataset. Swallowing it under the default would hand you a silent blank for a syntax bug
   in the rule itself.
 
-  **That guarantee has one boundary, and it is stated here because the guarantee is.** It
-  holds for an assignment the expression makes directly. An assignment **nested inside a
-  call** — `[1].map(x => (country = 'CA'))` — is caught by the evaluator's own call wrapper
-  and re-raised as a plain `Error`, which loses the class the bypass matches on. It is then
-  routed by `onError` like any other failure, so under the default you get a blank field with
-  nothing in the console. It is a misuse inside a misuse — a rule author writing an assignment
-  writes `country = 'CA'`, not one buried in a `.map` callback — but it is the one shape where
-  the mechanism cannot see what it is for. The re-wrap belongs to
-  `@zvenigora/ng-eval-core` and cannot be fixed from this side.
+  **It holds through a call too — with `@zvenigora/ng-eval-core` 0.7.0 or later.** An
+  assignment **nested inside a call**, `[1].map(x => (country = 'CA'))`, reaches the bypass
+  as `SignalContextWriteError` and is rethrown like a direct one. Up to `eval-core` 0.6.x
+  the evaluator's own call wrapper re-raised it as a plain `Error`, which lost the class the
+  bypass matches on, so it was routed by `onError` like any other failure: under the default,
+  a blank field with nothing in the console. The peer range still admits those versions, and
+  with one installed that boundary is back; it cannot be fixed from this side.
 
 ## Reactivity, and its two holes
 

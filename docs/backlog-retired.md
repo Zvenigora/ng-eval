@@ -322,7 +322,7 @@ candidates.
 Phase 3 routed around it: `createEvalSignal` calls the free `call(fn, state)` so
 `SignalContextWriteError` survives to the factory
 ([`signals/phase-3-plan.md` § 3.6.3](signals/phase-3-plan.md)). That routing did **not** save
-[A6](backlog.md#a6), and it stays, since the downstream peer ranges still admit the versions with the defect.
+[A6](#a6), and it stays, since the downstream peer ranges still admit the versions with the defect.
 
 *Recorded*: [`signals/phase-3-plan.md` § 3.6.3](signals/phase-3-plan.md).
 *Verified*: grep + source read, 2026-09-06.
@@ -339,7 +339,7 @@ error: their walk runs inside the `async` `evaluateAsync`, whose rejection never
 service's `catch`. And that parse error is thrown synchronously, not rejected — unchanged.
 
 Specs: `services.error-identity.spec.ts`, one case per site, twelve. A walk error is thrown from an
-accessor on the context, so no call frame — and so no [A6](backlog.md#a6) — stands between it and the
+accessor on the context, so no call frame — and so no [A6](#a6) — stands between it and the
 service; it must arrive as the same object, of its class, with its `cause` and an extra property.
 A parse error must arrive as acorn's `SyntaxError` with `pos`. **Probes**, against 1100:
 `CompilerService.call`'s wrapper restored — 1 failed, that case alone; `ParserService.parse`
@@ -347,6 +347,58 @@ wrapping with `cause` set, the rejected alternative — 6 failed, every parse-er
 six reach the parser.
 
 `eval-signals`' comment on why it uses the free `call` is put in the past tense.
+
+*Coverage gap closed in [A6](#a6)'s commit*: the non-`Error` half was unpinned. A case for
+`CompilerService.simpleCall` with a thrown plain object was added there, since it is reached
+through a call; restoring only that site's `'call'` replacement fails it alone, 1 / 1102.
+
+<a id="a6"></a>
+## A6 — `safeCall` destroys the class of any error thrown *through* a call
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-30, never released**; held
+for `eval-core` 0.7.0
+
+[A5](#a5) one layer down, and on a path no caller can route around. `safeCall` caught whatever
+the callee threw and re-raised a new `Error` with the message prefixed `Function call error: `
+([`call-expression.ts`](../modules/eval-core/src/lib/internal/visitors/call-expression.ts)),
+so an error crossing a call frame arrived as a bare `Error` carrying only a decorated message.
+Same consequences as [A5](#a5)'s — but calling the free `call(fn, state)` did not help, because
+this wrapper is inside the walk itself.
+
+**Surfaced by Phase 6 step 3, which is where it stopped being abstract.** `applyErrorPolicy`
+([`error-policy.ts`](../modules/eval-forms/src/lib/error-policy.ts)) guarantees that
+`SignalContextWriteError` is re-thrown rather than routed through the consumer's error policy.
+That guarantee held for a top-level assignment and **failed for an assignment nested inside a
+call**: `[1].map(x => (country = "CA"))` reached `applyErrorPolicy` as a plain `Error`, failed
+the `instanceof`, and was policy-routed to `undefined`. **No** custom error type survived a call
+frame anywhere in the evaluator.
+
+*Recorded*: [`forms/phase-6-plan.md` § 3.4](forms/phase-6-plan.md);
+[`forms/phase-6-step-3-summary.md`](forms/phase-6-step-3-summary.md); `eval-forms`' README.
+*Verified*: source read, 2026-09-06.
+
+*Fixed* 2026-09-30, by decision: **rethrow the original**. The `try`/`catch` around the
+`apply` is deleted; the security checks before it are unchanged. **A deliberate behaviour change
+to a pinned spec**: `eval.service.call-security.spec.ts`'s "should handle function that throws
+error" matched `/Function call error: Test error/` and now asserts the callee's own error by
+identity. The message loses the prefix.
+
+**The same fix is applied to `new`**: `new-expression.ts`'s `safeNew` rethrows what the
+constructor threw instead of prefixing it `Constructor error: `. Spec: "should keep the class of a
+custom error thrown by a constructor"; with the wrapper restored, it alone fails, 1 / 1110 on the
+final tree. No spec pinned that prefix.
+
+Specs: in `eval-core`, the rewritten case and "should keep the class of a custom error thrown
+through a native call", `[1].map(x => fail(x))`, two call frames. In `eval-forms`, the case this
+entry describes, in `evaluate-rule.spec.ts`: the nested assignment now reaches
+`applyErrorPolicy` as `SignalContextWriteError` and is rethrown. **The `/signals` README case
+pinned the old boundary** ("should route an assignment nested inside a call through `onError`
+instead") and is rewritten to the new behaviour, not deleted; the README passage it covered now
+says the guarantee holds through a call with `eval-core` 0.7.0 or later. Prose only, so F13's
+block counts are unchanged. The root README's note quoting the prefix is put in the past tense.
+
+**Probe** — the wrapping restored: `eval-core` 2 failed / 1101 (both new-or-rewritten cases),
+`eval-forms` 2 failed / 267 (the new case and the rewritten README case), `eval-signals` 0 / 131.
 
 <a id="a8"></a>
 ## A8 — `EvalService._activeStates` grows unboundedly
@@ -2160,7 +2212,7 @@ which a reader notices. This one is worse, because nothing about it looks broken
 [`statements/phase-2-plan.md`](statements/phase-2-plan.md) § 2 excluded work with the row
 *"Everything in `docs/backlog.md` Track 1 / Track 2 — not this phase's subject"*. **This register
 has no Track 1 and no Track 2.** All three Tracks were a sequencing suggestion made in
-conversation — 1 the error-identity group ([A4](backlog.md#a4), [A5](#a5), [A6](backlog.md#a6), [A7](backlog.md#a7), [C3](backlog.md#c3)),
+conversation — 1 the error-identity group ([A4](backlog.md#a4), [A5](#a5), [A6](#a6), [A7](backlog.md#a7), [C3](backlog.md#c3)),
 2 the write policy ([C1](backlog.md#c1), [C2](backlog.md#c2)), 3 the documentation gates — and only the third was ever
 written down. The plan then cited all three as though the reader could look them up.
 

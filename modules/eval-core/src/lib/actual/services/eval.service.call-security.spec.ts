@@ -149,15 +149,67 @@ describe('EvalService - Call Expression Security', () => {
   });
 
   describe('Error handling', () => {
+    const testError = new Error('Test error');
     const context = {
-      throwError: () => { throw new Error('Test error'); },
+      throwError: () => { throw testError; },
       notAFunction: 'not a function',
     };
 
     it('should handle function that throws error', () => {
-      expect(() => {
+      // Up to eval-core 0.6.x `safeCall` re-raised this as a new `Error`, its
+      // message "Test error" behind a fixed prefix. Since 0.7.0 the callee's
+      // own error leaves the call, by decision (`docs/backlog-retired.md` A6).
+      let thrown: unknown;
+      try {
         service.simpleEval('throwError()', context);
-      }).toThrow(/Function call error: Test error/);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBe(testError);
+      expect((thrown as Error).message).toBe('Test error');
+    });
+
+    it('should keep the class of a custom error thrown through a native call', () => {
+      // Two call frames: the native `map`, and `fail` inside the arrow it
+      // calls. Each used to re-raise, so the class was gone twice over.
+      class RuleError extends Error {
+        readonly code = 'E_RULE';
+      }
+      const ruleError = new RuleError('rule failed');
+      let thrown: unknown;
+
+      try {
+        service.simpleEval('[1].map(x => fail(x))', { fail: () => { throw ruleError; } });
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(RuleError);
+      expect(thrown).toBe(ruleError);
+      expect((thrown as RuleError).code).toBe('E_RULE');
+    });
+
+    it('should keep the class of a custom error thrown by a constructor', () => {
+      // `new` re-raised a constructor's error the same way `safeCall` did, and
+      // the same decision covers it. A plain function rather than a `class`:
+      // the constructor guard rejects a source containing "constructor(".
+      class RuleError extends Error {
+        readonly code = 'E_RULE';
+      }
+      const ruleError = new RuleError('construction failed');
+      const Failing = function () { throw ruleError; };
+      let thrown: unknown;
+
+      try {
+        service.simpleEval('new Failing()', { Failing });
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(RuleError);
+      expect(thrown).toBe(ruleError);
+      expect((thrown as RuleError).code).toBe('E_RULE');
     });
 
     it('should handle attempt to call non-function', () => {

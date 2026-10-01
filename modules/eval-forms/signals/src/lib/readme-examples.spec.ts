@@ -343,11 +343,13 @@ describe('documented examples - /signals', () => {
       expect(() => f.state().metadata(TEXT)?.()).toThrow(SignalContextWriteError);
     });
 
-    it('should route an assignment nested inside a call through onError instead', () => {
-      // The boundary the README states next to the guarantee: `safeCall`
-      // re-raises whatever a callee threw as a plain `Error`, so the class
-      // the bypass matches on does not survive the call frame, and the
-      // default policy blanks the field.
+    it('should rethrow an assignment nested inside a call too', () => {
+      // The boundary the README stated up to eval-core 0.6.x: `safeCall`
+      // re-raised whatever a callee threw as a plain `Error`, so the class
+      // the bypass matches on did not survive the call frame, and the
+      // default policy blanked the field. Since 0.7.0 the call leaves the
+      // error as thrown (`docs/backlog-retired.md` A6), and the README says
+      // the guarantee holds through a call.
       const model = signal<Order>({ country: 'CA', state: '', zip: '', orderTotal: 0 });
 
       const rules = createExpressionRules(model);
@@ -359,8 +361,7 @@ describe('documented examples - /signals', () => {
         })
       );
 
-      // No throw, and the blank field the README warns about.
-      expect(f.state().metadata(TEXT)?.()).toBe('');
+      expect(() => f.state().metadata(TEXT)?.()).toThrow(SignalContextWriteError);
     });
   });
 

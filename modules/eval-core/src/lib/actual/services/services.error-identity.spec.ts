@@ -134,6 +134,18 @@ describe('service entry points keep the error they were thrown', () => {
       expectOriginal(caught(() => compiler.call(fn, state)));
     });
 
+    it('simpleCall should rethrow a thrown non-Error as it was thrown', () => {
+      // Three of the twelve sites replaced a non-`Error` with a fixed message
+      // ('call', 'error in compile', 'error in callAsync'). This one is
+      // reached through a call, so it needs A6's `safeCall` fix as well: that
+      // already passed a non-`Error` through, and the service then did not.
+      const fn = compiler.compile('raise()');
+      const value = { reason: 'not an Error' };
+      const context = { raise: () => { throw value; } };
+
+      expect(caught(() => compiler.simpleCall(fn, context))).toBe(value);
+    });
+
     it('compileAsync should rethrow a parse error as acorn raised it', () => {
       expectSyntaxError(caught(() => compiler.compileAsync(INVALID)));
     });

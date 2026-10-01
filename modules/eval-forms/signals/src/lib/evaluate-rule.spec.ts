@@ -209,6 +209,16 @@ describe('applyErrorPolicy over evaluateRule', () => {
     expect(() => runUnderPolicy(fixture(), 'country = "CA"')).toThrow(SignalContextWriteError);
   });
 
+  it('should re-throw a write error nested inside a call through the same policy', () => {
+    // The guarantee's one boundary up to eval-core 0.6.x: the evaluator's
+    // call wrapper re-raised anything thrown inside a call as a plain `Error`,
+    // so this arrived without the class the bypass matches on and was routed
+    // to `undefined` - a blank field for a bug in the rule's own syntax. Since
+    // 0.7.0 the call leaves the error as thrown (`docs/backlog-retired.md` A6).
+    expect(() => runUnderPolicy(fixture(), '[1].map(x => (country = "CA"))'))
+      .toThrow(SignalContextWriteError);
+  });
+
   it('should re-throw a write error under a handler policy without calling the handler', () => {
     // `applyErrorPolicy`'s docblock claims the bypass holds in **every** mode,
     // and the two arms above only reach `'undefined'`. They do not pin the

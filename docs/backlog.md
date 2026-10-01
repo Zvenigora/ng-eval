@@ -118,7 +118,7 @@ all on the remote.
 | [A4](#a4) | `EvalContext.getKey` — no namespace correction, and diverges from `get` | core | fix | Open, Covered — **wider than it reads; [A10](#a10) argues it is one defect with A10** |
 | [A10](#a10) | `getKey`'s scopes step reports every key present against a plain-object scope | core | fix | Open — **latent, not live**; blocks any fix to [A4](#a4) |
 | [A5](backlog-retired.md#a5) | Service-layer entry points discard the error they caught — **12 sites, 4 services** | core | fix | **Retired — fixed 2026-09-30, never released**; held for `eval-core` 0.7.0. The original is rethrown |
-| [A6](#a6) | `safeCall` destroys the class of any error thrown through a call | core | fix | Open |
+| [A6](backlog-retired.md#a6) | `safeCall` destroys the class of any error thrown through a call | core | fix | **Retired — fixed 2026-09-30, never released**; held for `eval-core` 0.7.0. The original is rethrown; the "Function call error: " prefix is gone |
 | [A7](#a7) | `EvalScopeOptions.thisArg` is documented and never applied — `getThis`'s `priorScopes` loop is dead, and `ns.fn()` never reaches it | core | decision, then fix | Open — **rewritten 2026-09-29**, when the 0.6.1 fix was measured; held for `eval-core` 0.7.0 |
 | [A8](backlog-retired.md#a8) | `EvalService._activeStates` grows unboundedly | core | fix | **Retired — fixed 2026-09-25, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987, in two steps: `simpleEval`'s states ([`docs/a8/plan.md`](a8/plan.md)), then the set deleted ([`docs/a8/step-2-plan.md`](a8/step-2-plan.md)). Withdraws the published destroy-time registry clear |
 | [A9](backlog-retired.md#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
@@ -244,7 +244,7 @@ scoped to be additive.
 [A4](#a4) is in `EvalContext` and was surfaced by Phase 1 step 4's read hooks. [A5](backlog-retired.md#a5) and
 [A7](#a7) were surfaced by Phase 3 step 2 ([`signals/phase-3-plan.md`](signals/phase-3-plan.md))
 — the first consumer to reuse one `EvalContext` across many evaluations, which is what makes
-several of these visible at all. [A6](#a6) was surfaced by Phase 6 step 3. [A8](backlog-retired.md#a8) and
+several of these visible at all. [A6](backlog-retired.md#a6) was surfaced by Phase 6 step 3. [A8](backlog-retired.md#a8) and
 [A9](backlog-retired.md#a9) were never recorded in the roadmap at all.
 
 **Identity-checked `exit`** (§ 3.8 of the Phase 1 plan) means the hook layer stays balanced in
@@ -372,37 +372,6 @@ work.
 
 *Recorded*: Phase 2 step 1, from the review of the `get` fix.
 *Verified*: **measured**, 2026-09-13, on `dist/modules/eval-core` — table above.
-
-<a id="a6"></a>
-## A6 — `safeCall` destroys the class of any error thrown *through* a call
-
-**Package** core · **Kind** fix · **Status** Open
-
-[A5](backlog-retired.md#a5) one layer down, and on a path no caller can route around. `safeCall` catches whatever
-the callee threw and re-raises ``new Error(`Function call error: ${error.message}`)``
-([`call-expression.ts:124-129`](../modules/eval-core/src/lib/internal/visitors/call-expression.ts#L124-L129)),
-so an error crossing a call frame arrives as a bare `Error` carrying only a decorated message.
-Same consequences as [A5](backlog-retired.md#a5)'s — but calling the free `call(fn, state)` does not help, because
-this wrapper is inside the walk itself.
-
-**Surfaced by Phase 6 step 3, which is where it stops being abstract.** `applyErrorPolicy`
-([`error-policy.ts`](../modules/eval-forms/src/lib/error-policy.ts)) guarantees that
-`SignalContextWriteError` is re-thrown rather than routed through the consumer's error policy —
-a write violation is illegal on every recompute with every dataset, so swallowing it under the
-default of `'undefined'` hands the consumer a permanently blank field for a bug in the rule's own
-syntax. That guarantee holds for a top-level assignment and **fails for an assignment nested
-inside a call**: `[1].map(x => (country = "CA"))` reaches `applyErrorPolicy` as a plain `Error`,
-fails the `instanceof`, and is policy-routed to `undefined`. Measured in step 3 with a temporary
-probe.
-
-The blast radius is wider than that one class: **no** custom error type survives a call frame
-anywhere in the evaluator. Fixing it means re-throwing the original object — or wrapping it with
-`cause` set, which needs `eval-core`'s `lib` rather than the two downstream ones — and it is a
-behavioural change to what escapes a call.
-
-*Recorded*: [`forms/phase-6-plan.md` § 3.4](forms/phase-6-plan.md);
-[`forms/phase-6-step-3-summary.md`](forms/phase-6-step-3-summary.md); `eval-forms`' README.
-*Verified*: source read, 2026-09-06.
 
 <a id="a7"></a>
 ## A7 — `EvalScopeOptions.thisArg` is documented and never applied

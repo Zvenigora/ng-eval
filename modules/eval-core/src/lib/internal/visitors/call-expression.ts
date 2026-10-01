@@ -97,7 +97,13 @@ const isFunctionSafe = (fn: unknown, fnName?: string): boolean => {
 };
 
 /**
- * Safely calls a function with proper error handling and security checks
+ * Calls a function after the security checks.
+ *
+ * Whatever the callee throws leaves the call as thrown - class, `cause` and
+ * properties intact - so a consumer can select it by type. Up to 0.6.x it was
+ * re-raised as a new `Error` with a fixed prefix on its message, which no
+ * caller could route around, since the call is inside the walk
+ * (`docs/backlog-retired.md` A6).
  */
 const safeCall = (
   caller: unknown,
@@ -121,14 +127,7 @@ const safeCall = (
     throw new Error(`Function call blocked for security reasons: ${fnName || 'anonymous'}`);
   }
 
-  try {
-    return (caller as (...args: unknown[]) => unknown).apply(thisArg, args);
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Function call error: ${error.message}`);
-    }
-    throw error;
-  }
+  return (caller as (...args: unknown[]) => unknown).apply(thisArg, args);
 };
 
 /**

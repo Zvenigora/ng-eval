@@ -60,7 +60,11 @@ const isConstructorSafe = (constructor: unknown, constructorName?: string): bool
 };
 
 /**
- * Safely creates a new instance with proper security checks
+ * Creates a new instance after the security checks.
+ *
+ * Whatever the constructor throws leaves as thrown, as in `safeCall`. Up to
+ * 0.6.x it was re-raised as a new `Error` with a fixed prefix on its message
+ * (`docs/backlog-retired.md` A6).
  */
 const safeNew = (constructor: unknown, args: unknown[], constructorName?: string): unknown => {
   if (!constructor) {
@@ -75,14 +79,7 @@ const safeNew = (constructor: unknown, args: unknown[], constructorName?: string
     throw new Error(`Constructor blocked for security reasons: ${constructorName || 'anonymous'}`);
   }
 
-  try {
-    return Reflect.construct(constructor as (...a: unknown[]) => unknown, args);
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Constructor error: ${error.message}`);
-    }
-    throw error;
-  }
+  return Reflect.construct(constructor as (...a: unknown[]) => unknown, args);
 };
 
 export const newExpressionVisitor = (node: NewExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {

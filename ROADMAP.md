@@ -334,8 +334,8 @@ against form A's data, so reuse must go through a schema *function* of the rules
 `caseInsensitive` is in practice a factory-wide option, not a per-registration one
 ([BL-D3](docs/backlog.md#d3)); the nested-signal diagnostic from `eval-signals` does not reach
 this entry point; the form's key set is not enumerable from upstream; the identifier guard
-over-rejects a name an expression binds itself; the `SignalContextWriteError` bypass does not
-survive a call frame ([BL-A6](docs/backlog.md#a6)); and there is no `destroy()` at `/signals`
+over-rejects a name an expression binds itself; the `SignalContextWriteError` bypass did not
+survive a call frame before `eval-core` 0.7.0 ([BL-A6](docs/backlog-retired.md#a6)); and there is no `destroy()` at `/signals`
 — Angular owns the field tree's lifetime and the rules die with the schema.
 
 The original plan for this phase follows, unchanged.
@@ -449,6 +449,6 @@ Entries are cited by stable ID — `BL-A8`, not a line number.
 8. Phase 7 / Phase 8 — reserved above, neither costed nor scheduled.
 
 Unscheduled and independent of all of the above: the `eval-core`
-error-identity minor ([BL-A6](docs/backlog.md#a6),
-[BL-A4](docs/backlog.md#a4), [BL-A7](docs/backlog.md#a7), [BL-C3](docs/backlog.md#c3)), which
-wants appetite for a version bump. [BL-A5](docs/backlog-retired.md#a5) is fixed for 0.7.0.
+error-identity minor ([BL-A4](docs/backlog.md#a4), [BL-A7](docs/backlog.md#a7),
+[BL-C3](docs/backlog.md#c3)), which wants appetite for a version bump.
+[BL-A5](docs/backlog-retired.md#a5) and [BL-A6](docs/backlog-retired.md#a6) are fixed for 0.7.0.

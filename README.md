@@ -290,9 +290,10 @@ Seven deliberate divergences, each a documented rule rather than an accident:
    `propertyIsEnumerable`, `toLocaleString` and the four `__define`/`__lookup` accessors.
    Binding writes share the blocklist with every other write site, which is wider than the
    threat — only `__proto__` is an actual write vector — and is kept wide so that "is this
-   name blocked?" does not depend on which visitor reached it. Note that a throw from inside a
-   called arrow function is re-wrapped, so this one arrives as
-   `Function call error: Access to dangerous property "toString" is blocked…`.
+   name blocked?" does not depend on which visitor reached it. From 0.4.0 to 0.6.x a throw
+   from inside a called arrow function was re-wrapped, so this one arrived as
+   `Function call error: Access to dangerous property "toString" is blocked…`; since 0.7.0
+   it arrives as thrown, without the prefix.
 
 ## Options
 To change the default behavior of the evaluator, use `options`. Options may be provided as an argument to the function call of `simpleEval`.
