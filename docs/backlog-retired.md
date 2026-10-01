@@ -11,8 +11,8 @@ evidence, in their original order and section. There is no index here: the one i
 <a id="a1"></a>
 ## A1 — `await-expression.ts` downgrades a synchronous throw to a promise rejection
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-30, never released**; held
-for `eval-core` 0.7.0
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-30**; released
+2026-10-01 in `eval-core` 0.7.0, tagged 724d831
 
 `awaitVisitor` wrapped `callback(node.argument, st)` in a `try`/`catch` inside a `Promise`
 executor ([`await-expression.ts`](../modules/eval-core/src/lib/internal/visitors/await-expression.ts)),
@@ -50,8 +50,8 @@ and says the second kind stays in the hook contract.
 <a id="a2"></a>
 ## A2 — Three silent fall-throughs in the two write visitors, one shape
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-30, never released**; held
-for `eval-core` 0.7.0
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-30**; released
+2026-10-01 in `eval-core` 0.7.0, tagged 724d831
 
 **Widened 2026-09-10 from one member to three**, while planning Phase 2. The entry previously
 described `(a)++` alone, which read as a single exotic bug behind a non-default parser option. It is
@@ -289,8 +289,8 @@ one line (and its source map with it); the `.d.ts` is byte-identical. Test count
 <a id="a5"></a>
 ## A5 — Every service-layer entry point discards the error it caught
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-30, never released**; held
-for `eval-core` 0.7.0
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-30**; released
+2026-10-01 in `eval-core` 0.7.0, tagged 724d831
 
 Each caught and raised a new `Error` built from `error.message` alone. That replaced the thrown
 object: its **type**, its `cause`, its stack and any property it carried were gone, and the caller
@@ -355,8 +355,8 @@ through a call; restoring only that site's `'call'` replacement fails it alone, 
 <a id="a6"></a>
 ## A6 — `safeCall` destroys the class of any error thrown *through* a call
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-30, never released**; held
-for `eval-core` 0.7.0
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-09-30**; released
+2026-10-01 in `eval-core` 0.7.0, tagged 724d831
 
 [A5](#a5) one layer down, and on a path no caller can route around. `safeCall` caught whatever
 the callee threw and re-raised a new `Error` with the message prefixed `Function call error: `
@@ -404,7 +404,7 @@ block counts are unchanged. The root README's note quoting the prefix is put in 
 ## A7 — `EvalScopeOptions.thisArg` is documented and never applied
 
 **Package** core · **Kind** decision, then fix · **Status** **Retired — decided and fixed
-2026-09-30, never released**; held for `eval-core` 0.7.0. **Rewritten 2026-09-29** from
+2026-09-30**; released 2026-10-01 in `eval-core` 0.7.0, tagged 724d831. **Rewritten 2026-09-29** from
 "`EvalContext.getThis` reads the wrong object in its `priorScopes` loop", when the fix planned for
 `eval-core` 0.6.1 was measured and did not hold
 
@@ -1748,7 +1748,7 @@ is invisible to per-state isolation by construction.
 ## E5 — The options-first style cannot read `hookErrors`
 
 **Package** core · **Kind** decision · **Status** **Retired — decided 2026-09-30: closed with
-documentation**; the README note ships with `eval-core` 0.7.0
+documentation**; the README note released 2026-10-01 in `eval-core` 0.7.0, tagged 724d831
 
 With errors on the state, the options-first style (`simpleEval(expr, ctx, { hooks })`) has no way
 to read them: the consumer holds the `EvalHooks` but never sees the `EvalState` that
