@@ -440,10 +440,7 @@ describe('createSignalContext', () => {
       expect(counter()).toEqual({ n: 2 });
     });
 
-    /**
-     * KNOWN GAP - pinned as current behaviour. See the plan's S 3.6.4.
-     */
-    it('should lose the key under caseInsensitive, which getKey cannot resolve', () => {
+    it('should name the key under caseInsensitive', () => {
       const context = createSignalContext({ count: signal(1) }, { caseInsensitive: true });
 
       let caught: unknown;
@@ -454,13 +451,14 @@ describe('createSignalContext', () => {
       }
 
       // Under `caseInsensitive` the visitors resolve the key through
-      // `EvalContext.getKey` before calling `set`, and `getKey` consults
-      // scopes, `original` and `priorScopes` but never `lookups` - so a
-      // signal-backed key, which lives only in `lookups`, comes back
-      // unresolved. The guard still fires, which is what matters; the
-      // diagnostic half of the error is what degrades.
+      // `EvalContext.getKey` before calling `set`. Up to `eval-core` 0.7.x
+      // `getKey` never consulted `lookups`, where every key of a signal
+      // context lives, so the error named 'undefined'
+      // (`docs/backlog-retired.md` A4). It now resolves through `get`'s own
+      // chain, and a lookup returns no key, so the key is the one written.
+      expect((caught as SignalContextWriteError).key).toEqual('COUNT');
       expect((caught as Error).message)
-        .toEqual("Cannot assign to 'undefined': the keys of a signal context are read-only.");
+        .toEqual("Cannot assign to 'COUNT': the keys of a signal context are read-only.");
 
       // Still no write, which is the property the policy actually owes.
       expect(service.simpleEval('count', context)).toEqual(1);

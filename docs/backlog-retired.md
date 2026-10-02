@@ -286,6 +286,172 @@ reported unused. Nothing else in the visitor changed. **The published artifact d
 built `fesm2022` bundle, compared against a build of the parent commit, differs by exactly that
 one line (and its source map with it); the `.d.ts` is byte-identical. Test counts unchanged.
 
+<a id="a4"></a>
+## A4 — `EvalContext.getKey` cannot case-correct a namespace, and does not resolve through the same chain as `get`
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-01**, with [A10](#a10) as
+one defect, for `eval-core` 0.8.0. Was Open, Covered
+
+Two related gaps in one method
+([`eval-context.ts`](../modules/eval-core/src/lib/internal/classes/eval/eval-context.ts), lines
+283–309 at 0.7.0), both surfaced by Phase 1 step 4's read hooks, which report `getKey`'s answer as
+the key that was read.
+
+**The namespace gap.** `getKey` searched `scopes`, then `original`, then **inside** each prior
+scope's `context` — but never a scope's `namespace`. An `EvalScope` resolves its namespace in
+`EvalScope.get`, which `getKey` had no counterpart for. So with a scope namespaced `dog`, the
+expression `Dog.Says()` reported an uncorrected `'Dog'` for the identifier while the member hop
+correctly reported `says`. **Covered** by `internal/visitors/read-hooks.spec.ts`; a fix had to
+update that spec deliberately.
+
+**The divergence from `get`.** `getKey` omitted the `lookups` loop that `get` runs, so a key
+resolved by an `EvalLookup` reported nothing. And the two disagreed about absent values: `get`
+treats `undefined` as "not found" and continues to prior scopes and lookups, while `getKey`
+returned the first spelling it found. Under `caseInsensitive` the reported key could therefore
+come from a *different source* than the value did.
+
+**Confirmed to reach further than "a diagnostic" — Phase 3 step 2.** The `lookups` divergence
+also stripped the key off a library-owned error. `assignment-expression.ts` and
+`update-expression.ts` resolve their target through `getKey` **before** writing, so under
+`caseInsensitive` a key that lives only in `lookups` — which is every key of a
+`@zvenigora/ng-eval-signals` context — came back `undefined`, and any error raised from the
+write named `'undefined'` instead of the key:
+
+```
+Cannot assign to 'undefined' in expression 'COUNT = 5': the keys of a signal context are read-only.
+```
+
+Both gaps are behavioral changes to an exported method. They matter most to dependency tracking,
+which keys on what `getKey` returns. See [C3](backlog.md#c3) for the question of whether
+`eval-signals` should contain this locally, which was assigned to a step and never answered.
+
+**A third divergence was found in Phase 2 step 1 and is filed as [A10](#a10), which argues it is the
+same defect as this one.** If that reading holds, this entry is bigger than it looks: the fix has to
+reach `getKeyValue` in `visitors/utils.ts` as well as `eval-context.ts`, and — the part that matters
+for sequencing — **A10 sits in front of both gaps above**, so a fix to either that leaves A10 in
+place does nothing whenever a scope is pushed, which since step 1 is every evaluation.
+
+*Recorded*: [`side-effects/step-4-summary.md` § 5.2](side-effects/step-4-summary.md);
+[`signals/phase-3-plan.md` § 3.6.4 gap 2](signals/phase-3-plan.md).
+*Verified*: source read, 2026-09-06 — no `lookups` loop, no namespace check. The
+`get`/`getKey` disagreement was then *measured* 2026-09-13 under [A10](#a10)'s probe, which
+caught this entry's own third paragraph in the act: with `caseInsensitive` on, a
+case-sensitive `Registry` original and a key spelled `A`, `get` returns `undefined` while
+`getKey` returns `'a'` — the reported key coming from a different source than the value, exactly
+as written here. *Re-measured* 2026-10-01 on master 955f0c9, every row reproducing: that one; a
+prior scope namespaced `dog` giving `getKey('Dog')` undefined and read keys `['Dog', 'says']`; a
+lookup-only key giving `get('COUNT')` 5 and `getKey('COUNT')` undefined; and a fourth, the same
+defect — `getKey` searched inside every prior scope's context, `EvalScope.get` only inside a
+`global` one, so a key held by a non-global scope was reported and never resolved.
+
+*Fixed* 2026-10-01, with [A10](#a10), as the one defect A10 argued it was. `get` and `getKey` now
+walk one module-private resolver in `eval-context.ts`, `resolve`, which follows `get`'s order —
+pushed scopes by presence (`scopeHolding`), the original, each prior scope through `EvalScope.get`
+itself, then lookups — and answers the value together with what held it. `get` reads the value;
+`getKey` derives the spelling from the holder:
+
+- a case-insensitive `Registry` — the spelling it holds; any other `Context` — the key itself,
+  since `get` reads it by exact key;
+- a prior scope matched on its namespace — the namespace as declared. The test is
+  `matchesNamespace` in `eval-scope.ts`, which `EvalScope.get` now calls too, so it is one copy;
+- a lookup — the key as written, since a lookup returns no key;
+- nothing — undefined, exactly when `get` finds nothing.
+
+It is the shape Phase 2 step 1 gave `get` / `getFromScopes` / `hasInScopes`. The resolver is a
+function, not a method, so the class's `.d.ts` changes in documentation only. **The entry's
+prediction about `getKeyValue` did not hold**: `getKey` no longer calls `getContextKey`, so neither
+it nor `getKeyValue` needed to change, and neither did. `getKey`'s callers are `identifier.ts`
+(`emitRead`, which falls back to the source name), `member-expression.ts` (`evaluateMember`'s
+context branch), and `assignment-expression.ts` / `update-expression.ts` (identifier targets) — the
+last three only under `caseInsensitive`. `getContextKey` (public, `classes/common`) is left with no
+caller in the library; `getKeyValue`'s other caller, `getValueIgnoreCase`, is untouched.
+
+What changes, all of it in the `eval-core` 0.8.0 CHANGELOG: a namespace read reports the namespace's
+declared spelling (`read-hooks.spec.ts`'s covered case, `'Dog'` → `'dog'`, updated deliberately); an
+unbound name gets no key; a lookup-resolved key comes back as written, so the signal-context write
+error names `'COUNT'` (`eval-signals`' `signal-context.spec.ts` case that pinned `'undefined'` is
+rewritten); a key inside a non-global prior scope is no longer reported. And one that follows
+rather than being designed: `member-expression.ts` reads a member of the context itself as
+`get(getKey(key))`, so `This.COUNT` on a lookup-only key and `This.Dog` on a namespace now resolve —
+both were `undefined`, measured with the old `getKey` body restored.
+
+Specs: `eval-context.get-key.spec.ts`, 17 cases — each measured row as it should be, the two
+`This.` reads, and an invariant over a grid of 144 contexts (case-sensitive or not; a plain,
+case-sensitive `Registry` or case-insensitive `Registry` original; no scope, a plain scope as an
+arrow pushes it, or one pushed with the walk's options; no prior scope, a global, a namespaced, or a
+global namespaced one; with and without a lookup) × 20 keys: `getKey(k)` is undefined iff `get`
+finds nothing (`get(k) !== undefined || hasInScopes(k)`), and what it answers `get` resolves to the
+same value. Plus one `read-hooks.spec.ts` case, an unbound name reporting its source spelling.
+`eval-core` 1110 → 1128.
+
+**Probes**, each reverted, against 1126 (before the two `This.` cases): the old scopes step
+restored ahead of the resolver — 3 failed, both A10 rows and the grid. `getKey`'s own original and
+prior-scope loops restored in place of the resolver's — 9 failed: the three absent-value rows, both
+namespace rows, the non-global row, the grid, and both `read-hooks.spec.ts` namespace cases. The
+lookups step dropped (a lookup answering undefined) — 3 failed, the absent-value row a lookup
+resolves, the lookup row and the grid, and `eval-signals` 1 failed / 131, the write-error case.
+Rerun on this file once the `This.` cases were added: the lookups probe fails `This.COUNT` as well
+(4 / 17), and losing the prior-scope answers fails `This.Dog` (5 / 17).
+`internal/performance.spec.ts` green throughout.
+
+<a id="a10"></a>
+## A10 — `getKey`'s scopes step reports **every** key as present against a plain-object scope
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-01**, with [A4](#a4), for
+`eval-core` 0.8.0. Was Open — latent, not live
+
+**The shape — the sibling of the defect Phase 2 step 1 fixed, one method over.** Step 1 closed
+`EvalContext.get`'s scopes step reading a plain record by *value*, which walked the prototype chain
+and let an empty scope answer for `toString` and `constructor`. `getKey` had the matching fault and
+did not get the matching fix: its scopes step called `getContextKey`, which for a plain object calls
+[`getKeyValue`](../modules/eval-core/src/lib/internal/visitors/utils.ts), and `getKeyValue` under
+`caseInsensitive: false` returns `[key, obj[key]]` **without asking whether the object holds the
+key at all**. Any name matched. Since step 1 a scope is pushed on every evaluation, so the first
+step of `getKey`'s resolution order answered for everything, always.
+
+*Measured* 2026-09-13 against the built package, a plain-object scope pushed on an `EvalContext`
+whose original is a `Registry` holding `a`:
+
+| key | `get` | `getKey` |
+| --- | ----- | -------- |
+| `zzz-never-bound` | `undefined` | **`'zzz-never-bound'`** |
+| `toString` | `undefined` | **`'toString'`** |
+| `a` | `'A'` | `'a'` |
+| *control, no scope pushed* | `undefined` | `undefined` |
+
+The control is what shows the scopes step is the culprit rather than a later one.
+
+**Why it was harmless, and this half was not a footnote.** Nothing resolved and nothing leaked:
+
+- With `caseInsensitive: false` there is no correction to get wrong. `getKey` returned the key **as
+  written**, which is the same string every later step would have returned for that input, so no
+  consumer read a spelling it would not otherwise have read.
+- Under `caseInsensitive` the case could not arise. `fromContext` copies a plain record into a
+  `Registry` when the flag is set, and a `Registry` is Map-backed and answers `undefined` for an
+  unbound name — measured in the same probe. So the shape existed only on the path where it cost
+  nothing.
+
+So this was **not** the security-shaped defect its sibling was.
+
+**What would make it bite**, and why it was to be fixed *with* [A4](#a4): it sat **in front of**
+every step a fix to A4 would add. **A fix to A4 that left this in place would have silently done
+nothing**, and would have passed a suite that tested it with no scope pushed.
+
+**One defect or two: one.** `getKey` was a parallel re-implementation of `get`'s resolution order
+rather than a derivation of it, so every change to `get` widened the gap without anyone touching
+`getKey`. The repair is one chain answering two questions, the shape `get` / `getFromScopes` /
+`hasInScopes` were given in step 1. It was filed under its own ID so that the "harmless today"
+finding had somewhere to live.
+
+*Recorded*: Phase 2 step 1, from the review of the `get` fix.
+*Verified*: **measured**, 2026-09-13, on `dist/modules/eval-core` — table above; re-measured
+2026-10-01 on master 955f0c9.
+
+*Fixed* 2026-10-01 in [A4](#a4)'s commit; the fix, specs and probes are recorded there. This
+entry's own rows are two cases of `eval-context.get-key.spec.ts` (`zzz` and `toString` answer
+nothing with a plain scope pushed), and the old scopes step restored ahead of the resolver fails
+them and the grid, 3 / 1126.
+
 <a id="a5"></a>
 ## A5 — Every service-layer entry point discards the error it caught
 
@@ -2257,7 +2423,7 @@ before the gate shipped: `_` inside a code span was being stripped as emphasis, 
   [`statements/phase-2-plan.md`](statements/phase-2-plan.md), 2 in [`a20/plan.md`](a20/plan.md)),
   which cite the code as it was when they were written and are left that way by design. The other
   8 are in this register, and were re-pointed 2026-09-28:
-  - 4 moved to where the cited code now lives ([A2](#a2)'s two chains, [A4](backlog.md#a4)'s `getKey`, and
+  - 4 moved to where the cited code now lives ([A2](#a2)'s two chains, [A4](#a4)'s `getKey`, and
     [A7](#a7)'s prior-scopes loop, whose original range had started three lines early).
   - 3 became SHA-pinned links to `ef5ac2b`, because the code they cite is gone ([A9](#a9)'s two
     unguarded push sites, and [B2](#b2)'s `console.log`).
@@ -2307,7 +2473,7 @@ which a reader notices. This one is worse, because nothing about it looks broken
 [`statements/phase-2-plan.md`](statements/phase-2-plan.md) § 2 excluded work with the row
 *"Everything in `docs/backlog.md` Track 1 / Track 2 — not this phase's subject"*. **This register
 has no Track 1 and no Track 2.** All three Tracks were a sequencing suggestion made in
-conversation — 1 the error-identity group ([A4](backlog.md#a4), [A5](#a5), [A6](#a6), [A7](#a7), [C3](backlog.md#c3)),
+conversation — 1 the error-identity group ([A4](#a4), [A5](#a5), [A6](#a6), [A7](#a7), [C3](backlog.md#c3)),
 2 the write policy ([C1](backlog.md#c1), [C2](backlog.md#c2)), 3 the documentation gates — and only the third was ever
 written down. The plan then cited all three as though the reader could look them up.
 

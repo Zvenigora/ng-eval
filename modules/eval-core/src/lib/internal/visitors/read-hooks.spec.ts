@@ -353,20 +353,31 @@ describe('read hooks', () => {
       recorder.run('Dog.Says()', build(), { caseInsensitive: true });
 
       expect(recorder.kinds).toEqual(['identifier', 'member']);
-      expect(recorder.keys).toEqual(['Dog', 'says']);
+      expect(recorder.keys).toEqual(['dog', 'says']);
       expect(recorder.values[0]).toBe(dog);
       expect(recorder.values[1]).toBe(dog.says);
     });
 
-    it('should leave a namespace identifier uncorrected', () => {
+    it('should correct a namespace identifier to the declared namespace', () => {
       const recorder = new ReadRecorder();
 
       recorder.run('Dog.Says()', build(), { caseInsensitive: true });
 
-      // `EvalContext.getKey` searches inside each prior scope's context, not
-      // its namespace, so the namespace itself cannot be case-corrected and the
-      // read reports the source spelling.
-      expect(recorder.keys[0]).toBe('Dog');
+      // `EvalContext.getKey` resolves through `get`'s own chain, which matches
+      // a prior scope's namespace before anything inside it, so the read
+      // reports the namespace as the scope declares it. Up to `eval-core` 0.7.x
+      // it reported the source spelling, 'Dog' (`docs/backlog-retired.md` A4).
+      expect(recorder.keys[0]).toBe('dog');
+    });
+
+    it('should report no corrected key for an identifier no source holds', () => {
+      const recorder = new ReadRecorder();
+
+      recorder.run('Mouse', build(), { caseInsensitive: true });
+
+      // `getKey` answers nothing, and the read falls back to the source name.
+      expect(recorder.keys).toEqual(['Mouse']);
+      expect(recorder.values).toEqual([undefined]);
     });
   });
 

@@ -1,8 +1,8 @@
 import { Context, Registry, Stack, fromContext } from '../common';
-import { getContextKey, getContextValue, setContextValue } from '../common/context';
+import { getContextValue, setContextValue } from '../common/context';
 import { EvalLookup } from './eval-lookup';
 import { EvalOptions } from './eval-options';
-import { EvalScope } from './eval-scope';
+import { EvalScope, matchesNamespace } from './eval-scope';
 
 /**
  * Whether a context holds a key at all, regardless of the value bound to it.
@@ -19,6 +19,98 @@ const hasContextKey = (context: Context, key: unknown): boolean => {
   }
   return context instanceof Object
     && Object.prototype.hasOwnProperty.call(context, key as PropertyKey);
+};
+
+/**
+ * What {@link resolve} found: the value, and what held it - a pushed scope or
+ * the original (a `Context`), a prior scope (an `EvalScope`), or a lookup
+ * (`undefined`, since a lookup is a resolver and holds no key).
+ */
+interface Resolution {
+  readonly value: unknown;
+  readonly holder: Context | EvalScope | undefined;
+}
+
+/**
+ * `EvalContext.get`'s resolution order, once, for both questions asked of it:
+ * `get` reads the value, `getKey` the spelling of the key that held it.
+ * Undefined exactly when `get` finds nothing.
+ *
+ * Up to 0.7.x `getKey` walked a copy of this order of its own, and the copy
+ * drifted three ways (`docs/backlog-retired.md` A4 and A10): it never consulted
+ * `lookups`; it searched inside every prior scope's context but never a
+ * namespace, where `EvalScope.get` does the reverse for a non-global scope; and
+ * it took the first spelling a source held, with no regard to whether `get`
+ * found a value there - so a pushed plain scope answered for every key. This is
+ * the shape `scopeHolding` gave `get`, `getFromScopes` and `hasInScopes` in
+ * Phase 2 step 1: one pass, several questions.
+ *
+ * A module function rather than a method, so the published class shape is
+ * unchanged; it reads only what the class exposes.
+ *
+ * 1. The pushed scopes, by **presence** - see `scopeHolding`.
+ * 2. The original, by value.
+ * 3. Each prior scope, through `EvalScope.get` itself, so the namespace and
+ *    `global` rules are that method's and not a copy of them.
+ * 4. Each lookup, by value.
+ */
+const resolve = (context: EvalContext, key: unknown): Resolution | undefined => {
+
+  const scope = context.scopeHolding(key);
+  if (scope) {
+    return { value: getContextValue(scope, key), holder: scope };
+  }
+
+  const original = context.original;
+  if (original) {
+    const value = getContextValue(original, key);
+    if (value !== undefined) {
+      return { value, holder: original };
+    }
+  }
+
+  for (const prior of context.priorScopes) {
+    const value = prior.get(key);
+    if (value !== undefined) {
+      return { value, holder: prior };
+    }
+  }
+
+  for (const lookup of context.lookups) {
+    const value = lookup(key, context, context.options);
+    if (value !== undefined) {
+      return { value, holder: undefined };
+    }
+  }
+
+  return undefined;
+};
+
+/**
+ * The spelling under which `holder` holds `key`, given that it does.
+ *
+ * Only a case-insensitive `Registry` can hold a key under another spelling;
+ * it keeps the spelling it was last written with, and matches by
+ * `toLowerCase`, so that is the comparison used to find it. A case-sensitive
+ * `Registry` and a plain record are read by exact key - `get` reads a plain
+ * record as `obj[key]` whatever the context's own options - so the key is its
+ * own spelling there.
+ */
+const spellingIn = (holder: Context, key: string | number | symbol): string | number | symbol => {
+
+  if (holder instanceof Registry
+    && holder.options['caseInsensitive'] === true
+    && typeof key === 'string') {
+
+    const lowered = key.toLowerCase();
+    for (const candidate of holder.keys) {
+      if (typeof candidate === 'string' && candidate.toLowerCase() === lowered) {
+        return candidate;
+      }
+    }
+  }
+
+  return key;
 };
 
 /**
@@ -109,35 +201,11 @@ export class EvalContext {
    */
   public get(key: unknown): unknown | undefined {
 
-    // Presence, not value: a scope that *binds* the key answers, even when the
-    // value bound is `undefined`. See {@link scopeHolding} for why the two are
-    // not the same question, and what reading the value instead let through.
-    const scope = this.scopeHolding(key);
-    if (scope) {
-      return getContextValue(scope, key);
-    }
-
-    if (this._original) {
-      const value = getContextValue(this._original, key);
-      if (value !== undefined) {
-        return value;
-      }
-    }
-
-    for (const scope of this._priorScopes) {
-      const value = scope.get(key);
-      if (value !== undefined) {
-        return value;
-      }
-    }
-
-    for (const lookup of this._lookups) {
-      const value = lookup(key, this, this._options);
-      if (value !== undefined) {
-        return value;
-      }
-    }
-    return undefined;
+    // Pushed scopes by presence, not value: a scope that *binds* the key
+    // answers, even when the value bound is `undefined`. See
+    // {@link scopeHolding} for why the two are not the same question. The
+    // order itself is `resolve`'s, shared with {@link getKey}.
+    return resolve(this, key)?.value;
   }
 
   /**
@@ -146,8 +214,8 @@ export class EvalContext {
    *
    * {@link get} calls this rather than inlining the loop, so that the read
    * hooks' `scoped` flag and the resolution it describes are the *same*
-   * implementation. A second copy of the order would drift - `getKey` already
-   * shows what that looks like when it does.
+   * implementation. A second copy of the order would drift - `getKey`'s did,
+   * until 0.8.0 (`docs/backlog-retired.md` A4).
    *
    * A binding whose value is `undefined` is **found** here, and no longer reads
    * as absent - see {@link scopeHolding}.
@@ -203,7 +271,7 @@ export class EvalContext {
    * single pass is what keeps that question answered by the same code as
    * {@link get}'s step 1. The alternative was a second copy of the
    * innermost-scope walk at each write site, which is the defect
-   * `docs/backlog.md` A4 and A10 already describe - two copies of one
+   * `docs/backlog-retired.md` A4 and A10 describe - two copies of one
    * resolution order, drifting - reproduced on purpose.
    *
    * @param key - The key to look for.
@@ -280,37 +348,51 @@ export class EvalContext {
   }
 
   /**
-   * Retrieves the value associated with the specified key from the evaluation context.
+   * The key {@link get} resolves `key` to: the spelling under which the source
+   * that answered holds it. The read hooks report this as the key that was
+   * read, and the write visitors write to it under `caseInsensitive`.
    *
-   * @param key - The key to retrieve the value for.
-   * @returns The value associated with the key, or undefined if the key is not found.
+   * Resolved through {@link get}'s own chain, so the two cannot disagree:
+   *
+   * - A pushed scope, the original, or a `global` prior scope holding the key:
+   *   the spelling that source holds it under - corrected only where the
+   *   source is a case-insensitive `Registry`, which is the only kind that
+   *   matches another spelling.
+   * - A prior scope's namespace: the namespace, as the scope declares it.
+   * - A lookup: the key as written, since a lookup returns no key.
+   * - Nothing: undefined, exactly when {@link get} finds nothing. A pushed
+   *   scope binding the key to `undefined` counts as found, as in {@link get}.
+   *
+   * Since 0.8.0. Up to 0.7.x it walked its own copy of the chain: it never
+   * consulted lookups, never matched a namespace, reported keys held inside a
+   * non-global prior scope that {@link get} never reads, and answered a
+   * spelling from a source where {@link get} found no value - including every
+   * key at all, once a plain-object scope was pushed.
+   *
+   * @param key - The key as written.
+   * @returns The resolved key, or undefined when {@link get} finds nothing.
    */
   public getKey(key: string | number | symbol): string | number | symbol | undefined {
 
-    const caseInsensitive = !!this._options.caseInsensitive;
+    const resolution = resolve(this, key);
 
-    for (const scope of this._scopes.asArray()) {
-      const foundKey = getContextKey(scope, key, caseInsensitive);
-      if (foundKey !== undefined) {
-        return foundKey;
-      }
+    if (!resolution) {
+      return undefined;
     }
 
-    if (this._original) {
-      const foundKey = getContextKey(this._original, key, caseInsensitive);
-      if (foundKey !== undefined) {
-        return foundKey;
-      }
+    const { holder } = resolution;
+
+    if (holder === undefined) {
+      return key;
     }
 
-    for (const scope of this._priorScopes) {
-      const foundKey = getContextKey(scope.context, key, caseInsensitive);
-      if (foundKey !== undefined) {
-        return foundKey;
-      }
+    if (holder instanceof EvalScope) {
+      return matchesNamespace(holder.options, key)
+        ? holder.options.namespace
+        : spellingIn(holder.context, key);
     }
 
-    return undefined;
+    return spellingIn(holder, key);
   }
 
   /**

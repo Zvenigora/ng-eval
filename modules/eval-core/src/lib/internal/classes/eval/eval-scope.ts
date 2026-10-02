@@ -21,6 +21,24 @@ const defaultEvalScopeOptions: EvalScopeOptions = {
 };
 
 /**
+ * Whether `key` names the scope's namespace - the first test
+ * {@link EvalScope.get} makes, and the one `EvalContext.getKey` asks to know
+ * that a resolution came from the namespace rather than from inside the scope.
+ * One copy, so the two cannot disagree about it. Not part of the public API.
+ */
+export const matchesNamespace = (options: EvalScopeOptions, key: unknown): boolean => {
+  const { caseInsensitive, namespace } = options;
+
+  if (typeof key !== 'string' || !namespace) {
+    return false;
+  }
+
+  return caseInsensitive
+    ? !!equalIgnoreCase(key, namespace)
+    : key === namespace;
+};
+
+/**
  * Represents an evaluation scope.
  */
 export class EvalScope {
@@ -79,16 +97,11 @@ export class EvalScope {
    * @returns The value of the specified key, or undefined if the key is not found.
    */
   public get(key: unknown): unknown | undefined {
-    const { caseInsensitive, namespace, global } = this._options;
+    const { global } = this._options;
     const { context } = this;
 
-    if (typeof key === 'string' && namespace) {
-      const found = caseInsensitive
-        ? equalIgnoreCase(key, namespace)
-        : key === namespace;
-      if (found) {
-        return this.context;
-      }
+    if (matchesNamespace(this._options, key)) {
+      return this.context;
     }
 
     if (global) {
