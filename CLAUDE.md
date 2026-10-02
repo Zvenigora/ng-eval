@@ -10,13 +10,13 @@ independently and **all three published to npm** under the `@zvenigora` scope, e
 
 - **`@zvenigora/ng-eval-core`** (`modules/eval-core`) — a JavaScript expression
   parser/evaluator built on `acorn` + `acorn-walk`, exposed as Angular DI services.
-  Published at **0.7.0**. This is where nearly all the code is.
+  Published at **0.8.0**. This is where nearly all the code is.
 - **`@zvenigora/ng-eval-signals`** (`modules/eval-signals`) — expression → Angular
-  `Signal`, built on the first library's published surface. Published at **0.1.4**;
+  `Signal`, built on the first library's published surface. Published at **0.2.0**;
   Phase 3 shipped 0.1.0.
 - **`@zvenigora/ng-eval-forms`** (`modules/eval-forms`) — Angular form field properties
   driven by expressions that arrive as strings at runtime, built on the other two.
-  Published at **0.2.5**; Phase 6 shipped 0.2.0. It ships **three entry points from one
+  Published at **0.2.6**; Phase 6 shipped 0.2.0. It ships **three entry points from one
   package**: the shared core at `@zvenigora/ng-eval-forms`, the Reactive Forms adapter at
   `@zvenigora/ng-eval-forms/reactive`, and the Signal Forms adapter at
   `@zvenigora/ng-eval-forms/signals`, which requires Angular 22.

@@ -290,7 +290,7 @@ one line (and its source map with it); the `.d.ts` is byte-identical. Test count
 ## A4 — `EvalContext.getKey` cannot case-correct a namespace, and does not resolve through the same chain as `get`
 
 **Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-01**, with [A10](#a10) as
-one defect, for `eval-core` 0.8.0. Was Open, Covered
+one defect; released 2026-10-02 in `eval-core` 0.8.0, tagged c56f987. Was Open, Covered
 
 Two related gaps in one method
 ([`eval-context.ts`](../modules/eval-core/src/lib/internal/classes/eval/eval-context.ts), lines
@@ -397,8 +397,8 @@ Rerun on this file once the `This.` cases were added: the lookups probe fails `T
 <a id="a10"></a>
 ## A10 — `getKey`'s scopes step reports **every** key as present against a plain-object scope
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-01**, with [A4](#a4), for
-`eval-core` 0.8.0. Was Open — latent, not live
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-01**, with [A4](#a4);
+released 2026-10-02 in `eval-core` 0.8.0, tagged c56f987. Was Open — latent, not live
 
 **The shape — the sibling of the defect Phase 2 step 1 fixed, one method over.** Step 1 closed
 `EvalContext.get`'s scopes step reading a plain record by *value*, which walked the prototype chain
@@ -1557,8 +1557,9 @@ source count.
 <a id="c3"></a>
 ## C3 — Whether `eval-signals` should work around [A4](#a4) locally
 
-**Package** signals · **Kind** decision · **Status** **Retired — decided and fixed 2026-10-01**,
-for `eval-signals` 0.2.0. Was Open — decision point passed unrecorded
+**Package** signals · **Kind** decision · **Status** **Retired — decided and fixed 2026-10-01**;
+released 2026-10-02 in `eval-signals` 0.2.0, tagged c56f987. Was Open — decision point passed
+unrecorded
 
 A containment for [A4](#a4)'s `lookups` divergence exists entirely inside this library: override
 `getKey` on the adapter's subclass to fall back to the source, reusing `resolve()`.
