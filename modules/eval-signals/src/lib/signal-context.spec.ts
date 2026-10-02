@@ -440,7 +440,7 @@ describe('createSignalContext', () => {
       expect(counter()).toEqual({ n: 2 });
     });
 
-    it('should name the key under caseInsensitive', () => {
+    it('should name the key as the source spells it under caseInsensitive', () => {
       const context = createSignalContext({ count: signal(1) }, { caseInsensitive: true });
 
       let caught: unknown;
@@ -451,20 +451,53 @@ describe('createSignalContext', () => {
       }
 
       // Under `caseInsensitive` the visitors resolve the key through
-      // `EvalContext.getKey` before calling `set`. Up to `eval-core` 0.7.x
-      // `getKey` never consulted `lookups`, where every key of a signal
-      // context lives, so the error named 'undefined'
-      // (`docs/backlog-retired.md` A4). It now resolves through `get`'s own
-      // chain, and a lookup returns no key, so the key is the one written.
-      expect((caught as SignalContextWriteError).key).toEqual('COUNT');
+      // `EvalContext.getKey` before calling `set`, and this context answers
+      // a source key with the source's own spelling.
+      expect((caught as SignalContextWriteError).key).toEqual('count');
       expect((caught as Error).message)
-        .toEqual("Cannot assign to 'COUNT': the keys of a signal context are read-only.");
+        .toEqual("Cannot assign to 'count': the keys of a signal context are read-only.");
 
       // Still no write, which is the property the policy actually owes.
       expect(service.simpleEval('count', context)).toEqual(1);
       expect(context.original).toEqual({});
     });
 
+  });
+
+  describe('getKey', () => {
+
+    const insensitive = { caseInsensitive: true };
+
+    it('should answer a source key as the source spells it under caseInsensitive', () => {
+      const context = createSignalContext({ count: signal(1) }, insensitive);
+
+      expect(context.getKey('COUNT')).toEqual('count');
+    });
+
+    it('should let a pushed scope shadow the source', () => {
+      const context = createSignalContext({ Count: signal(10) }, insensitive);
+      context.push({ count: 1 });
+
+      // An arrow parameter named `count`: the scope binds it, `get` resolves
+      // it there, and the source's `Count` is never consulted.
+      expect(context.get('count')).toEqual(1);
+      expect(context.getKey('count')).toEqual('count');
+    });
+
+    it('should keep the answer for a key another lookup resolves', () => {
+      const context = createSignalContext({ count: signal(1) }, insensitive);
+      context.lookups.push((key) => key === 'EXTRA' ? 'extra' : undefined);
+
+      expect(context.get('EXTRA')).toEqual('extra');
+      expect(context.getKey('EXTRA')).toEqual('EXTRA');
+    });
+
+    it('should be unchanged without caseInsensitive', () => {
+      const context = createSignalContext({ count: signal(1) });
+
+      expect(context.getKey('count')).toEqual('count');
+      expect(context.getKey('COUNT')).toBeUndefined();
+    });
   });
 
   describe('the nested-signal diagnostic', () => {

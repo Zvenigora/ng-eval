@@ -40,11 +40,11 @@ export class SignalContextWriteError extends Error {
   /**
    * The key the expression tried to write.
    *
-   * **`undefined` under `caseInsensitive`.** The two visitors resolve the key
-   * through `EvalContext.getKey` before writing, and `getKey` does not consult
-   * `lookups` - a known `eval-core` defect - so a signal-backed key, which
-   * lives only there, comes back unresolved. The message then names
-   * `'undefined'`. Pinned in this module's spec; see the plan's S 3.6.4.
+   * Under `caseInsensitive` the two visitors resolve the key through
+   * `EvalContext.getKey` before writing, and since 0.2.0 a signal context
+   * answers a source key with the **source's** spelling: `COUNT = 5` over
+   * `{ count }` names `count`. Up to 0.1.x it was `undefined`, and the message
+   * named `'undefined'`.
    */
   readonly key: unknown;
 
@@ -111,27 +111,73 @@ export class SignalContextWriteError extends Error {
  */
 class SignalEvalContext extends EvalContext {
 
+  /**
+   * The source key this context's own resolver matched while answering, set
+   * by that resolver and read back by {@link getKey}. Undefined outside a
+   * `getKey` call, and when anything other than this context's source
+   * answered.
+   */
+  private answeredBy: string | undefined;
+
   public override set(key: unknown): void {
     throw new SignalContextWriteError(key);
+  }
+
+  /**
+   * Under `caseInsensitive`, a key the source resolves is answered with the
+   * source's own spelling - so the read hooks and a write error name `count`
+   * for `COUNT` over `{ count }`. Anything else keeps `eval-core`'s answer: a
+   * pushed scope still shadows the source, and a prior scope or a lookup a
+   * caller added answers as it would on any `EvalContext`.
+   *
+   * Whether the source answered is asked of `get` itself rather than of a
+   * second copy of its order: the resolver records the key it matched, and
+   * `get` only reaches the resolver when scopes, `original` and prior scopes
+   * found nothing. That order is the same in every `eval-core` the peer range
+   * admits, so no version check is needed. The cost is a second `get` per
+   * `getKey` - one more call of a signal already read - and only under
+   * `caseInsensitive`, the only mode in which a spelling can differ.
+   */
+  public override getKey(key: string | number | symbol): string | number | symbol | undefined {
+
+    if (!this.options['caseInsensitive']) {
+      return super.getKey(key);
+    }
+
+    const outer = this.answeredBy;
+    this.answeredBy = undefined;
+
+    try {
+      this.get(key);
+      return this.answeredBy ?? super.getKey(key);
+    } finally {
+      this.answeredBy = outer;
+    }
+  }
+
+  /** Called by this context's own resolver when the source answered. */
+  public noteAnswer(sourceKey: string): void {
+    this.answeredBy = sourceKey;
   }
 }
 
 /**
- * Resolves a key against the source, preferring an exact match.
+ * Matches a key against the source, preferring an exact match, and returns
+ * the source's own key - or undefined when the source holds none.
  *
  * Under `caseInsensitive` a key that does not match exactly falls back to the
  * first source key that differs only in case, in insertion order. An exact
  * match always wins, so enabling the option never changes how an
  * exactly-spelled key resolves.
  */
-const resolve = (
+const match = (
   source: SignalContextSource,
   key: unknown,
   caseInsensitive: boolean
-): unknown => {
+): string | undefined => {
 
   if (Object.prototype.hasOwnProperty.call(source, key as PropertyKey)) {
-    return source[key as string];
+    return key as string;
   }
 
   if (!caseInsensitive || typeof key !== 'string') {
@@ -139,8 +185,7 @@ const resolve = (
   }
 
   const lowered = key.toLowerCase();
-  const match = Object.keys(source).find((candidate) => candidate.toLowerCase() === lowered);
-  return match === undefined ? undefined : source[match];
+  return Object.keys(source).find((candidate) => candidate.toLowerCase() === lowered);
 };
 
 /**
@@ -196,8 +241,20 @@ export const createSignalContext = (
   const context = new SignalEvalContext({}, options ?? {});
 
   context.lookups.push((key) => {
-    const value = resolve(source, key, caseInsensitive);
-    return isSignal(value) ? value() : value;
+    const sourceKey = match(source, key, caseInsensitive);
+    if (sourceKey === undefined) {
+      return undefined;
+    }
+
+    const held = source[sourceKey];
+    const value = isSignal(held) ? held() : held;
+
+    // Only an answer `get` will take: `undefined` reads as "not found", and
+    // `get` moves on to the next lookup.
+    if (value !== undefined) {
+      context.noteAnswer(sourceKey);
+    }
+    return value;
   });
 
   return context;

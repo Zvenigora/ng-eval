@@ -158,7 +158,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [B4](backlog-retired.md#b4) | `eval-core.component.ts` is dead generator scaffold | core | fix | **Retired — fixed 2026-09-26**; no published artifact changed — the bundle and `.d.ts` are byte-identical |
 | [C1](#c1) | A member-target write escapes the read-only policy | signals | decision | Open, Covered |
 | [C2](#c2) | Detect a write violation at construction, not first recompute | signals | decision | Open |
-| [C3](#c3) | Whether `eval-signals` should work around [A4](backlog-retired.md#a4) locally | signals | decision | Open — **decision point passed unrecorded** |
+| [C3](backlog-retired.md#c3) | Whether `eval-signals` should work around [A4](backlog-retired.md#a4) locally | signals | decision | **Retired — decided and fixed 2026-10-01**, for `eval-signals` 0.2.0: under `caseInsensitive` a source key is named as the source spells it, in `getKey`, write errors and the first segment of `dependencies` |
 | [D1](#d1) | The throwing-subscriber premise is false in both halves | forms | fix + decision | Open, Premise retired |
 | [D2](#d2) | Should `/reactive` reject prototype-shadowed identifiers too? | forms | decision, breaking | Open |
 | [D3](#d3) | Per-registration `caseInsensitive` reaches one of three levers | forms | decision | Open, Covered |
@@ -576,7 +576,7 @@ Behavioural — anything reading `s.constructor` today starts throwing.
 
 # C. `eval-signals`
 
-None of these three was ever recorded in `ROADMAP.md`.
+None of these, nor the retired [C3](backlog-retired.md#c3), was ever recorded in `ROADMAP.md`.
 
 <a id="c1"></a>
 ## C1 — A member-target write escapes the read-only policy
@@ -654,26 +654,6 @@ Decide with [C1](#c1) — the static-check mechanism is one of C1's three candid
 C2 alone forecloses the cheaper half of C1.
 
 *Recorded*: [`signals/phase-3-plan.md` § 8 q5](signals/phase-3-plan.md).
-
-<a id="c3"></a>
-## C3 — Whether `eval-signals` should work around [A4](backlog-retired.md#a4) locally
-
-**Package** signals · **Kind** decision · **Status** Open — **decision point passed unrecorded**
-
-A containment for [A4](backlog-retired.md#a4)'s `lookups` divergence exists entirely inside this library: override
-`getKey` on the adapter's subclass to fall back to the source, reusing `resolve()`.
-
-It was **not** taken in Phase 3 step 2, for a stated reason: `getKey` also feeds
-`EvalReadEvent.key`, which is what step 3's `dependencies` set reports, so changing it there would
-silently change step 3's output. § 8 q3 was therefore **reopened and assigned to step 3**, "with
-the two consumers on the table together".
-
-**Step 3 never recorded an answer.** [`signals/step-3-summary.md` § 5.3](signals/step-3-summary.md)
-carries it forward under "still carried from earlier steps", and all six Phase 4 summaries inherit
-that phrasing. There is no settlement in the plan's step 3 section either. The decision point
-passed and the question is still open — logged here so it is not inherited a seventh time.
-
-*Recorded*: [`signals/phase-3-plan.md` § 8 q3](signals/phase-3-plan.md).
 
 ---
 

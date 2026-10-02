@@ -322,7 +322,7 @@ Cannot assign to 'undefined' in expression 'COUNT = 5': the keys of a signal con
 ```
 
 Both gaps are behavioral changes to an exported method. They matter most to dependency tracking,
-which keys on what `getKey` returns. See [C3](backlog.md#c3) for the question of whether
+which keys on what `getKey` returns. See [C3](#c3) for the question of whether
 `eval-signals` should contain this locally, which was assigned to a step and never answered.
 
 **A third divergence was found in Phase 2 step 1 and is filed as [A10](#a10), which argues it is the
@@ -1552,6 +1552,104 @@ source count.
 
 ---
 
+# C. `eval-signals`
+
+<a id="c3"></a>
+## C3 — Whether `eval-signals` should work around [A4](#a4) locally
+
+**Package** signals · **Kind** decision · **Status** **Retired — decided and fixed 2026-10-01**,
+for `eval-signals` 0.2.0. Was Open — decision point passed unrecorded
+
+A containment for [A4](#a4)'s `lookups` divergence exists entirely inside this library: override
+`getKey` on the adapter's subclass to fall back to the source, reusing `resolve()`.
+
+It was **not** taken in Phase 3 step 2, for a stated reason: `getKey` also feeds
+`EvalReadEvent.key`, which is what step 3's `dependencies` set reports, so changing it there would
+silently change step 3's output. § 8 q3 was therefore **reopened and assigned to step 3**, "with
+the two consumers on the table together".
+
+**Step 3 never recorded an answer.** [`signals/step-3-summary.md` § 5.3](signals/step-3-summary.md)
+carries it forward under "still carried from earlier steps", and all six Phase 4 summaries inherit
+that phrasing. There is no settlement in the plan's step 3 section either. The decision point
+passed and the question is still open — logged here so it is not inherited a seventh time.
+
+*Recorded*: [`signals/phase-3-plan.md` § 8 q3](signals/phase-3-plan.md).
+
+*Re-measured* 2026-10-01 on master 955f0c9: `createEvalSignal('COUNT + 1', { count }, …)` with
+`caseInsensitive` and `trackDependencies` reported `['COUNT']`.
+
+**Decided 2026-10-01: the source's key.** Under `caseInsensitive`, a key a signal context
+resolves from its own source is named as the source spells it — in `getKey`, so in read events
+and in `SignalContextWriteError.key`, and in the first segment of each `dependencies` path.
+[A4](#a4)'s fix, the same day, already stopped the write error naming `'undefined'`; it names
+the key *as written*, and this names the source's.
+
+**One premise of the entry was wrong, and it cost a stop.** "`getKey` also feeds
+`EvalReadEvent.key`, which is what step 3's `dependencies` set reports" — it does not.
+`createDependencyTracker` collects `event.path`, which `emitRead` builds from the source text
+(`node.name`, or `readPath(node)` for a member), and `getKey` reaches only `event.key`. With the
+override alone in place, measured, the write error and `getKey('COUNT')` said `'count'` and
+`dependencies` still said `['COUNT']`. So the fix has two halves:
+
+- **`SignalEvalContext.getKey`**, under `caseInsensitive` only. Whether the source answered is
+  asked of `get` itself: the adapter's resolver records the source key it matched (`match()`,
+  formerly `resolve()`, now returns the key), and `get` reaches the resolver only when scopes,
+  `original` and prior scopes found nothing. Otherwise `eval-core`'s answer stands — a pushed
+  scope still shadows the source, and a prior scope or a lookup a caller added answers as on any
+  `EvalContext`. `get`'s order is the same in every `eval-core` the peer range admits, so there
+  is no version check. The cost is a second `get` per `getKey`, under `caseInsensitive` only.
+- **`createEvalSignal`'s `dependencies`**, under `caseInsensitive` only (the factory's `eval`
+  options or the context's own): after each recompute, each path's first segment is rewritten to
+  the key the identifier read of that name resolved to, from `tracker.reads`. `reads`, the
+  identifier read's `key` from `getKey` and its `path` from `node.name` are all present at
+  `eval-core` 0.3.0, checked at the tag.
+
+**Top-level segments only**, because they are the keys of the context — the only spelling this
+library owns. Later segments are property names inside a consumer's value: their resolved key is on
+a member read that a computed member gives no path at all, and respelling them would turn a lookup
+by root into a walk of each chain. So `user.NAME` reports `user.NAME`, documented in the README's
+`trackDependencies` section and in `EvalSignal.dependencies`.
+
+**`eval-forms`**, measured with a throwaway spec over `createFieldContext` under
+`caseInsensitive`: a field-half key reports the source's spelling (`NAME` → `name`), and a
+form-half key the key as written (`COUNTRY` → `COUNTRY`), in read events and in `getKey`. The form
+half is the resolver of a second `createSignalContext` that `createFieldContext` discards after
+taking its `lookups`, so that resolver's match lands on the discarded context, not on the field's.
+Not widened, as decided. **No entry filed**: no consumer reads those keys. `/reactive` builds its
+signals without `trackDependencies` and its field contexts without options, so its re-exposed
+`dependencies` is always empty; `/signals` tracks nothing either, and its rule lookup is not a
+signal-context source, so it gets `eval-core`'s answer, the key as written.
+
+*Fixed* 2026-10-01. Specs: in `eval-signal.spec.ts`, five under `trackDependencies` —
+`'COUNT + 1'` over `{ count }` → `['count']`; `'USER.name'` → `['user', 'user.name']` (the
+tracker records the root read as well, as `'a.b + c'` → three paths always has); `'user.NAME'` →
+`['user', 'user.NAME']`; an arrow parameter `count` shadowing the source's `count` → `['items']`;
+and without the option `'COUNT + count'` over both spellings → both, unchanged. In
+`signal-context.spec.ts`, the write error names `'count'`, and four `getKey` cases: `'COUNT'` →
+`'count'`, a pushed scope shadowing the source, another lookup keeping core's answer, and
+case-sensitive unchanged. `eval-signals` 131 → 140.
+
+**Probes**, each reverted, against 140:
+
+| Probe | Failed | Which |
+| ----- | -----: | ----- |
+| A: the rewrite removed | 2 | `'COUNT + 1'`, `'USER.name'`; the write error stays green |
+| B: the override removed | 4 | the write error, `getKey('COUNT')`, `'COUNT + 1'`, `'USER.name'` — the rewrite reads the override's answer |
+| C: later segments respelled too | 1 | `'user.NAME'` |
+| D: dependencies rebuilt from every identifier read | 1 | the arrow parameter |
+| E: the source asked directly rather than through `get` | 1 | the pushed scope |
+| F: a non-source answer replaced with a lowercased key | 1 | the other lookup |
+
+Every case went red under at least one probe except the case-sensitive pair, which pins
+behaviour no plausible break of *this* code moves: without `caseInsensitive` the resolver matches
+exactly, so the override's answer equals `eval-core`'s, and over a signal context alone an ungated
+rewrite maps every root to itself. The gate is therefore mostly a cost guard. Not wholly: a prior
+scope a caller registers with its own `caseInsensitive` corrects its namespace in `getKey` whatever
+the walk's options, and only the gate keeps a case-sensitive signal's `dependencies` from
+respelling that root. No case covers that combination.
+
+---
+
 # D. `eval-forms`
 
 <a id="d4"></a>
@@ -2473,7 +2571,7 @@ which a reader notices. This one is worse, because nothing about it looks broken
 [`statements/phase-2-plan.md`](statements/phase-2-plan.md) § 2 excluded work with the row
 *"Everything in `docs/backlog.md` Track 1 / Track 2 — not this phase's subject"*. **This register
 has no Track 1 and no Track 2.** All three Tracks were a sequencing suggestion made in
-conversation — 1 the error-identity group ([A4](#a4), [A5](#a5), [A6](#a6), [A7](#a7), [C3](backlog.md#c3)),
+conversation — 1 the error-identity group ([A4](#a4), [A5](#a5), [A6](#a6), [A7](#a7), [C3](#c3)),
 2 the write policy ([C1](backlog.md#c1), [C2](backlog.md#c2)), 3 the documentation gates — and only the third was ever
 written down. The plan then cited all three as though the reader could look them up.
 

@@ -582,6 +582,55 @@ describe('createEvalSignal', () => {
       expect([...value.dependencies].sort()).toEqual(['b', 'flag']);
     });
 
+    describe('under caseInsensitive', () => {
+
+      const insensitive: EvalSignalOptions = {
+        eval: { caseInsensitive: true }, trackDependencies: true
+      };
+
+      it('should name a source key as the source spells it', () => {
+        const value = create('COUNT + 1', { count: signal(1) }, insensitive);
+
+        expect(value()).toEqual(2);
+        expect([...value.dependencies]).toEqual(['count']);
+      });
+
+      it('should respell the first segment of a member path', () => {
+        const value = create('USER.name', { user: signal({ name: 'Ada' }) }, insensitive);
+
+        expect(value()).toEqual('Ada');
+        expect([...value.dependencies].sort()).toEqual(['user', 'user.name']);
+      });
+
+      it('should leave later segments as written', () => {
+        const value = create('user.NAME', { user: signal({ name: 'Ada' }) }, insensitive);
+
+        // The member visitor resolves `NAME` to `name`, but only the first
+        // segment is a key of the source; the rest are inside its values.
+        expect(value()).toEqual('Ada');
+        expect([...value.dependencies].sort()).toEqual(['user', 'user.NAME']);
+      });
+
+      it('should not report an arrow parameter that shadows a source key', () => {
+        const value = create(
+          'items.map(count => count + 1)',
+          { items: signal([1, 2]), count: signal(5) },
+          insensitive
+        );
+
+        expect(value()).toEqual([2, 3]);
+        expect([...value.dependencies]).toEqual(['items']);
+      });
+
+      it('should name the key as written without the option', () => {
+        const value = create('COUNT + count', { count: signal(1), COUNT: signal(2) },
+          { trackDependencies: true });
+
+        expect(value()).toEqual(3);
+        expect([...value.dependencies].sort()).toEqual(['COUNT', 'count']);
+      });
+    });
+
     it('should drop the recorded set on destroy', () => {
       const value = create('a.b + c', source(), { trackDependencies: true });
 

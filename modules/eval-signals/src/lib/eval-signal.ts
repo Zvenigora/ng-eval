@@ -1,8 +1,48 @@
 import { DestroyRef, Injector, Signal, ValueEqualityFn, computed, inject, signal } from '@angular/core';
 import { CompilerService, EvalContext, EvalHooks, EvalOptions,
   call, createDependencyTracker } from '@zvenigora/ng-eval-core';
-import type { stateCallback } from '@zvenigora/ng-eval-core';
+import type { EvalReadEvent, stateCallback } from '@zvenigora/ng-eval-core';
 import { SignalContextSource, SignalContextWriteError, createSignalContext } from './signal-context';
+
+/**
+ * Rewrites each path's first segment to the key its identifier read resolved
+ * to, so that under `caseInsensitive` `COUNT + 1` over `{ count }` reports
+ * `count`. The tracker records `path`, which is the expression's spelling;
+ * the resolved spelling is on the identifier read's `key`, which the signal
+ * context answers with the source's own spelling.
+ *
+ * **First segments only.** They are keys of the context; later segments are
+ * property names inside a value, and their resolved key is on a member read
+ * that has no path of its own when the member is computed. Respelling them
+ * would also take the rewrite from a lookup by root to a walk of each chain.
+ *
+ * A name read through more than one spelling maps them all to the one key,
+ * and the set collapses them. Run only under `caseInsensitive`, the only mode
+ * in which a resolved key can differ from the name as written.
+ */
+const respellRoots = (
+  paths: ReadonlySet<string>,
+  reads: readonly EvalReadEvent[]
+): ReadonlySet<string> => {
+
+  // Scoped reads need no filter here: the tracker has already dropped every
+  // path rooted at a name an arrow parameter bound.
+  const resolved = new Map<string, string>();
+  for (const read of reads) {
+    if (read.kind === 'identifier' && read.path !== undefined && typeof read.key === 'string') {
+      resolved.set(read.path, read.key);
+    }
+  }
+
+  const respelled = new Set<string>();
+  for (const path of paths) {
+    const dot = path.indexOf('.');
+    const root = dot < 0 ? path : path.slice(0, dot);
+    const key = resolved.get(root);
+    respelled.add(key === undefined ? path : key + path.slice(root.length));
+  }
+  return respelled;
+};
 
 /**
  * A `Signal` whose value is an expression evaluated over a signal context.
@@ -19,13 +59,18 @@ export interface EvalSignal<T> extends Signal<T> {
    * surface - it reports what the last recompute recorded, and reading it
    * neither triggers one nor waits for one.
    *
-   * What it reports is not what the signal recomputes on. Three limits apply,
-   * two inherited from `eval-core`'s tracker - a computed member (`obj[expr]`)
+   * What it reports is not what the signal recomputes on. Two limits are
+   * inherited from `eval-core`'s tracker - a computed member (`obj[expr]`)
    * has no reconstructible path and contributes nothing, and a name that has
    * been an arrow parameter anywhere in the expression is dropped everywhere
-   * in it - plus one this library adds: under `caseInsensitive`, a
-   * lookup-resolved key reports its *source* spelling. None of them affect
-   * reactivity, which is Angular's and is per signal, not per path.
+   * in it. None of them affect reactivity, which is Angular's and is per
+   * signal, not per path.
+   *
+   * Under `caseInsensitive` (since 0.2.0) a path's **first segment** is the
+   * key it resolved to - for a source key, the source's own spelling, so
+   * `'COUNT + 1'` over `{ count }` reports `count`. Later segments stay as the
+   * expression wrote them: `user.NAME` reports `user.NAME`. Up to 0.1.x every
+   * segment was as written.
    */
   readonly dependencies: ReadonlySet<string>;
 
@@ -261,6 +306,12 @@ export function createEvalSignal(
     ? source
     : createSignalContext(source, evalOptions);
 
+  // Either half can correct a key: the context's resolver, or the walk's
+  // member visitor. Fixed for the life of the signal, so read once here and
+  // the default path pays nothing per recompute.
+  const caseInsensitive = !!evalOptions?.['caseInsensitive']
+    || !!context.options['caseInsensitive'];
+
   let compiled: stateCallback | undefined = compiler.compile(expression);
   // Per signal rather than one shared module-level empty set: `ReadonlySet` is
   // a compile-time claim only, and that set would be handed out through the
@@ -326,7 +377,9 @@ export function createEvalSignal(
         // still reports what it managed to read before it threw - the case a
         // consumer is most likely to be debugging.
         off();
-        dependencies = tracker.dependencies;
+        dependencies = caseInsensitive
+          ? respellRoots(tracker.dependencies, tracker.reads)
+          : tracker.dependencies;
       }
     } finally {
       // Containment, not a fix. This bounds a leak *made during the walk* to

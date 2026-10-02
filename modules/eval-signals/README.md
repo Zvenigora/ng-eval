@@ -117,6 +117,13 @@ neither triggers a recompute nor subscribes anything to it. It is off by default
 registering the read hook turns on key resolution and path reconstruction at every read site
 for the whole walk, which a consumer who never reads `dependencies` should not pay for.
 
+**Under `caseInsensitive`, a path's first segment is spelled as your record spells it** (since
+0.2.0): `'PRICE * QUANTITY'` over the record above reports `price` and `quantity`. Only the
+first segment — the key of the record — is respelled; the rest are property names inside a
+value and stay as the expression wrote them, so `'user.NAME'` over `{ user }` reports `user` and
+`user.NAME`. Without `caseInsensitive` every segment is as written, which is then also how the
+record spells it.
+
 Setting it together with your own hook registry (`eval: { hooks }`) **throws at
 `createEvalSignal`**, rather than installing a read hook into a registry this library does not
 own and cannot hand you an unsubscribe for. The escape hatch is to install
@@ -285,13 +292,16 @@ Four things that decide whether this library fits, rather than surprises you lat
   outside the reactive context. Inherent to Angular's model rather than to this library.
 - **`dependencies` reports paths, with three limits.** A computed member (`obj[expr]`) has no
   reconstructible path and contributes nothing; a name used as an arrow parameter anywhere in
-  the expression is dropped everywhere in it; and under `caseInsensitive` a key is reported as
-  the **expression** spells it, not as your record does — `'PRICE * 2'` over `{ price }`
-  reports `PRICE`. None of them affect reactivity.
-- **`SignalContextWriteError.key` is `undefined` under `caseInsensitive`.** The evaluator
-  resolves the key through `EvalContext.getKey` before writing, and that does not consult the
-  resolver a signal context lives in. The message then says `'undefined'`; the throw itself is
-  unaffected.
+  the expression is dropped everywhere in it; and under `caseInsensitive` only a path's first
+  segment is spelled as your record does — `'USER.NAME'` over `{ user }` reports `user.NAME`.
+  Up to 0.1.x the first segment was as the expression spelled it too. None of them affect
+  reactivity.
+- **Only your own record's keys are respelled.** Under `caseInsensitive` a signal context names
+  a key of *its own* record as the record spells it — in `dependencies` and in
+  `SignalContextWriteError.key`, which since 0.2.0 is `count` for `COUNT = 5` over `{ count }`
+  rather than `undefined`. A name something else resolves — an arrow parameter, a prior scope,
+  a lookup you pushed onto the context — gets `eval-core`'s answer, which for a lookup is the
+  name as the expression wrote it.
 - **A write to a *member* does not throw.** `user.name = 'Bob'` writes into the object your
   signal holds without ever reaching the context, so the read-only policy cannot see it.
   Do not write through expressions.
