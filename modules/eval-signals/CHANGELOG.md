@@ -10,6 +10,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.2.0] - 2026-10-02
+
+**Under `caseInsensitive`, a source key is named as the source spells it —
+[C3](../../docs/backlog-retired.md#c3).** A breaking minor: no exported symbol changes shape, but
+`EvalSignal.dependencies` and `SignalContextWriteError.key` report different strings. The peer
+range widens to admit `eval-core` 0.8.0.
+
+### Breaking
+- **`dependencies` spells a path's first segment as the source does.**
+  `createEvalSignal('COUNT + 1', { count }, { eval: { caseInsensitive: true }, trackDependencies: true })`
+  reports `count`, where it reported `COUNT`. Only the first segment — the key of the context —
+  is respelled; later segments are property names inside a value and stay as written, so
+  `'user.NAME'` reports `user.NAME`. Without `caseInsensitive` nothing changes.
+- **A write error names the source's key.** Under `caseInsensitive`, `COUNT = 5` over
+  `{ count }` throws `SignalContextWriteError` with `key` `'count'` and a message naming
+  `'count'`. 0.1.x named `'undefined'`; `eval-core` 0.8.0 under 0.1.x would name `'COUNT'`.
+- **`getKey` on a `createSignalContext` context answers a source key with the source's
+  spelling**, under `caseInsensitive`. A pushed scope still shadows the source, and a prior scope
+  or a lookup you add keeps `eval-core`'s answer — which on `eval-core` 0.7.x and older is still
+  that version's.
+
+### Changed
+- **Peer range widened** to admit `@zvenigora/ng-eval-core` 0.8.0:
+  `>=0.3.0 <0.8.0` → `>=0.3.0 <0.9.0`. The lower bound is unchanged, so 0.3.0 to 0.7.0 remain
+  supported, and the three changes above do not depend on 0.8.0: they rest on `get`'s resolution
+  order and the dependency tracker's `reads`, both unchanged since 0.3.0. The README's
+  peer-dependency line states the new range.
+- `EvalSignal.dependencies` and `SignalContextWriteError.key` document the above, and the
+  README's `trackDependencies` section says what is reported under `caseInsensitive`.
+
+---
+
 ## [0.1.4] - 2026-10-01
 
 Released because `eval-core` 0.7.0 falls outside 0.1.3's declared peer range. No exported

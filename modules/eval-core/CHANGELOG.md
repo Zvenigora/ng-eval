@@ -14,6 +14,47 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ---
 
+## [0.8.0] - 2026-10-02
+
+**`EvalContext.getKey` resolves through `get`'s own chain —
+[A4](../../docs/backlog-retired.md#a4) and [A10](../../docs/backlog-retired.md#a10).** A breaking
+minor. No exported symbol changes shape — the `.d.ts` differs from 0.7.0 in documentation comments
+only — but `getKey`'s answers change, and with them the `key` of identifier and member read events
+and the key the write visitors assign to under `caseInsensitive`. `eval-signals` 0.2.0 and
+`eval-forms` 0.2.6 widen their peer ranges to admit it.
+
+### Breaking
+- **`getKey` answers what `get` resolved, and nothing when `get` finds nothing.** It used to walk
+  its own copy of the resolution order, which disagreed with `get` in four ways; each is now
+  `get`'s answer:
+  - **A namespace is reported as the scope declares it.** With a prior scope namespaced `dog`,
+    `Dog.Says()` under `caseInsensitive` reports read keys `['dog', 'says']`, where it reported
+    `['Dog', 'says']`.
+  - **An unbound name gets no key.** With a plain-object scope pushed, `getKey` answered every
+    key as present, so a name nothing holds came back as itself; and a key held only in a source
+    `get` does not read — a wrong-case key in a case-sensitive `Registry`, a key inside a
+    non-global prior scope — came back spelled as that source holds it. All of these are now
+    `undefined`. An identifier read still reports the name as written when `getKey` answers
+    nothing.
+  - **A key only a lookup resolves is reported as written**, where `getKey` returned `undefined`
+    because it never consulted lookups. Under `caseInsensitive` the write visitors resolve their
+    target through `getKey`, so an assignment to such a key now writes, or is refused, under its
+    name: a `@zvenigora/ng-eval-signals` context's write error names `'COUNT'` rather than
+    `'undefined'`.
+  - **A spelling comes from the source that supplied the value.** Under `caseInsensitive` with a
+    case-sensitive `Registry` holding `a`, `getKey('A')` returned `'a'` while `get('A')` found
+    nothing there and went on to later sources.
+- **A member of the context itself resolves through `getKey`'s answer.** Under `caseInsensitive`,
+  `This.COUNT` for a key only a lookup resolves, and `This.Dog` for a namespace `dog`, evaluated
+  to `undefined`: the member visitor read `get(getKey(key))`, and `getKey` answered nothing. Both
+  now resolve.
+
+### Changed
+- `getKey`'s JSDoc states its answers, and two sentences in `getFromScopes` / `scopeHolding` that
+  described `getKey`'s drift are corrected. Those are the whole `.d.ts` difference from 0.7.0.
+
+---
+
 ## [0.7.0] - 2026-10-01
 
 **Errors keep their identity, `thisArg` is applied, and three silent outcomes now throw —

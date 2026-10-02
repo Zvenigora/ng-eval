@@ -10,6 +10,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.2.6] - 2026-10-02
+
+Released because `eval-core` 0.8.0 and `eval-signals` 0.2.0 both fall outside 0.2.5's declared
+peer ranges. No code in this package changes.
+
+### Changed
+- **Peer ranges widened.** `@zvenigora/ng-eval-core`: `>=0.3.0 <0.8.0` → `>=0.3.0 <0.9.0`.
+  `@zvenigora/ng-eval-signals`: `^0.1.0` → `>=0.1.0 <0.3.0`, since on a `0.x` version `^0.1.0`
+  stops short of 0.2.0. Both lower bounds are unchanged. The `peerDependencies` block quoted in
+  the README shows the new ranges.
+- **With `eval-core` 0.8.0 and `eval-signals` 0.2.0, a write error under `caseInsensitive` names
+  the key.** It named `'undefined'`. Through `createFieldContext`, a field-half key is named as
+  the field source spells it (`NAME = 1` over `{ name }` → `'name'`); a form-half key as the
+  expression wrote it (`COUNTRY = 1` → `'COUNTRY'`), because the form half is resolved by a
+  borrowed lookup rather than by the field context's own source. A `/signals` rule names the key
+  as written. `applyErrorPolicy` rethrows the error as before; only `key` and the message differ.
+  `/reactive` builds its field contexts case-sensitively and is unaffected.
+  Measured on eval-core 0.7.0 / eval-signals 0.1.4: both keys named 'undefined'.
+  [A4](../../docs/backlog-retired.md#a4), [C3](../../docs/backlog-retired.md#c3).
+
+---
+
 ## [0.2.5] - 2026-10-01
 
 Released because `eval-core` 0.7.0 falls outside 0.2.4's declared peer range. No exported symbol
