@@ -98,6 +98,33 @@ the two commits only that spec and two backlog files changed, so neither package
 three at `016a313`, three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions,
 all on the remote.
 
+### Register history
+
+How the live count has moved from one release to the next. The register opened on 2026-09-07
+(`ef5ac2b`) with 46 entries, 42 of them live; R1–R4 were recorded already retired.
+
+| Release | Tag commit | Published | Live before | Opened | Closed | Live after |
+| ------- | ---------- | --------- | ----------: | ------ | ------ | ---------: |
+| `eval-core` 0.4.0, `eval-signals` 0.1.1, `eval-forms` 0.2.1 | `7935a78` | 2026-09-16 | 42 | 9: A10, A11, A12, F9–F14 | 9: A9, B2, D10, E6, F1, F3, F4, F12, F14 | 42 |
+| `eval-core` 0.5.0, `eval-signals` 0.1.2, `eval-forms` 0.2.2 | `016a313` | 2026-09-17 | 42 | 2: A13, A14 | 3: A11, A13, A14 | 41 |
+| `eval-core` 0.6.0, `eval-signals` 0.1.3, `eval-forms` 0.2.3 | `f26f987` | 2026-09-26 | 41 | 8: A15–A17, A19–A22, F15 | 8: A8, A12, A16, A17, A20–A22, F15 | 41 |
+| `eval-core` 0.6.1, `eval-forms` 0.2.4 | `587ebf1` | 2026-09-30 | 41 | 1: F16 | 12: A3, B3, B4, D4, D6, D9, D12, F2, F5, F6, F9, F13 | 30 |
+| `eval-core` 0.7.0, `eval-signals` 0.1.4, `eval-forms` 0.2.5 | `724d831` | 2026-10-01 | 30 | 0 | 6: A1, A2, A5, A6, A7, E5 | 24 |
+| **Since the register opened** | | | **42** | **20** | **38** | **24** |
+
+**How a row is counted.** Each row compares the index at the previous row's commit (the first, at
+`ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
+Contained, Covered or Premise retired, as in the vocabulary above. *Opened* is every ID new to the
+index. *Closed* is every ID that was live, or newly opened, and is not live at the tag, so an entry
+opened and closed between two releases counts in both columns, and *before + opened − closed =
+after* holds on every row. A closure counts in the interval it was recorded in, which is not
+always the release that shipped it: a test-only or documentation closure ships in no package, and
+0.6.1's twelve include several of those.
+
+**Adding a row.** Each release's post-publish commit adds its row, counted the same way
+([`CONTRIBUTING.md`](../CONTRIBUTING.md), Releasing). The last row's *Live after* should equal the
+count of live rows in the index at that commit; if it does not, the row is wrong.
+
 ---
 
 ## Index

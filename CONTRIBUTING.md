@@ -124,6 +124,9 @@ All three packages publish to the public npm registry under the `@zvenigora` sco
 
    The commit must be the one the published artifact was built from, since `eval-signals` and
    `eval-forms` resolve their next version from these tags.
+6. Record the release in a docs-only commit: a row per published package in
+   `docs/backlog.md`'s Publication status, and one row for the release in its Register history,
+   counted as that section describes.
 
 ### Why no flags are needed
 
