@@ -2099,7 +2099,8 @@ it; finishes the rest of the emission — every replacement, removal and other a
 `bindFieldProperties`' construction-time message, shared now from one module-private helper,
 naming each such control, each name once. A name leaves the reported set when its control leaves
 the group, so a later re-add is reported afresh. The *class* half of `validate` — a nested group
-or `FormArray` — is still construction-time only, and the README says so.
+or `FormArray` — was left construction-time only by this decision, and extended the same day;
+see below.
 
 **The four sites**, corrected to the measured behaviour: `control-source.ts`'s `sync` comment now
 says a bare read's throw lands in that key's own subscriber, and documents the refusal;
@@ -2126,6 +2127,18 @@ case and not the next. `eval-forms` 280 → 284.
 | The name mirrored anyway, still reported | 1 | the "not mirrored" row |
 | A throw at the refused name, before the loop finishes | 1 | the same-emission row — green with a two-event `addControl` fixture, which is why the row uses `markAsTouched` |
 | Reported names not remembered | 2 | "report once" (two emissions, two reports) and "not reported again" |
+
+**Extended 2026-10-03, for the same release: a nested `FormGroup` or `FormArray` added later is
+refused on the same path**, with construction's `Control '…' is not a FormControl …` message —
+not mirrored, reported once, thrown after the rest of the emission. The two messages and their
+predicates now live together in a module-private `control-refusals.ts`; a late control is checked
+in construction's order, the name first. A key that already has a channel is not re-checked, so
+`setControl` replacing a mirrored control with a group still re-points it. Lifting flat-only is
+still [E2](backlog.md#e2)'s. Specs (6): the report-once, same-emission and later-emissions rows,
+for a late `FormGroup` and a late `FormArray`; `eval-forms` 292 → 298. Probes, each reverted: the
+class check dropped, 6 failed — all six rows, the prototype-name rows green; a late group mirrored
+anyway, still reported, 2 — the two "not mirrored" rows; a late group reported on every emission,
+4 — "report once" and "not again" for each, the single-emission rows green.
 
 <a id="d2"></a>
 ## D2 — Should `/reactive` reject prototype-shadowed identifiers in expressions too?

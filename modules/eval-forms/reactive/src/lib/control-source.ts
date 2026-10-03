@@ -3,7 +3,12 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import type { AbstractControl, FormGroup } from '@angular/forms';
 import type { SignalContextSource } from '@zvenigora/ng-eval-signals';
 import { Subject, startWith, switchMap, takeUntil } from 'rxjs';
-import { isPrototypeName, prototypeControlMessage } from './prototype-names';
+import {
+  isNotFormControl,
+  isPrototypeName,
+  nonFormControlMessage,
+  prototypeControlMessage,
+} from './control-refusals';
 
 /**
  * One key's mirror: the control it currently points at, the channel that
@@ -148,7 +153,7 @@ export const createControlSource = (
     delete source[name];
   };
 
-  // The prototype-named controls `sync` has refused and reported, so each is
+  // The controls `sync` has refused and reported, by name, so each is
   // reported once rather than on every later emission. A name leaves the set
   // when its control leaves the group, so a later re-add is reported afresh.
   const reported = new Set<string>();
@@ -158,14 +163,18 @@ export const createControlSource = (
   // tolerates it.
   //
   // **It can throw, and only at its end** (`docs/backlog-retired.md` D1). A
-  // control added after construction under a name off `Object.prototype` is
-  // not mirrored - no expression could read it - and is refused with the
-  // message `bindFieldProperties` gives at construction, by one throw once
-  // every other change in this emission has been applied. The throw leaves
-  // the `group.events` subscriber: `addControl` has already returned, rxjs
-  // reports it out of band to `config.onUnhandledError`, and the subscription
-  // stays open, so later emissions still diff. Measured on this repo's rxjs
-  // before the change, with a throw forced out of `open`.
+  // control added after construction that construction would have refused -
+  // a name off `Object.prototype`, which no expression could read, or a nested
+  // `FormGroup` or `FormArray`, which would reach one as an aggregate value -
+  // is not mirrored, and is refused with the message `bindFieldProperties`
+  // gives at construction, by one throw once every other change in this
+  // emission has been applied. The throw leaves the `group.events` subscriber:
+  // `addControl` has already returned, rxjs reports it out of band, and the
+  // subscription stays open, so later emissions still diff. Measured on this
+  // repo's rxjs before the change, with a throw forced out of `open`.
+  //
+  // A key that already has a channel is not re-checked: `setControl` replacing
+  // a mirrored control with a group re-points the channel, as before.
   const sync = (): void => {
 
     const live = controls();
@@ -213,10 +222,17 @@ export const createControlSource = (
         continue;
       }
 
-      if (isPrototypeName(name)) {
+      // In construction's order: the name first, then the class.
+      const refusal = isPrototypeName(name)
+        ? prototypeControlMessage(name)
+        : isNotFormControl(control)
+          ? nonFormControlMessage(name)
+          : undefined;
+
+      if (refusal !== undefined) {
         if (!reported.has(name)) {
           reported.add(name);
-          refused.push(name);
+          refused.push(refusal);
         }
         continue;
       }
@@ -225,7 +241,7 @@ export const createControlSource = (
     }
 
     if (refused.length > 0) {
-      throw new Error(refused.map(prototypeControlMessage).join('\n'));
+      throw new Error(refused.join('\n'));
     }
   };
 

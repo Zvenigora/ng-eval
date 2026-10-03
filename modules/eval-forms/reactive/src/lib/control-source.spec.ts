@@ -5,7 +5,7 @@ import {
   createEnvironmentInjector,
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { AbstractControl, FormControl, FormGroup } from '@angular/forms';
+import { AbstractControl, FormArray, FormControl, FormGroup } from '@angular/forms';
 import { EvalService } from '@zvenigora/ng-eval-core';
 import { createFieldContext } from '@zvenigora/ng-eval-forms';
 // Legal in a spec: plan S 5's import list governs `src/lib/` and
@@ -590,6 +590,69 @@ describe('createControlSource', () => {
         const source = createControlSource(form, { injector });
 
         form.addControl('constructor', new FormControl('MINE'));
+        await settle();
+        expect(unhandled).toHaveLength(1);
+
+        form.removeControl('age');
+        form.controls['country'].setValue('US');
+        form.addControl('region', new FormControl('west'));
+        await settle();
+
+        expect(Object.prototype.hasOwnProperty.call(source, 'age')).toEqual(false);
+        expect(Object.prototype.hasOwnProperty.call(source, 'region')).toEqual(true);
+        expect(unhandled).toHaveLength(1);
+      });
+    });
+
+    /**
+     * The construction check's other half, on the same path. A nested group or
+     * a `FormArray` would reach an expression as its *aggregate value*, which
+     * is why `bindFieldProperties` refuses one at construction; added later it
+     * used to be mirrored. Flat forms only is still the rule
+     * (`docs/backlog.md` E2 is where it would be lifted).
+     */
+    describe.each([
+      ['a FormGroup', (): AbstractControl => new FormGroup({ city: new FormControl('Rome') })],
+      ['a FormArray', (): AbstractControl => new FormArray([new FormControl('a')])],
+    ])('%s added later', (_label, make) => {
+
+      const message =
+        "Control 'address' is not a FormControl. Nested groups and FormArrays are " +
+        'out of scope for this phase.';
+
+      it('should leave addControl returning normally, and report it once', async () => {
+        const form = group();
+        createControlSource(form, { injector });
+
+        expect(() => form.addControl('address', make())).not.toThrow();
+
+        await settle();
+        expect(messages()).toEqual([message]);
+      });
+
+      it('should not mirror it, and mirror a control added in the same emission', async () => {
+        const form = group();
+        const source = createControlSource(form, { injector });
+        const region = new FormControl('west');
+
+        // One emission, for the reason the prototype-name row gives.
+        form.addControl('address', make(), { emitEvent: false });
+        form.addControl('region', region, { emitEvent: false });
+        form.markAsTouched();
+
+        expect(Object.prototype.hasOwnProperty.call(source, 'address')).toEqual(false);
+        expect(Object.prototype.hasOwnProperty.call(source, 'region')).toEqual(true);
+        expect(observers(region)).toEqual(1);
+
+        await settle();
+        expect(messages()).toEqual([message]);
+      });
+
+      it('should keep diffing later emissions, without reporting it again', async () => {
+        const form = group();
+        const source = createControlSource(form, { injector });
+
+        form.addControl('address', make());
         await settle();
         expect(unhandled).toHaveLength(1);
 

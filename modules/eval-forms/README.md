@@ -212,15 +212,16 @@ would render precisely the field that has no data, with no error anywhere. This 
 over the schema's names *and* the group's controls, because the two are different sets and
 the second is worse: the control exists and its value is unreadable.
 
-**A control added later is checked for its name, not its class.** Since 0.3.0, an
-`addControl` whose name is a member of `Object.prototype` leaves the control unmirrored —
-no expression could read it anyway — and the mirror reports it with the message above, once.
+**A control added later is checked too, for its name and its class.** Since 0.3.0, an
+`addControl` whose name is a member of `Object.prototype`, or whose control is a nested
+`FormGroup` or a `FormArray`, leaves the control unmirrored and the mirror reports it with the
+construction-time message above, once.
 That report is not a throw from `addControl`, which has already returned: the mirror runs in
 a `group.events` subscriber, so the error arrives out of band, through rxjs's
 `config.onUnhandledError` (in an Angular application, its error handler). The rest of that
-change is applied first, and later changes are still mirrored. A nested `FormGroup` or a
-`FormArray` added later is **not** checked, and is mirrored as its aggregate value — validate
-a control set you assemble dynamically, or re-bind.
+change is applied first, and later changes are still mirrored. A key the mirror already holds
+is not re-checked: `setControl` replacing a mirrored control with a nested group re-points it,
+and an expression then reads the group's aggregate value.
 
 ### Expressions are validated too
 

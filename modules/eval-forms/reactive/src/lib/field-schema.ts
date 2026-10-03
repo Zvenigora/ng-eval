@@ -6,7 +6,7 @@ import {
   createEnvironmentInjector,
   inject,
 } from '@angular/core';
-import { AbstractControl, FormControl, FormGroup } from '@angular/forms';
+import { AbstractControl, FormGroup } from '@angular/forms';
 import { defaultParserOptions, parse } from '@zvenigora/ng-eval-core';
 import {
   ExpressionErrorPolicy,
@@ -17,7 +17,12 @@ import {
 } from '@zvenigora/ng-eval-forms';
 import { EvalSignal, createEvalSignal } from '@zvenigora/ng-eval-signals';
 import { createControlSource } from './control-source';
-import { isPrototypeName, prototypeControlMessage } from './prototype-names';
+import {
+  isNotFormControl,
+  isPrototypeName,
+  nonFormControlMessage,
+  prototypeControlMessage,
+} from './control-refusals';
 
 /**
  * One field's rules, as strings resolved at runtime.
@@ -225,15 +230,13 @@ const validate = (schema: readonly FieldSchema[], group: FormGroup): void => {
   // every field's context, where an expression finds it.
   //
   // This pass runs once. A control added later reaches the mirror's `sync`
-  // instead, which since 0.3.0 makes the prototype-name half of it: it does
-  // not mirror such a control, and throws this message at the end of the diff
+  // instead, which since 0.3.0 makes both checks below: it does not mirror
+  // such a control, and throws the same message at the end of the diff
   // (`docs/backlog-retired.md` D1). That throw is not the binding's - it
-  // leaves the `group.events` subscriber, which rxjs reports out of band to
-  // `config.onUnhandledError` while the subscription and the diffing carry on;
-  // the premise once written here, that a throw there unsubscribes it and
-  // silently ends all diffing, was false in both halves. The *class* half,
-  // below, is still construction-time only: a nested group added later is
-  // mirrored, and the README says so.
+  // leaves the `group.events` subscriber, which rxjs reports out of band while
+  // the subscription and the diffing carry on; the premise once written here,
+  // that a throw there unsubscribes it and silently ends all diffing, was
+  // false in both halves.
   for (const [name, control] of Object.entries(
     group.controls as Record<string, AbstractControl>
   )) {
@@ -255,11 +258,8 @@ const validate = (schema: readonly FieldSchema[], group: FormGroup): void => {
     // documented limitation, because the alternative surfaces as a confusing
     // evaluation result far from its cause - a nested group's *aggregate
     // object* arriving where a value was expected.
-    if (!(control instanceof FormControl)) {
-      throw new Error(
-        `Control '${name}' is not a FormControl. Nested groups and FormArrays are ` +
-        `out of scope for this phase.`
-      );
+    if (isNotFormControl(control)) {
+      throw new Error(nonFormControlMessage(name));
     }
   }
 };
