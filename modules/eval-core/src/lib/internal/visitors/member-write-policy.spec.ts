@@ -154,10 +154,11 @@ describe('member-write policy', () => {
       it('should allow a write to a regex literal', () => {
         const context = new PolicedContext(dataOf(), {});
 
-        // Not `lastIndex`: it is a non-configurable own property, and
-        // `safeSetProperty` writes through `Object.defineProperty`, which
-        // refuses to redefine one whatever the policy says.
-        expect(run('let r = /a/g; r.tag = 1; r.tag', context)).toBe(1);
+        // `lastIndex`, the write a regex is usually given. Until A23's fix this
+        // row wrote `r.tag` instead: `safeSetProperty` defined rather than
+        // assigned, and refused a non-configurable property like `lastIndex`
+        // whatever the policy said.
+        expect(run('let r = /a/g; r.lastIndex = 3; r.lastIndex', context)).toBe(3);
 
         expect(context.writes.map(w => w.createdByEvaluation)).toEqual([true]);
       });

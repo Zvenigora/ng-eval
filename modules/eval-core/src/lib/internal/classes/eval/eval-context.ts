@@ -439,8 +439,10 @@ export class EvalContext {
    * The write dispatches through `setContextValue` rather than through the
    * prototype-pollution guard's `safeSetProperty`, and the difference is not
    * cosmetic: {@link push} normalises a plain record into a `Registry` when
-   * `caseInsensitive` is set, and `Object.defineProperty` on a `Registry` would
-   * define a property on the instance while inserting nothing into its map. No
+   * `caseInsensitive` is set, and `safeSetProperty` writes a property onto the
+   * object it is given - by assignment since 0.10.0, by `Object.defineProperty`
+   * before - which on a `Registry` sets a property on the instance while
+   * inserting nothing into its map. No
    * guard is lost - this method only ever writes a key some scope already
    * *binds*, and a binding can only have been created through the guarded
    * declaration path, which rejects every blocklisted name.

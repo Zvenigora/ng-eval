@@ -100,11 +100,14 @@ export const isDangerousConstructor = (obj: unknown): boolean => {
 };
 
 /**
- * Safely sets a property on an object with prototype pollution protection
+ * Safely sets a property on an object with prototype pollution protection.
+ * Refuses a dangerous target or key, then assigns - so a setter runs, and a
+ * write the object refuses throws, prefixed "Failed to set property".
  * @param target The target object
  * @param key The property key
  * @param value The property value
- * @throws Error if the operation would cause prototype pollution
+ * @throws Error if the operation would cause prototype pollution, or if the
+ *   object refuses the write
  */
 export const safeSetProperty = (target: unknown, key: unknown, value: unknown): void => {
   if (!target || (typeof target !== 'object' && typeof target !== 'function')) {
@@ -139,16 +142,18 @@ export const safeSetProperty = (target: unknown, key: unknown, value: unknown): 
     propertyKey = String(key);
   }
 
-  // Use Object.defineProperty for safer assignment
-  const descriptor = {
-    value,
-    writable: true,
-    enumerable: true,
-    configurable: true
-  };
-
+  // An assignment, after every refusal above - not a definition. Up to 0.9.x
+  // this was `Object.defineProperty` with a writable, enumerable, configurable
+  // descriptor (`docs/backlog-retired.md` A23), which a write in JavaScript is
+  // not: it replaced an own accessor and hid an inherited one, so no setter
+  // ever ran; it made a non-enumerable property enumerable; and it refused
+  // every non-configurable property, `lastIndex` and an array's `length`
+  // included. Reads already ran the caller's getters, so running its setters
+  // here is the one behaviour this adds. This module is strict, so a write the
+  // object refuses - frozen, non-writable, an accessor with no setter - throws
+  // rather than failing silently, and is reported below.
   try {
-    Object.defineProperty(target as object, propertyKey, descriptor);
+    (target as Record<PropertyKey, unknown>)[propertyKey] = value;
   } catch (error) {
     throw new Error(`Failed to set property "${String(key)}": ${error instanceof Error ? error.message : String(error)}`);
   }

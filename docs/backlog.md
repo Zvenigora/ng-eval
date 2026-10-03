@@ -160,7 +160,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A7](backlog-retired.md#a7) | `EvalScopeOptions.thisArg` is documented and never applied — `getThis`'s `priorScopes` loop is dead, and `ns.fn()` never reaches it | core | decision, then fix | **Retired — decided and fixed 2026-09-30**; released 2026-10-01 in `eval-core` 0.7.0, tagged 724d831. `thisArg` is the receiver for a method reached through a scope; a bare namespace still evaluates to the scope's object |
 | [A8](backlog-retired.md#a8) | `EvalService._activeStates` grows unboundedly | core | fix | **Retired — fixed 2026-09-25, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987, in two steps: `simpleEval`'s states ([`docs/a8/plan.md`](a8/plan.md)), then the set deleted ([`docs/a8/step-2-plan.md`](a8/step-2-plan.md)). Withdraws the published destroy-time registry clear |
 | [A9](backlog-retired.md#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
-| [A23](#a23) | `safeSetProperty` defines the property instead of assigning it — setters never run, non-configurable properties cannot be written | core | decision, then fix | Open |
+| [A23](backlog-retired.md#a23) | `safeSetProperty` defines the property instead of assigning it — setters never run, non-configurable properties cannot be written | core | decision, then fix | **Retired — decided and fixed 2026-10-03**, for `eval-core` 0.10.0: a member write assigns, after the same refusals, so setters run |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -285,7 +285,7 @@ scoped to be additive.
 [A7](backlog-retired.md#a7) were surfaced by Phase 3 step 2 ([`signals/phase-3-plan.md`](signals/phase-3-plan.md))
 — the first consumer to reuse one `EvalContext` across many evaluations, which is what makes
 several of these visible at all. [A6](backlog-retired.md#a6) was surfaced by Phase 6 step 3. [A8](backlog-retired.md#a8) and
-[A9](backlog-retired.md#a9) were never recorded in the roadmap at all. [A23](#a23) was surfaced by
+[A9](backlog-retired.md#a9) were never recorded in the roadmap at all. [A23](backlog-retired.md#a23) was surfaced by
 [C1](backlog-retired.md#c1)'s fix.
 
 **Identity-checked `exit`** (§ 3.8 of the Phase 1 plan) means the hook layer stays balanced in
@@ -523,82 +523,6 @@ the header of [`trace-bound.spec.ts`](../modules/eval-core/src/lib/internal/visi
 0.6 MB against 0.6 MB; 49 ms against 57 ms. GC-event counting probed 2026-09-23 from scripts
 outside the repository, against a copy of the guard's logic, in the three environments tabled
 above.
-
-<a id="a23"></a>
-## A23 — `safeSetProperty` defines the property instead of assigning it
-
-**Package** core · **Kind** decision, then fix · **Status** Open
-
-**The cause.** [`safeSetProperty`](../modules/eval-core/src/lib/internal/visitors/prototype-pollution-guard.ts#L109-L155)
-runs its refusals — a non-object target, a blocklisted key, a built-in constructor, a built-in
-prototype — and then writes with
-`Object.defineProperty(target, key, { value, writable: true, enumerable: true, configurable: true })`
-rather than `target[key] = value`. The member branches of `assignment-expression.ts` and
-`update-expression.ts` write through it, so every `o.k = v`, `o.k += v` and `o.k++` an expression
-makes is a property *definition*. `pattern.ts` writes through it too, into the binding records it
-has just created with `{}`. On a fresh plain object with no such key a definition and an
-assignment cannot be told apart, so those are unaffected.
-
-**The effects**, measured 2026-10-03 on 8d96fa7 (55530b9 with one CHANGELOG sentence amended; the
-code is the same) through `evaluate` over a plain context, with no member-write policy in force:
-
-| Write | Result |
-| ----- | ------ |
-| `let r = /a/g; r.lastIndex = 3` | throws `Failed to set property "lastIndex": Cannot redefine property: lastIndex` — `lastIndex` is a non-configurable own property |
-| `let a = [1, 2]; a.length = 0` | throws the same, for `length` |
-| `o.f = 2`, `f` the caller's own writable, non-configurable data property | throws the same — the general case of the two rows above |
-| `o.v = 5`, `v` an own accessor on the caller's object | returns `5`, and the setter runs **0** times. `Object.getOwnPropertyDescriptor(o, 'v')` afterwards is a data property, `{ value: 5, writable: true, enumerable: true, configurable: true }`: the accessor is gone from the caller's object, and the value behind it is still `1` |
-| `b.v = 5`, `v` an accessor on a class's prototype | returns `5`, and the setter runs **0** times. `b` gains an own data property `v` that hides the prototype's accessor, which is itself untouched; the field the setter would have written still holds `1` |
-| `o.h = 2`, `h` an existing non-enumerable, configurable data property | succeeds, and **`h` becomes enumerable**: `Object.keys(o)` goes from `[]` to `['h']` |
-
-None of them needs a member-write policy, and none is new: the `defineProperty` predates
-`eval-core` 0.10.0.
-
-**The link to [C1](backlog-retired.md#c1).** Under `eval-signals` 0.3.0's policy a regex literal is
-the expression's own and may be written, but `r.lastIndex = 0` — the usual way to reset a global
-regex — still throws, for this reason and not the policy's. C1's spec row writes `r.tag` instead.
-
-**Why it is not fixed with C1.** `safeSetProperty` is the write half of the prototype-pollution
-guard. `eval.service.prototype-pollution.spec.ts` pins its refusals, and `SECURITY.md` describes
-the guard it belongs to — § 1, and its review of GHSA-pj3p-xpg7-h7gw, whose spec
-(`eval.service.case-variant-guard.spec.ts`) exercises the read half. The refusals all run before
-the last line and would not move. What would move is what a write *does*: an assignment runs the
-caller's setter, where today no setter ever runs. That is a behaviour change, in a published
-library, to a function a security document describes.
-
-**How big that change is: reads already run the caller's getters.** `safeGetProperty` ends in a
-plain bracket read, and so do the member visitor's own reads (`member-expression.ts`, both paths,
-and the key probe under `caseInsensitive`). Measured: `o.v` over an own getter runs it once; over an
-inherited getter, once, by dot access, by computed access, and under `caseInsensitive`. The write
-path runs it as well: `o.v = 5` above called the getter **twice**, because the assignment visitor
-evaluates its target as a read before writing. Running a caller's accessor code from inside a walk
-is therefore not new. Running its *setters* would be.
-
-**Options, none chosen:**
-
-- **Assign** — `target[key] = value`, after the existing refusals. JavaScript's own semantics:
-  setters run, `lastIndex` and `length` are writable, enumerability is kept, and a non-writable
-  property throws a `TypeError`, since library code is strict. The behaviour change above, and a
-  failure message to settle.
-- **Define only where nothing is there to respect** — assign when the key is on the chain as an
-  accessor or as a non-configurable or non-enumerable property, define otherwise. Today's result
-  for the common case and the rows above fixed, at the cost of two write paths in a security
-  function.
-- **Keep the definition, refuse an accessor** — throw when the chain holds an accessor for the
-  key, rather than silently replacing or hiding it. Setters still never run, and `lastIndex` and
-  `length` still throw unless handled separately.
-- **Keep it, and document** the six rows as the evaluator's write semantics.
-
-**Related, and already worked around.** Two notes record `defineProperty` being the wrong write for
-a *scope*: [`variable-declaration.ts`](../modules/eval-core/src/lib/internal/visitors/variable-declaration.ts#L62-L67)
-and [`EvalContext.setInScope`](../modules/eval-core/src/lib/internal/classes/eval/eval-context.ts#L439-L446).
-A `caseInsensitive` scope is a Map-backed `Registry`, and defining a property on the instance
-inserts nothing into its map, so both write scopes through `setContextValue` instead. The same
-mechanism with a different victim: those keep `safeSetProperty` away from scopes, and this entry is
-about the objects an expression's member writes reach.
-
-*Recorded*: found 2026-10-03, writing C1's regex row. *Verified*: each row above, by a throwaway
-spec that was not committed.
 
 ---
 

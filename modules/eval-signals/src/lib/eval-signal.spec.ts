@@ -389,6 +389,7 @@ describe('createEvalSignal', () => {
       it.each([
         ['a member of an object literal', 'let o = {}; o.a = 1; o.a', 1],
         ['a loop over its own bindings', 'let t = 0; for (let i = 0; i < 3; i++) { t += i; } t', 3],
+        ['the lastIndex of a regex literal', 'let r = /a/g; r.lastIndex = 0', 0],
       ])('should allow %s', (_label, source, expected) => {
         expect(create(source, { user: userOf() })()).toEqual(expected);
       });

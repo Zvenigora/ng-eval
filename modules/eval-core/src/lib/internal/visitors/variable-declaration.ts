@@ -60,11 +60,12 @@ const bindingScope = (st: EvalState): Context => {
  * `pattern.ts` rather than of this module's contract with it.
  *
  * The write itself dispatches through `setContextValue`, not through
- * `safeSetProperty`. `safeSetProperty` finishes with `Object.defineProperty`,
- * which suits the plain records `pattern.ts` builds and **not** a scope: a
- * `caseInsensitive` scope is a Map-backed `Registry`, and defining a property
- * on the instance inserts nothing into its map. The binding would be written
- * and then not found, silently, for that option only.
+ * `safeSetProperty`. `safeSetProperty` writes a property onto the object it is
+ * given - by assignment since 0.10.0, by `Object.defineProperty` before - which
+ * suits the plain records `pattern.ts` builds and **not** a scope: a
+ * `caseInsensitive` scope is a Map-backed `Registry`, and setting a property on
+ * the instance, either way, inserts nothing into its map. The binding would be
+ * written and then not found, silently, for that option only.
  */
 const bindDeclarator = (declarator: VariableDeclarator,
   value: unknown,

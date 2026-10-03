@@ -16,10 +16,11 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [0.10.0] - 2026-10-03
 
-**An opt-in member-write policy on `EvalContext`, and two fixes.** Nothing changes for a context
+**An opt-in member-write policy on `EvalContext`, and three fixes.** Nothing changes for a context
 that does not opt in, and every change to an exported symbol is an addition: `EvalContext` gains
-an optional method and `EvalMemberWrite` is new. The two fixes change what an expression evaluates to, where it
-was wrong. `eval-signals` 0.3.0 builds on the policy and requires this version.
+an optional method and `EvalMemberWrite` is new. The three fixes change what an expression
+evaluates to, where it was wrong, and one of them adds a behaviour: a member write now runs the
+caller's setter. `eval-signals` 0.3.0 builds on the policy and requires this version.
 
 ### Added
 - **`EvalContext.checkMemberWrite?(write: EvalMemberWrite)`**, an optional method, and the
@@ -43,6 +44,16 @@ was wrong. `eval-signals` 0.3.0 builds on the policy and requires this version.
   so every element after one read its neighbour's value: `let [, b] = [1, 2]` bound `b` to `1`,
   `(([, y]) => y)([1, 2])` returned `1`, and `let [, ...r] = [1, 2, 3]` bound `r` to
   `[1, 2, 3]`. They now bind as JavaScript does: `2`, `2` and `[2, 3]`.
+- **A member write assigns, as JavaScript does — [A23](../../docs/backlog-retired.md#a23).**
+  `o.k = v`, `o.k += v` and `o.k++` defined the property with `Object.defineProperty` instead, after
+  the same prototype-pollution refusals, which are unchanged. So `r.lastIndex = 0` on a regex and
+  `a.length = 0` on an array threw `Failed to set property … Cannot redefine property`, as did any
+  non-configurable property; a non-enumerable property became enumerable; and a setter on the
+  object you passed in was replaced, or an inherited one hidden, without ever running. Now each
+  is an assignment. **Setters now run, and that is the only new behaviour**: reads already ran
+  your getters, and a write already ran the getter, reading its target first. A write the object
+  refuses — frozen, non-writable, an accessor with no setter — throws, prefixed
+  `Failed to set property`, where an accessor with no setter used to be silently replaced.
 
 ---
 

@@ -433,9 +433,10 @@ describe('variableDeclarationVisitor', () => {
      * **The detector for § 3.2's guard/dispatch split.** `EvalContext.push` routes
      * through `fromContext`, which copies a plain record into a `Registry` when
      * `caseInsensitive` is set - and a `Registry` is Map-backed. A binding write
-     * that finished with `Object.defineProperty`, as `safeSetProperty` does,
-     * would define a property on the registry *instance* and insert nothing into
-     * its map, so the binding would be written and then not found.
+     * that went through `safeSetProperty` - an assignment since 0.10.0, an
+     * `Object.defineProperty` before - would set a property on the registry
+     * *instance* and insert nothing into its map, so the binding would be
+     * written and then not found.
      *
      * Every other case in this file is case-**sensitive**, and every one of them
      * passes against that implementation: a plain-record scope takes the
