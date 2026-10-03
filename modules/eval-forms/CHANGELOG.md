@@ -10,6 +10,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.2.7] - 2026-10-02
+
+Released because `eval-core` 0.9.0 falls outside 0.2.6's declared peer range. No code in this
+package changes.
+
+### Changed
+- **Peer range widened.** `@zvenigora/ng-eval-core`: `>=0.3.0 <0.9.0` → `>=0.3.0 <0.10.0`. The
+  lower bound is unchanged. `@zvenigora/ng-eval-signals` stays `>=0.1.0 <0.3.0`, which already
+  admits 0.2.1. The `peerDependencies` block quoted in the README shows the new range.
+- **With `eval-core` 0.9.0, a rule expression that reads `constructor`, `__proto__`,
+  `prototype` or one of the four accessor definers off a string, number or boolean is refused
+  by `eval-core`**, as a member read off an object already was. Nothing in this package reads
+  one of those names off a primitive, so its own behaviour is unchanged, and the README's bound
+  — a member expression is `eval-core`'s guard's business — still describes it.
+
+---
+
 ## [0.2.6] - 2026-10-02
 
 Released because `eval-core` 0.8.0 and `eval-signals` 0.2.0 both fall outside 0.2.5's declared

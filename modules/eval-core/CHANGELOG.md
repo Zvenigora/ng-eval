@@ -14,6 +14,34 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ---
 
+## [0.9.0] - 2026-10-02
+
+**A primitive receiver no longer skips the prototype-pollution guard —
+[B1](../../docs/backlog-retired.md#b1).** A breaking minor. No exported symbol changes shape, but an
+expression that read one of seven names off a string, number or boolean now throws.
+`eval-signals` 0.2.1 and `eval-forms` 0.2.7 widen their peer ranges to admit it.
+
+### Breaking
+- **A string, number or boolean receiver is refused `constructor`, `__proto__`, `prototype`,
+  `__defineGetter__`, `__defineSetter__`, `__lookupGetter__` and `__lookupSetter__`**, by dot or
+  computed access, with or without `caseInsensitive`, with the error any other blocked name
+  throws: `Access to dangerous property "constructor" is blocked for security reasons`. Why: the
+  member visitor skipped the guard entirely for a primitive receiver, so `s.constructor` handed
+  back the global `String` function — callable, `s.constructor("x")` — and `s.__proto__` handed
+  back `String.prototype`, with `n.__proto__.toFixed.call(1.5, 0)` running off it. No escalation
+  past that was found (every second hop to a dangerous name was already refused, and so was every
+  write to a built-in prototype), but nothing an expression needs from a primitive goes through
+  its constructor or its prototype.
+- **Kept readable on a primitive:** `toString`, `valueOf`, `toLocaleString`, `hasOwnProperty`,
+  `isPrototypeOf` and `propertyIsEnumerable`. They are on the blocklist for objects, but on a
+  primitive they are ordinary reads — `s.toString()`, `n.toLocaleString()`,
+  `s.hasOwnProperty("length")` work as before, as do `s.length` and `s.toUpperCase()`.
+- **A case variant is not refused.** The names are matched exactly, and a primitive receiver is
+  never case-corrected, so under `caseInsensitive` `s.CONSTRUCTOR` is a missing property and
+  evaluates to `undefined`, as it did in 0.8.0.
+
+---
+
 ## [0.8.0] - 2026-10-02
 
 **`EvalContext.getKey` resolves through `get`'s own chain —

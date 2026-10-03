@@ -10,6 +10,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.2.1] - 2026-10-02
+
+Released because `eval-core` 0.9.0 falls outside 0.2.0's declared peer range. No code in this
+package changes.
+
+### Changed
+- **Peer range widened** to admit `@zvenigora/ng-eval-core` 0.9.0:
+  `>=0.3.0 <0.9.0` → `>=0.3.0 <0.10.0`. The lower bound is unchanged. The README's
+  peer-dependency line states the new range.
+- **With `eval-core` 0.9.0, an expression that reads `constructor`, `__proto__`, `prototype` or
+  one of the four accessor definers off a string, number or boolean is refused** — over a
+  signal holding `'abc'`, `name.constructor` now throws where it returned `String`. Nothing in
+  this package reads one of those names off a primitive, so its own behaviour is unchanged.
+
+---
+
 ## [0.2.0] - 2026-10-02
 
 **Under `caseInsensitive`, a source key is named as the source spells it —
