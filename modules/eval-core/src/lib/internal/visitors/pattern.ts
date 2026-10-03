@@ -31,11 +31,18 @@ const unsupportedBindingTarget = (type: string): never => {
   throw new Error(`${type} is not supported as a binding target.`);
 }
 
-export const evaluatePatterns = (patterns: Pattern[], st: EvalState, callback: walk.WalkerCallback<EvalState>, args: unknown[]) => {
+export const evaluatePatterns = (patterns: (Pattern | null)[], st: EvalState, callback: walk.WalkerCallback<EvalState>, args: unknown[]) => {
 
   let context: BaseContext = {};
 
   patterns.map((pattern, i) => {
+    // A hole - the elision in `[, b]` - binds nothing, and is skipped *here*
+    // so that every pattern after it keeps its own index into `args`, the
+    // rest's `args.slice(i)` included. Only an array pattern can hold one: a
+    // parameter list with a hole does not parse.
+    if (pattern === null) {
+      return;
+    }
     switch (pattern.type) {
       case 'Identifier': {
           const object = evaluateIdentifier(pattern, st, args[i]);
@@ -265,9 +272,11 @@ const evaluateObjectPattern = (pattern: ObjectPattern, st: EvalState, callback: 
   return context;
 }
 
+// The elements go through with their holes in place. Filtering them out first
+// - which this did up to 0.9.0 - renumbered every element after a hole, so
+// `let [, b] = [1, 2]` bound `b` to 1.
 const evaluateArrayPattern = (pattern: ArrayPattern, st: EvalState, callback: walk.WalkerCallback<EvalState>, args: unknown[]) => {
-  const patterns = pattern.elements.filter(s => !!s) as Pattern[];
-  const object = evaluatePatterns(patterns, st, callback, args);
+  const object = evaluatePatterns(pattern.elements, st, callback, args);
   return object;
 }
 

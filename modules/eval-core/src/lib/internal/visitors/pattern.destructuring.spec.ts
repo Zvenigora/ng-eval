@@ -300,3 +300,35 @@ describe('object destructuring binds the JavaScript names', () => {
     });
   });
 });
+
+/**
+ * A hole in an array pattern - `[, b]` - keeps its position, as in JavaScript.
+ *
+ * `evaluateArrayPattern` filtered holes out before binding by index, so every
+ * element after one read its neighbour's value: `let [, b] = [1, 2]` bound `b`
+ * to 1. Each expected value below is JavaScript's own, and each differs from
+ * what the filter produced, so no row passes on the old code by accident.
+ *
+ * Declarations and arrow parameters only: an array pattern as an assignment
+ * target - `[, b] = arr` - is rejected by the assignment visitor
+ * (`docs/backlog-retired.md` A2), and a parameter list cannot hold a hole.
+ */
+describe('array destructuring keeps a hole\'s position', () => {
+
+  it.each([
+    ['a leading hole, through a declaration', 'let [, b] = [1, 2]; b', 2],
+    ['an inner hole, through a declaration', 'let [a, , c] = [1, 2, 3]; c', 3],
+    ['a leading hole, through an arrow parameter', '(([, y]) => y)([1, 2])', 2],
+    ['a nested pattern\'s hole', 'let [[, x]] = [[1, 2]]; x', 2],
+  ])('should bind past %s', (_label, source, expected) => {
+    expect(run(source)).toBe(expected);
+  });
+
+  it('should start a rest after a hole at the hole\'s index', () => {
+    expect(run('let [, ...r] = [1, 2, 3]; r')).toEqual([2, 3]);
+  });
+
+  it('should still bind the element before an inner hole', () => {
+    expect(run('let [a, , c] = [1, 2, 3]; a')).toBe(1);
+  });
+});
