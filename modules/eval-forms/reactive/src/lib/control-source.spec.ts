@@ -616,11 +616,13 @@ describe('createControlSource', () => {
     describe.each([
       ['a FormGroup', (): AbstractControl => new FormGroup({ city: new FormControl('Rome') })],
       ['a FormArray', (): AbstractControl => new FormArray([new FormControl('a')])],
-    ])('%s added later', (_label, make) => {
+    ])('%s added or swapped in later', (_label, make) => {
 
-      const message =
-        "Control 'address' is not a FormControl. Nested groups and FormArrays are " +
+      const refusal = (name: string): string =>
+        `Control '${name}' is not a FormControl. Nested groups and FormArrays are ` +
         'out of scope for this phase.';
+
+      const message = refusal('address');
 
       it('should leave addControl returning normally, and report it once', async () => {
         const form = group();
@@ -666,6 +668,101 @@ describe('createControlSource', () => {
         expect(Object.prototype.hasOwnProperty.call(source, 'age')).toEqual(false);
         expect(Object.prototype.hasOwnProperty.call(source, 'region')).toEqual(true);
         expect(unhandled).toHaveLength(1);
+      });
+
+      /**
+       * The same refusal for one `setControl` swaps in under a key the mirror
+       * already holds. The replaced branch used to re-point the channel at
+       * whatever arrived, so the key went on being mirrored - as the group's
+       * aggregate value.
+       */
+      describe('swapped in by setControl', () => {
+
+        it('should leave setControl returning normally, and report it once', async () => {
+          const form = group();
+          createControlSource(form, { injector });
+
+          expect(() => form.setControl('country', make())).not.toThrow();
+
+          await settle();
+          expect(messages()).toEqual([refusal('country')]);
+        });
+
+        it('should stop mirroring the key, and apply the rest of the same emission', async () => {
+          const form = group();
+          const source = createControlSource(form, { injector });
+          const dead = form.controls['country'];
+          const age = new FormControl(41);
+          const region = new FormControl('west');
+
+          // One emission, for the reason the prototype-name row gives. And
+          // `country` is the first key the diff visits, so a refusal thrown
+          // where it is found would leave both changes after it unapplied.
+          form.setControl('country', make(), { emitEvent: false });
+          form.setControl('age', age, { emitEvent: false });
+          form.addControl('region', region, { emitEvent: false });
+          form.markAsTouched();
+
+          expect(Object.prototype.hasOwnProperty.call(source, 'country')).toEqual(false);
+          expect(observers(dead)).toEqual(0);
+          expect(source['age']).toEqual(41);
+          expect(observers(age)).toEqual(1);
+          expect(Object.prototype.hasOwnProperty.call(source, 'region')).toEqual(true);
+          expect(observers(region)).toEqual(1);
+
+          await settle();
+          expect(messages()).toEqual([refusal('country')]);
+        });
+
+        it('should keep diffing later emissions, without reporting it again', async () => {
+          const form = group();
+          const source = createControlSource(form, { injector });
+
+          form.setControl('country', make());
+          await settle();
+          expect(unhandled).toHaveLength(1);
+
+          form.removeControl('age');
+          form.addControl('region', new FormControl('west'));
+          await settle();
+
+          expect(Object.prototype.hasOwnProperty.call(source, 'age')).toEqual(false);
+          expect(Object.prototype.hasOwnProperty.call(source, 'region')).toEqual(true);
+          expect(unhandled).toHaveLength(1);
+        });
+
+        it('should mirror the key again once a FormControl is swapped back', () => {
+          const form = group();
+          const source = createControlSource(form, { injector });
+
+          form.setControl('country', make());
+
+          // Guards the setup: "again" needs the key to have stopped first, and
+          // against a mirror that re-points whatever arrives the rest of this
+          // case passes without it.
+          expect(Object.prototype.hasOwnProperty.call(source, 'country')).toEqual(false);
+
+          const back = new FormControl('FR');
+          form.setControl('country', back);
+
+          expect(source['country']).toEqual('FR');
+          expect(observers(back)).toEqual(1);
+        });
+
+        it('should report it afresh when it is swapped in again after that', async () => {
+          // Mirrored again ends the refusal, so the next swap is a new one. A
+          // name kept in the reported set across it would be refused here with
+          // nothing reported - the silence D1 exists to end.
+          const form = group();
+          createControlSource(form, { injector });
+
+          form.setControl('country', make());
+          form.setControl('country', new FormControl('FR'));
+          form.setControl('country', make());
+
+          await settle();
+          expect(messages()).toEqual([refusal('country'), refusal('country')]);
+        });
       });
     });
   });

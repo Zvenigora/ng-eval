@@ -230,8 +230,9 @@ const validate = (schema: readonly FieldSchema[], group: FormGroup): void => {
   // every field's context, where an expression finds it.
   //
   // This pass runs once. A control added later reaches the mirror's `sync`
-  // instead, which since 0.3.0 makes both checks below: it does not mirror
-  // such a control, and throws the same message at the end of the diff
+  // instead, which since 0.3.0 makes both checks below - and the class check
+  // for one `setControl` swaps in: it does not mirror such a control, and
+  // throws the same message at the end of the diff
   // (`docs/backlog-retired.md` D1). That throw is not the binding's - it
   // leaves the `group.events` subscriber, which rxjs reports out of band while
   // the subscription and the diffing carry on; the premise once written here,

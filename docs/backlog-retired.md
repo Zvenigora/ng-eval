@@ -2135,13 +2135,40 @@ case and not the next. `eval-forms` 280 → 284.
 refused on the same path**, with construction's `Control '…' is not a FormControl …` message —
 not mirrored, reported once, thrown after the rest of the emission. The two messages and their
 predicates now live together in a module-private `control-refusals.ts`; a late control is checked
-in construction's order, the name first. A key that already has a channel is not re-checked, so
-`setControl` replacing a mirrored control with a group still re-points it. Lifting flat-only is
-still [E2](backlog.md#e2)'s. Specs (6): the report-once, same-emission and later-emissions rows,
-for a late `FormGroup` and a late `FormArray`; `eval-forms` 292 → 298. Probes, each reverted: the
-class check dropped, 6 failed — all six rows, the prototype-name rows green; a late group mirrored
-anyway, still reported, 2 — the two "not mirrored" rows; a late group reported on every emission,
-4 — "report once" and "not again" for each, the single-emission rows green.
+in construction's order, the name first. A key that already had a channel was not re-checked at
+first, so `setControl` replacing a mirrored control with a group still re-pointed it; that was
+closed the same day, below. Lifting flat-only is still [E2](backlog.md#e2)'s. Specs (6): the
+report-once, same-emission and later-emissions rows, for a late `FormGroup` and a late
+`FormArray`; `eval-forms` 292 → 298. Probes, each reverted: the class check dropped, 6 failed —
+all six rows, the prototype-name rows green; a late group mirrored anyway, still reported, 2 —
+the two "not mirrored" rows; a late group reported on every emission, 4 — "report once" and "not
+again" for each, the single-emission rows green.
+
+**And swapped in, 2026-10-03, for the same release: a nested `FormGroup` or `FormArray` that
+`setControl` swaps in for a mirrored control is refused on the same path.** `sync`'s replaced
+branch used to re-point the channel at whatever arrived, so the key went on being mirrored as
+the group's aggregate value. Now a replacement that is not a `FormControl` closes the key, as a
+removal does, and the loop over unmirrored controls then refuses it exactly as an added one —
+construction's `is not a FormControl` message, reported once, thrown after the rest of the
+emission. A `FormControl` swapped back later is mirrored again, and since mirroring a name now
+also takes it out of the reported set, a group swapped in after that is reported afresh: kept in
+the set, it would have been refused with nothing reported. Specs (10), for a `FormGroup` and a
+`FormArray` each: `setControl` returns and the refusal is reported once; the key stops being
+mirrored while a second `setControl` and an `addControl` in the **same emission** are applied —
+`country`, the swapped key, is the first the diff visits; later emissions diff without a second
+report; a `FormControl` swapped back is mirrored again, behind a setup guard that the key had
+stopped; and a second swap after that is reported afresh. `eval-forms` 298 → 308. Probes, each
+reverted:
+
+| Probe | Failed | Which |
+| ----- | -----: | ----- |
+| The check dropped — the replaced branch re-points whatever arrives | 10 | all ten rows |
+| The key kept mirrored, still reported once | 4 | the two "stops being mirrored" rows, and the two swap-back rows at their setup guard |
+| A swapped-in refusal reported on every emission | 6 | "report once" (`setControl` fires two emissions), "not again" and "afresh" for each; the single-emission and swap-back rows green |
+| A refused name never mirrored again while it stays in the group | 4 | the swap-back and "afresh" rows for each |
+| Mirroring a name not taking it out of the reported set | 2 | the two "afresh" rows |
+
+The prototype-name and late-addition rows stayed green under every one.
 
 <a id="d2"></a>
 ## D2 — Should `/reactive` reject prototype-shadowed identifiers in expressions too?

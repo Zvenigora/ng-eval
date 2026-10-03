@@ -215,14 +215,14 @@ the second is worse: the control exists and its value is unreadable.
 **A control added later is checked too, for its name and its class.** Since 0.3.0, an
 `addControl` whose name is a member of `Object.prototype`, or whose control is a nested
 `FormGroup` or a `FormArray`, leaves the control unmirrored and the mirror reports it with the
-construction-time message above, once.
-That report is not a throw from `addControl`, which has already returned: the mirror runs in
-a `group.events` subscriber, so rxjs reports the error from a timer — to
+construction-time message above, once. A `setControl` that swaps a nested group or a
+`FormArray` in for a mirrored control is refused the same way: the key stops being mirrored,
+until a `FormControl` is swapped back.
+That report is not a throw from `addControl` or `setControl`, which has already returned: the
+mirror runs in a `group.events` subscriber, so rxjs reports the error from a timer — to
 `config.onUnhandledError` when one is set, otherwise by rethrowing it from that timer, where
 your host's global error handling receives it (rxjs 7.8.2's `reportUnhandledError`). The rest
-of that change is applied first, and later changes are still mirrored. A key the mirror already holds
-is not re-checked: `setControl` replacing a mirrored control with a nested group re-points it,
-and an expression then reads the group's aggregate value.
+of that change is applied first, and later changes are still mirrored.
 
 ### Expressions are validated too
 

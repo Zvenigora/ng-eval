@@ -60,7 +60,8 @@ interface ControlChannel {
  * signal. Building fresh ones would leave every property that had already read
  * the key tracking the *dead* control's signal - frozen at its last value, for
  * the life of the binding, which is the failure trap 5 exists to prevent
- * reappearing one layer up.
+ * reappearing one layer up. A replacement that is not a `FormControl` ends the
+ * key instead, as a removal does - see `sync`.
  *
  * **The returned record must be passed by reference, never spread or cloned.**
  * `{ ...source }` flattens the accessors to the values they happened to hold,
@@ -155,7 +156,8 @@ export const createControlSource = (
 
   // The controls `sync` has refused and reported, by name, so each is
   // reported once rather than on every later emission. A name leaves the set
-  // when its control leaves the group, so a later re-add is reported afresh.
+  // when its control leaves the group, or when a control under it is mirrored,
+  // so a later re-add or swap is reported afresh.
   const reported = new Set<string>();
 
   // Diffs the key -> instance map against the group's current controls
@@ -173,8 +175,9 @@ export const createControlSource = (
   // subscription stays open, so later emissions still diff. Measured on this
   // repo's rxjs before the change, with a throw forced out of `open`.
   //
-  // A key that already has a channel is not re-checked: `setControl` replacing
-  // a mirrored control with a group re-points the channel, as before.
+  // `setControl` swapping a nested group or a `FormArray` in for a mirrored
+  // control is refused the same way: the key is closed, then reported as an
+  // added one would be. A `FormControl` swapped back later is mirrored again.
   const sync = (): void => {
 
     const live = controls();
@@ -206,7 +209,11 @@ export const createControlSource = (
         continue;
       }
 
-      if (replacement === undefined) {
+      // Removed, or swapped by `setControl` for a control construction would
+      // have refused - a nested group or a `FormArray`. Either way the key
+      // closes, and a refused replacement is then met by the loop below
+      // exactly as an added one is, so it is reported there.
+      if (replacement === undefined || isNotFormControl(replacement)) {
         close(name, channel);
         continue;
       }
@@ -237,6 +244,7 @@ export const createControlSource = (
         continue;
       }
 
+      reported.delete(name);
       open(name, control);
     }
 

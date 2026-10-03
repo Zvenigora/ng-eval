@@ -17,8 +17,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 prototype-shadowed identifier, as `/signals` does ([D2](../../docs/backlog-retired.md#d2)).** A
 breaking minor: a rule that wrote a member of a control's value or of the `/signals` model now
 throws, a `/reactive` rule naming a member of `Object.prototype` now throws at bind time, a
-control added later under such a name, or as a nested group or `FormArray`, is refused rather
-than mirrored ([D1](../../docs/backlog-retired.md#d1)), and both peer floors rise.
+control added later under such a name, or added or swapped in as a nested group or `FormArray`,
+is refused rather than mirrored ([D1](../../docs/backlog-retired.md#d1)), and both peer floors
+rise.
 
 ### Breaking
 - **A member write into the form's data throws `SignalContextWriteError`**, in every mode, in
@@ -52,9 +53,10 @@ than mirrored ([D1](../../docs/backlog-retired.md#d1)), and both peer floors ris
   reports the error from a timer, after the rest of that change has been mirrored — to
   `config.onUnhandledError` when one is set, otherwise rethrown from the timer, where the host's
   global error handling receives it (rxjs 7.8.2's `reportUnhandledError`). Later changes are
-  mirrored as before. A nested `FormGroup` or a `FormArray` added later is refused the same way,
-  with construction's `Control '…' is not a FormControl …` message, where it used to be mirrored
-  as its aggregate value.
+  mirrored as before. A nested `FormGroup` or a `FormArray` added or swapped in later is refused
+  the same way, with construction's `Control '…' is not a FormControl …` message, where it used
+  to be mirrored as its aggregate value. A key `setControl` swaps one into stops being mirrored,
+  until a `FormControl` is swapped back.
 
 ### Added
 - **`guardIdentifiers(expression, node)`**, at the core entry point: the identifier guard both
