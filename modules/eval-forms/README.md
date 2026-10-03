@@ -638,14 +638,16 @@ Three bounds on the check, none of them obvious from the paragraph above:
   and it is the one thing `/reactive`'s control-name check catches that this does not.
 - **A *member* expression is not this check's business.** `user.constructor` goes to
   `@zvenigora/ng-eval-core`'s prototype-pollution guard, under the rules documented there.
-- **It refuses a name the expression *binds* itself and then reads.**
-  `'[1].map(valueOf => valueOf)'` throws at registration. That costs nothing: the expression
-  could never evaluate, because `@zvenigora/ng-eval-core` refuses to bind any of these names —
-  an arrow parameter or a `let` — and throws `Access to dangerous property "valueOf" is
-  blocked …` on every evaluation. Up to 0.2.x this bullet called the refusal an
-  over-rejection, saying the parameter would have resolved correctly; measured, it does not.
-  Rename the parameter. (`'[1].map(valueOf => 1)'` registers, because a binding that is never
-  referenced is not visited — and then throws that same error on every evaluation.)
+- **It refuses a name the expression *binds* itself, whether or not it reads it.**
+  `'[1].map(valueOf => valueOf)'` and `'[1].map(valueOf => 1)'` both throw at registration,
+  as do `'let toString = 1; 2'` and `'(({ valueOf }) => 1)({})'`. That costs nothing: the
+  expression could never evaluate, because `@zvenigora/ng-eval-core` refuses to bind any of
+  these names — an arrow parameter, a `let` or a destructured name — and throws `Access to
+  dangerous property "valueOf" is blocked …` on every evaluation. Up to 0.2.x this bullet
+  called the refusal an over-rejection, saying the parameter would have resolved correctly;
+  measured, it does not. And up to 0.2.x a name bound and never read registered, because the
+  walk did not visit a binding — then threw that same error on every evaluation. Rename the
+  binding.
 
 **`/reactive` makes the same check on its expressions**, since 0.3.0 — see
 [Expressions are validated too](#expressions-are-validated-too).

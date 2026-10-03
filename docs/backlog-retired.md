@@ -2262,8 +2262,9 @@ bind a name never worked either, and "no form that worked loses anything" holds 
 that reason, not the one first written. The same measurement retires the premise of the entry's
 third bullet above: refusing a name the expression binds itself is not an over-rejection, since the
 binding would not have resolved; `/signals`' README and `guardIdentifiers`' JSDoc said it would,
-and are corrected. `[1].map(valueOf => 1)` still registers at both entry points — the binding is
-never visited — and throws that error on every evaluation, measured at this release's head.
+and are corrected. `[1].map(valueOf => 1)` still registered at both entry points when this was
+written — the binding was never visited — and threw that error on every evaluation; it has been
+refused since, below.
 
 *Fixed* 2026-10-03. Specs, in `field-schema.spec.ts` (11): `constructor` refused under `visible`
 and under `text`; the message names the expression and the identifier; `__lookupGetter__`, one of
@@ -2281,6 +2282,31 @@ assert that both throw. `eval-forms` 269 → 280.
 | ----- | -----: | ----- |
 | The call in `validate` removed | 7 | the six new refusal rows and the README pair; the accepted rows and the two migration rows (name checks) stay green |
 | The seven names hard-coded in place of the predicate | 2 | the "seven omit" row at each entry point: `__lookupGetter__` under `/reactive`, `__defineGetter__` under `/signals` |
+
+**Extended 2026-10-03, for the same release: the guard checks binding names too.** `acorn-walk`
+hands a binding to a visitor as a `VariablePattern`, never as an `Identifier` — `base.Pattern`
+re-dispatches a bare name under that type for a parameter, a declarator, a destructured name and
+an assignment target — and `guardIdentifiers` registered only `Identifier`. So a name bound and
+never read was never seen: measured at f05ced9, before the change, `[1].map(valueOf => 1)`,
+`let toString = 1; 2` and `(({ valueOf }) => 1)({})` each registered under `/signals` and bound
+under `/reactive`, and each threw `Access to dangerous property` on evaluation. The walk now
+registers the same predicate and message under `VariablePattern`, so the bound above — "a name
+the expression binds itself is refused" — holds as written, read or not, at both entry points.
+An assignment to such a name, `toString = 1`, was already refused at both by the read-only-key
+check; it now fails on the guard's message instead, which runs first. A destructuring *key*,
+`({ valueOf: v }) => …`, is still not seen: it is not a binding.
+
+Specs (6 new, and 3 changed): the three expressions above refused, naming the identifier, in
+`guard-identifiers.spec.ts` and in `field-schema.spec.ts`. The accepted row `[1].map(valueOf =>
+1)` at each of those two is removed, and `readme-examples.spec.ts`'s pair, which asserted that it
+registered while `[1].map(valueOf => valueOf)` did not, now asserts that both throw — all three
+encoded the gap, and were changed as the fix's brief directed. `eval-forms` 308 → 312. Probes,
+each reverted, against the whole `eval-forms` suite:
+
+| Probe | Failed | Which |
+| ----- | -----: | ----- |
+| The `VariablePattern` visitor dropped | 7 | the six new rows and the README pair, whose second half now asserts the refusal |
+| The `VariablePattern` visitor refusing every binding, predicate ignored | 8 | existing rows that bind or assign an ordinary name — seven write-violation rows across both entry points, and `/reactive`'s per-field context row, whose arrow binds `country`; the new rows stay green |
 
 <a id="d4"></a>
 ## D4 — A top-level model key holding a signal is returned un-called

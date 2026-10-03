@@ -236,25 +236,25 @@ describe('documented examples - /signals', () => {
         .toThrow(/identifier 'constructor' is a member of Object\.prototype/);
     });
 
-    it('should reject a bound parameter it could have resolved, and accept an unreferenced one', () => {
-      // The README's parenthetical pair, and they are one case because the
-      // claim is the *difference*: a hand-rolled scan over every node would
-      // reject both, so asserting only the throwing half would be equally
-      // true of the implementation the README says this is not.
+    it('should reject a bound parameter, whether or not the expression reads it', () => {
+      // The README's pair, in one case because up to 0.2.x the two differed:
+      // a binding is a `VariablePattern` to `acorn-walk`, so one never read was
+      // never seen, and the second registered - then threw on every
+      // evaluation, as `eval-core` refuses to bind the name.
       const m = model();
       const rules = createExpressionRules(m);
 
-      const rejected = schema<Order>((p) => {
+      const read = schema<Order>((p) => {
         rules.evalVisible(p.state, '[1].map(valueOf => valueOf)');
       });
 
-      expect(() => buildForm(m, rejected)).toThrow(/identifier 'valueOf'/);
+      expect(() => buildForm(m, read)).toThrow(/identifier 'valueOf'/);
 
-      const accepted = schema<Order>((p) => {
+      const unread = schema<Order>((p) => {
         rules.evalVisible(p.state, '[1].map(valueOf => 1)');
       });
 
-      expect(() => buildForm(model(), accepted)).not.toThrow();
+      expect(() => buildForm(model(), unread)).toThrow(/identifier 'valueOf'/);
     });
 
     it('should leave a member expression to eval-core', () => {

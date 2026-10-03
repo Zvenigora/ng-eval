@@ -100,14 +100,29 @@ describe('guardIdentifiers', () => {
 
     // S 3.8.1's decision, and the arm that separates the two implementations
     // revision 8 left undecided: a scope-aware guard passes every other case
-    // in this file. S 3.8.1 called the refusal an over-rejection, reasoning
-    // that a bound `valueOf` shadows `Object.prototype`. Measured 2026-10-03,
+    // in this file but the three below. S 3.8.1 called the refusal an
+    // over-rejection, reasoning that a bound `valueOf` shadows
+    // `Object.prototype`. Measured 2026-10-03,
     // it does not get that far - `eval-core` refuses to bind the name and the
     // expression throws on every evaluation (`docs/backlog-retired.md` D2) -
     // so the guard moves that failure to registration, and rejects nothing that
     // worked.
     it('should throw on a name the expression binds itself', () => {
       expect(buildWith('evalVisible', '[1].map(valueOf => valueOf)')).toThrow(/valueOf/);
+    });
+
+    // The same names bound and never read. `acorn-walk` reports a binding as a
+    // `VariablePattern`, never as an `Identifier`, so until 0.3.0 the guard did
+    // not see one and each of these registered - then threw `Access to
+    // dangerous property` on every evaluation, `eval-core`'s refusal to bind
+    // the name (`docs/backlog-retired.md` D2). An arrow parameter, a `let`,
+    // and a destructured name: three of `base.Pattern`'s routes to it.
+    it.each([
+      ['[1].map(valueOf => 1)', 'valueOf'],
+      ['let toString = 1; 2', 'toString'],
+      ['(({ valueOf }) => 1)({})', 'valueOf'],
+    ])('should throw on %s, which binds a name it never reads', (expression, name) => {
+      expect(buildWith('evalVisible', expression)).toThrow(`identifier '${name}'`);
     });
   });
 
@@ -132,16 +147,6 @@ describe('guardIdentifiers', () => {
     // would, and would fail here.
     it('should register a member expression naming a shadowed property', () => {
       expect(buildWith('evalVisible', 'user.constructor')).not.toThrow();
-    });
-
-    // A property of the borrowed walker rather than a decision (S 3.8.1):
-    // `base.Function` walks parameters under the "Pattern" override, which
-    // `simple` suppresses, so a **binding** is never visited as an
-    // `Identifier` while a **reference** is. Pinned so that a hand-rolled
-    // scan - which rejects both this and the throwing case above - fails the
-    // step rather than shipping.
-    it('should register a bound name that is never referenced', () => {
-      expect(buildWith('evalVisible', '[1].map(valueOf => 1)')).not.toThrow();
     });
   });
 

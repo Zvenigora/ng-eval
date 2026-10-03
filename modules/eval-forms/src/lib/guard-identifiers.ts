@@ -37,16 +37,17 @@ import { simple } from 'acorn-walk';
  * every other criterion of this step, which is why one of the other five is
  * asserted.
  *
- * **A name the expression binds itself is refused when it is read, and that
- * refuses nothing that worked.** `'[1].map(valueOf => valueOf)'` throws here.
- * S 3.8.1 called this a deliberate over-rejection, on the ground that the
- * arrow's own frame shadows the prototype and would resolve correctly; it
- * would not. `eval-core` refuses to bind any of these names - an arrow
- * parameter or a `let` - and throws `Access to dangerous property` on every
- * evaluation (measured 2026-10-03, `docs/backlog-retired.md` D2), so the
- * expression never produced a value. What this guard changes is *when* it
- * fails: at registration, naming the identifier, rather than at every
- * evaluation, where a default policy renders a blank.
+ * **A name the expression binds itself is refused, read or not, and that
+ * refuses nothing that worked.** `'[1].map(valueOf => valueOf)'` and
+ * `'[1].map(valueOf => 1)'` both throw here. S 3.8.1 called this a deliberate
+ * over-rejection, on the ground that the arrow's own frame shadows the
+ * prototype and would resolve correctly; it would not. `eval-core` refuses to
+ * bind any of these names - an arrow parameter, a `let` or a destructured
+ * name - and throws `Access to dangerous property` on every evaluation
+ * (measured 2026-10-03, `docs/backlog-retired.md` D2), so the expression never
+ * produced a value. What this guard changes is *when* it fails: at
+ * registration, naming the identifier, rather than at every evaluation, where
+ * a default policy renders a blank.
  *
  * **`acorn-walk`'s `simple`, borrowed rather than hand-rolled** (S 0.1) - the
  * same package `eval-core` walks with. Two of its properties are load-bearing
@@ -56,13 +57,15 @@ import { simple } from 'acorn-walk';
  *   so `user.constructor` is **not** seen as an `Identifier`. That is
  *   `eval-core`'s prototype-pollution guard's business and the stated upper
  *   bound of this one;
- * - `base.Function` walks parameters under the `"Pattern"` override, which
- *   `simple` suppresses, so a **binding** is never visited while a
- *   **reference** is. `'[1].map(valueOf => 1)'` therefore registers - and
- *   then fails at every evaluation, on `eval-core`'s refusal to bind the name.
+ * - a **binding** reaches a visitor as a `VariablePattern`, never as an
+ *   `Identifier`: `base.Pattern` re-dispatches a bare name under that type,
+ *   for a parameter, a declarator, a destructured name and an assignment
+ *   target alike. So the predicate is registered under both. With the
+ *   `Identifier` visitor alone, as until 0.3.0, `'[1].map(valueOf => 1)'`
+ *   registered - and then failed at every evaluation.
  *
- * A hand-rolled scan over every node would reject both, which is the
- * difference the borrow is checked at.
+ * A hand-rolled scan over every node would reject `user.constructor` too,
+ * which is the difference the borrow is checked at.
  *
  * @param expression the source, named in the message so an author can tell
  * which of a schema's rules to fix
@@ -92,17 +95,25 @@ export const guardIdentifiers = (expression: string, node: ReturnType<typeof par
     return;
   }
 
-  simple(node, {
-    Identifier(identifier) {
-      if (Object.prototype.hasOwnProperty.call(Object.prototype, identifier.name)) {
-        throw new Error(
-          `Expression '${expression}': identifier '${identifier.name}' is a member of ` +
-          `Object.prototype and cannot be resolved reliably: it reads the prototype's ` +
-          `value whenever the model holds no such key, so the rule sees a function - ` +
-          `which is truthy - rather than the absence it was written for. Rename the ` +
-          `model key, or the parameter that binds it.`
-        );
-      }
-    },
-  });
+  const check = (identifier: { name: string }): void => {
+    if (Object.prototype.hasOwnProperty.call(Object.prototype, identifier.name)) {
+      throw new Error(
+        `Expression '${expression}': identifier '${identifier.name}' is a member of ` +
+        `Object.prototype and cannot be resolved reliably: it reads the prototype's ` +
+        `value whenever the model holds no such key, so the rule sees a function - ` +
+        `which is truthy - rather than the absence it was written for. Rename the ` +
+        `model key, or the parameter that binds it.`
+      );
+    }
+  };
+
+  // A reference reaches `simple` as an `Identifier` and a binding as a
+  // `VariablePattern`, so the one predicate is registered under both.
+  //
+  // Built apart from the call, not inline: `acorn-walk` dispatches
+  // `VariablePattern` to a visitor of that name, but its `SimpleVisitors` type
+  // omits the key, and the excess-property check rejects it in a literal.
+  const visitors = { Identifier: check, VariablePattern: check };
+
+  simple(node, visitors);
 };

@@ -561,10 +561,20 @@ describe('bindFieldProperties', () => {
       expect(bindWith('visible', '[1].map(valueOf => valueOf)')).toThrow(/valueOf/);
     });
 
+    // Bound and never read: a `VariablePattern` to `acorn-walk`, not an
+    // `Identifier`, so until 0.3.0 the guard never saw one. Each bound here and
+    // threw on every evaluation, `eval-core`'s refusal to bind the name.
+    it.each([
+      ['[1].map(valueOf => 1)', 'valueOf'],
+      ['let toString = 1; 2', 'toString'],
+      ['(({ valueOf }) => 1)({})', 'valueOf'],
+    ])('should reject %s, which binds a name it never reads', (expression, name) => {
+      expect(bindWith('visible', expression)).toThrow(`identifier '${name}'`);
+    });
+
     it.each([
       ['a differently cased name', 'CONSTRUCTOR'],
       ['a member expression, which is eval-core\'s guard', 'country.constructor'],
-      ['a bound name that is never referenced', '[1].map(valueOf => 1)'],
     ])('should accept %s', (_label, expression) => {
       expect(bindWith('visible', expression)).not.toThrow();
     });

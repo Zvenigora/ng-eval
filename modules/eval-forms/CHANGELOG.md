@@ -44,7 +44,10 @@ rise.
   already refused. One that *binds* such a name bound at `bindFieldProperties` but threw on
   every evaluation — `eval-core` refuses to bind those names — which the default `onError`
   rendered as a blank. What changes for both is that the schema now fails at bind time instead;
-  for the second kind, rename the binding.
+  for the second kind, rename the binding. `/signals` refuses these bindings at registration
+  too, since the guard is shared — including one never read, such as `[1].map(valueOf => 1)`,
+  `let toString = 1; 2` or `(({ valueOf }) => 1)({})`, which used to register there and then
+  throw on every evaluation.
 - **A control added after `bindFieldProperties` under a name off `Object.prototype` is refused**
   — [D1](../../docs/backlog-retired.md#d1). Up to 0.2.7 the mirror took it in unchecked, though
   no expression could read it. Now it is not mirrored, and the mirror reports it with the
