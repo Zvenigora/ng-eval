@@ -332,6 +332,95 @@ describe('createEvalSignal', () => {
       expect(reader()).toEqual(1);
     });
 
+    /**
+     * A member write, through the factory. Measured on 0.2.x, every refused
+     * row below reached `user()` and mutated it (`docs/backlog-retired.md`
+     * C1); `signal-context.spec.ts` holds the same rows driven through
+     * `EvalService` with no factory in between.
+     */
+    describe('a member write', () => {
+
+      const userOf = () => signal({ name: 'Ada', n: 1, tags: ['a'] });
+
+      it.each([
+        ['an assignment', 'user.name = "Bob"'],
+        ['an update', 'user.n++'],
+        ['a write through a binding the expression declared', 'let u = user; u.name = "Bob"; u.name'],
+        ['a write inside an arrow body', '[user].map(u => (u.name = "Bob"))[0]'],
+      ])('should refuse %s into a signal value, and write nothing', (_label, source) => {
+        const user = userOf();
+        const value = create(source, { user });
+
+        expect(() => value()).toThrow(SignalContextWriteError);
+
+        expect(user()).toEqual({ name: 'Ada', n: 1, tags: ['a'] });
+      });
+
+      it('should raise a member error naming the property and the expression', () => {
+        const value = create('user.name = "Bob"', { user: userOf() });
+
+        let caught: unknown;
+        try {
+          value();
+        } catch (error) {
+          caught = error;
+        }
+
+        expect(caught).toBeInstanceOf(SignalContextWriteError);
+        expect((caught as SignalContextWriteError).kind).toEqual('member');
+        expect((caught as SignalContextWriteError).key).toEqual('name');
+        expect((caught as SignalContextWriteError).expression).toEqual('user.name = "Bob"');
+        expect((caught as SignalContextWriteError).message).toEqual(
+          "Cannot assign to member 'name' in expression 'user.name = \"Bob\"': "
+          + 'a signal expression may write only into objects it created.'
+        );
+
+        // Re-raised with the expression added and the kind carried over.
+        expect(((caught as SignalContextWriteError).cause as SignalContextWriteError).kind)
+          .toEqual('member');
+      });
+
+      it('should not let onError undefined swallow it', () => {
+        const value = create('user.name = "Bob"', { user: userOf() }, { onError: 'undefined' });
+
+        expect(() => value()).toThrow(SignalContextWriteError);
+      });
+
+      it.each([
+        ['a member of an object literal', 'let o = {}; o.a = 1; o.a', 1],
+        ['a loop over its own bindings', 'let t = 0; for (let i = 0; i < 3; i++) { t += i; } t', 3],
+      ])('should allow %s', (_label, source, expected) => {
+        expect(create(source, { user: userOf() })()).toEqual(expected);
+      });
+
+      it('should still refuse an assignment to the key itself, as a key error', () => {
+        const value = create('user = 1', { user: userOf() });
+
+        let caught: unknown;
+        try {
+          value();
+        } catch (error) {
+          caught = error;
+        }
+
+        expect(caught).toBeInstanceOf(SignalContextWriteError);
+        expect((caught as SignalContextWriteError).kind).toEqual('key');
+      });
+
+      /**
+       * KNOWN GAP - pinned as current behaviour, not endorsed
+       * (`docs/backlog.md` C4): a mutating method writes from native code and
+       * no member write is ever made.
+       */
+      it('should NOT refuse a mutating method call', () => {
+        const user = userOf();
+
+        expect(create('user.tags.push("x")', { user })()).toEqual(2);
+
+        expect(user().tags).toEqual(['a', 'x']);
+      });
+    });
+
   });
 
   describe('the injector option', () => {

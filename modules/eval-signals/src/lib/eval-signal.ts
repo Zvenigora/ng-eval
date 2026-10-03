@@ -229,7 +229,8 @@ export interface EvalSignalOptions {
  * to Angular's model rather than to this library.
  *
  * The context's keys are read-only: an assignment throws
- * {@link SignalContextWriteError}, and that error bypasses `onError` in every
+ * {@link SignalContextWriteError}, as does a write to a member of anything the
+ * expression did not create, and that error bypasses `onError` in every
  * mode. A write violation is a *static* property of the expression - illegal
  * on every recompute with every dataset - while `onError` exists so a
  * *runtime* failure can render a blank rather than break. Routing one through
@@ -429,7 +430,7 @@ export function createEvalSignal(
       return evaluate();
     } catch (error) {
       if (error instanceof SignalContextWriteError) {
-        throw new SignalContextWriteError(error.key, expression, error);
+        throw new SignalContextWriteError(error.key, expression, error, error.kind);
       }
       if (onError === 'undefined') {
         return undefined;

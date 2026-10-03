@@ -14,7 +14,7 @@ import {
 } from '../public-api';
 
 /** The ` ```ts ` fences in `modules/eval-signals/README.md`. */
-const README_TS_BLOCKS = 9;
+const README_TS_BLOCKS = 10;
 
 /** The ` ```sh ` fences in the same file. */
 const README_SH_BLOCKS = 2;
@@ -54,7 +54,8 @@ const README_SH_BLOCKS = 2;
  *    gave it its own declarations. See the defect note below.
  * 3. `## Contexts that are not signal-backed`.
  * 4. `## Lifetime`, the `PriceComponent` block.
- * 5. `## Writes are not supported`.
+ * 5. `## Writes are not supported`, both blocks - one case each: the key
+ *    write, and the spread copy written into.
  * 6. `## Async expressions`, its **first statement only**.
  * 7. `## Using the adapter directly`.
  *
@@ -256,6 +257,21 @@ describe('documented examples', () => {
           expect(error.expression).toBe('count = 5');
         }
       }
+    });
+
+    it('should write into a spread copy and leave the source alone', () => {
+      const user = signal({ name: 'Ada', tags: ['a'] });
+
+      const renamed = TestBed.runInInjectionContext(() =>
+        createEvalSignal('let u = { ...user }; u.name = "Bob"; u', { user })
+      );
+      expect(renamed()).toEqual({ name: 'Bob', tags: ['a'] });
+      expect(user()).toEqual({ name: 'Ada', tags: ['a'] });
+
+      const marked = TestBed.runInInjectionContext(() =>
+        createEvalSignal('let t = [...user.tags.map(s => s + "!")]; t[0] = "x"; t', { user })
+      );
+      expect(marked()).toEqual(['x']);
     });
   });
 

@@ -335,6 +335,29 @@ describe('createExpressionRules', () => {
       expect(() => f.city().metadata(TEXT)?.()).toThrow(SignalContextWriteError);
     });
 
+    it('should throw a member write into the model out of the field state, bypassing onError', () => {
+      // `eval-signals` 0.3.0 (`docs/backlog-retired.md` C1): a rule may write
+      // only into what it created, and `address` is the model's own object. Up
+      // to 0.2.x this mutated `model().address` from inside the derivation and
+      // the rule went on rendering. It reaches `applyErrorPolicy` as
+      // `SignalContextWriteError` - the original, since `eval-core` 0.7.0 no
+      // longer rewraps what a walk throws (A5/A6) - which rethrows it under an
+      // explicit handler.
+      const model = signal<Model>({ city: 'Boston', address: { name: 'Home' } });
+      const rules = createExpressionRules(model, { onError: () => 'handled' });
+
+      const f = buildForm(
+        model,
+        schema<Model>((p) => {
+          rules.evalVisible(p.city, 'address.name = "x"');
+        })
+      );
+
+      expect(() => f.city().hidden()).toThrow(SignalContextWriteError);
+
+      expect(model().address).toEqual({ name: 'Home' });
+    });
+
     it('should resolve an ordinary error per onError in evalDisabled too', () => {
       // The third registrar's policy path. Without `applyErrorPolicy` in the
       // body the throw would escape `f.zip().disabled()` and take the

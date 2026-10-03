@@ -411,33 +411,93 @@ describe('createSignalContext', () => {
     });
 
     /**
-     * KNOWN GAP - pinned as current behaviour, not endorsed. A fix has to
-     * update this spec deliberately, the way Phase 2 step 0b updated the
-     * arrow-scope cases above once `eval-core` fixed the leak they pinned
-     * (the `read-hooks.spec.ts` precedent for the `getKey` gaps). See the
-     * plan's S 3.6.4 and S 8 q6.
+     * A member write - a write *through* a context key rather than *to* one.
+     *
+     * Until 0.3.0 these two cases were pinned the other way round, as a known
+     * gap: `user.name = "Bob"` returned `'Bob'` and left `user()` mutated,
+     * because the member branch of each write visitor never calls `set`
+     * (`docs/backlog-retired.md` C1). They are changed deliberately, as Phase 2
+     * step 0b changed the arrow-scope cases above once the leak they pinned was
+     * fixed. `eval-core` 0.10.0 asks the context about each member write, and
+     * this context refuses one whose target the walk did not create.
+     *
+     * Driven straight through `EvalService`: the guard is the context's, so it
+     * holds for `createSignalContext` used standalone, with no factory and no
+     * recompute boundary in between.
      */
-    it('should NOT reject a write whose target is a member of a signal value', () => {
-      const user = signal({ name: 'Ada' });
-      const context = createSignalContext({ user });
+    describe('a member write', () => {
 
-      // The policy covers a write *to* a context key. This is a write
-      // *through* one: `assignment-expression.ts` takes its MemberExpression
-      // branch, which writes with `safeSetProperty` straight into the object
-      // the signal holds and never touches the context. No guard on the
-      // `EvalContext` can see it - the data is the consumer's, not ours.
-      expect(service.simpleEval('user.name = "Bob"', context)).toEqual('Bob');
+      const userOf = () => signal({ name: 'Ada', n: 1, tags: ['a'] });
 
-      expect(user()).toEqual({ name: 'Bob' });
-    });
+      it.each([
+        ['an assignment', 'user.name = "Bob"'],
+        ['an update', 'user.n++'],
+        ['a write through a binding the expression declared', 'let u = user; u.name = "Bob"; u.name'],
+        ['a write inside an arrow body', '[user].map(u => (u.name = "Bob"))[0]'],
+      ])('should refuse %s into a signal value, and write nothing', (_label, source) => {
+        const user = userOf();
+        const context = createSignalContext({ user });
 
-    it('should NOT reject an update whose target is a member either', () => {
-      const counter = signal({ n: 1 });
-      const context = createSignalContext({ counter });
+        expect(() => service.simpleEval(source, context)).toThrow(SignalContextWriteError);
 
-      expect(service.simpleEval('counter.n++', context)).toEqual(1);
+        expect(user()).toEqual({ name: 'Ada', n: 1, tags: ['a'] });
+      });
 
-      expect(counter()).toEqual({ n: 2 });
+      it('should raise a member error naming the property and no expression', () => {
+        const context = createSignalContext({ user: userOf() });
+
+        let caught: unknown;
+        try {
+          service.simpleEval('user.name = "Bob"', context);
+        } catch (error) {
+          caught = error;
+        }
+
+        expect(caught).toBeInstanceOf(SignalContextWriteError);
+        expect((caught as SignalContextWriteError).kind).toEqual('member');
+        expect((caught as SignalContextWriteError).key).toEqual('name');
+        expect((caught as SignalContextWriteError).message).toEqual(
+          "Cannot assign to member 'name': a signal expression may write only into objects it created."
+        );
+        expect((caught as SignalContextWriteError).expression).toBeUndefined();
+      });
+
+      it.each([
+        ['a member of an object literal', 'let o = {}; o.a = 1; o.a', 1],
+        ['a loop over its own bindings', 'let t = 0; for (let i = 0; i < 3; i++) { t += i; } t', 3],
+      ])('should allow %s', (_label, source, expected) => {
+        const context = createSignalContext({ user: userOf() });
+
+        expect(service.simpleEval(source, context)).toEqual(expected);
+      });
+
+      it('should still refuse an assignment to the key itself, as a key error', () => {
+        const context = createSignalContext({ user: userOf() });
+
+        let caught: unknown;
+        try {
+          service.simpleEval('user = 1', context);
+        } catch (error) {
+          caught = error;
+        }
+
+        expect(caught).toBeInstanceOf(SignalContextWriteError);
+        expect((caught as SignalContextWriteError).kind).toEqual('key');
+      });
+
+      /**
+       * KNOWN GAP - pinned as current behaviour, not endorsed
+       * (`docs/backlog.md` C4). A mutating method writes from native code, so
+       * no visitor sees a member write and the guard is never asked.
+       */
+      it('should NOT refuse a mutating method call', () => {
+        const user = userOf();
+        const context = createSignalContext({ user });
+
+        expect(service.simpleEval('user.tags.push("x")', context)).toEqual(2);
+
+        expect(user().tags).toEqual(['a', 'x']);
+      });
     });
 
     it('should name the key as the source spells it under caseInsensitive', () => {

@@ -1,5 +1,5 @@
 import { isSignal } from '@angular/core';
-import { EvalContext, EvalOptions } from '@zvenigora/ng-eval-core';
+import { EvalContext, EvalMemberWrite, EvalOptions } from '@zvenigora/ng-eval-core';
 import { warnOnNestedSignals } from './nested-signal-check';
 
 /**
@@ -9,14 +9,23 @@ import { warnOnNestedSignals } from './nested-signal-check';
  */
 export type SignalContextSource = Record<string, unknown>;
 
-const writeErrorMessage = (key: unknown, expression?: string): string =>
-  expression === undefined
-    ? `Cannot assign to '${String(key)}': the keys of a signal context are read-only.`
-    : `Cannot assign to '${String(key)}' in expression '${expression}': `
-      + `the keys of a signal context are read-only.`;
+const writeErrorMessage = (key: unknown, expression: string | undefined,
+  kind: 'key' | 'member'): string => {
+
+  const target = kind === 'member'
+    ? `member '${String(key)}'`
+    : `'${String(key)}'`;
+  const where = expression === undefined ? '' : ` in expression '${expression}'`;
+  const why = kind === 'member'
+    ? 'a signal expression may write only into objects it created.'
+    : 'the keys of a signal context are read-only.';
+
+  return `Cannot assign to ${target}${where}: ${why}`;
+};
 
 /**
- * Thrown when an expression assigns to a key of a signal context.
+ * Thrown when an expression assigns to a key of a signal context, or to a
+ * member of an object the expression did not create.
  *
  * The keys are read-only by design. An `AssignmentExpression` or
  * `UpdateExpression` against one would otherwise write into the context's
@@ -30,6 +39,11 @@ const writeErrorMessage = (key: unknown, expression?: string): string =>
  * would only be trading this error for `NG0600`; and a derived value that
  * mutates its own inputs does not have a stable value regardless of Angular.
  *
+ * **Since 0.3.0 a member write is refused too**, unless its target is an
+ * object the expression created - see {@link kind}. `user.name = 'Bob'` lands
+ * in the object the consumer's signal holds, which is the second reason above
+ * in its plainest form: the recompute mutates the input it was derived from.
+ *
  * The message is assembled by two layers, because neither knows both halves.
  * `createSignalContext` knows the key and is callable with no expression at
  * all; `createEvalSignal` knows the expression, and re-raises this error with
@@ -38,15 +52,32 @@ const writeErrorMessage = (key: unknown, expression?: string): string =>
 export class SignalContextWriteError extends Error {
 
   /**
-   * The key the expression tried to write.
+   * The key the expression tried to write: a key of the context when
+   * {@link kind} is `'key'`, the property name when it is `'member'` - `name`
+   * for `user.name = 'Bob'`, `0` for `list[0] = 1`.
    *
    * Under `caseInsensitive` the two visitors resolve the key through
    * `EvalContext.getKey` before writing, and since 0.2.0 a signal context
    * answers a source key with the **source's** spelling: `COUNT = 5` over
    * `{ count }` names `count`. Up to 0.1.x it was `undefined`, and the message
-   * named `'undefined'`.
+   * named `'undefined'`. A member's key is the spelling the target object
+   * holds, which the member visitor resolves.
    */
   readonly key: unknown;
+
+  /**
+   * Which policy refused the write.
+   *
+   * - `'key'` - an assignment to a key of the context, `count = 5`. The keys
+   *   are read-only.
+   * - `'member'` - an assignment to a member of an object the expression did
+   *   not create: anything it was given, or got back from a call.
+   *   `user.name = 'Bob'`, `user.n++`, `[user].map(u => (u.name = 'x'))`.
+   *   An object the expression created - an object, array or regex literal, a
+   *   rest value, an arrow function - may be written. Since 0.3.0; up to
+   *   0.2.x a member write was not refused at all.
+   */
+  readonly kind: 'key' | 'member';
 
   /** The source expression - present only when raised through `createEvalSignal`. */
   readonly expression?: string;
@@ -61,11 +92,14 @@ export class SignalContextWriteError extends Error {
    */
   readonly cause?: unknown;
 
-  constructor(key: unknown, expression?: string, cause?: unknown) {
-    super(writeErrorMessage(key, expression));
+  constructor(key: unknown, expression?: string, cause?: unknown,
+    kind: 'key' | 'member' = 'key') {
+
+    super(writeErrorMessage(key, expression, kind));
 
     this.name = 'SignalContextWriteError';
     this.key = key;
+    this.kind = kind;
     this.expression = expression;
     this.cause = cause;
 
@@ -89,14 +123,19 @@ export class SignalContextWriteError extends Error {
  * `pop`, and `priorScopes` is populated by the caller, so the override has no
  * legitimate internal caller to let through.
  *
- * **It does not cover a member target.** Each of those two visitors has a
- * second branch - `node.left.type === 'MemberExpression'` - which writes with
- * `safeSetProperty(object, key, value)` and never touches the context. So
- * `user.name = 'Bob'` mutates the object *inside* the consumer's signal and
- * does not throw. That is a write *through* a signal-backed key rather than
- * *to* one, it lands in data this library does not own, and no guard on the
- * `EvalContext` can see it. Pinned as current behaviour in this module's
- * spec; see the plan's S 3.6.4 and S 8 q6.
+ * **A member target is policed by {@link checkMemberWrite}, not by `set`.**
+ * Each of those two visitors has a second branch - a `MemberExpression`
+ * target - which writes the property straight into the object and never calls
+ * `set`. So `user.name = 'Bob'` would mutate the object *inside* the
+ * consumer's signal: a write *through* a signal-backed key rather than *to*
+ * one, into data this library does not own. Up to 0.2.x nothing refused it
+ * (`docs/backlog-retired.md` C1). `eval-core` 0.10.0 asks the context about
+ * every member write and says whether the walk created the target; this
+ * context refuses any target it did not.
+ *
+ * What still gets through is a mutating *method*: `user.tags.push('x')`
+ * writes from native code, and no visitor sees a write at all
+ * (`docs/backlog.md` C4).
  *
  * Guarding the `original` object instead - a `Proxy` with a throwing `set`
  * trap - was rejected: it sits below the layer that knows *who* is writing,
@@ -121,6 +160,18 @@ class SignalEvalContext extends EvalContext {
 
   public override set(key: unknown): void {
     throw new SignalContextWriteError(key);
+  }
+
+  /**
+   * Refuses a member write unless the walk created its target. Implementing
+   * this is what opts the context in: `eval-core` then records, per
+   * evaluation, the objects the walk creates - which is the whole cost, and
+   * one that only a signal context pays.
+   */
+  public override checkMemberWrite(write: EvalMemberWrite): void {
+    if (!write.createdByEvaluation) {
+      throw new SignalContextWriteError(write.key, undefined, undefined, 'member');
+    }
   }
 
   /**
@@ -219,7 +270,9 @@ const match = (
  *   Angular's tracking model.
  *
  * The returned context's keys are **read-only**: an assignment or update
- * against one throws {@link SignalContextWriteError} rather than writing.
+ * against one throws {@link SignalContextWriteError} rather than writing. So
+ * does an assignment or update to a member of anything the expression did not
+ * create - see {@link SignalContextWriteError.kind}.
  *
  * @param source - The backing record. Values that are signals are unwrapped.
  * @param options - Configures this context and its resolver, not the walk.

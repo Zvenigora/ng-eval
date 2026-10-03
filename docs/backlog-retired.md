@@ -1664,6 +1664,162 @@ source count.
 
 # C. `eval-signals`
 
+<a id="c1"></a>
+## C1 — A member-target write escapes the read-only policy
+
+**Package** signals · **Kind** decision · **Status** **Retired — decided and fixed 2026-10-03**, for
+`eval-signals` 0.3.0 with `eval-core` 0.10.0. Was Open, Covered
+
+The most serious unlisted behavioural entry in the repository.
+
+`assignment-expression.ts` and `update-expression.ts` each have a second branch,
+`node.left.type === 'MemberExpression'`, which writes with `safeSetProperty(object, key, value)`
+and never touches the `EvalContext`. Reproduced end-to-end:
+
+```ts
+createEvalSignal('user.name = "Bob"', { user: signal({ name: 'Ada' }) })
+// no throw, returns 'Bob', and user() is now { name: 'Bob' }
+createEvalSignal('user.n++', { user: signal({ n: 1 }) })
+// no throw, and user() is now { n: 2 }
+```
+
+This is a write *through* a signal-backed key rather than *to* one, which is why § 3.6's wording
+("a write to a signal-backed key") does not reach it. Two things make it a genuine open problem
+rather than a wording nicety: it is a mutation performed from inside a `computed()`, and it lands
+in **data this library does not own** — the object the consumer's signal holds — so it is **not
+containable at the `EvalContext`** the way every other instance of this shape is.
+
+**The chokepoint framing, added 2026-09-11 while planning Phase 2.** `eval-signals` enforces its
+read-only policy in exactly one place: it subclasses `EvalContext` and overrides `set` to throw
+([`signal-context.ts:112-117`](../modules/eval-signals/src/lib/signal-context.ts#L112-L117)). So
+`EvalContext.set` is the **single policy chokepoint**, and this entry is definitionally *the class of
+write that never enters it* — `safeSetProperty` writes the resolved object directly and no context
+method is called. That is a harder question than "stop this write": there is nothing to override,
+and the three mechanisms below are each an attempt to *reach* a write that bypasses the chokepoint
+rather than to tighten one that passes through it.
+
+Two consequences worth having recorded. A fix that adds a check to `EvalContext` cannot work, by
+construction. And the sibling defect — [`statements/phase-2-plan.md` § 1.4](statements/phase-2-plan.md),
+an identifier write reaching the caller's object because `set` consults no scope — is *not* this
+entry: it goes **through** the chokepoint and lands on the wrong target, which is why Phase 2 can fix
+it and cannot fix this one. Phase 2 § 3.2 preserves the chokepoint deliberately: its `setInScope`
+returns false unless a pushed scope already binds the key, so every write that targets the source
+still reaches `set`.
+
+Three candidate mechanisms, none costed:
+
+- a static AST check at `createEvalSignal` — shares its cost with [C2](#c2), catches it before the
+  first read, but the guard then does not exist for `createSignalContext` used standalone;
+- freezing or wrapping the resolved value — per-read cost, and it changes what an expression
+  observes;
+- documenting it as a limitation, the way the escaping-closure residual of [A9](#a9) is.
+
+**Covered**: the runtime behaviour is pinned by spec, so whichever way this goes, the change is
+visible.
+
+*Recorded*: [`signals/phase-3-plan.md` § 3.6.4 gap 1](signals/phase-3-plan.md) and
+[§ 8 q6](signals/phase-3-plan.md).
+
+**Decided 2026-10-03: none of the three — a runtime guard in the context, with the walk telling it
+what is the expression's own.** The chokepoint framing was right that a check on `EvalContext`
+*alone* cannot work: the context has no way to see the write. So `eval-core` 0.10.0 makes the walk
+ask it. The member branches of both write visitors call `EvalContext.checkMemberWrite` before
+writing, with the target, the key, and whether the walk created the target; a context that
+implements the method opts in, and the walk then records, per `EvalState`, every object it creates
+for the expression to hold. `SignalEvalContext` implements it and refuses a target the walk did not
+create, with `SignalContextWriteError` of `kind` `'member'`.
+
+The rule, as the package README states it: **a signal expression may write into what it created —
+object, array and regex literals, rest values, arrow functions — and not into anything it was given
+or got back from a call.**
+
+*Measured* on cbb00cb with `createEvalSignal` over `{ user: signal({ name, n, tags: [...] }) }`, and
+on 0.3.0:
+
+| Expression | Up to 0.2.x | 0.3.0 |
+| ---------- | ----------- | ----- |
+| `user.name = "Bob"` | writes into `user()` | refused, `kind` `'member'` |
+| `user.n++` | writes into `user()` | refused |
+| `let u = user; u.name = "Bob"; u.name` | writes into `user()` | refused |
+| `[user].map(u => (u.name = "Bob"))[0]` | writes into `user()` | refused |
+| `let o = {}; o.a = 1; o.a` | `1` | `1` |
+| `let t = 0; for (let i = 0; i < 3; i++) { t += i; } t` | `3` | `3` |
+| `user = 1` | refused, `kind` `'key'` | refused, `kind` `'key'` |
+| `user.tags.push("x")` | mutates `user().tags` | mutates `user().tags` — [C4](backlog.md#c4) |
+
+**What the first cut refused that it should not have.** Step 1 was first written recording object
+and array literals only. Run through a context applying the rule, nine writes into data the
+expression had made itself were refused. Each group was decided on its own:
+
+| Group | Expression | Decision |
+| ----- | ---------- | -------- |
+| A method's result | `let m = [1, 2].map(v => v * 2); m[0] = 0; m[0]` | **Refused, accepted and documented.** A call can return an existing object as easily as a new one — `[user].find(u => true)` returns the object inside `user()` — and the walk cannot tell them apart, so no call result is created. Spread it into a literal first: `[...xs.map(f)]` |
+| | `let f = [3, 1, 2].filter(v => v > 1); f[0] = 9; f[0]` | as above |
+| | `let t = [1, 2].slice(); t[0] = 0; t[0]` | as above |
+| | `let c = [1].concat([2]); c[0] = 5; c[0]` | as above |
+| | `let s = "a,b".split(","); s[0] = "c"; s[0]` | as above |
+| A rest value | `let [first, ...rest] = [1, 2, 3]; rest[0] = 9; rest[0]` | **Allowed — recorded.** A rest is a fresh one-level copy, as a spread is |
+| | `let { a, ...others } = { a: 1, b: 2 }; others.b = 5; others.b` | as above |
+| | `((...xs) => (xs[0] = 7, xs[0]))(1, 2)` | as above |
+| An arrow function | `let fn = x => x; fn.tag = 1; fn.tag` | **Allowed — recorded.** A new function on each evaluation of the arrow |
+
+A `new` result stays unrecorded for the call's reason: a constructor can return an existing object.
+
+**The survey of every place the walk creates an object found a tenth: a regex literal**, refused
+because acorn builds its `RegExp` once per parse. That was a defect in its own right — every
+evaluation of one parsed tree shared the object, so a global regex carried `lastIndex` from one
+evaluation into the next — and `eval-core` 0.10.0 fixes it: the literal visitor pushes a copy per
+evaluation, and records it. The spec row for it writes `r.tag`, not `r.lastIndex`: `lastIndex` is a
+non-configurable own property, and `safeSetProperty` writes through `Object.defineProperty`, which
+refuses to redefine one whatever the policy says.
+
+*Fixed* 2026-10-03: the `eval-core` hook, then the regex fix, then this library's guard, each its
+own commit. Specs: `member-write-policy.spec.ts` in
+`eval-core` (32); in `eval-signals`, the two known-gap cases in `signal-context.spec.ts` changed
+deliberately and the rows above added there through `EvalService` (9) and in `eval-signal.spec.ts`
+through the factory (10), with the README's spread-copy block executed (1); in `eval-forms`, one
+member-write row per adapter (2). `eval-signals` 140 → 158, `eval-forms` 267 → 269.
+
+**Probes**, each reverted:
+
+| Probe | Against | Failed | Which |
+| ----- | ------- | -----: | ----- |
+| The signal context does not opt in | `eval-signals` | 11 | every member refusal, both message rows, the `onError` row; the allowed rows, the key rows and the `push` gap stay green |
+| It refuses every member write | `eval-signals` | 2 | the two object-literal rows; the loop rows write identifiers only |
+| The signal context does not opt in | `eval-forms` | 2 | exactly the two adapter rows |
+
+`eval-core`'s own probes are in the commits that added the hook and the regex fix.
+
+<a id="c2"></a>
+## C2 — Detect a write violation at construction rather than at first recompute
+
+**Package** signals · **Kind** decision · **Status** **Retired — decided 2026-10-03**. Was Open
+
+Because the violation is *static* (`count = 5` is illegal on every recompute with every dataset),
+it could be found by inspecting the AST for `AssignmentExpression` / `UpdateExpression` nodes at
+`createEvalSignal` time and failing there, instead of on the first read. Strictly earlier and
+strictly more informative.
+
+It is **not** a replacement for the runtime throw: the `EvalContext.set` override is the
+correctness guarantee and covers a context reached by any route, including `createSignalContext`
+used standalone with `EvalService`.
+
+Cost: it needs the AST, and § 5 currently admits only `CompilerService.compile`, which returns a
+`stateCallback` closed over the AST rather than the AST itself.
+
+Decide with [C1](#c1) — the static-check mechanism is one of C1's three candidates, so deciding
+C2 alone forecloses the cheaper half of C1.
+
+*Recorded*: [`signals/phase-3-plan.md` § 8 q5](signals/phase-3-plan.md).
+
+**Decided 2026-10-03, with [C1](#c1): no construction-time check.** The runtime guard is the
+guarantee — both halves of it, the `set` override and C1's member guard, live in the context, so
+they hold for a context reached by any route — and it fires on the first read. A static pre-check
+would add an earlier error at one entry point and nothing a consumer could not already see by
+reading the signal once. And it could not decide C1's half at all: whether a member write is
+allowed depends on whether the walk created its target, which `let u = user; u.name = 'x'` and
+`let u = {}; u.name = 'x'` share an AST shape and differ in.
+
 <a id="c3"></a>
 ## C3 — Whether `eval-signals` should work around [A4](#a4) locally
 
@@ -2683,7 +2839,7 @@ which a reader notices. This one is worse, because nothing about it looks broken
 *"Everything in `docs/backlog.md` Track 1 / Track 2 — not this phase's subject"*. **This register
 has no Track 1 and no Track 2.** All three Tracks were a sequencing suggestion made in
 conversation — 1 the error-identity group ([A4](#a4), [A5](#a5), [A6](#a6), [A7](#a7), [C3](#c3)),
-2 the write policy ([C1](backlog.md#c1), [C2](backlog.md#c2)), 3 the documentation gates — and only the third was ever
+2 the write policy ([C1](#c1), [C2](#c2)), 3 the documentation gates — and only the third was ever
 written down. The plan then cited all three as though the reader could look them up.
 
 Provenance, and each step of it is ordinary:

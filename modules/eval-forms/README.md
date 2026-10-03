@@ -363,6 +363,14 @@ Two things are **not** routed through `options.onError`, in either adapter:
   dataset. Swallowing it under the default would hand you a silent blank for a syntax bug
   in the rule itself.
 
+  **So does a write into the form's data, with `@zvenigora/ng-eval-signals` 0.3.0 or later.**
+  A rule may write into what it created — object, array and regex literals, rest values,
+  arrow functions — and not into anything it was given. `address.city = 'x'`, over a
+  control whose value is `{ city: 'Rome' }` or over the `/signals` model, throws
+  `SignalContextWriteError` with `kind` `'member'`, in every mode; up to `eval-signals` 0.2.x
+  it wrote into the very object Angular holds. A mutating method — `tags.push('x')` — is not
+  caught and still mutates it, so do not call one in a rule.
+
   **It holds through a call too — with `@zvenigora/ng-eval-core` 0.7.0 or later.** An
   assignment **nested inside a call**, `[1].map(x => (country = 'CA'))`, reaches the bypass
   as `SignalContextWriteError` and is rethrown like a direct one. Up to `eval-core` 0.6.x

@@ -65,7 +65,7 @@ itself down with the component. See [Lifetime](#lifetime) for every other case.
 | `createEvalSignal(expression, source, options?)` | The primary API. Compiles once, returns an `EvalSignal`. |
 | `EvalSignalService.create(…)` | The same thing for callers outside an injection context. See [Lifetime](#lifetime). |
 | `createSignalContext(source, options?)` | The context adapter on its own, for use with `EvalService` directly. |
-| `SignalContextWriteError` | Thrown when an expression assigns to a context key. |
+| `SignalContextWriteError` | Thrown when an expression assigns to a context key, or to a member of anything it did not create. |
 | `EvalSignal<T>` | `Signal<T>` plus `dependencies`, `invalidate()` and `destroy()`. The factory returns `EvalSignal<unknown>` — an expression's type is not knowable, so narrow at the call site. |
 | `EvalSignalOptions` | `eval`, `equal`, `onError`, `trackDependencies`, `injector`. |
 
@@ -225,6 +225,36 @@ value that mutates its own inputs has no stable value. The error is raised by th
 the message names the cause rather than surfacing an Angular error code from inside a
 `TypeError`.
 
+**A signal expression may write into what it created — object, array and regex literals, rest
+values, arrow functions — and not into anything it was given or got back from a call.** Since
+0.3.0, `user.name = 'Bob'` throws `SignalContextWriteError` with `kind` `'member'` and `key`
+`'name'`, and so do `user.n++`, `let u = user; u.name = 'Bob'` and
+`[user].map(u => (u.name = 'Bob'))`. Up to 0.2.x each of them wrote into the object your signal
+holds. A call's result counts as given even when it is new, because a call can as easily hand
+back your own object — `[user].find(u => true)` does.
+
+To change something you were given, spread it into a literal first, and write into the copy:
+
+```ts
+const user = signal({ name: 'Ada', tags: ['a'] });
+
+const renamed = createEvalSignal('let u = { ...user }; u.name = "Bob"; u', { user });
+renamed();   // { name: 'Bob', tags: ['a'] } — user() is unchanged
+
+const marked = createEvalSignal('let t = [...user.tags.map(s => s + "!")]; t[0] = "x"; t', { user });
+marked();    // ['x']
+```
+
+A spread copies one level: `u.tags` above is still your array, and writing into it throws.
+
+**A mutating method is not caught.** `user.tags.push('x')`, `splice`, `sort`, `Map#set` and their
+kin write from native code, so the evaluator never sees a member write: the call goes through and
+mutates your data. Do not call one on anything the expression was given.
+
+**The cost** is a record of each object an expression creates, kept only for a signal context.
+`eval-core` records literals, rest values and arrow functions for a context that asks, and does
+nothing extra for one that does not.
+
 ## Async expressions
 
 There is no async primitive in this release — `createEvalSignalAsync` is Phase 5 of the
@@ -302,9 +332,6 @@ Four things that decide whether this library fits, rather than surprises you lat
   rather than `undefined`. A name something else resolves — an arrow parameter, a prior scope,
   a lookup you pushed onto the context — gets `eval-core`'s answer, which for a lookup is the
   name as the expression wrote it.
-- **A write to a *member* does not throw.** `user.name = 'Bob'` writes into the object your
-  signal holds without ever reaching the context, so the read-only policy cannot see it.
-  Do not write through expressions.
 - **Lookups resolve last.** A key resolvable earlier in `EvalContext.get`'s order shadows the
   source. The adapter starts with an empty `original`, but an empty object is not an *absent*
   one: `Object.prototype` names — `toString`, `valueOf`, `constructor`, `hasOwnProperty` —

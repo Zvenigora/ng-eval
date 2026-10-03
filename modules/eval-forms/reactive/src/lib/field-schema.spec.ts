@@ -277,6 +277,25 @@ describe('bindFieldProperties', () => {
 
       expect(() => bound['country'].text?.()).toThrow(SignalContextWriteError);
     });
+
+    it('should let a member write into a control\'s value through the default too', () => {
+      // `eval-signals` 0.3.0 (`docs/backlog-retired.md` C1): a rule may write
+      // only into what it created. Up to 0.2.x this wrote straight into the
+      // object the control holds - Angular's own value, mutated from inside a
+      // derivation - and the property rendered `'x'`. Static in the same way
+      // a key write is, so it passes `onError` the same way.
+      const address = new FormControl({ city: 'Rome' });
+
+      const bound = bindFields(
+        [{ name: 'country', text: 'address.city = "x"' }],
+        group({ country: new FormControl('CA'), address }),
+        { injector }
+      );
+
+      expect(() => bound['country'].text?.()).toThrow(SignalContextWriteError);
+
+      expect(address.value).toEqual({ city: 'Rome' });
+    });
   });
 
   describe('context composition (plan S 3.4.1)', () => {

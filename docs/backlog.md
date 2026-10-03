@@ -164,9 +164,10 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
 | [B4](backlog-retired.md#b4) | `eval-core.component.ts` is dead generator scaffold | core | fix | **Retired — fixed 2026-09-26**; no published artifact changed — the bundle and `.d.ts` are byte-identical |
-| [C1](#c1) | A member-target write escapes the read-only policy | signals | decision | Open, Covered |
-| [C2](#c2) | Detect a write violation at construction, not first recompute | signals | decision | Open |
+| [C1](backlog-retired.md#c1) | A member-target write escapes the read-only policy | signals | decision | **Retired — decided and fixed 2026-10-03**, for `eval-signals` 0.3.0 with `eval-core` 0.10.0: a signal expression may write into what it created and not into anything it was given or got back from a call |
+| [C2](backlog-retired.md#c2) | Detect a write violation at construction, not first recompute | signals | decision | **Retired — decided 2026-10-03**: no construction-time check; [C1](backlog-retired.md#c1)'s runtime guard is the guarantee and fires on the first read |
 | [C3](backlog-retired.md#c3) | Whether `eval-signals` should work around [A4](backlog-retired.md#a4) locally | signals | decision | **Retired — decided and fixed 2026-10-01**; released 2026-10-02 in `eval-signals` 0.2.0, tagged c56f987: under `caseInsensitive` a source key is named as the source spells it, in `getKey`, write errors and the first segment of `dependencies` |
+| [C4](#c4) | A mutating method call escapes the member-write policy | signals | accepted | Open, documented |
 | [D1](#d1) | The throwing-subscriber premise is false in both halves | forms | fix + decision | Open, Premise retired |
 | [D2](#d2) | Should `/reactive` reject prototype-shadowed identifiers too? | forms | decision, breaking | Open |
 | [D3](#d3) | Per-registration `caseInsensitive` reaches one of three levers | forms | decision | Open, Covered |
@@ -531,84 +532,28 @@ No live entries. [B1](backlog-retired.md#b1)–[B4](backlog-retired.md#b4) are a
 
 # C. `eval-signals`
 
-None of these, nor the retired [C3](backlog-retired.md#c3), was ever recorded in `ROADMAP.md`.
+[C1](backlog-retired.md#c1)–[C3](backlog-retired.md#c3) are retired. None of the four entries was
+ever recorded in `ROADMAP.md`.
 
-<a id="c1"></a>
-## C1 — A member-target write escapes the read-only policy
+<a id="c4"></a>
+## C4 — A mutating method call escapes the member-write policy
 
-**Package** signals · **Kind** decision · **Status** Open, Covered
+**Package** signals · **Kind** accepted · **Status** Open, documented
 
-The most serious unlisted behavioural entry in the repository.
+[C1](backlog-retired.md#c1)'s fix refuses a member write whose target the expression did not
+create, and it is asked about every write the two write visitors make. A method that mutates its
+receiver writes from native code instead: the call visitor calls it, and no write visitor runs. So
+`user.tags.push("x")` over `{ user: signal({ tags: ['a'] }) }` returns `2` and leaves `user().tags`
+as `['a', 'x']`, mutated from inside a `computed()` — and so do `splice`, `sort`, `reverse`,
+`fill`, `Map#set`, `Set#add` and their kin. Pinned as current behaviour in `signal-context.spec.ts`
+and `eval-signal.spec.ts`, and a paragraph in the package README's "Writes are not supported".
 
-`assignment-expression.ts` and `update-expression.ts` each have a second branch,
-`node.left.type === 'MemberExpression'`, which writes with `safeSetProperty(object, key, value)`
-and never touches the `EvalContext`. Reproduced end-to-end:
+Closing it would need the call visitor to know which methods mutate their receiver — a list per
+built-in type, which the call sandbox does not keep — or the value frozen or wrapped before the
+call, which is C1's rejected second mechanism. Kept here because "accepted and documented" is a
+state a later phase may want to revisit, not a closed question.
 
-```ts
-createEvalSignal('user.name = "Bob"', { user: signal({ name: 'Ada' }) })
-// no throw, returns 'Bob', and user() is now { name: 'Bob' }
-createEvalSignal('user.n++', { user: signal({ n: 1 }) })
-// no throw, and user() is now { n: 2 }
-```
-
-This is a write *through* a signal-backed key rather than *to* one, which is why § 3.6's wording
-("a write to a signal-backed key") does not reach it. Two things make it a genuine open problem
-rather than a wording nicety: it is a mutation performed from inside a `computed()`, and it lands
-in **data this library does not own** — the object the consumer's signal holds — so it is **not
-containable at the `EvalContext`** the way every other instance of this shape is.
-
-**The chokepoint framing, added 2026-09-11 while planning Phase 2.** `eval-signals` enforces its
-read-only policy in exactly one place: it subclasses `EvalContext` and overrides `set` to throw
-([`signal-context.ts:112-117`](../modules/eval-signals/src/lib/signal-context.ts#L112-L117)). So
-`EvalContext.set` is the **single policy chokepoint**, and this entry is definitionally *the class of
-write that never enters it* — `safeSetProperty` writes the resolved object directly and no context
-method is called. That is a harder question than "stop this write": there is nothing to override,
-and the three mechanisms below are each an attempt to *reach* a write that bypasses the chokepoint
-rather than to tighten one that passes through it.
-
-Two consequences worth having recorded. A fix that adds a check to `EvalContext` cannot work, by
-construction. And the sibling defect — [`statements/phase-2-plan.md` § 1.4](statements/phase-2-plan.md),
-an identifier write reaching the caller's object because `set` consults no scope — is *not* this
-entry: it goes **through** the chokepoint and lands on the wrong target, which is why Phase 2 can fix
-it and cannot fix this one. Phase 2 § 3.2 preserves the chokepoint deliberately: its `setInScope`
-returns false unless a pushed scope already binds the key, so every write that targets the source
-still reaches `set`.
-
-Three candidate mechanisms, none costed:
-
-- a static AST check at `createEvalSignal` — shares its cost with [C2](#c2), catches it before the
-  first read, but the guard then does not exist for `createSignalContext` used standalone;
-- freezing or wrapping the resolved value — per-read cost, and it changes what an expression
-  observes;
-- documenting it as a limitation, the way the escaping-closure residual of [A9](backlog-retired.md#a9) is.
-
-**Covered**: the runtime behaviour is pinned by spec, so whichever way this goes, the change is
-visible.
-
-*Recorded*: [`signals/phase-3-plan.md` § 3.6.4 gap 1](signals/phase-3-plan.md) and
-[§ 8 q6](signals/phase-3-plan.md).
-
-<a id="c2"></a>
-## C2 — Detect a write violation at construction rather than at first recompute
-
-**Package** signals · **Kind** decision · **Status** Open
-
-Because the violation is *static* (`count = 5` is illegal on every recompute with every dataset),
-it could be found by inspecting the AST for `AssignmentExpression` / `UpdateExpression` nodes at
-`createEvalSignal` time and failing there, instead of on the first read. Strictly earlier and
-strictly more informative.
-
-It is **not** a replacement for the runtime throw: the `EvalContext.set` override is the
-correctness guarantee and covers a context reached by any route, including `createSignalContext`
-used standalone with `EvalService`.
-
-Cost: it needs the AST, and § 5 currently admits only `CompilerService.compile`, which returns a
-`stateCallback` closed over the AST rather than the AST itself.
-
-Decide with [C1](#c1) — the static-check mechanism is one of C1's three candidates, so deciding
-C2 alone forecloses the cheaper half of C1.
-
-*Recorded*: [`signals/phase-3-plan.md` § 8 q5](signals/phase-3-plan.md).
+*Recorded*: C1's decision, 2026-10-03.
 
 ---
 
