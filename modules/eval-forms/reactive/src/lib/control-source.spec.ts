@@ -14,7 +14,7 @@ import { createFieldContext } from '@zvenigora/ng-eval-forms';
 // whole assertion is that it restores a property the mirror could not see go
 // stale.
 import { createEvalSignal } from '@zvenigora/ng-eval-signals';
-import { Subject } from 'rxjs';
+import { Subject, config } from 'rxjs';
 import { createControlSource } from './control-source';
 
 describe('createControlSource', () => {
@@ -405,8 +405,9 @@ describe('createControlSource', () => {
       // only keys containing a dot - so `constructor` is a legal field. Once
       // its control is removed, a bare `controls[name]` read resolves
       // `Object` off the prototype instead of `undefined`, and pushing that
-      // down a channel throws out of the `group.events` subscriber, which
-      // unsubscribes it.
+      // down a channel throws. Written here before 0.3.0 as unsubscribing the
+      // `group.events` subscriber; it does not - see the D1 cases below, which
+      // measure what a throw out of that subscriber actually does.
       //
       // The discriminating assertion is that the key is **released**. Under a
       // bare read the removal is misread as a *replacement* by `Object`, so
@@ -478,6 +479,129 @@ describe('createControlSource', () => {
       expect(age()).toEqual(42);
 
       age.destroy();
+    });
+  });
+
+  /**
+   * `docs/backlog-retired.md` D1. Four places used to say a throw inside the
+   * `group.events` subscriber "unsubscribes it and silently ends all diffing
+   * for the life of the form", and that premise decided a design: a control
+   * added after construction was never checked, because the diff could not
+   * throw. The first case below measures what a throw there does, on a path
+   * that throws whatever the refusal does; the rest pin the refusal built on
+   * the measurement.
+   *
+   * rxjs reports a subscriber's throw through `config.onUnhandledError`, from a
+   * timeout, so each case installs a collector, waits a macrotask before
+   * reading it, and restores the previous handler whatever happens.
+   */
+  describe('a throw out of the group.events subscriber (D1)', () => {
+
+    let unhandled: unknown[];
+    let previous: typeof config.onUnhandledError;
+
+    beforeEach(() => {
+      unhandled = [];
+      previous = config.onUnhandledError;
+      config.onUnhandledError = (error: unknown) => unhandled.push(error);
+    });
+
+    const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve));
+
+    // Settled before restoring, so a report still in flight - from a case that
+    // failed before its own `settle` - lands in that case's collector rather
+    // than in the next case's, where it would read as a second report.
+    afterEach(async () => {
+      await settle();
+      config.onUnhandledError = previous;
+    });
+
+    const messages = (): string[] => unhandled.map((error) => (error as Error).message);
+
+    it('should report the throw out of band, keep the subscription, and keep diffing', async () => {
+      // A record the consumer has made non-extensible, so `open`'s
+      // `defineProperty` throws for any new key: a throw out of `sync` on the
+      // pre-0.3.0 code as much as on this. Measured before the refusal below
+      // was written - `addControl` returned, two errors arrived after a
+      // macrotask (one per `group.events` emission it fires), and a later
+      // removal still diffed.
+      const form = group();
+      const source = createControlSource(form, { injector });
+      Object.preventExtensions(source);
+
+      expect(() => form.addControl('region', new FormControl('west'))).not.toThrow();
+
+      expect(unhandled).toEqual([]);
+      await settle();
+      expect(unhandled.length).toBeGreaterThan(0);
+      expect(messages().every((message) => /region/.test(message))).toBe(true);
+
+      // Not silent, and not terminal: the next emission is still diffed.
+      form.removeControl('age');
+      expect(Object.prototype.hasOwnProperty.call(source, 'age')).toEqual(false);
+
+      // A cause that stands is re-reported on every emission - which is why
+      // the refusal below remembers what it has reported.
+      const before = unhandled.length;
+      await settle();
+      expect(unhandled.length).toBeGreaterThan(before);
+    });
+
+    describe('a control added later under a name off Object.prototype', () => {
+
+      it('should leave addControl returning normally, and report the name once', async () => {
+        const form = group();
+        createControlSource(form, { injector });
+
+        expect(() => form.addControl('constructor', new FormControl('MINE'))).not.toThrow();
+
+        await settle();
+        expect(messages()).toEqual([
+          "Control 'constructor' is a member of Object.prototype and cannot be read by any " +
+          "expression: the name resolves to the prototype's value before the form is ever " +
+          'consulted. Rename the control.',
+        ]);
+      });
+
+      it('should not mirror it, and mirror a control added in the same emission', async () => {
+        const form = group();
+        const source = createControlSource(form, { injector });
+        const region = new FormControl('west');
+
+        // Two additions, then **one** emission. Not `addControl` for the
+        // second: it fires two `group.events` emissions (value, then status),
+        // so a diff that gave up at the refused name would mirror `region` on
+        // the second one anyway - measured, the row stayed green against a
+        // `sync` that threw mid-loop. `markAsTouched` fires exactly one.
+        form.addControl('constructor', new FormControl('MINE'), { emitEvent: false });
+        form.addControl('region', region, { emitEvent: false });
+        form.markAsTouched();
+
+        expect(Object.prototype.hasOwnProperty.call(source, 'constructor')).toEqual(false);
+        expect(Object.prototype.hasOwnProperty.call(source, 'region')).toEqual(true);
+        expect(observers(region)).toEqual(1);
+
+        await settle();
+        expect(messages()).toHaveLength(1);
+      });
+
+      it('should keep diffing later emissions, without reporting the name again', async () => {
+        const form = group();
+        const source = createControlSource(form, { injector });
+
+        form.addControl('constructor', new FormControl('MINE'));
+        await settle();
+        expect(unhandled).toHaveLength(1);
+
+        form.removeControl('age');
+        form.controls['country'].setValue('US');
+        form.addControl('region', new FormControl('west'));
+        await settle();
+
+        expect(Object.prototype.hasOwnProperty.call(source, 'age')).toEqual(false);
+        expect(Object.prototype.hasOwnProperty.call(source, 'region')).toEqual(true);
+        expect(unhandled).toHaveLength(1);
+      });
     });
   });
 });

@@ -17,6 +17,7 @@ import {
 } from '@zvenigora/ng-eval-forms';
 import { EvalSignal, createEvalSignal } from '@zvenigora/ng-eval-signals';
 import { createControlSource } from './control-source';
+import { isPrototypeName, prototypeControlMessage } from './prototype-names';
 
 /**
  * One field's rules, as strings resolved at runtime.
@@ -223,11 +224,16 @@ const validate = (schema: readonly FieldSchema[], group: FormGroup): void => {
   // covers every control (S 3.5) - so a control nobody named still reaches
   // every field's context, where an expression finds it.
   //
-  // Construction-time only, and that is a limitation rather than a guarantee:
-  // `addControl` afterwards reaches `sync` -> `open` with no check, and
-  // throwing from there is not available - a throw inside the `group.events`
-  // subscriber unsubscribes it and silently ends all diffing for the life of
-  // the form (S 3.5.5). The README says so.
+  // This pass runs once. A control added later reaches the mirror's `sync`
+  // instead, which since 0.3.0 makes the prototype-name half of it: it does
+  // not mirror such a control, and throws this message at the end of the diff
+  // (`docs/backlog-retired.md` D1). That throw is not the binding's - it
+  // leaves the `group.events` subscriber, which rxjs reports out of band to
+  // `config.onUnhandledError` while the subscription and the diffing carry on;
+  // the premise once written here, that a throw there unsubscribes it and
+  // silently ends all diffing, was false in both halves. The *class* half,
+  // below, is still construction-time only: a nested group added later is
+  // mirrored, and the README says so.
   for (const [name, control] of Object.entries(
     group.controls as Record<string, AbstractControl>
   )) {
@@ -241,12 +247,8 @@ const validate = (schema: readonly FieldSchema[], group: FormGroup): void => {
     // `function Object() { [native code] }`. So a control named off
     // `Object.prototype` is unreadable through every expression, silently and
     // truthily, and worse than the schema case because the value exists.
-    if (Object.prototype.hasOwnProperty.call(Object.prototype, name)) {
-      throw new Error(
-        `Control '${name}' is a member of Object.prototype and cannot be read by any ` +
-        `expression: the name resolves to the prototype's value before the form is ` +
-        `ever consulted. Rename the control.`
-      );
+    if (isPrototypeName(name)) {
+      throw new Error(prototypeControlMessage(name));
     }
 
     // Flat forms only (S 2, open question 8.5): a thrown error rather than a

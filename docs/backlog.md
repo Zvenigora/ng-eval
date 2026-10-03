@@ -169,7 +169,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [C2](backlog-retired.md#c2) | Detect a write violation at construction, not first recompute | signals | decision | **Retired — decided 2026-10-03**: no construction-time check; [C1](backlog-retired.md#c1)'s runtime guard is the guarantee and fires on the first read |
 | [C3](backlog-retired.md#c3) | Whether `eval-signals` should work around [A4](backlog-retired.md#a4) locally | signals | decision | **Retired — decided and fixed 2026-10-01**; released 2026-10-02 in `eval-signals` 0.2.0, tagged c56f987: under `caseInsensitive` a source key is named as the source spells it, in `getKey`, write errors and the first segment of `dependencies` |
 | [C4](#c4) | A mutating method call escapes the member-write policy | signals | accepted | Open, documented |
-| [D1](#d1) | The throwing-subscriber premise is false in both halves | forms | fix + decision | Open, Premise retired |
+| [D1](backlog-retired.md#d1) | The throwing-subscriber premise is false in both halves | forms | fix + decision | **Retired — decided and fixed 2026-10-03**, for `eval-forms` 0.3.0: a late prototype-named control is not mirrored and is reported once, out of band, after the rest of the emission |
 | [D2](backlog-retired.md#d2) | Should `/reactive` reject prototype-shadowed identifiers too? | forms | decision, breaking | **Retired — decided and fixed 2026-10-03**, for `eval-forms` 0.3.0: yes, with `/signals`' own guard, shared from the core; no form that worked could have named one |
 | [D3](#d3) | Per-registration `caseInsensitive` reaches one of three levers | forms | decision | Open, Covered |
 | [D4](backlog-retired.md#d4) | A top-level model key holding a signal is returned un-called | forms | fix or doc | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-forms` 0.2.4, tagged 587ebf1. `/signals` unwraps it as upstream does, and the README bullet is corrected |
@@ -560,58 +560,6 @@ state a later phase may want to revisit, not a closed question.
 ---
 
 # D. `eval-forms`
-
-<a id="d1"></a>
-## D1 — The throwing-subscriber premise is false in both halves
-
-**Package** forms · **Kind** fix + decision · **Status** Open, Premise retired
-
-**The premise.** Four places in `eval-forms` state that a throw inside the `group.events`
-subscriber "unsubscribes it and silently ends all diffing for the life of the form".
-
-**It is false in both halves**, measured against this repo's `rxjs@7.8.2` with the same pipeline
-shape `createControlSource` uses — a `Subject` exposed through `asObservable()`, piped through
-`takeUntil`, with a function next-handler:
-
-```
-next(1) returned normally to the caller
-closed after 1st throw: false | handler calls: 1 | observers: 1
-closed after 2nd throw: false | handler calls: 2 | observers: 1
-ASYNC UNHANDLED: boom  (x2)
-```
-
-RxJS 7's `ConsumerObserver` catches the handler's throw and re-reports it through
-`reportUnhandledError`, **asynchronously**. The subscription stays open, later emissions are still
-delivered, and in an Angular application the error reaches the unhandled-error path. So the
-failure is *loud and non-fatal*, not *silent and terminal* — the opposite of the premise on both
-axes.
-
-**The four sites**, all stating it as established fact, all verified still present 2026-09-06:
-
-- [`control-source.ts:165`](../modules/eval-forms/reactive/src/lib/control-source.ts#L165) — the
-  own-property read in `sync`.
-- [`field-schema.ts:199`](../modules/eval-forms/reactive/src/lib/field-schema.ts#L199) —
-  `validate`'s group loop.
-- [`control-source.spec.ts:409`](../modules/eval-forms/reactive/src/lib/control-source.spec.ts#L409)
-  — the prototype-name removal case. This comment **already measured something that does not fit
-  it**: it goes on to record that "the throw lands in that key's own subscriber and not back in
-  `sync`, so the diff loop itself survives". The contradiction was sitting in one comment and was
-  not read as one.
-- [`forms/phase-4-plan.md:1438`](forms/phase-4-plan.md) — and it cites "§ 3.5.5" as the source,
-  which does **not** contain the claim. The citation is what made it look settled.
-
-**This is not a comment fix.** The premise is load-bearing for a shipped design decision:
-enforcement is construction-time only, and `validate` is not re-run for a control added later,
-*because* throwing from the diff was held to be unavailable. If a throw there is merely reported
-and diffing continues, that argument no longer decides the question, and the alternatives reopen —
-reject a late `addControl` from the diff, surface it through a channel the consumer can observe,
-or keep the current behaviour on a different and stated ground (a throw cannot un-add the control,
-and it fires far from the call that caused it, which may well still be decisive).
-
-Scope: correct the four sites; decide the question again on the real behaviour and record which
-ground it now rests on; and add a spec that pins what actually happens when the diff throws, since
-none exists — the case above pins the *symptom* the guard prevents, not the subscriber's fate.
-Behavioural if the decision changes, documentation-only if it does not.
 
 <a id="d3"></a>
 ## D3 — Per-registration `caseInsensitive` reaches one of three levers

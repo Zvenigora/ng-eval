@@ -212,12 +212,15 @@ would render precisely the field that has no data, with no error anywhere. This 
 over the schema's names *and* the group's controls, because the two are different sets and
 the second is worse: the control exists and its value is unreadable.
 
-**The check runs at construction only.** A control added afterwards is mirrored but not
-re-validated, so a `constructor` or a nested `FormGroup` introduced by a later `addControl`
-gets none of the diagnostics above. Rejecting it from inside the diff is not on offer:
-the diff runs in a subscriber, where a throw is reported out of band and far from the
-`addControl` that caused it — and it could not undo that call anyway. Validate a control
-set you assemble dynamically, or re-bind.
+**A control added later is checked for its name, not its class.** Since 0.3.0, an
+`addControl` whose name is a member of `Object.prototype` leaves the control unmirrored —
+no expression could read it anyway — and the mirror reports it with the message above, once.
+That report is not a throw from `addControl`, which has already returned: the mirror runs in
+a `group.events` subscriber, so the error arrives out of band, through rxjs's
+`config.onUnhandledError` (in an Angular application, its error handler). The rest of that
+change is applied first, and later changes are still mirrored. A nested `FormGroup` or a
+`FormArray` added later is **not** checked, and is mirrored as its aggregate value — validate
+a control set you assemble dynamically, or re-bind.
 
 ### Expressions are validated too
 

@@ -2024,6 +2024,109 @@ respelling that root. No case covers that combination.
 
 # D. `eval-forms`
 
+<a id="d1"></a>
+## D1 — The throwing-subscriber premise is false in both halves
+
+**Package** forms · **Kind** fix + decision · **Status** **Retired — decided and fixed
+2026-10-03**, for `eval-forms` 0.3.0. Was Open, Premise retired
+
+**The premise.** Four places in `eval-forms` state that a throw inside the `group.events`
+subscriber "unsubscribes it and silently ends all diffing for the life of the form".
+
+**It is false in both halves**, measured against this repo's `rxjs@7.8.2` with the same pipeline
+shape `createControlSource` uses — a `Subject` exposed through `asObservable()`, piped through
+`takeUntil`, with a function next-handler:
+
+```
+next(1) returned normally to the caller
+closed after 1st throw: false | handler calls: 1 | observers: 1
+closed after 2nd throw: false | handler calls: 2 | observers: 1
+ASYNC UNHANDLED: boom  (x2)
+```
+
+RxJS 7's `ConsumerObserver` catches the handler's throw and re-reports it through
+`reportUnhandledError`, **asynchronously**. The subscription stays open, later emissions are still
+delivered, and in an Angular application the error reaches the unhandled-error path. So the
+failure is *loud and non-fatal*, not *silent and terminal* — the opposite of the premise on both
+axes.
+
+**The four sites**, all stating it as established fact, all verified still present 2026-09-06:
+
+- [`control-source.ts:165`](../modules/eval-forms/reactive/src/lib/control-source.ts#L165) — the
+  own-property read in `sync`.
+- [`field-schema.ts:199`](../modules/eval-forms/reactive/src/lib/field-schema.ts#L199) —
+  `validate`'s group loop.
+- [`control-source.spec.ts:409`](../modules/eval-forms/reactive/src/lib/control-source.spec.ts#L409)
+  — the prototype-name removal case. This comment **already measured something that does not fit
+  it**: it goes on to record that "the throw lands in that key's own subscriber and not back in
+  `sync`, so the diff loop itself survives". The contradiction was sitting in one comment and was
+  not read as one.
+- [`forms/phase-4-plan.md:1438`](forms/phase-4-plan.md) — and it cites "§ 3.5.5" as the source,
+  which does **not** contain the claim. The citation is what made it look settled.
+
+**This is not a comment fix.** The premise is load-bearing for a shipped design decision:
+enforcement is construction-time only, and `validate` is not re-run for a control added later,
+*because* throwing from the diff was held to be unavailable. If a throw there is merely reported
+and diffing continues, that argument no longer decides the question, and the alternatives reopen —
+reject a late `addControl` from the diff, surface it through a channel the consumer can observe,
+or keep the current behaviour on a different and stated ground (a throw cannot un-add the control,
+and it fires far from the call that caused it, which may well still be decisive).
+
+Scope: correct the four sites; decide the question again on the real behaviour and record which
+ground it now rests on; and add a spec that pins what actually happens when the diff throws, since
+none exists — the case above pins the *symptom* the guard prevents, not the subscriber's fate.
+Behavioural if the decision changes, documentation-only if it does not.
+
+**Pinned first, on the real mirror, 2026-10-03.** A throw forced out of `createControlSource`'s
+own `sync` — a record the consumer had made non-extensible, so `open`'s `defineProperty` throws
+for any new key — measured: `addControl` returned normally; nothing was reported synchronously;
+after a macrotask `config.onUnhandledError` had received **two** errors, one per `group.events`
+emission that one `addControl` fires (value, then status); the subscription stayed open, one
+observer; a later `removeControl` was still diffed; and every later emission reported the error
+again — 4, then 6. That case is now a spec, and it runs on a path any version of the refusal below
+leaves throwing.
+
+**Decided 2026-10-03: reject a late prototype-named control from the diff, and report it once.**
+The ground the old decision stood on is gone, and the two that might have replaced it do not
+decide it either. "A throw cannot un-add the control" is true and does not matter: the refusal is
+*not mirroring* it, which the diff can do, and no expression could have read it anyway. "It fires
+far from the call" is true of the out-of-band report and is the price of a diff in a subscriber;
+it is still loud, it names the control, and it is the only diagnostic there was ever going to be
+for this misuse — before, there was none.
+
+So `sync`, for a control it has not mirrored whose name is off `Object.prototype`: does not open
+it; finishes the rest of the emission — every replacement, removal and other addition; then throws
+`bindFieldProperties`' construction-time message, shared now from one module-private helper,
+naming each such control, each name once. A name leaves the reported set when its control leaves
+the group, so a later re-add is reported afresh. The *class* half of `validate` — a nested group
+or `FormArray` — is still construction-time only, and the README says so.
+
+**The four sites**, corrected to the measured behaviour: `control-source.ts`'s `sync` comment now
+says a bare read's throw lands in that key's own subscriber, and documents the refusal;
+`field-schema.ts`'s "Construction-time only" comment is rewritten for what runs once and what
+`sync` now does; `control-source.spec.ts`'s removal case no longer says the subscriber
+unsubscribes; and `forms/phase-4-plan.md` carries a dated correction under the original sentence,
+which is left standing as the design record it is. The README sentence the field-schema comment
+pointed to, under "It is validated when you bind", is rewritten too.
+
+*Fixed* 2026-10-03. Specs, `control-source.spec.ts` (4): the pin above; `addControl('constructor', …)`
+returns normally and `onUnhandledError` receives exactly one error, with the construction-time
+message; the control is not mirrored while one added in the **same emission** is — both added
+with `emitEvent: false`, then `markAsTouched()` for exactly one emission, because `addControl`
+fires two and a `sync` that gave up mid-loop mirrored the second control on the second one
+anyway; and later emissions still diff without the name being reported again. `afterEach` settles
+a macrotask before restoring the handler, so a report from a case that failed early lands in that
+case and not the next. `eval-forms` 280 → 284.
+
+**Probes**, each reverted, against the whole `eval-forms` suite, on the final spec:
+
+| Probe | Failed | Which |
+| ----- | -----: | ----- |
+| The refusal dropped — not mirrored, never thrown | 3 | the three refusal rows; the pin stays green |
+| The name mirrored anyway, still reported | 1 | the "not mirrored" row |
+| A throw at the refused name, before the loop finishes | 1 | the same-emission row — green with a two-event `addControl` fixture, which is why the row uses `markAsTouched` |
+| Reported names not remembered | 2 | "report once" (two emissions, two reports) and "not reported again" |
+
 <a id="d2"></a>
 ## D2 — Should `/reactive` reject prototype-shadowed identifiers in expressions too?
 
@@ -2096,8 +2199,9 @@ things the entry said a docs step could not supply, answered:
   build that form: `/reactive` already refused a field named off `Object.prototype`
   (`field-schema.ts:172`) and a control named off it (`:214`), so the identifier only ever read
   the prototype's function. An expression that registered before and throws now never read
-  data. A control added *after* construction is [D1](backlog.md#d1)'s case, and even there the
-  name resolves off `original` before the mirror is consulted.
+  data. A control added *after* construction is [D1](#d1)'s case: even before D1's fix the name
+  resolved off `original` ahead of the mirror, and since that fix, in the same release, it is
+  not mirrored at all.
 
 The two bounds are now the same sentence at both entry points, as the entry required: a member
 expression is `eval-core`'s guard's business, and a name the expression binds itself is refused.

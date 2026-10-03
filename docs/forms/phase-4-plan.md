@@ -1439,6 +1439,10 @@ makes § 9 possible.
     and silently ends all diffing for the life of the form (§ 3.5.5). So 8.5's answer is
     precisely "a thrown error at construction **plus** a documented limitation after it",
     and § 6's README says both.
+    *(Corrected 2026-10-03: that premise was false in both halves — rxjs reports such a throw
+    out of band and the subscription stays open — and since `eval-forms` 0.3.0 the mirror
+    refuses a late prototype-named control from inside the diff. See
+    [BL-D1](../backlog-retired.md#d1).)*
   - **8.5's second half — a nested control or `FormArray` throws**, and it follows from the
     same check rather than being a fourth one: the group is read for the prototype-name
     check anyway, and "not a `FormControl`" is a schema error of the same kind. A

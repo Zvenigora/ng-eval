@@ -16,8 +16,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 `eval-signals` 0.3.0 ([C1](../../docs/backlog-retired.md#c1)) — and `/reactive` refuses a
 prototype-shadowed identifier, as `/signals` does ([D2](../../docs/backlog-retired.md#d2)).** A
 breaking minor: a rule that wrote a member of a control's value or of the `/signals` model now
-throws, a `/reactive` rule naming a member of `Object.prototype` now throws at bind time, and
-both peer floors rise.
+throws, a `/reactive` rule naming a member of `Object.prototype` now throws at bind time, a
+control added later under such a name is refused rather than mirrored
+([D1](../../docs/backlog-retired.md#d1)), and both peer floors rise.
 
 ### Breaking
 - **A member write into the form's data throws `SignalContextWriteError`**, in every mode, in
@@ -39,6 +40,14 @@ both peer floors rise.
   checked, and a name the expression binds itself is refused. No form that worked loses
   anything: a field or a control carrying such a name was already refused, so the identifier
   never read data.
+- **A control added after `bindFieldProperties` under a name off `Object.prototype` is refused**
+  — [D1](../../docs/backlog-retired.md#d1). Up to 0.2.7 the mirror took it in unchecked, though
+  no expression could read it. Now it is not mirrored, and the mirror reports it with the
+  construction-time message, `Control 'constructor' is a member of Object.prototype …`, once.
+  `addControl` still returns normally: the mirror runs in a `group.events` subscriber, so the
+  error reaches rxjs's `config.onUnhandledError` — in an Angular application, its error handler
+  — after the rest of that change has been mirrored, and later changes are mirrored as before. A
+  nested group or `FormArray` added later is still not checked.
 
 ### Added
 - **`guardIdentifiers(expression, node)`**, at the core entry point: the identifier guard both

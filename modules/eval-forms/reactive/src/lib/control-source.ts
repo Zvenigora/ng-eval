@@ -3,6 +3,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import type { AbstractControl, FormGroup } from '@angular/forms';
 import type { SignalContextSource } from '@zvenigora/ng-eval-signals';
 import { Subject, startWith, switchMap, takeUntil } from 'rxjs';
+import { isPrototypeName, prototypeControlMessage } from './prototype-names';
 
 /**
  * One key's mirror: the control it currently points at, the channel that
@@ -147,12 +148,33 @@ export const createControlSource = (
     delete source[name];
   };
 
+  // The prototype-named controls `sync` has refused and reported, so each is
+  // reported once rather than on every later emission. A name leaves the set
+  // when its control leaves the group, so a later re-add is reported afresh.
+  const reported = new Set<string>();
+
   // Diffs the key -> instance map against the group's current controls
   // (S 3.5.5). Deleting the entry being visited is safe: `Map` iteration
   // tolerates it.
+  //
+  // **It can throw, and only at its end** (`docs/backlog-retired.md` D1). A
+  // control added after construction under a name off `Object.prototype` is
+  // not mirrored - no expression could read it - and is refused with the
+  // message `bindFieldProperties` gives at construction, by one throw once
+  // every other change in this emission has been applied. The throw leaves
+  // the `group.events` subscriber: `addControl` has already returned, rxjs
+  // reports it out of band to `config.onUnhandledError`, and the subscription
+  // stays open, so later emissions still diff. Measured on this repo's rxjs
+  // before the change, with a throw forced out of `open`.
   const sync = (): void => {
 
     const live = controls();
+
+    for (const name of reported) {
+      if (!Object.prototype.hasOwnProperty.call(live, name)) {
+        reported.delete(name);
+      }
+    }
 
     for (const [name, channel] of channels) {
       // Own-property, never a bare `live[name]` (plan S 3.4.2's rule, applied
@@ -161,9 +183,11 @@ export const createControlSource = (
       // server-supplied field named `constructor` or `toString` is legal -
       // and after its control is removed a bare read resolves the
       // *prototype's* value instead of `undefined`. This loop would then take
-      // the "replaced" branch, push `Object` down the channel, and throw out
-      // of the `group.events` subscriber - which unsubscribes it, silently
-      // ending all diffing for the life of the form.
+      // the "replaced" branch and push `Object` down the channel, so the key
+      // would never be closed and its ticker would error. The throw that
+      // follows lands in that key's own subscriber; written here before 0.3.0
+      // as unsubscribing `group.events` and silently ending all diffing, which
+      // was false (`docs/backlog-retired.md` D1).
       const replacement: AbstractControl | undefined =
         Object.prototype.hasOwnProperty.call(live, name)
           ? live[name]
@@ -182,10 +206,26 @@ export const createControlSource = (
       channel.instances.next(replacement);
     }
 
+    const refused: string[] = [];
+
     for (const [name, control] of Object.entries(live)) {
-      if (!channels.has(name)) {
-        open(name, control);
+      if (channels.has(name)) {
+        continue;
       }
+
+      if (isPrototypeName(name)) {
+        if (!reported.has(name)) {
+          reported.add(name);
+          refused.push(name);
+        }
+        continue;
+      }
+
+      open(name, control);
+    }
+
+    if (refused.length > 0) {
+      throw new Error(refused.map(prototypeControlMessage).join('\n'));
     }
   };
 
