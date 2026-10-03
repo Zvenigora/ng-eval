@@ -1,6 +1,7 @@
 import { Context, Registry, Stack, fromContext } from '../common';
 import { getContextValue, setContextValue } from '../common/context';
 import { EvalLookup } from './eval-lookup';
+import { EvalMemberWrite } from './eval-member-write';
 import { EvalOptions } from './eval-options';
 import { EvalScope, matchesNamespace } from './eval-scope';
 
@@ -458,6 +459,39 @@ export class EvalContext {
     setContextValue(scope, key, value);
     return true;
   }
+
+  /**
+   * An opt-in policy for **member** writes - `o.k = v`, `o.k += v`, `o.k++`.
+   * Those never reach {@link set} or {@link setInScope}: the assignment and
+   * update visitors write the member straight into the object, so a context
+   * that overrides {@link set} to protect its keys cannot see a write made
+   * *through* one. This is the hook that can.
+   *
+   * **Undefined on `EvalContext`, and that is the opt-out.** A subclass that
+   * implements it opts in to two things, decided once per `EvalState`, when
+   * the state is built around this context:
+   *
+   * - the walk records every object it creates for the expression to hold -
+   *   object and array literals, rest values, arrow functions - on that
+   *   state, in a `WeakSet` the state holds; and
+   * - before each member write, the assignment and update visitors call this
+   *   with the target, the key, and whether that state's walk created the
+   *   target - see {@link EvalMemberWrite.createdByEvaluation}, which also
+   *   says what does not count, and why.
+   *
+   * To refuse a write, throw: nothing is written, and the error leaves the
+   * evaluation as thrown. Returning allows it, and the prototype-pollution
+   * guard still applies after. A context that does not implement this pays
+   * one field read at each of those sites, and nothing else.
+   *
+   * What it does not see: a mutating **method** call - `arr.push(x)`,
+   * `arr.splice(i, 1)`, `map.set(k, v)` - writes from native code and is no
+   * member write at all.
+   *
+   * @param write - The write about to happen.
+   * @throws To refuse the write.
+   */
+  public checkMemberWrite?(write: EvalMemberWrite): void;
 
   /**
    * Pushes a context to the scope stack.

@@ -45,6 +45,8 @@ export const objectExpressionVisitor = (node: ObjectExpression, st: EvalState, c
   // Create safe object with prototype pollution protection
   try {
     const obj = createSafeObject(entries);
+    // Recorded only under a member-write policy - `EvalContext.checkMemberWrite`.
+    st.createdObjects?.add(obj);
     pushVisitorResult(node, st, obj);
   } catch (error) {
     throw new Error(`Object creation blocked: ${error instanceof Error ? error.message : String(error)}`);

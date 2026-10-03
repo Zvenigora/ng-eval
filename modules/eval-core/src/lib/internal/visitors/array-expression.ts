@@ -11,6 +11,11 @@ export const arrayExpressionVisitor = (node: ArrayExpression, st: EvalState, cal
 
   const elements = evaluateArray(node, node.elements, st, callback);
 
+  // Recorded only under a member-write policy - `EvalContext.checkMemberWrite`.
+  // Here and not in `evaluateArray`, which also builds call and `new` argument
+  // lists: those are not literals the expression can hold.
+  st.createdObjects?.add(elements);
+
   pushVisitorResult(node, st, elements);
 
   afterVisitor(node, st);

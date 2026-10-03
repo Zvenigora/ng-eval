@@ -6,6 +6,7 @@ import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 import { evaluateMember } from './member-expression';
 import { safeSetProperty } from './prototype-pollution-guard';
+import { consultMemberWrite } from './member-write-policy';
 import { assignToBinding } from './variable-declaration';
 import { unwrapParentheses } from './utils';
 
@@ -38,6 +39,12 @@ export const updateExpressionVisitor = (node: UpdateExpression, st: EvalState, c
   } else if (target.type === 'MemberExpression') {
     const [object, property, value] = evaluateMember(target, st, callback);
     const newValue = updateOperators[node.operator](value as number);
+
+    // The same consultation as `assignment-expression.ts`'s member branch.
+    const created = st.createdObjects;
+    if (created) {
+      consultMemberWrite(st, created, object, property);
+    }
 
     // Use safe property assignment to prevent prototype pollution
     safeSetProperty(object, property, newValue);

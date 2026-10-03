@@ -5,6 +5,7 @@ import { EvalState } from '../classes/eval';
 import { popVisitorResult } from '.';
 import { BaseContext } from '../classes/common';
 import { isDangerousProperty, safeGetProperty, safeSetProperty } from './prototype-pollution-guard';
+import { recordCreated } from './member-write-policy';
 
 
 // based on evalArrowContext
@@ -57,7 +58,15 @@ export const evaluatePatterns = (patterns: Pattern[], st: EvalState, callback: w
         }
         break;
       case 'RestElement': {
-          const object = evaluateRestElement(pattern, st, callback, args.slice(i));
+          // An array rest and a parameter rest are both this slice: a new
+          // array the expression then holds. Recorded only under a member-write
+          // policy - `EvalContext.checkMemberWrite`.
+          const rest = args.slice(i);
+          const created = st.createdObjects;
+          if (created) {
+            recordCreated(created, rest);
+          }
+          const object = evaluateRestElement(pattern, st, callback, rest);
           context = {...context, ...object};
         }
         break;
@@ -242,7 +251,11 @@ const evaluateObjectPattern = (pattern: ObjectPattern, st: EvalState, callback: 
           // element last in an object pattern, so `taken` is complete here.
           // Binding the whole argument left an already-destructured key on the
           // rest record - `docs/backlog.md` A13.
-          const object = evaluateRestElement(pattern, st, callback, restOf(arg, taken));
+          // A new object, so recorded under a member-write policy exactly as
+          // a literal is - `EvalContext.checkMemberWrite`.
+          const rest = restOf(arg, taken);
+          st.createdObjects?.add(rest);
+          const object = evaluateRestElement(pattern, st, callback, rest);
           context = {...context, ...object};
         }
         break;

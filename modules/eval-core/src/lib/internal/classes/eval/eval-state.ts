@@ -100,6 +100,7 @@ export class EvalState {
   private _iterationsRemaining = DEFAULT_MAX_ITERATIONS;
   private _maxTraceItems = DEFAULT_MAX_TRACE_ITEMS;
   private _constBindings: WeakMap<Context, Set<unknown>> | undefined;
+  private readonly _createdObjects: WeakSet<object> | undefined;
 
   /**
    * Gets the evaluation context.
@@ -383,6 +384,29 @@ export class EvalState {
   }
 
   /**
+   * The objects this state's walk created for the expression to hold - object
+   * and array literals, rest values, arrow functions - or undefined when its
+   * context does not police member writes. See `EvalContext.checkMemberWrite`,
+   * whose presence is the opt-in, and `EvalMemberWrite.createdByEvaluation`
+   * for what is deliberately left out.
+   *
+   * **Undefined is the default path, and the reason this is a field.** It is
+   * decided once, in the constructor, so each recording site and the two
+   * member-write branches pay one read of it and nothing else when no policy
+   * is in force: no set is allocated and no object is recorded.
+   *
+   * Per state rather than per `evaluate` call, deliberately: an arrow-function
+   * body re-enters the walk on this same state, possibly after the outer walk
+   * has returned, and an object its enclosing expression created is still that
+   * expression's own. A `WeakSet`, so recording an object never keeps it alive.
+   *
+   * @internal Not part of the published API.
+   */
+  public get createdObjects(): WeakSet<object> | undefined {
+    return this._createdObjects;
+  }
+
+  /**
    * Drops every per-run record this state holds: the collected hook errors, the
    * open-node stack, the accumulated timings, and the walk bases bounding
    * `EvalHooks.exit`.
@@ -426,6 +450,9 @@ export class EvalState {
     this._options = options;
     this._isAsync = isAsync;
     this._hooks = adoptHooks(options);
+    this._createdObjects = typeof context?.checkMemberWrite === 'function'
+      ? new WeakSet<object>()
+      : undefined;
 
     // Options configure the registry this state owns, never an adopted one -
     // the same rule `onHookError` follows, and for the same reason: an adopted

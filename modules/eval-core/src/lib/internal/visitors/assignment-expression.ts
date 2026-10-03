@@ -6,6 +6,7 @@ import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 import { evaluateMember } from './member-expression';
 import { safeSetProperty } from './prototype-pollution-guard';
+import { consultMemberWrite } from './member-write-policy';
 import { assignToBinding } from './variable-declaration';
 import { unwrapParentheses } from './utils';
 
@@ -75,7 +76,14 @@ export const assignmentExpressionVisitor = (node: AssignmentExpression, st: Eval
   } else if (target.type === 'MemberExpression') {
     const [object, key, ] = evaluateMember(target, st, callback);
     const value = func(left, right);
-    
+
+    // A member write never reaches `EvalContext.set`, so a context policing
+    // writes is asked here instead - `EvalContext.checkMemberWrite`.
+    const created = st.createdObjects;
+    if (created) {
+      consultMemberWrite(st, created, object, key);
+    }
+
     // Use safe property assignment to prevent prototype pollution
     safeSetProperty(object, key, value);
     

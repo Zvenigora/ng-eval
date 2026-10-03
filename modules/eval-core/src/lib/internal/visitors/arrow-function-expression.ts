@@ -32,6 +32,10 @@ export const arrowFunctionExpressionVisitor = (node: ArrowFunctionExpression, st
     }
   }
 
+  // A new function per evaluation of this node, so recorded under a
+  // member-write policy - `EvalContext.checkMemberWrite`.
+  st.createdObjects?.add(fn);
+
   pushVisitorResult(node, st, fn);
 
   afterVisitor(node, st);
