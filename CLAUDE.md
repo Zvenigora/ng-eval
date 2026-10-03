@@ -296,10 +296,12 @@ GHSA-pj3p-xpg7-h7gw in the sibling `jse-eval`) is the *resolved-key* re-check at
 `member-expression.ts:188` — `isDangerousProperty(foundKey)`, testing the key the lookup
 matched rather than the key as written. It is now covered by
 `eval.service.case-variant-guard.spec.ts`; before that spec, the entire suite passed with
-it neutered. Also note `member-expression.ts:144` and `:188` are both gated on
-`!isPrimitive`, so the blocklist is skipped for string/number/boolean receivers and
-`"abc".constructor` really does return `String` — see `docs/backlog.md` `BL-B1`, which
-carries the probe results, before touching either line.
+it neutered. A string/number/boolean receiver is not checked against the full blocklist —
+`toString`, `valueOf` and their kin are ordinary reads on it — but against
+`DANGEROUS_PRIMITIVE_PROPERTY_NAMES` (`constructor`, `__proto__`, `prototype` and the four
+accessor definers), by exact key on both paths, since a primitive is never case-corrected.
+See `docs/backlog-retired.md` `BL-B1`, which carries the probe results, and
+`eval.service.primitive-carve-out.spec.ts` before touching either check.
 
 ### Performance
 

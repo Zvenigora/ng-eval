@@ -1409,6 +1409,116 @@ assertion without asking. Nor was this one of the cases the step's brief named. 
 
 # B. `eval-core` — security and hygiene
 
+<a id="b1"></a>
+## B1 — The primitive carve-out in `member-expression.ts`
+
+**Package** core · **Kind** decision, then fix · **Status** **Retired — fixed 2026-10-02**; for
+`eval-core` 0.9.0. Was Open, Covered
+
+Surfaced while checking GHSA-pj3p-xpg7-h7gw (reported against the sibling `jse-eval`) against
+this repo. The advisory itself does not apply — see [`SECURITY.md`](../SECURITY.md), "Reviewed
+External Advisories" — but the check walked the surrounding guard and found this.
+
+**Status: not exploitable as far as probed. Not cleared.** No escalation was found; that is not
+the same as none existing, and the probing was one session's worth against one threat model.
+
+**What it is.** Both dangerous-property checks in the member visitor (lines 144 and 188 of
+[`member-expression.ts`](../modules/eval-core/src/lib/internal/visitors/member-expression.ts) at
+0.8.0) are gated on `!isPrimitive`, so when the receiver is a string, number or boolean the
+blocklist is skipped entirely. `"abc".constructor` therefore returns the real `String` function.
+
+**Why deleting the gate is not the fix.** The blocklist holds `toString`, `valueOf` and
+`hasOwnProperty`, which are ordinary reads on a primitive. Enforcing it there would refuse
+`s.toString()`. Worse, simply removing `!isPrimitive` does not narrow the carve-out at all — it
+removes primitive member access outright, because `safeGetProperty` returns `undefined` for any
+target that is not an object or a function *before* it consults the blocklist, so
+`s.toUpperCase` becomes `undefined` rather than blocked (confirmed by probe). A fix has to keep a
+primitive read path and enforce a subset of the blocklist on it.
+
+**Probe results, so nobody re-derives them.** Against `{ s: 'abc', n: 1, b: true }`:
+
+- `s.constructor` → the `String` function. Likewise `n.constructor` → `Number`,
+  `b.constructor` → `Boolean`.
+- `s.constructor.call` → `Function.prototype.call`, and it is callable —
+  `s.constructor.call(null, "hi")` → `"hi"`. This is the one hop past the constructor that is not
+  on the blocklist. `this` is the `String` function, so it yields a string.
+- `s.constructor.constructor` → **throws**. So does `s.constructor.prototype`,
+  `s.constructor.__proto__`, `s.constructor.call.constructor`, `s.trim.constructor` and
+  `s.sub.constructor`.
+- Every escalation tried dead-ends at hop 2, and by the same mechanism: the receiver is then a
+  plain function, not a primitive, so the read goes through `safeGetProperty`, which does enforce
+  the blocklist.
+- A second, independent barrier sits behind that one: the case-insensitive lookup block is gated
+  on `typeof obj === 'object'`, and functions are not. So no case variant reopens the chain —
+  `s.constructor.CONSTRUCTOR`, `s.constructor.PROTOTYPE` and `s.trim.CONSTRUCTOR` all resolve to
+  `undefined` under `caseInsensitive: true`. This barrier is incidental rather than designed,
+  which is a reason not to lean on it.
+
+**Covered, not fixed.** `eval.service.primitive-carve-out.spec.ts` pins the boundary in both
+directions. Confirmed load-bearing: skipping the carve-out reddens the first two blocks,
+extending it to function receivers reddens the third. A fix is expected to change its first
+`describe` block and leave the other two intact.
+
+Behavioural — anything reading `s.constructor` today starts throwing.
+
+*Recorded*: [`SECURITY.md`](../SECURITY.md), the GHSA-pj3p-xpg7-h7gw section.
+*Verified*: source read, 2026-09-06. *Re-measured* 2026-10-02 on master 92dcf0b, over the same
+context: `s.constructor` is `String`, and callable through `.call`, `.bind`, `.fromCharCode` and
+`.raw`; `n.constructor.MAX_SAFE_INTEGER` reads; `s.__proto__` is `String.prototype`, and
+`n.__proto__.toFixed.call(1.5, 0)` runs; `s.__lookupGetter__` and `s.__defineGetter__` are callable
+functions. Already refused: every second hop to a dangerous name, and every write to a built-in
+prototype (`s.__proto__.x = 1` throws, and `String.prototype` is untouched).
+
+*Fixed* 2026-10-02. A string, number or boolean receiver is refused `constructor`, `__proto__`,
+`prototype`, `__defineGetter__`, `__defineSetter__`, `__lookupGetter__` and `__lookupSetter__`, with
+the blocklist's own error, on both the case-sensitive and the `caseInsensitive` path of
+`member-expression.ts`. The seven are `DANGEROUS_PRIMITIVE_PROPERTY_NAMES`, defined beside
+`DANGEROUS_PROPERTY_NAMES` in `prototype-pollution-guard.ts` and tested by the module-internal
+`isDangerousPrimitiveProperty`. `toString`, `valueOf`, `toLocaleString`, `hasOwnProperty`,
+`isPrototypeOf` and `propertyIsEnumerable` stay readable. The primitive read path is kept: after
+the check the read is still direct, not through `safeGetProperty`.
+
+**Case variants are not refused, deliberately.** The subset is checked by exact key, under
+`caseInsensitive` too. A primitive receiver is never case-corrected — the lookup that corrects
+case is gated on `typeof obj === 'object'` — so `s.Constructor` and `s.CONSTRUCTOR` read
+`'abc'['Constructor']` and `'abc'['CONSTRUCTOR']`, both `undefined`, and never reach `String`. The
+last test of the spec's third block (`s.CONSTRUCTOR` under `caseInsensitive` → `undefined`) fails
+if a primitive is ever case-corrected, and the variants would then need refusing.
+
+Behavioural, so a breaking minor: an expression reading one of the seven off a primitive now
+throws. Nothing in `eval-signals` or `eval-forms` — source, specs or READMEs — reads one off a
+primitive. Their `user.constructor` cases register an expression over an object model and never
+evaluate it on a primitive; nor does anything in `eval-core`'s other specs or its README.
+
+Specs: `eval.service.primitive-carve-out.spec.ts`, 8 → 113 cases. The first block, which pinned
+what the carve-out permitted, now asserts refusal: each of the seven names on each of `s`, `n` and
+`b`, by dot and by computed literal, under both option settings; a key computed at runtime; calls
+through the constructor and the prototype (`s.constructor("x")` among them);
+`s.constructor.CONSTRUCTOR` under `caseInsensitive`; the two variants reading `undefined`; and the
+eight ordinary reads under both settings. The second block is unchanged. In the third, the cases
+whose first hop is now refused were reworked to test what each is named for:
+
+- `s.constructor.call.constructor` → `s.trim.call.constructor`, as a case of its own: `s.trim.call`
+  reaches `Function.prototype.call` through allowed hops.
+- `s.constructor.CONSTRUCTOR` → `s.sub.CONSTRUCTOR`, and `s.constructor.PROTOTYPE` →
+  `s.trim.PROTOTYPE`, both still `undefined`: a function receiver reached through an allowed hop.
+  `s.constructor.CONSTRUCTOR` moved to the first block as a refusal.
+- `s.constructor.constructor`, `s.constructor.prototype` and `s.constructor.__proto__` kept, now
+  asserting the first-hop refusal, the case retitled to say the second hop is unreachable from a
+  primitive. No allowed member of a string, number or boolean yields a global constructor or a
+  built-in prototype — checked over every own property name on each one's prototype chain, 55, 9
+  and 6 names.
+
+`eval-core` 1128 → 1233.
+
+**Probes**, each reverted, against 1233. The `!isPrimitive` gate restored on both paths — 90 failed,
+all in this spec: the 88 refusal cases, `s.constructor.CONSTRUCTOR`, and the kept first-hop case
+(`s.constructor.prototype` is then refused at the second hop, as `"prototype"`). The 16 ordinary
+reads stay green, and so do the reworked third-block cases, which exercise their later hop either
+way. The full blocklist applied to primitives — 13 failed: the 12 ordinary reads of a blocklisted
+name (`s.length` and `s.toUpperCase()` are not on it) and the second block's ordinary-reads case;
+every refusal case green.
+
 <a id="b2"></a>
 ## B2 — `pattern.ts:83` logs the whole `EvalState`
 

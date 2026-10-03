@@ -156,7 +156,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A7](backlog-retired.md#a7) | `EvalScopeOptions.thisArg` is documented and never applied — `getThis`'s `priorScopes` loop is dead, and `ns.fn()` never reaches it | core | decision, then fix | **Retired — decided and fixed 2026-09-30**; released 2026-10-01 in `eval-core` 0.7.0, tagged 724d831. `thisArg` is the receiver for a method reached through a scope; a bare namespace still evaluates to the scope's object |
 | [A8](backlog-retired.md#a8) | `EvalService._activeStates` grows unboundedly | core | fix | **Retired — fixed 2026-09-25, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987, in two steps: `simpleEval`'s states ([`docs/a8/plan.md`](a8/plan.md)), then the set deleted ([`docs/a8/step-2-plan.md`](a8/step-2-plan.md)). Withdraws the published destroy-time registry clear |
 | [A9](backlog-retired.md#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
-| [B1](#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | Open, Covered |
+| [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; for `eval-core` 0.9.0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
 | [B4](backlog-retired.md#b4) | `eval-core.component.ts` is dead generator scaffold | core | fix | **Retired — fixed 2026-09-26**; no published artifact changed — the bundle and `.d.ts` are byte-identical |
@@ -521,60 +521,7 @@ above.
 
 # B. `eval-core` — security and hygiene
 
-<a id="b1"></a>
-## B1 — The primitive carve-out in `member-expression.ts`
-
-**Package** core · **Kind** decision, then fix · **Status** Open, Covered
-
-Surfaced while checking GHSA-pj3p-xpg7-h7gw (reported against the sibling `jse-eval`) against
-this repo. The advisory itself does not apply — see [`SECURITY.md`](../SECURITY.md), "Reviewed
-External Advisories" — but the check walked the surrounding guard and found this.
-
-**Status: not exploitable as far as probed. Not cleared.** No escalation was found; that is not
-the same as none existing, and the probing was one session's worth against one threat model.
-
-**What it is.** Both dangerous-property checks in the member visitor
-([`:144`](../modules/eval-core/src/lib/internal/visitors/member-expression.ts#L144) and
-[`:188`](../modules/eval-core/src/lib/internal/visitors/member-expression.ts#L188)) are gated on
-`!isPrimitive`, so when the receiver is a string, number or boolean the blocklist is skipped
-entirely. `"abc".constructor` therefore returns the real `String` function.
-
-**Why deleting the gate is not the fix.** The blocklist holds `toString`, `valueOf` and
-`hasOwnProperty`, which are ordinary reads on a primitive. Enforcing it there would refuse
-`s.toString()`. Worse, simply removing `!isPrimitive` does not narrow the carve-out at all — it
-removes primitive member access outright, because `safeGetProperty` returns `undefined` for any
-target that is not an object or a function *before* it consults the blocklist, so
-`s.toUpperCase` becomes `undefined` rather than blocked (confirmed by probe). A fix has to keep a
-primitive read path and enforce a subset of the blocklist on it.
-
-**Probe results, so nobody re-derives them.** Against `{ s: 'abc', n: 1, b: true }`:
-
-- `s.constructor` → the `String` function. Likewise `n.constructor` → `Number`,
-  `b.constructor` → `Boolean`.
-- `s.constructor.call` → `Function.prototype.call`, and it is callable —
-  `s.constructor.call(null, "hi")` → `"hi"`. This is the one hop past the constructor that is not
-  on the blocklist. `this` is the `String` function, so it yields a string.
-- `s.constructor.constructor` → **throws**. So does `s.constructor.prototype`,
-  `s.constructor.__proto__`, `s.constructor.call.constructor`, `s.trim.constructor` and
-  `s.sub.constructor`.
-- Every escalation tried dead-ends at hop 2, and by the same mechanism: the receiver is then a
-  plain function, not a primitive, so the read goes through `safeGetProperty`, which does enforce
-  the blocklist.
-- A second, independent barrier sits behind that one: the case-insensitive lookup block is gated
-  on `typeof obj === 'object'`, and functions are not. So no case variant reopens the chain —
-  `s.constructor.CONSTRUCTOR`, `s.constructor.PROTOTYPE` and `s.trim.CONSTRUCTOR` all resolve to
-  `undefined` under `caseInsensitive: true`. This barrier is incidental rather than designed,
-  which is a reason not to lean on it.
-
-**Covered, not fixed.** `eval.service.primitive-carve-out.spec.ts` pins the boundary in both
-directions. Confirmed load-bearing: skipping the carve-out reddens the first two blocks,
-extending it to function receivers reddens the third. A fix is expected to change its first
-`describe` block and leave the other two intact.
-
-Behavioural — anything reading `s.constructor` today starts throwing.
-
-*Recorded*: [`SECURITY.md:432`](../SECURITY.md).
-*Verified*: source read, 2026-09-06.
+No live entries. [B1](backlog-retired.md#b1)–[B4](backlog-retired.md#b4) are all retired.
 
 ---
 
@@ -745,10 +692,10 @@ decision, and a migration note for a consumer whose form genuinely has a field n
   a fifth construction-time rejection beside the four the README documents.
 - **Whether the residual is acceptable at both.** A *member* expression — `user.constructor` — is
   `eval-core`'s prototype-pollution guard and not this check's business at either entry point, and
-  [B1](#b1)'s carve-out applies. A check that rejects the bare identifier and passes the member
-  access is the same shape at both, and is worth stating rather than discovering. **The answer
-  here has to be the same sentence at both entry points**, which is what ties this entry to
-  [B1](#b1).
+  [B1](backlog-retired.md#b1)'s carve-out applies (narrowed in `eval-core` 0.9.0). A check that
+  rejects the bare identifier and passes the member access is the same shape at both, and is
+  worth stating rather than discovering. **The answer here has to be the same sentence at both
+  entry points**, which is what ties this entry to [B1](backlog-retired.md#b1).
 - **Whether the deliberate over-rejection ports.** `/signals` rejects a name an expression *binds*
   itself — `'[1].map(valueOf => valueOf)'` throws — because a scope-aware guard would be a second
   copy of `eval-core`'s frame logic. The same reasoning applies unchanged at `/reactive`, but it

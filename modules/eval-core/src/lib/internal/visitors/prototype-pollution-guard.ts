@@ -26,6 +26,28 @@ const DANGEROUS_PROPERTY_NAMES = new Set([
 ]);
 
 /**
+ * The subset of DANGEROUS_PROPERTY_NAMES refused on a string, number or
+ * boolean receiver: the names that reach a global constructor, a built-in
+ * prototype or an accessor definer. The other six - `toString`, `valueOf`,
+ * `toLocaleString`, `hasOwnProperty`, `isPrototypeOf`,
+ * `propertyIsEnumerable` - are ordinary reads on a primitive and stay
+ * readable.
+ *
+ * Matched by exact key, under `caseInsensitive` too: a primitive receiver is
+ * never case-corrected, so a variant such as `s.CONSTRUCTOR` is a missing
+ * property, not a route to `String`.
+ */
+const DANGEROUS_PRIMITIVE_PROPERTY_NAMES = new Set([
+  '__proto__',
+  'constructor',
+  'prototype',
+  '__defineGetter__',
+  '__defineSetter__',
+  '__lookupGetter__',
+  '__lookupSetter__'
+]);
+
+/**
  * Set of constructor names that should be blocked from modification
  */
 const DANGEROUS_CONSTRUCTORS = new Set([
@@ -49,6 +71,18 @@ const DANGEROUS_CONSTRUCTORS = new Set([
 export const isDangerousProperty = (key: unknown): boolean => {
   if (typeof key === 'string') {
     return DANGEROUS_PROPERTY_NAMES.has(key);
+  }
+  return false;
+};
+
+/**
+ * Checks if a property name is dangerous on a primitive receiver
+ * @param key The property name to check
+ * @returns true if the property is in the primitive subset, false otherwise
+ */
+export const isDangerousPrimitiveProperty = (key: unknown): boolean => {
+  if (typeof key === 'string') {
+    return DANGEROUS_PRIMITIVE_PROPERTY_NAMES.has(key);
   }
   return false;
 };

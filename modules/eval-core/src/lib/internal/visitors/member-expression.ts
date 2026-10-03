@@ -4,7 +4,7 @@ import { beforeVisitor } from './before-visitor';
 import { pushVisitorResult, popVisitorResult } from './visitor-result';
 import { EvalScope, EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
-import { safeGetProperty, isDangerousProperty } from './prototype-pollution-guard';
+import { safeGetProperty, isDangerousProperty, isDangerousPrimitiveProperty } from './prototype-pollution-guard';
 import { equalIgnoreCase } from './utils';
 import { getCachedCaseInsensitiveProperty } from './property-lookup-cache';
 // import { getCachedVisitorResult, setCachedVisitorResult } from './visitor-result-cache';
@@ -135,13 +135,17 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
     // returned tuple keeps the original `key`; only the event is corrected.
     let resolvedKey: string | number | symbol = key;
 
-    // Check if this is a primitive type (string, number, boolean) - these are safe for method access
+    // A primitive receiver (string, number, boolean) is checked against the
+    // primitive subset of the blocklist: `toString` and its kin are ordinary
+    // reads on it, while `constructor`, `__proto__` and the accessor definers
+    // would reach its global constructor and built-in prototype
     const isPrimitive = (typeof object === 'string' || typeof object === 'number' || typeof object === 'boolean');
-    
+
     if (st.options?.caseInsensitive && typeof key === 'string') {
-      // Use case-insensitive lookup but with prototype pollution protection
-      // For primitives, skip dangerous property checks as their methods are safe
-      if (!isPrimitive && isDangerousProperty(key)) {
+      // Use case-insensitive lookup but with prototype pollution protection.
+      // A primitive is checked by exact key: it is never case-corrected below,
+      // so a variant such as `s.CONSTRUCTOR` reads as a missing property
+      if (isPrimitive ? isDangerousPrimitiveProperty(key) : isDangerousProperty(key)) {
         throw new Error(`Access to dangerous property "${key}" is blocked for security reasons`);
       }
       
@@ -192,7 +196,8 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
       
       // Get the value using the found key or use safeGetProperty fallback for non-primitives
       if (isPrimitive) {
-        // For primitives, direct access is safe
+        // For primitives, a direct read: the key passed the primitive subset's
+        // check above, and the lookup block never ran, so foundKey is unset
         value = foundKey ? obj[foundKey] : obj[key];
       } else {
         // For objects, use safe property access
@@ -203,9 +208,12 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
         resolvedKey = foundKey;
       }
     } else {
-      // Use safe property access for prototype pollution protection (but not for primitives)
+      // Use safe property access for prototype pollution protection; a
+      // primitive gets a direct read, after the primitive subset's check
       if (isPrimitive) {
-        // For primitives, direct access is safe
+        if (isDangerousPrimitiveProperty(key)) {
+          throw new Error(`Access to dangerous property "${String(key)}" is blocked for security reasons`);
+        }
         value = (object as Record<PropertyKey, unknown>)[key];
       } else {
         value = safeGetProperty(object, key);

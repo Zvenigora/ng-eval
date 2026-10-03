@@ -452,13 +452,18 @@ merely *end* with one.
    `jse-eval`, `expression-eval` or `jsep`. This is a shared-bug-class question, not a
    supply-chain one.
 2. **No regex.** `isDangerousProperty` (`visitors/prototype-pollution-guard.ts`) matches
-   against an exact-match `Set` of names. The alternation-grouping defect cannot arise in
-   that form, so neither half of the secondary finding applies.
+   against an exact-match `Set` of names, and so does `isDangerousPrimitiveProperty`, which
+   checks a string, number or boolean receiver against a subset of them (below). The
+   alternation-grouping defect cannot arise in that form, so neither half of the secondary
+   finding applies.
 3. **The guard tests the resolved key.** This is the load-bearing one. Under
    `caseInsensitive`, `member-expression.ts` resolves a case variant to the key it actually
-   matched and then re-checks *that* key, not only the key as it was written. So
-   `x.CONSTRUCTOR` resolves to `constructor` and is refused, as are `x.CoNsTrUcToR`,
-   `x["CONSTRUCTOR"]` and the runtime-computed `x[k.toUpperCase()]`.
+   matched and then re-checks *that* key, not only the key as it was written. So, on an object
+   receiver, `x.CONSTRUCTOR` resolves to `constructor` and is refused, as are `x.CoNsTrUcToR`,
+   `x["CONSTRUCTOR"]` and the runtime-computed `x[k.toUpperCase()]`. A primitive receiver is
+   never case-corrected, so there is no resolved key to re-check: a variant on one is a missing
+   property, and the key as written is checked against the primitive subset —
+   "Primitive receivers" below.
 
 **Verification.** The proof-of-concept and its variants are pinned in
 `modules/eval-core/src/lib/actual/services/eval.service.case-variant-guard.spec.ts`. That
@@ -470,6 +475,28 @@ line.
 Under `caseInsensitive: false` the chain fails for an unrelated reason — no case correction
 runs at all, so the variant is simply a missing property — which is why the spec covers
 both option settings separately.
+
+**Primitive receivers — the carve-out, narrowed in `eval-core` 0.9.0.** Checking this
+advisory found a gap beside it. Until 0.9.0 a string, number or boolean receiver skipped the
+blocklist entirely, so `"abc".constructor` returned the `String` function and `s.__proto__`
+returned `String.prototype`. No escalation was found from either — every second hop to a
+dangerous name was refused, and so was every write to a built-in prototype — but a primitive
+could reach its global constructor and its prototype.
+
+Since 0.9.0 a primitive receiver is refused `constructor`, `__proto__`, `prototype`,
+`__defineGetter__`, `__defineSetter__`, `__lookupGetter__` and `__lookupSetter__`, with the
+blocklist's own error, with or without `caseInsensitive`. The rest of the blocklist —
+`toString`, `valueOf`, `toLocaleString`, `hasOwnProperty`, `isPrototypeOf` and
+`propertyIsEnumerable` — stays readable on a primitive, because those are ordinary reads
+there: `s.toString()`, `n.toLocaleString()`, `s.hasOwnProperty("length")`.
+
+Case variants such as `s.Constructor` are not refused, and need not be: the subset is matched
+by exact key, and a primitive receiver is never case-corrected — the lookup that corrects case
+runs only for `typeof 'object'` receivers — so under `caseInsensitive` `s.CONSTRUCTOR` reads
+`'abc'['CONSTRUCTOR']`, which is `undefined`, and never reaches `String`. The last test of
+the third block of `eval.service.primitive-carve-out.spec.ts` fails if that ever changes, and
+the variants would then need refusing. That spec covers the rest, and the probe results are kept
+in [`docs/backlog-retired.md`](docs/backlog-retired.md#b1), B1.
 
 ### Recommended Additional Security Measures
 - **Content Security Policy (CSP)**: Implement strict CSP headers

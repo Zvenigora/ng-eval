@@ -896,7 +896,7 @@ Each of these is a README line, not a defect to be filed later.
    which visitor you reached it through, which is harder to reason about than a name nobody should
    be binding anyway. Narrowing it to the actual write vectors is a real option and is a decision,
    not a tidy-up — it belongs to whoever revisits the blocklist as a whole (`docs/backlog.md`
-   [B1](../backlog.md#b1) is the other half of that subject). Pinned in
+   [B1](../backlog-retired.md#b1) is the other half of that subject). Pinned in
    `variable-declaration.spec.ts`, so step 6 transcribes it from a green spec.
 
 ---
