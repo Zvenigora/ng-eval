@@ -350,12 +350,12 @@ export function createEvalSignal(
     const depth = ctx.scopes.length;
 
     try {
-      // The free `call`, deliberately, and not `CompilerService.call`: up to
-      // `eval-core` 0.6.x that one caught and rethrew a bare `Error` with the
-      // message alone, which would destroy the `SignalContextWriteError` type
-      // the caller selects on and leave nothing but a message to match. 0.7.0
-      // rethrows the original, but the peer range still admits the versions
-      // that do not.
+      // The free `call`, and not `CompilerService.call`. The choice was forced
+      // while the peer range admitted `eval-core` 0.6.x, whose service method
+      // caught and rethrew a bare `Error` with the message alone - destroying
+      // the `SignalContextWriteError` type the caller selects on. Since 0.3.0
+      // the floor is 0.10.0, where both rethrow the original, so either would
+      // now do; nothing else depends on which.
       if (!trackDependencies) {
         return call(fn, state);
       }
@@ -395,21 +395,17 @@ export function createEvalSignal(
       // longer happens on a current core - including the escaped-closure case
       // S 3.8.3 recorded as out of reach, whose push and pop now travel
       // together however long after this frame it is called. What keeps the
-      // loop here is not that defect:
+      // loop here is not that defect: `EvalContext.push` and `pop` are public
+      // methods on a published class, so a scope can be stranded with no
+      // visitor involved at all. True at every version, and therefore the
+      // reason this loop is not removable at any peer range.
       //
-      //  - The `@zvenigora/ng-eval-core` peer range in
-      //    `modules/eval-signals/package.json` admits the *leaking* 0.3.0.
-      //    Range-dependent: raising its lower bound past 0.3.0 would retire
-      //    this reason and nothing else.
-      //  - `EvalContext.push` and `pop` are public methods on a published
-      //    class, so a scope can be stranded with no visitor involved at all.
-      //    True at every version, and therefore the reason this loop is not
-      //    removable at any peer range.
-      //
-      // A third reason expired in 0.4.0: this was the backstop for the
+      // Two other reasons have expired. This was the backstop for the
       // scope-push sites Phase 2 was adding to the core, and `Program`,
       // `BlockStatement` and `ForStatement` all shipped popping in a
-      // `finally`.
+      // `finally` (0.4.0). And the peer range admitted the *leaking*
+      // `eval-core` 0.3.0 until this package's 0.3.0 raised the floor to
+      // 0.10.0.
       //
       // It is still not reached by a signal context driven straight through
       // `EvalService`, which is outside any recompute - `signal-context.spec.ts`

@@ -34,18 +34,17 @@ const compileExpression = (expression: string): stateCallback =>
  * ([A9](../../../../../docs/backlog-retired.md#a9)), which left both cases below
  * passing with the `finally` in `evaluate-rule.ts` **deleted** - green, and
  * evidence of nothing. The containment is still needed (see that `finally`'s
- * own docblock for the three reasons), so the fixture has to produce a leak
- * the containment is still the only thing that catches.
+ * own docblock for the reasons, current and expired), so the fixture has to
+ * produce a leak the containment is still the only thing that catches.
  *
  * `EvalContext.push` and `pop` are **public methods on a published class** -
  * the reason the visitors cannot take away, and the one that holds at every
  * `eval-core` version. A model function that calls `push` and does not pop
  * strands a scope with no visitor involved at all, which is precisely the
- * shape the guard exists for: version skew onto the leaking `eval-core` 0.3.0,
- * which the peer range in `modules/eval-forms/package.json` admits; a future
- * push site that lands without its `finally`; or a consumer driving `push`
- * directly. Only the first of those three would be retired by
- * raising the range's lower bound.
+ * shape the guard exists for: a future push site that lands without its
+ * `finally`, or a consumer driving `push` directly. A third, version skew onto
+ * the leaking `eval-core` 0.3.0, was retired when 0.3.0 of this package raised
+ * the `eval-core` floor to 0.10.0.
  *
  * The pushed scope binds `country`, shadowing the model's own key. That is the
  * discriminating condition: `EvalContext.get` resolves `scopes` **first**, so

@@ -14,6 +14,38 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ---
 
+## [0.10.0] - 2026-10-03
+
+**An opt-in member-write policy on `EvalContext`, and two fixes.** Nothing changes for a context
+that does not opt in, and every change to an exported symbol is an addition: `EvalContext` gains
+an optional method and `EvalMemberWrite` is new. The two fixes change what an expression evaluates to, where it
+was wrong. `eval-signals` 0.3.0 builds on the policy and requires this version.
+
+### Added
+- **`EvalContext.checkMemberWrite?(write: EvalMemberWrite)`**, an optional method, and the
+  **`EvalMemberWrite`** interface, `{ target, key, createdByEvaluation }`. A subclass that
+  implements the method is asked before every member write — `o.k = v`, `o.k += v`, `o.k++` —
+  none of which reach `set`. To refuse one it throws, and nothing is written. `createdByEvaluation`
+  says whether the walk created the target: an object, array or regex literal, a rest value, or an
+  arrow function. A call's result and a `new` result never count, even when new, because either
+  can return an existing object — `[o].find(x => true)` returns `o`. Implementing the method is the
+  opt-in: the walk then records, per `EvalState`, the objects it creates. A context that does not
+  implement it pays one field read at each recording site and each member write, and nothing else.
+
+### Fixed
+- **A regex literal is a new `RegExp` on each evaluation.** Acorn builds a regex literal's
+  `RegExp` once, at parse time, and every evaluation of one parsed expression shared it — a
+  string `EvalService` has cached, and each call of a compiled expression — so a global regex
+  carried `lastIndex` from one evaluation into the next: `let r = /a/g; r.test("a")` answered
+  `true`, then `false`. Each evaluation now pushes a copy with the same source and flags, at
+  `lastIndex` 0, and `let f = () => /a/; f() === f()` is `false`, as in JavaScript.
+- **A hole in an array pattern keeps its position.** Holes were dropped before binding by index,
+  so every element after one read its neighbour's value: `let [, b] = [1, 2]` bound `b` to `1`,
+  `(([, y]) => y)([1, 2])` returned `1`, and `let [, ...r] = [1, 2, 3]` bound `r` to
+  `[1, 2, 3]`. They now bind as JavaScript does: `2`, `2` and `[2, 3]`.
+
+---
+
 ## [0.9.0] - 2026-10-03
 
 **A primitive receiver no longer skips the prototype-pollution guard —

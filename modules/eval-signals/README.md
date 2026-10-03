@@ -17,8 +17,9 @@ signals library.
 npm install @zvenigora/ng-eval-signals @zvenigora/ng-eval-core
 ```
 
-Peer dependencies: `@angular/core >=19` and `@zvenigora/ng-eval-core >=0.3.0 <0.10.0` — every
-`eval-core` from 0.3.0 to 0.9.x is supported.
+Peer dependencies: `@angular/core >=19` and `@zvenigora/ng-eval-core >=0.10.0 <0.11.0`. The floor
+is the member-write guard, which needs `eval-core` 0.10.0 to ask about a member write at all — see
+[Writes are not supported](#writes-are-not-supported).
 
 ## Quick start
 
@@ -342,11 +343,13 @@ Four things that decide whether this library fits, rather than surprises you lat
   context after this one, that lookup answers instead. With a context this library built and
   nothing added to it there is nothing further to reach, so the read simply resolves to
   `undefined`.
-- **The arrow-scope guard covers `createEvalSignal`, not a raw context.** An arrow function
-  whose body throws leaks its parameter scope onto the context (an `eval-core` defect).
-  `createEvalSignal` contains that to the recompute that caused it. A context driven directly
-  through `EvalService` keeps the leak, as does an arrow function that escapes the walk and
-  throws when you call it later.
+- **The scope guard covers `createEvalSignal`, not a raw context.** `EvalContext.push` and
+  `pop` are public, so a function in your source can push a scope onto the context and never
+  pop it, and every later read of that name finds the scope first. `createEvalSignal` unwinds
+  the context to the depth it started at after every recompute; a context you drive directly
+  through `EvalService` gets no such unwind. Up to 0.2.x this bullet described an `eval-core`
+  defect that leaked an arrow function's parameter scope; `eval-core` fixed it in 0.4.0, and
+  0.3.0's peer floor of 0.10.0 excludes the versions that had it.
 
 ## Using the adapter directly
 
@@ -364,7 +367,7 @@ total();   // 30
 ```
 
 You keep native per-key tracking and lose what the factory adds: compile-once, `dependencies`,
-`invalidate()`, `destroy()`, the arrow-scope guard, and the `caseInsensitive` forwarding above.
+`invalidate()`, `destroy()`, the scope guard, and the `caseInsensitive` forwarding above.
 
 ## Development
 

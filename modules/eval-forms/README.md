@@ -67,8 +67,8 @@ set of ranges covering both adapters:
   "@angular/forms": ">=19.0.0",
   "rxjs": "^7.8.0",
   "acorn-walk": "^8.3.0",
-  "@zvenigora/ng-eval-core": ">=0.3.0 <0.10.0",
-  "@zvenigora/ng-eval-signals": ">=0.1.0 <0.3.0"
+  "@zvenigora/ng-eval-core": ">=0.10.0 <0.11.0",
+  "@zvenigora/ng-eval-signals": ">=0.3.0 <0.4.0"
 }
 ```
 
@@ -363,21 +363,21 @@ Two things are **not** routed through `options.onError`, in either adapter:
   dataset. Swallowing it under the default would hand you a silent blank for a syntax bug
   in the rule itself.
 
-  **So does a write into the form's data, with `@zvenigora/ng-eval-signals` 0.3.0 or later.**
+  **So does a write into the form's data, since 0.3.0.**
   A rule may write into what it created — object, array and regex literals, rest values,
   arrow functions — and not into anything it was given. `address.city = 'x'`, over a
   control whose value is `{ city: 'Rome' }` or over the `/signals` model, throws
-  `SignalContextWriteError` with `kind` `'member'`, in every mode; up to `eval-signals` 0.2.x
-  it wrote into the very object Angular holds. A mutating method — `tags.push('x')` — is not
+  `SignalContextWriteError` with `kind` `'member'`, in every mode; up to 0.2.x it wrote into
+  the very object Angular holds. A mutating method — `tags.push('x')` — is not
   caught and still mutates it, so do not call one in a rule.
 
-  **It holds through a call too — with `@zvenigora/ng-eval-core` 0.7.0 or later.** An
-  assignment **nested inside a call**, `[1].map(x => (country = 'CA'))`, reaches the bypass
-  as `SignalContextWriteError` and is rethrown like a direct one. Up to `eval-core` 0.6.x
-  the evaluator's own call wrapper re-raised it as a plain `Error`, which lost the class the
-  bypass matches on, so it was routed by `onError` like any other failure: under the default,
-  a blank field with nothing in the console. The peer range still admits those versions, and
-  with one installed that boundary is back; it cannot be fixed from this side.
+  **It holds through a call too.** An assignment **nested inside a call**,
+  `[1].map(x => (country = 'CA'))`, reaches the bypass as `SignalContextWriteError` and is
+  rethrown like a direct one. Up to `eval-core` 0.6.x the evaluator's own call wrapper
+  re-raised it as a plain `Error`, which lost the class the bypass matches on, so it was routed
+  by `onError` like any other failure: under the default, a blank field with nothing in the
+  console. The peer range admitted those versions until 0.3.0 raised its `eval-core` floor to
+  0.10.0.
 
 ## Reactivity, and its two holes
 

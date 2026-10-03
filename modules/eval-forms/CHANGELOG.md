@@ -10,6 +10,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.3.0] - 2026-10-03
+
+**A rule may write into what it created, and not into the form's data — by consequence of
+`eval-signals` 0.3.0 ([C1](../../docs/backlog-retired.md#c1)).** A breaking minor: no code in
+this package changes, but a rule that wrote a member of a control's value or of the `/signals`
+model now throws, and both peer floors rise.
+
+### Breaking
+- **A member write into the form's data throws `SignalContextWriteError`**, in every mode, in
+  both adapters. `address.city = "x"` over a control holding `{ city: 'Rome' }` (`/reactive`), or
+  over the `/signals` model, wrote into the very object Angular holds; it now throws with `kind`
+  `'member'`, and nothing is written. `/reactive` raises it through `createEvalSignal`'s bypass,
+  and `/signals` through `applyErrorPolicy`, which rethrows it under any policy. A rule writing
+  into what it created — `let o = {}; o.a = 1` — is unaffected.
+- **Peer ranges:** `@zvenigora/ng-eval-core` `>=0.3.0 <0.10.0` → `>=0.10.0 <0.11.0`, and
+  `@zvenigora/ng-eval-signals` `>=0.1.0 <0.3.0` → `>=0.3.0 <0.4.0`. The `eval-core` floor matches
+  `eval-signals`' new one. The README's `peerDependencies` block shows the new ranges.
+
+### Known limitation
+- **A mutating method is not caught** — [C4](../../docs/backlog.md#c4): `tags.push('x')` in a
+  rule still mutates the value. Documented in the README, under "When a rule fails".
+
+---
+
 ## [0.2.7] - 2026-10-03
 
 Released because `eval-core` 0.9.0 falls outside 0.2.6's declared peer range. No code in this

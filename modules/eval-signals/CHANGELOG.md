@@ -10,6 +10,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.3.0] - 2026-10-03
+
+**A signal expression may write into what it created, and not into anything it was given —
+[C1](../../docs/backlog-retired.md#c1).** A breaking minor: an expression that wrote a member of a
+signal value now throws, and the `eval-core` floor rises to 0.10.0, which the guard needs.
+
+### Breaking
+- **A member write into anything the expression did not create throws
+  `SignalContextWriteError`.** `user.name = "Bob"`, `user.n++`, `let u = user; u.name = "Bob"`
+  and `[user].map(u => (u.name = "Bob"))` each wrote into the object `user()` holds, from inside a
+  `computed()`. Each now throws and writes nothing, with `kind` `'member'`, `key` the property
+  name, and the message `Cannot assign to member 'name' in expression '…': a signal expression
+  may write only into objects it created.` It bypasses `onError` in every mode, as a key write
+  does. What the expression created stays writable — object, array and regex literals, rest
+  values, arrow functions — so `let o = {}; o.a = 1` works, and so does writing into
+  `{ ...user }`. A call's result counts as given even when it is new: spread it into a literal
+  first. The guard is the context's, so it holds for `createSignalContext` used standalone too.
+- **Peer range: `@zvenigora/ng-eval-core` `>=0.3.0 <0.10.0` → `>=0.10.0 <0.11.0`.** The guard
+  needs `EvalContext.checkMemberWrite`; on an older `eval-core` nothing would ask the context, and
+  member writes would land silently. The README's peer-dependency line states the new range.
+
+### Added
+- **`SignalContextWriteError.kind`**, `'key'` or `'member'`: which rule refused the write. It is
+  an optional fourth constructor parameter defaulting to `'key'`, so every existing construction
+  is unchanged.
+
+### Known limitation
+- **A mutating method is not caught** — [C4](../../docs/backlog.md#c4). `user.tags.push("x")`,
+  `splice`, `sort`, `Map#set` and their kin write from native code, so no member write is made
+  and the guard is never asked: the call mutates `user()`. Documented in the README, under
+  "Writes are not supported".
+
+---
+
 ## [0.2.1] - 2026-10-03
 
 Released because `eval-core` 0.9.0 falls outside 0.2.0's declared peer range. No code in this

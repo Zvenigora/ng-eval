@@ -45,29 +45,25 @@ import { EvalContext, EvalOptions, EvalState, call, stateCallback } from '@zveni
  * `try`/`finally`, so an arrow body that threw skipped the pop - and Phase 2
  * step 0 fixed exactly that
  * ([backlog A9](../../../../../docs/backlog-retired.md#a9)). The loop stays anyway, for
- * two reasons that outlive the fix - and they are not the same *kind* of
- * reason, which is the part an earlier version of this docblock got wrong:
+ * the one reason that outlives the fix: `EvalContext.push` and `pop` are public
+ * methods on a published class, so a scope can be stranded with no visitor
+ * involved at all. That is the route `evaluate-rule.spec.ts`'s containment
+ * cases now drive, because it is the one no fix inside the core's visitors can
+ * close. **True at every version**, and therefore the reason this loop is not
+ * removable at any peer range.
  *
- *  - The `@zvenigora/ng-eval-core` peer range in `modules/eval-forms/package.json`
- *    admits the *leaking* 0.3.0, so a supported installation can still be
- *    running the defect. **Range-dependent**: it would stop being true if the
- *    range's lower bound were ever raised past 0.3.0.
- *  - `EvalContext.push` and `pop` are public methods on a published class: a
- *    scope can be stranded with no visitor involved at all. That is the route
- *    `evaluate-rule.spec.ts`'s containment cases now drive, because it is the
- *    one no fix inside the core's visitors can close. **True at every version**,
- *    and therefore the reason this loop is not removable at any peer range.
+ * **Raising the peer range did not make this removable**, which is the claim an
+ * earlier version of this docblock got wrong - "removal is gated on raising the
+ * peer range" reads as a sufficient condition and was only a necessary one. The
+ * range *has* now been raised: since 0.3.0 the `eval-core` floor is 0.10.0, which
+ * retired the reason that depended on it - the range admitted the *leaking*
+ * 0.3.0, so a supported installation could still be running the defect - and
+ * left the one above untouched. The same error was in the plan's step 0b,
+ * corrected there in Phase 2 step 7; this copy of it was corrected in step 8.
  *
- * **Raising the peer range does not make this removable**, and the sentence
- * that used to sit here said it did - "removal is gated on raising the peer
- * range" reads as a sufficient condition and is only a necessary one. Whoever
- * raises it retires the first reason and leaves the second untouched. The same
- * error was in the plan's step 0b, corrected there in Phase 2 step 7; this copy
- * of it was corrected in step 8.
- *
- * A third reason has expired and is recorded as gone rather than silently
- * dropped: this was also the backstop for the scope-push sites Phase 2 was
- * adding to the core. `Program`, `BlockStatement` and `ForStatement` all
+ * A third reason has expired as well, and is recorded as gone rather than
+ * silently dropped: this was also the backstop for the scope-push sites Phase 2
+ * was adding to the core. `Program`, `BlockStatement` and `ForStatement` all
  * shipped in 0.4.0, each popping in a `finally`.
  *
  * The unwind is a loop to a **depth mark**, not a single `pop()`: one throw
