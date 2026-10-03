@@ -384,8 +384,9 @@ export class EvalState {
   }
 
   /**
-   * The objects this state's walk created for the expression to hold - object
-   * and array literals, rest values, arrow functions - or undefined when its
+   * The objects this state's walk created for the expression to hold -
+   * object, array and regex literals, rest values, arrow functions - or
+   * undefined when its
    * context does not police member writes. See `EvalContext.checkMemberWrite`,
    * whose presence is the opt-in, and `EvalMemberWrite.createdByEvaluation`
    * for what is deliberately left out.

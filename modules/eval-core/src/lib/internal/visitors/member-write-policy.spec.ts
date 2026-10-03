@@ -151,6 +151,17 @@ describe('member-write policy', () => {
         expect(context.writes.map(w => w.createdByEvaluation)).toEqual([true, true]);
       });
 
+      it('should allow a write to a regex literal', () => {
+        const context = new PolicedContext(dataOf(), {});
+
+        // Not `lastIndex`: it is a non-configurable own property, and
+        // `safeSetProperty` writes through `Object.defineProperty`, which
+        // refuses to redefine one whatever the policy says.
+        expect(run('let r = /a/g; r.tag = 1; r.tag', context)).toBe(1);
+
+        expect(context.writes.map(w => w.createdByEvaluation)).toEqual([true]);
+      });
+
       it('should allow a write to a spread copy, leaving the source alone', () => {
         const data = dataOf();
         const context = new PolicedContext(data, {});

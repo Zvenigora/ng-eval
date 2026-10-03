@@ -472,7 +472,7 @@ export class EvalContext {
    * the state is built around this context:
    *
    * - the walk records every object it creates for the expression to hold -
-   *   object and array literals, rest values, arrow functions - on that
+   *   object, array and regex literals, rest values, arrow functions - on that
    *   state, in a `WeakSet` the state holds; and
    * - before each member write, the assignment and update visitors call this
    *   with the target, the key, and whether that state's walk created the

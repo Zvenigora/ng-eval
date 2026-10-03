@@ -25,7 +25,8 @@ export interface EvalMemberWrite {
    * the expression to hold. Created means one of:
    *
    * - an object or array literal, spread included (`{ ...o }` is new, though
-   *   what it copies is not);
+   *   what it copies is not), or a regex literal, which is a new `RegExp` on
+   *   each evaluation;
    * - a rest value: `...rest` in an array or object pattern, or an arrow
    *   function's rest parameter;
    * - the function an arrow-function expression evaluates to.
@@ -35,9 +36,7 @@ export interface EvalMemberWrite {
    *
    * **A call's result and a `new` result are never created**, even when they
    * are new - `[1].map(f)` is - because either can hand back an existing
-   * object: `[o].find(x => true)` returns `o`. Nor is a regular-expression
-   * literal, which is one object per parsed expression rather than per
-   * evaluation.
+   * object: `[o].find(x => true)` returns `o`.
    */
   readonly createdByEvaluation: boolean;
 }
