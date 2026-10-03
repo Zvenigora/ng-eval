@@ -2045,8 +2045,11 @@ ASYNC UNHANDLED: boom  (x2)
 ```
 
 RxJS 7's `ConsumerObserver` catches the handler's throw and re-reports it through
-`reportUnhandledError`, **asynchronously**. The subscription stays open, later emissions are still
-delivered, and in an Angular application the error reaches the unhandled-error path. So the
+`reportUnhandledError`, **asynchronously**. The subscription stays open, and later emissions are
+still delivered. `reportUnhandledError` (rxjs 7.8.2) schedules a timer whose callback calls
+`config.onUnhandledError` when one is set and otherwise rethrows the error, where the host's
+global error handling receives it. *(Corrected 2026-10-03: this sentence used to say that in an
+Angular application the error reaches the unhandled-error path, which nothing here cited.)* So the
 failure is *loud and non-fatal*, not *silent and terminal* — the opposite of the premise on both
 axes.
 
@@ -2207,17 +2210,33 @@ things the entry said a docs step could not supply, answered:
   binding's release-on-failure path keeps the rule that reaches it.
 - **The version.** `eval-forms` 0.3.0 is already a breaking minor, for C1, and pre-1.0 a minor is
   where this package breaks.
-- **The migration note** is that there is nothing to migrate, and the entry's own objection is
-  what shows it. A consumer "whose form genuinely has a field named `constructor`" could never
-  build that form: `/reactive` already refused a field named off `Object.prototype`
-  (`field-schema.ts:172`) and a control named off it (`:214`), so the identifier only ever read
-  the prototype's function. An expression that registered before and throws now never read
-  data. A control added *after* construction is [D1](#d1)'s case: even before D1's fix the name
-  resolved off `original` ahead of the mirror, and since that fix, in the same release, it is
-  not mirrored at all.
+- **The migration note** is that no refused expression ever produced a value from the form's
+  data, and the entry's own objection is what shows it for one of the two kinds. An expression
+  that *reads* such a name: a consumer "whose form genuinely has a field named `constructor`"
+  could never build that form — `/reactive` already refused a field named off `Object.prototype`
+  (`field-schema.ts:172`) and a control named off it (`:214`) — so the identifier only ever read
+  the prototype's function. A control added *after* construction is [D1](#d1)'s case: even before
+  D1's fix the name resolved off `original` ahead of the mirror, and since that fix, in the same
+  release, it is not mirrored at all. An expression that *binds* such a name itself — an arrow
+  parameter or a `let` — is the other kind, and this note first missed it; see the correction
+  below. What changes for both is that the schema fails at bind time instead of rendering.
 
 The two bounds are now the same sentence at both entry points, as the entry required: a member
 expression is `eval-core`'s guard's business, and a name the expression binds itself is refused.
+
+**Corrected 2026-10-03, for the same release, measured at b941b80** (before this fix): every
+`/reactive` rule binding one of the twelve names — `[1].some(valueOf => valueOf)`,
+`let toString = 'x'; toString`, and so on for all twelve, as an arrow parameter and as a `let` —
+*bound* at `bindFieldProperties` and threw on every evaluation, `Access to dangerous property
+"valueOf" is blocked for security reasons`: `eval-core` refuses to bind those names. The default
+`onError` rendered that as a blank (`visible()` false, `text()` `""`); with `onError: 'throw'` the
+error surfaced. A plain `[1].some(v => v)` evaluated to `true`. So the refused expressions that
+bind a name never worked either, and "no form that worked loses anything" holds for them too — for
+that reason, not the one first written. The same measurement retires the premise of the entry's
+third bullet above: refusing a name the expression binds itself is not an over-rejection, since the
+binding would not have resolved; `/signals`' README and `guardIdentifiers`' JSDoc said it would,
+and are corrected. `[1].map(valueOf => 1)` still registers at both entry points — the binding is
+never visited — and throws that error on every evaluation, measured at this release's head.
 
 *Fixed* 2026-10-03. Specs, in `field-schema.spec.ts` (11): `constructor` refused under `visible`
 and under `text`; the message names the expression and the identifier; `__lookupGetter__`, one of

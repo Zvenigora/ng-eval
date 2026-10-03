@@ -99,12 +99,13 @@ describe('guardIdentifiers', () => {
     });
 
     // S 3.8.1's decision, and the arm that separates the two implementations
-    // revision 8 left undecided. An arrow's own frame is genuinely safe -
-    // `EvalContext.get` resolves `scopes` before `original`, so a bound
-    // `valueOf` shadows `Object.prototype` - and the guard rejects it anyway,
-    // because the scope-aware alternative is a second copy of `eval-core`'s
-    // frame logic that fails by *under*-rejecting when it drifts. A
-    // scope-aware guard passes every other case in this file.
+    // revision 8 left undecided: a scope-aware guard passes every other case
+    // in this file. S 3.8.1 called the refusal an over-rejection, reasoning
+    // that a bound `valueOf` shadows `Object.prototype`. Measured 2026-10-03,
+    // it does not get that far - `eval-core` refuses to bind the name and the
+    // expression throws on every evaluation (`docs/backlog-retired.md` D2) -
+    // so the guard moves that failure to registration, and rejects nothing that
+    // worked.
     it('should throw on a name the expression binds itself', () => {
       expect(buildWith('evalVisible', '[1].map(valueOf => valueOf)')).toThrow(/valueOf/);
     });

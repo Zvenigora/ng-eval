@@ -37,15 +37,16 @@ import { simple } from 'acorn-walk';
  * every other criterion of this step, which is why one of the other five is
  * asserted.
  *
- * **Deliberately over-rejecting** (S 3.8.1). An arrow's own frame is
- * genuinely safe - `EvalContext.get` resolves `scopes` at step 1 and
- * `original` at step 2, so a bound `valueOf` shadows the prototype and
- * resolves correctly - and `'[1].map(valueOf => valueOf)'` is refused anyway.
- * The scope-aware alternative is a second copy of `eval-core`'s frame logic,
- * tracking two scope-pushing visitors this library does not own, that fails
- * by *under*-rejecting when it drifts. The costs are asymmetric: a named
- * error at registration, whose fix is renaming a parameter, against a field
- * that always renders in production.
+ * **A name the expression binds itself is refused when it is read, and that
+ * refuses nothing that worked.** `'[1].map(valueOf => valueOf)'` throws here.
+ * S 3.8.1 called this a deliberate over-rejection, on the ground that the
+ * arrow's own frame shadows the prototype and would resolve correctly; it
+ * would not. `eval-core` refuses to bind any of these names - an arrow
+ * parameter or a `let` - and throws `Access to dangerous property` on every
+ * evaluation (measured 2026-10-03, `docs/backlog-retired.md` D2), so the
+ * expression never produced a value. What this guard changes is *when* it
+ * fails: at registration, naming the identifier, rather than at every
+ * evaluation, where a default policy renders a blank.
  *
  * **`acorn-walk`'s `simple`, borrowed rather than hand-rolled** (S 0.1) - the
  * same package `eval-core` walks with. Two of its properties are load-bearing
@@ -57,7 +58,8 @@ import { simple } from 'acorn-walk';
  *   bound of this one;
  * - `base.Function` walks parameters under the `"Pattern"` override, which
  *   `simple` suppresses, so a **binding** is never visited while a
- *   **reference** is. `'[1].map(valueOf => 1)'` therefore registers.
+ *   **reference** is. `'[1].map(valueOf => 1)'` therefore registers - and
+ *   then fails at every evaluation, on `eval-core`'s refusal to bind the name.
  *
  * A hand-rolled scan over every node would reject both, which is the
  * difference the borrow is checked at.

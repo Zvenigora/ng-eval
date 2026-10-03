@@ -554,7 +554,9 @@ describe('bindFieldProperties', () => {
       expect(bindWith('visible', '__lookupGetter__')).toThrow(/__lookupGetter__/);
     });
 
-    // `/signals`' deliberate over-rejection, ported with the guard.
+    // Ported with the guard. Not an over-rejection: `eval-core` refuses to bind
+    // the name, so this expression threw on every evaluation before 0.3.0 and
+    // rendered a blank under the default policy (`docs/backlog-retired.md` D2).
     it('should reject a name the expression binds itself', () => {
       expect(bindWith('visible', '[1].map(valueOf => valueOf)')).toThrow(/valueOf/);
     });

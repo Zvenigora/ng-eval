@@ -37,19 +37,24 @@ than mirrored ([D1](../../docs/backlog-retired.md#d1)), and both peer floors ris
   message `/signals` already gave. Up to 0.2.7, `visible: 'constructor'` bound cleanly and
   rendered a field with no data: the identifier read the prototype's function, which is truthy.
   The check's bounds are `/signals`' — a member expression such as `user.constructor` is not
-  checked, and a name the expression binds itself is refused. No form that worked loses
-  anything: a field or a control carrying such a name was already refused, so the identifier
-  never read data.
+  checked, and a name the expression binds itself, as an arrow parameter or a `let`, is
+  refused. No refused expression ever produced a value from your data. One that *reads* such a
+  name read the prototype's function, because a field or a control carrying the name was
+  already refused. One that *binds* such a name bound at `bindFieldProperties` but threw on
+  every evaluation — `eval-core` refuses to bind those names — which the default `onError`
+  rendered as a blank. What changes for both is that the schema now fails at bind time instead;
+  for the second kind, rename the binding.
 - **A control added after `bindFieldProperties` under a name off `Object.prototype` is refused**
   — [D1](../../docs/backlog-retired.md#d1). Up to 0.2.7 the mirror took it in unchecked, though
   no expression could read it. Now it is not mirrored, and the mirror reports it with the
   construction-time message, `Control 'constructor' is a member of Object.prototype …`, once.
-  `addControl` still returns normally: the mirror runs in a `group.events` subscriber, so the
-  error reaches rxjs's `config.onUnhandledError` — in an Angular application, its error handler
-  — after the rest of that change has been mirrored, and later changes are mirrored as before. A
-  nested `FormGroup` or a `FormArray` added later is refused the same way, with construction's
-  `Control '…' is not a FormControl …` message, where it used to be mirrored as its aggregate
-  value.
+  `addControl` still returns normally: the mirror runs in a `group.events` subscriber, so rxjs
+  reports the error from a timer, after the rest of that change has been mirrored — to
+  `config.onUnhandledError` when one is set, otherwise rethrown from the timer, where the host's
+  global error handling receives it (rxjs 7.8.2's `reportUnhandledError`). Later changes are
+  mirrored as before. A nested `FormGroup` or a `FormArray` added later is refused the same way,
+  with construction's `Control '…' is not a FormControl …` message, where it used to be mirrored
+  as its aggregate value.
 
 ### Added
 - **`guardIdentifiers(expression, node)`**, at the core entry point: the identifier guard both

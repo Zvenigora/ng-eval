@@ -491,9 +491,11 @@ describe('createControlSource', () => {
    * that throws whatever the refusal does; the rest pin the refusal built on
    * the measurement.
    *
-   * rxjs reports a subscriber's throw through `config.onUnhandledError`, from a
-   * timeout, so each case installs a collector, waits a macrotask before
-   * reading it, and restores the previous handler whatever happens.
+   * rxjs reports a subscriber's throw from a timer - to `config.onUnhandledError`
+   * when one is set, otherwise by rethrowing it there (rxjs 7.8.2's
+   * `reportUnhandledError`) - so each case installs a collector, waits a
+   * macrotask before reading it, and restores the previous handler whatever
+   * happens.
    */
   describe('a throw out of the group.events subscriber (D1)', () => {
 

@@ -334,7 +334,9 @@ against form A's data, so reuse must go through a schema *function* of the rules
 `caseInsensitive` is in practice a factory-wide option, not a per-registration one
 ([BL-D3](docs/backlog.md#d3)); the nested-signal diagnostic from `eval-signals` does not reach
 this entry point; the form's key set is not enumerable from upstream; the identifier guard
-over-rejects a name an expression binds itself; the `SignalContextWriteError` bypass did not
+over-rejects a name an expression binds itself (measured 2026-10-03, it does not: `eval-core`
+refuses to bind those names, so such an expression never evaluated — [BL-D2](docs/backlog-retired.md#d2));
+the `SignalContextWriteError` bypass did not
 survive a call frame before `eval-core` 0.7.0 ([BL-A6](docs/backlog-retired.md#a6)); and there is no `destroy()` at `/signals`
 — Angular owns the field tree's lifetime and the rules die with the schema.
 

@@ -217,9 +217,10 @@ the second is worse: the control exists and its value is unreadable.
 `FormGroup` or a `FormArray`, leaves the control unmirrored and the mirror reports it with the
 construction-time message above, once.
 That report is not a throw from `addControl`, which has already returned: the mirror runs in
-a `group.events` subscriber, so the error arrives out of band, through rxjs's
-`config.onUnhandledError` (in an Angular application, its error handler). The rest of that
-change is applied first, and later changes are still mirrored. A key the mirror already holds
+a `group.events` subscriber, so rxjs reports the error from a timer — to
+`config.onUnhandledError` when one is set, otherwise by rethrowing it from that timer, where
+your host's global error handling receives it (rxjs 7.8.2's `reportUnhandledError`). The rest
+of that change is applied first, and later changes are still mirrored. A key the mirror already holds
 is not re-checked: `setControl` replacing a mirrored control with a nested group re-points it,
 and an expression then reads the group's aggregate value.
 
@@ -245,13 +246,16 @@ through the expression instead of through the name. Up to 0.2.x this bound witho
 and rendered the field — against a form with no `city` and no `constructor`, with nothing
 logged — while `/signals` threw on the same string. **Both entry points now refuse it.**
 
-No form that worked stops working. For such an identifier to read *data*, a field or a control
-would have to carry the name, and both are refused above, so it only ever read the prototype's
-function. The check's bounds are `/signals`' too — see
-[Prototype-shadowed identifiers are rejected](#prototype-shadowed-identifiers-are-rejected): a
-member expression such as `user.constructor` is not its business, and it over-rejects a name the
-expression binds itself. A rule that does not parse is not checked here; it throws when it is
-compiled, as before.
+No rule it refuses ever produced a value from your data. One that *reads* such a name read the
+prototype's function: for it to read data, a field or a control would have to carry the name,
+and both are refused above. One that *binds* such a name itself — an arrow parameter,
+`[1].some(valueOf => valueOf)`, or a `let` — bound here, but threw on every evaluation, because
+`@zvenigora/ng-eval-core` refuses to bind those names
+(`Access to dangerous property "valueOf" is blocked …`), and the default `onError` rendered that
+as a blank. What changes is that such a schema now fails at bind time instead. Rename the
+binding. The check's bounds are `/signals`' too — see
+[Prototype-shadowed identifiers are rejected](#prototype-shadowed-identifiers-are-rejected). A
+rule that does not parse is not checked here; it throws when it is compiled, as before.
 
 ## What an expression can name
 
@@ -634,12 +638,14 @@ Three bounds on the check, none of them obvious from the paragraph above:
   and it is the one thing `/reactive`'s control-name check catches that this does not.
 - **A *member* expression is not this check's business.** `user.constructor` goes to
   `@zvenigora/ng-eval-core`'s prototype-pollution guard, under the rules documented there.
-- **It over-rejects a name the expression *binds* itself**, deliberately.
-  `'[1].map(valueOf => valueOf)'` throws, even though an arrow's own parameter shadows the
-  prototype and would have resolved correctly. A scope-aware guard would be a second copy of
-  the evaluator's frame logic, and one that drifted out of step would fail by
-  *under*-rejecting — a silent wrong answer in place of a rename. Rename the parameter.
-  (`'[1].map(valueOf => 1)'` registers: a binding that is never referenced is not visited.)
+- **It refuses a name the expression *binds* itself and then reads.**
+  `'[1].map(valueOf => valueOf)'` throws at registration. That costs nothing: the expression
+  could never evaluate, because `@zvenigora/ng-eval-core` refuses to bind any of these names —
+  an arrow parameter or a `let` — and throws `Access to dangerous property "valueOf" is
+  blocked …` on every evaluation. Up to 0.2.x this bullet called the refusal an
+  over-rejection, saying the parameter would have resolved correctly; measured, it does not.
+  Rename the parameter. (`'[1].map(valueOf => 1)'` registers, because a binding that is never
+  referenced is not visited — and then throws that same error on every evaluation.)
 
 **`/reactive` makes the same check on its expressions**, since 0.3.0 — see
 [Expressions are validated too](#expressions-are-validated-too).
