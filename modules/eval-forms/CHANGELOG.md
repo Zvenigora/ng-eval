@@ -13,9 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [0.3.0] - 2026-10-03
 
 **A rule may write into what it created, and not into the form's data — by consequence of
-`eval-signals` 0.3.0 ([C1](../../docs/backlog-retired.md#c1)).** A breaking minor: no code in
-this package changes, but a rule that wrote a member of a control's value or of the `/signals`
-model now throws, and both peer floors rise.
+`eval-signals` 0.3.0 ([C1](../../docs/backlog-retired.md#c1)) — and `/reactive` refuses a
+prototype-shadowed identifier, as `/signals` does ([D2](../../docs/backlog-retired.md#d2)).** A
+breaking minor: a rule that wrote a member of a control's value or of the `/signals` model now
+throws, a `/reactive` rule naming a member of `Object.prototype` now throws at bind time, and
+both peer floors rise.
 
 ### Breaking
 - **A member write into the form's data throws `SignalContextWriteError`**, in every mode, in
@@ -27,6 +29,20 @@ model now throws, and both peer floors rise.
 - **Peer ranges:** `@zvenigora/ng-eval-core` `>=0.3.0 <0.10.0` → `>=0.10.0 <0.11.0`, and
   `@zvenigora/ng-eval-signals` `>=0.1.0 <0.3.0` → `>=0.3.0 <0.4.0`. The `eval-core` floor matches
   `eval-signals`' new one. The README's `peerDependencies` block shows the new ranges.
+- **`/reactive` refuses an expression that names a member of `Object.prototype`** as an
+  identifier — [D2](../../docs/backlog-retired.md#d2). `bindFieldProperties` now walks every
+  `visible` and `text` expression in the validation pass that checks field and control names,
+  and throws `Expression '…': identifier 'constructor' is a member of Object.prototype …`, the
+  message `/signals` already gave. Up to 0.2.7, `visible: 'constructor'` bound cleanly and
+  rendered a field with no data: the identifier read the prototype's function, which is truthy.
+  The check's bounds are `/signals`' — a member expression such as `user.constructor` is not
+  checked, and a name the expression binds itself is refused. No form that worked loses
+  anything: a field or a control carrying such a name was already refused, so the identifier
+  never read data.
+
+### Added
+- **`guardIdentifiers(expression, node)`**, at the core entry point: the identifier guard both
+  adapters now call, moved out of `/signals`, where it was module-private.
 
 ### Known limitation
 - **A mutating method is not caught** — [C4](../../docs/backlog.md#c4): `tags.push('x')` in a

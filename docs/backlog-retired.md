@@ -2024,6 +2024,101 @@ respelling that root. No case covers that combination.
 
 # D. `eval-forms`
 
+<a id="d2"></a>
+## D2 — Should `/reactive` reject prototype-shadowed identifiers in expressions too?
+
+**Package** forms · **Kind** decision, **breaking** · **Status** **Retired — decided and fixed
+2026-10-03**, for `eval-forms` 0.3.0. Was Open
+
+**The asymmetry, as it now ships.** `@zvenigora/ng-eval-forms/signals` walks every expression at
+registration and throws on any `Identifier` whose name is an own property of `Object.prototype` —
+`constructor`, `toString`, `valueOf`, `hasOwnProperty` and the other eight. `/reactive` does not:
+its two **prototype-name** checks (`reactive/src/lib/field-schema.ts:172-178` over the schema's
+field names, `:214-220` over the group's controls) inspect **names**, never expressions — and
+neither do the other two construction-time rejections that entry point makes. So
+`{ name: 'city', visible: 'constructor' }` throws under `/signals` and, under `/reactive`, binds
+cleanly and renders a field that has no data — because the identifier resolves off
+`Object.prototype`, a function is truthy, and truthy means visible.
+
+One authored rule string, two behaviours, and the silent one is the unsafe one. Shipped knowingly
+because the alternative was leaving both entry points silently wrong.
+
+**Why it is not a bug fix.** `/reactive` is released and an expression that registers today would
+start throwing. That needs three things a docs step cannot supply: a phase, a major-version
+decision, and a migration note for a consumer whose form genuinely has a field named
+`constructor`.
+
+**What a phase would have to settle:**
+
+- **Where the check runs.** `/signals` guards between `parse` and `compile` inside its own
+  registrar. `/reactive` compiles inside `bindFieldProperties`, so the natural site is there —
+  a fifth construction-time rejection beside the four the README documents.
+- **Whether the residual is acceptable at both.** A *member* expression — `user.constructor` — is
+  `eval-core`'s prototype-pollution guard and not this check's business at either entry point, and
+  [B1](#b1)'s carve-out applies (narrowed in `eval-core` 0.9.0). A check that
+  rejects the bare identifier and passes the member access is the same shape at both, and is
+  worth stating rather than discovering. **The answer here has to be the same sentence at both
+  entry points**, which is what ties this entry to [B1](#b1).
+- **Whether the deliberate over-rejection ports.** `/signals` rejects a name an expression *binds*
+  itself — `'[1].map(valueOf => valueOf)'` throws — because a scope-aware guard would be a second
+  copy of `eval-core`'s frame logic. The same reasoning applies unchanged at `/reactive`, but it
+  is a false positive that a released entry point would be *acquiring* rather than shipping with.
+- **The migration note.** The fix for a real `constructor` field is renaming the model key, which
+  a consumer may not control if the schema arrives from a server. Whether that is a rename, an
+  escape hatch, or an accepted break is the substance of the decision.
+
+Scope if taken: the guard is already written and module-private to `/signals`
+(`signals/src/lib/guard-identifiers.ts`), so the mechanism is a **move** rather than a design. The
+work is the version decision, the migration note, and the `acorn-walk` peer already being
+declared.
+
+*Recorded*: [`forms/phase-6-plan.md` § 3.8 and § 3.8.1](forms/phase-6-plan.md);
+[`forms/phase-6-step-6-summary.md` § 4.4](forms/phase-6-step-6-summary.md).
+
+**Numbering note.** The roadmap entry this replaces called this "a Phase 8 question", while
+`eval-forms`' README and `CHANGELOG.md` both say only "a later major". No Phase 7 or Phase 8
+section exists in `ROADMAP.md` — see [E1](backlog.md#e1). The consumer-facing wording is deliberately
+vaguer; this file is the single source for the commitment.
+
+**Decided 2026-10-03: `/reactive` refuses it too, in `eval-forms` 0.3.0.** Each of the three
+things the entry said a docs step could not supply, answered:
+
+- **The phase** was not needed. The mechanism was a move, as the entry said: `guardIdentifiers`
+  moved to the core entry point, beside `applyErrorPolicy` and exported the same way, and
+  `/reactive`'s `validate` calls it over every `visible` and `text` expression in the pass that
+  checks field and control names. Same predicate, same message. A rule that does not parse is
+  left to `createEvalSignal`, which throws it as before — after the mirror is built — so the
+  binding's release-on-failure path keeps the rule that reaches it.
+- **The version.** `eval-forms` 0.3.0 is already a breaking minor, for C1, and pre-1.0 a minor is
+  where this package breaks.
+- **The migration note** is that there is nothing to migrate, and the entry's own objection is
+  what shows it. A consumer "whose form genuinely has a field named `constructor`" could never
+  build that form: `/reactive` already refused a field named off `Object.prototype`
+  (`field-schema.ts:172`) and a control named off it (`:214`), so the identifier only ever read
+  the prototype's function. An expression that registered before and throws now never read
+  data. A control added *after* construction is [D1](backlog.md#d1)'s case, and even there the
+  name resolves off `original` before the mirror is consulted.
+
+The two bounds are now the same sentence at both entry points, as the entry required: a member
+expression is `eval-core`'s guard's business, and a name the expression binds itself is refused.
+
+*Fixed* 2026-10-03. Specs, in `field-schema.spec.ts` (11): `constructor` refused under `visible`
+and under `text`; the message names the expression and the identifier; `__lookupGetter__`, one of
+the five names the illustrative seven omit; a name the expression binds itself; `CONSTRUCTOR`,
+`country.constructor` and `[1].map(valueOf => 1)` accepted; the refusal comes before any
+subscription; and the migration claim, by construction — a field named `constructor` and a control
+named `constructor` are both refused by their *name* check, which runs first. The README case
+pairing the two entry points, `signals/src/lib/readme-examples.spec.ts`, pinned the asymmetry —
+`/reactive`'s `visible()` was `true` — and was changed deliberately, agreed before the change, to
+assert that both throw. `eval-forms` 269 → 280.
+
+**Probes**, each reverted, against the whole `eval-forms` suite:
+
+| Probe | Failed | Which |
+| ----- | -----: | ----- |
+| The call in `validate` removed | 7 | the six new refusal rows and the README pair; the accepted rows and the two migration rows (name checks) stay green |
+| The seven names hard-coded in place of the predicate | 2 | the "seven omit" row at each entry point: `__lookupGetter__` under `/reactive`, `__defineGetter__` under `/signals` |
+
 <a id="d4"></a>
 ## D4 — A top-level model key holding a signal is returned un-called
 

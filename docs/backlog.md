@@ -170,7 +170,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [C3](backlog-retired.md#c3) | Whether `eval-signals` should work around [A4](backlog-retired.md#a4) locally | signals | decision | **Retired — decided and fixed 2026-10-01**; released 2026-10-02 in `eval-signals` 0.2.0, tagged c56f987: under `caseInsensitive` a source key is named as the source spells it, in `getKey`, write errors and the first segment of `dependencies` |
 | [C4](#c4) | A mutating method call escapes the member-write policy | signals | accepted | Open, documented |
 | [D1](#d1) | The throwing-subscriber premise is false in both halves | forms | fix + decision | Open, Premise retired |
-| [D2](#d2) | Should `/reactive` reject prototype-shadowed identifiers too? | forms | decision, breaking | Open |
+| [D2](backlog-retired.md#d2) | Should `/reactive` reject prototype-shadowed identifiers too? | forms | decision, breaking | **Retired — decided and fixed 2026-10-03**, for `eval-forms` 0.3.0: yes, with `/signals`' own guard, shared from the core; no form that worked could have named one |
 | [D3](#d3) | Per-registration `caseInsensitive` reaches one of three levers | forms | decision | Open, Covered |
 | [D4](backlog-retired.md#d4) | A top-level model key holding a signal is returned un-called | forms | fix or doc | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-forms` 0.2.4, tagged 587ebf1. `/signals` unwraps it as upstream does, and the README bullet is corrected |
 | [D5](#d5) | Two dead lookups run ahead of ours on every resolution | forms | fix (perf) | Open |
@@ -612,61 +612,6 @@ Scope: correct the four sites; decide the question again on the real behaviour a
 ground it now rests on; and add a spec that pins what actually happens when the diff throws, since
 none exists — the case above pins the *symptom* the guard prevents, not the subscriber's fate.
 Behavioural if the decision changes, documentation-only if it does not.
-
-<a id="d2"></a>
-## D2 — Should `/reactive` reject prototype-shadowed identifiers in expressions too?
-
-**Package** forms · **Kind** decision, **breaking** · **Status** Open
-
-**The asymmetry, as it now ships.** `@zvenigora/ng-eval-forms/signals` walks every expression at
-registration and throws on any `Identifier` whose name is an own property of `Object.prototype` —
-`constructor`, `toString`, `valueOf`, `hasOwnProperty` and the other eight. `/reactive` does not:
-its two **prototype-name** checks (`reactive/src/lib/field-schema.ts:172-178` over the schema's
-field names, `:214-220` over the group's controls) inspect **names**, never expressions — and
-neither do the other two construction-time rejections that entry point makes. So
-`{ name: 'city', visible: 'constructor' }` throws under `/signals` and, under `/reactive`, binds
-cleanly and renders a field that has no data — because the identifier resolves off
-`Object.prototype`, a function is truthy, and truthy means visible.
-
-One authored rule string, two behaviours, and the silent one is the unsafe one. Shipped knowingly
-because the alternative was leaving both entry points silently wrong.
-
-**Why it is not a bug fix.** `/reactive` is released and an expression that registers today would
-start throwing. That needs three things a docs step cannot supply: a phase, a major-version
-decision, and a migration note for a consumer whose form genuinely has a field named
-`constructor`.
-
-**What a phase would have to settle:**
-
-- **Where the check runs.** `/signals` guards between `parse` and `compile` inside its own
-  registrar. `/reactive` compiles inside `bindFieldProperties`, so the natural site is there —
-  a fifth construction-time rejection beside the four the README documents.
-- **Whether the residual is acceptable at both.** A *member* expression — `user.constructor` — is
-  `eval-core`'s prototype-pollution guard and not this check's business at either entry point, and
-  [B1](backlog-retired.md#b1)'s carve-out applies (narrowed in `eval-core` 0.9.0). A check that
-  rejects the bare identifier and passes the member access is the same shape at both, and is
-  worth stating rather than discovering. **The answer here has to be the same sentence at both
-  entry points**, which is what ties this entry to [B1](backlog-retired.md#b1).
-- **Whether the deliberate over-rejection ports.** `/signals` rejects a name an expression *binds*
-  itself — `'[1].map(valueOf => valueOf)'` throws — because a scope-aware guard would be a second
-  copy of `eval-core`'s frame logic. The same reasoning applies unchanged at `/reactive`, but it
-  is a false positive that a released entry point would be *acquiring* rather than shipping with.
-- **The migration note.** The fix for a real `constructor` field is renaming the model key, which
-  a consumer may not control if the schema arrives from a server. Whether that is a rename, an
-  escape hatch, or an accepted break is the substance of the decision.
-
-Scope if taken: the guard is already written and module-private to `/signals`
-(`signals/src/lib/guard-identifiers.ts`), so the mechanism is a **move** rather than a design. The
-work is the version decision, the migration note, and the `acorn-walk` peer already being
-declared.
-
-*Recorded*: [`forms/phase-6-plan.md` § 3.8 and § 3.8.1](forms/phase-6-plan.md);
-[`forms/phase-6-step-6-summary.md` § 4.4](forms/phase-6-step-6-summary.md).
-
-**Numbering note.** The roadmap entry this replaces called this "a Phase 8 question", while
-`eval-forms`' README and `CHANGELOG.md` both say only "a later major". No Phase 7 or Phase 8
-section exists in `ROADMAP.md` — see [E1](#e1). The consumer-facing wording is deliberately
-vaguer; this file is the single source for the commitment.
 
 <a id="d3"></a>
 ## D3 — Per-registration `caseInsensitive` reaches one of three levers

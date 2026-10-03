@@ -21,15 +21,17 @@ import { ExpressionRules, TEXT, createExpressionRules } from '../public-api';
 /** The fenced blocks under `modules/eval-forms/README.md`'s `## Signal Forms — /signals`, any language. */
 const README_SIGNALS_BLOCKS = 5;
 
-/** The fenced blocks under the same file's `### Expressions are not validated`, a `/reactive` section. */
+/** The fenced blocks under the same file's `### Expressions are validated too`, a `/reactive` section. */
 const README_ASYMMETRY_BLOCKS = 1;
 
 /**
  * Executes the runnable snippets in `modules/eval-forms/README.md`'s
  * **`/signals`** sections, every block under `## Signal Forms — /signals`
  * (`README_SIGNALS_BLOCKS`), plus the `/reactive` block under
- * `### Expressions are not validated` (`README_ASYMMETRY_BLOCKS`), whose whole
- * subject is the difference between the two entry points.
+ * `### Expressions are validated too` (`README_ASYMMETRY_BLOCKS`), whose whole
+ * subject is the two entry points answering one authored string the same way.
+ * Up to 0.2.x it was the difference between them, under
+ * `### Expressions are not validated`.
  *
  * **Why this exists.** The counterpart file under `reactive/src/lib/` records
  * it: Phase 1 step 5 found two documented snippets that did not run as
@@ -365,13 +367,18 @@ describe('documented examples - /signals', () => {
     });
   });
 
-  describe('README - Expressions are not validated (/reactive)', () => {
+  describe('README - Expressions are validated too (/reactive)', () => {
 
     // The one `/reactive` block in this file, and it is here rather than in
-    // the `/reactive` spec because its subject is the *asymmetry*: the same
-    // authored string throws at one entry point and renders at the other.
-    // Split across two files, either half could drift without the pair
-    // failing, and the pair is the sentence.
+    // the `/reactive` spec because its subject is the *pair*: the same
+    // authored string at both entry points. Split across two files, either
+    // half could drift without the pair failing, and the pair is the sentence.
+    //
+    // **Changed deliberately in 0.3.0** (`docs/backlog-retired.md` D2). Up to
+    // 0.2.x this case pinned the asymmetry the README documented - `/reactive`
+    // bound `visible: 'constructor'` and `visible()` was `true` - and it was
+    // D2's known-gap pin in all but name. `/reactive` now refuses the string
+    // at bind time, as `/signals` refuses it at `form()`.
 
     let injector: Injector;
 
@@ -379,19 +386,17 @@ describe('documented examples - /signals', () => {
       injector = TestBed.inject(Injector);
     });
 
-    it('should render the field under /reactive and throw under /signals', () => {
+    it('should throw under /reactive and under /signals alike', () => {
       const group = new FormGroup({ country: new FormControl('CA') });
 
-      const binding = bindFieldProperties(
-        [{ name: 'city', visible: 'constructor' }],
-        group,
-        { injector }
-      );
-
-      // `/reactive`: no throw at bind time, and a field with no data visible.
-      expect(binding.fields['city'].visible?.()).toBe(true);
-
-      binding.destroy();
+      // `/reactive`: refused at bind time, with `/signals`' message.
+      expect(() =>
+        bindFieldProperties(
+          [{ name: 'city', visible: 'constructor' }],
+          group,
+          { injector }
+        )
+      ).toThrow(/Expression 'constructor': identifier 'constructor' is a member of Object\.prototype/);
 
       // `/signals`, same authored string.
       const model = signal<Order>({ country: 'CA', state: '', zip: '', orderTotal: 0 });
@@ -464,7 +469,7 @@ describe('README block count (docs/backlog.md F13)', () => {
     expect(linesUnder('Signal Forms — `/signals`')).toHaveLength(README_SIGNALS_BLOCKS);
   });
 
-  it('should hold README_ASYMMETRY_BLOCKS block under Expressions are not validated', () => {
-    expect(linesUnder('Expressions are not validated')).toHaveLength(README_ASYMMETRY_BLOCKS);
+  it('should hold README_ASYMMETRY_BLOCKS block under Expressions are validated too', () => {
+    expect(linesUnder('Expressions are validated too')).toHaveLength(README_ASYMMETRY_BLOCKS);
   });
 });

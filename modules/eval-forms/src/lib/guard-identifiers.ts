@@ -3,7 +3,12 @@ import { simple } from 'acorn-walk';
 
 /**
  * Throws if the expression names an identifier that is an own property of
- * `Object.prototype` (plan S 3.8).
+ * `Object.prototype` (plan S 3.8). Both adapters call it, before compiling: the
+ * `/signals` registrars between `parse` and `compile`, and `/reactive`'s
+ * `bindFieldProperties` in the validation pass that checks field and control
+ * names. Shared here, beside `applyErrorPolicy`, so the two cannot drift into
+ * disagreeing about one authored string - which until 0.3.0 they did, since
+ * the guard was `/signals`' alone (`docs/backlog-retired.md` D2).
  *
  * **The failure this prevents is silent and truthy.** `createSignalContext`
  * builds its context on an empty `original` object, and `EvalContext.get`
@@ -15,14 +20,13 @@ import { simple } from 'acorn-walk';
  * case-variant bypass: the behaviour is identical with and without
  * `caseInsensitive`, and `CONSTRUCTOR` resolves `undefined` in both.
  *
- * **The subject is the expression, not the field name** - which is what makes
- * this the same answer `/reactive` gives (`field-schema.ts:172-178`) on a
- * different input. There the field names arrive in the library's own
- * `FieldSchema[]`; here the paths are compile-time `p.city` tokens and the
- * library never sees a name it could validate. What it does see, at
- * registration, is the expression. A model key nobody names harms nobody, so
- * the expression is the complete subject and this check inherits none of the
- * growing-key-set problem a scan of the model would have.
+ * **The subject is the expression.** `/reactive` also checks *names* - its
+ * schema's fields and its group's controls (`field-schema.ts`), which arrive
+ * in the library's own hands. `/signals` never sees a name it could validate:
+ * its paths are compile-time `p.city` tokens. What both see is the
+ * expression. A key nobody names harms nobody, so the expression is the
+ * complete subject and this check inherits none of the growing-key-set problem
+ * a scan of the model would have.
  *
  * **The predicate is normative and any list of names is illustrative**
  * (S 3.8.1, revision 18 item 2). `Object.getOwnPropertyNames(Object.prototype)`
@@ -60,7 +64,7 @@ import { simple } from 'acorn-walk';
  *
  * @param expression the source, named in the message so an author can tell
  * which of a schema's rules to fix
- * @param node the AST the registrar has just parsed. Typed
+ * @param node the AST the caller has just parsed. Typed
  * `ReturnType<typeof parse>` rather than `AnyNode`: `eval-core` publishes
  * `AnyNodeTypes` and not `AnyNode`, so spelling it out would force
  * `import type { AnyNode } from 'acorn'` - an undeclared dependency whose
@@ -70,8 +74,9 @@ export const guardIdentifiers = (expression: string, node: ReturnType<typeof par
 
   // `parse`'s declared return is `Program | AnyNode | undefined` and `simple`
   // takes a `Node`, so the narrowing is forced by the signature rather than
-  // by a case this package can reach: `prepare` passes `defaultParserOptions`,
-  // which sets `extractExpressions: false`, and `parse` then returns the
+  // by a case this package can reach: both callers - `/signals`' `prepare` and
+  // `/reactive`'s `validate` - pass `defaultParserOptions`, which sets
+  // `extractExpressions: false`, and `parse` then returns the
   // `Program` unconditionally. `undefined` is `extractExpression`'s answer
   // when a program's body is not exactly one `ExpressionStatement` - `'a; b'`
   // as much as the empty program - so a caller passing different options

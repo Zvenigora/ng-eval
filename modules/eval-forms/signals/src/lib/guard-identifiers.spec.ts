@@ -6,8 +6,10 @@ import { createExpressionRules } from './rules';
 // The registration-time rejection of prototype-shadowed identifiers (plan
 // S 3.8), asserted through the path a consumer actually takes rather than by
 // calling `guardIdentifiers` directly: the deliverable is that *every*
-// registrar refuses the expression, and a direct call on the module-private
-// function would be equally green with the guard wired into none of them.
+// registrar refuses the expression, and a direct call on the function - shared
+// from the core since 0.3.0, where `/reactive` calls it too and
+// `field-schema.spec.ts` covers that wiring - would be equally green with the
+// guard wired into none of them.
 //
 // So this file uses S 6.1's **first** harness with one substitution - it never
 // reads field state, because in every rejecting case there is no field to

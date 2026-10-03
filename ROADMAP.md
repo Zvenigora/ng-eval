@@ -328,8 +328,8 @@ prototype-shadowed-identifier guard enforced at registration, the mirror image o
 
 **Narrowings, all documented in the README**: `/signals` and `/reactive` now deliberately
 disagree about one authored string — `visible: "constructor"` throws under `/signals` and
-renders cleanly under `/reactive` — logged as [BL-D2](docs/backlog.md#d2) for a later major
-rather than resolved here; a schema **value** shared across models silently renders form B
+renders cleanly under `/reactive` — logged as [BL-D2](docs/backlog-retired.md#d2) for a later major
+rather than resolved here (resolved in `eval-forms` 0.3.0: both now throw); a schema **value** shared across models silently renders form B
 against form A's data, so reuse must go through a schema *function* of the rules;
 `caseInsensitive` is in practice a factory-wide option, not a per-registration one
 ([BL-D3](docs/backlog.md#d3)); the nested-signal diagnostic from `eval-signals` does not reach
@@ -396,17 +396,17 @@ saying "designed but not built".
 ### Phase 7 and Phase 8 — reserved, not yet specified
 
 Both numbers have been cited by shipped documents and neither has ever been a section here,
-which is how [BL-E1](docs/backlog.md#e1) and [BL-D2](docs/backlog.md#d2) came to be "deferred
+which is how [BL-E1](docs/backlog.md#e1) and [BL-D2](docs/backlog-retired.md#d2) came to be "deferred
 to a phase" that does not exist. Reserved now so the citations resolve:
 
 - **Phase 7 — form-state keys across both adapters** (`touched` / `dirty` / `valid`).
   Cited by [`docs/forms/phase-6-plan.md`](docs/forms/phase-6-plan.md) § 8.2. The brief and the
   two candidate shapes are [BL-E1](docs/backlog.md#e1). Not costed.
 - **Phase 8 — should `/reactive` reject prototype-shadowed identifiers in expressions too?**
-  Cited by [`docs/forms/phase-6-step-7-summary.md`](docs/forms/phase-6-step-7-summary.md). The
-  question, what a phase would have to settle, and why it is breaking are
-  [BL-D2](docs/backlog.md#d2). `eval-forms`' README and `CHANGELOG.md` deliberately say only
-  "a later major" — this file is the single source for the phase number.
+  Cited by [`docs/forms/phase-6-step-7-summary.md`](docs/forms/phase-6-step-7-summary.md).
+  **Answered without a phase**: `eval-forms` 0.3.0 refuses them at `/reactive` with `/signals`'
+  own guard, and [BL-D2](docs/backlog-retired.md#d2) records why no migration was needed. The
+  number stays reserved so the citation resolves; it holds no work.
 
 Neither is scheduled. A phase becomes real when it gets a plan document, per `CLAUDE.md`.
 

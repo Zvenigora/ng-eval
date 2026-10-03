@@ -79,8 +79,9 @@ diagnostic for an entry point they do not import. An older consumer importing `/
 `Cannot find module '@angular/forms/signals'` from Angular's own `exports` map rather than
 anything this library declares.
 
-**`acorn-walk` is new in 0.2.0 and imposes no new install.** `/signals` walks the parsed
-expression with it. A consumer of this package already peer-depends on
+**`acorn-walk` is new in 0.2.0 and imposes no new install.** Both adapters walk the parsed
+expression with it, through the shared `guardIdentifiers` — `/signals` since 0.2.0, `/reactive`
+since 0.3.0. A consumer of this package already peer-depends on
 `@zvenigora/ng-eval-core`, whose own peers include `acorn-walk ^8.3.0`, so npm 7+ has already
 placed it; it is declared here because importing it undeclared resolves today by accident of
 hoisting and would not resolve at all under pnpm's isolated layout. `acorn` itself is
@@ -161,6 +162,7 @@ worked example of a whole form is in
 | `toVisible(value)` / `toText(value)` | core | The two coercions, exported so an adapter or a test can apply the same rule. |
 | `ExpressionErrorPolicy` | core | `'throw' \| 'undefined' \| ((error) => unknown)`. |
 | `applyErrorPolicy(run, policy?)` | core | Runs `run` under a policy, **new in 0.2.0**. Rethrows a `SignalContextWriteError` whatever the policy says — see [When a rule fails](#when-a-rule-fails). Exported so an adapter applies the rule rather than reimplementing it. |
+| `guardIdentifiers(expression, node)` | core | Throws if a parsed expression names a member of `Object.prototype` as an identifier, **new in 0.3.0**. Both adapters call it before compiling — see [Prototype-shadowed identifiers are rejected](#prototype-shadowed-identifiers-are-rejected). Exported for the same reason as `applyErrorPolicy`. |
 | `createExpressionRules(model, options?)` | `/signals` | The primary API. Binds one model signal and returns `evalVisible` / `evalText` / `evalDisabled`. |
 | `ExpressionRules` | `/signals` | The three registrars, each `(path, expression, options?) => void`. |
 | `ExpressionRuleOptions` | `/signals` | `{ eval?: EvalOptions; onError?: ExpressionErrorPolicy }`, accepted by the factory and per registration. |
@@ -191,7 +193,7 @@ rules naming a missing field resolve `undefined`.
 ### It is validated when you bind
 
 A schema that arrives from a server can be malformed in ways an expression cannot be, so
-`bindFieldProperties` checks four things and **throws** rather than letting them surface
+`bindFieldProperties` checks five things and **throws** rather than letting them surface
 later as an evaluation result nobody can trace:
 
 | Rejected | Why it is not a warning |
@@ -200,6 +202,7 @@ later as an evaluation result nobody can trace:
 | A `visible` / `text` that is not a string | Reaches the compiler as something it cannot parse. |
 | A field name that is a member of `Object.prototype` | See below. |
 | A control in the group that is not a `FormControl` | Nested groups and `FormArray` are out of scope; the alternative is a group's *aggregate object* arriving where a value was expected. |
+| An expression naming a member of `Object.prototype` | The same failure as the name, reached through the expression — see [Expressions are validated too](#expressions-are-validated-too). |
 
 **Field and control names may not be `constructor`, `toString`, `valueOf`,
 `hasOwnProperty`, `__proto__` or any other member of `Object.prototype`.** `FormGroup`
@@ -216,40 +219,35 @@ the diff runs in a subscriber, where a throw is reported out of band and far fro
 `addControl` that caused it — and it could not undo that call anyway. Validate a control
 set you assemble dynamically, or re-bind.
 
-### Expressions are not validated
+### Expressions are validated too
 
-**No check in the table above inspects an expression.** Two of the four are on **names** — the
-schema's field names and the group's control names; the other two are on a rule's *type* and a
-control's *class*. `bindFieldProperties` compiles each expression, so one that does not *parse*
-throws; nothing inspects what a parsed expression **names**.
-
-**So `visible: "constructor"` binds here without complaint, and renders the field:**
+**Since 0.3.0, `bindFieldProperties` also refuses a `visible` or `text` expression that names a
+member of `Object.prototype`** as an identifier — with the rule and the message `/signals` uses,
+because it is the same function, `guardIdentifiers`:
 
 ```ts
 const form = new FormGroup({ country: new FormControl('CA') });
 
-const binding = bindFieldProperties(
+bindFieldProperties(
   [{ name: 'city', visible: 'constructor' }],
   form,
   { injector }
-);
-
-binding.fields['city'].visible?.();   // => true — against a form with no `city` and no
-                                      //    `constructor`, with nothing logged
+);   // throws: Expression 'constructor': identifier 'constructor' is a member of Object.prototype …
 ```
 
-The identifier resolves off `Object.prototype` to a *function*, a function is truthy, and
-truthiness means visible. It is the same failure the field-name check above prevents, reached
-through the expression instead of through the name.
+Without it the identifier resolves off `Object.prototype` to a *function*, a function is truthy,
+and truthiness means visible: the same failure the field-name check above prevents, reached
+through the expression instead of through the name. Up to 0.2.x this bound without complaint
+and rendered the field — against a form with no `city` and no `constructor`, with nothing
+logged — while `/signals` threw on the same string. **Both entry points now refuse it.**
 
-**`/signals` rejects this and `/reactive` does not**, so one authored rule string behaves two
-ways: it throws under `@zvenigora/ng-eval-forms/signals` and silently renders a data-less field
-here. The asymmetry is deliberate rather than an oversight — adding the check to `/reactive`
-would make an expression that registers today start throwing, which is a breaking change to a
-released entry point, and it is logged as a question for a later major in the
-[roadmap](https://github.com/zvenigora/ng-eval/blob/master/ROADMAP.md). Until it is answered:
-if your model keys or expressions can come from a server or a form-builder UI, prefer
-`/signals`, or screen the expressions yourself.
+No form that worked stops working. For such an identifier to read *data*, a field or a control
+would have to carry the name, and both are refused above, so it only ever read the prototype's
+function. The check's bounds are `/signals`' too — see
+[Prototype-shadowed identifiers are rejected](#prototype-shadowed-identifiers-are-rejected): a
+member expression such as `user.constructor` is not its business, and it over-rejects a name the
+expression binds itself. A rule that does not parse is not checked here; it throws when it is
+compiled, as before.
 
 ## What an expression can name
 
@@ -620,8 +618,8 @@ logged. The fix is to rename the model key.
 
 **The throw arrives from `form()`, not from `schema()`.** The schema body is what registers, and
 Angular invokes that body once per `form()` — so building the schema is silent and every
-`form()` made from it throws. `/reactive` makes its (different, name-based) check at the
-`bindFieldProperties(…)` call instead, so **the two entry points reject at different times**.
+`form()` made from it throws. `/reactive` makes the same check, beside its name-based ones, at
+the `bindFieldProperties(…)` call instead, so **the two entry points reject at different times**.
 
 Three bounds on the check, none of them obvious from the paragraph above:
 
@@ -638,8 +636,8 @@ Three bounds on the check, none of them obvious from the paragraph above:
   *under*-rejecting — a silent wrong answer in place of a rename. Rename the parameter.
   (`'[1].map(valueOf => 1)'` registers: a binding that is never referenced is not visited.)
 
-**`/reactive` makes no equivalent check on expressions** — see
-[Expressions are not validated](#expressions-are-not-validated).
+**`/reactive` makes the same check on its expressions**, since 0.3.0 — see
+[Expressions are validated too](#expressions-are-validated-too).
 
 ### `caseInsensitive` is in practice a *factory* option
 

@@ -521,6 +521,89 @@ describe('bindFieldProperties', () => {
     });
   });
 
+  /**
+   * `/signals`' identifier guard, applied here at bind time since 0.3.0
+   * (`docs/backlog-retired.md` D2). Up to 0.2.x `visible: 'constructor'`
+   * bound cleanly and rendered a field with no data, while `/signals` threw on
+   * the same string. The guard is the shared one, so the predicate and the
+   * message are `/signals`' own; these rows pin that `/reactive` calls it over
+   * both properties, and the bounds it brings with it.
+   */
+  describe('expression identifiers (D2)', () => {
+
+    const bindWith = (property: 'visible' | 'text', expression: string) => () =>
+      bindFieldProperties([{ name: 'country', [property]: expression }], group(), { injector });
+
+    describe.each(['visible', 'text'] as const)('%s', (property) => {
+
+      it('should reject constructor', () => {
+        expect(bindWith(property, 'constructor')).toThrow(/Object\.prototype/);
+      });
+    });
+
+    it('should name both the expression and the identifier', () => {
+      const bind = bindWith('text', 'country === "US" && toString');
+
+      expect(bind).toThrow(/country === "US" && toString/);
+      expect(bind).toThrow(/identifier 'toString'/);
+    });
+
+    // One of the five names outside the seven an author might type, so a
+    // hard-coded list of the seven fails here - the predicate is the rule.
+    it('should reject a name the illustrative seven omit', () => {
+      expect(bindWith('visible', '__lookupGetter__')).toThrow(/__lookupGetter__/);
+    });
+
+    // `/signals`' deliberate over-rejection, ported with the guard.
+    it('should reject a name the expression binds itself', () => {
+      expect(bindWith('visible', '[1].map(valueOf => valueOf)')).toThrow(/valueOf/);
+    });
+
+    it.each([
+      ['a differently cased name', 'CONSTRUCTOR'],
+      ['a member expression, which is eval-core\'s guard', 'country.constructor'],
+      ['a bound name that is never referenced', '[1].map(valueOf => 1)'],
+    ])('should accept %s', (_label, expression) => {
+      expect(bindWith('visible', expression)).not.toThrow();
+    });
+
+    it('should reject before any subscription is opened', () => {
+      const form = group();
+
+      expect(() =>
+        bindFieldProperties([{ name: 'country', visible: 'constructor' }], form, { injector })
+      ).toThrow(/Object\.prototype/);
+
+      expect(observers(form.controls['country'])).toBe(0);
+    });
+
+    /**
+     * Why refusing the expression breaks no working form: for such an
+     * identifier to read *data*, a field or a control would have to carry the
+     * name, and both are refused at construction already - so the identifier
+     * only ever read `Object.prototype`'s function. Each row names the
+     * identifier in a rule too, and the error is the *name* check's, which
+     * runs first: no schema and group in which it resolved to data could be
+     * built, before this release or after it.
+     */
+    describe('no form in which such an identifier read data was ever buildable', () => {
+
+      it('should refuse a field named constructor by its name', () => {
+        expect(() =>
+          bindFieldProperties([{ name: 'constructor', visible: 'constructor' }], group(), { injector })
+        ).toThrow(/^Field name 'constructor' is a member of Object\.prototype/);
+      });
+
+      it('should refuse a control named constructor by its name', () => {
+        const form = group({ constructor: new FormControl('MINE') });
+
+        expect(() =>
+          bindFieldProperties([{ name: 'field', text: 'country' }], form, { injector })
+        ).toThrow(/^Control 'constructor' is a member of Object\.prototype/);
+      });
+    });
+  });
+
   describe('the property signals (plan S 5)', () => {
 
     it('should expose invalidate and destroy, not a plain Signal', () => {

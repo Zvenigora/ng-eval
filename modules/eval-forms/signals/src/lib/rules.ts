@@ -1,9 +1,8 @@
 import { WritableSignal } from '@angular/core';
 import { type PathKind, type SchemaPath, type SchemaPathRules, disabled, hidden, metadata } from '@angular/forms/signals';
 import { type EvalOptions, compile, defaultParserOptions, parse } from '@zvenigora/ng-eval-core';
-import { type ExpressionErrorPolicy, applyErrorPolicy, toText, toVisible } from '@zvenigora/ng-eval-forms';
+import { type ExpressionErrorPolicy, applyErrorPolicy, guardIdentifiers, toText, toVisible } from '@zvenigora/ng-eval-forms';
 import { evaluateRule } from './evaluate-rule';
-import { guardIdentifiers } from './guard-identifiers';
 import { createModelSource } from './model-source';
 import { TEXT } from './text-key';
 

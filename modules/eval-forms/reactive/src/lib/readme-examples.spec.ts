@@ -72,11 +72,13 @@ const WORKED_EXAMPLE_TS_BLOCKS = 11;
  * sentence exists because the file's location would otherwise imply it is
  * here (Phase 6 step 7, plan revision 19 item 2):
  *
- * - `### Expressions are not validated` - `visible: "constructor"` binding
- *   cleanly and rendering a data-less field - paired in one case with the
- *   `/signals` registration that throws on the same authored string. The
- *   claim is the *asymmetry*, so the pair is the assertion: split across two
- *   files, either half could drift without the pair failing.
+ * - `### Expressions are validated too` - `visible: "constructor"` refused at
+ *   bind time - paired in one case with the `/signals` registration that
+ *   throws on the same authored string. The claim is that the two entry
+ *   points agree, so the pair is the assertion: split across two files,
+ *   either half could drift without the pair failing. (Up to 0.2.x the
+ *   section was `### Expressions are not validated`, and the pair asserted
+ *   that they disagreed.)
  *
  * Not covered:
  *

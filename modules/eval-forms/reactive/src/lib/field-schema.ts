@@ -7,9 +7,11 @@ import {
   inject,
 } from '@angular/core';
 import { AbstractControl, FormControl, FormGroup } from '@angular/forms';
+import { defaultParserOptions, parse } from '@zvenigora/ng-eval-core';
 import {
   ExpressionErrorPolicy,
   createFieldContext,
+  guardIdentifiers,
   toText,
   toVisible,
 } from '@zvenigora/ng-eval-forms';
@@ -135,12 +137,16 @@ const coerce = <T>(
 };
 
 /**
- * The three checks of open question 8.3, plus 8.5's half.
+ * The three checks of open question 8.3, plus 8.5's half, plus `/signals`'
+ * identifier guard over every expression.
  *
- * Three checks, and the count is the boundary rather than a starting point.
  * Each catches something that is otherwise either silent or reported far from
- * its cause, and none of them is a rule about what an *expression* may say -
- * that is `eval-core`'s and is already answered.
+ * its cause. Only the last is about what an expression may *say*, and it is
+ * not a rule of this adapter's: it is `guardIdentifiers`, the one `/signals`
+ * applies at registration, with the same predicate and message - so one
+ * authored rule string is refused at both entry points or at neither
+ * (`docs/backlog-retired.md` D2). Everything else an expression may say is
+ * `eval-core`'s, and already answered.
  */
 const validate = (schema: readonly FieldSchema[], group: FormGroup): void => {
 
@@ -186,6 +192,30 @@ const validate = (schema: readonly FieldSchema[], group: FormGroup): void => {
           `not ${typeof rule}.`
         );
       }
+
+      if (rule === undefined) {
+        continue;
+      }
+
+      // An identifier naming an `Object.prototype` member resolves off the
+      // prototype to a function - truthy - for the reason the name checks here
+      // exist, reached through the expression instead of through a name. Up to
+      // 0.2.x only `/signals` refused it, so `visible: 'constructor'` rendered
+      // a data-less field here and threw there.
+      //
+      // A rule that does not parse is left to `createEvalSignal`, which
+      // compiles it below and throws exactly as before - after the mirror is
+      // built, so the binding's release-on-failure path still runs for it.
+      // Throwing the parse error from here instead would be earlier and
+      // equally loud, and would leave that path with no rule that reaches it.
+      let node: ReturnType<typeof parse>;
+      try {
+        node = parse(rule, defaultParserOptions);
+      } catch {
+        continue;
+      }
+
+      guardIdentifiers(rule, node);
     }
   }
 
