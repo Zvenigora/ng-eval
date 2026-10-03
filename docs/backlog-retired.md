@@ -1412,8 +1412,8 @@ assertion without asking. Nor was this one of the cases the step's brief named. 
 <a id="b1"></a>
 ## B1 — The primitive carve-out in `member-expression.ts`
 
-**Package** core · **Kind** decision, then fix · **Status** **Retired — fixed 2026-10-02**; for
-`eval-core` 0.9.0. Was Open, Covered
+**Package** core · **Kind** decision, then fix · **Status** **Retired — fixed 2026-10-02**;
+released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. Was Open, Covered
 
 Surfaced while checking GHSA-pj3p-xpg7-h7gw (reported against the sibling `jse-eval`) against
 this repo. The advisory itself does not apply — see [`SECURITY.md`](../SECURITY.md), "Reviewed

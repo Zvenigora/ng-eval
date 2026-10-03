@@ -412,10 +412,10 @@ Neither is scheduled. A phase becomes real when it gets a plan document, per `CL
 
 ## Deferred work
 
-Everything recorded-and-not-done lives in **[`docs/backlog.md`](docs/backlog.md)**: the
-`eval-core` visitor, context and service defects; the primitive carve-out and the `console`
-calls; the `eval-signals` write-policy gaps; the `eval-forms` asymmetries and doc debts; the
-features deferred to phases not yet specified; and the tooling and documentation gaps.
+Everything recorded-and-not-done lives in **[`docs/backlog.md`](docs/backlog.md)**: two
+`eval-core` decisions; the `eval-signals` write-policy gaps; the `eval-forms` asymmetries,
+accepted limitations and doc debt; the features deferred to phases not yet specified; and the
+tooling and documentation gaps.
 
 It moved out of this file on 2026-09-06. Until then these were nine sections here, six plan
 and step documents under `docs/`, and several code comments — and the most serious entry

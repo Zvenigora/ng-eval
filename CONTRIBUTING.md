@@ -126,7 +126,9 @@ All three packages publish to the public npm registry under the `@zvenigora` sco
    `eval-forms` resolve their next version from these tags.
 6. Record the release in a docs-only commit: a row per published package in
    `docs/backlog.md`'s Publication status, and one row for the release in its Register history,
-   counted as that section describes.
+   counted as that section describes. Dates in the Publication status rows, the Register history
+   and the CHANGELOG headings are npm's publish date in UTC; if it differs from the heading
+   written at release time, the post-publish commit corrects the heading.
 
 ### Why no flags are needed
 

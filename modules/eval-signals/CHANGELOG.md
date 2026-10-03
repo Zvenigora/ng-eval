@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## [0.2.1] - 2026-10-02
+## [0.2.1] - 2026-10-03
 
 Released because `eval-core` 0.9.0 falls outside 0.2.0's declared peer range. No code in this
 package changes.

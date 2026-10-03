@@ -14,7 +14,7 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ---
 
-## [0.9.0] - 2026-10-02
+## [0.9.0] - 2026-10-03
 
 **A primitive receiver no longer skips the prototype-pollution guard —
 [B1](../../docs/backlog-retired.md#b1).** A breaking minor. No exported symbol changes shape, but an
