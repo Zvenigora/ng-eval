@@ -247,6 +247,42 @@ export const unresolvedImports = (
         )
     );
 
+/**
+ * The failures **every** `@zvenigora/…` import produces, each resolved
+ * against its own specifier's export list rather than one fixed specifier
+ * (`docs/backlog.md` F11). A README's cross-package line - `eval-signals`'
+ * README importing `EvalService` from `@zvenigora/ng-eval-core` - was scanned
+ * by no gate before: its own package's gate filtered on its own specifier, and
+ * the exporting package's gate never reads that README. The README's own
+ * package owns the line, so a rename in another package turns this package's
+ * gate red, where the stale line is.
+ *
+ * Read through `SPECIFIER_ENTRY`, which mirrors `tsconfig.base.json` and is
+ * checked against it below, and through the TypeScript compiler, which opens
+ * the other package's sources as files - no import crosses the module
+ * boundary rule. A specifier the workspace does not map is a failure in its own
+ * right rather than a silent skip.
+ */
+export const unresolvedAcrossSpecifiers = (
+  imports: readonly ReadmeImport[],
+  label: string
+): readonly string[] =>
+  imports.flatMap((entry) => {
+    const entryFile = SPECIFIER_ENTRY[entry.specifier];
+    if (entryFile === undefined) {
+      return [
+        `${label}:${entry.line} imports from '${entry.specifier}', which no tsconfig.base.json path maps`,
+      ];
+    }
+    const exported = exportedNames(entryFile);
+    return entry.names
+      .filter((name) => !exported.has(name))
+      .map(
+        (name) =>
+          `${label}:${entry.line} imports { ${name} } from '${entry.specifier}', which it does not export`
+      );
+  });
+
 describe('export-list reader (eval-core copy)', () => {
   const core = () => exportedNames(SPECIFIER_ENTRY['@zvenigora/ng-eval-core']);
 
@@ -371,5 +407,34 @@ describe('README import scanner (eval-core copy)', () => {
       "import { signal } from '@angular/core';\n"
     );
     expect(found).toEqual([]);
+  });
+});
+
+describe('every @zvenigora import resolves against its own specifier (F11, eval-core copy)', () => {
+  // The READMEs this project's gates own.
+  it.each(['README.md', 'modules/eval-core/README.md'])('%s', (readme) => {
+    expect(unresolvedAcrossSpecifiers(readmeImports(readme), readme)).toEqual([]);
+  });
+
+  it('checks a cross-package import against the other package, and names it', () => {
+    const found = unresolvedAcrossSpecifiers(
+      readmeImportsFromText(
+        "import { createEvalSignal, createEvalSignalz } from '@zvenigora/ng-eval-signals';\n"
+      ),
+      'fixture.md'
+    );
+    expect(found).toEqual([
+      "fixture.md:1 imports { createEvalSignalz } from '@zvenigora/ng-eval-signals', which it does not export",
+    ]);
+  });
+
+  it('fails a specifier the workspace does not map, rather than skipping it', () => {
+    const found = unresolvedAcrossSpecifiers(
+      readmeImportsFromText("import { X } from '@zvenigora/ng-eval-nowhere';\n"),
+      'fixture.md'
+    );
+    expect(found).toEqual([
+      "fixture.md:1 imports from '@zvenigora/ng-eval-nowhere', which no tsconfig.base.json path maps",
+    ]);
   });
 });

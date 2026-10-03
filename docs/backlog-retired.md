@@ -2405,7 +2405,7 @@ Whoever closes this writes the fixture rather than waiting for a consumer to arr
 > `applyErrorPolicy` reddens it with `modules/eval-forms/README.md:339 imports
 > { applyErrorPolicy } … which it does not export`.
 >
-> **One thing the block does not print**, and it is [F11](backlog.md#f11)'s second instance:
+> **One thing the block does not print**, and it is [F11](#f11)'s second instance:
 > `SignalContextWriteError` belongs to `@zvenigora/ng-eval-signals` and neither `eval-forms`
 > entry point re-exports it, so the block names its package in a comment rather than printing an
 > import line no gate would scan. The class is still execution-gated — the spec imports and
@@ -2768,7 +2768,7 @@ and probed**, [`docs/gates/plan.md`](gates/plan.md) step 2, 2026-09-07
 >    in no import, so renaming them keeps every gate green. That is a coverage gap with its own
 >    fix, not a caveat on this mechanism.
 >
->    **[F11](backlog.md#f11) is the same shape one axis over**: each gate checks its README against **one**
+>    **[F11](#f11) is the same shape one axis over**: each gate checks its README against **one**
 >    specifier, so an import line naming a *different* `@zvenigora/…` package in a gated file is
 >    scanned by nothing. Step 3 hit it for real and left an import out of
 >    `modules/eval-signals/README.md` rather than print an unchecked one. F10 bounds which
@@ -2894,7 +2894,7 @@ code-running gate and does **not** supersede this one.
 > README alone does not turn anything red; what the gate catches is the *library* drifting from
 > what a case transcribed. See [`docs/gates/step-3-summary.md`](gates/step-3-summary.md) § 4.
 >
-> **[F11](backlog.md#f11) bounds this gate too**, and step 3 is where it surfaced: an execution spec
+> **[F11](#f11) bounds this gate too**, and step 3 is where it surfaced: an execution spec
 > substitutes its import line (§ 1.2), and the drift gate checks only the README's own
 > specifier, so a **cross-package** import in a gated README is neither resolved nor run. That
 > is why `## Using the adapter directly` names `EvalService`'s package in a comment instead of
@@ -3182,6 +3182,76 @@ some anchors as explicit `<a id="…">` tags and relies on generated heading slu
 checker must handle both or it will false-fail on correct links, which is the shape
 [F3](#f3) § 1.1 rejected.
 
+<a id="f11"></a>
+## F11 — A gated README can only import from its own specifier
+
+**Package** core, signals **and** forms · **Kind** fix · **Status** **Retired — fixed 2026-10-03**;
+ships in no package. Was Open — the second coverage limit Track 3 found from inside the work,
+opened 2026-09-08
+
+Each drift gate built in [F3](#f3) checks one README against **one** specifier's export list:
+`modules/eval-signals/README.md` against `@zvenigora/ng-eval-signals`, `eval-forms`' against
+`/reactive` and `/signals` separately, and so on. **An import line naming a different
+`@zvenigora/…` package in that same file is scanned by nothing** — not by that file's gate, which
+filters on its own specifier, and not by the other package's gate, which reads only its own
+README.
+
+This is not hypothetical and the track walked into it in step 3. Completing
+`## Using the adapter directly` in `modules/eval-signals/README.md` required an `EvalService`,
+which is `@zvenigora/ng-eval-core` surface. The block names it in a comment rather than an
+`import` line **for this reason**: printing the import would have added the first unscanned
+import line to a gated file, buying documentation completeness and zero coverage. That is a
+defensible call for one block and a bad general rule — cross-package examples are exactly what a
+three-package workspace's documentation should contain.
+
+**It bounds [F4](#f4) as well as F3.** An execution spec substitutes its imports anyway (§ 1.2),
+so a cross-package import line is unchecked in both directions: nothing verifies the symbol
+exists, and nothing runs the line as printed.
+
+**The fix is small and its cost is a decision, not code.** Each gate takes the set of specifiers
+appearing in its README rather than a single constant, and resolves each against that specifier's
+own export list — the reader in `export-list.spec.ts` already maps all five specifiers, so the
+machinery exists. What has to be decided first is **which gate owns a cross-package line**: the
+README's own package, which is where the failure should be reported, or the exporting package,
+which is where a rename happens. Owning it in the README's package means a rename in `eval-core`
+turns `eval-signals`' suite red, which is the right report and a cross-project coupling this
+workspace has so far avoided in its test targets.
+
+Related: [F10](backlog.md#f10), the other limit of the same shape — the gate covers documented-**and-
+imported** symbols, so an exported symbol named only in prose is unwatched. F10 is about which
+*symbols* are checked; this is about which *specifiers*. Together they bound what "the READMEs
+are gated" is entitled to mean.
+
+**Decided 2026-10-03: the README's own package owns the line.** A rename in another package turns
+this package's gate red, which is where the stale line is and where the entry said the failure
+should be reported; the cross-project coupling is a *read* of the other package's sources through
+the TypeScript compiler, not an import, so the module boundary rule is untouched.
+
+**Fixed.** Each of the three `export-list.spec.ts` copies gains `unresolvedAcrossSpecifiers`, which
+resolves every `@zvenigora/…` import a README holds against that specifier's own export list,
+through `SPECIFIER_ENTRY` — the mirror of `tsconfig.base.json`'s paths, already checked against
+it — and fails a specifier the workspace does not map rather than skipping it. Each copy then
+checks its project's READMEs: `eval-core`, the root `README.md` and its own; `eval-signals` and
+`eval-forms`, their own. The per-specifier gates stay as they are. The wider gate found **no
+mismatch** in any README, so no README needed a rename.
+
+Both instances this entry and [D10](#d10) recorded are now import lines: `eval-signals`'
+`## Using the adapter directly` imports `EvalService` from `@zvenigora/ng-eval-core`, and
+`eval-forms`' `applyErrorPolicy` block imports `SignalContextWriteError` from
+`@zvenigora/ng-eval-signals`. Each README-examples gate accepts it: the block counts are unchanged,
+and each case already imported that symbol from that specifier, so the printed line is now what
+runs.
+
+*Verified*: in each copy, a fixture row resolves a cross-package import against the other package
+and names the misspelled half, and `eval-core`'s fails an unmapped specifier. **Probe**, reverted:
+a misspelled cross-package import appended to each README — `createEvalSignalz` from
+`@zvenigora/ng-eval-signals` in the root and `eval-core` READMEs, `EvalServicez` from
+`@zvenigora/ng-eval-core` in `eval-signals`', `SignalContextWriteErrorz` from
+`@zvenigora/ng-eval-signals` in `eval-forms`'. Each failed its own README's new row and nothing
+else: `eval-core` 4 (two README rows, each registered twice — `public-api.spec.ts` imports the
+copy), `eval-signals` 2, `eval-forms` 4 (one row, registered by the copy and three gates). No
+existing per-specifier gate went red on any of them, which is the hole this entry described.
+
 <a id="f12"></a>
 ## F12 — The downstream peer ranges exclude `eval-core` 0.4.0 — **Retired, fixed**
 
@@ -3447,7 +3517,7 @@ The failure is quiet in exactly the way the gates track was built to prevent: a 
 README without a case still leaves a green suite and a docblock claiming full coverage, which is
 [F3](#f3)'s own motivating shape one layer over. `grep -c '```javascript'` is the whole measurement.
 
-**Distinct from [F10](backlog.md#f10) and [F11](backlog.md#f11)**, which bound what the *drift* gate sees. This one is
+**Distinct from [F10](backlog.md#f10) and [F11](#f11)**, which bound what the *drift* gate sees. This one is
 about the *execution* gate ([F4](#f4)) and is not covered by either: F10 is about symbols named but
 not imported, F11 about the specifier a gated block may import from, and neither counts blocks.
 

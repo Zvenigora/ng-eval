@@ -241,6 +241,36 @@ export const unresolvedImports = (
         )
     );
 
+/**
+ * The failures **every** `@zvenigora/…` import produces, each resolved
+ * against its own specifier's export list rather than one fixed specifier
+ * (`docs/backlog.md` F11). This README's own package owns a cross-package
+ * line, so a rename in another package turns this package's gate red, where
+ * the stale line is. Read through `SPECIFIER_ENTRY` and the TypeScript
+ * compiler, which open the other package's sources as files - no import
+ * crosses the module boundary rule. An unmapped specifier is a failure, not a
+ * skip. The `eval-core` copy carries the full reasoning.
+ */
+export const unresolvedAcrossSpecifiers = (
+  imports: readonly ReadmeImport[],
+  label: string
+): readonly string[] =>
+  imports.flatMap((entry) => {
+    const entryFile = SPECIFIER_ENTRY[entry.specifier];
+    if (entryFile === undefined) {
+      return [
+        `${label}:${entry.line} imports from '${entry.specifier}', which no tsconfig.base.json path maps`,
+      ];
+    }
+    const exported = exportedNames(entryFile);
+    return entry.names
+      .filter((name) => !exported.has(name))
+      .map(
+        (name) =>
+          `${label}:${entry.line} imports { ${name} } from '${entry.specifier}', which it does not export`
+      );
+  });
+
 describe('export-list reader (eval-signals copy)', () => {
   const signals = () =>
     exportedNames(SPECIFIER_ENTRY['@zvenigora/ng-eval-signals']);
@@ -344,5 +374,24 @@ describe('README import scanner (eval-signals copy)', () => {
       "import { signal } from '@angular/core';\n"
     );
     expect(found).toEqual([]);
+  });
+});
+
+describe('every @zvenigora import resolves against its own specifier (F11, eval-signals copy)', () => {
+  it('modules/eval-signals/README.md', () => {
+    const readme = 'modules/eval-signals/README.md';
+    expect(unresolvedAcrossSpecifiers(readmeImports(readme), readme)).toEqual([]);
+  });
+
+  it('checks a cross-package import against the other package, and names it', () => {
+    const found = unresolvedAcrossSpecifiers(
+      readmeImportsFromText(
+        "import { EvalService, EvalServicez } from '@zvenigora/ng-eval-core';\n"
+      ),
+      'fixture.md'
+    );
+    expect(found).toEqual([
+      "fixture.md:1 imports { EvalServicez } from '@zvenigora/ng-eval-core', which it does not export",
+    ]);
   });
 });

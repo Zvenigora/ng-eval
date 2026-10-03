@@ -19,7 +19,7 @@ This document doubles as step 5's record; the step was small enough that a separ
 
 Opened along the way: [F9](../backlog-retired.md#f9) (document cross-references, deferred with the
 comparison that settled it), [F10](../backlog.md#f10) (the gate covers documented-**and-imported**
-symbols), [F11](../backlog.md#f11) (a gated README can only import from its own specifier).
+symbols), [F11](../backlog-retired.md#f11) (a gated README can only import from its own specifier).
 
 **Nothing shipped to npm.** No exported symbol, no manifest, no version bump — the property that
 let the track run ahead of Phase 2, and § 6 gates 1 and 2 held on every step's diff.
@@ -111,7 +111,7 @@ Stated together, because "the READMEs are gated" is now easy to over-read:
 - **Only imported identifiers** ([F10](../backlog.md#f10)). `createControlSource`, `FieldSchema`
   and `FormBinding` are exported, documented in prose and tables, and named in no import — a
   rename passes every gate.
-- **Only a README's own specifier** ([F11](../backlog.md#f11)). A cross-package import line in a
+- **Only a README's own specifier** ([F11](../backlog-retired.md#f11)). A cross-package import line in a
   gated README is scanned by nothing. Two documents now name a package in a comment rather than
   print such a line — `eval-signals`' `inject(EvalService)` and `eval-forms`'
   `SignalContextWriteError` — which is honest but is a workaround, not a fix.

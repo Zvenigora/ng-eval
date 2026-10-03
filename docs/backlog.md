@@ -197,7 +197,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [F8](#f8) | The release tag step has no forcing function, and ships with a silencer | repo | fix | **Premise retired 2026-09-16** — all ten missing tags written and pushed, so the arrears are cleared; the mechanism is untouched and the entry is live |
 | [F9](backlog-retired.md#f9) | No gate on document cross-references — the register's own dangling links | repo | fix | **Retired — fixed 2026-09-28**; `tools/doc-links.mjs`, the workspace root's `test` target, so `npm test` and CI run it. Deferred 2026-09-07 by [plan](gates/plan.md) § 8.4 |
 | [F10](#f10) | The drift gate covers documented-**and-imported** symbols only | core, signals, forms | fix | Open — the gap [F3](backlog-retired.md#f3) leaves |
-| [F11](#f11) | A gated README can only import from its own specifier | core, signals, forms | fix | Open — bounds [F3](backlog-retired.md#f3) and [F4](backlog-retired.md#f4) |
+| [F11](backlog-retired.md#f11) | A gated README can only import from its own specifier | core, signals, forms | fix | **Retired — fixed 2026-10-03**; ships in no package: every `@zvenigora/…` import in a gated README resolves against its own specifier, owned by the README's package |
 | [F12](backlog-retired.md#f12) | The downstream peer ranges exclude `eval-core` 0.4.0 — **and fail both downstream `lint` targets** | signals, forms | fix | **Retired — fixed, Phase 2 step 7**; both ranges widened, and `lint`'s cache inputs with them |
 | [F13](backlog-retired.md#f13) | Nothing gates the README block count `readme-examples.spec.ts` claims | core, signals, forms | test gap | **Retired — fixed 2026-09-27**, test only; all four specs gated. The gate's first run found `eval-core`'s count wrong a third time |
 | [F14](backlog-retired.md#f14) | Six sites cite the retired `^0.3.0` range, two of them in published READMEs | signals, forms | fix (comments, docs) | **Retired — fixed, Phase 2 step 8**; filed as four sites, was six |
@@ -979,45 +979,6 @@ same table and *is* covered — only because a different section happens to impo
 
 Whoever takes it should also rename F3's summary line, or leave it retired and let this entry
 carry the claim — but the two should not both stand as written.
-
-<a id="f11"></a>
-## F11 — A gated README can only import from its own specifier
-
-**Package** core, signals **and** forms · **Kind** fix · **Status** Open — the second coverage
-limit Track 3 found from inside the work, opened 2026-09-08
-
-Each drift gate built in [F3](backlog-retired.md#f3) checks one README against **one** specifier's export list:
-`modules/eval-signals/README.md` against `@zvenigora/ng-eval-signals`, `eval-forms`' against
-`/reactive` and `/signals` separately, and so on. **An import line naming a different
-`@zvenigora/…` package in that same file is scanned by nothing** — not by that file's gate, which
-filters on its own specifier, and not by the other package's gate, which reads only its own
-README.
-
-This is not hypothetical and the track walked into it in step 3. Completing
-`## Using the adapter directly` in `modules/eval-signals/README.md` required an `EvalService`,
-which is `@zvenigora/ng-eval-core` surface. The block names it in a comment rather than an
-`import` line **for this reason**: printing the import would have added the first unscanned
-import line to a gated file, buying documentation completeness and zero coverage. That is a
-defensible call for one block and a bad general rule — cross-package examples are exactly what a
-three-package workspace's documentation should contain.
-
-**It bounds [F4](backlog-retired.md#f4) as well as F3.** An execution spec substitutes its imports anyway (§ 1.2),
-so a cross-package import line is unchecked in both directions: nothing verifies the symbol
-exists, and nothing runs the line as printed.
-
-**The fix is small and its cost is a decision, not code.** Each gate takes the set of specifiers
-appearing in its README rather than a single constant, and resolves each against that specifier's
-own export list — the reader in `export-list.spec.ts` already maps all five specifiers, so the
-machinery exists. What has to be decided first is **which gate owns a cross-package line**: the
-README's own package, which is where the failure should be reported, or the exporting package,
-which is where a rename happens. Owning it in the README's package means a rename in `eval-core`
-turns `eval-signals`' suite red, which is the right report and a cross-project coupling this
-workspace has so far avoided in its test targets.
-
-Related: [F10](#f10), the other limit of the same shape — the gate covers documented-**and-
-imported** symbols, so an exported symbol named only in prose is unwatched. F10 is about which
-*symbols* are checked; this is about which *specifiers*. Together they bound what "the READMEs
-are gated" is entitled to mean.
 
 <a id="f16"></a>
 ## F16 — Workspace dependency advisories

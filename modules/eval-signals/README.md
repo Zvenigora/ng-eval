@@ -356,9 +356,11 @@ Four things that decide whether this library fits, rather than surprises you lat
 `createSignalContext` is the context on its own, for callers who want `EvalService`:
 
 ```ts
+import { EvalService } from '@zvenigora/ng-eval-core';
+
 const price = signal(10);
 const quantity = signal(3);
-const evalService = inject(EvalService);   // from @zvenigora/ng-eval-core
+const evalService = inject(EvalService);
 
 const context = createSignalContext({ price, quantity });
 const total = computed(() => evalService.simpleEval('price * quantity', context));

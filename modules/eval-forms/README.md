@@ -338,7 +338,8 @@ than reimplementing it — and so you can apply it to a rule invocation you driv
 
 ```ts
 import { applyErrorPolicy } from '@zvenigora/ng-eval-forms';
-// SignalContextWriteError is @zvenigora/ng-eval-signals' — neither adapter re-exports it.
+// Neither adapter re-exports it, so it comes from its own package.
+import { SignalContextWriteError } from '@zvenigora/ng-eval-signals';
 
 const boom = () => { throw new Error('bad rule'); };
 

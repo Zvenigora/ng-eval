@@ -32,6 +32,13 @@ Workspace tooling: nothing here reaches a consumer, so nothing here is versioned
   change. `docs/backlog.md` F16.
 - **eval-core's tests no longer print ts-jest's TS151001 advice** once per worker. It is silenced
   in `modules/eval-core/jest.config.ts`; the reason is in the comment there.
+- **The README drift gates check every `@zvenigora/…` import**, 2026-10-03 — `docs/backlog.md`
+  F11. Each project's gate resolved one README against its own specifier only, so a
+  cross-package import line was checked by nothing. Each `export-list.spec.ts` now resolves
+  every `@zvenigora/…` import in its project's READMEs against that specifier's own export list,
+  through `tsconfig.base.json`'s paths, and fails one the workspace does not map. The
+  `eval-signals` README's `EvalService`, printed as a comment because of this gap, is now an
+  import line.
 
 ### Changed
 - **Each package now carries a copy of the root `LICENSE`** (`modules/*/LICENSE`), which
