@@ -200,7 +200,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [F4](backlog-retired.md#f4) | README-execution gate for `eval-core` and `eval-signals` | core, signals | fix / decide-then-drop | **Retired** — both package READMEs gated; root **assessed and dropped** |
 | [F5](backlog-retired.md#f5) | The `js-sha256` peer range is locked to a dead minor | core | decision | **Retired — decided and fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. Range widened to `^0.10.1 \|\| ^0.11.0 \|\| ^0.12.0 \|\| ^1.0.0`, tested at 0.10.1 and 1.0.0 |
 | [F6](backlog-retired.md#f6) | CONTRIBUTING's "Code style" describes a config that never existed here | repo | decision (editorial) | **Retired — fixed 2026-09-26**; the table replaced by a paragraph pointing at the four flat configs |
-| [F7](#f7) | Intermittent Jest worker-teardown warning — **no established locus**, possibly Nx/Jest rather than a library | — | fix? | Open — locus corrected 2026-09-09; **not reproducible per project** |
+| [F7](backlog-retired.md#f7) | Intermittent Jest worker-teardown warning — **no established locus** when filed; it was Jest's fixed 500 ms worker-exit window, missed under `run-many`'s contention | — | fix | **Retired — fixed 2026-10-04**; ships in no package. `jest.preset.js` sets `maxWorkers: 1`, so Jest runs every test file in band and starts no worker to force-exit |
 | [F8](backlog-retired.md#f8) | The release tag step has no forcing function, and ships with a silencer | repo | fix | **Retired — fixed 2026-10-04**; ships in no package. The disk fallback is removed from all three `project.json`s, and `tools/release-tags.mjs`, in the root `test` target, fails on a Publication status row whose tag is missing or at another commit |
 | [F9](backlog-retired.md#f9) | No gate on document cross-references — the register's own dangling links | repo | fix | **Retired — fixed 2026-09-28**; `tools/doc-links.mjs`, the workspace root's `test` target, so `npm test` and CI run it. Deferred 2026-09-07 by [plan](gates/plan.md) § 8.4 |
 | [F10](backlog-retired.md#f10) | The drift gate covers documented-**and-imported** symbols only | core, signals, forms | fix | **Retired — fixed 2026-10-04**, test only: every export is named in a code span of its package's README or allowlisted with one of five reasons, and every allowlist entry is still exported |
@@ -716,102 +716,6 @@ not lost in a tidying edit.
 ---
 
 # F. Tooling and docs
-
-<a id="f7"></a>
-## F7 — An intermittent Jest worker-teardown warning with no established locus
-
-**Package** — · **Kind** fix, **possibly not a library defect at all** · **Status** Open —
-**locus corrected 2026-09-09**, previously recorded as an `eval-core` property
-
-**What it is, as measured today.** `A worker process has failed to exit gracefully` appears
-**intermittently under `nx run-many`, and does not reproduce for any project run on its own.**
-Measured on this tree, 2026-09-09, every run with `--skip-nx-cache`:
-
-| Command | Warnings |
-| ------- | -------- |
-| `nx test eval-core` (with and without the new spec) | **0**, twice |
-| `nx test eval-signals` (with and without the new spec) | **0**, twice |
-| `nx test eval-forms` | **0** |
-| `nx run-many -t test --parallel=1` | **0** |
-| `nx run-many -t test --output-style=stream` | **0** |
-| `nx run-many -t lint test build` | **2** on one run, then **0** on the next three |
-| two `nx run-many` invocations racing each other | **0** and **0** |
-
-So it fired twice in roughly a dozen runs, in a multi-target parallel run, and every attempt to
-pin it since — including the same command, and including deliberately loading the machine —
-came back clean.
-
-**New observation, Phase 2 step 5, 2026-09-14: it fired once under `nx run-many -t lint test`, a
-command the table above records as untested rather than as zero.** One firing, on the step's
-baseline run; all targets stayed green; two later `nx run-many -t lint test build` runs in the same
-session came back clean. It was **not** captured with `--output-style=stream`, so the emitting task
-is still unattributed and this adds no locus.
-
-**Recorded rather than folded into the table, because one firing overturns nothing** — the table's
-rows are repeated measurements and this is a single observation of a command they do not cover. What
-it does establish is that the symptom is not specific to the three-target form: `lint test` is
-enough, so the common factor remains *multi-target `run-many`* rather than `build`. The entry's
-locus has already been corrected once on the strength of a claim nobody re-ran; a second wrong
-claim inherited from a single run is exactly what that correction was about, so this stays a dated
-note beside the table and not a row in it.
-
-**Observed 2026-10-03, Windows 11, in the `.claude/worktrees/c1` worktree: two runs of
-`$env:NX_WORKSPACE_ROOT_PATH = 'D:\repo.2026\ng-eval-base\ng-eval\.claude\worktrees\c1'; npx nx run-many -t lint test build --skip-nx-cache --output-style=static`**
-(PowerShell; the override because the session's environment set `NX_WORKSPACE_ROOT_PATH` to the
-main checkout, which nx would otherwise have run). The first, before `f05ced9`, printed the
-warning inside `eval-signals:test`'s block of the static output and inside `eval-core:test`'s; the
-second, before `cfe9d42`, inside `eval-core:test`'s only. Every target was green both times. The
-C1 batch's third gate run printed it for both `eval-signals:test` and `eval-core:test`, as that
-batch reported it; not re-measured here.
-
-> **What this replaces.** The entry said: "Confined to `eval-core` — confirmed by running each
-> project separately." **That does not hold today**: run separately, `eval-core` is the *quietest*
-> of the three, at zero. Either the attribution was made under conditions this tree no longer
-> reproduces, or a single clean per-project run was read as confirmation of a locus. The claim
-> travelled through twelve summaries without anyone re-running it, which is the same failure the
-> entry itself is about.
-
-**Say what it now is, not only what it is not.** These are two different investigations and only
-the first is a library defect:
-
-- **"`eval-core` leaks a handle"** — a timer or listener a spec leaves behind. This is what the
-  entry used to assert. **The evidence against it is that a leak of that kind is deterministic**:
-  it would fire on `nx test eval-core` alone, every time. It does not fire there at all.
-- **"Something about parallel execution surfaces a Jest worker that misses its exit window"** —
-  which is where the observations actually point, and which **may be no package's defect**. Under
-  `run-many` several Jest instances contend for the same cores; a worker that has finished its
-  work but does not exit within Jest's grace period is force-exited and reported exactly like a
-  leak. That is a **tooling and scheduling question — Nx's task parallelism against Jest's worker
-  teardown** — not an expression evaluator's.
-
-**What this means for the timebox.** [`docs/gates/plan.md`](gates/plan.md) § 4 step 5 opens F7
-with `nx test eval-core --detectOpenHandles`. **That command is aimed at a run that does not
-exhibit the symptom**, so it will report nothing and the box will be spent proving the absence of
-a leak nobody has evidence for. Amended there to say so.
-
-**The honest recommendation is that step 5 should not spend its box here.** F7's own drop rule —
-"if it is not identified within the step, stop, write what was ruled out, and leave it open" — is
-already satisfied by this entry: the measurements above *are* what was ruled out, and they were
-cheap because they were run against a symptom rather than a suspect. What would change that is a
-**reproduction**, not another hunt: if someone catches it firing, capture the run with
-`--output-style=stream` so the emitting task is attributed, and record the command and the
-machine. Until then there is no locus to investigate, and an unattributed intermittent warning in
-a build tool is not work this repository owes anyone.
-
-**Not closed, and deliberately not.** It is real, it has been seen repeatedly across phases, and
-"cannot reproduce today" is not "does not happen". What changed is that the entry no longer names
-a package that the evidence does not support.
-
-**Carried in twelve step summaries and never once promoted to an entry**, from
-[`signals/step-4-summary.md` § 5.2](signals/step-4-summary.md) through
-[`forms/phase-6-step-6-summary.md` § 4.3](forms/phase-6-step-6-summary.md), each time as
-"pre-existing; carried unchanged". Twelve sessions noticed it and none owned it, which is [A8](backlog-retired.md#a8)'s
-failure mode in a lower-stakes register: a note that travels forward is not a note that gets acted on.
-
-~~Most likely an open handle — a timer or a listener a spec leaves behind. `--detectOpenHandles` is
-the first step.~~ **Superseded by the measurements above**: `--detectOpenHandles` on a run that
-does not warn reports nothing, and "most likely an open handle" was a guess that hardened into a
-locus over twelve restatements.
 
 <a id="f16"></a>
 ## F16 — Workspace dependency advisories

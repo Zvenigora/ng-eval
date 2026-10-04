@@ -3354,6 +3354,153 @@ migration later, and most of it is inherited from presets rather than chosen her
 `eslint.config.mjs` and saying "run `npm run lint`" is honest and much shorter, but loses the
 commentary the section was written to provide. That choice is the work.
 
+<a id="f7"></a>
+## F7 — An intermittent Jest worker-teardown warning with no established locus
+
+**Package** — · **Kind** fix · **Status** **Retired — fixed 2026-10-04**; ships in no package.
+Was Open, its locus corrected 2026-09-09 from an `eval-core` property to the test runner
+
+*Fixed* 2026-10-04: `jest.preset.js`, the `preset` all three projects' `jest.config.ts` name,
+sets `maxWorkers: 1`. No `project.json`, no `ci` configuration of a `test` target and no CI step
+sets `maxWorkers` or `runInBand`, so nothing overrides it. `npx jest --showConfig`, run in each
+project as the inferred `test` target runs it, reports `maxWorkers` 1 for all three, where the
+commit before reports 19 on the 20-core machine it was measured on.
+
+**The mechanism**, read from the installed source. The `test` target runs `jest`, which is the
+workspace's `jest` 30.3.0, and its `jest-runner` 30.3.0 loads its own copy of `jest-worker`
+30.3.0:
+
+- To end a run, the worker pool sends each worker an end message and starts a 500 ms timer. A
+  worker still alive when the timer fires is killed, and `jest-runner` prints `A worker process
+  has failed to exit gracefully and has been force exited`. The 500 ms is a module constant,
+  `FORCE_EXIT_DELAY`, and `jest-runner` 30.3.0 passes the pool no option that changes it.
+- A worker does not exit when it is told to. It stops listening for messages, and Node exits it
+  once nothing is left pending. So a worker on a contended machine can miss the 500 ms with no
+  handle leaked at all.
+- Uncapped, each project starts one worker per core minus one, and `nx run-many` runs the
+  projects side by side. The gate therefore ran three pools at once, each sized for the whole
+  machine.
+- With `maxWorkers` 1, Jest's scheduler runs every test file in band, in Jest's own process, one
+  after another (`shouldRunInBand` in `@jest/core`), and builds no pool. No worker exists to be
+  killed, so the warning has nothing to report.
+
+**A second copy of Jest is installed, and it makes the delay configurable.** `@nx/jest` 23.2.1
+brings `jest-config` and `jest-runner` 30.5.2, with `jest-worker` 30.5.1. In that line the delay
+is `workerGracefulExitTimeout`, a config option that defaults to 500 and that `jest-runner` 30.5.2
+passes to the pool. The `test` target does not run that copy. Raising the workspace's `jest` to
+30.5 and the delay with it would have been the other fix. It keeps the workers, and with them the
+contention measured below.
+
+*Measured* in a 2-core sandbox, with all three suites at once. With 6 workers each, the run took
+over 10 minutes: workers were killed for lack of memory, and tests timed out. With 1 worker
+each, it took 37 s, all green. `eval-core` on its own took 28 s with 1 worker and 21 s with 2.
+
+**What it costs** depends on the machine. A project run on its own gives up its own
+parallelism: on two cores, `eval-core` took 28 s in band against 21 s on two workers. Under
+`run-many` the three projects still run side by side, one process each, and that can win
+outright. On the 20-core Windows machine the fix was made on, the gate took 41.5 s with 19
+workers a project, and 19.3 s in band.
+
+**What it does not do** is show that no spec leaks a handle. In band, a leaked handle keeps
+Jest's own process alive instead of a worker, and Jest prints `Jest did not exit one second after
+the test run has completed`, so a real leak now shows up instead of being killed with its worker.
+
+*Verified*: `npx jest --showConfig` in each project, as above. The last gate before the change
+printed the warning once, in `eval-core:test`'s block; the gate at the fixing commit printed it
+no times, and no spec failed when run in band.
+
+**The entry as it stood:**
+
+**What it is, as measured today.** `A worker process has failed to exit gracefully` appears
+**intermittently under `nx run-many`, and does not reproduce for any project run on its own.**
+Measured on this tree, 2026-09-09, every run with `--skip-nx-cache`:
+
+| Command | Warnings |
+| ------- | -------- |
+| `nx test eval-core` (with and without the new spec) | **0**, twice |
+| `nx test eval-signals` (with and without the new spec) | **0**, twice |
+| `nx test eval-forms` | **0** |
+| `nx run-many -t test --parallel=1` | **0** |
+| `nx run-many -t test --output-style=stream` | **0** |
+| `nx run-many -t lint test build` | **2** on one run, then **0** on the next three |
+| two `nx run-many` invocations racing each other | **0** and **0** |
+
+So it fired twice in roughly a dozen runs, in a multi-target parallel run, and every attempt to
+pin it since — including the same command, and including deliberately loading the machine —
+came back clean.
+
+**New observation, Phase 2 step 5, 2026-09-14: it fired once under `nx run-many -t lint test`, a
+command the table above records as untested rather than as zero.** One firing, on the step's
+baseline run; all targets stayed green; two later `nx run-many -t lint test build` runs in the same
+session came back clean. It was **not** captured with `--output-style=stream`, so the emitting task
+is still unattributed and this adds no locus.
+
+**Recorded rather than folded into the table, because one firing overturns nothing** — the table's
+rows are repeated measurements and this is a single observation of a command they do not cover. What
+it does establish is that the symptom is not specific to the three-target form: `lint test` is
+enough, so the common factor remains *multi-target `run-many`* rather than `build`. The entry's
+locus has already been corrected once on the strength of a claim nobody re-ran; a second wrong
+claim inherited from a single run is exactly what that correction was about, so this stays a dated
+note beside the table and not a row in it.
+
+**Observed 2026-10-03, Windows 11, in the `.claude/worktrees/c1` worktree: two runs of
+`$env:NX_WORKSPACE_ROOT_PATH = '<worktree>'; npx nx run-many -t lint test build --skip-nx-cache --output-style=static`**
+(PowerShell; the override because the session's environment set `NX_WORKSPACE_ROOT_PATH` to the
+main checkout, which nx would otherwise have run). The first, before `f05ced9`, printed the
+warning inside `eval-signals:test`'s block of the static output and inside `eval-core:test`'s; the
+second, before `cfe9d42`, inside `eval-core:test`'s only. Every target was green both times. The
+C1 batch's third gate run printed it for both `eval-signals:test` and `eval-core:test`, as that
+batch reported it; not re-measured here.
+
+> **What this replaces.** The entry said: "Confined to `eval-core` — confirmed by running each
+> project separately." **That does not hold today**: run separately, `eval-core` is the *quietest*
+> of the three, at zero. Either the attribution was made under conditions this tree no longer
+> reproduces, or a single clean per-project run was read as confirmation of a locus. The claim
+> travelled through twelve summaries without anyone re-running it, which is the same failure the
+> entry itself is about.
+
+**Say what it now is, not only what it is not.** These are two different investigations and only
+the first is a library defect:
+
+- **"`eval-core` leaks a handle"** — a timer or listener a spec leaves behind. This is what the
+  entry used to assert. **The evidence against it is that a leak of that kind is deterministic**:
+  it would fire on `nx test eval-core` alone, every time. It does not fire there at all.
+- **"Something about parallel execution surfaces a Jest worker that misses its exit window"** —
+  which is where the observations actually point, and which **may be no package's defect**. Under
+  `run-many` several Jest instances contend for the same cores; a worker that has finished its
+  work but does not exit within Jest's grace period is force-exited and reported exactly like a
+  leak. That is a **tooling and scheduling question — Nx's task parallelism against Jest's worker
+  teardown** — not an expression evaluator's.
+
+**What this means for the timebox.** [`docs/gates/plan.md`](gates/plan.md) § 4 step 5 opens F7
+with `nx test eval-core --detectOpenHandles`. **That command is aimed at a run that does not
+exhibit the symptom**, so it will report nothing and the box will be spent proving the absence of
+a leak nobody has evidence for. Amended there to say so.
+
+**The honest recommendation is that step 5 should not spend its box here.** F7's own drop rule —
+"if it is not identified within the step, stop, write what was ruled out, and leave it open" — is
+already satisfied by this entry: the measurements above *are* what was ruled out, and they were
+cheap because they were run against a symptom rather than a suspect. What would change that is a
+**reproduction**, not another hunt: if someone catches it firing, capture the run with
+`--output-style=stream` so the emitting task is attributed, and record the command and the
+machine. Until then there is no locus to investigate, and an unattributed intermittent warning in
+a build tool is not work this repository owes anyone.
+
+**Not closed, and deliberately not.** It is real, it has been seen repeatedly across phases, and
+"cannot reproduce today" is not "does not happen". What changed is that the entry no longer names
+a package that the evidence does not support.
+
+**Carried in twelve step summaries and never once promoted to an entry**, from
+[`signals/step-4-summary.md` § 5.2](signals/step-4-summary.md) through
+[`forms/phase-6-step-6-summary.md` § 4.3](forms/phase-6-step-6-summary.md), each time as
+"pre-existing; carried unchanged". Twelve sessions noticed it and none owned it, which is [A8](#a8)'s
+failure mode in a lower-stakes register: a note that travels forward is not a note that gets acted on.
+
+~~Most likely an open handle — a timer or a listener a spec leaves behind. `--detectOpenHandles` is
+the first step.~~ **Superseded by the measurements above**: `--detectOpenHandles` on a run that
+does not warn reports nothing, and "most likely an open handle" was a guess that hardened into a
+locus over twelve restatements.
+
 <a id="f8"></a>
 ## F8 — The release tag step has no forcing function, and ships with a silencer
 
@@ -3845,7 +3992,7 @@ Phase 2 step 6 therefore ends with this open rather than working around it.
 
 **It was cached out of sight for most of step 6.** `nx run-many -t lint test build` reported green
 after the bump because both `lint` results were replayed from cache; only `--skip-nx-cache`
-surfaced it. That is worth recording next to [F7](backlog.md#f7): a cache hit on a target whose input is
+surfaced it. That is worth recording next to [F7](#f7): a cache hit on a target whose input is
 another project's `package.json` is a way for a gate to report a pass it did not run. Whether the
 inputs for these `lint` targets are configured wrongly is a second question this entry does not
 settle.
@@ -4082,7 +4229,7 @@ either number to its file: the fence-reading specs in the repository —
 symbol drift and count no blocks. The counts are correct today because someone re-ran them today,
 which is the same standing this entry's numbers had the last two times they were right and then
 silently were not. Dated because "correct" with no date reads as "fixed" to the next reader, and
-[F7](backlog.md#f7) is what that costs: a claim nobody re-ran travelled through twelve summaries and had to
+[F7](#f7) is what that costs: a claim nobody re-ran travelled through twelve summaries and had to
 have its locus corrected out from under it.
 
 <a id="f15"></a>

@@ -389,7 +389,7 @@ manifest.
   so `nx run-many` would fail the task. A green gate still means every suite ran. The three
   original short runs fit this, but their logs were deleted before they were read, so that
   cannot be proven. This is a transient filesystem error, under concurrent file access that the
-  gate does not create. It is not worker teardown, so it is not [F7](../backlog.md#f7), and it
+  gate does not create. It is not worker teardown, so it is not [F7](../backlog-retired.md#f7), and it
   gets no entry of its own.
 - **Stability.** The memory spec ran ten times in a row on Node 26.4.0, and passed 38 of 38 each
   time. This step adds three GC cases (1.3–1.5) and moves two (1.1, 1.2) onto a harder

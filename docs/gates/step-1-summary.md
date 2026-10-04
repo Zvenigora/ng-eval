@@ -107,7 +107,7 @@ no `public-api.ts`, `index.ts` or `package.json` under `modules/`. Clean.
   in this document. If thresholds are ever adopted, the numbers will want a machine-readable
   home rather than a table in a step summary.
 - **`eval-core`'s Jest run still warns "a worker process has failed to exit gracefully"** —
-  [F7](../backlog.md#f7), step 5's, and it appeared in this step's baseline as it has in the
+  [F7](../backlog-retired.md#f7), step 5's, and it appeared in this step's baseline as it has in the
   previous twelve.
 - **Nx silently accepting an unknown `--configuration` is general**, not specific to `test`. Any
   future `--configuration=<typo>` on any target in this workspace will run the default and

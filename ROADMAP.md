@@ -435,7 +435,7 @@ Entries are cited by stable ID — `BL-A8`, not a line number.
 3. ~~Phase 4 (forms)~~ — **done**, shipped in `eval-forms` 0.1.0; unblocks 6.
 4. ~~Phase 6 (`/signals` entry point)~~ — **done**, shipped in `eval-forms` 0.2.0.
 5. The documentation and CI gates — [BL-F3](docs/backlog-retired.md#f3),
-   [BL-F4](docs/backlog-retired.md#f4), [BL-F1](docs/backlog-retired.md#f1), [BL-F7](docs/backlog.md#f7),
+   [BL-F4](docs/backlog-retired.md#f4), [BL-F1](docs/backlog-retired.md#f1), [BL-F7](docs/backlog-retired.md#f7),
    [BL-D10](docs/backlog-retired.md#d10) / [BL-D11](docs/backlog-retired.md#d11). Not a phase and not new
    capability, but ordered here deliberately: no version bump, no behavioural change, blocks
    nothing — and F3 and F4 build gates every later phase inherits, so Phase 2 should start

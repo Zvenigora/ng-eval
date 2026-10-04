@@ -81,14 +81,14 @@ baseline section records it as an expected pre-existing failure *and* the step y
 is one it covers. Any other pre-existing failure must be understood before it is buried
 under new work.
 
-**One known intermittent is not a failure and not yours.** A Jest worker-teardown warning fired
-twice in roughly a dozen runs, both times under a multi-target `nx run-many` — `-t lint test
-build`, § 4's command rather than this one — and zero times for any project run alone or for
-`run-many -t test`. The table is `docs/backlog.md` F7, which is where the measurements live;
-the entry is open, with no reproduction and a corrected locus that is no longer `eval-core`.
-Targets stay green through it. Re-run the command; if it recurs, capture it with
-`--output-style=stream` so the emitting task is attributed, note that in the report, and carry
-on with the step.
+**A Jest worker-teardown warning is a regression now, not a known intermittent.** `A worker
+process has failed to exit gracefully` used to fire under multi-target `nx run-many`, when a
+worker missed `jest-worker`'s fixed 500 ms exit window while three projects' pools contended for
+the cores. `jest.preset.js` sets `maxWorkers: 1`, so Jest runs every test file in band and starts
+no worker (`docs/backlog-retired.md` F7). If the warning appears, something has turned workers
+back on: a raised `maxWorkers`, or a `workerIdleMemoryLimit`, which forces them. Find it and
+report it before going on. In band, a spec that leaks a handle shows instead as `Jest did not
+exit one second after the test run has completed`.
 
 ### 2. Read and restate
 

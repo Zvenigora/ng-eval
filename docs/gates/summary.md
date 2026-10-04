@@ -2,7 +2,7 @@
 
 Five steps, 2026-09-07 to 2026-09-09, against [`plan.md`](plan.md). Covers
 [`docs/backlog.md`](../backlog.md) [F1](../backlog-retired.md#f1), [F3](../backlog-retired.md#f3),
-[F4](../backlog-retired.md#f4), [F7](../backlog.md#f7) and [D10](../backlog-retired.md#d10).
+[F4](../backlog-retired.md#f4), [F7](../backlog-retired.md#f7) and [D10](../backlog-retired.md#d10).
 
 This document doubles as step 5's record; the step was small enough that a separate
 `step-5-summary.md` would have been padding, and steps 1–4 have their own.

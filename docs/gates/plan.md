@@ -1,7 +1,7 @@
 # Track 3 Plan — the documentation and CI gates
 
 Covers [`docs/backlog.md`](../backlog.md) entries [F1](../backlog-retired.md#f1), [F3](../backlog-retired.md#f3),
-[F4](../backlog-retired.md#f4), [F7](../backlog.md#f7) and [D10](../backlog-retired.md#d10).
+[F4](../backlog-retired.md#f4), [F7](../backlog-retired.md#f7) and [D10](../backlog-retired.md#d10).
 
 Not a roadmap phase. It ships no capability, adds no exported symbol, and bumps no version. It
 is ordered ahead of Phase 2 in [`ROADMAP.md`](../../ROADMAP.md) § "Suggested order" for one
@@ -237,7 +237,7 @@ rejecting a block count.
   package scope.
 - **[F4](../backlog-retired.md#f4)** — the README-execution gate for `eval-signals`, then the
   decide-or-drop for `eval-core`.
-- **[F7](../backlog.md#f7)** — the Jest worker warning, timeboxed, with a drop rule.
+- **[F7](../backlog-retired.md#f7)** — the Jest worker warning, timeboxed, with a drop rule.
 - **[D10](../backlog-retired.md#d10)** — a runnable README block for `applyErrorPolicy`, which folds into
   an existing spec rather than creating anything. `eval-forms` has **two** README-execution specs
   (`reactive/` and `signals/`); this goes in `reactive/`'s, for the reason step 5 gives.
@@ -575,7 +575,7 @@ session and produces a diff nobody can evaluate.
 > concurrent load. `--detectOpenHandles` on a quiet run reports nothing, so that box would be
 > spent proving the absence of a leak nothing points to.
 >
-> **F7's locus is corrected in [`docs/backlog.md`](../backlog.md#f7)**, which now carries the
+> **F7's locus is corrected in [`docs/backlog-retired.md`](../backlog-retired.md#f7)**, which now carries the
 > table: the entry's "confined to `eval-core` — confirmed by running each project separately"
 > does not hold, and the symptom's shape — intermittent, only under parallel task execution —
 > makes it a **Jest-worker-teardown-under-contention** question, which may be no package's
