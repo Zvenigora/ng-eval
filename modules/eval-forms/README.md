@@ -545,7 +545,9 @@ f.zip().disabled();                                // => false
 ```
 
 Recompute is Angular's own dependency tracking, per key: a rule that named `country`
-re-evaluates when `country` changes and not when any other key does.
+re-evaluates when `country` changes and not when any other key does. A worked example of a whole
+form is in
+[docs/forms/worked-example-signals.md](https://github.com/zvenigora/ng-eval/blob/master/docs/forms/worked-example-signals.md).
 
 ### The three registrars, and their polarity
 
@@ -744,8 +746,9 @@ Two `readme-examples.spec.ts` files execute the runnable examples in this docume
 split is not quite by folder: the one under `reactive/src/lib/` covers the `/reactive` blocks,
 the shared core's two [Coercion](#coercion) blocks and the
 [worked example](https://github.com/zvenigora/ng-eval/blob/master/docs/forms/worked-example.md);
-the one under `signals/src/lib/` covers the `/signals` blocks **plus the one `/reactive` block
-whose subject is the difference between the two entry points**, because that claim is a pair and
-splitting it would let either half drift alone. So a documented example that stops working fails
+the one under `signals/src/lib/` covers the `/signals` blocks and the `/signals`
+[worked example](https://github.com/zvenigora/ng-eval/blob/master/docs/forms/worked-example-signals.md),
+**plus the one `/reactive` block whose subject is the difference between the two entry points**,
+because that claim is a pair and splitting it would let either half drift alone. So a documented example that stops working fails
 the suite rather than shipping. The template and manifest blocks are not executable and are not
 covered.

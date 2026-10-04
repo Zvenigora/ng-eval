@@ -2667,6 +2667,61 @@ new gap; worth revisiting if the core's surface grows.
 
 *Recorded*: [`forms/phase-6-step-7-summary.md` § 4.4](forms/phase-6-step-7-summary.md).
 
+<a id="d11"></a>
+## D11 — `/signals` has no worked example
+
+**Package** forms · **Kind** docs · **Status** **Retired — fixed 2026-10-03**, docs and tests
+only. [`docs/forms/worked-example-signals.md`](forms/worked-example-signals.md), linked from the
+package README's `/signals` section
+
+*Fixed* 2026-10-03: [`docs/forms/worked-example-signals.md`](forms/worked-example-signals.md) is
+the `/signals` counterpart of [`docs/forms/worked-example.md`](forms/worked-example.md). It has the
+same checkout scenario in the same eight sections, at 243 lines against 230. Where the two entry
+points differ, it says so rather than forcing the parallel. The rules arrive as expression
+strings, while the fields they drive are typed schema paths. The shipping note is text on
+`orderTotal`, because Signal Forms has no field without a model property. § 6 is a key that
+arrives later with nothing to call, where `/reactive` needs `invalidate()`. § 8 has nothing to
+end. `evalDisabled`, which `/reactive`'s example cannot show, is in it. The package README links it
+from its `/signals` section, and its Development paragraph names the spec that runs it.
+
+*Verified*: every one of its ten ` ```ts ` blocks is executed by
+`signals/src/lib/readme-examples.spec.ts`, and `WORKED_EXAMPLE_TS_BLOCKS` = 10 gates the count, as
+`/reactive`'s spec gates its own. § 1's model is built inside § 3's service, where the document
+builds it. § 1's interface and § 2's two blocks are transcribed verbatim. The six blocks of §§ 4–7
+run as one program in one case. Two further cases follow `/reactive`'s: one confirms that the rule
+§ 7 calls broken really throws, and one turns § 4's closing sentence about re-evaluation into a
+count. The spec supplies two things the document does not print, both listed in its docblock: the
+`model` and `f` handles, taken from the service as the document's § 4 note says, and the injection
+context for §§ 6–7's `form()` calls, which that note states in prose. It also imports through
+`../public-api` rather than `@zvenigora/ng-eval-forms/signals`, the substitution the file already
+records. `eval-forms` went from 321 to 325.
+
+Probes, each reverted. The first two ran together, in different cases, and failed 2 of 325
+between them, nothing else:
+
+| Probe | Red |
+| ----- | --- |
+| `WORKED_EXAMPLE_TS_BLOCKS` set to 11 | the count case |
+| § 4's `'Free shipping'` expected as `'Free shipping!'` | the one-program case |
+| Every rule context's lookup also reads the whole model, so each rule re-evaluates on any write | 8 of 325: the § 4 re-evaluation case and seven existing per-key cases |
+
+The spec does not read the document's blocks, so a block edited to print a different value fails
+nothing. That is the limit both worked examples share: the spec catches an example that stops
+working, not one that stops matching.
+
+**The entry as it stood:**
+
+[`docs/forms/worked-example.md`](forms/worked-example.md) is `/reactive`'s, and the Phase 6 plan
+asked for no counterpart. The quick start plus five caveat blocks cover the API; a whole-form
+narrative is the thing `/reactive` has and `/signals` does not.
+
+**Deliberately left out of [`docs/gates/plan.md`](gates/plan.md)** (§ 2, out of scope): it is
+~200 lines of original narrative authoring rather than a gate, and gating it afterwards would add
+a sixth step to a plan whose value is being small. It belongs with whoever next has a reason to
+document `/signals` end to end.
+
+*Recorded*: [`forms/phase-6-step-7-summary.md` § 4.4](forms/phase-6-step-7-summary.md).
+
 <a id="d12"></a>
 ## D12 — ~20 specs discard the binding and never call `destroy()`
 

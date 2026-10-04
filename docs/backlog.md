@@ -183,7 +183,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [D8](#d8) | `warnOnNestedSignals` runs once, at construction | forms | accepted | Open, documented |
 | [D9](backlog-retired.md#d9) | § 3.4.3's precedence rule is untested end to end | forms | test gap | **Retired — premise false: covered end to end since 7fbef49; the `caseInsensitive` pair added 2026-09-27, test only** |
 | [D10](backlog-retired.md#d10) | `applyErrorPolicy` has no runnable README block | forms | docs | **Retired — fixed**, and it created [F3](backlog-retired.md#f3)'s third gate's subject |
-| [D11](#d11) | `/signals` has no worked example | forms | docs | Open |
+| [D11](backlog-retired.md#d11) | `/signals` has no worked example | forms | docs | **Retired — fixed 2026-10-03**, docs and tests only: [`docs/forms/worked-example-signals.md`](forms/worked-example-signals.md), every ` ```ts ` block executed and counted |
 | [D12](backlog-retired.md#d12) | ~20 specs discard the binding and never call `destroy()` | forms | test hygiene | **Retired — fixed 2026-09-28, test only**; `destroy()`'s release path is pinned by `field-schema.memory.spec.ts`, the net's by `field-schema.spec.ts`'s subscription count. Injector-path memory cases removed 2026-09-29: timing-dependent |
 | [E1](#e1) | Form-state keys across both adapters | forms | phase | Open — **no phase reserved** |
 | [E2](#e2) | Arrays — `applyEach` at `/signals`, `FormArray` at `/reactive` | forms | phase | Open |
@@ -592,22 +592,6 @@ case is fixed. The nested case, where the diagnostic does not reach `/signals`, 
 documented in the package README.
 
 *Recorded*: [`forms/phase-4-plan.md` § 3.5.6](forms/phase-4-plan.md).
-
-<a id="d11"></a>
-## D11 — `/signals` has no worked example
-
-**Package** forms · **Kind** docs · **Status** Open
-
-[`docs/forms/worked-example.md`](forms/worked-example.md) is `/reactive`'s, and the Phase 6 plan
-asked for no counterpart. The quick start plus five caveat blocks cover the API; a whole-form
-narrative is the thing `/reactive` has and `/signals` does not.
-
-**Deliberately left out of [`docs/gates/plan.md`](gates/plan.md)** (§ 2, out of scope): it is
-~200 lines of original narrative authoring rather than a gate, and gating it afterwards would add
-a sixth step to a plan whose value is being small. It belongs with whoever next has a reason to
-document `/signals` end to end.
-
-*Recorded*: [`forms/phase-6-step-7-summary.md` § 4.4](forms/phase-6-step-7-summary.md).
 
 ---
 

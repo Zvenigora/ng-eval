@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { Injector, WritableSignal, signal } from '@angular/core';
+import { Injectable, Injector, WritableSignal, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormControl, FormGroup } from '@angular/forms';
 import { FieldTree, Schema, form, schema } from '@angular/forms/signals';
@@ -24,6 +24,9 @@ const README_SIGNALS_BLOCKS = 5;
 /** The fenced blocks under the same file's `### Expressions are validated too`, a `/reactive` section. */
 const README_ASYMMETRY_BLOCKS = 1;
 
+/** The ` ```ts ` fences in `docs/forms/worked-example-signals.md`. */
+const WORKED_EXAMPLE_TS_BLOCKS = 10;
+
 /**
  * Executes the runnable snippets in `modules/eval-forms/README.md`'s
  * **`/signals`** sections, every block under `## Signal Forms — /signals`
@@ -33,13 +36,22 @@ const README_ASYMMETRY_BLOCKS = 1;
  * Up to 0.2.x it was the difference between them, under
  * `### Expressions are not validated`.
  *
+ * And every ` ```ts ` block in `docs/forms/worked-example-signals.md`
+ * (`WORKED_EXAMPLE_TS_BLOCKS`), all executed (`docs/backlog-retired.md` D11).
+ * S 1's model runs as constructed inside S 3's service, which is where the
+ * document says it is built; S 1's interface and S 2's two blocks are
+ * transcribed verbatim; S 3 is the service; and the six blocks of SS 4-7 run
+ * as one program in one case. S 5's template is `html`, not counted, and not
+ * executed.
+ *
  * **Why this exists.** The counterpart file under `reactive/src/lib/` records
  * it: Phase 1 step 5 found two documented snippets that did not run as
  * printed and Phase 3 found three more, all five shipped because nothing
  * executed them. This is the same gate for the entry point Phase 6 adds.
  *
  * **What it is not.** It reads the markdown only to count the blocks in those
- * two sections, in the last case below (`docs/backlog.md` F13) - nothing
+ * two sections and in the worked example, in the last cases below
+ * (`docs/backlog.md` F13) - nothing
  * connects these cases to the blocks they transcribe except a human keeping
  * them in step, so it is strictly narrower than `ROADMAP.md`'s deferred
  * documented-symbol drift gate. It gates *whether what the README says runs*,
@@ -57,12 +69,19 @@ const README_ASYMMETRY_BLOCKS = 1;
  *    nothing else.
  * 2. `injector` in the `/reactive` case, which the `/reactive` half of the
  *    README documents in prose as the one the surrounding service injected.
+ * 3. The worked example's `model` and `f` handles in SS 4-7, which the
+ *    document introduces as members of its service and then refers to bare.
+ *    Taken from the service here, which is what its own S 4 note says they
+ *    are.
+ * 4. The injection context for the worked example's SS 6-7, whose blocks call
+ *    `form()` again. The document states it in prose, in S 4's note; here it
+ *    is `TestBed.runInInjectionContext`, as in item 1.
  *
  * Nothing else was invented. Where a block was a fragment the fix went into
  * the document rather than into this file - the `caseInsensitive` block
  * declares its own model and prints its own result for that reason.
  *
- * **The import deviation.** The README shows
+ * **The import deviation.** The README and the worked example show
  * `import { … } from '@zvenigora/ng-eval-forms/signals'`, which is what a
  * consumer writes and what the build's `exports` map proves resolves. From
  * `signals/src/lib/` that same line is a boundary error, so the import above
@@ -410,6 +429,201 @@ describe('documented examples - /signals', () => {
       expect(() => buildForm(model, s)).toThrow(/Object\.prototype/);
     });
   });
+
+  describe('worked example (docs/forms/worked-example-signals.md)', () => {
+
+    // S 1's interface, and S 2's two blocks, verbatim.
+    interface Checkout {
+      country: string;
+      state: string;
+      orderTotal: number;
+      promoCode: string;
+      region?: string;
+    }
+
+    interface CheckoutRules {
+      stateVisible: string;
+      promoCodeVisible: string;
+      promoCodeDisabled: string;
+      shippingNote: string;
+    }
+
+    const RULES: CheckoutRules = {
+      stateVisible: "country === 'US'",
+      promoCodeVisible: 'orderTotal >= 100',
+      promoCodeDisabled: "country !== 'US'",
+      shippingNote: "orderTotal >= 100 ? 'Free shipping' : 'Shipping calculated at checkout'",
+    };
+
+    const checkoutSchema = (rules: ExpressionRules, text: CheckoutRules) =>
+      schema<Checkout>((p) => {
+        rules.evalVisible(p.state, text.stateVisible);
+        rules.evalVisible(p.promoCode, text.promoCodeVisible);
+        rules.evalDisabled(p.promoCode, text.promoCodeDisabled, {
+          reason: 'Promo codes apply to US orders',
+        });
+        rules.evalText(p.orderTotal, text.shippingNote);
+      });
+
+    // S 1 and S 3. The model is not declared separately here, because the
+    // document builds it *in* the service: a spec that built a bare signal
+    // would leave the shape the document recommends - model, factory and form
+    // built together in field initializers - unexecuted.
+    @Injectable()
+    class CheckoutFormService {
+      readonly model = signal<Checkout>({ country: 'CA', state: '', orderTotal: 80, promoCode: '' });
+
+      readonly form = form(this.model, checkoutSchema(createExpressionRules(this.model), RULES));
+    }
+
+    let model: WritableSignal<Checkout>;
+    let f: FieldTree<Checkout>;
+
+    beforeEach(() => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({ providers: [CheckoutFormService] });
+
+      const checkout = TestBed.inject(CheckoutFormService);
+      model = checkout.model;
+      f = checkout.form;
+    });
+
+    // **One case, because the document is one program**, as `/reactive`'s
+    // worked example is: SS 4-7 run in order, each block starting where the
+    // previous one left the model. Split behind a resetting `beforeEach`,
+    // S 6 would run against `country: 'CA'` and the order would stop being
+    // the document's. Inside one injection context, which S 4's note gives
+    // the program because SS 6 and 7 call `form()`.
+    it('should run SS 4-7 as one program', () => {
+      TestBed.runInInjectionContext(() => {
+
+        // S 4, straight after construction.
+        expect(f.state().hidden()).toBe(true);
+        expect(f.promoCode().hidden()).toBe(true);
+        expect(f.promoCode().disabled()).toBe(true);
+        expect(f.promoCode().disabledReasons().map((r) => r.message))
+          .toEqual(['Promo codes apply to US orders']);
+        expect(f.orderTotal().metadata(TEXT)?.()).toBe('Shipping calculated at checkout');
+
+        // S 4, after a write through the field and one through the model.
+        f.country().value.set('US');
+        model.update((m) => ({ ...m, orderTotal: 120 }));
+
+        expect(f.state().hidden()).toBe(false);
+        expect(f.promoCode().hidden()).toBe(false);
+        expect(f.promoCode().disabled()).toBe(false);
+        expect(f.orderTotal().metadata(TEXT)?.()).toBe('Free shipping');
+
+        // S 6 - a key the model does not hold yet.
+        const region = form(
+          model,
+          schema<Checkout>((p) => {
+            createExpressionRules(model).evalText(p.state, "region ? 'Ships from ' + region : ''");
+          })
+        );
+
+        expect(region.state().metadata(TEXT)?.()).toBe('');
+
+        model.update((m) => ({ ...m, region: 'EU' }));
+
+        expect(region.state().metadata(TEXT)?.()).toBe('Ships from EU');
+
+        // S 7, first block - the default swallows a rule that throws.
+        const broken = form(
+          model,
+          schema<Checkout>((p) => {
+            createExpressionRules(model).evalText(p.state, 'customer.address.line1()');
+          })
+        );
+
+        expect(broken.state().metadata(TEXT)?.()).toBe('');
+
+        // S 7, second block - a function policy substitutes a value.
+        const reported = form(
+          model,
+          schema<Checkout>((p) => {
+            createExpressionRules(model, { onError: () => '(rule error)' })
+              .evalText(p.state, 'customer.address.line1()');
+          })
+        );
+
+        expect(reported.state().metadata(TEXT)?.()).toBe('(rule error)');
+
+        // S 7, third block - a rule that does not parse. The schema builds
+        // silently and `form()` throws; the silent half is asserted because
+        // the document says it, and an implementation throwing from
+        // `schema()` would pass the second half alone.
+        let unparsable: Schema<Checkout> | undefined;
+
+        expect(() => {
+          unparsable = schema<Checkout>((p) => {
+            createExpressionRules(model).evalText(p.state, 'orderTotal ===');
+          });
+        }).not.toThrow();
+
+        expect(() => form(model, unparsable as Schema<Checkout>))
+          .toThrow(/Unexpected|Unterminated|SyntaxError/);
+      });
+    });
+
+    it('should really throw from the rule S 7 calls broken', () => {
+      // The probe for S 7's first block, kept as its own case: without it that
+      // block passes against an expression that never failed, and the
+      // document's point there is that a *broken* rule renders empty.
+      const strict = TestBed.runInInjectionContext(() =>
+        form(
+          model,
+          schema<Checkout>((p) => {
+            createExpressionRules(model, { onError: 'throw' })
+              .evalText(p.state, 'customer.address.line1()');
+          })
+        )
+      );
+
+      expect(() => strict.state().metadata(TEXT)?.())
+        .toThrow('Cannot call undefined or null function');
+    });
+
+    it('should re-evaluate a rule for the key it named and not for another (S 4)', () => {
+      // S 4's closing sentence - `orderTotal` moving leaves `state`'s
+      // visibility alone - is about re-evaluation, which no printed value can
+      // show: `hidden()` reads the same either way. The counter sits inside
+      // the derivation, as in the quick start's case: `onError` fires once per
+      // evaluation that throws, so a rule that reads `country` and then throws
+      // turns "did this re-evaluate" into a number. The positive arm is what
+      // proves the counter live.
+      let evaluations = 0;
+
+      const counted = TestBed.runInInjectionContext(() =>
+        form(
+          model,
+          schema<Checkout>((p) => {
+            createExpressionRules(model, {
+              onError: () => {
+                evaluations++;
+                return 'threw';
+              },
+            }).evalText(p.state, 'country + missing.fn()');
+          })
+        )
+      );
+
+      expect(counted.state().metadata(TEXT)?.()).toBe('threw');
+      expect(evaluations).toBe(1);
+
+      // A key the rule never named.
+      model.update((m) => ({ ...m, orderTotal: 120 }));
+
+      expect(counted.state().metadata(TEXT)?.()).toBe('threw');
+      expect(evaluations).toBe(1);
+
+      // The key it named, written through the service's own form.
+      f.country().value.set('US');
+
+      expect(counted.state().metadata(TEXT)?.()).toBe('threw');
+      expect(evaluations).toBe(2);
+    });
+  });
 });
 
 interface FencedBlock {
@@ -472,5 +686,15 @@ describe('README block count (docs/backlog.md F13)', () => {
 
   it('should hold README_ASYMMETRY_BLOCKS block under Expressions are validated too', () => {
     expect(linesUnder('Expressions are validated too')).toHaveLength(README_ASYMMETRY_BLOCKS);
+  });
+
+  it('should hold WORKED_EXAMPLE_TS_BLOCKS ts blocks in the worked example', () => {
+    const ts = fencedBlocks(
+      fs.readFileSync(path.join(__dirname, '../../../../../docs/forms/worked-example-signals.md'), 'utf8')
+    )
+      .filter((block) => block.language === 'ts')
+      .map((block) => `worked-example-signals.md:${block.line}`);
+
+    expect(ts).toHaveLength(WORKED_EXAMPLE_TS_BLOCKS);
   });
 });

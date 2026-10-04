@@ -248,7 +248,7 @@ rejecting a block count.
   exported symbol's shape, or a manifest. If a step finds it needs one, that is a
   stop-and-replan, not a wider step. The one exception is prose *inside* a README, which several
   steps may edit under § 1.5's rule.
-- **[D11](../backlog.md#d11), the `/signals` worked example.** Moved out of this plan
+- **[D11](../backlog-retired.md#d11), the `/signals` worked example.** Moved out of this plan
   deliberately, and the reason is a scope call worth stating: it is ~200 lines of original
   narrative authoring, not a gate, and gating it afterwards would then be a sixth step. It
   belongs with whoever next has a reason to document `/signals` end to end. Bundling it here
