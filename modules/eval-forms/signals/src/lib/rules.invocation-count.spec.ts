@@ -90,9 +90,12 @@ jest.mock('./model-source', () => {
 
       return {
         ...source,
-        createRuleContext: () => {
+        // Forwarding its argument: since 0.3.1 it carries the registration's
+        // resolved options, and a wrapper that dropped them would build every
+        // context under the factory's (`docs/backlog-retired.md` D3).
+        createRuleContext: (...ruleArgs: Parameters<typeof source.createRuleContext>) => {
           mockCalls.createRuleContext++;
-          return source.createRuleContext();
+          return source.createRuleContext(...ruleArgs);
         },
       };
     },

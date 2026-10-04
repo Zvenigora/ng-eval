@@ -2314,6 +2314,100 @@ each reverted, against the whole `eval-forms` suite:
 | The `VariablePattern` visitor dropped | 7 | the six new rows and the README pair, whose second half now asserts the refusal |
 | The `VariablePattern` visitor refusing every binding, predicate ignored | 8 | existing rows that bind or assign an ordinary name — seven write-violation rows across both entry points, and `/reactive`'s per-field context row, whose arrow binds `country`; the new rows stay green |
 
+<a id="d3"></a>
+## D3 — Per-registration `caseInsensitive` reaches one of three levers
+
+**Package** forms · **Kind** decision · **Status** **Retired — decided and fixed 2026-10-03**;
+unreleased. Was Open, Covered. A registration's `caseInsensitive` now reaches all three levers
+
+**Decided: key the memo on the key and `caseInsensitive` together**, the second of the two shapes
+the entry weighed. The first, moving `caseInsensitive` onto `createExpressionRules`' own signature,
+would have removed the per-registration value rather than honoured it, and changed the shape of a
+published option type.
+
+*Fixed* 2026-10-03: `createModelSource`'s memo is two maps, one per casing rule.
+`createRuleContext` takes the registration's resolved `eval` and builds the context under it, and
+the context's lookup reads the memo under the same rule. The registrar passes it. So "registration
+wins, per key" is now exact for both keys of `ExpressionRuleOptions`:
+
+| Place | Built from | Reached by a per-registration `eval.caseInsensitive`? |
+| ----- | ---------- | ---------------------------------------------------- |
+| the walk's options, `evaluateRule`'s third argument | the resolved per-rule options | yes, as before |
+| the rule's context, `createFieldContext({}, {}, options)` | the resolved per-rule options | **yes**; was the factory's |
+| the factory's memo, `readProperty` | the casing rule the rule's context reads it under | **yes**: one entry per key per casing rule |
+
+There is still one memo per factory, so § 3.6 of the [Phase 6 plan](forms/phase-6-plan.md) stands
+with one amendment: its "one `computed` per key per factory" is now one per key **and casing rule**
+per factory. That is two at most, and only for a key that registrations read under different
+settings. `rules.model-source-count.spec.ts`, which counts the memo, is unchanged and green.
+
+**The Covered spec flipped, as this entry said a fix would make it.** `rules.spec.ts`'
+characterisation case now reads `'US/HQ'` where it read `'undefined/HQ'`, under a new title. The
+README section that documented the gap is rewritten: "`caseInsensitive` is in practice a *factory*
+option" is now "`caseInsensitive` per registration". Its block prints `'USHQ'`, and the case in
+`signals/src/lib/readme-examples.spec.ts` that executes the block is renamed and flipped with it.
+`ExpressionRuleOptions.eval`'s JSDoc, which ships in the `.d.ts`, is rewritten too. No exported
+symbol changes shape: `ModelSource` is module-private.
+
+*Verified*: five new rows, written first and red against the unfixed code alongside the flipped
+case. In `rules.spec.ts`, two registrations on one factory read one key spelled `Country`, one of
+them case-insensitive and one not. That runs in both read orders, since the memo builds a key's
+computed on its first read. A third row has a registration's `eval: {}` turn off a factory's
+`caseInsensitive`. In `model-source.spec.ts`, one row builds a context under the options it is
+handed, in both directions, and another holds one computed per key per casing rule, checked by
+identity and by value. Separately, `rules.invocation-count.spec.ts`' delegating mock of
+`createRuleContext` now forwards its argument. It used to drop it, so inside that file every context
+was built under the factory's options. `eval-forms` went from 316 to 321.
+
+Probes, each against the whole `eval-forms` suite, then reverted:
+
+| Wrong implementation | Red |
+| -------------------- | --- |
+| The memo keyed on the key alone, keeping the first reader's casing | 5 of 321: the five divergence rows. The flipped case and the README case stay green, since each has a single registration |
+| The memo per casing rule, the context built from the factory's options | 5 of 321: the flipped case, the README case and the three registrar rows. The two source rows stay green, because the source is right |
+
+**The entry as it stood:**
+
+`ExpressionRuleOptions` arrives twice: at `createExpressionRules(model, options)` and at each
+`rules.evalVisible(path, expression, options)`. **The rule is registration wins, per key** —
+`rule?.eval ?? factory?.eval`, resolved independently.
+
+**That rule is exact for `onError` and partial for `eval.caseInsensitive`, and the gap is a wrong
+answer rather than a missing feature.** The memo has one lifetime — per factory — so
+`createModelSource(model, options?.eval)` runs once and `readProperty`'s `caseInsensitive` is fixed
+there. A registration supplying a different one moves exactly **one of the three** places it has
+to reach:
+
+| Place | Built from | Reached by a per-registration `eval.caseInsensitive`? |
+| ----- | ---------- | ---------------------------------------------------- |
+| the walk's options — `evaluateRule`'s third argument | the resolved per-rule options | **yes** — corrects *property* names |
+| the rule's context — `createFieldContext({}, {}, options)` | the **factory's** `eval` | **no** — inert either way, both sources are `{}` |
+| the factory's memo — `readProperty` | the same factory parameter | **no** — and this is the resolver that answers every identifier here |
+
+So `rules.evalVisible(p.city, 'Country === "US"', { eval: { caseInsensitive: true } })` against a
+factory built without it, and a model holding `country`, resolves `Country` to `undefined` while
+correcting every *property* name in the same expression. One expression, two casing rules, no
+error.
+
+**Decision taken in Phase 6: no throw, documented, fix deferred.** Rejecting a divergent
+registration was the alternative and was rejected on two grounds: it enumerates one key of an open
+set (`EvalOptions` is `Record<string, unknown>`, so any later option with factory reach recreates
+the gap), and it fires at the wrong time with the wrong blast radius (registration runs inside the
+schema body during `form()`, so the throw takes down the entire form over one rule's casing, and
+it is unreachable through `onError`).
+
+**The real fix makes the gap unreachable rather than loud.** Two shapes, and the count above
+decides which is cheaper: move `caseInsensitive` onto `createExpressionRules`' own signature, where
+it already effectively lives — **the cheaper one, since two of the three levers are already
+factory-bound** — or key the memo on `(key, caseInsensitive)` and give up "one computed per key per
+factory". Both change something § 3.6 or § 5 of the Phase 6 plan states.
+
+**Covered** by a characterisation case in `rules.spec.ts`: this is behaviour that is wrong and
+shipping, so the spec records the limitation and goes red if a later change to the memo's lifetime
+silently reverses it.
+
+*Recorded*: [`forms/phase-6-plan.md` § 3.5.3](forms/phase-6-plan.md).
+
 <a id="d4"></a>
 ## D4 — A top-level model key holding a signal is returned un-called
 

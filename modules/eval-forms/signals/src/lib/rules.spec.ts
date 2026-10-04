@@ -511,24 +511,19 @@ describe('createExpressionRules', () => {
       expect(f.city().metadata(TEXT)?.()).toBe('registration');
     });
 
-    it('should apply a per-registration caseInsensitive to properties and not to identifiers (characterisation)', () => {
-      // **A characterisation test** (S 3.5.3, plan revision 15), on the same
-      // footing as the schema-reuse case above: this records behaviour that is
-      // wrong and shipping.
+    it('should apply a per-registration caseInsensitive to identifiers and properties alike', () => {
+      // `caseInsensitive` has to reach three places - the memo, the rule's
+      // context and the walk - and a registration's value reaches all three.
+      // Up to 0.3.0 it reached only the walk: the memo and the context were
+      // built from the factory's options, so `Country` resolved to nothing
+      // while `address.NAME` resolved, one expression obeying two casing
+      // rules. This case was the characterisation that pinned it, reading
+      // `'undefined/HQ'` (`docs/backlog-retired.md` D3).
       //
-      // Registration wins per key - but `caseInsensitive` has to reach three
-      // places and a registration moves exactly **one** of them, the walk.
-      // S 3.6 binds the memo *and* the rule's context to the factory
-      // (`createRuleContext` closes over `createModelSource`'s options), so
-      // `readProperty` is case-sensitive for the life of this form. The
-      // walk's options are per rule, so the member visitor *does* correct
-      // property names.
-      //
-      // The result is one expression obeying two casing rules: `Country`
-      // resolves to nothing while `address.NAME` resolves fine. Both halves
-      // are asserted in one read - the property half is what stops this case
-      // from passing against a registration whose `eval` was dropped on the
-      // floor entirely.
+      // Both halves are asserted in one read. The property half is what stops
+      // this case from passing against a registration whose `eval` reached the
+      // memo and nothing else; the identifier half, one whose `eval` reached
+      // only the walk.
       const model = signal<Model>({
         city: 'Boston',
         country: 'US',
@@ -545,7 +540,60 @@ describe('createExpressionRules', () => {
         })
       );
 
-      expect(f.city().metadata(TEXT)?.()).toBe('undefined/HQ');
+      expect(f.city().metadata(TEXT)?.()).toBe('US/HQ');
+    });
+
+    // One factory, two registrations reading one key spelled `Country` over a
+    // model holding `country`, under two casing rules. The memo builds a key's
+    // computed on its first read, so a memo keyed on the key alone hands the
+    // second reader the first one's rule - which is why both read orders are
+    // here: whichever registration reads first, the other must not inherit
+    // its answer.
+    it.each([
+      ['caseInsensitive', ['city', 'zip']],
+      ['case-sensitive', ['zip', 'city']],
+    ] as const)(
+      'should resolve one key under each registration\'s own rule, the %s one read first',
+      (_first, order) => {
+        const model = signal<Model>({ city: 'Boston', country: 'US', zip: '' });
+        const rules = createExpressionRules(model);
+
+        const f = buildForm(
+          model,
+          schema<Model>((p) => {
+            rules.evalText(p.city, 'Country', { eval: { caseInsensitive: true } });
+            rules.evalText(p.zip, 'Country', { eval: { caseInsensitive: false } });
+          })
+        );
+
+        const read = {
+          city: () => f.city().metadata(TEXT)?.(),
+          zip: () => f.zip().metadata(TEXT)?.(),
+        };
+
+        expect(Object.fromEntries(order.map((name) => [name, read[name]()])))
+          .toEqual({ city: 'US', zip: '' });
+      }
+    );
+
+    it('should let a registration turn a factory caseInsensitive off', () => {
+      // Registration wins per key and `eval` is not deep-merged, so `eval: {}`
+      // is a registration *without* `caseInsensitive`. The factory's rule is
+      // read first, so a memo keyed on the key alone would answer the second
+      // registration with it.
+      const model = signal<Model>({ city: 'Boston', country: 'US', zip: '' });
+      const rules = createExpressionRules(model, { eval: { caseInsensitive: true } });
+
+      const f = buildForm(
+        model,
+        schema<Model>((p) => {
+          rules.evalText(p.city, 'Country');
+          rules.evalText(p.zip, 'Country', { eval: {} });
+        })
+      );
+
+      expect(f.city().metadata(TEXT)?.()).toBe('US');
+      expect(f.zip().metadata(TEXT)?.()).toBe('');
     });
   });
 

@@ -175,7 +175,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [C4](#c4) | A mutating method call escapes the member-write policy | signals | accepted | Open, documented |
 | [D1](backlog-retired.md#d1) | The throwing-subscriber premise is false in both halves | forms | fix + decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e: a late prototype-named control is not mirrored and is reported once, out of band, after the rest of the emission |
 | [D2](backlog-retired.md#d2) | Should `/reactive` reject prototype-shadowed identifiers too? | forms | decision, breaking | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e: yes, with `/signals`' own guard, shared from the core; no form that worked could have named one |
-| [D3](#d3) | Per-registration `caseInsensitive` reaches one of three levers | forms | decision | Open, Covered |
+| [D3](backlog-retired.md#d3) | Per-registration `caseInsensitive` reaches one of three levers | forms | decision | **Retired — decided and fixed 2026-10-03**; unreleased. The memo is keyed on the key and `caseInsensitive` together, and each rule context is built from its registration's options, so a registration's value reaches all three levers |
 | [D4](backlog-retired.md#d4) | A top-level model key holding a signal is returned un-called | forms | fix or doc | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-forms` 0.2.4, tagged 587ebf1. `/signals` unwraps it as upstream does, and the README bullet is corrected |
 | [D5](backlog-retired.md#d5) | Two dead lookups run ahead of ours on every resolution | forms | fix (perf) | **Retired — fixed 2026-10-03**; unreleased. A rule context's lookups are exactly the live ones at both entry points: one resolver call per identifier, where `/signals` made three and `/reactive` two |
 | [D6](backlog-retired.md#d6) | `/signals` diverged from upstream on non-string keys — filed as "the `typeof` guard is unfalsifiable", measured false | forms | fix | **Retired — fixed 2026-09-26**; released 2026-09-30 in `eval-forms` 0.2.4, tagged 587ebf1 |
@@ -564,51 +564,6 @@ state a later phase may want to revisit, not a closed question.
 ---
 
 # D. `eval-forms`
-
-<a id="d3"></a>
-## D3 — Per-registration `caseInsensitive` reaches one of three levers
-
-**Package** forms · **Kind** decision · **Status** Open, Covered
-
-`ExpressionRuleOptions` arrives twice: at `createExpressionRules(model, options)` and at each
-`rules.evalVisible(path, expression, options)`. **The rule is registration wins, per key** —
-`rule?.eval ?? factory?.eval`, resolved independently.
-
-**That rule is exact for `onError` and partial for `eval.caseInsensitive`, and the gap is a wrong
-answer rather than a missing feature.** The memo has one lifetime — per factory — so
-`createModelSource(model, options?.eval)` runs once and `readProperty`'s `caseInsensitive` is fixed
-there. A registration supplying a different one moves exactly **one of the three** places it has
-to reach:
-
-| Place | Built from | Reached by a per-registration `eval.caseInsensitive`? |
-| ----- | ---------- | ---------------------------------------------------- |
-| the walk's options — `evaluateRule`'s third argument | the resolved per-rule options | **yes** — corrects *property* names |
-| the rule's context — `createFieldContext({}, {}, options)` | the **factory's** `eval` | **no** — inert either way, both sources are `{}` |
-| the factory's memo — `readProperty` | the same factory parameter | **no** — and this is the resolver that answers every identifier here |
-
-So `rules.evalVisible(p.city, 'Country === "US"', { eval: { caseInsensitive: true } })` against a
-factory built without it, and a model holding `country`, resolves `Country` to `undefined` while
-correcting every *property* name in the same expression. One expression, two casing rules, no
-error.
-
-**Decision taken in Phase 6: no throw, documented, fix deferred.** Rejecting a divergent
-registration was the alternative and was rejected on two grounds: it enumerates one key of an open
-set (`EvalOptions` is `Record<string, unknown>`, so any later option with factory reach recreates
-the gap), and it fires at the wrong time with the wrong blast radius (registration runs inside the
-schema body during `form()`, so the throw takes down the entire form over one rule's casing, and
-it is unreachable through `onError`).
-
-**The real fix makes the gap unreachable rather than loud.** Two shapes, and the count above
-decides which is cheaper: move `caseInsensitive` onto `createExpressionRules`' own signature, where
-it already effectively lives — **the cheaper one, since two of the three levers are already
-factory-bound** — or key the memo on `(key, caseInsensitive)` and give up "one computed per key per
-factory". Both change something § 3.6 or § 5 of the Phase 6 plan states.
-
-**Covered** by a characterisation case in `rules.spec.ts`: this is behaviour that is wrong and
-shipping, so the spec records the limitation and goes red if a later change to the memo's lifetime
-silently reverses it.
-
-*Recorded*: [`forms/phase-6-plan.md` § 3.5.3](forms/phase-6-plan.md).
 
 <a id="d7"></a>
 ## D7 — `toSignal`'s `assertNotInReactiveContext` throws out of the mirror

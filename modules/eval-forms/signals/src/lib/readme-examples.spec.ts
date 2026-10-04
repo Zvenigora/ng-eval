@@ -271,7 +271,7 @@ describe('documented examples - /signals', () => {
     });
   });
 
-  describe('README - caseInsensitive is in practice a factory option', () => {
+  describe('README - caseInsensitive per registration', () => {
 
     interface Profile {
       country: string;
@@ -279,7 +279,7 @@ describe('documented examples - /signals', () => {
       label: string;
     }
 
-    it('should correct the property name and leave the identifier uncorrected', () => {
+    it('should correct the identifier and the property name alike', () => {
       const profile = signal<Profile>({
         country: 'US',
         address: { name: 'HQ' },
@@ -294,19 +294,20 @@ describe('documented examples - /signals', () => {
         });
       });
 
-      // `undefinedHQ` is the whole point and both halves of it are
-      // load-bearing: `HQ` says the *property* name was corrected by the
-      // walk, and `undefined` says the *identifier* key was not. A result of
-      // `'USHQ'` would mean the option reached the factory's memo after all,
-      // and `'undefinedundefined'` that it reached nothing.
+      // Both halves are load-bearing: `US` says the *identifier* key was
+      // corrected through the memo and the context, and `HQ` that the
+      // *property* name was corrected by the walk. Up to 0.3.0 this read
+      // `'undefinedHQ'` and the README section was "caseInsensitive is in
+      // practice a factory option" (`docs/backlog-retired.md` D3).
       expect(buildForm(profile, profileSchema).label().metadata(TEXT)?.())
-        .toBe('undefinedHQ');
+        .toBe('USHQ');
     });
 
     it('should resolve both when the option is set on the factory', () => {
-      // The README's advice - "set `caseInsensitive` on the factory" - and
-      // without this arm the case above asserts only that something is
-      // broken, not that the fix the sentence recommends works.
+      // A factory-wide setting still reaches all three places, which is what
+      // the README advised up to 0.3.0. Kept because the registration case
+      // above passes just as well against a factory whose own `eval` reached
+      // nothing.
       const profile = signal<Profile>({
         country: 'US',
         address: { name: 'HQ' },

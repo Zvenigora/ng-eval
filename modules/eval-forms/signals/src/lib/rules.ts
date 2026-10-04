@@ -18,19 +18,19 @@ export interface ExpressionRuleOptions {
    * corrects *property* names, which the member visitor reads off the
    * state's options.
    *
-   * **A per-registration value reaches exactly one of the three places it
-   * has to: the walk** (plan S 3.5.3). The other two read the **factory's**
-   * options, which are fixed when `createExpressionRules` is called: the memo
-   * is built once, there; the context is minted per registration by
-   * `createRuleContext()` but always from that same fixed setting, so a
-   * registration cannot move it. So overriding this per registration corrects
-   * *property* names and leaves *identifier* keys on the factory's setting,
-   * and one expression then obeys two casing rules. Set `caseInsensitive` on
-   * the **factory** unless that is the behaviour you want.
+   * **A per-registration value reaches every place it has to**: the rule's
+   * context, the factory's key memo - which holds one entry per key and
+   * casing rule - and the walk. So `caseInsensitive` set on one registration
+   * corrects that rule's identifier keys and property names alike, and two
+   * registrations naming the same key under different settings each resolve
+   * it under their own. A registration's `eval` replaces the factory's
+   * whole, so `eval: {}` turns a factory's `caseInsensitive` off for that
+   * rule.
    *
-   * Revision 19 item 2 corrects "both are made once, at
-   * `createExpressionRules` time", which was wrong about the context and is
-   * the claim the README states correctly.
+   * Up to 0.3.0 a per-registration value reached only the walk: the memo and
+   * the context were built from the factory's options, so overriding it
+   * corrected *property* names and left *identifier* keys on the factory's
+   * setting, and one expression obeyed two casing rules.
    */
   eval?: EvalOptions;
 
@@ -123,7 +123,8 @@ export interface ExpressionRules {
  * which keeps reuse while giving each form a factory bound to its own model.
  *
  * What one factory retains: **one private memo**, per factory, bounded by the
- * union of keys the rules mention; and, per rule per `form()`, one
+ * union of keys the rules mention - twice over at most, one entry per key per
+ * casing rule the registrations ask for; and, per rule per `form()`, one
  * `EvalContext` and one compiled callback. Nothing registers with a
  * `DestroyRef` and there is no `destroy()` - it all becomes garbage with the
  * form (S 3.6).
@@ -137,7 +138,8 @@ export const createExpressionRules = <TModel extends object>(
   // per factory rather than one per rule (plan S 3.6). Calling it per
   // registrar instead would satisfy every behavioural criterion in this phase
   // while quietly making the memo per rule, which is why the count has a spec
-  // of its own.
+  // of its own. The factory's `eval` is only the source's default: each rule
+  // context is built from its registration's resolved options below.
   const source = createModelSource(model, options?.eval);
 
   /**
@@ -146,9 +148,11 @@ export const createExpressionRules = <TModel extends object>(
    * independently and neither is a deep merge, so a registration supplying
    * only `onError` keeps the factory's `eval` and vice versa.
    *
-   * Exact for `onError`, partial for `eval.caseInsensitive` - see the note on
-   * `ExpressionRuleOptions.eval`. The divergence is characterised in
-   * `rules.spec.ts` rather than left to be discovered.
+   * Exact for both keys. The resolved `eval` builds the rule's context and
+   * reaches the walk, and the context reads the memo under its casing rule -
+   * see the note on `ExpressionRuleOptions.eval`. Up to 0.3.0 the context
+   * was built from the factory's `eval`, so `caseInsensitive` resolved per
+   * registration for the walk alone (`docs/backlog-retired.md` D3).
    */
   const resolveOptions = (rule?: ExpressionRuleOptions): ExpressionRuleOptions => ({
     eval: rule?.eval ?? options?.eval,
@@ -196,7 +200,7 @@ export const createExpressionRules = <TModel extends object>(
     guardIdentifiers(expression, node);
 
     const compiled = compile(node);
-    const context = source.createRuleContext();
+    const context = source.createRuleContext(resolved.eval);
 
     return () =>
       applyErrorPolicy(() => evaluateRule(compiled, context, resolved.eval), resolved.onError);

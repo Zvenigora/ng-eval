@@ -89,6 +89,23 @@ describe('createModelSource', () => {
       expect(first).not.toBe(second);
       expect(source.keySignal('country')).toBe(source.keySignal('country'));
     });
+
+    it('should build a context under the options it is handed, not the factory\'s', () => {
+      // `docs/backlog-retired.md` D3: a registration's resolved `eval` is what
+      // the registrar passes here, so its `caseInsensitive` reaches the
+      // context and the memo rather than only the walk. Both directions,
+      // because either one alone passes against a context that ignores the
+      // factory's options and always uses its own default.
+      const model = signal<Record<string, unknown>>({ country: 'US' });
+
+      const sensitive = createModelSource(model);
+      expect(sensitive.createRuleContext({ caseInsensitive: true }).get('Country')).toBe('US');
+      expect(sensitive.createRuleContext().get('Country')).toBeUndefined();
+
+      const insensitive = createModelSource(model, { caseInsensitive: true });
+      expect(insensitive.createRuleContext({}).get('Country')).toBeUndefined();
+      expect(insensitive.createRuleContext().get('Country')).toBe('US');
+    });
   });
 
   describe('resolution', () => {
@@ -383,6 +400,21 @@ describe('createModelSource', () => {
       const source = createModelSource(model);
 
       expect(source.keySignal('country')).not.toBe(source.keySignal('zip'));
+    });
+
+    it('should hold one computed per key per casing rule', () => {
+      // `docs/backlog-retired.md` D3. One key read under both rules answers
+      // two ways - `Country` case-insensitively is `country`'s value, and
+      // exactly it is nothing - so it needs two computeds. Within one rule
+      // the memo still shares. Values as well as identities, because two
+      // distinct computeds built under the same rule pass the first line.
+      const model = signal<Record<string, unknown>>({ country: 'US' });
+      const source = createModelSource(model);
+
+      expect(source.keySignal('Country', true)).not.toBe(source.keySignal('Country', false));
+      expect(source.keySignal('Country', true)).toBe(source.keySignal('Country', true));
+      expect([source.keySignal('Country', true)(), source.keySignal('Country', false)()])
+        .toEqual(['US', undefined]);
     });
   });
 

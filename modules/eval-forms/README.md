@@ -575,7 +575,8 @@ kills it. A *dynamic* reason is out of scope for the same reason.
 Unlike [`/reactive`](#lifetime), this entry point creates no `EvalSignal`, registers nothing
 with a `DestroyRef`, and has **no `destroy()`**. Angular owns the field tree's lifetime and the
 rules die with the schema. What is retained, on two different clocks: **per factory**, one
-private memo of per-key `computed`s, bounded by the union of keys the rules name — it lives as
+private memo of `computed`s, one per key and casing rule, bounded by the union of keys the rules
+name — twice over at most, when registrations disagree about `caseInsensitive` — it lives as
 long as the `createExpressionRules` value does, which for a factory built at module scope is
 longer than any one form; and **per rule per `form()`**, one evaluation context and one compiled
 expression, garbage when that form is.
@@ -652,13 +653,17 @@ Three bounds on the check, none of them obvious from the paragraph above:
 **`/reactive` makes the same check on its expressions**, since 0.3.0 — see
 [Expressions are validated too](#expressions-are-validated-too).
 
-### `caseInsensitive` is in practice a *factory* option
+### `caseInsensitive` per registration
 
 `ExpressionRuleOptions` — `{ eval?, onError? }` — is accepted by the factory and by each
 registration, and **registration wins per key**: a registration supplying only `onError` keeps
-the factory's `eval`, and vice versa. Neither key is deep-merged.
+the factory's `eval`, and vice versa. Neither key is deep-merged, so a registration's `eval: {}`
+turns off a factory's `caseInsensitive` for that rule.
 
-That resolution is exact for `onError` and **only partial for `eval.caseInsensitive`**:
+The resolution is exact for both keys. `caseInsensitive` has to reach three places — the
+factory's key memo, the evaluation context each rule is given, and the walk — and a
+registration's value reaches all three, so an *identifier* and a *property* name obey the same
+rule:
 
 ```ts
 interface Profile {
@@ -678,17 +683,15 @@ const profileSchema = schema<Profile>((p) => {
 });
 
 form(profile, profileSchema).label().metadata(TEXT)?.();
-// => 'undefinedHQ'
-//    address.NAME  resolved  — a *property* name, corrected by the walk
-//    Country       did not   — an *identifier* key, still on the factory's setting
+// => 'USHQ'
+//    Country       an *identifier* key, corrected through the memo and the context
+//    address.NAME  a *property* name, corrected by the walk
 ```
 
-The walk is the only one of the three places the option must reach that a per-registration
-value gets to. The other two — the factory's key memo, and the evaluation context every rule is
-given — are built from the options handed to `createExpressionRules`, fixed at factory time; the
-context is minted per rule, but always from that same fixed setting, so a registration cannot
-move it. One expression then ends up obeying two casing rules. **Set `caseInsensitive` on the
-factory** unless that is precisely what you want.
+The memo holds one entry per key **and casing rule**, so two registrations on one factory that
+name the same key under different settings each resolve it under their own. Up to 0.3.0 only
+the walk saw a registration's value: the memo and the context were built from the factory's
+options, and the block above printed `'undefinedHQ'`, one expression obeying two casing rules.
 
 ### Two things that are not available here
 

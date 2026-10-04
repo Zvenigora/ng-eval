@@ -43,16 +43,19 @@ const readProperty = (
 export interface ModelSource {
 
   /**
-   * One `computed` per key, per **factory**. Exported so the memo can be
-   * compared by identity: the memo itself is private and the resolver returns
-   * a *value*, so comparing two resolved values passes with or without it.
+   * One `computed` per key and casing rule, per **factory**. Exported so the
+   * memo can be compared by identity: the memo itself is private and the
+   * resolver returns a *value*, so comparing two resolved values passes with
+   * or without it. `caseInsensitive` defaults to the source's own setting.
    */
-  keySignal: (key: string) => Signal<unknown>;
+  keySignal: (key: string, caseInsensitive?: boolean) => Signal<unknown>;
 
   /**
-   * S 3.6's one context per rule per `form()`, built off the shared memo.
+   * S 3.6's one context per rule per `form()`, built off the shared memo,
+   * under the options it is handed - the registration's resolved `eval` -
+   * or the source's own when it is handed none.
    */
-  createRuleContext: () => EvalContext;
+  createRuleContext: (options?: EvalOptions) => EvalContext;
 }
 
 /**
@@ -112,25 +115,37 @@ export interface ModelSource {
  * @param model - The `WritableSignal` the consumer passes to `form()`.
  *                `form()` does not copy it, so the model signal and the field
  *                tree are two views of one thing.
- * @param options - Configures this source and the contexts it builds, not the
- *                  walk. As upstream, `caseInsensitive` corrects identifier
- *                  keys here but not *property* names.
+ * @param options - The default for the contexts this source builds, used when
+ *                  `createRuleContext` is handed none; configures them, not
+ *                  the walk. As upstream, `caseInsensitive` corrects
+ *                  identifier keys here but not *property* names.
  */
 export const createModelSource = <TModel extends object>(
   model: WritableSignal<TModel>,
   options?: EvalOptions
 ): ModelSource => {
 
+  // `Map`s, deliberately, and **not** the record `createFieldContext` hands
+  // to `createSignalContext` - see Q4 in the docblock above. Nothing upstream
+  // can see them, so no memo entry can ever shadow a model key.
+  //
+  // Two of them, one per casing rule, because a registration's
+  // `caseInsensitive` reaches the memo: `Country` read case-insensitively is
+  // `country`'s value and read exactly is nothing, so one key can need two
+  // computeds. Up to 0.3.0 there was one map and every entry took the
+  // factory's rule, so a registration's own setting reached the walk and not
+  // the identifiers (`docs/backlog-retired.md` D3). Still one memo per
+  // factory: both maps live and die with this source.
+  const exact = new Map<string, Signal<unknown>>();
+  const folded = new Map<string, Signal<unknown>>();
+
   // Index access, not dotted: `EvalOptions` is an index signature and
   // `noPropertyAccessFromIndexSignature` is set in all three libraries.
-  const caseInsensitive = !!options?.['caseInsensitive'];
-
-  // A `Map`, deliberately, and **not** the record `createFieldContext` hands
-  // to `createSignalContext` - see Q4 in the docblock above. Nothing upstream
-  // can see it, so no memo entry can ever shadow a model key.
-  const memo = new Map<string, Signal<unknown>>();
-
-  const keySignal = (key: string): Signal<unknown> => {
+  const keySignal = (
+    key: string,
+    caseInsensitive = !!options?.['caseInsensitive']
+  ): Signal<unknown> => {
+    const memo = caseInsensitive ? folded : exact;
     let cached = memo.get(key);
 
     if (!cached) {
@@ -147,14 +162,18 @@ export const createModelSource = <TModel extends object>(
     return cached;
   };
 
-  const createRuleContext = (): EvalContext => {
+  const createRuleContext = (ruleOptions: EvalOptions | undefined = options): EvalContext => {
+
+    // The rule's own casing, so its identifiers resolve through the memo
+    // under the same rule its walk applies to property names.
+    const caseInsensitive = !!ruleOptions?.['caseInsensitive'];
 
     // `createFieldContext` is still what builds the context - not for its
     // sources, which are both empty, but for its **class**. It returns a
     // context whose `set` throws `SignalContextWriteError`, which is the
     // error the error policy must re-throw rather than swallow. A hand-built
     // `EvalContext` would silently accept an assigning expression.
-    const context = createFieldContext({}, {}, options);
+    const context = createFieldContext({}, {}, ruleOptions);
 
     // Its two lookups go, so the one pushed below is the only one. Each runs
     // over one of those empty records and can never answer, but `get` stops
@@ -187,7 +206,7 @@ export const createModelSource = <TModel extends object>(
     // signal as well as the key's computed (`docs/backlog.md` `BL-D4`).
     context.lookups.push((key) => {
       const name = typeof key === 'string' ? key : typeof key === 'number' ? String(key) : undefined;
-      const value = name === undefined ? undefined : keySignal(name)();
+      const value = name === undefined ? undefined : keySignal(name, caseInsensitive)();
       return isSignal(value) ? value() : value;
     });
 
