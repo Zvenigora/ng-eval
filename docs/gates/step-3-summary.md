@@ -140,5 +140,5 @@ Both materialised, so the condition has a real subject in this file and needed n
 
   **Recorded as [F11](../backlog-retired.md#f11)** rather than left here, and cross-linked from both
   [F3](../backlog-retired.md#f3) and [F4](../backlog-retired.md#f4): a limit a reader meets only in a step
-  summary is a limit nobody meets. With [F10](../backlog.md#f10) it is the second coverage bound
+  summary is a limit nobody meets. With [F10](../backlog-retired.md#f10) it is the second coverage bound
   this track found from inside the work rather than from planning.

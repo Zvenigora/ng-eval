@@ -18,7 +18,7 @@ This document doubles as step 5's record; the step was small enough that a separ
 | **D10** | `applyErrorPolicy`'s block and its two cases — which created the subject for F3's third `eval-forms` gate |
 
 Opened along the way: [F9](../backlog-retired.md#f9) (document cross-references, deferred with the
-comparison that settled it), [F10](../backlog.md#f10) (the gate covers documented-**and-imported**
+comparison that settled it), [F10](../backlog-retired.md#f10) (the gate covers documented-**and-imported**
 symbols), [F11](../backlog-retired.md#f11) (a gated README can only import from its own specifier).
 
 **Nothing shipped to npm.** No exported symbol, no manifest, no version bump — the property that
@@ -108,7 +108,7 @@ on by the next phase that trips over an entry.
 
 Stated together, because "the READMEs are gated" is now easy to over-read:
 
-- **Only imported identifiers** ([F10](../backlog.md#f10)). `createControlSource`, `FieldSchema`
+- **Only imported identifiers** ([F10](../backlog-retired.md#f10)). `createControlSource`, `FieldSchema`
   and `FormBinding` are exported, documented in prose and tables, and named in no import — a
   rename passes every gate.
 - **Only a README's own specifier** ([F11](../backlog-retired.md#f11)). A cross-package import line in a

@@ -169,6 +169,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
 | [B4](backlog-retired.md#b4) | `eval-core.component.ts` is dead generator scaffold | core | fix | **Retired — fixed 2026-09-26**; no published artifact changed — the bundle and `.d.ts` are byte-identical |
+| [B5](#b5) | `eval-core` exports seventeen symbols nothing uses — two `@deprecated` since Phase 1, their removal deferred in a plan and nowhere else | core | decision | Open |
 | [C1](backlog-retired.md#c1) | A member-target write escapes the read-only policy | signals | decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-signals` 0.3.0, with `eval-core` 0.10.0, tagged 0c3299e: a signal expression may write into what it created and not into anything it was given or got back from a call |
 | [C2](backlog-retired.md#c2) | Detect a write violation at construction, not first recompute | signals | decision | **Retired — decided 2026-10-03**: no construction-time check; [C1](backlog-retired.md#c1)'s runtime guard is the guarantee and fires on the first read |
 | [C3](backlog-retired.md#c3) | Whether `eval-signals` should work around [A4](backlog-retired.md#a4) locally | signals | decision | **Retired — decided and fixed 2026-10-01**; released 2026-10-02 in `eval-signals` 0.2.0, tagged c56f987: under `caseInsensitive` a source key is named as the source spells it, in `getKey`, write errors and the first segment of `dependencies` |
@@ -193,14 +194,14 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [E6](backlog-retired.md#e6) | `exit` has no mark to bound its scan | core | fix | **Retired — fixed, Phase 2 step 1**; released in `eval-core` 0.4.0; its "Phase 2 makes it reachable" premise was wrong |
 | [F1](backlog-retired.md#f1) | No `configurations.ci` on the `test` target — **two projects, not one** | signals, forms | fix + decision | **Retired — fixed, no thresholds** |
 | [F2](backlog-retired.md#f2) | One `CHANGELOG.md` for three independently-versioned packages | repo | decision | **Retired — decided 2026-09-28**: one `modules/<name>/CHANGELOG.md` per package; `nx release` still unadopted. `eval-core` had five changelogged versions npm never received |
-| [F3](backlog-retired.md#f3) | Documented-symbol drift gate — **three packages, four READMEs** | core, signals, forms | fix | **Retired — built and green** |
+| [F3](backlog-retired.md#f3) | README-import drift gate — every `@zvenigora/…` import a README prints is exported — **three packages, four READMEs** | core, signals, forms | fix | **Retired — built and green**. Whether every export is documented is [F10](backlog-retired.md#f10)'s |
 | [F4](backlog-retired.md#f4) | README-execution gate for `eval-core` and `eval-signals` | core, signals | fix / decide-then-drop | **Retired** — both package READMEs gated; root **assessed and dropped** |
 | [F5](backlog-retired.md#f5) | The `js-sha256` peer range is locked to a dead minor | core | decision | **Retired — decided and fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. Range widened to `^0.10.1 \|\| ^0.11.0 \|\| ^0.12.0 \|\| ^1.0.0`, tested at 0.10.1 and 1.0.0 |
 | [F6](backlog-retired.md#f6) | CONTRIBUTING's "Code style" describes a config that never existed here | repo | decision (editorial) | **Retired — fixed 2026-09-26**; the table replaced by a paragraph pointing at the four flat configs |
 | [F7](#f7) | Intermittent Jest worker-teardown warning — **no established locus**, possibly Nx/Jest rather than a library | — | fix? | Open — locus corrected 2026-09-09; **not reproducible per project** |
 | [F8](#f8) | The release tag step has no forcing function, and ships with a silencer | repo | fix | **Premise retired 2026-09-16** — all ten missing tags written and pushed, so the arrears are cleared; the mechanism is untouched and the entry is live |
 | [F9](backlog-retired.md#f9) | No gate on document cross-references — the register's own dangling links | repo | fix | **Retired — fixed 2026-09-28**; `tools/doc-links.mjs`, the workspace root's `test` target, so `npm test` and CI run it. Deferred 2026-09-07 by [plan](gates/plan.md) § 8.4 |
-| [F10](#f10) | The drift gate covers documented-**and-imported** symbols only | core, signals, forms | fix | Open — the gap [F3](backlog-retired.md#f3) leaves |
+| [F10](backlog-retired.md#f10) | The drift gate covers documented-**and-imported** symbols only | core, signals, forms | fix | **Retired — fixed 2026-10-04**, test only: every export is named in a code span of its package's README or allowlisted with one of five reasons, and every allowlist entry is still exported |
 | [F11](backlog-retired.md#f11) | A gated README can only import from its own specifier | core, signals, forms | fix | **Retired — fixed 2026-10-03**; ships in no package: every `@zvenigora/…` import in a gated README resolves against its own specifier, owned by the README's package |
 | [F12](backlog-retired.md#f12) | The downstream peer ranges exclude `eval-core` 0.4.0 — **and fail both downstream `lint` targets** | signals, forms | fix | **Retired — fixed, Phase 2 step 7**; both ranges widened, and `lint`'s cache inputs with them |
 | [F13](backlog-retired.md#f13) | Nothing gates the README block count `readme-examples.spec.ts` claims | core, signals, forms | test gap | **Retired — fixed 2026-09-27**, test only; all four specs gated. The gate's first run found `eval-core`'s count wrong a third time |
@@ -532,7 +533,39 @@ above.
 
 # B. `eval-core` — security and hygiene
 
-No live entries. [B1](backlog-retired.md#b1)–[B4](backlog-retired.md#b4) are all retired.
+[B1](backlog-retired.md#b1)–[B4](backlog-retired.md#b4) are retired.
+
+<a id="b5"></a>
+## B5 — `eval-core` exports seventeen symbols nothing uses
+
+**Package** core · **Kind** decision · **Status** Open
+
+[F10](backlog-retired.md#f10)'s allowlist gives these seventeen the reason `unused`: nothing in
+the three libraries' non-spec sources references them beyond their own declaration and the
+barrels, counted 2026-10-04. They are:
+
+- the ten types in `internal/interfaces/recursive-visitors.ts`: `AggregateType`,
+  `RecursiveAggregateVisitor`, `RecursiveVisitor`, `RecursiveVisitorContext`,
+  `RecursiveVisitorOptions`, `RecursiveVisitorRegistryResult`, `RecursiveVisitorResult`,
+  `RecursiveVisitorResultType`, `RecursiveVisitorStackResult` and `RecursiveVisitorState`;
+- `ScopeOptions`, `ScopeType` and `RegistryOptionType` in `scope-type.ts`. `EvalScope` does not
+  use them, since it has `EvalScopeOptions`;
+- `Queue` and its `QueueType`;
+- `getContextKey` and `isRegistryContext` in `classes/common/context.ts`.
+
+**Two of them have had a removal deferred where nothing tracked it.** Phase 1 marked
+`RecursiveVisitorState` and `RecursiveVisitorResult` `@deprecated`, pointing at `EvalHooks`, and
+its plan made their "removal … a follow-up for the next breaking version"
+([`side-effects/phase-1-plan.md`](side-effects/phase-1-plan.md), step 6's edit list). The deferral
+lived in the plan alone. `eval-core` has since shipped at least three breaking minors, 0.7.0, 0.8.0
+and 0.9.0, with both still exported.
+
+**The decision is whether to remove them, and when.** Removing an export is a breaking release.
+Most of the seventeen are types, which a consumer can import, and nothing establishes that none
+does. Keeping them costs a `.d.ts` that declares shapes the library does not use, and two of them
+are a hook vocabulary that contradicts `EvalHooks`.
+
+*Recorded*: while building F10's allowlist, 2026-10-04; the reference counts are that step's.
 
 ---
 
@@ -872,50 +905,6 @@ from `615cd49`.** Recorded so the deviation is findable rather than read later a
 CONTRIBUTING step 4 nonetheless says the commit must be the one the artifact was built from, and
 these three are one commit behind it. The seven retroactive tags are not part of this: each points
 at its own historic commit and is correct.
-
-<a id="f10"></a>
-## F10 — The drift gate covers documented-**and-imported** symbols, not documented ones
-
-**Package** core, signals **and** forms · **Kind** fix · **Status** Open — the coverage gap
-[F3](backlog-retired.md#f3) leaves behind, opened 2026-09-08
-
-[F3](backlog-retired.md#f3) is retired and its gate is green, and it now reads — including in its own title — as
-"documented symbols do not drift". **What it actually asserts is that documented *and imported*
-symbols do not drift.** The gate scans `import { … } from '@zvenigora/…'` statements, so an
-exported symbol a README documents by any other means is outside it entirely.
-
-This is a gap in coverage, not a caveat on the mechanism, which is why it is here rather than in
-F3's limits list: F3's three limits describe what its gate deliberately does not attempt; this
-describes a class of exported surface that no gate in the repository watches.
-
-**Measured today**, in `modules/eval-forms/README.md`:
-
-| Symbol | Exported from | Documented at | In an `import`? |
-| ------ | ------------- | ------------- | --------------- |
-| `createControlSource` | `/reactive` | `:159`, the API table | no |
-| `FormBinding` | `/reactive` | `:156` and `:497`, prose and table | no |
-| `FieldSchema` | `/reactive` | `:157` table, `:177` interface block | no |
-
-All three are real published surface, all three are documented well enough that a consumer will
-use them, and renaming any of them leaves every gate green. `bindFieldProperties` sits in the
-same table and *is* covered — only because a different section happens to import it.
-
-**Two shapes of fix, and they are not the same size.**
-
-- **Cheap and partial**: scan for the symbols' *names* as they appear in prose or tables, not
-  only in import statements. This finds these three, and it false-fails the first time a README
-  legitimately names a symbol that was removed on purpose, or names a word that is also a
-  symbol. That is close to the shape [F3](backlog-retired.md#f3) § 1.1 rejected, and it should not be adopted
-  without an answer to it.
-- **Sound and larger**: assert the other direction — every symbol in a package's export list is
-  documented *somewhere* in that package's README. That is a real completeness gate rather than
-  a drift gate, and it starts red: `eval-core` exports 74 names and its README names a small
-  fraction of them, so adopting it means deciding what "documented" means for an internal type
-  alias. That decision is the actual work here, and it is why this is an entry rather than a
-  step someone can pick up in an hour.
-
-Whoever takes it should also rename F3's summary line, or leave it retired and let this entry
-carry the claim — but the two should not both stand as written.
 
 <a id="f16"></a>
 ## F16 — Workspace dependency advisories

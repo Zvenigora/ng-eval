@@ -3067,10 +3067,12 @@ and probed**, [`docs/gates/plan.md`](gates/plan.md) step 2, 2026-09-07
 >    below. What it catches is that divergence's *shape* for the subset that is imported by
 >    name — which is how it found five real instances on its first run.
 >
->    **The exported surface this leaves unwatched is [F10](backlog.md#f10)**, opened rather than folded in
+>    **The exported surface this leaves unwatched is [F10](#f10)**, opened rather than folded in
 >    here: three `/reactive` symbols are documented in `modules/eval-forms/README.md` and named
 >    in no import, so renaming them keeps every gate green. That is a coverage gap with its own
->    fix, not a caveat on this mechanism.
+>    fix, not a caveat on this mechanism. **Fixed 2026-10-04**: every export is now named in a
+>    code span of its package's README or allowlisted with a reason, which is F10's gate and not
+>    this one.
 >
 >    **[F11](#f11) is the same shape one axis over**: each gate checks its README against **one**
 >    specifier, so an import line naming a *different* `@zvenigora/…` package in a gated file is
@@ -3202,7 +3204,7 @@ code-running gate and does **not** supersede this one.
 > substitutes its import line (§ 1.2), and the drift gate checks only the README's own
 > specifier, so a **cross-package** import in a gated README is neither resolved nor run. That
 > is why `## Using the adapter directly` names `EvalService`'s package in a comment instead of
-> printing an import for it. With [F10](backlog.md#f10), these are the two coverage limits this track
+> printing an import for it. With [F10](#f10), these are the two coverage limits this track
 > found from inside the work rather than from planning.
 
 `readme-examples.spec.ts` exists for `eval-forms/reactive` **and** `eval-forms/signals`, and for
@@ -3486,6 +3488,109 @@ some anchors as explicit `<a id="…">` tags and relies on generated heading slu
 checker must handle both or it will false-fail on correct links, which is the shape
 [F3](#f3) § 1.1 rejected.
 
+<a id="f10"></a>
+## F10 — The drift gate covers documented-**and-imported** symbols, not documented ones
+
+**Package** core, signals **and** forms · **Kind** fix · **Status** **Retired — fixed
+2026-10-04**; ships in no package. Was Open, the coverage gap [F3](#f3) left behind, opened
+2026-09-08
+
+*Fixed* 2026-10-04, in the entry's "sound and larger" shape: every export is documented, or listed
+with a reason. In each `export-list.spec.ts`, **documented** means the export's name appears in a
+code span of that package's README. The span is inline, outside any fenced block, and the name
+must not follow a `.`, so `` `service.parse(expr)` `` names `service` and not the exported
+function `parse`. An export no code span names must be in a per-package allowlist in the same
+spec, with one reason from a fixed set:
+
+| Reason | Meaning |
+| ------ | ------- |
+| `signature-type` | A type met only through a documented symbol's signature: a parameter, an option, a return value, an event, or an element of one |
+| `function-form` | A free function a documented service method wraps, or the default that method uses |
+| `example-only` | Named in one of the README's fenced code examples, and in no code span |
+| `building-block` | A general-purpose class the evaluator is built from, its type, or a helper over it |
+| `unused` | Referenced by nothing in the workspace beyond its own declaration and the barrels |
+
+Every allowlist entry must also still be exported, so the list cannot outlive what it excuses.
+`eval-forms`' gate reads its three entry points' exports as one surface, because one README
+documents all three.
+
+*Measured*, at the commit that built it:
+
+| Package | Exports | Named in a code span | Allowlisted | `signature-type` | `function-form` | `example-only` | `building-block` | `unused` |
+| ------- | ------: | -------------------: | ----------: | ---------------: | --------------: | -------------: | ---------------: | -------: |
+| `eval-core` | 76 | 12 | 64 | 26 | 9 | 1 | 11 | 17 |
+| `eval-signals` | 7 | 6 | 1 | 1 | 0 | 0 | 0 | 0 |
+| `eval-forms`, three entry points | 15 | 15 | 0 | 0 | 0 | 0 | 0 | 0 |
+| **Total** | **98** | **33** | **65** | **27** | **9** | **1** | **11** | **17** |
+
+`eval-core`'s package README names twelve of its exports and defers the rest to the repository
+README, which ships nowhere. That is why its list is long, and why it is the list F3 found the
+first five of. The three `/reactive` symbols this entry measured, `createControlSource`,
+`FormBinding` and `FieldSchema`, are each named in a code span and so are gated now.
+
+**The seventeen `unused` are [B5](backlog.md#b5)**, opened from this step rather than decided in it.
+
+*The bound*, recorded as this entry's fix was asked to: the gate runs from the exports to the
+README, not back. A documented export that is **removed** leaves the README naming something that
+no longer exists, and this gate cannot see that. What catches it is the release-time comparison of
+the built `.d.ts` against the published version, and [F3](#f3)'s gate as well where the README
+imports the name. A code span that uses an exported name in another sense also counts as
+documenting it.
+
+*Verified*: each copy gains four rows: the README check, the allowlist check, and one fixture row
+for each helper. Each copy is registered once by itself and once by every gate that imports it, so
+`eval-core` went from 1292 to 1300, `eval-signals` from 164 to 172 and `eval-forms` from 325 to 341.
+Probes, each against every project's tests, then reverted:
+
+| Probe | `eval-core` | `eval-signals` | `eval-forms` |
+| ----- | ----------- | -------------- | ------------ |
+| An undocumented export added to the package's barrel | 2: the README row, twice registered | 2: the same | 4: the same, four times registered |
+| An allowlist entry deleted, `Queue` and `SignalContextSource` | 2: the README row | 2: the README row | no entry to delete |
+| An allowlist entry for a name not exported | 2: the allowlist row | 2: the allowlist row | 4: the allowlist row |
+
+Nothing else went red under any of them. F3's index summary, "Documented-symbol drift gate", is
+renamed to "README-import drift gate", so the two entries no longer both claim this coverage.
+
+**The entry as it stood:**
+
+[F3](#f3) is retired and its gate is green, and it now reads — including in its own title — as
+"documented symbols do not drift". **What it actually asserts is that documented *and imported*
+symbols do not drift.** The gate scans `import { … } from '@zvenigora/…'` statements, so an
+exported symbol a README documents by any other means is outside it entirely.
+
+This is a gap in coverage, not a caveat on the mechanism, which is why it is here rather than in
+F3's limits list: F3's three limits describe what its gate deliberately does not attempt; this
+describes a class of exported surface that no gate in the repository watches.
+
+**Measured today**, in `modules/eval-forms/README.md`:
+
+| Symbol | Exported from | Documented at | In an `import`? |
+| ------ | ------------- | ------------- | --------------- |
+| `createControlSource` | `/reactive` | `:159`, the API table | no |
+| `FormBinding` | `/reactive` | `:156` and `:497`, prose and table | no |
+| `FieldSchema` | `/reactive` | `:157` table, `:177` interface block | no |
+
+All three are real published surface, all three are documented well enough that a consumer will
+use them, and renaming any of them leaves every gate green. `bindFieldProperties` sits in the
+same table and *is* covered — only because a different section happens to import it.
+
+**Two shapes of fix, and they are not the same size.**
+
+- **Cheap and partial**: scan for the symbols' *names* as they appear in prose or tables, not
+  only in import statements. This finds these three, and it false-fails the first time a README
+  legitimately names a symbol that was removed on purpose, or names a word that is also a
+  symbol. That is close to the shape [F3](#f3) § 1.1 rejected, and it should not be adopted
+  without an answer to it.
+- **Sound and larger**: assert the other direction — every symbol in a package's export list is
+  documented *somewhere* in that package's README. That is a real completeness gate rather than
+  a drift gate, and it starts red: `eval-core` exports 74 names and its README names a small
+  fraction of them, so adopting it means deciding what "documented" means for an internal type
+  alias. That decision is the actual work here, and it is why this is an entry rather than a
+  step someone can pick up in an hour.
+
+Whoever takes it should also rename F3's summary line, or leave it retired and let this entry
+carry the claim — but the two should not both stand as written.
+
 <a id="f11"></a>
 ## F11 — A gated README can only import from its own specifier
 
@@ -3521,7 +3626,7 @@ which is where a rename happens. Owning it in the README's package means a renam
 turns `eval-signals`' suite red, which is the right report and a cross-project coupling this
 workspace has so far avoided in its test targets.
 
-Related: [F10](backlog.md#f10), the other limit of the same shape — the gate covers documented-**and-
+Related: [F10](#f10), the other limit of the same shape — the gate covers documented-**and-
 imported** symbols, so an exported symbol named only in prose is unwatched. F10 is about which
 *symbols* are checked; this is about which *specifiers*. Together they bound what "the READMEs
 are gated" is entitled to mean.
@@ -3821,7 +3926,7 @@ The failure is quiet in exactly the way the gates track was built to prevent: a 
 README without a case still leaves a green suite and a docblock claiming full coverage, which is
 [F3](#f3)'s own motivating shape one layer over. `grep -c '```javascript'` is the whole measurement.
 
-**Distinct from [F10](backlog.md#f10) and [F11](#f11)**, which bound what the *drift* gate sees. This one is
+**Distinct from [F10](#f10) and [F11](#f11)**, which bound what the *drift* gate sees. This one is
 about the *execution* gate ([F4](#f4)) and is not covered by either: F10 is about symbols named but
 not imported, F11 about the specifier a gated block may import from, and neither counts blocks.
 

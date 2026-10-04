@@ -283,6 +283,97 @@ export const unresolvedAcrossSpecifiers = (
       );
   });
 
+/**
+ * Why an export its package's README does not name may stay unnamed
+ * (`docs/backlog.md` F10). A fixed set, and every allowlist entry takes one:
+ *
+ * - `signature-type` - a type a reader meets only through a documented
+ *   symbol's signature: a parameter, an option, a return value, an event, or
+ *   an element of one.
+ * - `function-form` - a free function a documented service method wraps, or
+ *   the default that method uses. The service is the documented form.
+ * - `example-only` - named in one of the README's fenced code examples, and
+ *   in no code span.
+ * - `building-block` - a general-purpose class the evaluator is built from,
+ *   its type, or a helper over it: usable directly, documented nowhere.
+ * - `unused` - referenced by nothing in the workspace beyond its own
+ *   declaration and the barrels, and kept because removing an export is a
+ *   breaking release.
+ */
+export type UndocumentedReason =
+  | 'signature-type'
+  | 'function-form'
+  | 'example-only'
+  | 'building-block'
+  | 'unused';
+
+/**
+ * Every identifier a markdown text names inside a code span, outside fenced
+ * blocks - what "documented" means for F10. A span may run over a line break
+ * but not over a blank line, and an identifier after a `.` is a member access
+ * that does not count, so `` `service.parse(expr)` `` names `service` and
+ * not the exported function `parse`.
+ *
+ * A fenced block does not count, even one importing the name: an example
+ * shows a symbol in use rather than saying what it is, and the
+ * `example-only` reason exists for the export that only an example names.
+ */
+export const documentedNames = (markdown: string): ReadonlySet<string> => {
+  let fence: { readonly ch: string; readonly length: number } | undefined;
+
+  const prose = markdown
+    .split(/\r?\n/)
+    .map((line) => {
+      const run = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+      if (fence) {
+        if (run && run[1][0] === fence.ch && run[1].length >= fence.length && /^ {0,3}(`{3,}|~{3,})\s*$/.test(line)) {
+          fence = undefined;
+        }
+        return '';
+      }
+      if (run) {
+        fence = { ch: run[1][0], length: run[1].length };
+        return '';
+      }
+      return line;
+    })
+    .join('\n');
+
+  const names = new Set<string>();
+  for (const span of prose.matchAll(/(?<!`)(`+)((?:(?!\n[ \t]*\n)[\s\S])*?[^`])\1(?!`)/g)) {
+    for (const name of span[2].matchAll(/(?<![\w$.])[A-Za-z_$][\w$]*/g)) {
+      names.add(name[0]);
+    }
+  }
+  return names;
+};
+
+/** Each export named in no code span of `readme` and absent from the allowlist. */
+export const undocumentedExports = (
+  exported: ReadonlySet<string>,
+  documented: ReadonlySet<string>,
+  allowlist: Readonly<Record<string, UndocumentedReason>>,
+  readme: string
+): readonly string[] =>
+  [...exported]
+    .filter((name) => !documented.has(name) && !Object.prototype.hasOwnProperty.call(allowlist, name))
+    .sort()
+    .map((name) => `${name}: exported, named in no code span of ${readme}, and not allowlisted`);
+
+/**
+ * Each allowlist entry the package no longer exports, so the list cannot
+ * outlive what it excuses. The other direction - an allowlisted name the
+ * README has since documented - is harmless and not checked.
+ */
+export const staleAllowlistEntries = (
+  exported: ReadonlySet<string>,
+  allowlist: Readonly<Record<string, UndocumentedReason>>
+): readonly string[] =>
+  Object.keys(allowlist)
+    .filter((name) => !exported.has(name))
+    .sort()
+    .map((name) => `${name}: allowlisted, and not exported`);
+
 describe('export-list reader (eval-core copy)', () => {
   const core = () => exportedNames(SPECIFIER_ENTRY['@zvenigora/ng-eval-core']);
 
@@ -435,6 +526,127 @@ describe('every @zvenigora import resolves against its own specifier (F11, eval-
     );
     expect(found).toEqual([
       "fixture.md:1 imports from '@zvenigora/ng-eval-nowhere', which no tsconfig.base.json path maps",
+    ]);
+  });
+});
+
+/**
+ * The exports `modules/eval-core/README.md` names in no code span, each with
+ * its reason (`docs/backlog.md` F10). The package README names twelve of the
+ * seventy-six and defers the rest to the repository README, which ships
+ * nowhere; a name documented only there is undocumented for whoever installed
+ * the package, which is the split F3 found.
+ *
+ * `unused` counts references in all three libraries' non-spec sources,
+ * measured when the list was written; `docs/backlog.md` B5 holds the question
+ * of removing them.
+ */
+const UNDOCUMENTED: Readonly<Record<string, UndocumentedReason>> = {
+  // A parameter, option, return value or event of `EvalService`,
+  // `CompilerService`, `ParserService`, `DiscoveryService`, `EvalContext`,
+  // `EvalHooks`, `createDependencyTracker` or `createTimingHook`.
+  AnyNodeTypes: 'signature-type',
+  BaseContext: 'signature-type',
+  Context: 'signature-type',
+  EvalDependencyTracker: 'signature-type',
+  EvalHookError: 'signature-type',
+  EvalHookErrorPolicy: 'signature-type',
+  EvalHookPhase: 'signature-type',
+  EvalKnownOptions: 'signature-type',
+  EvalLookup: 'signature-type',
+  EvalMemberWrite: 'signature-type',
+  EvalNodeHook: 'signature-type',
+  EvalNodeHookEvent: 'signature-type',
+  EvalNodeTiming: 'signature-type',
+  EvalOptions: 'signature-type',
+  EvalReadEvent: 'signature-type',
+  EvalReadHook: 'signature-type',
+  EvalReadKind: 'signature-type',
+  EvalResult: 'signature-type',
+  EvalState: 'signature-type',
+  EvalTimingHook: 'signature-type',
+  EvalTrace: 'signature-type',
+  EvalTraceItem: 'signature-type',
+  ParserOptions: 'signature-type',
+  stateCallback: 'signature-type',
+  stateCallbackAsync: 'signature-type',
+  Unsubscribe: 'signature-type',
+
+  // What `CompilerService`, `EvalService`, `ParserService` and
+  // `DiscoveryService` call.
+  call: 'function-form',
+  callAsync: 'function-form',
+  compile: 'function-form',
+  compileAsync: 'function-form',
+  defaultParserOptions: 'function-form',
+  evaluate: 'function-form',
+  extract: 'function-form',
+  extractExpression: 'function-form',
+  parse: 'function-form',
+
+  // `### Per-node timing`'s second block imports and calls it.
+  createTimingHook: 'example-only',
+
+  BaseRegistry: 'building-block',
+  Cache: 'building-block',
+  CacheType: 'building-block',
+  CaseInsensitiveRegistry: 'building-block',
+  fromContext: 'building-block',
+  getContextValue: 'building-block',
+  Registry: 'building-block',
+  RegistryEntries: 'building-block',
+  RegistryType: 'building-block',
+  Stack: 'building-block',
+  StackType: 'building-block',
+
+  AggregateType: 'unused',
+  getContextKey: 'unused',
+  isRegistryContext: 'unused',
+  Queue: 'unused',
+  QueueType: 'unused',
+  RecursiveAggregateVisitor: 'unused',
+  RecursiveVisitor: 'unused',
+  RecursiveVisitorContext: 'unused',
+  RecursiveVisitorOptions: 'unused',
+  RecursiveVisitorRegistryResult: 'unused',
+  RecursiveVisitorResult: 'unused',
+  RecursiveVisitorResultType: 'unused',
+  RecursiveVisitorStackResult: 'unused',
+  RecursiveVisitorState: 'unused',
+  RegistryOptionType: 'unused',
+  ScopeOptions: 'unused',
+  ScopeType: 'unused',
+};
+
+describe('every export is documented or allowlisted (F10, eval-core copy)', () => {
+  const README = 'modules/eval-core/README.md';
+  const exported = () => exportedNames(SPECIFIER_ENTRY['@zvenigora/ng-eval-core']);
+  const documented = () =>
+    documentedNames(fs.readFileSync(path.join(workspaceRoot, README), 'utf8'));
+
+  it('names every export in a code span of the package README, or allowlists it', () => {
+    expect(undocumentedExports(exported(), documented(), UNDOCUMENTED, README)).toEqual([]);
+  });
+
+  it('allowlists only names the package still exports', () => {
+    expect(staleAllowlistEntries(exported(), UNDOCUMENTED)).toEqual([]);
+  });
+
+  it('reads code spans, not fenced blocks, and not a member access', () => {
+    const names = documentedNames(
+      'Use `EvalService`, ``a `quoted` span``, and\n`service.parse(expr)`.\n\n' +
+        '```ts\nimport { Queue } from "x";\n```\n'
+    );
+    expect([...names].sort()).toEqual(['EvalService', 'a', 'expr', 'quoted', 'service', 'span']);
+  });
+
+  it('names the export it cannot account for, and the entry that excuses nothing', () => {
+    const fixture = new Set(['A', 'B', 'C']);
+    expect(undocumentedExports(fixture, new Set(['A']), { B: 'unused' }, 'fixture.md')).toEqual([
+      'C: exported, named in no code span of fixture.md, and not allowlisted',
+    ]);
+    expect(staleAllowlistEntries(fixture, { B: 'unused', D: 'unused' })).toEqual([
+      'D: allowlisted, and not exported',
     ]);
   });
 });

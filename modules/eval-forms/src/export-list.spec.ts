@@ -275,6 +275,74 @@ export const unresolvedAcrossSpecifiers = (
       );
   });
 
+/**
+ * Why an export its package's README does not name may stay unnamed
+ * (`docs/backlog.md` F10). The `eval-core` copy defines each reason.
+ */
+export type UndocumentedReason =
+  | 'signature-type'
+  | 'function-form'
+  | 'example-only'
+  | 'building-block'
+  | 'unused';
+
+/**
+ * Every identifier a markdown text names inside a code span, outside fenced
+ * blocks, and not after a `.` - what "documented" means for F10. The
+ * `eval-core` copy carries the reasoning.
+ */
+export const documentedNames = (markdown: string): ReadonlySet<string> => {
+  let fence: { readonly ch: string; readonly length: number } | undefined;
+
+  const prose = markdown
+    .split(/\r?\n/)
+    .map((line) => {
+      const run = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+      if (fence) {
+        if (run && run[1][0] === fence.ch && run[1].length >= fence.length && /^ {0,3}(`{3,}|~{3,})\s*$/.test(line)) {
+          fence = undefined;
+        }
+        return '';
+      }
+      if (run) {
+        fence = { ch: run[1][0], length: run[1].length };
+        return '';
+      }
+      return line;
+    })
+    .join('\n');
+
+  const names = new Set<string>();
+  for (const span of prose.matchAll(/(?<!`)(`+)((?:(?!\n[ \t]*\n)[\s\S])*?[^`])\1(?!`)/g)) {
+    for (const name of span[2].matchAll(/(?<![\w$.])[A-Za-z_$][\w$]*/g)) {
+      names.add(name[0]);
+    }
+  }
+  return names;
+};
+
+/** Each export named in no code span of `readme` and absent from the allowlist. */
+export const undocumentedExports = (
+  exported: ReadonlySet<string>,
+  documented: ReadonlySet<string>,
+  allowlist: Readonly<Record<string, UndocumentedReason>>,
+  readme: string
+): readonly string[] =>
+  [...exported]
+    .filter((name) => !documented.has(name) && !Object.prototype.hasOwnProperty.call(allowlist, name))
+    .sort()
+    .map((name) => `${name}: exported, named in no code span of ${readme}, and not allowlisted`);
+
+/** Each allowlist entry the package no longer exports. */
+export const staleAllowlistEntries = (
+  exported: ReadonlySet<string>,
+  allowlist: Readonly<Record<string, UndocumentedReason>>
+): readonly string[] =>
+  Object.keys(allowlist)
+    .filter((name) => !exported.has(name))
+    .sort()
+    .map((name) => `${name}: allowlisted, and not exported`);
+
 describe('export-list reader (eval-forms copy)', () => {
   const core = () => exportedNames(SPECIFIER_ENTRY['@zvenigora/ng-eval-forms']);
   const forSignals = () =>
@@ -428,6 +496,55 @@ describe('every @zvenigora import resolves against its own specifier (F11, eval-
     );
     expect(found).toEqual([
       "fixture.md:1 imports { SignalContextWriteErrorz } from '@zvenigora/ng-eval-signals', which it does not export",
+    ]);
+  });
+});
+
+/**
+ * The exports of the three entry points that `modules/eval-forms/README.md`
+ * names in no code span, each with its reason (`docs/backlog.md` F10). Empty
+ * when written: the README names every one. The two checks below still run
+ * over it, so the first entry anyone adds is held to them.
+ */
+const UNDOCUMENTED: Readonly<Record<string, UndocumentedReason>> = {};
+
+describe('every export is documented or allowlisted (F10, eval-forms copy)', () => {
+  // One README for the three entry points, so their exports are read as one
+  // surface.
+  const README = 'modules/eval-forms/README.md';
+  const exported = () =>
+    new Set(
+      [
+        '@zvenigora/ng-eval-forms',
+        '@zvenigora/ng-eval-forms/reactive',
+        '@zvenigora/ng-eval-forms/signals',
+      ].flatMap((specifier) => [...exportedNames(SPECIFIER_ENTRY[specifier])])
+    );
+  const documented = () =>
+    documentedNames(fs.readFileSync(path.join(workspaceRoot, README), 'utf8'));
+
+  it('names every export in a code span of the package README, or allowlists it', () => {
+    expect(undocumentedExports(exported(), documented(), UNDOCUMENTED, README)).toEqual([]);
+  });
+
+  it('allowlists only names the package still exports', () => {
+    expect(staleAllowlistEntries(exported(), UNDOCUMENTED)).toEqual([]);
+  });
+
+  it('reads code spans, not fenced blocks, and not a member access', () => {
+    const names = documentedNames(
+      'Use `bindFieldProperties` and\n`binding.destroy()`.\n\n```ts\nimport { TEXT } from "x";\n```\n'
+    );
+    expect([...names].sort()).toEqual(['bindFieldProperties', 'binding']);
+  });
+
+  it('names the export it cannot account for, and the entry that excuses nothing', () => {
+    const fixture = new Set(['A', 'B', 'C']);
+    expect(undocumentedExports(fixture, new Set(['A']), { B: 'unused' }, 'fixture.md')).toEqual([
+      'C: exported, named in no code span of fixture.md, and not allowlisted',
+    ]);
+    expect(staleAllowlistEntries(fixture, { B: 'unused', D: 'unused' })).toEqual([
+      'D: allowlisted, and not exported',
     ]);
   });
 });
