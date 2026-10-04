@@ -16,7 +16,7 @@ independently and **all three published to npm** under the `@zvenigora` scope, e
   Phase 3 shipped 0.1.0.
 - **`@zvenigora/ng-eval-forms`** (`modules/eval-forms`) — Angular form field properties
   driven by expressions that arrive as strings at runtime, built on the other two.
-  Published at **0.3.0**; Phase 6 shipped 0.2.0. It ships **three entry points from one
+  Published at **0.3.1**; Phase 6 shipped 0.2.0. It ships **three entry points from one
   package**: the shared core at `@zvenigora/ng-eval-forms`, the Reactive Forms adapter at
   `@zvenigora/ng-eval-forms/reactive`, and the Signal Forms adapter at
   `@zvenigora/ng-eval-forms/signals`, which requires Angular 22.

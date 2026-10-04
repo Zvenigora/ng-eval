@@ -332,7 +332,7 @@ renders cleanly under `/reactive` — logged as [BL-D2](docs/backlog-retired.md#
 rather than resolved here (resolved in `eval-forms` 0.3.0: both now throw); a schema **value** shared across models silently renders form B
 against form A's data, so reuse must go through a schema *function* of the rules;
 `caseInsensitive` is in practice a factory-wide option, not a per-registration one
-([BL-D3](docs/backlog-retired.md#d3); resolved for `eval-forms` 0.3.1: a registration's value
+([BL-D3](docs/backlog-retired.md#d3); resolved in `eval-forms` 0.3.1: a registration's value
 reaches the memo and the context as well as the walk); the nested-signal diagnostic from `eval-signals` does not reach
 this entry point; the form's key set is not enumerable from upstream; the identifier guard
 over-rejects a name an expression binds itself (measured 2026-10-03, it does not: `eval-core`

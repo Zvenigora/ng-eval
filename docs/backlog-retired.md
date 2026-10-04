@@ -2318,7 +2318,7 @@ each reverted, against the whole `eval-forms` suite:
 ## D3 — Per-registration `caseInsensitive` reaches one of three levers
 
 **Package** forms · **Kind** decision · **Status** **Retired — decided and fixed 2026-10-03**;
-versioned `eval-forms` 0.3.1, unpublished. Was Open, Covered. A registration's `caseInsensitive`
+released 2026-10-04 in `eval-forms` 0.3.1, tagged 3d56994. Was Open, Covered. A registration's `caseInsensitive`
 now reaches all three levers
 
 **Decided: key the memo on the key and `caseInsensitive` together**, the second of the two shapes
@@ -2459,8 +2459,8 @@ hit. Either correct the attribution and add the divergence, or add the `isSignal
 <a id="d5"></a>
 ## D5 — Two dead lookups run ahead of ours on every resolution
 
-**Package** forms · **Kind** fix (perf) · **Status** **Retired — fixed 2026-10-03**; versioned
-`eval-forms` 0.3.1, unpublished. Filed against `/signals`, and `/reactive` had the same shape with
+**Package** forms · **Kind** fix (perf) · **Status** **Retired — fixed 2026-10-03**; released
+2026-10-04 in `eval-forms` 0.3.1, tagged 3d56994. Filed against `/signals`, and `/reactive` had the same shape with
 one dead lookup
 
 *Fixed* 2026-10-03: a rule context's lookups are exactly the live ones, at both entry points.
@@ -2673,8 +2673,9 @@ new gap; worth revisiting if the core's surface grows.
 ## D11 — `/signals` has no worked example
 
 **Package** forms · **Kind** docs · **Status** **Retired — fixed 2026-10-03**, docs and tests
-only. [`docs/forms/worked-example-signals.md`](forms/worked-example-signals.md), linked from the
-package README's `/signals` section
+only; released 2026-10-04 in `eval-forms` 0.3.1, tagged 3d56994: the example ships in no package,
+the README's link to it does. [`docs/forms/worked-example-signals.md`](forms/worked-example-signals.md),
+linked from the package README's `/signals` section
 
 *Fixed* 2026-10-03: [`docs/forms/worked-example-signals.md`](forms/worked-example-signals.md) is
 the `/signals` counterpart of [`docs/forms/worked-example.md`](forms/worked-example.md). It has the
