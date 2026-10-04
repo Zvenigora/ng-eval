@@ -177,7 +177,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [D2](backlog-retired.md#d2) | Should `/reactive` reject prototype-shadowed identifiers too? | forms | decision, breaking | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e: yes, with `/signals`' own guard, shared from the core; no form that worked could have named one |
 | [D3](#d3) | Per-registration `caseInsensitive` reaches one of three levers | forms | decision | Open, Covered |
 | [D4](backlog-retired.md#d4) | A top-level model key holding a signal is returned un-called | forms | fix or doc | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-forms` 0.2.4, tagged 587ebf1. `/signals` unwraps it as upstream does, and the README bullet is corrected |
-| [D5](#d5) | Two dead lookups run ahead of ours on every resolution | forms | fix (perf) | Open |
+| [D5](backlog-retired.md#d5) | Two dead lookups run ahead of ours on every resolution | forms | fix (perf) | **Retired — fixed 2026-10-03**; unreleased. A rule context's lookups are exactly the live ones at both entry points: one resolver call per identifier, where `/signals` made three and `/reactive` two |
 | [D6](backlog-retired.md#d6) | `/signals` diverged from upstream on non-string keys — filed as "the `typeof` guard is unfalsifiable", measured false | forms | fix | **Retired — fixed 2026-09-26**; released 2026-09-30 in `eval-forms` 0.2.4, tagged 587ebf1 |
 | [D7](#d7) | `toSignal`'s `assertNotInReactiveContext` throws out of the mirror | forms | accepted | Open, documented |
 | [D8](#d8) | `warnOnNestedSignals` runs once, at construction | forms | accepted | Open, documented |
@@ -609,21 +609,6 @@ shipping, so the spec records the limitation and goes red if a later change to t
 silently reverses it.
 
 *Recorded*: [`forms/phase-6-plan.md` § 3.5.3](forms/phase-6-plan.md).
-
-<a id="d5"></a>
-## D5 — Two dead lookups run ahead of ours on every resolution
-
-**Package** forms · **Kind** fix (perf) · **Status** Open
-
-`createFieldContext({}, {}, …)` pushes two resolvers over empty records, and under
-`caseInsensitive` each allocates an `Object.keys({})` per key **per node**. Plan-mandated (Phase 6
-§ 5 authorises `createFieldContext`, not `createSignalContext`), construction is per rule per
-`form()`, and the cost is small.
-
-The only per-node-cost entry in this file, so it is the only one `internal/performance.spec.ts` is
-the gate for.
-
-*Recorded*: [`forms/phase-6-step-2-summary.md` § 5.2](forms/phase-6-step-2-summary.md).
 
 <a id="d7"></a>
 ## D7 — `toSignal`'s `assertNotInReactiveContext` throws out of the mirror

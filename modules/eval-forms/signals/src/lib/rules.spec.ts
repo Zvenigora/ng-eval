@@ -1,6 +1,7 @@
 import { WritableSignal, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FieldTree, Schema, form, schema } from '@angular/forms/signals';
+import { EvalContext } from '@zvenigora/ng-eval-core';
 // A spec-only import (plan S 5, whose import list governs **non-spec** files).
 // The adapter must not name this class - S 3.4.1 put the bypass in the core so
 // `/signals` cannot grow its own - but asserting that an assigning expression
@@ -546,5 +547,54 @@ describe('createExpressionRules', () => {
 
       expect(f.city().metadata(TEXT)?.()).toBe('undefined/HQ');
     });
+  });
+
+  describe('the rule context (docs/backlog-retired.md D5)', () => {
+
+    interface Probe {
+      city: string;
+      country: string;
+      keep: (context: EvalContext) => boolean;
+    }
+
+    // The context a registrar builds, reached through the rule itself rather
+    // than through `createRuleContext`: `this` evaluates to the context the
+    // walk runs against, so `keep(this)` hands it to a model function.
+    // `model-source.spec.ts` asserts the same of the source; this is what says
+    // the registrar uses that context and no other.
+    it.each([false, true])(
+      'should give a registered rule a context whose only lookup is the memo resolver (caseInsensitive %s)',
+      (caseInsensitive) => {
+        let captured: EvalContext | undefined;
+
+        const model = signal<Probe>({
+          city: 'Boston',
+          country: 'US',
+          keep: (context) => {
+            captured = context;
+            return true;
+          },
+        });
+        const rules = createExpressionRules(model, { eval: { caseInsensitive } });
+
+        const f = TestBed.runInInjectionContext(() =>
+          form(
+            model,
+            schema<Probe>((p) => {
+              rules.evalVisible(p.city, 'keep(this)');
+            })
+          )
+        );
+
+        expect(f.city().hidden()).toBe(false);
+        expect(captured).toBeInstanceOf(EvalContext);
+
+        const context = captured as EvalContext;
+        const key = caseInsensitive ? 'COUNTRY' : 'country';
+
+        expect(context.lookups.map((lookup) => lookup(key, context, context.options)))
+          .toEqual(['US']);
+      }
+    );
   });
 });

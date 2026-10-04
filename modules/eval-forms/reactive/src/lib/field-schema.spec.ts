@@ -5,6 +5,7 @@ import {
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AbstractControl, FormArray, FormControl, FormGroup } from '@angular/forms';
+import { EvalContext } from '@zvenigora/ng-eval-core';
 import { SignalContextWriteError } from '@zvenigora/ng-eval-signals';
 import { Subject } from 'rxjs';
 // Through the entry point's barrel rather than `./field-schema`, which is what
@@ -391,6 +392,43 @@ describe('bindFieldProperties', () => {
       // the scope on `a`'s is not on. Hoist `createFieldContext` out of
       // `bindFieldProperties`' loop and this reads `'SCOPED'` too.
       expect(fromB).toBe('CA');
+    });
+
+    it('should give each field a context whose only lookup is the form resolver', () => {
+      // `this` evaluates to the context the walk runs against, so `keep(this)`
+      // hands the field's own context to a control's function. Every lookup
+      // is then asked for a key the form holds, so one that cannot answer
+      // shows up as an `undefined`. Up to 0.3.0 this read `[undefined, 'CA']`:
+      // `createFieldContext`'s field half pushed a resolver over the `{}` this
+      // binding passes it, and `get` ran it ahead of the form's on every
+      // identifier (`docs/backlog-retired.md` D5).
+      //
+      // There is no `caseInsensitive` arm here, unlike `/signals`' pair:
+      // `bindFieldProperties` takes no evaluation options, so the form
+      // resolver is always built without it.
+      let captured: EvalContext | undefined;
+
+      const binding = bindFieldProperties(
+        [{ name: 'country', visible: 'keep(this)' }],
+        group({
+          country: new FormControl('CA'),
+          keep: new FormControl((context: EvalContext) => {
+            captured = context;
+            return true;
+          }),
+        }),
+        { injector }
+      );
+
+      expect(binding.fields['country'].visible?.()).toBe(true);
+      expect(captured).toBeInstanceOf(EvalContext);
+
+      const context = captured as EvalContext;
+
+      expect(context.lookups.map((lookup) => lookup('country', context, context.options)))
+        .toEqual(['CA']);
+
+      binding.destroy();
     });
   });
 

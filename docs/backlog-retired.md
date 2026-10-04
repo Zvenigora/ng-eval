@@ -2361,6 +2361,70 @@ hit. Either correct the attribution and add the divergence, or add the `isSignal
 
 *Recorded*: [`forms/phase-6-step-2-summary.md` § 5.2](forms/phase-6-step-2-summary.md).
 
+<a id="d5"></a>
+## D5 — Two dead lookups run ahead of ours on every resolution
+
+**Package** forms · **Kind** fix (perf) · **Status** **Retired — fixed 2026-10-03**; unreleased.
+Filed against `/signals`, and `/reactive` had the same shape with one dead lookup
+
+*Fixed* 2026-10-03: a rule context's lookups are exactly the live ones, at both entry points.
+`/signals`' `createRuleContext` still builds through `createFieldContext({}, {}, options)`, for the
+class whose `set` throws, then empties `lookups` before pushing the memo resolver, so that resolver
+is the only lookup. `/reactive`'s `bindFieldProperties` removes the field half's lookup over `{}`
+from `createFieldContext(formSource, {})`, so the form resolver is the only one. `createFieldContext`
+itself is unchanged, since it is public.
+
+*Measured*: resolver calls per identifier through the walk, the same for a key the source holds and
+for one it does not:
+
+| Entry point | Before | After |
+| ----------- | -----: | ----: |
+| `/signals` | 3 | 1 |
+| `/signals`, `caseInsensitive` | 3, two of them allocating an `Object.keys({})` | 1 |
+| `/reactive` | 2 | 1 |
+
+No timing assertion was added: [D12](#d12)'s injector-path memory cases were removed for being
+timing-dependent, and a count is what a suite can hold steady. `eval-core`'s
+`internal/performance.spec.ts`, which this entry named as its gate, runs neither adapter.
+
+*Verified*: five rows, written first and red against the unfixed code. At `/signals`,
+`model-source.spec.ts` and `rules.spec.ts`, each with `caseInsensitive` off and on; at `/reactive`,
+`field-schema.spec.ts`. Each asks every lookup on the context for a key the source holds and expects
+`['US']` (`['CA']` at `/reactive`), so a lookup that cannot answer shows as an `undefined` and a
+missing live one as an empty list. The two entry-point rows reach the context through the rule
+itself, as `keep(this)`, because `this` evaluates to the walk's context, so they also show that the
+registrar uses the context they describe. `/reactive` has no `caseInsensitive` row:
+`bindFieldProperties` takes no evaluation options, so its form resolver is always built without the
+option, and that leg of the criterion has nothing to run against there.
+
+**One existing spec changed, by decision.** `model-source.spec.ts`' "should build a context carrying
+exactly three lookups" was this entry's pin, since the count was the two dead lookups plus ours. It
+is now the `/signals` row above. Its neighbour pops the memo lookup and expects nothing to resolve,
+and keeps that assertion under a new title: with one lookup, popping it shows that nothing else
+carries the model, `original` included. No answer changed: `eval-forms` went from 312 to 316, with
+every other case green.
+
+Probes, each against the whole `eval-forms` suite, then reverted:
+
+| Wrong implementation | Red |
+| -------------------- | --- |
+| Every dead lookup put back | 5 of 316: the five new rows, nothing else |
+| `/signals`' two put back, `/reactive` fixed | 4: the four `/signals` rows |
+| `/reactive`'s put back, `/signals` fixed | 1: the `/reactive` row |
+| `/reactive` drops the form's lookup as well | 18: the `/reactive` row, and 17 existing cases whose answers change |
+
+**The entry as it stood:**
+
+`createFieldContext({}, {}, …)` pushes two resolvers over empty records, and under
+`caseInsensitive` each allocates an `Object.keys({})` per key **per node**. Plan-mandated (Phase 6
+§ 5 authorises `createFieldContext`, not `createSignalContext`), construction is per rule per
+`form()`, and the cost is small.
+
+The only per-node-cost entry in this file, so it is the only one `internal/performance.spec.ts` is
+the gate for.
+
+*Recorded*: [`forms/phase-6-step-2-summary.md` § 5.2](forms/phase-6-step-2-summary.md).
+
 <a id="d6"></a>
 ## D6 — `/signals` diverged from upstream on non-string keys
 

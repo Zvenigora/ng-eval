@@ -299,7 +299,8 @@ const validate = (schema: readonly FieldSchema[], group: FormGroup): void => {
  * rather than left to be found: S 3.4.3's precedence rule is asserted at the
  * core in `field-context.spec.ts` and ships **untested end to end**, because
  * no `/reactive` path produces a field-local key. It gets settled by whichever
- * phase first has a consumer for one.
+ * phase first has a consumer for one. Until then the field half's lookup is
+ * removed, so the form's resolver is the only one `get` consults.
  *
  * **`createControlSource` is called once, for the whole form.** Per field
  * would build N mirrors over one group: N x the live `toSignal` subscriptions
@@ -458,6 +459,16 @@ export const bindFieldProperties = (
     for (const field of schema) {
 
       const context = createFieldContext(formSource, {});
+
+      // The field half's lookup goes, so the form's is the only one. It runs
+      // over the `{}` above and can never answer, but `createFieldContext`
+      // pushes it first and `get` stops only at an answer, so it ran ahead of
+      // the form's on every identifier (`docs/backlog-retired.md` D5). Removed
+      // here rather than never built, because `createFieldContext` is public
+      // and stays as it is. A phase that gives fields keys of their own takes
+      // this line out.
+      context.lookups.shift();
+
       const properties: { visible?: EvalSignal<boolean>; text?: EvalSignal<string> } = {};
 
       // `options.injector`, **not** the scope, and the distinction is not

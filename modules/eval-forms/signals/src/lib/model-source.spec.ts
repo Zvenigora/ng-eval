@@ -25,18 +25,24 @@ describe('createModelSource', () => {
 
   describe('createRuleContext', () => {
 
-    it('should build a context carrying exactly three lookups', () => {
-      const model = signal<Record<string, unknown>>({ country: 'US' });
-      const context = createModelSource(model).createRuleContext();
+    it.each([false, true])(
+      'should build a context whose only lookup is the memo resolver (caseInsensitive %s)',
+      (caseInsensitive) => {
+        const model = signal<Record<string, unknown>>({ country: 'US' });
+        const context = createModelSource(model, { caseInsensitive }).createRuleContext();
+        const key = caseInsensitive ? 'COUNTRY' : 'country';
 
-      // Two from `createFieldContext` - one per `createSignalContext`, and
-      // both over an empty `{}` - plus ours. The count is the only observable
-      // there is: `createSignalContext` closes over its source and the
-      // returned `EvalContext` exposes no accessor for it, so "both sources
-      // are empty" is not directly assertable and the pop below is what
-      // stands in for it.
-      expect(context.lookups.length).toBe(3);
-    });
+        // Every lookup is asked for a key the model holds, so a lookup that
+        // cannot answer shows up as an `undefined` in the list. Up to 0.3.0
+        // this read `[undefined, undefined, 'US']`: `createFieldContext`
+        // pushed one resolver per `createSignalContext`, both over an empty
+        // `{}`, and `get` ran both ahead of ours on every identifier
+        // (`docs/backlog-retired.md` D5). Under `caseInsensitive` each of
+        // them also allocated an `Object.keys({})` per read.
+        expect(context.lookups.map((lookup) => lookup(key, context, context.options)))
+          .toEqual(['US']);
+      }
+    );
 
     it('should build a context that rejects a write', () => {
       // S 3.2.1's *stated* reason for going through `createFieldContext` is
@@ -51,15 +57,16 @@ describe('createModelSource', () => {
       expect(() => context.set('country')).toThrow(SignalContextWriteError);
     });
 
-    it('should resolve every model key through the third lookup and nothing without it', () => {
+    it('should resolve every model key through its one lookup and nothing without it', () => {
       const model = signal<Record<string, unknown>>({ country: 'US', zip: '10001' });
       const context = createModelSource(model).createRuleContext();
 
       expect(context.get('country')).toBe('US');
       expect(context.get('zip')).toBe('10001');
 
-      // Removing the third lookup is what proves the first two are empty: if
-      // either carried the model, a key would still resolve here.
+      // Removing the lookup is what proves nothing else carries the model -
+      // `original` included, which `get` reads before any lookup. Up to 0.3.0
+      // this popped the third of three and proved the two dead ones empty.
       context.lookups.pop();
 
       expect(context.get('country')).toBeUndefined();

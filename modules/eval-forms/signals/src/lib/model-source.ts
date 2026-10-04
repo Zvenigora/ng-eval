@@ -76,7 +76,7 @@ export interface ModelSource {
  *
  * With resolution inside the computed there is nothing left for a record to
  * hold, so both `createFieldContext` sources are `{}` and the resolver
- * pushed onto `lookups` answers every key.
+ * pushed onto `lookups` - the only one there - answers every key.
  *
  * **The read is what subscribes, and it happens even when the key resolves to
  * `undefined`.** `EvalContext.get` treats `undefined` as absent at every step,
@@ -155,6 +155,14 @@ export const createModelSource = <TModel extends object>(
     // error the error policy must re-throw rather than swallow. A hand-built
     // `EvalContext` would silently accept an assigning expression.
     const context = createFieldContext({}, {}, options);
+
+    // Its two lookups go, so the one pushed below is the only one. Each runs
+    // over one of those empty records and can never answer, but `get` stops
+    // only at an answer, so both ran ahead of ours on every identifier - and
+    // under `caseInsensitive` each allocated an `Object.keys({})` per read
+    // (`docs/backlog-retired.md` D5). Removed here rather than never built,
+    // because `createFieldContext` is public and stays as it is.
+    context.lookups.splice(0);
 
     // The resolver's parameter is deliberately unannotated. `EvalLookup` is
     // `(key: unknown, …) => unknown` and a parameter position is
