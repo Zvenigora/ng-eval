@@ -10,6 +10,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.3.1] - 2026-10-04
+
+**Two fixes in how a rule's context is built, [D5](../../docs/backlog-retired.md#d5) and
+[D3](../../docs/backlog-retired.md#d3), and a worked example for `/signals`.** A patch: no exported
+symbol changes shape, and the `.d.ts` files differ from 0.3.0's in three documentation comments
+only, on `bindFieldProperties`, `ExpressionRuleOptions.eval` and `createExpressionRules`. The peer
+ranges are unchanged.
+
+### Fixed
+- **eval-forms, both entry points, no dead resolvers ahead of the live one.** A rule's context
+  carried lookups over empty records, which could never answer and ran ahead of the one that does
+  on every identifier: two at `/signals` and one at `/reactive`. They are removed, so each
+  identifier makes one resolver call, where `/signals` made three and `/reactive` two. Under
+  `caseInsensitive` the removed `/signals` lookups also allocated an `Object.keys({})` per read. No
+  answer changes. [D5](../../docs/backlog-retired.md#d5).
+- **eval-forms `/signals`, a per-registration `caseInsensitive` reaches every lever.** Set on one
+  registration, it corrected that rule's *property* names and left its *identifier* keys on the
+  factory's setting, so `Country + address.NAME` over `{ country: 'US', address: { name: 'HQ' } }`
+  read `'undefinedHQ'`. The rule's context is now built from the registration's resolved options,
+  and the factory's memo holds one entry per key and casing rule, so the expression reads `'USHQ'`
+  and two registrations naming one key under different settings each resolve it under their own.
+  A registration's `eval: {}` now turns a factory's `caseInsensitive` off for that rule. The
+  README section "`caseInsensitive` is in practice a factory option" is now "`caseInsensitive` per
+  registration". [D3](../../docs/backlog-retired.md#d3).
+
+### Added
+- **The README's `/signals` section links a worked example**,
+  [`docs/forms/worked-example-signals.md`](../../docs/forms/worked-example-signals.md): the
+  `/reactive` example's checkout form under Signal Forms, every block of it executed by the suite.
+  [D11](../../docs/backlog-retired.md#d11).
+
+---
+
 ## [0.3.0] - 2026-10-04
 
 **A rule may write into what it created, and not into the form's data — by consequence of

@@ -39,6 +39,19 @@ Workspace tooling: nothing here reaches a consumer, so nothing here is versioned
   through `tsconfig.base.json`'s paths, and fails one the workspace does not map. The
   `eval-signals` README's `EvalService`, printed as a comment because of this gap, is now an
   import line.
+- **Every export is documented, or listed with a reason**, 2026-10-04 — `docs/backlog.md` F10.
+  The drift gates checked only what a README imports, so an export documented any other way, or
+  not at all, was watched by nothing. Each `export-list.spec.ts` now requires every export of its
+  package to be named in a code span of that package's README, or to be in an allowlist in the
+  spec with one of five reasons, and every allowlisted name to be still exported. `eval-core`
+  allowlists 64 of its 76 exports, `eval-signals` 1 of 7, and `eval-forms` none of 15.
+- **A missing release tag fails `npm test`**, 2026-10-04 — `docs/backlog.md` F8.
+  `tools/release-tags.mjs`, beside `tools/doc-links.mjs` in the root `test` target, requires a
+  `<project>@<version>` tag for every row of the register's Publication status table, at the
+  commit the row names, and fails rather than skips in a checkout with no tags. CI's checkout now
+  fetches them (`fetch-depth: 0`), and the three `project.json`s lose
+  `fallbackCurrentVersionResolver: "disk"`, so `nx release version` no longer falls back to the
+  manifest when a tag is missing.
 
 ### Changed
 - **Each package now carries a copy of the root `LICENSE`** (`modules/*/LICENSE`), which

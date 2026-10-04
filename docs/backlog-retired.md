@@ -2318,7 +2318,8 @@ each reverted, against the whole `eval-forms` suite:
 ## D3 — Per-registration `caseInsensitive` reaches one of three levers
 
 **Package** forms · **Kind** decision · **Status** **Retired — decided and fixed 2026-10-03**;
-unreleased. Was Open, Covered. A registration's `caseInsensitive` now reaches all three levers
+versioned `eval-forms` 0.3.1, unpublished. Was Open, Covered. A registration's `caseInsensitive`
+now reaches all three levers
 
 **Decided: key the memo on the key and `caseInsensitive` together**, the second of the two shapes
 the entry weighed. The first, moving `caseInsensitive` onto `createExpressionRules`' own signature,
@@ -2458,8 +2459,9 @@ hit. Either correct the attribution and add the divergence, or add the `isSignal
 <a id="d5"></a>
 ## D5 — Two dead lookups run ahead of ours on every resolution
 
-**Package** forms · **Kind** fix (perf) · **Status** **Retired — fixed 2026-10-03**; unreleased.
-Filed against `/signals`, and `/reactive` had the same shape with one dead lookup
+**Package** forms · **Kind** fix (perf) · **Status** **Retired — fixed 2026-10-03**; versioned
+`eval-forms` 0.3.1, unpublished. Filed against `/signals`, and `/reactive` had the same shape with
+one dead lookup
 
 *Fixed* 2026-10-03: a rule context's lookups are exactly the live ones, at both entry points.
 `/signals`' `createRuleContext` still builds through `createFieldContext({}, {}, options)`, for the
