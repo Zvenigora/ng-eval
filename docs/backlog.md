@@ -171,7 +171,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
 | [B4](backlog-retired.md#b4) | `eval-core.component.ts` is dead generator scaffold | core | fix | **Retired — fixed 2026-09-26**; no published artifact changed — the bundle and `.d.ts` are byte-identical |
-| [B5](#b5) | `eval-core` exports seventeen symbols nothing uses — two `@deprecated` since Phase 1, their removal deferred in a plan and nowhere else | core | decision | Open |
+| [B5](backlog-retired.md#b5) | `eval-core` exports seventeen symbols nothing uses — two `@deprecated` since Phase 1, their removal deferred in a plan and nowhere else | core | decision, then fix | **Retired — decided and fixed 2026-10-04**, unreleased: all seventeen removed, a breaking minor for `eval-core` 0.11.0; the CHANGELOG names a replacement for the three that have one |
 | [C1](backlog-retired.md#c1) | A member-target write escapes the read-only policy | signals | decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-signals` 0.3.0, with `eval-core` 0.10.0, tagged 0c3299e: a signal expression may write into what it created and not into anything it was given or got back from a call |
 | [C2](backlog-retired.md#c2) | Detect a write violation at construction, not first recompute | signals | decision | **Retired — decided 2026-10-03**: no construction-time check; [C1](backlog-retired.md#c1)'s runtime guard is the guarantee and fires on the first read |
 | [C3](backlog-retired.md#c3) | Whether `eval-signals` should work around [A4](backlog-retired.md#a4) locally | signals | decision | **Retired — decided and fixed 2026-10-01**; released 2026-10-02 in `eval-signals` 0.2.0, tagged c56f987: under `caseInsensitive` a source key is named as the source spells it, in `getKey`, write errors and the first segment of `dependencies` |
@@ -535,39 +535,7 @@ above.
 
 # B. `eval-core` — security and hygiene
 
-[B1](backlog-retired.md#b1)–[B4](backlog-retired.md#b4) are retired.
-
-<a id="b5"></a>
-## B5 — `eval-core` exports seventeen symbols nothing uses
-
-**Package** core · **Kind** decision · **Status** Open
-
-[F10](backlog-retired.md#f10)'s allowlist gives these seventeen the reason `unused`: nothing in
-the three libraries' non-spec sources references them beyond their own declaration and the
-barrels, counted 2026-10-04. They are:
-
-- the ten types in `internal/interfaces/recursive-visitors.ts`: `AggregateType`,
-  `RecursiveAggregateVisitor`, `RecursiveVisitor`, `RecursiveVisitorContext`,
-  `RecursiveVisitorOptions`, `RecursiveVisitorRegistryResult`, `RecursiveVisitorResult`,
-  `RecursiveVisitorResultType`, `RecursiveVisitorStackResult` and `RecursiveVisitorState`;
-- `ScopeOptions`, `ScopeType` and `RegistryOptionType` in `scope-type.ts`. `EvalScope` does not
-  use them, since it has `EvalScopeOptions`;
-- `Queue` and its `QueueType`;
-- `getContextKey` and `isRegistryContext` in `classes/common/context.ts`.
-
-**Two of them have had a removal deferred where nothing tracked it.** Phase 1 marked
-`RecursiveVisitorState` and `RecursiveVisitorResult` `@deprecated`, pointing at `EvalHooks`, and
-its plan made their "removal … a follow-up for the next breaking version"
-([`side-effects/phase-1-plan.md`](side-effects/phase-1-plan.md), step 6's edit list). The deferral
-lived in the plan alone. `eval-core` has since shipped at least three breaking minors, 0.7.0, 0.8.0
-and 0.9.0, with both still exported.
-
-**The decision is whether to remove them, and when.** Removing an export is a breaking release.
-Most of the seventeen are types, which a consumer can import, and nothing establishes that none
-does. Keeping them costs a `.d.ts` that declares shapes the library does not use, and two of them
-are a hook vocabulary that contradicts `EvalHooks`.
-
-*Recorded*: while building F10's allowlist, 2026-10-04; the reference counts are that step's.
+[B1](backlog-retired.md#b1)–[B5](backlog-retired.md#b5) are retired.
 
 ---
 

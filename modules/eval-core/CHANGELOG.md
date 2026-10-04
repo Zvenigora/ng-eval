@@ -12,6 +12,26 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Removed
+- **Seventeen exports nothing in the library used — [B5](../../docs/backlog-retired.md#b5).**
+  No non-spec source in the three packages referenced any of them beyond its own declaration and
+  the barrels. Removing an export breaks a consumer that imports it, so this is a breaking minor;
+  nothing else about the library changes.
+  - **`RecursiveVisitorState`** and **`RecursiveVisitorResult`**, `@deprecated` since 0.3.0. Use
+    `EvalHooks` to observe a walk, and `EvalState` and `EvalResult` for its state and result.
+  - **`ScopeOptions`**. Use `EvalScopeOptions`, which is what `EvalScope` takes.
+  - **`ScopeType`** and **`RegistryOptionType`**, which nothing implemented. No replacement.
+  - **`RecursiveVisitorOptions`**, **`RecursiveVisitorContext`**,
+    **`RecursiveVisitorResultType`**, **`RecursiveVisitorStackResult`**,
+    **`RecursiveVisitorRegistryResult`**, **`RecursiveVisitor`**, **`RecursiveAggregateVisitor`**
+    and **`AggregateType`**, the rest of the visitor vocabulary those two belonged to. No
+    replacement: the visitors are not public.
+  - **`Queue`** and **`QueueType`**. No replacement; an array's `push` and `shift` do the same.
+  - **`getContextKey`**. No replacement. `EvalContext.getKey` answers the question for a whole
+    context, and unlike this function it answers `undefined` for a key nothing holds.
+  - **`isRegistryContext`**. No replacement; `context instanceof Registry` is the test the
+    library itself uses.
+
 ---
 
 ## [0.10.0] - 2026-10-04

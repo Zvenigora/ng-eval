@@ -1765,6 +1765,70 @@ byte-identical to a build of the parent commit, and neither build names the comp
 its selector. The `console.log` at `eval-core.component.ts:7` went with it — see [B3](#b3) for the
 source count.
 
+<a id="b5"></a>
+## B5 — `eval-core` exports seventeen symbols nothing uses
+
+**Package** core · **Kind** decision, then fix · **Status** **Retired — decided and fixed
+2026-10-04**: all seventeen removed, for `eval-core` 0.11.0, a breaking minor. Unreleased
+
+*Decided* 2026-10-04: remove them. A consumer that imports one breaks, which the CHANGELOG says
+symbol by symbol, with a replacement for the three that have one. Nothing in this repository
+imports any of them, and keeping them cost a `.d.ts` that declared shapes the library does not
+use, two of them a hook vocabulary `EvalHooks` contradicts.
+
+*Fixed* 2026-10-04. Re-counted first, on the commit before: no non-spec `.ts` file under
+`modules/` names any of the seventeen outside the five files that declare them and the two
+barrels that export them. One comment named `getContextKey`, in `eval-context.ts`, to say why
+`hasContextKey` does not use it; that clause went with the function. Removed:
+
+- `internal/interfaces/recursive-visitors.ts`, `scope-type.ts` and `queue-type.ts`, which
+  declared nothing else, and `classes/common/queue.ts`;
+- `getContextKey` and `isRegistryContext` from `classes/common/context.ts`, with the two
+  imports only `getContextKey` used;
+- their lines in the two barrels;
+- `queue.spec.ts`, which tested `Queue` and nothing else;
+- the seventeen `unused` entries in [F10](#f10)'s allowlist. The reason stays in the vocabulary
+  of all three spec copies, with no entry under it. The reader's case for a type-only export used
+  `QueueType` and `RecursiveVisitorState` as its fixtures, and now uses `StackType` and `Context`.
+  Its comment had called `RecursiveVisitorState` a type alias, which it never was; `Context` is
+  one;
+- `Queue`'s line in [`docs/common-classes.md`](common-classes.md).
+
+*Verified*: the built `.d.ts` against npm's 0.10.0 lists 59 exports to 76, missing exactly the
+seventeen and adding none, and every other line it changes is a removal, 133 of them. The built
+FESM bundle no longer contains `class Queue`, `RecursiveVisitorResultType`, `getContextKey` or
+`isRegistryContext`, the four that had runtime code. `eval-core`'s tests went from 1300 in 66
+suites to 1295 in 65, down `queue.spec.ts`'s five cases and its suite.
+
+**The entry as it stood:**
+
+[F10](#f10)'s allowlist gives these seventeen the reason `unused`: nothing in
+the three libraries' non-spec sources references them beyond their own declaration and the
+barrels, counted 2026-10-04. They are:
+
+- the ten types in `internal/interfaces/recursive-visitors.ts`: `AggregateType`,
+  `RecursiveAggregateVisitor`, `RecursiveVisitor`, `RecursiveVisitorContext`,
+  `RecursiveVisitorOptions`, `RecursiveVisitorRegistryResult`, `RecursiveVisitorResult`,
+  `RecursiveVisitorResultType`, `RecursiveVisitorStackResult` and `RecursiveVisitorState`;
+- `ScopeOptions`, `ScopeType` and `RegistryOptionType` in `scope-type.ts`. `EvalScope` does not
+  use them, since it has `EvalScopeOptions`;
+- `Queue` and its `QueueType`;
+- `getContextKey` and `isRegistryContext` in `classes/common/context.ts`.
+
+**Two of them have had a removal deferred where nothing tracked it.** Phase 1 marked
+`RecursiveVisitorState` and `RecursiveVisitorResult` `@deprecated`, pointing at `EvalHooks`, and
+its plan made their "removal … a follow-up for the next breaking version"
+([`side-effects/phase-1-plan.md`](side-effects/phase-1-plan.md), step 6's edit list). The deferral
+lived in the plan alone. `eval-core` has since shipped at least three breaking minors, 0.7.0, 0.8.0
+and 0.9.0, with both still exported.
+
+**The decision is whether to remove them, and when.** Removing an export is a breaking release.
+Most of the seventeen are types, which a consumer can import, and nothing establishes that none
+does. Keeping them costs a `.d.ts` that declares shapes the library does not use, and two of them
+are a hook vocabulary that contradicts `EvalHooks`.
+
+*Recorded*: while building F10's allowlist, 2026-10-04; the reference counts are that step's.
+
 ---
 
 # C. `eval-signals`
@@ -3814,7 +3878,7 @@ README, which ships nowhere. That is why its list is long, and why it is the lis
 first five of. The three `/reactive` symbols this entry measured, `createControlSource`,
 `FormBinding` and `FieldSchema`, are each named in a code span and so are gated now.
 
-**The seventeen `unused` are [B5](backlog.md#b5)**, opened from this step rather than decided in it.
+**The seventeen `unused` are [B5](#b5)**, opened from this step rather than decided in it.
 
 *The bound*, recorded as this entry's fix was asked to: the gate runs from the exports to the
 README, not back. A documented export that is **removed** leaves the README naming something that

@@ -10,7 +10,6 @@ Registries are a way to store and retrieve key-value paired data. Behind the sce
 
 ## Containers
 Containers are a way to store and retrieve data. The following containers are provided by Ng-eval:
-- `Queue`: A generic queue data structure with FIFO behavior,
 - `Stack`: A generic stack data structure with LIFO behavior.
 - `BaseContext`: A simple class for storing key-value pairs.
 - `Context`: A container which could be a base context or registry.

@@ -9,9 +9,8 @@ import { EvalScope, matchesNamespace } from './eval-scope';
  * Whether a context holds a key at all, regardless of the value bound to it.
  *
  * There is no `getContextValue` counterpart for this: that helper cannot
- * distinguish an absent key from one bound to `undefined`, and `getContextKey`
- * with `caseInsensitive: false` reports every key as present for a plain
- * object. Own properties only - the scopes this is used on are object literals
+ * distinguish an absent key from one bound to `undefined`. Own properties
+ * only - the scopes this is used on are object literals
  * built by `evaluatePatterns`, and inherited names are not bindings.
  */
 const hasContextKey = (context: Context, key: unknown): boolean => {

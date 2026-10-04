@@ -382,10 +382,10 @@ describe('export-list reader (eval-core copy)', () => {
   });
 
   it('returns a type-only export, which a runtime export list cannot see', () => {
-    // Both are type-only and have no runtime presence at all: `QueueType` is
-    // `export interface`, `RecursiveVisitorState` a type alias.
-    expect([...core()]).toContain('QueueType');
-    expect([...core()]).toContain('RecursiveVisitorState');
+    // Both are type-only and have no runtime presence at all: `StackType` is
+    // `export interface`, `Context` a type alias.
+    expect([...core()]).toContain('StackType');
+    expect([...core()]).toContain('Context');
   });
 
   it('follows the barrel graph through every hop', () => {
@@ -533,13 +533,12 @@ describe('every @zvenigora import resolves against its own specifier (F11, eval-
 /**
  * The exports `modules/eval-core/README.md` names in no code span, each with
  * its reason (`docs/backlog.md` F10). The package README names twelve of the
- * seventy-six and defers the rest to the repository README, which ships
+ * fifty-nine and defers the rest to the repository README, which ships
  * nowhere; a name documented only there is undocumented for whoever installed
  * the package, which is the split F3 found.
  *
- * `unused` counts references in all three libraries' non-spec sources,
- * measured when the list was written; `docs/backlog.md` B5 holds the question
- * of removing them.
+ * No entry is `unused` any more. The seventeen that were went in `eval-core`
+ * 0.11.0 (`docs/backlog.md` B5).
  */
 const UNDOCUMENTED: Readonly<Record<string, UndocumentedReason>> = {
   // A parameter, option, return value or event of `EvalService`,
@@ -598,24 +597,6 @@ const UNDOCUMENTED: Readonly<Record<string, UndocumentedReason>> = {
   RegistryType: 'building-block',
   Stack: 'building-block',
   StackType: 'building-block',
-
-  AggregateType: 'unused',
-  getContextKey: 'unused',
-  isRegistryContext: 'unused',
-  Queue: 'unused',
-  QueueType: 'unused',
-  RecursiveAggregateVisitor: 'unused',
-  RecursiveVisitor: 'unused',
-  RecursiveVisitorContext: 'unused',
-  RecursiveVisitorOptions: 'unused',
-  RecursiveVisitorRegistryResult: 'unused',
-  RecursiveVisitorResult: 'unused',
-  RecursiveVisitorResultType: 'unused',
-  RecursiveVisitorStackResult: 'unused',
-  RecursiveVisitorState: 'unused',
-  RegistryOptionType: 'unused',
-  ScopeOptions: 'unused',
-  ScopeType: 'unused',
 };
 
 describe('every export is documented or allowlisted (F10, eval-core copy)', () => {
