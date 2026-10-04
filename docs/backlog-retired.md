@@ -1409,7 +1409,7 @@ assertion without asking. Nor was this one of the cases the step's brief named. 
 ## A23 — `safeSetProperty` defines the property instead of assigning it
 
 **Package** core · **Kind** decision, then fix · **Status** **Retired — decided and fixed
-2026-10-03**, for `eval-core` 0.10.0. Was Open
+2026-10-03**; released 2026-10-04 in `eval-core` 0.10.0, tagged 0c3299e. Was Open
 
 **The cause.** [`safeSetProperty`](../modules/eval-core/src/lib/internal/visitors/prototype-pollution-guard.ts#L109-L155)
 runs its refusals — a non-object target, a blocklisted key, a built-in constructor, a built-in
@@ -1772,8 +1772,9 @@ source count.
 <a id="c1"></a>
 ## C1 — A member-target write escapes the read-only policy
 
-**Package** signals · **Kind** decision · **Status** **Retired — decided and fixed 2026-10-03**, for
-`eval-signals` 0.3.0 with `eval-core` 0.10.0. Was Open, Covered
+**Package** signals · **Kind** decision · **Status** **Retired — decided and fixed 2026-10-03**;
+released 2026-10-04 in `eval-signals` 0.3.0, with `eval-core` 0.10.0, tagged 0c3299e. Was Open,
+Covered
 
 The most serious unlisted behavioural entry in the repository.
 
@@ -2029,7 +2030,7 @@ respelling that root. No case covers that combination.
 ## D1 — The throwing-subscriber premise is false in both halves
 
 **Package** forms · **Kind** fix + decision · **Status** **Retired — decided and fixed
-2026-10-03**, for `eval-forms` 0.3.0. Was Open, Premise retired
+2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e. Was Open, Premise retired
 
 **The premise.** Four places in `eval-forms` state that a throw inside the `group.events`
 subscriber "unsubscribes it and silently ends all diffing for the life of the form".
@@ -2175,7 +2176,7 @@ The prototype-name and late-addition rows stayed green under every one.
 ## D2 — Should `/reactive` reject prototype-shadowed identifiers in expressions too?
 
 **Package** forms · **Kind** decision, **breaking** · **Status** **Retired — decided and fixed
-2026-10-03**, for `eval-forms` 0.3.0. Was Open
+2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e. Was Open
 
 **The asymmetry, as it now ships.** `@zvenigora/ng-eval-forms/signals` walks every expression at
 registration and throws on any `Identifier` whose name is an own property of `Object.prototype` —

@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## [0.3.0] - 2026-10-03
+## [0.3.0] - 2026-10-04
 
 **A signal expression may write into what it created, and not into anything it was given —
 [C1](../../docs/backlog-retired.md#c1).** A breaking minor: an expression that wrote a member of a

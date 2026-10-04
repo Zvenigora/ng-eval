@@ -14,7 +14,7 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ---
 
-## [0.10.0] - 2026-10-03
+## [0.10.0] - 2026-10-04
 
 **An opt-in member-write policy on `EvalContext`, and three fixes.** Nothing changes for a context
 that does not opt in, and every change to an exported symbol is an addition: `EvalContext` gains
