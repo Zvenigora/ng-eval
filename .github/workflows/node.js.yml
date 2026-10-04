@@ -25,6 +25,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v5
+      with:
+        # Full history and every tag: `npm test` runs tools/release-tags.mjs, which fails on a
+        # checkout with no release tags rather than skipping.
+        fetch-depth: 0
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v5
       with:

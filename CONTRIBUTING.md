@@ -130,6 +130,13 @@ All three packages publish to the public npm registry under the `@zvenigora` sco
    and the CHANGELOG headings are npm's publish date in UTC; if it differs from the heading
    written at release time, the post-publish commit corrects the heading.
 
+   **This is the commit the tag check runs on.** `npm test` runs `tools/release-tags.mjs`, which
+   fails unless every Publication status row's tag exists and, where the row names the commit it
+   was tagged at, points there. So the post-publish commit is red until step 5's tag exists, and
+   it is red in a checkout with no tags at all: run `git fetch --tags` first. CI's checkout
+   fetches them (`fetch-depth: 0`). The commits before it carry no row for the new version, so
+   the check does not see a release until its row is written.
+
 ### Why no flags are needed
 
 Two things were previously supplied on the command line and are now configuration:
@@ -172,9 +179,11 @@ are whole-repo tags in a scheme no longer in use.
 
 All three projects are now configured the same way. Each `modules/*/project.json` carries a
 `release.version` block (`currentVersionResolver: "git-tag"`,
-`fallbackCurrentVersionResolver: "disk"`, `manifestRootsToUpdate: ["dist/{projectRoot}"]`)
-and an `nx-release-publish` target with `packageRoot: "dist/{projectRoot}"`, so every project
-resolves its version from its own tag and both versions and publishes point at `dist/`.
+`manifestRootsToUpdate: ["dist/{projectRoot}"]`) and an `nx-release-publish` target with
+`packageRoot: "dist/{projectRoot}"`, so every project resolves its version from its own tag and
+both versions and publishes point at `dist/`. There is no fallback to the manifest on disk: it
+was removed so that a missing tag fails `nx release version` rather than going unnoticed, as four
+consecutive missing tags once did ([F8](docs/backlog-retired.md#f8)).
 
 `eval-core` was the exception until recently, and the shape of that bug is worth keeping in
 mind if these blocks are ever edited: with no `release` block it resolved from its **source**

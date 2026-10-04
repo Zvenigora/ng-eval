@@ -92,11 +92,11 @@ release, not a free change. Each package's release notes are in its own
 | `@zvenigora/ng-eval-signals` | 0.1.3 | Peer range widened to `>=0.3.0 <0.7.0`; also updates the `createEvalSignal` / `EvalSignalService` JSDoc (ships in the `.d.ts`) for `eval-core` 0.6.0. Tagged `eval-signals@0.1.3` at f26f987, published 2026-09-26 |
 | `@zvenigora/ng-eval-forms` | 0.2.3 | Peer range widened to `>=0.3.0 <0.7.0`; the range is the whole of the release. Tagged `eval-forms@0.2.3` at f26f987, published 2026-09-26 |
 | `@zvenigora/ng-eval-core` | 0.5.0 | A11 fix: object destructuring binding. Tagged `eval-core@0.5.0` 2026-09-17, at `016a313` |
-| `@zvenigora/ng-eval-core` | 0.4.0 | Phase 2, statements. Tagged `eval-core@0.4.0` 2026-09-16, at `7935a78` — [F8](#f8) |
-| `@zvenigora/ng-eval-signals` | 0.1.2 | The `eval-core` 0.5.0 ([A11](backlog-retired.md#a11)) release: peer range only. Tagged `eval-signals@0.1.2` 2026-09-17, at `016a313` — [F8](#f8) |
-| `@zvenigora/ng-eval-signals` | 0.1.1 | Phase 2 step 7: peer range only. Tagged `eval-signals@0.1.1` 2026-09-16, at `7935a78` — [F8](#f8) |
-| `@zvenigora/ng-eval-forms` | 0.2.2 | The `eval-core` 0.5.0 ([A11](backlog-retired.md#a11)) release: peer range only. Tagged `eval-forms@0.2.2` 2026-09-17, at `016a313` — [F8](#f8) |
-| `@zvenigora/ng-eval-forms` | 0.2.1 | Phase 2 step 7: peer range only. Tagged `eval-forms@0.2.1` 2026-09-16, at `7935a78`; `@0.2.0` tagged the same day — [F8](#f8) |
+| `@zvenigora/ng-eval-core` | 0.4.0 | Phase 2, statements. Tagged `eval-core@0.4.0` 2026-09-16, at `7935a78` — [F8](backlog-retired.md#f8) |
+| `@zvenigora/ng-eval-signals` | 0.1.2 | The `eval-core` 0.5.0 ([A11](backlog-retired.md#a11)) release: peer range only. Tagged `eval-signals@0.1.2` 2026-09-17, at `016a313` — [F8](backlog-retired.md#f8) |
+| `@zvenigora/ng-eval-signals` | 0.1.1 | Phase 2 step 7: peer range only. Tagged `eval-signals@0.1.1` 2026-09-16, at `7935a78` — [F8](backlog-retired.md#f8) |
+| `@zvenigora/ng-eval-forms` | 0.2.2 | The `eval-core` 0.5.0 ([A11](backlog-retired.md#a11)) release: peer range only. Tagged `eval-forms@0.2.2` 2026-09-17, at `016a313` — [F8](backlog-retired.md#f8) |
+| `@zvenigora/ng-eval-forms` | 0.2.1 | Phase 2 step 7: peer range only. Tagged `eval-forms@0.2.1` 2026-09-16, at `7935a78`; `@0.2.0` tagged the same day — [F8](backlog-retired.md#f8) |
 
 **587ebf1 is not the release commit.** The versions were bumped in 01a2c30, and CI on it was red:
 [D12](backlog-retired.md#d12)'s injector-path memory cases were timing-dependent. The test-only
@@ -199,7 +199,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [F5](backlog-retired.md#f5) | The `js-sha256` peer range is locked to a dead minor | core | decision | **Retired — decided and fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. Range widened to `^0.10.1 \|\| ^0.11.0 \|\| ^0.12.0 \|\| ^1.0.0`, tested at 0.10.1 and 1.0.0 |
 | [F6](backlog-retired.md#f6) | CONTRIBUTING's "Code style" describes a config that never existed here | repo | decision (editorial) | **Retired — fixed 2026-09-26**; the table replaced by a paragraph pointing at the four flat configs |
 | [F7](#f7) | Intermittent Jest worker-teardown warning — **no established locus**, possibly Nx/Jest rather than a library | — | fix? | Open — locus corrected 2026-09-09; **not reproducible per project** |
-| [F8](#f8) | The release tag step has no forcing function, and ships with a silencer | repo | fix | **Premise retired 2026-09-16** — all ten missing tags written and pushed, so the arrears are cleared; the mechanism is untouched and the entry is live |
+| [F8](backlog-retired.md#f8) | The release tag step has no forcing function, and ships with a silencer | repo | fix | **Retired — fixed 2026-10-04**; ships in no package. The disk fallback is removed from all three `project.json`s, and `tools/release-tags.mjs`, in the root `test` target, fails on a Publication status row whose tag is missing or at another commit |
 | [F9](backlog-retired.md#f9) | No gate on document cross-references — the register's own dangling links | repo | fix | **Retired — fixed 2026-09-28**; `tools/doc-links.mjs`, the workspace root's `test` target, so `npm test` and CI run it. Deferred 2026-09-07 by [plan](gates/plan.md) § 8.4 |
 | [F10](backlog-retired.md#f10) | The drift gate covers documented-**and-imported** symbols only | core, signals, forms | fix | **Retired — fixed 2026-10-04**, test only: every export is named in a code span of its package's README or allowlisted with one of five reasons, and every allowlist entry is still exported |
 | [F11](backlog-retired.md#f11) | A gated README can only import from its own specifier | core, signals, forms | fix | **Retired — fixed 2026-10-03**; ships in no package: every `@zvenigora/…` import in a gated README resolves against its own specifier, owned by the README's package |
@@ -810,101 +810,6 @@ failure mode in a lower-stakes register: a note that travels forward is not a no
 the first step.~~ **Superseded by the measurements above**: `--detectOpenHandles` on a run that
 does not warn reports nothing, and "most likely an open handle" was a guess that hardened into a
 locus over twelve restatements.
-
-<a id="f8"></a>
-## F8 — The release tag step has no forcing function, and ships with a silencer
-
-**Package** repo · **Kind** fix · **Status** **Premise retired 2026-09-16** — the ten missing tags
-were written and pushed, so the arrears this entry opened on are cleared. **The mechanism is
-untouched and the entry is live**; read the closing note before planning against it. Opened
-2026-09-06 as "`eval-forms@0.2.0` is untagged, and CLAUDE.md describes a pre-Phase-6 repo", which
-is what the two headed sections below are still about
-
-Two drifts between what the repository says about itself and what it is, both found 2026-09-06.
-
-**The missing tag.** `CLAUDE.md` states each published package carries a `<name>@<version>` git tag.
-`git tag --list` has `eval-core@0.3.0`, `eval-forms@0.1.0` and `eval-signals@0.1.0`. There is **no
-`eval-forms@0.2.0`**, although `modules/eval-forms/package.json` says `0.2.0` and `CHANGELOG.md`
-carries a dated `## [eval-forms 0.2.0] - 2026-09-06` entry. Either the tag was missed or 0.2.0 has not
-actually been published; the release procedure has no step that distinguishes those, which is the same
-gap [F2](backlog-retired.md#f2) describes reaching the changelog.
-
-**`CLAUDE.md` described the repo as it was before Phase 6 — corrected 2026-09-06, this half is
-done.** It had said that `docs/forms/phase-6-plan.md` "does not exist yet" and that writing it was
-Phase 6's first deliverable (the file exists and runs to 3,420 lines); that `eval-forms` was
-"Published at 0.1.0, by Phase 4" with the `/signals` entry point "designed and not built"; and
-that Phases 1, 3 and 4 were the complete set. All three are now accurate, the "active plan"
-pointer says there is none, and its three pointers into `ROADMAP.md`'s moved sections now cite
-backlog IDs.
-
-That half mattered more than an ordinary stale doc: `CLAUDE.md` is loaded into every session's
-context, so each new session started from a description of the repository one phase behind, and
-the "active plan" pointer aimed at a document the same file said did not exist.
-
-**Open: the tag, and whether 0.2.0 is actually on npm.** — *the tag half is done; see the closing
-note. Whether each version is on npm is untouched by tagging and remains unanswered.*
-
-**Widened by Phase 2, 2026-09-16 — it is now three missing tags, not one.** The phase released
-`eval-core` **0.4.0** (step 6) and, in step 7, `eval-signals` **0.1.1** and `eval-forms` **0.2.1**.
-None of the three is tagged, so `git tag --list` still ends at the same three tags it had before
-Phase 2 opened while three `package.json`s have moved past them.
-
-The entry's original question — *was the tag missed, or was the version never published?* — is now
-asked of four versions at once, and Phase 2 cannot answer it for its own three: this branch is
-unmerged and nothing has been published from it.
-
-**The mechanism, checked rather than guessed — and it is not "nobody wrote the procedure down".**
-That was the natural reading and it is wrong:
-
-- **The procedure is specified.** [`CONTRIBUTING.md`](../CONTRIBUTING.md) step 4 says to tag and
-  push, gives the `{projectName}@{version}` format, gives the `git tag -a` command, and states the
-  constraint that the commit must be the one the artifact was built from.
-- **It was followed, once per package.** `eval-core@0.3.0`, `eval-forms@0.1.0` and
-  `eval-signals@0.1.0` all exist. This is not a step nobody has ever performed.
-- **All three `project.json`s read those tags** — `currentVersionResolver: "git-tag"` — so the
-  tags are load-bearing input to the next release's version, exactly as CONTRIBUTING says.
-- **And every release since has skipped it**: `eval-forms@0.2.0` from Phase 6, and Phase 2's
-  `eval-core@0.4.0`, `eval-signals@0.1.1`, `eval-forms@0.2.1`. Four consecutive releases across
-  two phases.
-
-**So what is missing is not a writer but a forcing function — and there is an active silencer.**
-`fallbackCurrentVersionResolver: "disk"` means a missing tag never fails anything: the resolver
-falls back to the manifest, the next release computes a plausible version, and the configuration
-that was supposed to depend on tags keeps working without them. A step that is documented,
-manual, unenforced, and whose omission is *masked by design* will be skipped, and was — four times.
-
-That is a sharper finding than "remember to tag", and it points at a different fix. Options, in
-rough order of cost: have the release procedure fail loudly when the tag it is about to read does
-not exist (drop or condition the disk fallback); or add the tag write to whatever runs the publish,
-so the two cannot separate; or gate it, in the shape [F3](backlog-retired.md#f3) and [F4](backlog-retired.md#f4) took — a check that
-every version in a `modules/*/package.json` has a corresponding tag. The last is the only one that
-catches the four already missing.
-
-**The tag backlog is empty as of 2026-09-16, and nothing above it changed.** Ten tags were written
-and pushed: seven retroactively — `eval-core@0.1.104`, `@0.1.105`, `@0.1.106`, `@0.1.107`, `@0.2.1`,
-`@0.2.2` and `eval-forms@0.2.0` — and three for the versions released this week, `eval-core@0.4.0`,
-`eval-signals@0.1.1` and `eval-forms@0.2.1`. All sixteen tags in the repository are on the remote,
-and every version in the three `modules/*/package.json` manifests and every released version in
-`CHANGELOG.md` now resolves to one.
-
-**That closes the arrears, not the entry.** The three current versions were tagged *because the gap
-was noticed during the release*, not because anything required it — the same manual, unenforced step
-this entry is about, performed once more by a reader who happened to be looking. The diagnosis above
-stands **unchanged**: the procedure is specified in [`CONTRIBUTING.md`](../CONTRIBUTING.md) step 4,
-it is understood, and it has no forcing function. `fallbackCurrentVersionResolver: "disk"` is still
-set in all three `project.json`s and still means a missing tag fails nothing. **The three candidate
-fixes are unchanged and none has been adopted** — with one clause now spent: the gate was the only
-option that caught the versions already missing, and those have been caught by hand instead, so it
-would now be adopted to stop the *next* omission rather than to clear a backlog. The next release
-skips the step exactly as easily as the last four did.
-
-**The three release tags point at `7935a78`, Phase 2's closing commit, and the artifacts were built
-from `615cd49`.** Recorded so the deviation is findable rather than read later as a discrepancy:
-`615cd49` is the `npm audit fix` that follows it and touches **`package-lock.json` only** (one file,
-+73/−103), so the published bundles are byte-identical either way and no consumer is affected.
-CONTRIBUTING step 4 nonetheless says the commit must be the one the artifact was built from, and
-these three are one commit behind it. The seven retroactive tags are not part of this: each points
-at its own historic commit and is correct.
 
 <a id="f16"></a>
 ## F16 — Workspace dependency advisories

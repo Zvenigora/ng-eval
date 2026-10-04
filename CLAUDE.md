@@ -66,12 +66,15 @@ with no project filter, so each covers all three projects. CI
 lint.
 
 `test` also runs on a fourth project, the workspace root (`@zvenigora/ng-eval`), whose only
-`test` target is `node tools/doc-links.mjs`, declared in the root `package.json`'s `nx.targets`.
-That is the document cross-reference gate (`docs/backlog.md` F9). It fails on a relative link
-in any tracked `*.md`, or in a comment line of any tracked `*.ts`, whose file or `#anchor` does
-not resolve, so a doc-only or comment-only edit can turn `npm test`, CI and the gate red. A
-`.ts` line counts as a comment only if it starts with `*`, `/**` or `//`; code lines are never
-parsed.
+`test` target is `node tools/doc-links.mjs && node tools/release-tags.mjs`, declared in the root
+`package.json`'s `nx.targets`. The first is the document cross-reference gate (`docs/backlog.md`
+F9). It fails on a relative link in any tracked `*.md`, or in a comment line of any tracked
+`*.ts`, whose file or `#anchor` does not resolve, so a doc-only or comment-only edit can turn
+`npm test`, CI and the gate red. A `.ts` line counts as a comment only if it starts with `*`,
+`/**` or `//`; code lines are never parsed. The second is the release tag check
+(`docs/backlog.md` F8): every row of the register's Publication status table needs its
+`<project>@<version>` tag, at the commit the row names, so it fails in a checkout with no tags
+(`git fetch --tags`) and on a row written before its tag.
 
 **A green `test` run is not a type-check.** Jest compiles per file through `tsconfig.spec`
 and is more permissive than `tsconfig.lib` — Phase 3 step 3 shipped an `EvalOptions` index

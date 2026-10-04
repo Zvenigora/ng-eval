@@ -104,7 +104,7 @@
     "includedScripts": [],
     "targets": {
       "test": {
-        "command": "node tools/doc-links.mjs"
+        "command": "node tools/doc-links.mjs && node tools/release-tags.mjs"
       }
     }
   }

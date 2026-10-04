@@ -95,7 +95,7 @@ bump and no manifest change. [F15](../backlog-retired.md#f15)'s peer ranges belo
 
 - **Code-reviewer:** no Critical findings, and four Warnings, all fixed. A19's first ground
   argued per walk, which the A15 correction in this same change rules out. It now argues
-  allocation without retention. A19 cited [F8](../backlog.md#f8) for a shape F8 does not have.
+  allocation without retention. A19 cited [F8](../backlog-retired.md#f8) for a shape F8 does not have.
   It also offered a manual re-run the tree cannot supply, and a reversal trigger that nothing can
   fire. All three are gone, and the entry now says plainly that the regression is unguarded. The
   `CLAUDE.md` bullet did not say how it relates to the gate exception above it, or to the "halt

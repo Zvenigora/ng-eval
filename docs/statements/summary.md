@@ -37,7 +37,7 @@ corrections written at the step that found them.
 | **The citations of them** | step 8 — six sites re-spelled, and one gate that would have got a live guard deleted |
 
 Opened along the way: [A11](../backlog-retired.md#a11), [A12](../backlog-retired.md#a12),
-[F13](../backlog-retired.md#f13); [F8](../backlog.md#f8) widened from one untagged version to four.
+[F13](../backlog-retired.md#f13); [F8](../backlog-retired.md#f8) widened from one untagged version to four.
 [F12](../backlog-retired.md#f12) and [F14](../backlog-retired.md#f14) were both opened **and closed** inside the
 phase, one step apart each time. Resolved, in the register's own vocabulary:
 [A9](../backlog-retired.md#a9) and [B2](../backlog-retired.md#b2) are **Fixed** (step 0); [E6](../backlog-retired.md#e6),
@@ -225,7 +225,7 @@ The execution gate ([F4](../backlog-retired.md#f4)) covers the two new blocks, w
 
 ## 6. What is left
 
-- [F8](../backlog.md#f8) — **four untagged published versions**, three of them created by this
+- [F8](../backlog-retired.md#f8) — **four untagged published versions**, three of them created by this
   phase. The sharpest thing the phase leaves, and § 8 below is why it is not "remember to tag".
 - [A12](../backlog-retired.md#a12) — the budget bounds time, not memory; `result.trace` grows per iteration.
 - [A11](../backlog-retired.md#a11) — renaming and nested destructuring bind the wrong key. Live on the
@@ -290,7 +290,7 @@ verification command is itself a claim, and running it is not the same as it hav
 
 ## 8. What the phase leaves: a procedure with a silencer
 
-[F8](../backlog.md#f8) is the one open item worth naming at length, because the obvious reading of
+[F8](../backlog-retired.md#f8) is the one open item worth naming at length, because the obvious reading of
 it is wrong and the obvious fix would not work.
 
 **Four published versions carry no git tag**: `eval-forms@0.2.0` from Phase 6, and this phase's

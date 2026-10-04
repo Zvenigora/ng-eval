@@ -1544,7 +1544,7 @@ closed list — two downstream manifests, plus the repo-level records:
 | `modules/eval-signals/package.json` | `peerDependencies` → `"@zvenigora/ng-eval-core"`, and `version` if § 7.2 says so |
 | `modules/eval-forms/package.json` | the same two fields |
 | root `CHANGELOG.md` | one heading per package that bumps |
-| `docs/backlog.md` | [F12](../backlog-retired.md#f12) closed; [F8](../backlog.md#f8) revisited, since this creates more untagged versions |
+| `docs/backlog.md` | [F12](../backlog-retired.md#f12) closed; [F8](../backlog-retired.md#f8) revisited, since this creates more untagged versions |
 | `docs/statements/summary.md` | § 1 and § 6 updated — the phase released more than one package |
 
 **This is the skill's hardest stop — a `package.json` in a published downstream project — so the
@@ -1623,7 +1623,7 @@ Two things this collides with, neither blocking:
 - **[F2](../backlog-retired.md#f2)** — one `CHANGELOG.md` for three independently-versioned packages. Three
   headings in one file for one phase is the sharpest instance of F2 the repository has produced;
   the step records that rather than solving it.
-- **[F8](../backlog.md#f8)** — `eval-forms@0.2.0` is untagged. This step creates three more
+- **[F8](../backlog-retired.md#f8)** — `eval-forms@0.2.0` is untagged. This step creates three more
   versions wanting tags (`eval-core@0.4.0` included). F8's scope grows; step 7 updates it and does
   not take the tagging on.
 
@@ -1640,7 +1640,7 @@ Two things this collides with, neither blocking:
 - Each of the three containment specs still goes **red with its own `finally` deleted** — the probe
   0b established, re-run, because this step changes the sentence that justifies them and a
   containment nobody can falsify is 0b item 2 all over again.
-- [F12](../backlog-retired.md#f12) closed; [F8](../backlog.md#f8) updated with the versions this creates.
+- [F12](../backlog-retired.md#f12) closed; [F8](../backlog-retired.md#f8) updated with the versions this creates.
 
 #### 7.3 The measurement rule this step inherits
 

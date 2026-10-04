@@ -2995,7 +2995,7 @@ changelogs — but adopting it means adopting the full `nx release` flow, which 
 (see CONTRIBUTING, "Why publishing is still manual"), and it would have to be reconciled with the
 existing single file rather than starting clean. Deciding that is the work.
 
-Related: [F8](backlog.md#f8), which is the same class of drift reaching the git tags.
+Related: [F8](#f8), which is the same class of drift reaching the git tags.
 
 **Decided 2026-09-28: one changelog per package.** Each package's entries moved to
 `modules/<name>/CHANGELOG.md` with their text unchanged. Three things changed in the move: the
@@ -3350,6 +3350,142 @@ The decision is what should replace it. Enumerating the real rule set reproduces
 migration later, and most of it is inherited from presets rather than chosen here. Pointing at
 `eslint.config.mjs` and saying "run `npm run lint`" is honest and much shorter, but loses the
 commentary the section was written to provide. That choice is the work.
+
+<a id="f8"></a>
+## F8 — The release tag step has no forcing function, and ships with a silencer
+
+**Package** repo · **Kind** fix · **Status** **Retired — fixed 2026-10-04**; ships in no package.
+Was Premise retired 2026-09-16, when the ten missing tags were written, with the mechanism
+untouched. Opened 2026-09-06 as "`eval-forms@0.2.0` is untagged, and CLAUDE.md describes a
+pre-Phase-6 repo"
+
+*Fixed* 2026-10-04, taking two of the three candidate fixes the entry listed: the silencer is
+gone, and a check gates the tags.
+
+- **The silencer.** `fallbackCurrentVersionResolver: "disk"` is removed from all three
+  `project.json`s, so `nx release version` resolves each project's current version from its tag,
+  and fails without one instead of falling back to the manifest.
+- **The forcing function.** `tools/release-tags.mjs` runs in the root project's `test` target,
+  after `tools/doc-links.mjs`, so `npm test`, CI and the gate all run it. For every row of
+  [`backlog.md`](backlog.md)'s Publication status table, the tag `<project>@<version>` must exist,
+  where the project is `eval-core`, `eval-signals` or `eval-forms` by the row's package. Where the
+  row's notes name a commit after "Tagged", the tag must point at a commit starting with that SHA,
+  and where they name a tag, it must be the row's own. A checkout with no release tags at all fails
+  with a hint to run `git fetch --tags`, rather than skipping. CI's `actions/checkout` now has
+  `fetch-depth: 0`, without which it would be exactly that checkout.
+- **Where it bites.** CONTRIBUTING's Releasing step 6, the post-publish commit, writes the
+  Publication status row, so that commit is red until the tag exists. CONTRIBUTING now says so.
+  The check keys on the register rather than on the manifests: a version bumped in a
+  `package.json` and not yet published has no row, so it needs no tag yet.
+
+*Measured* at the commit that built it: 23 rows, 33 release tags in the repository, and every row
+naming the commit its tag points at. The check passed on all 23.
+
+*Verified*, each probe reverted:
+
+| Probe | Output, exit 1 every time |
+| ----- | ------------------------- |
+| A row for `@zvenigora/ng-eval-forms` 0.9.9, which has no tag | `docs/backlog.md:80: @zvenigora/ng-eval-forms 0.9.9 is published, and there is no tag eval-forms@0.9.9` |
+| `eval-forms` 0.3.0's row naming 1234567 instead of 0c3299e | `docs/backlog.md:79: eval-forms@0.3.0 is at 0c3299e, and the row says 1234567` |
+| `eval-core` 0.5.0's row naming `1111111` instead of `` `016a313` ``, a backticked SHA | `docs/backlog.md:94: eval-core@0.5.0 is at 016a313, and the row says 1111111` |
+| `eval-forms` 0.3.0's notes naming `eval-forms@0.2.9` | `docs/backlog.md:79: the notes name eval-forms@0.2.9, and the row is eval-forms@0.3.0` |
+| A clone with `--no-tags --depth 1`, which is CI's checkout without `fetch-depth: 0` | the hint, naming no row, since none is at fault |
+
+The first two ran together and each named its own row; the line numbers are the register's at the
+time of the probe.
+
+**What it does not do.** It does not check that a version was published: the row is the claim,
+and CONTRIBUTING's step 4, `npm view` before tagging, is still what checks that. Nor does it write
+the tag. The third candidate fix, tagging inside whatever runs the publish, was not taken, because
+publishing is still manual.
+
+**The entry as it stood:**
+
+Two drifts between what the repository says about itself and what it is, both found 2026-09-06.
+
+**The missing tag.** `CLAUDE.md` states each published package carries a `<name>@<version>` git tag.
+`git tag --list` has `eval-core@0.3.0`, `eval-forms@0.1.0` and `eval-signals@0.1.0`. There is **no
+`eval-forms@0.2.0`**, although `modules/eval-forms/package.json` says `0.2.0` and `CHANGELOG.md`
+carries a dated `## [eval-forms 0.2.0] - 2026-09-06` entry. Either the tag was missed or 0.2.0 has not
+actually been published; the release procedure has no step that distinguishes those, which is the same
+gap [F2](#f2) describes reaching the changelog.
+
+**`CLAUDE.md` described the repo as it was before Phase 6 — corrected 2026-09-06, this half is
+done.** It had said that `docs/forms/phase-6-plan.md` "does not exist yet" and that writing it was
+Phase 6's first deliverable (the file exists and runs to 3,420 lines); that `eval-forms` was
+"Published at 0.1.0, by Phase 4" with the `/signals` entry point "designed and not built"; and
+that Phases 1, 3 and 4 were the complete set. All three are now accurate, the "active plan"
+pointer says there is none, and its three pointers into `ROADMAP.md`'s moved sections now cite
+backlog IDs.
+
+That half mattered more than an ordinary stale doc: `CLAUDE.md` is loaded into every session's
+context, so each new session started from a description of the repository one phase behind, and
+the "active plan" pointer aimed at a document the same file said did not exist.
+
+**Open: the tag, and whether 0.2.0 is actually on npm.** — *the tag half is done; see the closing
+note. Whether each version is on npm is untouched by tagging and remains unanswered.*
+
+**Widened by Phase 2, 2026-09-16 — it is now three missing tags, not one.** The phase released
+`eval-core` **0.4.0** (step 6) and, in step 7, `eval-signals` **0.1.1** and `eval-forms` **0.2.1**.
+None of the three is tagged, so `git tag --list` still ends at the same three tags it had before
+Phase 2 opened while three `package.json`s have moved past them.
+
+The entry's original question — *was the tag missed, or was the version never published?* — is now
+asked of four versions at once, and Phase 2 cannot answer it for its own three: this branch is
+unmerged and nothing has been published from it.
+
+**The mechanism, checked rather than guessed — and it is not "nobody wrote the procedure down".**
+That was the natural reading and it is wrong:
+
+- **The procedure is specified.** [`CONTRIBUTING.md`](../CONTRIBUTING.md) step 4 says to tag and
+  push, gives the `{projectName}@{version}` format, gives the `git tag -a` command, and states the
+  constraint that the commit must be the one the artifact was built from.
+- **It was followed, once per package.** `eval-core@0.3.0`, `eval-forms@0.1.0` and
+  `eval-signals@0.1.0` all exist. This is not a step nobody has ever performed.
+- **All three `project.json`s read those tags** — `currentVersionResolver: "git-tag"` — so the
+  tags are load-bearing input to the next release's version, exactly as CONTRIBUTING says.
+- **And every release since has skipped it**: `eval-forms@0.2.0` from Phase 6, and Phase 2's
+  `eval-core@0.4.0`, `eval-signals@0.1.1`, `eval-forms@0.2.1`. Four consecutive releases across
+  two phases.
+
+**So what is missing is not a writer but a forcing function — and there is an active silencer.**
+`fallbackCurrentVersionResolver: "disk"` means a missing tag never fails anything: the resolver
+falls back to the manifest, the next release computes a plausible version, and the configuration
+that was supposed to depend on tags keeps working without them. A step that is documented,
+manual, unenforced, and whose omission is *masked by design* will be skipped, and was — four times.
+
+That is a sharper finding than "remember to tag", and it points at a different fix. Options, in
+rough order of cost: have the release procedure fail loudly when the tag it is about to read does
+not exist (drop or condition the disk fallback); or add the tag write to whatever runs the publish,
+so the two cannot separate; or gate it, in the shape [F3](#f3) and [F4](#f4) took — a check that
+every version in a `modules/*/package.json` has a corresponding tag. The last is the only one that
+catches the four already missing.
+
+**The tag backlog is empty as of 2026-09-16, and nothing above it changed.** Ten tags were written
+and pushed: seven retroactively — `eval-core@0.1.104`, `@0.1.105`, `@0.1.106`, `@0.1.107`, `@0.2.1`,
+`@0.2.2` and `eval-forms@0.2.0` — and three for the versions released this week, `eval-core@0.4.0`,
+`eval-signals@0.1.1` and `eval-forms@0.2.1`. All sixteen tags in the repository are on the remote,
+and every version in the three `modules/*/package.json` manifests and every released version in
+`CHANGELOG.md` now resolves to one.
+
+**That closes the arrears, not the entry.** The three current versions were tagged *because the gap
+was noticed during the release*, not because anything required it — the same manual, unenforced step
+this entry is about, performed once more by a reader who happened to be looking. The diagnosis above
+stands **unchanged**: the procedure is specified in [`CONTRIBUTING.md`](../CONTRIBUTING.md) step 4,
+it is understood, and it has no forcing function. `fallbackCurrentVersionResolver: "disk"` is still
+set in all three `project.json`s and still means a missing tag fails nothing. **The three candidate
+fixes are unchanged and none has been adopted** — with one clause now spent: the gate was the only
+option that caught the versions already missing, and those have been caught by hand instead, so it
+would now be adopted to stop the *next* omission rather than to clear a backlog. The next release
+skips the step exactly as easily as the last four did.
+
+**The three release tags point at `7935a78`, Phase 2's closing commit, and the artifacts were built
+from `615cd49`.** Recorded so the deviation is findable rather than read later as a discrepancy:
+`615cd49` is the `npm audit fix` that follows it and touches **`package-lock.json` only** (one file,
++73/−103), so the published bundles are byte-identical either way and no consumer is affected.
+CONTRIBUTING step 4 nonetheless says the commit must be the one the artifact was built from, and
+these three are one commit behind it. The seven retroactive tags are not part of this: each points
+at its own historic commit and is correct.
 
 <a id="f9"></a>
 ## F9 — No gate on document cross-references — **Retired, fixed**
@@ -3751,7 +3887,7 @@ than in their installer.
 **What it would take**: `^0.3.0` → `>=0.3.0 <0.5.0` (or `^0.4.0`, if dropping 0.3.0 support is
 intended — it is not obviously wrong, since neither package needs anything 0.4.0 added), a patch
 bump of each, and an entry per package. [F2](#f2) — one `CHANGELOG.md` for three packages — is the
-thing that makes "an entry per package" awkward, and [F8](backlog.md#f8) is the missing-tag half.
+thing that makes "an entry per package" awkward, and [F8](#f8) is the missing-tag half.
 
 <a id="f14"></a>
 ## F14 — Four downstream comments cite a peer range that no longer exists, and one repeats A9's necessary-vs-sufficient error
