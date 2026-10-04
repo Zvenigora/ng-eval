@@ -487,17 +487,69 @@ describe('createSignalContext', () => {
       });
 
       /**
-       * KNOWN GAP - pinned as current behaviour, not endorsed
-       * (`docs/backlog.md` C4). A mutating method writes from native code, so
-       * no visitor sees a member write and the guard is never asked.
+       * A mutating method - `docs/backlog-retired.md` C4. Until 0.4.0 the push
+       * row was pinned the other way round, as a known gap: it returned 2 and
+       * left `user().tags` as `['a', 'x']`, because the method writes from
+       * native code and neither write visitor runs. Changed deliberately, as
+       * the member-write rows above were: `eval-core` 0.11.0 asks the context
+       * before calling a built-in that writes into an object it is handed, and
+       * this context refuses one the walk did not create.
        */
-      it('should NOT refuse a mutating method call', () => {
+      it.each([
+        ['push', 'user.tags.push("x")'],
+        ['sort', 'user.tags.sort()'],
+        ['splice', 'user.tags.splice(0, 1)'],
+        ['Object.assign', 'Object.assign(user, { name: "Bob" })'],
+      ])('should refuse a mutating method, %s, on a signal value, and write nothing', (_label, source) => {
         const user = userOf();
-        const context = createSignalContext({ user });
+        const context = createSignalContext({ user, Object });
 
-        expect(service.simpleEval('user.tags.push("x")', context)).toEqual(2);
+        expect(() => service.simpleEval(source, context)).toThrow(SignalContextWriteError);
 
-        expect(user().tags).toEqual(['a', 'x']);
+        expect(user()).toEqual({ name: 'Ada', n: 1, tags: ['a'] });
+      });
+
+      it.each([
+        ['sort', 'user.tags.sort()', 'Array.prototype.sort',
+          'Use toSorted instead, which returns a sorted copy.'],
+        ['reverse', 'user.tags.reverse()', 'Array.prototype.reverse',
+          'Use toReversed instead, which returns a reversed copy.'],
+        ['splice', 'user.tags.splice(0, 1)', 'Array.prototype.splice',
+          'Use toSpliced instead, which returns a changed copy.'],
+        ['fill', 'user.tags.fill("z")', 'Array.prototype.fill',
+          'Use with instead, which returns a copy with one element replaced, or spread it into an array literal and fill that.'],
+        ['push', 'user.tags.push("x")', 'Array.prototype.push',
+          'Spread it into an array literal and change the copy instead.'],
+      ])('should raise a method error for %s naming the method and what to use instead',
+        (_label, source, method, advice) => {
+          const context = createSignalContext({ user: userOf() });
+
+          let caught: unknown;
+          try {
+            service.simpleEval(source, context);
+          } catch (error) {
+            caught = error;
+          }
+
+          expect(caught).toBeInstanceOf(SignalContextWriteError);
+          expect((caught as SignalContextWriteError).kind).toEqual('method');
+          expect((caught as SignalContextWriteError).key).toEqual(method);
+          expect((caught as SignalContextWriteError).message).toEqual(
+            `Cannot call ${method}: a signal expression may write only into objects it created. ${advice}`
+          );
+        });
+
+      it.each([
+        ['a spread copy', 'let t = [...user.tags]; t.push("x"); t', ['a', 'x']],
+        ['a spread copy, sorted in one expression', '[...user.tags, "0"].sort()', ['0', 'a']],
+        ['an object literal, through Object.assign', 'Object.assign({}, user, { name: "Bob" }).name', 'Bob'],
+      ])('should allow a mutating method on %s, leaving the signal value alone', (_label, source, expected) => {
+        const user = userOf();
+        const context = createSignalContext({ user, Object });
+
+        expect(service.simpleEval(source, context)).toEqual(expected);
+
+        expect(user()).toEqual({ name: 'Ada', n: 1, tags: ['a'] });
       });
     });
 

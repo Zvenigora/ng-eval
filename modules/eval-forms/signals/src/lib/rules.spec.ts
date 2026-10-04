@@ -27,6 +27,7 @@ interface Model {
   country?: string;
   zip?: string;
   address?: { name: string };
+  tags?: string[];
   boom?: () => unknown;
 }
 
@@ -357,6 +358,26 @@ describe('createExpressionRules', () => {
       expect(() => f.city().hidden()).toThrow(SignalContextWriteError);
 
       expect(model().address).toEqual({ name: 'Home' });
+    });
+
+    it('should throw a mutating method call on the model out of the field state, bypassing onError', () => {
+      // `eval-signals` 0.4.0 (`docs/backlog-retired.md` C4): a built-in method
+      // that would write into the model is refused as a member write is, with
+      // `kind` `'method'`. Up to 0.3.x `tags.push("x")` pushed into
+      // `model().tags` from inside the derivation, and the field stayed visible.
+      const model = signal<Model>({ city: 'Boston', tags: ['a'] });
+      const rules = createExpressionRules(model, { onError: () => 'handled' });
+
+      const f = buildForm(
+        model,
+        schema<Model>((p) => {
+          rules.evalVisible(p.city, 'tags.push("x")');
+        })
+      );
+
+      expect(() => f.city().hidden()).toThrow(SignalContextWriteError);
+
+      expect(model().tags).toEqual(['a']);
     });
 
     it('should resolve an ordinary error per onError in evalDisabled too', () => {

@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Breaking
+- **A rule's call of a built-in method that would write into the form's data throws
+  `SignalContextWriteError`**, with `kind` `'method'`, in every mode, at both entry points — by
+  consequence of `eval-signals` 0.4.0 ([C4](../../docs/backlog-retired.md#c4)). `tags.push('x')`
+  over a control's value or the `/signals` model pushed into the array Angular holds, from inside
+  a derivation; so did `sort`, `splice`, `Map#set`, a `Date`'s setters and `Object.assign`. Like
+  a member write, it bypasses `onError`. On a copy the rule made the call still works:
+  `[...tags].sort()`. The README's "When a rule fails" says so, and what is still not caught: a
+  method you wrote, `lastIndex` on a regex you supplied, and a built-in reached through `call`,
+  `apply` or `bind` ([C5](../../docs/backlog.md#c5)).
+
 ---
 
 ## [0.3.1] - 2026-10-04
@@ -101,7 +112,7 @@ rise.
   adapters now call, moved out of `/signals`, where it was module-private.
 
 ### Known limitation
-- **A mutating method is not caught** — [C4](../../docs/backlog.md#c4): `tags.push('x')` in a
+- **A mutating method is not caught** — [C4](../../docs/backlog-retired.md#c4): `tags.push('x')` in a
   rule still mutates the value. Documented in the README, under "When a rule fails".
 
 ---

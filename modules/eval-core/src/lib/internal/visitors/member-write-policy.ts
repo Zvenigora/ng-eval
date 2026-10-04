@@ -49,3 +49,88 @@ export const consultMemberWrite = (st: EvalState,
     createdByEvaluation: isObjectLike(target) && created.has(target),
   });
 };
+
+/**
+ * A built-in method that writes into an object it is handed: the name
+ * `EvalMemberWrite.method` reports, and whether the object written is the
+ * method's receiver or its first argument.
+ */
+interface MutatingBuiltIn {
+  readonly name: string;
+  readonly writes: 'receiver' | 'first argument';
+}
+
+/**
+ * The built-ins that write into their receiver or their first argument, keyed
+ * by the function itself. Identity is the point: a method of the caller's own
+ * named `push` is not one of these, and `Array.prototype.push` reached under
+ * another name is.
+ *
+ * Read through property descriptors, since `%TypedArray%.prototype` carries
+ * getters that throw when read off the prototype itself. Built once, from this
+ * realm's built-ins: an array made in another realm - an iframe - holds that
+ * realm's `push`, which is not in here.
+ */
+const MUTATING_BUILT_INS: ReadonlyMap<unknown, MutatingBuiltIn> = (() => {
+  const table = new Map<unknown, MutatingBuiltIn>();
+
+  const add = (owner: object, ownerName: string, names: readonly string[],
+    writes: MutatingBuiltIn['writes']): void => {
+    for (const name of names) {
+      const fn: unknown = Object.getOwnPropertyDescriptor(owner, name)?.value;
+      if (typeof fn === 'function') {
+        table.set(fn, { name: `${ownerName}.${name}`, writes });
+      }
+    }
+  };
+
+  add(Array.prototype, 'Array.prototype',
+    ['copyWithin', 'fill', 'pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'], 'receiver');
+  add(Object.getPrototypeOf(Int8Array.prototype), '%TypedArray%.prototype',
+    ['copyWithin', 'fill', 'reverse', 'set', 'sort'], 'receiver');
+  add(Map.prototype, 'Map.prototype', ['set', 'delete', 'clear'], 'receiver');
+  add(Set.prototype, 'Set.prototype', ['add', 'delete', 'clear'], 'receiver');
+  add(WeakMap.prototype, 'WeakMap.prototype', ['set', 'delete'], 'receiver');
+  add(WeakSet.prototype, 'WeakSet.prototype', ['add', 'delete'], 'receiver');
+  add(Date.prototype, 'Date.prototype',
+    Object.getOwnPropertyNames(Date.prototype).filter((name) => name.startsWith('set')), 'receiver');
+  add(Object, 'Object',
+    ['assign', 'defineProperty', 'defineProperties', 'setPrototypeOf', 'freeze', 'seal', 'preventExtensions'],
+    'first argument');
+
+  return table;
+})();
+
+/**
+ * Asks the context whether a call may run, when the function is a built-in
+ * that writes into an object it is handed, through
+ * `EvalContext.checkMemberWrite` with `method` naming it. Any other function is
+ * not asked about. A refusal is a throw, and it propagates from here
+ * unchanged: the call has not been made.
+ *
+ * Called by `call-expression.ts` immediately before the call, and only after
+ * it has read `st.createdObjects` and found it set, as for a member write.
+ *
+ * @param st - The state of the walk making the call.
+ * @param created - `st.createdObjects`, already read by the caller.
+ * @param fn - The function about to be called.
+ * @param receiver - The `this` it is about to be called with.
+ * @param args - The arguments it is about to be called with.
+ */
+export const consultMethodWrite = (st: EvalState, created: WeakSet<object>,
+  fn: unknown, receiver: unknown, args: readonly unknown[]): void => {
+
+  const builtIn = MUTATING_BUILT_INS.get(fn);
+  if (!builtIn) {
+    return;
+  }
+
+  const target = builtIn.writes === 'receiver' ? receiver : args[0];
+
+  st.context?.checkMemberWrite?.({
+    target,
+    key: undefined,
+    createdByEvaluation: isObjectLike(target) && created.has(target),
+    method: builtIn.name,
+  });
+};

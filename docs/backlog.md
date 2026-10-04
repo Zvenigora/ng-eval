@@ -172,10 +172,12 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
 | [B4](backlog-retired.md#b4) | `eval-core.component.ts` is dead generator scaffold | core | fix | **Retired — fixed 2026-09-26**; no published artifact changed — the bundle and `.d.ts` are byte-identical |
 | [B5](backlog-retired.md#b5) | `eval-core` exports seventeen symbols nothing uses — two `@deprecated` since Phase 1, their removal deferred in a plan and nowhere else | core | decision, then fix | **Retired — decided and fixed 2026-10-04**, unreleased: all seventeen removed, a breaking minor for `eval-core` 0.11.0; the CHANGELOG names a replacement for the three that have one |
+| [B6](#b6) | A bare identifier reads an inherited `Object.prototype` member: `constructor` is `Object`, and `constructor.assign(__proto__, …)` pollutes `Object.prototype` | core | fix, security | Open — found 2026-10-04 measuring for C4 |
 | [C1](backlog-retired.md#c1) | A member-target write escapes the read-only policy | signals | decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-signals` 0.3.0, with `eval-core` 0.10.0, tagged 0c3299e: a signal expression may write into what it created and not into anything it was given or got back from a call |
 | [C2](backlog-retired.md#c2) | Detect a write violation at construction, not first recompute | signals | decision | **Retired — decided 2026-10-03**: no construction-time check; [C1](backlog-retired.md#c1)'s runtime guard is the guarantee and fires on the first read |
 | [C3](backlog-retired.md#c3) | Whether `eval-signals` should work around [A4](backlog-retired.md#a4) locally | signals | decision | **Retired — decided and fixed 2026-10-01**; released 2026-10-02 in `eval-signals` 0.2.0, tagged c56f987: under `caseInsensitive` a source key is named as the source spells it, in `getKey`, write errors and the first segment of `dependencies` |
-| [C4](#c4) | A mutating method call escapes the member-write policy | signals | accepted | Open, documented |
+| [C4](backlog-retired.md#c4) | A mutating method call escapes the member-write policy | signals | accepted, then fix | **Retired — fixed 2026-10-04**, unreleased: `eval-core` 0.11.0 asks the policy before a built-in method that writes into what it is handed, matched by identity; `eval-signals` 0.4.0 refuses one with `kind` `'method'`; `eval-forms` 0.4.0 by consequence |
+| [C5](#c5) | A built-in mutator reached through `call`, `apply` or `bind` escapes C4's check | signals | fix | Open, documented — found by a probe after C4's fix |
 | [D1](backlog-retired.md#d1) | The throwing-subscriber premise is false in both halves | forms | fix + decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e: a late prototype-named control is not mirrored and is reported once, out of band, after the rest of the emission |
 | [D2](backlog-retired.md#d2) | Should `/reactive` reject prototype-shadowed identifiers too? | forms | decision, breaking | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e: yes, with `/signals`' own guard, shared from the core; no form that worked could have named one |
 | [D3](backlog-retired.md#d3) | Per-registration `caseInsensitive` reaches one of three levers | forms | decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.1, tagged 3d56994. The memo is keyed on the key and `caseInsensitive` together, and each rule context is built from its registration's options, so a registration's value reaches all three levers |
@@ -537,32 +539,66 @@ above.
 
 [B1](backlog-retired.md#b1)–[B5](backlog-retired.md#b5) are retired.
 
+<a id="b6"></a>
+## B6 — Identifier resolution reaches `Object.prototype` members
+
+**Package** core · **Kind** fix, security · **Status** Open
+
+For a context built from a plain object, `getContextValue` reads the context with a bare
+property access, so an identifier resolves members inherited from `Object.prototype`. The
+dangerous-name check guards member access to other objects, not identifier resolution. Through
+`Object`'s own static functions, an expression can then modify shared prototypes.
+
+- Signal contexts refuse `Object`'s mutators since [C4](backlog-retired.md#c4); identifier
+ resolution there is still affected.
+- `eval-forms` refuses such identifiers at bind time ([D2](backlog-retired.md#d2)).
+
+**Fix:** refuse an identifier whose name, or whose matched key under `caseInsensitive`, is in
+the dangerous-name set. Details are withheld until a fixed version is published.
+
+*Recorded*: found while building C4, 2026-10-04.
+
 ---
 
 # C. `eval-signals`
 
-[C1](backlog-retired.md#c1)–[C3](backlog-retired.md#c3) are retired. None of the four entries was
+[C1](backlog-retired.md#c1)–[C4](backlog-retired.md#c4) are retired. None of the five entries was
 ever recorded in `ROADMAP.md`.
 
-<a id="c4"></a>
-## C4 — A mutating method call escapes the member-write policy
+<a id="c5"></a>
+## C5 — A built-in mutator reached through `call`, `apply` or `bind` escapes C4's check
 
-**Package** signals · **Kind** accepted · **Status** Open, documented
+**Package** signals, mechanism in core · **Kind** fix · **Status** Open, documented
 
-[C1](backlog-retired.md#c1)'s fix refuses a member write whose target the expression did not
-create, and it is asked about every write the two write visitors make. A method that mutates its
-receiver writes from native code instead: the call visitor calls it, and no write visitor runs. So
-`user.tags.push("x")` over `{ user: signal({ tags: ['a'] }) }` returns `2` and leaves `user().tags`
-as `['a', 'x']`, mutated from inside a `computed()` — and so do `splice`, `sort`, `reverse`,
-`fill`, `Map#set`, `Set#add` and their kin. Pinned as current behaviour in `signal-context.spec.ts`
-and `eval-signal.spec.ts`, and a paragraph in the package README's "Writes are not supported".
+[C4](backlog-retired.md#c4)'s fix recognises a built-in that writes by its identity, at the call
+that invokes it. Through `Function.prototype.call`, `apply` or `bind`, the function the call
+visitor invokes is `call`, `apply` or a new bound function, none of which is in the table, so the
+policy is never asked. Measured after the fix, over
+`createSignalContext({ user: signal({ name: 'Ada', tags: ['a'] }) })`:
 
-Closing it would need the call visitor to know which methods mutate their receiver — a list per
-built-in type, which the call sandbox does not keep — or the value frozen or wrapped before the
-call, which is C1's rejected second mechanism. Kept here because "accepted and documented" is a
-state a later phase may want to revisit, not a closed question.
+| Expression | Result |
+| ---------- | ------ |
+| `user.tags.push("x")` | refused, `kind` `'method'` |
+| `let p = user.tags.push; p("x")` | refused, `kind` `'method'`: a bare call asks about the context as receiver |
+| `[].push.call(user.tags, "x")` | `2`, and `user().tags` is `['a', 'x']` |
+| `[].push.apply(user.tags, ["x"])` | the same |
+| `[].push.bind(user.tags)("x")` | the same |
+| `[].push.call.call([].push, user.tags, "x")` | the same |
 
-*Recorded*: C1's decision, 2026-10-03.
+`[].push` is reachable from any expression: a literal's methods are ordinary reads. So is
+`call`, off any function.
+
+**What a fix would do**, sketched and not designed. When the function is
+`Function.prototype.call` or `apply` and its receiver is a function, ask about that function, with
+`args[0]` as its receiver and the rest as its arguments, repeatedly for `call.call`. For `bind`,
+ask when a built-in in the table is bound, with `args[0]` as the target, since the bound
+function's identity is new; or refuse that bind outright. The table and the question are C4's.
+The work is in `call-expression.ts`.
+
+Documented meanwhile in the `eval-signals` README's "Writes are not supported" and the
+`eval-forms` README's error-policy section.
+
+*Recorded*: C4's fix, 2026-10-04, from a probe run after it.
 
 ---
 

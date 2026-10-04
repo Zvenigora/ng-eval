@@ -485,9 +485,13 @@ export class EvalContext {
    * guard still applies after. A context that does not implement this pays
    * one field read at each of those sites, and nothing else.
    *
-   * What it does not see: a mutating **method** call - `arr.push(x)`,
-   * `arr.splice(i, 1)`, `map.set(k, v)` - writes from native code and is no
-   * member write at all.
+   * Since 0.11.0 it is also asked before a call of a built-in **method** that
+   * writes into an object it is handed - `arr.push(x)`, `arr.splice(i, 1)`,
+   * `map.set(k, v)`, `Object.assign(o, p)` - which writes from native code and
+   * reaches neither write visitor. The call visitor asks, with
+   * {@link EvalMemberWrite.method} naming the method and the object it writes
+   * as the target; refusing it means the call is not made. A method the
+   * caller wrote is not asked about: what it does is the caller's own code.
    *
    * @param write - The write about to happen.
    * @throws To refuse the write.

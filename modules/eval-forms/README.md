@@ -375,8 +375,16 @@ Two things are **not** routed through `options.onError`, in either adapter:
   arrow functions — and not into anything it was given. `address.city = 'x'`, over a
   control whose value is `{ city: 'Rome' }` or over the `/signals` model, throws
   `SignalContextWriteError` with `kind` `'member'`, in every mode; up to 0.2.x it wrote into
-  the very object Angular holds. A mutating method — `tags.push('x')` — is not
-  caught and still mutates it, so do not call one in a rule.
+  the very object Angular holds.
+
+  **So does a built-in method that would write into it, since 0.4.0.** `tags.push('x')`,
+  `tags.sort()`, `splice`, `Map#set`, a `Date`'s setters and `Object.assign` over a control's
+  value or the `/signals` model throw `SignalContextWriteError` with `kind` `'method'`, in every
+  mode, naming the method and what to call instead — `toSorted`, `toReversed`, `toSpliced`,
+  `with`, or a spread into a literal. Up to 0.3.x the call went through and mutated the form's
+  data. On a copy the rule made they still work: `[...tags].sort()`. Not caught: a method you
+  wrote, `lastIndex` on a regex you supplied, and a built-in reached through `call`, `apply` or
+  `bind`, which still goes through — so do not write one.
 
   **It holds through a call too.** An assignment **nested inside a call**,
   `[1].map(x => (country = 'CA'))`, reaches the bypass as `SignalContextWriteError` and is

@@ -8,6 +8,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Breaking
+- **A built-in method that would write into anything the expression did not create throws
+  `SignalContextWriteError` — [C4](../../docs/backlog-retired.md#c4).** `user.tags.push("x")`,
+  `user.tags.sort()`, `splice`, `reverse`, `fill` and the rest of `Array`'s mutators, the typed
+  arrays' own, `Map#set`, `Set#add` and their removers, a `Date`'s setters, and `Object.assign`
+  with `Object`'s other mutators each mutated `user()` from inside a `computed()`, and now throw,
+  in every `onError` mode. What the expression created is still writable, as for a member write:
+  `[...user.tags].sort()` and `let t = [...user.tags]; t.push("x"); t` work. Needs `eval-core`
+  0.11.0, which asks about the call.
+- **`SignalContextWriteError.kind` is `'key' | 'member' | 'method'`**, so a `switch` over it that
+  was exhaustive is not any more.
+
+### Added
+- **`kind` `'method'`**, with `key` naming the method as `eval-core` does,
+  `'Array.prototype.push'`, and a message that names it and what to use instead: `toSorted`,
+  `toReversed`, `toSpliced`, `with`, or a spread into a literal. `Cannot call
+  Array.prototype.sort in expression 'user.tags.sort()': a signal expression may write only into
+  objects it created. Use toSorted instead, which returns a sorted copy.`
+- **Still not caught**, and documented in the README under "Writes are not supported": `test` and
+  `exec` on a regex you supplied, which advance its `lastIndex`; a method you wrote; and a
+  built-in reached through `call`, `apply` or `bind` ([C5](../../docs/backlog.md#c5)).
+
 ---
 
 ## [0.3.0] - 2026-10-04
@@ -37,7 +59,7 @@ signal value now throws, and the `eval-core` floor rises to 0.10.0, which the gu
   is unchanged.
 
 ### Known limitation
-- **A mutating method is not caught** — [C4](../../docs/backlog.md#c4). `user.tags.push("x")`,
+- **A mutating method is not caught** — [C4](../../docs/backlog-retired.md#c4). `user.tags.push("x")`,
   `splice`, `sort`, `Map#set` and their kin write from native code, so no member write is made
   and the guard is never asked: the call mutates `user()`. Documented in the README, under
   "Writes are not supported".

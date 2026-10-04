@@ -409,16 +409,50 @@ describe('createEvalSignal', () => {
       });
 
       /**
-       * KNOWN GAP - pinned as current behaviour, not endorsed
-       * (`docs/backlog.md` C4): a mutating method writes from native code and
-       * no member write is ever made.
+       * A mutating method, through the factory (`docs/backlog-retired.md` C4).
+       * Until 0.4.0 this was pinned the other way round, as a known gap: it
+       * returned 2 and left `user().tags` as `['a', 'x']`. Changed
+       * deliberately; `signal-context.spec.ts` holds the rest of the rows,
+       * driven through `EvalService` with no factory in between.
        */
-      it('should NOT refuse a mutating method call', () => {
+      it('should refuse a mutating method call, and write nothing', () => {
         const user = userOf();
+        const value = create('user.tags.push("x")', { user });
 
-        expect(create('user.tags.push("x")', { user })()).toEqual(2);
+        expect(() => value()).toThrow(SignalContextWriteError);
 
-        expect(user().tags).toEqual(['a', 'x']);
+        expect(user().tags).toEqual(['a']);
+      });
+
+      it('should raise a method error naming the method, the expression and what to use instead', () => {
+        const value = create('user.tags.sort()', { user: userOf() });
+
+        let caught: unknown;
+        try {
+          value();
+        } catch (error) {
+          caught = error;
+        }
+
+        expect(caught).toBeInstanceOf(SignalContextWriteError);
+        expect((caught as SignalContextWriteError).kind).toEqual('method');
+        expect((caught as SignalContextWriteError).key).toEqual('Array.prototype.sort');
+        expect((caught as SignalContextWriteError).expression).toEqual('user.tags.sort()');
+        expect((caught as SignalContextWriteError).message).toEqual(
+          "Cannot call Array.prototype.sort in expression 'user.tags.sort()': "
+          + 'a signal expression may write only into objects it created. '
+          + 'Use toSorted instead, which returns a sorted copy.'
+        );
+
+        // Re-raised with the expression added and the kind carried over.
+        expect(((caught as SignalContextWriteError).cause as SignalContextWriteError).kind)
+          .toEqual('method');
+      });
+
+      it('should not let onError undefined swallow a method error', () => {
+        const value = create('user.tags.push("x")', { user: userOf() }, { onError: 'undefined' });
+
+        expect(() => value()).toThrow(SignalContextWriteError);
       });
     });
 

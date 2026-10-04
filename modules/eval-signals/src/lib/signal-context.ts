@@ -9,13 +9,53 @@ import { warnOnNestedSignals } from './nested-signal-check';
  */
 export type SignalContextSource = Record<string, unknown>;
 
+/**
+ * What to do instead of a built-in method that writes, named as `eval-core`
+ * names it - `'Array.prototype.sort'` - with a leading space, or nothing where
+ * JavaScript has no copy to make: a `Date`, a `WeakMap`, a `WeakSet`.
+ */
+const methodAdvice = (method: string): string => {
+  const dot = method.lastIndexOf('.');
+  const owner = method.slice(0, dot);
+  const name = method.slice(dot + 1);
+
+  if (owner === 'Array.prototype' || owner === '%TypedArray%.prototype') {
+    switch (name) {
+      case 'sort':
+        return ' Use toSorted instead, which returns a sorted copy.';
+      case 'reverse':
+        return ' Use toReversed instead, which returns a reversed copy.';
+      case 'splice':
+        return ' Use toSpliced instead, which returns a changed copy.';
+      case 'fill':
+        return ' Use with instead, which returns a copy with one element replaced,'
+          + ' or spread it into an array literal and fill that.';
+      default:
+        return ' Spread it into an array literal and change the copy instead.';
+    }
+  }
+  if (owner === 'Map.prototype' || owner === 'Set.prototype') {
+    return ' Spread its entries into an array literal and work on the copy instead.';
+  }
+  if (owner === 'Object') {
+    return ' Spread it into an object literal and change the copy instead.';
+  }
+  return '';
+};
+
 const writeErrorMessage = (key: unknown, expression: string | undefined,
-  kind: 'key' | 'member'): string => {
+  kind: 'key' | 'member' | 'method'): string => {
+
+  const where = expression === undefined ? '' : ` in expression '${expression}'`;
+
+  if (kind === 'method') {
+    return `Cannot call ${String(key)}${where}: `
+      + `a signal expression may write only into objects it created.${methodAdvice(String(key))}`;
+  }
 
   const target = kind === 'member'
     ? `member '${String(key)}'`
     : `'${String(key)}'`;
-  const where = expression === undefined ? '' : ` in expression '${expression}'`;
   const why = kind === 'member'
     ? 'a signal expression may write only into objects it created.'
     : 'the keys of a signal context are read-only.';
@@ -25,7 +65,8 @@ const writeErrorMessage = (key: unknown, expression: string | undefined,
 
 /**
  * Thrown when an expression assigns to a key of a signal context, or to a
- * member of an object the expression did not create.
+ * member of an object the expression did not create, or calls a built-in
+ * method that would write into one.
  *
  * The keys are read-only by design. An `AssignmentExpression` or
  * `UpdateExpression` against one would otherwise write into the context's
@@ -54,7 +95,9 @@ export class SignalContextWriteError extends Error {
   /**
    * The key the expression tried to write: a key of the context when
    * {@link kind} is `'key'`, the property name when it is `'member'` - `name`
-   * for `user.name = 'Bob'`, `0` for `list[0] = 1`.
+   * for `user.name = 'Bob'`, `0` for `list[0] = 1`. When it is `'method'`, the
+   * method instead, as `eval-core` names it: `'Array.prototype.push'` for
+   * `user.tags.push('x')`.
    *
    * Under `caseInsensitive` the two visitors resolve the key through
    * `EvalContext.getKey` before writing, and since 0.2.0 a signal context
@@ -76,8 +119,16 @@ export class SignalContextWriteError extends Error {
    *   An object the expression created - an object, array or regex literal, a
    *   rest value, an arrow function - may be written. Since 0.3.0; up to
    *   0.2.x a member write was not refused at all.
+   * - `'method'` - a call of a built-in method that would write into an
+   *   object the expression did not create: `user.tags.push('x')`,
+   *   `user.tags.sort()`, `m.set(k, v)`, `Object.assign(user, p)`. The same
+   *   objects may be written as for `'member'`, so `[...user.tags].sort()`
+   *   is allowed. The message names the method and, where JavaScript has
+   *   one, what to call instead - `toSorted`, `toReversed`, `toSpliced`,
+   *   `with`, or a spread into a literal. Since 0.4.0; up to 0.3.x the call
+   *   went through and mutated the caller's data.
    */
-  readonly kind: 'key' | 'member';
+  readonly kind: 'key' | 'member' | 'method';
 
   /** The source expression - present only when raised through `createEvalSignal`. */
   readonly expression?: string;
@@ -93,7 +144,7 @@ export class SignalContextWriteError extends Error {
   readonly cause?: unknown;
 
   constructor(key: unknown, expression?: string, cause?: unknown,
-    kind: 'key' | 'member' = 'key') {
+    kind: 'key' | 'member' | 'method' = 'key') {
 
     super(writeErrorMessage(key, expression, kind));
 
@@ -133,9 +184,12 @@ export class SignalContextWriteError extends Error {
  * every member write and says whether the walk created the target; this
  * context refuses any target it did not.
  *
- * What still gets through is a mutating *method*: `user.tags.push('x')`
- * writes from native code, and no visitor sees a write at all
- * (`docs/backlog.md` C4).
+ * A mutating *method* is asked about through the same hook: since
+ * `eval-core` 0.11.0 the call visitor asks before calling a built-in that
+ * writes into an object it is handed - `user.tags.push('x')`, `m.set(k, v)`,
+ * `Object.assign(user, p)` - and this context refuses one whose target the
+ * walk did not create (`docs/backlog-retired.md` C4). A method the caller
+ * wrote is the caller's own code and is not asked about.
  *
  * Guarding the `original` object instead - a `Proxy` with a throwing `set`
  * trap - was rejected: it sits below the layer that knows *who* is writing,
@@ -163,15 +217,20 @@ class SignalEvalContext extends EvalContext {
   }
 
   /**
-   * Refuses a member write unless the walk created its target. Implementing
-   * this is what opts the context in: `eval-core` then records, per
-   * evaluation, the objects the walk creates - which is the whole cost, and
-   * one that only a signal context pays.
+   * Refuses a member write unless the walk created its target, and a built-in
+   * method's call on the same terms. Implementing this is what opts the
+   * context in: `eval-core` then records, per evaluation, the objects the
+   * walk creates - which is the whole cost, and one that only a signal
+   * context pays.
    */
   public override checkMemberWrite(write: EvalMemberWrite): void {
-    if (!write.createdByEvaluation) {
-      throw new SignalContextWriteError(write.key, undefined, undefined, 'member');
+    if (write.createdByEvaluation) {
+      return;
     }
+    if (write.method !== undefined) {
+      throw new SignalContextWriteError(write.method, undefined, undefined, 'method');
+    }
+    throw new SignalContextWriteError(write.key, undefined, undefined, 'member');
   }
 
   /**

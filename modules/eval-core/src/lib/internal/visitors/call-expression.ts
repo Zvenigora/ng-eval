@@ -6,6 +6,7 @@ import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 import { evaluateMember } from './member-expression';
 import { evaluateArray } from './array-expression';
+import { consultMethodWrite } from './member-write-policy';
 
 /**
  * Security: List of dangerous functions that should not be callable
@@ -162,6 +163,12 @@ const scopeReceiver = (st: EvalState, object: unknown): unknown => {
 
 /**
  * Enhanced call expression visitor with security checks
+ *
+ * A context with a member-write policy is asked, before the call, about a
+ * built-in that writes into its receiver or its first argument - see
+ * `consultMethodWrite`. The receiver asked about is the one the call is made
+ * with: the member's object, a prior scope's `thisArg`, or the context itself
+ * for a bare call. A context without a policy pays one field read per call.
  */
 export const callExpressionVisitor = (node: CallExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
 
@@ -172,7 +179,12 @@ export const callExpressionVisitor = (node: CallExpression, st: EvalState, callb
   if (node.callee.type === 'MemberExpression') {
     const [object, propertyName, fn] = evaluateMember(node.callee, st, callback);
     const functionName = typeof propertyName === 'string' ? propertyName : undefined;
-    const value = safeCall(fn, scopeReceiver(st, object), args, node.callee.optional, functionName);
+    const receiver = scopeReceiver(st, object);
+    const created = st.createdObjects;
+    if (created) {
+      consultMethodWrite(st, created, fn, receiver, args);
+    }
+    const value = safeCall(fn, receiver, args, node.callee.optional, functionName);
     pushVisitorResult(node, st, value);
   } else {
     callback(node.callee, st);
@@ -184,6 +196,10 @@ export const callExpressionVisitor = (node: CallExpression, st: EvalState, callb
       functionName = node.callee.name;
     }
 
+    const created = st.createdObjects;
+    if (created) {
+      consultMethodWrite(st, created, caller, st.context, args);
+    }
     const value = safeCall(caller, st.context, args, node.optional, functionName);
     pushVisitorResult(node, st, value);
   }

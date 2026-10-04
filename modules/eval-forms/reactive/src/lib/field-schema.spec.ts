@@ -297,6 +297,24 @@ describe('bindFieldProperties', () => {
 
       expect(address.value).toEqual({ city: 'Rome' });
     });
+
+    it('should let a mutating method call on a control\'s value through the default too', () => {
+      // `eval-signals` 0.4.0 (`docs/backlog-retired.md` C4): a built-in method
+      // that would write into a control's value is refused as a member write
+      // is, with `kind` `'method'`. Up to 0.3.x `tags.push("x")` pushed into
+      // the array the control holds, and the property rendered `'2'`.
+      const tags = new FormControl(['a']);
+
+      const bound = bindFields(
+        [{ name: 'country', text: 'tags.push("x")' }],
+        group({ country: new FormControl('CA'), tags }),
+        { injector }
+      );
+
+      expect(() => bound['country'].text?.()).toThrow(SignalContextWriteError);
+
+      expect(tags.value).toEqual(['a']);
+    });
   });
 
   describe('context composition (plan S 3.4.1)', () => {

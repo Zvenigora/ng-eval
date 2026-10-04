@@ -1915,7 +1915,7 @@ on 0.3.0:
 | `let o = {}; o.a = 1; o.a` | `1` | `1` |
 | `let t = 0; for (let i = 0; i < 3; i++) { t += i; } t` | `3` | `3` |
 | `user = 1` | refused, `kind` `'key'` | refused, `kind` `'key'` |
-| `user.tags.push("x")` | mutates `user().tags` | mutates `user().tags` — [C4](backlog.md#c4) |
+| `user.tags.push("x")` | mutates `user().tags` | mutates `user().tags` — [C4](#c4) |
 
 **What the first cut refused that it should not have.** Step 1 was first written recording object
 and array literals only. Run through a context applying the rule, nine writes into data the
@@ -2085,6 +2085,99 @@ rewrite maps every root to itself. The gate is therefore mostly a cost guard. No
 scope a caller registers with its own `caseInsensitive` corrects its namespace in `getKey` whatever
 the walk's options, and only the gate keeps a case-sensitive signal's `dependencies` from
 respelling that root. No case covers that combination.
+
+<a id="c4"></a>
+## C4 — A mutating method call escapes the member-write policy
+
+**Package** signals · **Kind** accepted, then fix · **Status** **Retired — fixed 2026-10-04**,
+unreleased: `eval-core` 0.11.0 asks the policy before a built-in method writes, and
+`eval-signals` 0.4.0 refuses one with `kind` `'method'`; `eval-forms` 0.4.0 by consequence. Was
+Open, documented
+
+*Fixed* 2026-10-04, in two packages, and opt-in in the first.
+
+- **`eval-core`.** The call visitor asks `EvalContext.checkMemberWrite` before calling a
+  function that is, by identity, a built-in that writes into an object it is handed: `Array`'s
+  `copyWithin`, `fill`, `pop`, `push`, `reverse`, `shift`, `sort`, `splice` and `unshift`;
+  `%TypedArray%`'s `copyWithin`, `fill`, `reverse`, `set` and `sort`; `Map`'s `set`, `delete`
+  and `clear`; `Set`'s `add`, `delete` and `clear`; `WeakMap`'s `set` and `delete`; `WeakSet`'s
+  `add` and `delete`; every `Date.prototype` setter, sixteen in V8 with Annex B's `setYear`; and
+  `Object`'s `assign`, `defineProperty`, `defineProperties`, `setPrototypeOf`, `freeze`, `seal`
+  and `preventExtensions`. The target is the receiver the call is made with, the context itself
+  for a bare call, or the first argument for `Object`'s. `createdByEvaluation` comes from
+  [C1](#c1)'s record, so `let a = []; a.push(1)` and `[...user.tags].push(1)` still work. `key`
+  is undefined, and `EvalMemberWrite` gains an optional `method`, `'Array.prototype.push'`. Both
+  branches of the visitor ask, member call and bare call. A context with no policy pays one field
+  read per call, as for a member write. The table and `consultMethodWrite` are in
+  `member-write-policy.ts`.
+- **`eval-signals`.** `SignalContextWriteError.kind` gains `'method'`, with `key` naming the
+  method as `eval-core` does, and a message that names it and what to use instead: `toSorted`,
+  `toReversed`, `toSpliced`, `with`, or a spread into a literal, and nothing for a `Date`, a
+  `WeakMap` or a `WeakSet`, which have no copy to make.
+- **`eval-forms`** changes no code. One case per adapter, in `field-schema.spec.ts` and
+  `rules.spec.ts`, and the README's "So does a write into the form's data" gains the method.
+
+**Object and Reflect, measured** before either was added. `Object`, `Reflect`, `globalThis`,
+`window`, `self` and `global` as identifiers all evaluate to `undefined`, and every member route to
+a `constructor` is refused by the prototype-pollution guard. **But the bare identifier
+`constructor` evaluates to `Object`**, inherited by the context's own `original`, and so does
+`this.constructor`. So `Object` is reachable, and its seven first-argument mutators are in the
+table. Through a signal context, `constructor.assign(user, { x: 1 })` wrote into `user()` before
+the fix and is refused after it. How `constructor` resolves at all is new, and a security defect
+in its own right: [B6](backlog.md#b6). **Reflect was not reached.** It is not a property of
+`Object`, and no other route found it, so its mutators are not in the table. A caller who puts
+`Reflect` into a context reaches them, and they are not asked about.
+
+**Bounds**, recorded and not closed:
+
+- **A regex the caller supplied keeps its `lastIndex` behaviour.** Measured on Node 26 with
+  `lastIndex` 1: with a global or sticky regex, `test` and `exec` advance it to 2; `match`,
+  `replace` and `replaceAll` with a global one reset it to 0, and a sticky `replace` advances it;
+  `search`, `split` and `matchAll` leave it at 1. Refusing `test` and `exec` would break
+  `pattern.test(value)`, the commonest rule there is. A spec pins `test`'s case as not asked about.
+- **A method the caller wrote is the caller's own code**, and is not asked about, whatever it is
+  called. A spec pins a caller's own `push`.
+- **A call's result counts as given**, as under C1: `a.slice().push(4)` is refused.
+- **A built-in reached through `call`, `apply` or `bind` is not asked about.**
+  `[].push.call(user.tags, "x")` still writes into `user()`, because the function the visitor
+  calls is `call`. Measured after the fix, and recorded as [C5](backlog.md#c5) rather than
+  folded in here.
+- **A built-in from another realm is not recognised.** An array made in an iframe holds that
+  realm's `push`, which is not the function in the table. Read, not measured.
+- **`evaluateCall`** in `call-expression.ts` calls functions without asking. It has no caller in
+  the repository, and was left alone.
+
+*Verified* by four probes, each run against all three projects' whole suites and read case by case,
+then reverted. The suites before the probes: `eval-core` 1357, `eval-signals` 185, `eval-forms`
+343, none red.
+
+| Probe | `eval-core` | `eval-signals` | `eval-forms` |
+| ----- | ----------- | -------------- | ------------ |
+| Drop the check: both calls in the visitor removed | **57** red: all 47 refusal rows, the 6 allowed rows (never asked), and the bare-call, call-result, arrow-body and scope-pop cases. The five that assert "not asked" stay green | **12** red: every method refusal, message and `onError` row; the 3 allowed rows stay green | **2** red: both new cases |
+| Match by name: the call site's spelling looked up in the table's short names | **13** red. The caller's own `push` is refused. `let p = a.push; p(4)` is not asked about. 11 refusal rows are refused, write nothing, and report the wrong method, since a short name shared by several owners (`set`, `delete`, `clear`, `add`, and `t.*` against `Array`'s) picks the first | **0** | **0** |
+| Every receiver created | **51** red: all 47 refusal rows, and the bare-call, call-result, arrow-body and scope-pop cases. All 6 allowed rows green | **12** red, the same rows as the first probe | **2** red |
+| No receiver created, the opposite direction | **6** red: exactly the 6 allowed rows | **3** red: exactly the 3 allowed rows | **0**: neither case allows anything |
+
+The name probe goes red in `eval-core` only. The two downstream packages call real built-ins by
+their own names, where name and identity agree, so the identity property is pinned by two
+`eval-core` rows, the caller's own `push` and the bare call.
+
+**The entry as it stood:**
+
+[C1](#c1)'s fix refuses a member write whose target the expression did not
+create, and it is asked about every write the two write visitors make. A method that mutates its
+receiver writes from native code instead: the call visitor calls it, and no write visitor runs. So
+`user.tags.push("x")` over `{ user: signal({ tags: ['a'] }) }` returns `2` and leaves `user().tags`
+as `['a', 'x']`, mutated from inside a `computed()` — and so do `splice`, `sort`, `reverse`,
+`fill`, `Map#set`, `Set#add` and their kin. Pinned as current behaviour in `signal-context.spec.ts`
+and `eval-signal.spec.ts`, and a paragraph in the package README's "Writes are not supported".
+
+Closing it would need the call visitor to know which methods mutate their receiver — a list per
+built-in type, which the call sandbox does not keep — or the value frozen or wrapped before the
+call, which is C1's rejected second mechanism. Kept here because "accepted and documented" is a
+state a later phase may want to revisit, not a closed question.
+
+*Recorded*: C1's decision, 2026-10-03.
 
 ---
 

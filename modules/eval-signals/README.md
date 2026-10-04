@@ -248,13 +248,28 @@ marked();    // ['x']
 
 A spread copies one level: `u.tags` above is still your array, and writing into it throws.
 
-**A mutating method is not caught.** `user.tags.push('x')`, `splice`, `sort`, `Map#set` and their
-kin write from native code, so the evaluator never sees a member write: the call goes through and
-mutates your data. Do not call one on anything the expression was given.
+**A built-in method that would write into what the expression was given is refused too, since
+0.4.0.** `user.tags.push('x')`, `user.tags.sort()`, `splice` and the rest of `Array`'s mutators,
+the typed arrays' own, `Map#set`, `Set#add` and their removers, a `Date`'s setters, and
+`Object.assign(user, …)` with `Object`'s other mutators each throw `SignalContextWriteError` with
+`kind` `'method'` and `key` naming the method, `'Array.prototype.push'`. The message says what to
+call instead where JavaScript has it — `toSorted`, `toReversed`, `toSpliced`, `with` — or to spread
+the value into a literal and change the copy. Up to 0.3.x each of these calls went through and
+mutated your data. On a copy the expression made they still work: `[...user.tags].sort()`.
 
-**The cost** is a record of each object an expression creates, kept only for a signal context.
-`eval-core` records literals, rest values and arrow functions for a context that asks, and does
-nothing extra for one that does not.
+Three things this does not catch:
+
+- **A regex you supplied keeps its `lastIndex` behaviour.** With a global or sticky regex, `test`
+  and `exec` advance it, and `match`, `replace` and `replaceAll` given a global one reset it to 0.
+  Refusing them would break the commonest rule there is, `pattern.test(value)`.
+- **A method you wrote is your own code**, and runs as written, whatever it is called.
+- **A built-in reached through `call`, `apply` or `bind`** — `[].push.call(user.tags, 'x')` —
+  still goes through. The method is recognised by identity, and the function called there is
+  `call`. Do not write one.
+
+**The cost** is a record of each object an expression creates, kept only for a signal context,
+and a lookup of each function called in a table of the built-ins above. `eval-core` does both for
+a context that asks, and nothing extra for one that does not.
 
 ## Async expressions
 

@@ -12,6 +12,32 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Added
+- **`EvalMemberWrite.method`**, optional: the built-in method about to make a write, named as
+  the specification names it, `'Array.prototype.push'` or `'Object.assign'`. Undefined for an
+  assignment or an update. [C4](../../docs/backlog-retired.md#c4).
+
+### Changed
+- **A context that implements `checkMemberWrite` is also asked before a built-in method writes
+  into an object it is handed — [C4](../../docs/backlog-retired.md#c4).** The call visitor asks
+  before calling `Array`'s `copyWithin`, `fill`, `pop`, `push`, `reverse`, `shift`, `sort`,
+  `splice` or `unshift`, the typed arrays' `copyWithin`, `fill`, `reverse`, `set` or `sort`,
+  `Map`'s and `WeakMap`'s `set` and `delete`, `Map`'s and `Set`'s `clear`, `Set`'s and
+  `WeakSet`'s `add` and `delete`, a `Date` setter, or `Object`'s `assign`, `defineProperty`,
+  `defineProperties`, `setPrototypeOf`, `freeze`, `seal` or `preventExtensions`. Each is matched
+  by identity, so a method of your own named `push` is not asked about, and `Array.prototype.push`
+  reached under another name is. The target is the object the method writes into: its receiver,
+  which is the context itself for a bare call, or, for `Object`'s, its first argument.
+  `createdByEvaluation` comes from the same record as for a member write, so `[...a].sort()` on a
+  copy the walk made is allowed; `key` is undefined. Throwing refuses the call, and it is not
+  made. A context that does not implement the method pays one field read per call, and nothing
+  else changes for it.
+  - **Not asked about:** `test` and `exec` on a regex, which advance a global or sticky one's
+    `lastIndex`; a method you wrote; and a built-in reached through `call`, `apply` or `bind`
+    ([C5](../../docs/backlog.md#c5)).
+- `checkMemberWrite`'s JSDoc no longer says a method call is outside what it sees, and
+  `EvalMemberWrite`'s says what `target` and `key` are for a method call.
+
 ### Removed
 - **Seventeen exports nothing in the library used — [B5](../../docs/backlog-retired.md#b5).**
   No non-spec source in the three packages referenced any of them beyond its own declaration and
