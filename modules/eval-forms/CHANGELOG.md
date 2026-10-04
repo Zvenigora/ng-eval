@@ -47,7 +47,9 @@ rise.
   for the second kind, rename the binding. `/signals` refuses these bindings at registration
   too, since the guard is shared — including one never read, such as `[1].map(valueOf => 1)`,
   `let toString = 1; 2` or `(({ valueOf }) => 1)({})`, which used to register there and then
-  throw on every evaluation.
+  throw on every evaluation; and an assignment to such a name, `toString = 1`, now throws the
+  guard's `Error` at registration or bind time at both entry points, where it threw
+  `SignalContextWriteError` (`kind` `'key'`) on evaluation.
 - **A control added after `bindFieldProperties` under a name off `Object.prototype` is refused**
   — [D1](../../docs/backlog-retired.md#d1). Up to 0.2.7 the mirror took it in unchecked, though
   no expression could read it. Now it is not mirrored, and the mirror reports it with the

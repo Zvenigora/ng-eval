@@ -792,6 +792,13 @@ locus has already been corrected once on the strength of a claim nobody re-ran; 
 claim inherited from a single run is exactly what that correction was about, so this stays a dated
 note beside the table and not a row in it.
 
+**Observed 2026-10-03, Windows 11, in the `.claude/worktrees/c1` worktree: two runs of
+`$env:NX_WORKSPACE_ROOT_PATH = 'D:\repo.2026\ng-eval-base\ng-eval\.claude\worktrees\c1'; npx nx run-many -t lint test build --skip-nx-cache --output-style=static`**
+(PowerShell; the override because the session's environment set `NX_WORKSPACE_ROOT_PATH` to the
+main checkout, which nx would otherwise have run). The first, before `f05ced9`, printed the
+warning inside `eval-signals:test`'s block of the static output and inside `eval-core:test`'s; the
+second, before `cfe9d42`, inside `eval-core:test`'s only. Every target was green both times.
+
 > **What this replaces.** The entry said: "Confined to `eval-core` — confirmed by running each
 > project separately." **That does not hold today**: run separately, `eval-core` is the *quietest*
 > of the three, at zero. Either the attribution was made under conditions this tree no longer

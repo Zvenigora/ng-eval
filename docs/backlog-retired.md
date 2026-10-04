@@ -1421,8 +1421,9 @@ makes is a property *definition*. `pattern.ts` writes through it too, into the b
 has just created with `{}`. On a fresh plain object with no such key a definition and an
 assignment cannot be told apart, so those are unaffected.
 
-**The effects**, measured 2026-10-03 on 8d96fa7 (55530b9 with one CHANGELOG sentence amended; the
-code is the same) through `evaluate` over a plain context, with no member-write policy in force:
+**The effects**, measured 2026-10-03 on 8d96fa7's code (the release commit was amended before push
+in one CHANGELOG sentence only) through `evaluate` over a plain context, with no member-write
+policy in force:
 
 | Write | Result |
 | ----- | ------ |
@@ -2292,8 +2293,12 @@ never read was never seen: measured at f05ced9, before the change, `[1].map(valu
 under `/reactive`, and each threw `Access to dangerous property` on evaluation. The walk now
 registers the same predicate and message under `VariablePattern`, so the bound above — "a name
 the expression binds itself is refused" — holds as written, read or not, at both entry points.
-An assignment to such a name, `toString = 1`, was already refused at both by the read-only-key
-check; it now fails on the guard's message instead, which runs first. A destructuring *key*,
+An assignment to such a name, `toString = 1`, registered and bound at both and threw
+`SignalContextWriteError` (`kind` `'key'`, the read-only-key check) on evaluation; it now throws
+the guard's `Error` at registration or bind time instead. *(Corrected 2026-10-03: this sentence
+first said the assignment was already refused, from a harness that ran registration and the first
+read in one `try`. Measured apart, at 97c986f and at cfe9d42, through both entry points, the
+refusal was at evaluation.)* A destructuring *key*,
 `({ valueOf: v }) => …`, is still not seen: it is not a binding.
 
 Specs (6 new, and 3 changed): the three expressions above refused, naming the identifier, in
