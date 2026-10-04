@@ -1769,7 +1769,7 @@ source count.
 ## B5 — `eval-core` exports seventeen symbols nothing uses
 
 **Package** core · **Kind** decision, then fix · **Status** **Retired — decided and fixed
-2026-10-04**: all seventeen removed, for `eval-core` 0.11.0, a breaking minor. Unreleased
+2026-10-04**: all seventeen removed, a breaking minor; versioned `eval-core` 0.11.0, unpublished
 
 *Decided* 2026-10-04: remove them. A consumer that imports one breaks, which the CHANGELOG says
 symbol by symbol, with a replacement for the three that have one. Nothing in this repository
@@ -2089,10 +2089,10 @@ respelling that root. No case covers that combination.
 <a id="c4"></a>
 ## C4 — A mutating method call escapes the member-write policy
 
-**Package** signals · **Kind** accepted, then fix · **Status** **Retired — fixed 2026-10-04**,
-unreleased: `eval-core` 0.11.0 asks the policy before a built-in method writes, and
-`eval-signals` 0.4.0 refuses one with `kind` `'method'`; `eval-forms` 0.4.0 by consequence. Was
-Open, documented
+**Package** signals · **Kind** accepted, then fix · **Status** **Retired — fixed 2026-10-04**;
+versioned `eval-core` 0.11.0, `eval-signals` 0.4.0 and `eval-forms` 0.4.0, unpublished: `eval-core`
+asks the policy before a built-in method writes, and `eval-signals` refuses one with `kind`
+`'method'`; `eval-forms` by consequence. Was Open, documented
 
 *Fixed* 2026-10-04, in two packages, and opt-in in the first.
 

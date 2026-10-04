@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+---
+
+## [0.4.0] - 2026-10-04
+
+**A rule's call of a built-in method that would write into the form's data is refused, by
+consequence of `eval-signals` 0.4.0 — [C4](../../docs/backlog-retired.md#c4).** A breaking minor
+with no code change in this package: the three `.d.ts` files are byte-identical to 0.3.1's. The
+peer ranges move to the versions that refuse the call.
+
 ### Breaking
 - **A rule's call of a built-in method that would write into the form's data throws
   `SignalContextWriteError`**, with `kind` `'method'`, in every mode, at both entry points — by
@@ -18,6 +27,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `[...tags].sort()`. The README's "When a rule fails" says so, and what is still not caught: a
   method you wrote, `lastIndex` on a regex you supplied, and a built-in reached through `call`,
   `apply` or `bind` ([C5](../../docs/backlog.md#c5)).
+
+### Changed
+- **Peer ranges**: `@zvenigora/ng-eval-core` `>=0.11.0 <0.12.0`, from `>=0.10.0 <0.11.0`, and
+  `@zvenigora/ng-eval-signals` `>=0.4.0 <0.5.0`, from `>=0.3.0 <0.4.0`.
 
 ---
 

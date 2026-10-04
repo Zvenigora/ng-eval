@@ -17,9 +17,9 @@ signals library.
 npm install @zvenigora/ng-eval-signals @zvenigora/ng-eval-core
 ```
 
-Peer dependencies: `@angular/core >=19` and `@zvenigora/ng-eval-core >=0.10.0 <0.11.0`. The floor
-is the member-write guard, which needs `eval-core` 0.10.0 to ask about a member write at all — see
-[Writes are not supported](#writes-are-not-supported).
+Peer dependencies: `@angular/core >=19` and `@zvenigora/ng-eval-core >=0.11.0 <0.12.0`. The floor
+is the write guard, which needs `eval-core` 0.11.0 to ask about a built-in method's write as well
+as a member write — see [Writes are not supported](#writes-are-not-supported).
 
 ## Quick start
 

@@ -52,6 +52,12 @@ Workspace tooling: nothing here reaches a consumer, so nothing here is versioned
   fetches them (`fetch-depth: 0`), and the three `project.json`s lose
   `fallbackCurrentVersionResolver: "disk"`, so `nx release version` no longer falls back to the
   manifest when a tag is missing.
+- **Jest runs without worker processes**, 2026-10-04 — `docs/backlog.md` F7. `jest.preset.js`
+  sets `maxWorkers: 1` for all three projects, so Jest runs each test file in band and starts no
+  worker. The intermittent `A worker process has failed to exit gracefully` warning was
+  `jest-worker` killing a worker that missed its fixed 500 ms exit window while `nx run-many` ran
+  three projects' pools at once, each sized for the whole machine. The gate went from 41.5 s with
+  the warning once to 19.3 s with none, on 20 cores.
 
 ### Changed
 - **Each package now carries a copy of the root `LICENSE`** (`modules/*/LICENSE`), which

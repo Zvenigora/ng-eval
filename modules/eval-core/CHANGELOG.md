@@ -12,6 +12,19 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+---
+
+## [0.11.0] - 2026-10-04
+
+**The member-write policy is asked about built-in methods that write, and seventeen unused
+exports are removed.** A breaking minor, in two ways. An import of a removed symbol breaks
+([B5](../../docs/backlog-retired.md#b5)), and a context that implements `checkMemberWrite` is
+asked about calls it was not asked about before ([C4](../../docs/backlog-retired.md#c4)). The one
+other change to an exported symbol is an addition, `EvalMemberWrite.method`. The `.d.ts` loses the
+seventeen, gains `method`, and changes documentation comments: `checkMemberWrite` loses the
+paragraph that said a method call was outside what it sees. `eval-signals` 0.4.0 builds on the
+change and requires this version.
+
 ### Added
 - **`EvalMemberWrite.method`**, optional: the built-in method about to make a write, named as
   the specification names it, `'Array.prototype.push'` or `'Object.assign'`. Undefined for an

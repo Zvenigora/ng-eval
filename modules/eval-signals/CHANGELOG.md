@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+---
+
+## [0.4.0] - 2026-10-04
+
+**A built-in method that would write into what the expression was given is refused —
+[C4](../../docs/backlog-retired.md#c4).** A breaking minor: such a call throws where it used to
+mutate the caller's data, and `SignalContextWriteError.kind` widens to `'method'`. The `eval-core`
+floor rises to 0.11.0, which asks about the call. The `.d.ts` differs from 0.3.0 in `kind`'s type
+and the constructor's `kind` parameter, both widened, and in documentation comments.
+
 ### Breaking
 - **A built-in method that would write into anything the expression did not create throws
   `SignalContextWriteError` — [C4](../../docs/backlog-retired.md#c4).** `user.tags.push("x")`,
@@ -29,6 +39,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Still not caught**, and documented in the README under "Writes are not supported": `test` and
   `exec` on a regex you supplied, which advance its `lastIndex`; a method you wrote; and a
   built-in reached through `call`, `apply` or `bind` ([C5](../../docs/backlog.md#c5)).
+
+### Changed
+- **Peer range `@zvenigora/ng-eval-core` `>=0.11.0 <0.12.0`**, from `>=0.10.0 <0.11.0`: 0.10.x
+  never asks about a method call, so under it the guard above would not run.
 
 ---
 
