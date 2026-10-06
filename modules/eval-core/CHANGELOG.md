@@ -14,6 +14,39 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ---
 
+## [0.10.1] - 2026-10-05
+
+**A security fix: an expression no longer resolves a name on the prototype-pollution blocklist
+against its context.** A patch for every version up to 0.10.0, with no exported symbol changed.
+It is a patch although an expression that names such a key of its context now throws where it
+used to read a value: the names are `Object.prototype`'s own, a context key with one of them is
+rare, and the defect is a security one. `eval-signals` 0.3.0 and `eval-forms` 0.3.x admit it in
+their peer ranges.
+
+### Security
+- **An expression no longer resolves a name on the prototype-pollution blocklist against its
+  context** (B6 in the repository's backlog). An identifier is resolved against the context, and
+  for a context built from a plain object or a class instance the lookup was a bare property
+  access, so an identifier resolved the members the context inherits from `Object.prototype`; so
+  did `this.k` and `this["k"]`. The blocklist guarded member access to the objects an expression
+  holds, not resolution against the context, and through `Object`'s own static functions an
+  expression could then modify shared prototypes. Every published version up to 0.10.0 is
+  affected.
+  - **Now refused before any lookup**, with the error the member visitor throws for any other
+    object, `Access to dangerous property "constructor" is blocked for security reasons`:
+    `__proto__`, `constructor`, `prototype`, the four `__define…` and `__lookup…` accessors,
+    `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable`, `toString`, `valueOf` and
+    `toLocaleString`, as an identifier, as `this.k` or `this["k"]`, or as a member of an
+    `EvalScope` held in the context. This applies over every kind of context: a plain object, a
+    `Registry`, a class instance, an `EvalContext`, a prior scope or a signal context. Under
+    `caseInsensitive` the key the lookup matched is checked too, so `CONSTRUCTOR` over a context
+    that holds `constructor` is refused.
+  - **A context key with one of those names can no longer be read by an expression**, even where
+    the context holds it as a key of its own, as a `Registry` or a signal context's source can.
+    Rename the key. An arrow parameter or a `let` with one of these names was already refused.
+
+---
+
 ## [0.10.0] - 2026-10-03
 
 **An opt-in member-write policy on `EvalContext`, and three fixes.** Nothing changes for a context
