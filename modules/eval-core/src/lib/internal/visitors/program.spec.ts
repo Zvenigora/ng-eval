@@ -165,10 +165,19 @@ describe('programVisitor', () => {
       //
       // A `Registry` original is what makes this discriminating: it resolves
       // none of these itself, so anything that comes back came from the scope.
-      const context = EvalContext.fromContext(Registry.fromObject({ a: 'A' }));
+      //
+      // Each name is read by `get` from a function the expression calls, so
+      // the program scope is on the stack when it is asked. As identifiers
+      // these names are refused before any lookup since 0.11.0
+      // (`docs/backlog-retired.md` B6), which would hide what the scope answers.
+      const context: EvalContext = EvalContext.fromContext(Registry.fromObject({
+        a: 'A',
+        read: (name: string) => context.get(name),
+      }));
 
       for (const name of ['toString', 'constructor', 'valueOf', 'hasOwnProperty']) {
-        expect(runOn(name, context)).toBeUndefined();
+        expect(runOn(`read("${name}")`, context)).toBeUndefined();
+        expect(() => runOn(name, context)).toThrow(`Access to dangerous property "${name}"`);
       }
 
       expect(runOn('a', context)).toBe('A');
@@ -177,22 +186,29 @@ describe('programVisitor', () => {
     it('should not let the program scope shadow a lookup resolver', () => {
       // Scopes are step 1 of the resolution order and lookups are step 4, so a
       // scope that answers for a prototype name wins over a resolver the
-      // caller installed for it.
-      const context = EvalContext.fromContext(Registry.fromObject({ a: 'A' }));
+      // caller installed for it. Read through `get`, as above.
+      const context: EvalContext = EvalContext.fromContext(Registry.fromObject({
+        a: 'A',
+        read: (name: string) => context.get(name),
+      }));
       context.lookups.push((key: unknown) => (key === 'toString' ? 'FROM-LOOKUP' : undefined));
 
-      expect(runOn('toString', context)).toBe('FROM-LOOKUP');
+      expect(runOn('read("toString")', context)).toBe('FROM-LOOKUP');
     });
 
     it('should resolve the same way under caseInsensitive', () => {
       // `fromContext` copies a plain record into a Map-backed `Registry` when
       // `caseInsensitive` is set, so the prototype names leaked on the
       // case-sensitive path only. Both shapes now ask the same own-key
-      // question, and this is the arm that was already green.
-      const context = EvalContext.fromContext(Registry.fromObject({ a: 'A' }), { caseInsensitive: true });
+      // question, and this is the arm that was already green. Read through
+      // `get`, as above.
+      const context: EvalContext = EvalContext.fromContext(Registry.fromObject({
+        a: 'A',
+        read: (name: string) => context.get(name),
+      }), { caseInsensitive: true });
       const state = EvalState.fromContext(context, { caseInsensitive: true });
 
-      expect(evaluate(programOf('toString'), state)).toBeUndefined();
+      expect(evaluate(programOf('read("toString")'), state)).toBeUndefined();
     });
   });
 

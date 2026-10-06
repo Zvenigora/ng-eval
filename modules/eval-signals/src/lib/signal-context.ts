@@ -323,7 +323,9 @@ const match = (
  *   `getContextValue` reads a plain object as a bare property access, so an
  *   `Object.prototype` name - `toString`, `valueOf`, `constructor`,
  *   `hasOwnProperty` - resolves off the prototype and shadows a source key of
- *   the same name.
+ *   the same name. An expression cannot name one at all: since `eval-core`
+ *   0.11.0 an identifier or a member of `this` on its prototype-pollution
+ *   blocklist throws before any lookup (`docs/backlog-retired.md` B6).
  * - **A closure that escapes the evaluation is not tracked.** Reads made after
  *   the walk returns happen outside the reactive context. This is inherent to
  *   Angular's tracking model.

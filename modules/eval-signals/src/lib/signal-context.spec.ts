@@ -613,6 +613,69 @@ describe('createSignalContext', () => {
     });
   });
 
+  // `eval-core` refuses an identifier, or a member of `this`, that names a key
+  // on its prototype-pollution blocklist, and under `caseInsensitive` one whose
+  // lookup matched such a key (`docs/backlog-retired.md` B6). Up to `eval-core`
+  // 0.10.x both resolved off the context's empty `original`, so
+  // `constructor` was `Object` here. A signal context's own `getKey` answers
+  // the source's spelling, which is what the matched-key rows reach.
+  describe('the prototype-pollution blocklist', () => {
+
+    const NAMES = [
+      '__proto__', 'constructor', 'prototype',
+      '__defineGetter__', '__defineSetter__', '__lookupGetter__', '__lookupSetter__',
+      'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable',
+      'toString', 'valueOf', 'toLocaleString'
+    ];
+
+    const FORMS: ReadonlyArray<readonly [string, (name: string) => string]> = [
+      ['an identifier', (name) => name],
+      ['a member of this', (name) => `this.${name}`],
+      ['a computed member of this', (name) => `this["${name}"]`]
+    ];
+
+    const blocked = (name: string): string =>
+      `Access to dangerous property "${name}" is blocked for security reasons`;
+
+    const rows = [false, true].flatMap((caseInsensitive) => FORMS.flatMap(([form, write]) =>
+      NAMES.map((name) => [name, form, caseInsensitive, write(name)] as const)));
+
+    it.each(rows)('should refuse %s as %s, caseInsensitive %s', (name, _form, caseInsensitive, expression) => {
+      const options = { caseInsensitive };
+      const context = createSignalContext({ a: signal(1) }, options);
+
+      expect(() => service.simpleEval(expression, context, options)).toThrow(blocked(name));
+    });
+
+    const variantRows = FORMS.flatMap(([form, write]) =>
+      NAMES.map((name) => [name.toUpperCase(), form, name, write(name.toUpperCase())] as const));
+
+    it.each(variantRows)('should refuse %s as %s, matching a source key %s, caseInsensitive',
+      (_variant, _form, name, expression) => {
+        const options = { caseInsensitive: true };
+        const context = createSignalContext({ [name]: signal('own') }, options);
+
+        expect(() => service.simpleEval(expression, context, options)).toThrow(blocked(name));
+      });
+
+    it.each([false, true])('should still resolve an ordinary key, caseInsensitive %s', (caseInsensitive) => {
+      const options = { caseInsensitive };
+      const context = createSignalContext({ a: signal(1), Constructor: signal('own') }, options);
+
+      expect(service.simpleEval('a', context, options)).toEqual(1);
+      expect(service.simpleEval('this.a', context, options)).toEqual(1);
+      expect(service.simpleEval('Constructor', context, options)).toEqual('own');
+    });
+
+    it('should still resolve a case variant of an ordinary key, caseInsensitive', () => {
+      const options = { caseInsensitive: true };
+      const context = createSignalContext({ a: signal(1) }, options);
+
+      expect(service.simpleEval('A', context, options)).toEqual(1);
+      expect(service.simpleEval('this.A', context, options)).toEqual(1);
+    });
+  });
+
   describe('the nested-signal diagnostic', () => {
 
     let warn: jest.SpyInstance;

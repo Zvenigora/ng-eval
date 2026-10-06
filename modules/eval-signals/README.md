@@ -250,11 +250,12 @@ A spread copies one level: `u.tags` above is still your array, and writing into 
 
 **A built-in method that would write into what the expression was given is refused too, since
 0.4.0.** `user.tags.push('x')`, `user.tags.sort()`, `splice` and the rest of `Array`'s mutators,
-the typed arrays' own, `Map#set`, `Set#add` and their removers, a `Date`'s setters, and
-`Object.assign(user, …)` with `Object`'s other mutators each throw `SignalContextWriteError` with
-`kind` `'method'` and `key` naming the method, `'Array.prototype.push'`. The message says what to
-call instead where JavaScript has it — `toSorted`, `toReversed`, `toSpliced`, `with` — or to spread
-the value into a literal and change the copy. Up to 0.3.x each of these calls went through and
+the typed arrays' own, `Map#set`, `Set#add` and their removers, a `Date`'s setters, and, when
+your context supplies `Object`, `Object.assign(user, …)` and `Object`'s other mutators each throw
+`SignalContextWriteError` with `kind` `'method'` and `key` naming the method,
+`'Array.prototype.push'`. The message says what to call instead where JavaScript has it —
+`toSorted`, `toReversed`, `toSpliced`, `with` — or to spread the value into a literal and change
+the copy. Up to 0.3.x each of these calls went through and
 mutated your data. On a copy the expression made they still work: `[...user.tags].sort()`.
 
 Three things this does not catch:
@@ -350,8 +351,11 @@ Four things that decide whether this library fits, rather than surprises you lat
   name as the expression wrote it.
 - **Lookups resolve last.** A key resolvable earlier in `EvalContext.get`'s order shadows the
   source. The adapter starts with an empty `original`, but an empty object is not an *absent*
-  one: `Object.prototype` names — `toString`, `valueOf`, `constructor`, `hasOwnProperty` —
-  resolve off the prototype, so a source key with one of those names is unreachable.
+  one: up to `eval-core` 0.10.x, `Object.prototype` names — `toString`, `valueOf`,
+  `constructor`, `hasOwnProperty` — resolved off the prototype. Since 0.11.0 `eval-core` refuses
+  them, and the rest of its prototype-pollution blocklist, as an identifier or a member of
+  `this`, so an expression naming one throws. A source key with one of those names is
+  unreachable either way.
 - **A signal holding `undefined` does not shadow.** `EvalContext.get` treats `undefined` as
   "not found" and keeps going down its resolution order. Tracking is unaffected — the signal
   was called, so the dependency is recorded — but if you pushed another lookup onto the

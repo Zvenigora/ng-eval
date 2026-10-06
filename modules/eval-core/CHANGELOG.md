@@ -16,14 +16,38 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [0.11.0] - 2026-10-04
 
-**The member-write policy is asked about built-in methods that write, and seventeen unused
-exports are removed.** A breaking minor, in two ways. An import of a removed symbol breaks
-([B5](../../docs/backlog-retired.md#b5)), and a context that implements `checkMemberWrite` is
-asked about calls it was not asked about before ([C4](../../docs/backlog-retired.md#c4)). The one
-other change to an exported symbol is an addition, `EvalMemberWrite.method`. The `.d.ts` loses the
-seventeen, gains `method`, and changes documentation comments: `checkMemberWrite` loses the
-paragraph that said a method call was outside what it sees. `eval-signals` 0.4.0 builds on the
-change and requires this version.
+**A security fix: an expression no longer resolves a name on the prototype-pollution blocklist
+against its context. Also, the member-write policy is asked about built-in methods that write,
+and seventeen unused exports are removed.** A breaking minor, in three ways. An expression that
+names such a key of its context now throws ([B6](../../docs/backlog-retired.md#b6)). An import of
+a removed symbol breaks ([B5](../../docs/backlog-retired.md#b5)). And a context that implements
+`checkMemberWrite` is asked about calls it was not asked about before
+([C4](../../docs/backlog-retired.md#c4)). The one other change to an exported symbol is an
+addition, `EvalMemberWrite.method`. The `.d.ts` loses the seventeen, gains `method`, and changes
+documentation comments: `checkMemberWrite` loses the paragraph that said a method call was outside
+what it sees. `eval-signals` 0.4.0 builds on the change and requires this version.
+
+### Security
+- **An expression no longer resolves a name on the prototype-pollution blocklist against its
+  context — [B6](../../docs/backlog-retired.md#b6).** An identifier is resolved against the
+  context, and for a context built from a plain object or a class instance the lookup was a bare
+  property access, so an identifier resolved the members the context inherits from
+  `Object.prototype`; so did `this.k` and `this["k"]`. The blocklist guarded member access to the
+  objects an expression holds, not resolution against the context, and through `Object`'s own
+  static functions an expression could then modify shared prototypes. Every published version
+  up to 0.10.0 is affected.
+  - **Now refused before any lookup**, with the error the member visitor throws for any other
+    object, `Access to dangerous property "constructor" is blocked for security reasons`:
+    `__proto__`, `constructor`, `prototype`, the four `__define…` and `__lookup…` accessors,
+    `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable`, `toString`, `valueOf` and
+    `toLocaleString`, as an identifier, as `this.k` or `this["k"]`, or as a member of an
+    `EvalScope` held in the context. This applies over every kind of context: a plain object, a
+    `Registry`, a class instance, an `EvalContext`, a prior scope or a signal context. Under
+    `caseInsensitive` the key the lookup matched is checked too, so `CONSTRUCTOR` over a context
+    that holds `constructor` is refused.
+  - **A context key with one of those names can no longer be read by an expression**, even where
+    the context holds it as a key of its own, as a `Registry` or a signal context's source can.
+    Rename the key. An arrow parameter or a `let` with one of these names was already refused.
 
 ### Added
 - **`EvalMemberWrite.method`**, optional: the built-in method about to make a write, named as
@@ -36,8 +60,9 @@ change and requires this version.
   before calling `Array`'s `copyWithin`, `fill`, `pop`, `push`, `reverse`, `shift`, `sort`,
   `splice` or `unshift`, the typed arrays' `copyWithin`, `fill`, `reverse`, `set` or `sort`,
   `Map`'s and `WeakMap`'s `set` and `delete`, `Map`'s and `Set`'s `clear`, `Set`'s and
-  `WeakSet`'s `add` and `delete`, a `Date` setter, or `Object`'s `assign`, `defineProperty`,
-  `defineProperties`, `setPrototypeOf`, `freeze`, `seal` or `preventExtensions`. Each is matched
+  `WeakSet`'s `add` and `delete`, a `Date` setter, or, when a context supplies `Object`, its
+  `assign`, `defineProperty`, `defineProperties`, `setPrototypeOf`, `freeze`, `seal` or
+  `preventExtensions`. Each is matched
   by identity, so a method of your own named `push` is not asked about, and `Array.prototype.push`
   reached under another name is. The target is the object the method writes into: its receiver,
   which is the context itself for a bare call, or, for `Object`'s, its first argument.

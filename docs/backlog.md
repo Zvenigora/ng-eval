@@ -172,7 +172,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
 | [B4](backlog-retired.md#b4) | `eval-core.component.ts` is dead generator scaffold | core | fix | **Retired — fixed 2026-09-26**; no published artifact changed — the bundle and `.d.ts` are byte-identical |
 | [B5](backlog-retired.md#b5) | `eval-core` exports seventeen symbols nothing uses — two `@deprecated` since Phase 1, their removal deferred in a plan and nowhere else | core | decision, then fix | **Retired — decided and fixed 2026-10-04**; versioned `eval-core` 0.11.0, unpublished: all seventeen removed, a breaking minor; the CHANGELOG names a replacement for the three that have one |
-| [B6](#b6) | A bare identifier reads an inherited `Object.prototype` member: `constructor` is `Object`, and `constructor.assign(__proto__, …)` pollutes `Object.prototype` | core | fix, security | Open — found 2026-10-04 measuring for C4 |
+| [B6](backlog-retired.md#b6) | A bare identifier reads an inherited `Object.prototype` member: `constructor` is `Object`, and `constructor.assign(__proto__, …)` pollutes `Object.prototype` | core | fix, security | **Retired — fixed 2026-10-05**; versioned `eval-core` 0.11.0, unpublished: an identifier and `this.k` refuse a blocklisted name before any lookup, and under `caseInsensitive` a blocklisted matched key; a member of an `EvalScope` held in the context refuses the name. Affected: every published version to 0.10.0, first tag `eval-core@0.1.104` |
 | [C1](backlog-retired.md#c1) | A member-target write escapes the read-only policy | signals | decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-signals` 0.3.0, with `eval-core` 0.10.0, tagged 0c3299e: a signal expression may write into what it created and not into anything it was given or got back from a call |
 | [C2](backlog-retired.md#c2) | Detect a write violation at construction, not first recompute | signals | decision | **Retired — decided 2026-10-03**: no construction-time check; [C1](backlog-retired.md#c1)'s runtime guard is the guarantee and fires on the first read |
 | [C3](backlog-retired.md#c3) | Whether `eval-signals` should work around [A4](backlog-retired.md#a4) locally | signals | decision | **Retired — decided and fixed 2026-10-01**; released 2026-10-02 in `eval-signals` 0.2.0, tagged c56f987: under `caseInsensitive` a source key is named as the source spells it, in `getKey`, write errors and the first segment of `dependencies` |
@@ -537,26 +537,7 @@ above.
 
 # B. `eval-core` — security and hygiene
 
-[B1](backlog-retired.md#b1)–[B5](backlog-retired.md#b5) are retired.
-
-<a id="b6"></a>
-## B6 — Identifier resolution reaches `Object.prototype` members
-
-**Package** core · **Kind** fix, security · **Status** Open
-
-For a context built from a plain object, `getContextValue` reads the context with a bare
-property access, so an identifier resolves members inherited from `Object.prototype`. The
-dangerous-name check guards member access to other objects, not identifier resolution. Through
-`Object`'s own static functions, an expression can then modify shared prototypes.
-
-- Signal contexts refuse `Object`'s mutators since [C4](backlog-retired.md#c4); identifier
- resolution there is still affected.
-- `eval-forms` refuses such identifiers at bind time ([D2](backlog-retired.md#d2)).
-
-**Fix:** refuse an identifier whose name, or whose matched key under `caseInsensitive`, is in
-the dangerous-name set. Details are withheld until a fixed version is published.
-
-*Recorded*: found while building C4, 2026-10-04.
+[B1](backlog-retired.md#b1)–[B6](backlog-retired.md#b6) are retired.
 
 ---
 

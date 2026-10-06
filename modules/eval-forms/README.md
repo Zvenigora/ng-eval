@@ -207,10 +207,11 @@ later as an evaluation result nobody can trace:
 **Field and control names may not be `constructor`, `toString`, `valueOf`,
 `hasOwnProperty`, `__proto__` or any other member of `Object.prototype`.** `FormGroup`
 accepts such a key — it rejects only names containing a dot — and an expression naming one
-then reads the prototype's value, which is a *function*, which is truthy. A `visible` rule
-would render precisely the field that has no data, with no error anywhere. This is checked
-over the schema's names *and* the group's controls, because the two are different sets and
-the second is worse: the control exists and its value is unreadable.
+cannot read it. With `@zvenigora/ng-eval-core` up to 0.10.x it read the prototype's value,
+which is a *function*, which is truthy, so a `visible` rule would render precisely the field
+that has no data, with no error anywhere; since 0.11.0 the evaluator refuses the name. This is
+checked over the schema's names *and* the group's controls, because the two are different sets
+and the second is worse: the control exists and its value is unreadable.
 
 **A control added later is checked too, for its name and its class.** Since 0.3.0, an
 `addControl` whose name is a member of `Object.prototype`, or whose control is a nested
@@ -240,9 +241,12 @@ bindFieldProperties(
 );   // throws: Expression 'constructor': identifier 'constructor' is a member of Object.prototype …
 ```
 
-Without it the identifier resolves off `Object.prototype` to a *function*, a function is truthy,
-and truthiness means visible: the same failure the field-name check above prevents, reached
-through the expression instead of through the name. Up to 0.2.x this bound without complaint
+Without it, with `@zvenigora/ng-eval-core` up to 0.10.x, the identifier resolved off
+`Object.prototype` to a *function*, a function is truthy, and truthiness means visible: the same
+failure the field-name check above prevents, reached through the expression instead of through
+the name. Since `eval-core` 0.11.0 the evaluator refuses the identifier too, but each time the
+rule runs, where `onError` decides what the error becomes; this check refuses it once, when the
+rule is bound. Up to 0.2.x this bound without complaint
 and rendered the field — against a form with no `city` and no `constructor`, with nothing
 logged — while `/signals` threw on the same string. **Both entry points now refuse it.**
 
@@ -378,8 +382,9 @@ Two things are **not** routed through `options.onError`, in either adapter:
   the very object Angular holds.
 
   **So does a built-in method that would write into it, since 0.4.0.** `tags.push('x')`,
-  `tags.sort()`, `splice`, `Map#set`, a `Date`'s setters and `Object.assign` over a control's
-  value or the `/signals` model throw `SignalContextWriteError` with `kind` `'method'`, in every
+  `tags.sort()`, `splice`, `Map#set`, a `Date`'s setters and, where the context supplies
+  `Object`, `Object.assign`, over a control's value or the `/signals` model, throw
+  `SignalContextWriteError` with `kind` `'method'`, in every
   mode, naming the method and what to call instead — `toSorted`, `toReversed`, `toSpliced`,
   `with`, or a spread into a literal. Up to 0.3.x the call went through and mutated the form's
   data. On a copy the rule made they still work: `[...tags].sort()`. Not caught: a method you
@@ -632,9 +637,11 @@ const bad = schema<Order>((p) => {
 form(model, bad);   // throws: identifier 'constructor' is a member of Object.prototype …
 ```
 
-Without the check the identifier resolves off the prototype to a *function*, a function is
-truthy, and `evalVisible` would render precisely the field that has no data — with nothing
-logged. The fix is to rename the model key.
+Without the check, with `@zvenigora/ng-eval-core` up to 0.10.x, the identifier resolved off the
+prototype to a *function*, a function is truthy, and `evalVisible` would render precisely the
+field that has no data — with nothing logged. Since `eval-core` 0.11.0 the evaluator refuses it
+on each evaluation instead, where `onError` decides what the error becomes. The fix is to rename
+the model key.
 
 **The throw arrives from `form()`, not from `schema()`.** The schema body is what registers, and
 Angular invokes that body once per `form()` — so building the schema is silent and every

@@ -5,6 +5,7 @@ import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 import { Registry } from '../public-api';
 import { equalIgnoreCase } from './utils';
+import { isDangerousProperty, mayMatchDangerousProperty } from './prototype-pollution-guard';
 
 const literals: Registry<string, unknown>= Registry.fromObject({
   'undefined': undefined,
@@ -55,6 +56,46 @@ const emitRead = (node: Identifier, st: EvalState, value: unknown) => {
   });
 }
 
+/**
+ * Refuses an identifier whose name is on the prototype-pollution blocklist,
+ * before any lookup, with the member visitor's error.
+ *
+ * An identifier is resolved against the context, and `EvalContext.get` reads a
+ * plain object there - the original, or a scope - with a bare property access.
+ * So up to 0.10.x a name on the blocklist resolved to what the context inherits
+ * from `Object.prototype` (`docs/backlog-retired.md` B6): the blocklist guarded
+ * member access to the objects an expression holds, and the context is not one
+ * of them. Every kind of context is refused alike, including those - a
+ * `Registry`, a signal context's source - that hold such a name only as a key
+ * of their own.
+ */
+const refuseDangerousName = (node: Identifier) => {
+  if (isDangerousProperty(node.name)) {
+    throw new Error(`Access to dangerous property "${node.name}" is blocked for security reasons`);
+  }
+}
+
+/**
+ * Under `caseInsensitive`, refuses an identifier whose lookup matched a key on
+ * the blocklist - `CONSTRUCTOR` over a context holding `constructor` - as the
+ * member visitor re-checks `foundKey` for another object.
+ *
+ * The matched key is asked of `getKey`, which answers the key `get` resolves,
+ * and only for a name `mayMatchDangerousProperty` lets through. Any other name
+ * cannot match a blocklisted key, and an identifier must not pay a second
+ * resolution for nothing: the performance spec's read-emission guard asserts
+ * that, with no read hook, `getKey` is not called per identifier.
+ */
+const refuseDangerousMatch = (node: Identifier, st: EvalState) => {
+  if (!st.context || !mayMatchDangerousProperty(node.name)) {
+    return;
+  }
+  const matched = st.context.getKey(node.name);
+  if (isDangerousProperty(matched)) {
+    throw new Error(`Access to dangerous property "${String(matched)}" is blocked for security reasons`);
+  }
+}
+
 export const identifierVisitor = (node: Identifier, st: EvalState) => {
 
   if (st.options?.caseInsensitive) {
@@ -62,6 +103,8 @@ export const identifierVisitor = (node: Identifier, st: EvalState) => {
   }
 
   beforeVisitor(node, st);
+
+  refuseDangerousName(node);
 
   const context = st.context;
 
@@ -87,9 +130,15 @@ const identifierVisitorCaseInsensitive = (node: Identifier, st: EvalState) => {
 
   beforeVisitor(node, st);
 
+  refuseDangerousName(node);
+
   const context = st.context;
 
   const isThis = !!equalIgnoreCase(node.name, 'this');
+
+  if (!isThis) {
+    refuseDangerousMatch(node, st);
+  }
 
   const value = isThis
     ? st.context

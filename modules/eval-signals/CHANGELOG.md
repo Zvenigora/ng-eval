@@ -22,9 +22,9 @@ and the constructor's `kind` parameter, both widened, and in documentation comme
 - **A built-in method that would write into anything the expression did not create throws
   `SignalContextWriteError` — [C4](../../docs/backlog-retired.md#c4).** `user.tags.push("x")`,
   `user.tags.sort()`, `splice`, `reverse`, `fill` and the rest of `Array`'s mutators, the typed
-  arrays' own, `Map#set`, `Set#add` and their removers, a `Date`'s setters, and `Object.assign`
-  with `Object`'s other mutators each mutated `user()` from inside a `computed()`, and now throw,
-  in every `onError` mode. What the expression created is still writable, as for a member write:
+  arrays' own, `Map#set`, `Set#add` and their removers, a `Date`'s setters, and, when the context
+  supplies `Object`, `Object.assign` and `Object`'s other mutators each mutated `user()` from
+  inside a `computed()`, and now throw, in every `onError` mode. What the expression created is still writable, as for a member write:
   `[...user.tags].sort()` and `let t = [...user.tags]; t.push("x"); t` work. Needs `eval-core`
   0.11.0, which asks about the call.
 - **`SignalContextWriteError.kind` is `'key' | 'member' | 'method'`**, so a `switch` over it that
@@ -43,6 +43,11 @@ and the constructor's `kind` parameter, both widened, and in documentation comme
 ### Changed
 - **Peer range `@zvenigora/ng-eval-core` `>=0.11.0 <0.12.0`**, from `>=0.10.0 <0.11.0`: 0.10.x
   never asks about a method call, so under it the guard above would not run.
+
+### Security
+- **The `eval-core` floor, 0.11.0, brings its fix for [B6](../../docs/backlog-retired.md#b6)**: an
+  expression over a signal context no longer resolves a name on `eval-core`'s prototype-pollution
+  blocklist, which it used to read off the context's empty `original`.
 
 ---
 

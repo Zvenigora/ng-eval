@@ -1829,6 +1829,97 @@ are a hook vocabulary that contradicts `EvalHooks`.
 
 *Recorded*: while building F10's allowlist, 2026-10-04; the reference counts are that step's.
 
+<a id="b6"></a>
+## B6 — Identifier resolution reaches `Object.prototype` members
+
+**Package** core · **Kind** fix, security · **Status** **Retired — fixed 2026-10-05**; versioned
+`eval-core` 0.11.0, unpublished
+
+*Fixed* 2026-10-05. Two routes resolve a name against the context rather than against an object
+the expression holds, and both refuse a name on the prototype-pollution blocklist,
+`DANGEROUS_PROPERTY_NAMES`, with the member visitor's own error:
+
+- **An identifier** (`identifier.ts`, both visitors). The name is refused before any lookup.
+  Under `caseInsensitive` the key the lookup matched is refused too, asked of `getKey`, as
+  `member-expression.ts` re-checks `foundKey` for another object.
+- **A member of `this`**, `this.k` or `this["k"]` (`member-expression.ts`, the
+  `object === st.context` branch), on the same two terms. `getKey` already ran there under
+  `caseInsensitive`, so the matched-key check costs nothing extra.
+
+The member visitor's third branch, an `EvalScope` the caller put in the context as a value, reads a
+global scope's object the same way, and refuses the name as well. It has no case correction, so
+there is no matched key to check.
+
+**The plan named the identifier only; the other two were added in this step.** Measured on the
+commit before the fix, over a plain object: `this.constructor` and `this["constructor"]` were
+`Object` and `this.__proto__` was `Object.prototype`, through the context branch, which no
+check guarded. C4's entry had recorded `this.constructor` beside `constructor`. Fixing the
+identifier alone would have left `Object` reachable, and the Security section untrue.
+
+**The matched-key check is behind a filter**, `mayMatchDangerousProperty`, because the
+performance spec's read-emission guard asserts that an identifier does not pay a `getKey` call
+when no read hook is registered. A context matches another spelling by `toLowerCase()` (a
+case-insensitive `Registry`, an `eval-signals` source) or by `localeCompare` at base sensitivity
+(a prior scope's namespace), which ignores accents too. So a name is let through when its
+lower-case form is a blocklisted name's, or when it holds any character outside ASCII.
+
+*Affected*, from the code history only: every published version from the first to 0.10.0.
+`getContextValue` has read a plain object as `context[key]` since 8240885 (2023-12-15). The
+identifier visitor's lookup, `context?.get(node.name)`, dates from d259729 (2024-01-07), the
+commit tagged `eval-core@0.1.104`, the first published `eval-core` tag. At that tag the member
+visitor's context branch was `st.context.get(key)` with no check either. No version of
+`identifier.ts`, `eval-context.ts` or `common/context.ts` at any `eval-core` tag contains a
+dangerous-name check. 0.1.102, published and never tagged, has the same identifier path at its
+release commit, 156114e.
+
+*Verified*: `eval.service.identifier-guard.spec.ts`, 635 cases. Each of the thirteen names is
+refused as an identifier, `this.k` and `this["k"]`, over five kinds of context: a plain object, a
+`Registry`, a class instance, an `EvalContext` over a plain object, and a global prior scope. Each
+is refused with and without `caseInsensitive`, and on an `EvalScope` in the context. Under
+`caseInsensitive` an upper-case variant is refused over each correcting kind holding the name and
+over a prior scope namespaced with it, and so is an accented variant of a namespace. An ordinary
+key, a case variant of one, a near miss (`Constructor`, `myConstructor`, `toStringValue`) and the
+literal names still resolve. `signal-context.spec.ts` gains 120 rows for a signal context. Three
+`program.spec.ts` cases read `toString` and its kin as identifiers to show that the empty program
+scope answers no prototype name; they now read through `get`, from a function the expression
+calls, and the first also asserts the refusal. With the old value-based `hasContextKey` restored,
+two of the three go red on the rerouted assertion, as they did before; the third,
+`caseInsensitive`, describes itself as the arm that was already green. The prototype-pollution and
+case-variant specs are unchanged.
+
+Probes, each against all three projects' whole suites and read case by case, then reverted. The
+suites before the fix: `eval-core` 1357, `eval-signals` 185, `eval-forms` 343; after, 1992, 305
+and 343.
+
+| Probe | `eval-core` | `eval-signals` | `eval-forms` |
+| ----- | ----------- | -------------- | ------------ |
+| Drop the identifier name check | **107**: 106 identifier rows, and `program.spec.ts`'s new refusal assertion. 24 identifier rows stay green: under `caseInsensitive` over a plain object read as written, an `EvalContext` the caller built or a global prior scope, the matched-key check refuses the twelve names the object inherits. `prototype`, which it does not inherit, goes red | **14**: the 13 case-sensitive rows, and `prototype` under `caseInsensitive` | **0** |
+| Drop the identifier matched-key check | **53**: the 39 identifier variant rows, the 13 namespace rows and the accented row | **13**: the identifier variant rows | **0** |
+| Drop the `this.k` name check | **212**: the `this.k` and `this["k"]` rows, with the same 24 per form green for the same reason | **28** | **0** |
+| Drop the `this.k` matched-key check | **106**: the 78 variant rows, the 26 namespace rows and the 2 accented rows | **26** | **0** |
+| Drop the `EvalScope` check | **52**: exactly its rows | **0** | **0** |
+| The filter without its non-ASCII clause | **1**: the accented identifier row | **0** | not run |
+| The filter always true | **1**: the read-emission guard in `performance.spec.ts`, an existing case | **0** | not run |
+
+No probe turned red anything outside the new rows except the program-scope assertion added with
+them and, for the filter, the existing performance guard that the filter exists to keep green.
+
+**The entry as it stood:**
+
+For a context built from a plain object, `getContextValue` reads the context with a bare
+property access, so an identifier resolves members inherited from `Object.prototype`. The
+dangerous-name check guards member access to other objects, not identifier resolution. Through
+`Object`'s own static functions, an expression can then modify shared prototypes.
+
+- Signal contexts refuse `Object`'s mutators since [C4](#c4); identifier
+ resolution there is still affected.
+- `eval-forms` refuses such identifiers at bind time ([D2](#d2)).
+
+**Fix:** refuse an identifier whose name, or whose matched key under `caseInsensitive`, is in
+the dangerous-name set. Details are withheld until a fixed version is published.
+
+*Recorded*: found while building C4, 2026-10-04.
+
 ---
 
 # C. `eval-signals`
@@ -2124,7 +2215,9 @@ a `constructor` is refused by the prototype-pollution guard. **But the bare iden
 `this.constructor`. So `Object` is reachable, and its seven first-argument mutators are in the
 table. Through a signal context, `constructor.assign(user, { x: 1 })` wrote into `user()` before
 the fix and is refused after it. How `constructor` resolves at all is new, and a security defect
-in its own right: [B6](backlog.md#b6). **Reflect was not reached.** It is not a property of
+in its own right: [B6](#b6). *(Since B6's fix, 2026-10-05, neither `constructor` nor
+`this.constructor` resolves, so `Object`'s seven are matched only when a context supplies
+`Object`. The CHANGELOGs and READMEs say so.)* **Reflect was not reached.** It is not a property of
 `Object`, and no other route found it, so its mutators are not in the table. A caller who puts
 `Reflect` into a context reaches them, and they are not asked about.
 

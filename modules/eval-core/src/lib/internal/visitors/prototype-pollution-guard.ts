@@ -48,6 +48,18 @@ const DANGEROUS_PRIMITIVE_PROPERTY_NAMES = new Set([
 ]);
 
 /**
+ * DANGEROUS_PROPERTY_NAMES lower-cased, for {@link mayMatchDangerousProperty}.
+ */
+const LOWERED_DANGEROUS_PROPERTY_NAMES = new Set(
+  Array.from(DANGEROUS_PROPERTY_NAMES, (name) => name.toLowerCase())
+);
+
+/**
+ * Any UTF-16 code unit outside ASCII, for {@link mayMatchDangerousProperty}.
+ */
+const NON_ASCII = /[\u0080-￿]/;
+
+/**
  * Set of constructor names that should be blocked from modification
  */
 const DANGEROUS_CONSTRUCTORS = new Set([
@@ -86,6 +98,27 @@ export const isDangerousPrimitiveProperty = (key: unknown): boolean => {
   }
   return false;
 };
+
+/**
+ * Whether a name, matched against a context under `caseInsensitive`, could
+ * match a key in DANGEROUS_PROPERTY_NAMES: the cheap filter ahead of
+ * `EvalContext.getKey`, which says which key it did match. False means it
+ * cannot, so an identifier pays for `getKey` only when it is near a dangerous
+ * name.
+ *
+ * A context matches another spelling in two ways. A case-insensitive
+ * `Registry`, and an `eval-signals` source, compare `toLowerCase()` forms, so
+ * a name can match a dangerous key only if its own lower-case form is one. A
+ * prior scope's namespace is compared by `localeCompare` at base sensitivity,
+ * which ignores accents as well as case: on ASCII identifier characters that
+ * is the same comparison, but a name with any other character may match a
+ * dangerous key - `cönstructor` matches `constructor` - so such a name always
+ * answers true.
+ * @param name The name as written
+ * @returns false if the name cannot match a dangerous key, true otherwise
+ */
+export const mayMatchDangerousProperty = (name: string): boolean =>
+  NON_ASCII.test(name) || LOWERED_DANGEROUS_PROPERTY_NAMES.has(name.toLowerCase());
 
 /**
  * Checks if an object is a dangerous constructor that shouldn't be modified

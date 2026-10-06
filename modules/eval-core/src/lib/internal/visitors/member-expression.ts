@@ -89,10 +89,23 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
 
   // Get the value with context-aware or prototype pollution protection
   if (object === st.context) {
+    // `this.k` resolves `k` against the context, as an identifier does, so it
+    // is refused as one is (`identifier.ts`, `docs/backlog-retired.md` B6): a
+    // blocklisted key before the lookup, and under `caseInsensitive` a
+    // blocklisted key the lookup matched. Up to 0.10.x neither was checked,
+    // and `this.constructor` over a plain object was `Object`.
+    if (isDangerousProperty(key)) {
+      throw new Error(`Access to dangerous property "${String(key)}" is blocked for security reasons`);
+    }
+
     // For context objects, preserve case-insensitive behavior
-    const contextKey = st.options?.caseInsensitive && typeof key === 'string'
-      ? st.context.getKey(key)
-      : key;
+    let contextKey: string | number | symbol | undefined = key;
+    if (st.options?.caseInsensitive && typeof key === 'string') {
+      contextKey = st.context.getKey(key);
+      if (isDangerousProperty(contextKey)) {
+        throw new Error(`Access to dangerous property "${String(contextKey)}" is blocked for security reasons`);
+      }
+    }
     const value = st.context.get(contextKey);
     const thisValue = st.context.getThis(contextKey);
 
@@ -110,6 +123,12 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
 
     return [thisValue ?? object, contextKey, value];
   } else if (object instanceof EvalScope) {
+    // A global scope reads its object as the context does, with a bare
+    // property access, so a blocklisted key is refused here as it is above.
+    if (isDangerousProperty(key)) {
+      throw new Error(`Access to dangerous property "${String(key)}" is blocked for security reasons`);
+    }
+
     // For scope objects, preserve original behavior (no getKey method)
     const value = object.get(key);
     const thisValue = object;

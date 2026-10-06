@@ -18,10 +18,10 @@ import { evaluate, parse } from '../functions';
  * the walk did not create, and record every question, so a row can tell
  * "refused" from "never asked".
  *
- * `Object` is supplied in the context here. An expression can also reach it
- * without that, through an inherited `constructor` on the context's own object
- * (`docs/backlog.md` B6); that route is B6's to close, and these rows do not
- * depend on it.
+ * `Object` is supplied in the context here. Up to 0.10.x an expression could
+ * also reach it without that, through an inherited `constructor` on the
+ * context's own object; since 0.11.0 that identifier, and `this.constructor`,
+ * are refused (`docs/backlog-retired.md` B6).
  */
 describe('member-write policy: built-in mutating methods', () => {
 
