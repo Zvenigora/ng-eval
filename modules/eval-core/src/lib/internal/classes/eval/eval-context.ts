@@ -490,8 +490,10 @@ export class EvalContext {
    * `map.set(k, v)`, `Object.assign(o, p)` - which writes from native code and
    * reaches neither write visitor. The call visitor asks, with
    * {@link EvalMemberWrite.method} naming the method and the object it writes
-   * as the target; refusing it means the call is not made. A method the
-   * caller wrote is not asked about: what it does is the caller's own code.
+   * as the target; refusing it means the call is not made. The same is asked
+   * when the method is reached through `Function.prototype.call`, `apply` or
+   * `bind` - for `bind`, when it binds. A method the caller wrote is not asked
+   * about: what it does is the caller's own code.
    *
    * @param write - The write about to happen.
    * @throws To refuse the write.

@@ -24,9 +24,11 @@ and the constructor's `kind` parameter, both widened, and in documentation comme
   `user.tags.sort()`, `splice`, `reverse`, `fill` and the rest of `Array`'s mutators, the typed
   arrays' own, `Map#set`, `Set#add` and their removers, a `Date`'s setters, and, when the context
   supplies `Object`, `Object.assign` and `Object`'s other mutators each mutated `user()` from
-  inside a `computed()`, and now throw, in every `onError` mode. What the expression created is still writable, as for a member write:
-  `[...user.tags].sort()` and `let t = [...user.tags]; t.push("x"); t` work. Needs `eval-core`
-  0.11.0, which asks about the call.
+  inside a `computed()`, and now throw, in every `onError` mode. So does each one reached through
+  `call`, `apply` or `bind`, `[].push.call(user.tags, "x")`
+  ([C5](../../docs/backlog-retired.md#c5)). What the expression created is still writable, as for
+  a member write: `[...user.tags].sort()` and `let t = [...user.tags]; t.push("x"); t` work. Needs
+  `eval-core` 0.11.0, which asks about the call.
 - **`SignalContextWriteError.kind` is `'key' | 'member' | 'method'`**, so a `switch` over it that
   was exhaustive is not any more.
 
@@ -37,8 +39,7 @@ and the constructor's `kind` parameter, both widened, and in documentation comme
   Array.prototype.sort in expression 'user.tags.sort()': a signal expression may write only into
   objects it created. Use toSorted instead, which returns a sorted copy.`
 - **Still not caught**, and documented in the README under "Writes are not supported": `test` and
-  `exec` on a regex you supplied, which advance its `lastIndex`; a method you wrote; and a
-  built-in reached through `call`, `apply` or `bind` ([C5](../../docs/backlog.md#c5)).
+  `exec` on a regex you supplied, which advance its `lastIndex`; and a method you wrote.
 
 ### Changed
 - **Peer range `@zvenigora/ng-eval-core` `>=0.11.0 <0.12.0`**, from `>=0.10.0 <0.11.0`: 0.10.x

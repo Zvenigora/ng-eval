@@ -102,11 +102,37 @@ const MUTATING_BUILT_INS: ReadonlyMap<unknown, MutatingBuiltIn> = (() => {
 })();
 
 /**
+ * `Function.prototype`'s three ways to run a function with a `this` the
+ * caller chooses. Read once, from this realm, as the table above is.
+ */
+const FUNCTION_CALL: unknown = Function.prototype.call;
+const FUNCTION_APPLY: unknown = Function.prototype.apply;
+const FUNCTION_BIND: unknown = Function.prototype.bind;
+
+/**
+ * The arguments `Function.prototype.apply` passes on: its second argument, read
+ * as an array-like, as `apply` reads it. Nothing for anything else - `apply`
+ * passes none for `null` or `undefined`, and throws for a primitive.
+ */
+const argumentsOf = (list: unknown): readonly unknown[] =>
+  isObjectLike(list) ? Array.prototype.slice.call(list as ArrayLike<unknown>) : [];
+
+/**
  * Asks the context whether a call may run, when the function is a built-in
  * that writes into an object it is handed, through
  * `EvalContext.checkMemberWrite` with `method` naming it. Any other function is
  * not asked about. A refusal is a throw, and it propagates from here
  * unchanged: the call has not been made.
+ *
+ * Reached through `Function.prototype.call`, `apply` or `bind`, the function
+ * the visitor calls is one of those three and not the built-in, so it is asked
+ * about as a direct call of the function they run: its receiver is the `this`
+ * they pass, and its arguments are the rest, or `apply`'s list. Followed
+ * through `call.call`, `call.apply` and the like, since each hop is one more of
+ * the three. `bind` makes a new function, which no table could recognise when
+ * it is called later, so it is asked at bind time, about the bound `this` and
+ * arguments: binding a built-in to an object the walk did not create is
+ * refused before the bound function exists (`docs/backlog-retired.md` C5).
  *
  * Called by `call-expression.ts` immediately before the call, and only after
  * it has read `st.createdObjects` and found it set, as for a member write.
@@ -119,6 +145,21 @@ const MUTATING_BUILT_INS: ReadonlyMap<unknown, MutatingBuiltIn> = (() => {
  */
 export const consultMethodWrite = (st: EvalState, created: WeakSet<object>,
   fn: unknown, receiver: unknown, args: readonly unknown[]): void => {
+
+  if (fn === FUNCTION_CALL) {
+    consultMethodWrite(st, created, receiver, args[0], args.slice(1));
+    return;
+  }
+
+  if (fn === FUNCTION_APPLY) {
+    consultMethodWrite(st, created, receiver, args[0], argumentsOf(args[1]));
+    return;
+  }
+
+  if (fn === FUNCTION_BIND) {
+    consultMethodWrite(st, created, receiver, args[0], args.slice(1));
+    return;
+  }
 
   const builtIn = MUTATING_BUILT_INS.get(fn);
   if (!builtIn) {

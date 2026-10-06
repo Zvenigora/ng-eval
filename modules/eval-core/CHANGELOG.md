@@ -62,17 +62,18 @@ what it sees. `eval-signals` 0.4.0 builds on the change and requires this versio
   `Map`'s and `WeakMap`'s `set` and `delete`, `Map`'s and `Set`'s `clear`, `Set`'s and
   `WeakSet`'s `add` and `delete`, a `Date` setter, or, when a context supplies `Object`, its
   `assign`, `defineProperty`, `defineProperties`, `setPrototypeOf`, `freeze`, `seal` or
-  `preventExtensions`. Each is matched
-  by identity, so a method of your own named `push` is not asked about, and `Array.prototype.push`
-  reached under another name is. The target is the object the method writes into: its receiver,
-  which is the context itself for a bare call, or, for `Object`'s, its first argument.
-  `createdByEvaluation` comes from the same record as for a member write, so `[...a].sort()` on a
-  copy the walk made is allowed; `key` is undefined. Throwing refuses the call, and it is not
-  made. A context that does not implement the method pays one field read per call, and nothing
-  else changes for it.
+  `preventExtensions`. Each is matched by identity, so a method of your own named `push` is not
+  asked about, and `Array.prototype.push` reached under another name is. The target is the object
+  the method writes into: its receiver, which is the context itself for a bare call, or, for
+  `Object`'s, its first argument. Reached through `Function.prototype.call`, `apply` or `bind`, a
+  method is asked about as a direct call of it, with the `this` they pass as its receiver
+  ([C5](../../docs/backlog-retired.md#c5)); `bind` is asked when it binds, so `[].push.bind(a)`
+  is refused before the bound function exists. `createdByEvaluation` comes from the same record
+  as for a member write, so `[...a].sort()` on a copy the walk made is allowed; `key` is
+  undefined. Throwing refuses the call, and it is not made. A context that does not implement the
+  method pays one field read per call, and nothing else changes for it.
   - **Not asked about:** `test` and `exec` on a regex, which advance a global or sticky one's
-    `lastIndex`; a method you wrote; and a built-in reached through `call`, `apply` or `bind`
-    ([C5](../../docs/backlog.md#c5)).
+    `lastIndex`; and a method you wrote.
 - `checkMemberWrite`'s JSDoc no longer says a method call is outside what it sees, and
   `EvalMemberWrite`'s says what `target` and `key` are for a method call.
 

@@ -16,8 +16,10 @@ export interface EvalMemberWrite {
    * prototype-pollution guard that would refuse it.
    *
    * For a method call, the object the method writes into: its receiver, `a`
-   * in `a.push(x)` - the context itself for a bare call, `p(x)` - or, for
-   * `Object`'s mutators, the first argument, `o` in `Object.assign(o, p)`.
+   * in `a.push(x)` - the context itself for a bare call, `p(x)`, and the
+   * `this` passed through `call`, `apply` or `bind`, `a` in
+   * `[].push.call(a, x)` - or, for `Object`'s mutators, the first argument,
+   * `o` in `Object.assign(o, p)`.
    */
   readonly target: unknown;
 
@@ -59,7 +61,10 @@ export interface EvalMemberWrite {
    *
    * The method is recognised by identity, not by the name it was called by: a
    * method of the caller's own named `push` is not asked about, and
-   * `Array.prototype.push` reached under another name is. The methods are
+   * `Array.prototype.push` reached under another name is. Reached through
+   * `Function.prototype.call`, `apply` or `bind`, it is asked about as a
+   * direct call of it, and `bind` is asked when it binds, since the bound
+   * function is new and would not be recognised when called. The methods are
    * those of `Array` and the typed arrays that reorder, fill or resize them;
    * `Map`, `Set`, `WeakMap` and `WeakSet`'s adders and removers; `Date`'s
    * setters; and `Object`'s `assign`, `defineProperty`, `defineProperties`,

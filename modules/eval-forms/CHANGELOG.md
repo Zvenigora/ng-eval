@@ -23,11 +23,10 @@ peer ranges move to the versions that refuse the call.
   consequence of `eval-signals` 0.4.0 ([C4](../../docs/backlog-retired.md#c4)). `tags.push('x')`
   over a control's value or the `/signals` model pushed into the array Angular holds, from inside
   a derivation; so did `sort`, `splice`, `Map#set`, a `Date`'s setters and, where the context
-  supplies `Object`, `Object.assign`. Like
-  a member write, it bypasses `onError`. On a copy the rule made the call still works:
-  `[...tags].sort()`. The README's "When a rule fails" says so, and what is still not caught: a
-  method you wrote, `lastIndex` on a regex you supplied, and a built-in reached through `call`,
-  `apply` or `bind` ([C5](../../docs/backlog.md#c5)).
+  supplies `Object`, `Object.assign`, called directly or through `call`, `apply` or `bind`
+  ([C5](../../docs/backlog-retired.md#c5)). Like a member write, it bypasses `onError`. On a copy
+  the rule made the call still works: `[...tags].sort()`. The README's "When a rule fails" says
+  so, and what is still not caught: a method you wrote, and `lastIndex` on a regex you supplied.
 
 ### Changed
 - **Peer ranges**: `@zvenigora/ng-eval-core` `>=0.11.0 <0.12.0`, from `>=0.10.0 <0.11.0`, and

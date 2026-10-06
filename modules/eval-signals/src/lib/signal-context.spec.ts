@@ -539,6 +539,48 @@ describe('createSignalContext', () => {
           );
         });
 
+      /**
+       * A mutating method reached through `call`, `apply` or `bind` -
+       * `docs/backlog-retired.md` C5. The function called there is `call`,
+       * `apply` or `bind`, which no table holds, so up to the fix each of
+       * these wrote into `user()`. `eval-core` now asks about the method they
+       * run, with the `this` they pass, and about `bind` when it binds.
+       */
+      it.each([
+        ['call', '[].push.call(user.tags, "x")'],
+        ['apply', '[].push.apply(user.tags, ["x"])'],
+        ['bind', '[].push.bind(user.tags)("x")'],
+        ['call through call', '[].push.call.call([].push, user.tags, "x")'],
+      ])('should refuse a mutating method reached through %s, and write nothing', (_label, source) => {
+        const user = userOf();
+        const context = createSignalContext({ user });
+
+        let caught: unknown;
+        try {
+          service.simpleEval(source, context);
+        } catch (error) {
+          caught = error;
+        }
+
+        expect(caught).toBeInstanceOf(SignalContextWriteError);
+        expect((caught as SignalContextWriteError).kind).toEqual('method');
+        expect((caught as SignalContextWriteError).key).toEqual('Array.prototype.push');
+        expect(user()).toEqual({ name: 'Ada', n: 1, tags: ['a'] });
+      });
+
+      it.each([
+        ['call', 'let t = [...user.tags]; [].push.call(t, "x"); t'],
+        ['apply', 'let t = [...user.tags]; [].push.apply(t, ["x"]); t'],
+        ['bind', 'let t = [...user.tags]; [].push.bind(t)("x"); t'],
+      ])('should allow a mutating method on a copy through %s', (_label, source) => {
+        const user = userOf();
+        const context = createSignalContext({ user });
+
+        expect(service.simpleEval(source, context)).toEqual(['a', 'x']);
+
+        expect(user()).toEqual({ name: 'Ada', n: 1, tags: ['a'] });
+      });
+
       it.each([
         ['a spread copy', 'let t = [...user.tags]; t.push("x"); t', ['a', 'x']],
         ['a spread copy, sorted in one expression', '[...user.tags, "0"].sort()', ['0', 'a']],

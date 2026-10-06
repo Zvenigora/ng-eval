@@ -240,6 +240,92 @@ describe('member-write policy: built-in mutating methods', () => {
 
       expect(context.scopes.length).toBe(0);
     });
+
+    /**
+     * `docs/backlog-retired.md` C5. Through `Function.prototype.call`, `apply`
+     * or `bind`, the function the call visitor calls is one of those three, so
+     * the built-in is asked about as a direct call of it: for `call` and
+     * `apply` with the `this` they pass as its receiver, and for `bind` when it
+     * binds, about the bound `this` - the bound function is new, and no table
+     * could recognise it later.
+     */
+    describe('through Function.prototype.call, apply or bind', () => {
+
+      const PUSH = { key: undefined, createdByEvaluation: false, method: 'Array.prototype.push' };
+
+      it.each([
+        ['call', '[].push.call(a, 4)'],
+        ['apply', '[].push.apply(a, [4])'],
+        ['bind', '[].push.bind(a)'],
+        ['bind, then a call', '[].push.bind(a)(4)'],
+      ])('should refuse a mutator on a given array through %s, and write nothing', (_label, source) => {
+        const data = dataOf();
+        const context = new PolicedContext(data, {});
+
+        expect(() => run(source, context)).toThrow(RefusedWrite);
+
+        expect(data.a).toEqual([3, 1, 2]);
+        expect(context.writes).toEqual([{ target: data.a, ...PUSH }]);
+        expect(context.writes[0].target).toBe(data.a);
+      });
+
+      it.each([
+        ['call', 'let c = [...a]; [].push.call(c, 4); c'],
+        ['apply', 'let c = [...a]; [].push.apply(c, [4]); c'],
+        ['bind', 'let c = [...a]; [].push.bind(c)(4); c'],
+      ])('should allow a mutator on a copy through %s', (_label, source) => {
+        const data = dataOf();
+        const context = new PolicedContext(data, {});
+
+        expect(run(source, context)).toEqual([3, 1, 2, 4]);
+
+        expect(data.a).toEqual([3, 1, 2]);
+        expect(context.writes).toEqual([{ target: expect.any(Array), ...PUSH, createdByEvaluation: true }]);
+      });
+
+      it.each([
+        ['call through call', '[].push.call.call([].push, a, 4)'],
+        ['call through apply', '[].push.call.apply([].push, [a, 4])'],
+        ['bind through call', '[].push.bind.call([].push, a)'],
+        ['call, bound', '[].push.call.bind([].push, a)'],
+      ])('should follow %s to the mutator it reaches', (_label, source) => {
+        const data = dataOf();
+        const context = new PolicedContext(data, {});
+
+        expect(() => run(source, context)).toThrow(RefusedWrite);
+
+        expect(data.a).toEqual([3, 1, 2]);
+        expect(context.writes).toEqual([{ target: data.a, ...PUSH }]);
+      });
+
+      it.each([
+        ['call', 'Object.assign.call(null, o, { n: 2 })'],
+        ['apply', 'Object.assign.apply(null, [o, { n: 2 }])'],
+        ['bind', 'Object.assign.bind(null, o)'],
+      ])('should ask about Object\'s first argument through %s', (_label, source) => {
+        const data = dataOf();
+        const context = new PolicedContext(data, {});
+
+        expect(() => run(source, context)).toThrow(RefusedWrite);
+
+        expect(data.o).toEqual({ n: 1 });
+        expect(context.writes).toEqual([
+          { target: data.o, key: undefined, createdByEvaluation: false, method: 'Object.assign' },
+        ]);
+      });
+
+      it('should not ask about a non-mutating built-in or the caller\'s own method through them', () => {
+        const data = dataOf();
+        const list = { items: [] as number[], push(value: number) { this.items.push(value); return 1; } };
+        const context = new PolicedContext({ ...data, list }, {});
+
+        expect(run('[[].slice.call(a), [].concat.apply([], [a]), list.push.call(list, 5), [].indexOf.bind(a)(1)]', context))
+          .toEqual([[3, 1, 2], [3, 1, 2], 1, 1]);
+
+        expect(list.items).toEqual([5]);
+        expect(context.writes).toEqual([]);
+      });
+    });
   });
 
   describe('not opted in', () => {

@@ -2233,8 +2233,8 @@ in its own right: [B6](#b6). *(Since B6's fix, 2026-10-05, neither `constructor`
 - **A call's result counts as given**, as under C1: `a.slice().push(4)` is refused.
 - **A built-in reached through `call`, `apply` or `bind` is not asked about.**
   `[].push.call(user.tags, "x")` still writes into `user()`, because the function the visitor
-  calls is `call`. Measured after the fix, and recorded as [C5](backlog.md#c5) rather than
-  folded in here.
+  calls is `call`. Measured after the fix, and recorded as [C5](#c5) rather than
+  folded in here. *(Closed since, 2026-10-05: [C5](#c5)'s fix asks about the method they run.)*
 - **A built-in from another realm is not recognised.** An array made in an iframe holds that
   realm's `push`, which is not the function in the table. Read, not measured.
 - **`evaluateCall`** in `call-expression.ts` calls functions without asking. It has no caller in
@@ -2271,6 +2271,78 @@ call, which is C1's rejected second mechanism. Kept here because "accepted and d
 state a later phase may want to revisit, not a closed question.
 
 *Recorded*: C1's decision, 2026-10-03.
+
+<a id="c5"></a>
+## C5 — A built-in mutator reached through `call`, `apply` or `bind` escapes C4's check
+
+**Package** signals, mechanism in core · **Kind** fix · **Status** **Retired — fixed 2026-10-05**;
+versioned `eval-core` 0.11.0, unpublished, with `eval-signals` 0.4.0 and `eval-forms` 0.4.0 by
+consequence
+
+*Fixed* 2026-10-05, in `eval-core`'s `consultMethodWrite` (`member-write-policy.ts`), which the call
+visitor already asks before every call when the context has a policy. When the function about to
+be called is `Function.prototype.call`, `apply` or `bind`, it asks about the function they run
+instead, as a direct call of it: the receiver is the `this` argument they pass, and the arguments
+are the rest, or `apply`'s second argument read as an array-like. So the table's own rule,
+receiver or first argument, picks the target, and `Object.assign.call(null, o, p)` asks about `o`.
+The question recurses, so `call.call`, `call.apply`, `bind.call` and `call.bind` are followed to
+the method they reach. `bind` is asked at bind time, about the bound `this` and bound arguments,
+since the bound function is new and no table could recognise it when it is called: binding a
+built-in to an object the walk did not create is refused before the bound function exists. The
+table and the question are C4's, unchanged. A context with no policy never reaches this code.
+
+*Verified*: `member-write-policy.methods.spec.ts` gains 15 cases. A given array is refused, with
+nothing written and one write asked about, through `call`, `apply`, `bind`, and `bind` then a
+call. A copy is allowed through each of the three, asked about once as created. Four nested
+forms are followed to `Array.prototype.push`. `Object.assign` through each of the three is asked
+about its first argument. A non-mutating built-in, and the caller's own `push`, through them are
+not asked about. `signal-context.spec.ts` gains 7: `SignalContextWriteError` with `kind`
+`'method'` and `user()` unchanged through `call`, `apply`, `bind` and `call.call`, and a copy
+allowed through each of the three. Probes, each against all three projects' whole suites, read
+case by case, then reverted:
+
+| Probe | `eval-core` | `eval-signals` | `eval-forms` |
+| ----- | ----------- | -------------- | ------------ |
+| Drop the `call` branch | **7**: the `call` refusal, copy and `Object.assign` rows, and the four nested rows, each of which has a `call` hop | **2**: `call` and `call.call` | **0** |
+| Drop the `apply` branch | **4**: the `apply` refusal, copy and `Object.assign` rows, and `call` through `apply` | **1**: `apply` | **0** |
+| Drop the `bind` branch | **6**: both `bind` refusal rows, the copy and `Object.assign` rows, `bind` through `call` and `call`, bound | **1**: `bind` | **0** |
+
+The `eval-signals` copy rows stay green under every probe, and are not meant to go red: a signal
+context cannot show whether it was asked, only what it refused, so they guard against
+over-refusal. Whether a copy was asked about is pinned in `eval-core`, whose policy records every
+question.
+
+**The entry as it stood:**
+
+[C4](#c4)'s fix recognises a built-in that writes by its identity, at the call
+that invokes it. Through `Function.prototype.call`, `apply` or `bind`, the function the call
+visitor invokes is `call`, `apply` or a new bound function, none of which is in the table, so the
+policy is never asked. Measured after the fix, over
+`createSignalContext({ user: signal({ name: 'Ada', tags: ['a'] }) })`:
+
+| Expression | Result |
+| ---------- | ------ |
+| `user.tags.push("x")` | refused, `kind` `'method'` |
+| `let p = user.tags.push; p("x")` | refused, `kind` `'method'`: a bare call asks about the context as receiver |
+| `[].push.call(user.tags, "x")` | `2`, and `user().tags` is `['a', 'x']` |
+| `[].push.apply(user.tags, ["x"])` | the same |
+| `[].push.bind(user.tags)("x")` | the same |
+| `[].push.call.call([].push, user.tags, "x")` | the same |
+
+`[].push` is reachable from any expression: a literal's methods are ordinary reads. So is
+`call`, off any function.
+
+**What a fix would do**, sketched and not designed. When the function is
+`Function.prototype.call` or `apply` and its receiver is a function, ask about that function, with
+`args[0]` as its receiver and the rest as its arguments, repeatedly for `call.call`. For `bind`,
+ask when a built-in in the table is bound, with `args[0]` as the target, since the bound
+function's identity is new; or refuse that bind outright. The table and the question are C4's.
+The work is in `call-expression.ts`.
+
+Documented meanwhile in the `eval-signals` README's "Writes are not supported" and the
+`eval-forms` README's error-policy section.
+
+*Recorded*: C4's fix, 2026-10-04, from a probe run after it.
 
 ---
 

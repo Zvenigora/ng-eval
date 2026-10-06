@@ -177,7 +177,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [C2](backlog-retired.md#c2) | Detect a write violation at construction, not first recompute | signals | decision | **Retired — decided 2026-10-03**: no construction-time check; [C1](backlog-retired.md#c1)'s runtime guard is the guarantee and fires on the first read |
 | [C3](backlog-retired.md#c3) | Whether `eval-signals` should work around [A4](backlog-retired.md#a4) locally | signals | decision | **Retired — decided and fixed 2026-10-01**; released 2026-10-02 in `eval-signals` 0.2.0, tagged c56f987: under `caseInsensitive` a source key is named as the source spells it, in `getKey`, write errors and the first segment of `dependencies` |
 | [C4](backlog-retired.md#c4) | A mutating method call escapes the member-write policy | signals | accepted, then fix | **Retired — fixed 2026-10-04**; versioned `eval-core` 0.11.0, `eval-signals` 0.4.0 and `eval-forms` 0.4.0, unpublished: `eval-core` asks the policy before a built-in method that writes into what it is handed, matched by identity; `eval-signals` refuses one with `kind` `'method'`; `eval-forms` by consequence |
-| [C5](#c5) | A built-in mutator reached through `call`, `apply` or `bind` escapes C4's check | signals | fix | Open, documented — found by a probe after C4's fix |
+| [C5](backlog-retired.md#c5) | A built-in mutator reached through `call`, `apply` or `bind` escapes C4's check | signals | fix | **Retired — fixed 2026-10-05**; versioned `eval-core` 0.11.0, unpublished, with `eval-signals` 0.4.0 and `eval-forms` 0.4.0 by consequence: a method reached through `call` or `apply` is asked about as a direct call, with the `this` they pass, and `bind` is asked when it binds |
 | [D1](backlog-retired.md#d1) | The throwing-subscriber premise is false in both halves | forms | fix + decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e: a late prototype-named control is not mirrored and is reported once, out of band, after the rest of the emission |
 | [D2](backlog-retired.md#d2) | Should `/reactive` reject prototype-shadowed identifiers too? | forms | decision, breaking | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e: yes, with `/signals`' own guard, shared from the core; no form that worked could have named one |
 | [D3](backlog-retired.md#d3) | Per-registration `caseInsensitive` reaches one of three levers | forms | decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.1, tagged 3d56994. The memo is keyed on the key and `caseInsensitive` together, and each rule context is built from its registration's options, so a registration's value reaches all three levers |
@@ -543,43 +543,8 @@ above.
 
 # C. `eval-signals`
 
-[C1](backlog-retired.md#c1)–[C4](backlog-retired.md#c4) are retired. None of the five entries was
+[C1](backlog-retired.md#c1)–[C5](backlog-retired.md#c5) are retired. None of the five entries was
 ever recorded in `ROADMAP.md`.
-
-<a id="c5"></a>
-## C5 — A built-in mutator reached through `call`, `apply` or `bind` escapes C4's check
-
-**Package** signals, mechanism in core · **Kind** fix · **Status** Open, documented
-
-[C4](backlog-retired.md#c4)'s fix recognises a built-in that writes by its identity, at the call
-that invokes it. Through `Function.prototype.call`, `apply` or `bind`, the function the call
-visitor invokes is `call`, `apply` or a new bound function, none of which is in the table, so the
-policy is never asked. Measured after the fix, over
-`createSignalContext({ user: signal({ name: 'Ada', tags: ['a'] }) })`:
-
-| Expression | Result |
-| ---------- | ------ |
-| `user.tags.push("x")` | refused, `kind` `'method'` |
-| `let p = user.tags.push; p("x")` | refused, `kind` `'method'`: a bare call asks about the context as receiver |
-| `[].push.call(user.tags, "x")` | `2`, and `user().tags` is `['a', 'x']` |
-| `[].push.apply(user.tags, ["x"])` | the same |
-| `[].push.bind(user.tags)("x")` | the same |
-| `[].push.call.call([].push, user.tags, "x")` | the same |
-
-`[].push` is reachable from any expression: a literal's methods are ordinary reads. So is
-`call`, off any function.
-
-**What a fix would do**, sketched and not designed. When the function is
-`Function.prototype.call` or `apply` and its receiver is a function, ask about that function, with
-`args[0]` as its receiver and the rest as its arguments, repeatedly for `call.call`. For `bind`,
-ask when a built-in in the table is bound, with `args[0]` as the target, since the bound
-function's identity is new; or refuse that bind outright. The table and the question are C4's.
-The work is in `call-expression.ts`.
-
-Documented meanwhile in the `eval-signals` README's "Writes are not supported" and the
-`eval-forms` README's error-policy section.
-
-*Recorded*: C4's fix, 2026-10-04, from a probe run after it.
 
 ---
 

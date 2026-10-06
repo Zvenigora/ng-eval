@@ -257,16 +257,15 @@ your context supplies `Object`, `Object.assign(user, …)` and `Object`'s other 
 `toSorted`, `toReversed`, `toSpliced`, `with` — or to spread the value into a literal and change
 the copy. Up to 0.3.x each of these calls went through and
 mutated your data. On a copy the expression made they still work: `[...user.tags].sort()`.
+Reached through `call`, `apply` or `bind` — `[].push.call(user.tags, 'x')` — a method is refused
+as a direct call of it is, and `bind` is refused when it binds.
 
-Three things this does not catch:
+Two things this does not catch:
 
 - **A regex you supplied keeps its `lastIndex` behaviour.** With a global or sticky regex, `test`
   and `exec` advance it, and `match`, `replace` and `replaceAll` given a global one reset it to 0.
   Refusing them would break the commonest rule there is, `pattern.test(value)`.
 - **A method you wrote is your own code**, and runs as written, whatever it is called.
-- **A built-in reached through `call`, `apply` or `bind`** — `[].push.call(user.tags, 'x')` —
-  still goes through. The method is recognised by identity, and the function called there is
-  `call`. Do not write one.
 
 **The cost** is a record of each object an expression creates, kept only for a signal context,
 and a lookup of each function called in a table of the built-ins above. `eval-core` does both for
