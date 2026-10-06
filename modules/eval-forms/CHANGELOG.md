@@ -14,7 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 **A rule's call of a built-in method that would write into the form's data is refused, by
 consequence of `eval-signals` 0.4.0 — [C4](../../docs/backlog-retired.md#c4).** A breaking minor
-with no code change in this package: the three `.d.ts` files are byte-identical to 0.3.1's. The
+with no code change in this package. Of the three `.d.ts` files, `/reactive`'s and `/signals`'
+are byte-identical to 0.3.1's, and the core entry point's differs in one documentation comment,
+`guardIdentifiers`'s, which no longer says that `constructor` resolves off the prototype. The
 peer ranges move to the versions that refuse the call.
 
 ### Breaking
@@ -31,6 +33,12 @@ peer ranges move to the versions that refuse the call.
 ### Changed
 - **Peer ranges**: `@zvenigora/ng-eval-core` `>=0.11.0 <0.12.0`, from `>=0.10.0 <0.11.0`, and
   `@zvenigora/ng-eval-signals` `>=0.4.0 <0.5.0`, from `>=0.3.0 <0.4.0`.
+
+### Security
+- **The `eval-core` floor, 0.11.0, brings its fix for [B6](../../docs/backlog-retired.md#b6) to
+  rule evaluation**: a rule no longer resolves a name on `eval-core`'s prototype-pollution
+  blocklist against its context. `guardIdentifiers` already refused such an identifier at
+  registration; `this.constructor`, which it does not check, now throws too, where it was truthy.
 
 ---
 

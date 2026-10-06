@@ -10,15 +10,20 @@ import { simple } from 'acorn-walk';
  * disagreeing about one authored string - which until 0.3.0 they did, since
  * the guard was `/signals`' alone (`docs/backlog-retired.md` D2).
  *
- * **The failure this prevents is silent and truthy.** `createSignalContext`
- * builds its context on an empty `original` object, and `EvalContext.get`
- * consults `original` *before* `lookups` - so an identifier like
- * `constructor` resolves off the prototype and never reaches the model
- * resolver at all. A function is truthy, so `toVisible` says visible and
- * `evalVisible(p.city, 'constructor')` renders the field with no data, no
- * error and nothing logged (Q10, Q11). It is not GHSA-pj3p-xpg7-h7gw's
- * case-variant bypass: the behaviour is identical with and without
- * `caseInsensitive`, and `CONSTRUCTOR` resolves `undefined` in both.
+ * **What it changes is when such a rule fails.** Since `eval-core` 0.11.0,
+ * the floor of this package's peer range, the evaluator refuses every one of
+ * these names as an identifier, before any lookup, and throws `Access to
+ * dangerous property` on every evaluation, where `onError` decides what the
+ * error becomes - under the default, a blank. This guard refuses the rule
+ * once, at registration, naming the expression and the identifier. Up to
+ * `eval-core` 0.10.x the failure was silent and truthy: `createSignalContext`
+ * builds its context on an empty `original` object, which `EvalContext.get`
+ * consults before `lookups`, so `constructor` resolved off the prototype to a
+ * function, and `evalVisible(p.city, 'constructor')` rendered the field with
+ * no data, no error and nothing logged (Q10, Q11). It is not
+ * GHSA-pj3p-xpg7-h7gw's case-variant bypass: this guard matches the name as
+ * written, with and without `caseInsensitive`, and `CONSTRUCTOR` resolves
+ * `undefined` in both.
  *
  * **The subject is the expression.** `/reactive` also checks *names* - its
  * schema's fields and its group's controls (`field-schema.ts`), which arrive
