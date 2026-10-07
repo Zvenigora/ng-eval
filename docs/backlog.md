@@ -542,6 +542,15 @@ the header of [`trace-bound.spec.ts`](../modules/eval-core/src/lib/internal/visi
 outside the repository, against a copy of the guard's logic, in the three environments tabled
 above.
 
+**Observed 2026-10-07: the GC-forcing detector's known failure mode, once on CI.** Case 1.5 of
+[`eval.service.memory-leaks.spec.ts`](../modules/eval-core/src/lib/actual/services/eval.service.memory-leaks.spec.ts)
+failed on the Node 24 job for the post-publish commit of the 0.10.1 / 0.11.0 release, and
+passed on the re-run and on Node 26. It found the registry still reachable after one macrotask
+and one `gc()`. Not reproduced in 20 runs elsewhere: 12 of the file alone under CPU load, and 8
+of the whole suite in band. Its `collect` helper now gives the collector up to five rounds. A
+retention planted in `simpleEvalAsync` still fails exactly 1.4 and 1.5, so the rounds tolerate a
+short-lived reference without masking a kept one.
+
 ---
 
 # B. `eval-core` — security and hygiene

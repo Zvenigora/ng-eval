@@ -83,12 +83,26 @@ describe('EvalService - Memory Leak Prevention', () => {
     const gc = runInNewContext('gc') as () => void;
     setFlagsFromString('--no-expose-gc');
 
+    const GC_ROUNDS = 5;
+
     const collect = async (ref: WeakRef<object>): Promise<object | undefined> => {
       // A `WeakRef` keeps its target alive until the job that created or
-      // read it ends, so the collection has to happen in a later one.
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      gc();
-      return ref.deref();
+      // read it ends, so each collection has to happen in a later job than
+      // the last `deref`. Several rounds, not one: a single macrotask and a
+      // single `gc()` lost to an unrelated, short-lived reference once on CI
+      // (Node 24, the whole suite in band), and passed on the re-run. A
+      // reference the service really kept survives every round, so the
+      // retention cases still fail on a real leak (`docs/backlog.md` A19).
+      let target: object | undefined;
+      for (let round = 0; round < GC_ROUNDS; round++) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        gc();
+        target = ref.deref();
+        if (target === undefined) {
+          return undefined;
+        }
+      }
+      return target;
     };
 
     /**
