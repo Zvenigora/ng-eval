@@ -698,7 +698,7 @@ Recorded 2026-09-26, by the commit that cleared the Dependabot high alert
 patched Angular versions and do not pin the vulnerable ones. So the work here is on the workspace's
 own toolchain, and no release is needed for it.
 
-**Two parts, and they are unrelated.**
+**Three parts, and they are unrelated.** The third, recorded 2026-10-06, is the last section below.
 
 **1. The 9 Angular moderates — Retired 2026-09-27, fixed.** `npx nx migrate 23.2.1` moved `nx`
 and every `@nx/*` package from 23.1.1 to 23.2.1, and with them the whole Angular set, each pinned
@@ -851,10 +851,52 @@ this next:
   stays, now beside two others with the same removal condition: drop each once a stable `nx` stops
   pinning a vulnerable version.
 
+**3. The unused application-build packages — removed 2026-10-06, with no release.** A re-audit
+found 48, 10 high and 38 moderate, from six advisories: `braces` GHSA-vfj7-8cjw-p6xm (high),
+`compression` GHSA-vc2v-76pw-4v95 (high), `probe-image-size` GHSA-gjj5-9665-rwrc (high),
+`source-map-js` GHSA-68fv-2mgg-jv7q (high), `postcss-selector-parser` GHSA-rj75-hqrm-r3gf
+(moderate) and `sprintf-js` GHSA-hp3w-g68c-fv3c (moderate). The first two reached the tree only
+through `@angular-devkit/build-angular`, by way of `http-proxy-middleware` and
+`webpack-dev-server`, and `postcss-selector-parser` only through `postcss-preset-env` 7.5.0. Nothing
+in the repository used either package or `webpack-dev-server`: every `build` target runs
+`@nx/angular:package`, which is `ng-packagr`, no config or import names them, and `@nx/angular`
+23.2.1 declares `build-angular` only as an optional peer. So one commit removed
+`@angular-devkit/build-angular` and `postcss-preset-env` from `devDependencies`, and the
+`webpack-dev-server` and `uuid` overrides from `overrides`. `webpack-dev-server` was never a direct
+dependency, only an override. `uuid`'s only consumer was `sockjs`, under `webpack-dev-server`,
+which is what `3067559` added it for. The `less` and `postcss` overrides and the `postcss`
+devDependency stay, because `ng-packagr` 22.1.1 depends on `less ^4.2.0` and `postcss ^8.4.47`
+itself. `@hono/node-server`'s override was already matching nothing, before this commit and after
+it. `npm update` then moved two packages, each inside every dependent's range: `source-map-js`, a
+dependency of `postcss`, `sass` and `jsdom`'s `css-tree`, from 1.2.1 to 1.2.2, and
+`probe-image-size`, an optional dependency of `less`, from 7.3.0 to 7.4.0, which declares the same
+dependencies. The removal had taken away `probe-image-size`'s paths through `build-angular`,
+`less-loader`, `@angular/build` and `vite`, but not `ng-packagr` > `less` 4.8.1, and `less`'s
+`^7.2.3` admits 7.4.0. The lockfile lost 570 entries, gained none, and changed those two versions.
+`npm install` needed no `--force`, and a clean `npm ci` from the result, under npm 12.0.1 and again
+under npm 11.21.0, left the lockfile byte-identical.
+
+Audit then found **25, all moderate**, from one advisory: **`sprintf-js` 1.0.3 (`<=1.1.3`), and the
+24 dependents audit flags with it**: the links of the chain below, the jest packages above it,
+`ts-jest`, `jest-preset-angular` and four `@nx/*`. Every chain reaches it through `@jest/transform`
+or `babel-jest` > `babel-plugin-istanbul` > `@istanbuljs/load-nyc-config` > `js-yaml` 3.15.2 >
+`argparse` 1.0.10 > `sprintf-js`. **It has no patched version**: 1.1.3 is the latest published, and
+the advisory covers it. It reaches only istanbul's config loader: `@istanbuljs/load-nyc-config` is
+the only consumer of `js-yaml` 3, and the tree's other `js-yaml`, 4.3.2 under `@eslint/eslintrc`,
+uses `argparse` 2. Audit's `--force` remedy is `ts-jest` 27.0.3, a major downgrade.
+
+Dependabot had four open alerts the same day: #331 `postcss-selector-parser`, #332 `compression`,
+#333 `source-map-js` and #334 `sprintf-js`. The lockfile after this commit no longer has the first
+three. `braces` and `probe-image-size` were audit findings with no alert. Part 2 is unchanged,
+still waiting on `nx`.
+
 *Recorded*: this entry; `package.json` `overrides.nx`.
 *Verified*: `npm audit --package-lock-only`, 2026-09-26. Before the override: 12 high, 9 moderate.
 After: 0 high, 0 critical, 9 moderate, as listed above. Again 2026-09-27, after part 1: 0 at every
 severity. Again 2026-09-30, npm 12.0.1: 14 high, 8 moderate, as tabled above; traced with
 `npm ls <package> --package-lock-only --all`, and the published manifests read with `npm view`.
 Again after the fix, 2026-09-30, npm 11 on Node 24: 0 at every severity; clean `npm ci`, and the gate
-green at 1076 / 131 / 266.
+green at 1076 / 131 / 266. Again 2026-10-06, npm 12.0.1 on Node 26.4.0, before part 3: 48 (10 high,
+38 moderate); after it, 2026-10-07: 25 moderate, as listed under part 3. Traced through the
+lockfile's dependency entries; clean `npm ci` under npm 12.0.1 and 11.21.0, and the gate green at
+2007 / 312 / 343; Dependabot's open alerts read with `gh api`.
