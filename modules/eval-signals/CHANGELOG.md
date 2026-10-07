@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## [0.4.0] - 2026-10-04
+## [0.4.0] - 2026-10-07
 
 **A built-in method that would write into what the expression was given is refused —
 [C4](../../docs/backlog-retired.md#c4).** A breaking minor: such a call throws where it used to

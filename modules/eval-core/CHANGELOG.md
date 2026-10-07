@@ -14,7 +14,7 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ---
 
-## [0.11.0] - 2026-10-04
+## [0.11.0] - 2026-10-07
 
 **A security fix: an expression no longer resolves a name on the prototype-pollution blocklist
 against its context. Also, the member-write policy is asked about built-in methods that write,
@@ -99,7 +99,7 @@ what it sees. `eval-signals` 0.4.0 builds on the change and requires this versio
 
 ---
 
-## [0.10.1] - 2026-10-05
+## [0.10.1] - 2026-10-07
 
 **A security fix: an expression no longer resolves a name on the prototype-pollution blocklist
 against its context.** A patch for every version up to 0.10.0, with no exported symbol changed.

@@ -419,6 +419,35 @@ describe('Security Tests', () => {
 ⚠️ **Supply Chain**: Security depends on the security of dependencies  
 ⚠️ **Environment**: Host environment vulnerabilities are outside ng-eval's scope  
 
+### Advisories for ng-eval
+
+Advisories published against the packages in this repository.
+
+| Advisory | Package | Affected | Patched |
+|----------|---------|----------|---------|
+| [GHSA-jh43-xc7j-93c2](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-jh43-xc7j-93c2) | `@zvenigora/ng-eval-core` | < 0.10.1 | 0.10.1, 0.11.0 |
+
+#### GHSA-jh43-xc7j-93c2 — prototype pollution through identifier resolution
+
+Severity high, published 2026-10-07. An identifier was resolved against the evaluation context,
+and for a context built from a plain object or a class instance the lookup was a bare property
+access, so an expression resolved the members the context inherits from `Object.prototype`:
+`constructor` evaluated to `Object`, and through `Object`'s own static functions an expression
+could modify shared prototypes. `this.k` and `this["k"]` did the same. The blocklist guarded
+member access to the objects an expression holds, not resolution against the context. Every
+published version up to 0.10.0 is affected.
+
+Since 0.10.1 and 0.11.0 a name on the blocklist is refused before any lookup, as an identifier,
+as `this.k` or `this["k"]`, or as a member of an `EvalScope` held in the context, and under
+`caseInsensitive` so is a matched key that is one. A context key with such a name can no longer
+be read by an expression; rename it.
+
+**Upgrading.** 0.10.1 is a patch on the 0.10 line, and the peer ranges of
+`@zvenigora/ng-eval-signals` 0.3.0 and `@zvenigora/ng-eval-forms` 0.3.x admit it. 0.11.0 is a
+breaking minor for other reasons; `@zvenigora/ng-eval-signals` 0.4.0 and
+`@zvenigora/ng-eval-forms` 0.4.0 require it. The fix, its probes and the code history behind
+"every published version" are in [`docs/backlog-retired.md`](docs/backlog-retired.md#b6), B6.
+
 ### Reviewed External Advisories
 
 Advisories raised against related projects, and whether ng-eval shares the defect. Each

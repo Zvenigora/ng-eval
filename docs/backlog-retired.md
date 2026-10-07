@@ -1769,7 +1769,8 @@ source count.
 ## B5 — `eval-core` exports seventeen symbols nothing uses
 
 **Package** core · **Kind** decision, then fix · **Status** **Retired — decided and fixed
-2026-10-04**: all seventeen removed, a breaking minor; versioned `eval-core` 0.11.0, unpublished
+2026-10-04**: all seventeen removed, a breaking minor; released 2026-10-07 in `eval-core` 0.11.0,
+tagged 776885a
 
 *Decided* 2026-10-04: remove them. A consumer that imports one breaks, which the CHANGELOG says
 symbol by symbol, with a replacement for the three that have one. Nothing in this repository
@@ -1832,8 +1833,9 @@ are a hook vocabulary that contradicts `EvalHooks`.
 <a id="b6"></a>
 ## B6 — Identifier resolution reaches `Object.prototype` members
 
-**Package** core · **Kind** fix, security · **Status** **Retired — fixed 2026-10-05**; versioned
-`eval-core` 0.11.0, unpublished
+**Package** core · **Kind** fix, security · **Status** **Retired — fixed 2026-10-05**; released
+2026-10-07 in `eval-core` 0.10.1, tagged d77fa16, and 0.11.0, tagged 776885a; advisory
+[GHSA-jh43-xc7j-93c2](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-jh43-xc7j-93c2)
 
 *Fixed* 2026-10-05. Two routes resolve a name against the context rather than against an object
 the expression holds, and both refuse a name on the prototype-pollution blocklist,
@@ -1871,6 +1873,10 @@ visitor's context branch was `st.context.get(key)` with no check either. No vers
 `identifier.ts`, `eval-context.ts` or `common/context.ts` at any `eval-core` tag contains a
 dangerous-name check. 0.1.102, published and never tagged, has the same identifier path at its
 release commit, 156114e.
+
+*Advisory*: [GHSA-jh43-xc7j-93c2](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-jh43-xc7j-93c2),
+severity high, published 2026-10-07: `@zvenigora/ng-eval-core` `< 0.10.1` affected, patched in
+0.10.1, and in 0.11.0. Listed in [`SECURITY.md`](../SECURITY.md).
 
 *Verified*: `eval.service.identifier-guard.spec.ts`, 635 cases. Each of the thirteen names is
 refused as an identifier, `this.k` and `this["k"]`, over five kinds of context: a plain object, a
@@ -2181,8 +2187,8 @@ respelling that root. No case covers that combination.
 ## C4 — A mutating method call escapes the member-write policy
 
 **Package** signals · **Kind** accepted, then fix · **Status** **Retired — fixed 2026-10-04**;
-versioned `eval-core` 0.11.0, `eval-signals` 0.4.0 and `eval-forms` 0.4.0, unpublished: `eval-core`
-asks the policy before a built-in method writes, and `eval-signals` refuses one with `kind`
+released 2026-10-07 in `eval-core` 0.11.0, `eval-signals` 0.4.0 and `eval-forms` 0.4.0, tagged
+776885a: `eval-core` asks the policy before a built-in method writes, and `eval-signals` refuses one with `kind`
 `'method'`; `eval-forms` by consequence. Was Open, documented
 
 *Fixed* 2026-10-04, in two packages, and opt-in in the first.
@@ -2276,8 +2282,8 @@ state a later phase may want to revisit, not a closed question.
 ## C5 — A built-in mutator reached through `call`, `apply` or `bind` escapes C4's check
 
 **Package** signals, mechanism in core · **Kind** fix · **Status** **Retired — fixed 2026-10-05**;
-versioned `eval-core` 0.11.0, unpublished, with `eval-signals` 0.4.0 and `eval-forms` 0.4.0 by
-consequence
+released 2026-10-07 in `eval-core` 0.11.0, with `eval-signals` 0.4.0 and `eval-forms` 0.4.0 by
+consequence, tagged 776885a
 
 *Fixed* 2026-10-05, in `eval-core`'s `consultMethodWrite` (`member-write-policy.ts`), which the call
 visitor already asks before every call when the context has a policy. When the function about to
