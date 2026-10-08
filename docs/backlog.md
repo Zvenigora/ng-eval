@@ -54,9 +54,9 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 ### Work in flight
 
 **Phase 5**, async expression signals — [`docs/signals/phase-5-plan.md`](signals/phase-5-plan.md),
-written 2026-10-07; step 1 not started. The track before it, "Track 3"
-([`docs/gates/plan.md`](gates/plan.md)), is closed; its retrospect is
-[`docs/gates/summary.md`](gates/summary.md).
+written 2026-10-07; plan at Revision 2; step 1 done (`eval-core` test-only, the async-walk spec);
+step 2 next. The track before it, "Track 3" ([`docs/gates/plan.md`](gates/plan.md)), is closed; its
+retrospect is [`docs/gates/summary.md`](gates/summary.md).
 
 ### Status vocabulary
 
@@ -181,6 +181,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A24](#a24) | An `await` is a pass-through — inside an `async` arrow it hands the walk a promise as an operand, and the arrow returns no promise | core | decision, then fix | Open — opened 2026-10-07 by the Phase 5 plan |
 | [A25](#a25) | `awaitVisitor`'s timeout race — an uncleared 30 s timer per `await`, an undocumented `__awaitTimeout` key, and the caller's error mutated | core | fix | Open — opened 2026-10-07 by the Phase 5 plan |
 | [A26](#a26) | The parse cache ignores parser options | core | fix | Open — opened 2026-10-07 by the Phase 5 plan |
+| [A27](#a27) | A nested `evaluate` writes the enclosing walk's `EvalResult` — and `start()` clears nothing, so a reused state shows the last run's outcome | core | decision | Open — recorded, not scheduled; opened 2026-10-08 by Phase 5 step 1 |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -665,6 +666,42 @@ with options of its own needs this first — the plan's option B is the worked c
 *Recorded*: this entry; [`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.2 finding 11.
 *Verified*: measured 2026-10-07 at d080707, with a throwaway spec deleted the same day (that plan's
 § 1.3, P5).
+
+<a id="a27"></a>
+## A27 — A nested `evaluate` writes the enclosing walk's `EvalResult`
+
+**Package** core · **Kind** decision · **Status** Open — recorded, not scheduled. Opened 2026-10-08
+by Phase 5 step 1
+
+The arrow-function visitor calls `evaluate(node.body, st)` on the walk's own state
+(`arrow-function-expression.ts:29`), and `evaluate` ends in `setSuccess` or `setFailure` on
+`st.result`. So every call of an arrow overwrites the enclosing walk's flags and error, mid-walk. The
+sync entry points write their own outcome when the outer walk ends, so their flags are right on
+return; `evaluateAsync` writes its outcome only after its `await`, so between return and settlement
+`state.result` describes the last nested walk to finish.
+
+Measured (Phase 5 plan § 1.3, P7): `load(safe(() => fail()))`, where `safe` catches what its argument
+throws, has `isError` `true` and `error` the thrown object when `callAsync` returns, and resolves to
+`0`. A succeeding walk that called an arrow reports `isSuccess` `true` at return.
+
+**Related: `EvalResult.start()` clears nothing.** It records a start time and leaves the previous
+run's flags and error in place, and `setSuccess` does not clear `error` either. Measured 2026-10-08,
+on one state reused across `evaluateAsync` runs: after a run that rejected, a run that resolves to
+`20` reads `isError` `true`, and the first run's error, at return; once it settles, `isSuccess` is
+`true` and `error` is still the first run's. The sync path shows the second half on a fresh state:
+`safe(() => fail())` returns `0` with `isSuccess` `true` and `error` the throw `safe` caught.
+
+**Not scheduled, and nothing downstream needs it.** `eval-signals` does not read `state.result` at
+return: the Phase 5 plan's § 3.4 settles every outcome, a walk failure included, through the
+promise. Whether a nested walk gets its own result, and whether `start()` resets one, is a behaviour
+change on a published path — what `state.result` reports mid-walk and between return and
+settlement — so it is a decision before it is a fix.
+
+*Recorded*: this entry; [`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.2 finding 1 and
+§ 8 q5.
+*Verified*: measured 2026-10-08 against the gate-built `eval-core` bundle, by scripts outside the
+repo — P7 in that plan's § 1.3, and the reused-state and sync-path cases above. `eval-core`'s source
+is the same at cc0761e and 9d5715d.
 
 ---
 
