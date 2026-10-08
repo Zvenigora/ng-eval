@@ -1,7 +1,14 @@
 # Phase 5 Plan — async expression signals (`@zvenigora/ng-eval-signals`)
 
 **Date**: October 7, 2026
-**Revision**: 1
+**Revision**: 2 — amended during step 1. Docs only. Step 1's review measured (P7) that
+`state.result.isError` at return is evidence in one direction only: a walk that threw has it `true`,
+and so does a walk whose arrow body threw into a consumer function that caught it — a walk that then
+resolves. Finding 1 and P6 are corrected, and **one decision is reversed**: § 3.4's synchronous
+failure path is gone, and every outcome, a walk failure included, comes from settlement (§ 8 q5).
+§ 3.2's `Run` and step 2's criterion 6 change with it.
+
+**Revision**: 1 — initial plan (`cc0761e`).
 **Target package**: `@zvenigora/ng-eval-signals` (`modules/eval-signals`, published at 0.4.0)
 **Also touches**: `@zvenigora/ng-eval-core` — one test-only step, no release; `@zvenigora/ng-eval-forms`
 — a peer-range patch at release, no code
@@ -52,12 +59,22 @@ that shows it.
    called during the walk. Measured (P6): when the walk throws, `state.result.isError` is already
    `true` at return and `state.result.error` is the object the promise later rejects with.
 
+   **The second property holds in one direction only** (P7, measured during step 1). An arrow's
+   body is a nested `evaluate` on the same state (`arrow-function-expression.ts:29`), which writes
+   the same `state.result` (`evaluate.ts:76`, `:100-102`, `:122`), while `evaluateAsync` writes its
+   own outcome only after its `await` (`:248-254`). So at return the flags describe the last walk to
+   finish, which may be a nested one. A walk that throws has `isError` `true` at return, but `true`
+   does not mean the walk threw: `load(safe(() => fail()))`, where `safe` catches what its argument
+   throws, has `isError` `true` and the thrown object as `state.result.error` at return, and resolves
+   to `0`. A succeeding walk that called an arrow reports `isSuccess` `true` before it settles.
+
    **Nothing pins either property.** The eval-core README states the first ("The walk is synchronous
    even under `evalAsync`", `modules/eval-core/README.md:237`), but every async case in the suite
    `await`s before it asserts (`hooks.spec.ts:380-415`, `eval.service.async*.spec.ts`), so an `await`
    point added before the walk would leave the suite green. Phase 3 § 3.7 called this "a design
-   invariant of the current walker rather than a guarantee". Everything in § 3.3–§ 3.5 rests on it, so
-   step 1 turns it into a guarantee.
+   invariant of the current walker rather than a guarantee". § 3.3–§ 3.5 rest on the first property,
+   so step 1 turns it into a guarantee. Step 1 pins the second as well, in the direction P7 leaves
+   standing, though since Revision 2 no design here reads it (§ 3.4).
 
 2. **`await` in operand position evaluates to wrong answers, silently** — handed finding 1,
    reproduced exactly (P1). Parsed with `ecmaVersion: 2022` and `allowAwaitOutsideFunction`, through
@@ -198,7 +215,8 @@ that shows it.
 Throwaway specs at d080707 — `modules/eval-core/src/lib/actual/services/zz-phase5-probe.spec.ts` and
 `modules/eval-signals/src/lib/zz-phase5-probe.spec.ts` — run through `nx test` with
 `--testPathPatterns`, results written to a scratch file, both **deleted before this plan's commit**.
-D1 read the tarballs with a script outside the repo.
+D1 read the tarballs with a script outside the repo. P7 was run during step 1, by a script outside
+the repo against the `eval-core` bundle the gate built at `cc0761e`.
 
 | ID | Question | Result |
 | :--- | :--- | :--- |
@@ -210,7 +228,8 @@ D1 read the tarballs with a script outside the repo.
 | P3 | Has the walk finished when `callAsync` returns | Yes — all seven reads (`a`, `b`, `b`, `f`, `list`, `a`, `a`) present at return, none added by settlement; scope depth `0` → `0`; same through `EvalService.evalAsync` |
 | P4 | What `awaitAllPromises` resolves and copies | Resolves in arrays and plain objects at any depth; not inside a resolved value, a `Map`, a class instance or a null-prototype object; plain objects and arrays are **not** returned by identity |
 | P5 | Does the parse cache honour options | No — a permissive `ParserService.parse` made the default `simpleEval('await p')` return a promise instead of throwing |
-| P6 | Is a walk failure visible before settlement | Yes — `state.result.isError` `true` at return, `isSuccess` `false`, and the rejection is `state.result.error` by identity; a succeeding walk reports neither until it settles |
+| P6 | Is a walk failure visible before settlement | Yes — `state.result.isError` `true` at return, `isSuccess` `false`, and the rejection is `state.result.error` by identity; a succeeding walk with no arrow in it reports neither until it settles — one that called an arrow does (P7) |
+| P7 | Does a result flag at return mean the walk's own outcome | No — a nested arrow walk writes the same `state.result`. `load(safe(() => fail()))` has `isError` `true` and the thrown object as `error` at return, and **resolves** to `0`; `load((x => x)(a))` has `isSuccess` `true` at return; `a + fail()` has `isError` `true` at return and rejects with that object |
 | S1 | Tracking per placement | § 1.2 finding 7's table |
 | S2 | Stability under zoneless | `computed` run: stable before resolve. `resource`: not. `computed` + `PendingTasks.add`: not. (Angular logs `NG0914` because `test-setup.ts` loads zone.js; expected.) |
 | D1 | Stability tags and `resource` option names per major | § 1.2 finding 6; also `ResourceStatus`, an `enum` at 19.2.25 and a string union from 20.0.0, `@experimental` at 21.2.25 |
@@ -383,10 +402,11 @@ const status = computed(() => statusOf(run(), settled()));
 ```
 
 `start()` is § 3.3.1 and § 3.8.3 of Phase 3 with `callAsync` in place of `call`: a fresh state, the
-depth snapshot, the walk, the restore. It returns a `Run` holding the promise, its `AbortController`,
-its pending-task release and — when `state.result.isError` is already `true` (finding 1) — the
-synchronous failure. The settle handler writes `settled` a microtask later, outside any reactive
-context, and only if its run is still current and the signal is not destroyed. `value` and `status`
+depth snapshot, the walk, the restore. It returns a `Run` holding the promise, its `AbortController`
+and its pending-task release. There is no synchronous failure: a walk that throws rejects the
+promise, and its outcome arrives through settlement like any other (§ 3.4). The settle handler
+writes `settled` a microtask later, outside any reactive context, and only if its run is still
+current and the signal is not destroyed. `value` and `status`
 read an outcome only when its run is `run()`'s current value — the check that makes a lazy supersede
 correct (§ 3.4).
 
@@ -464,14 +484,24 @@ A mapper: called **once per rejected run** with the rejection, its result cached
 arrives is what `evaluateAsync` rejects with, so a non-`Error` rejection arrives wrapped by
 `ensureError` (`evaluate.ts:141-163`) and an `Error` arrives by identity.
 
-**A failure in the walk itself settles at once.** `state.result.isError` is `true` when `callAsync`
-returns (finding 1), so the run carries it and the first read already sees `'error'` — the same timing
-as `createEvalSignal`. This matters most for `SignalContextWriteError`, which **bypasses `onError` in
-every mode**, enriched with the expression, as on the sync path (`eval-signal.ts:428-430`; Phase 3
-§ 3.6.3): on the async path it would otherwise surface one read late, and
-[BL-C2](../backlog-retired.md#c2) declined a construction-time check because the runtime guard already
-fires on the first read. A write that happens in a closure the promise calls later arrives through the
-rejection instead, and is treated the same way.
+**A walk failure settles with its run.** Before settlement it reads `undefined` / `'loading'`, like
+any pending run; after it, `'error'`. There is no synchronous failure path, because nothing available
+at return says the walk threw: `state.result` at return may describe a nested arrow walk instead, so
+`isError` is `true` there both for a walk that threw and for one whose arrow's throw a consumer
+function caught, which then resolves (finding 1, P7). Each way of making it reliable costs something
+this plan already rejects. Calling the sync entry point and resolving the result here is a second
+resolution semantics (§ 3.7), or an `eval-core` release to export `awaitAllPromises`. Detecting the
+throw through hooks is per-node dispatch on every async signal. Fixing the flags is an `eval-core`
+source change (§ 2).
+
+**`SignalContextWriteError` is recognised on the rejection, by `instanceof`.** It **bypasses
+`onError` in every mode** and is rethrown on every read, enriched with the expression, as on the sync
+path (`eval-signal.ts:428-430`; Phase 3 § 3.6.3). The class survives the trip: a walk's throw is the
+rejection by identity — step 1's case 3 pins that — and an `Error` rejected later passes `ensureError`
+unchanged. [BL-C2](../backlog-retired.md#c2)'s reasoning holds: it declined a construction-time check
+because the runtime guard shows a consumer the violation before any value is delivered, and here it
+surfaces on the first read after settlement, before any value is. A write from a closure the promise
+calls later reaches the same rejection, so there is one path for both, not two.
 
 **No rejection goes unhandled.** Every run's promise gets its settle handler, including runs that
 were superseded or outlived their signal; the handler discards their outcome.
@@ -692,10 +722,17 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
   5. **Nothing unhandled.** A run superseded — by a change and the read after it — that then rejects,
      and a run that rejects after `destroy()`,
      reach no `unhandledRejection` listener. *Wrong:* the handler attached only to the current run.
-  6. **A write violation.** `count = 5` throws `SignalContextWriteError` naming the expression on the
-     **first** read, in all three `onError` modes. *Wrong:* the synchronous `state.result` check
-     removed, so the failure arrives through settlement — the first read returns `undefined`; the
-     error routed through `onError` — the `'undefined'` and mapper modes return instead of throwing.
+  6. **A walk failure and a write violation settle with the run** (§ 3.4).
+      - (a) `count = 5`: a first read before any flush gives `undefined` / `'loading'`. After the
+        flush, every read throws `SignalContextWriteError` naming the expression, in all three
+        `onError` modes.
+      - (b) The discriminating pair: `a + fail()` gives `'error'` after the flush, and
+        `load(safe(() => fail()))`, where `safe` catches what its argument throws, gives
+        `'resolved'` with its value.
+
+      *Wrong:* `state.result.isError` read at return — (b)'s second arm reads `'error'`; the write
+      error routed through `onError` — (a)'s `'undefined'` and mapper modes return instead of
+      throwing.
   7. **`destroy()` during a run.** `value()` `undefined` and `status()` `'idle'` at once; the pending
      run resolving afterwards changes neither and does not recompute — the `equal` spy's count is the
      one it had at the first read after `destroy()`; `invalidate()` after it is inert. *Wrong:* the
@@ -972,6 +1009,12 @@ because an async assertion has one more way to be vacuous:
 4. **A synchronous first value for an expression with no promise in it.** Needs the walk's raw value
    before resolution, which `eval-core` does not expose (§ 3.4). *Reopens on* that need, as an additive
    `eval-core` change of its own.
+5. **How does a run recognise, at return, that its walk threw? — resolved during step 1: it does
+   not.** There is no synchronous failure path; every outcome, a walk failure included, comes from
+   settlement (§ 3.4). `state.result.isError` at return is `true` both when the walk threw and when an
+   arrow's throw was caught inside a consumer function and the run resolves (finding 1, P7), and each
+   way of making it reliable costs something this plan already rejects (§ 3.4). Step 2's criterion 6
+   carries P7's pair as its discriminating case.
 
 ---
 
@@ -980,9 +1023,10 @@ because an async assertion has one more way to be vacuous:
 What a consumer — and `eval-forms`, should it ever want an async rule — can rely on after this lands:
 
 1. `createEvalSignalAsync(expr, source)` is a `Signal` whose value is the latest run's resolved result,
-   `undefined` while a run is pending, and per `onError` when it rejected. A new run starts at the
-   first read after a signal-backed key the walk read changes, or after `invalidate()` — and only
-   then (§ 3.4).
+   `undefined` while a run is pending, and per `onError` when it rejected — except
+   `SignalContextWriteError`, which bypasses `onError` and is rethrown on every read (§ 3.4). A new
+   run starts at the first read after a signal-backed key the walk read changes, or after
+   `invalidate()` — and only then (§ 3.4).
 2. It is a `Signal`, so it can be a value in another signal context's source, and a sync
    `createEvalSignal` over it tracks it natively — § 3.1's two-signal form.
 3. `status()` uses the words Angular's `ResourceStatus` has used since 20, for the states it has.
