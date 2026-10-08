@@ -53,8 +53,10 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-Nothing is in flight. The last track, "Track 3" ([`docs/gates/plan.md`](gates/plan.md)), is
-closed; its retrospect is [`docs/gates/summary.md`](gates/summary.md).
+**Phase 5**, async expression signals — [`docs/signals/phase-5-plan.md`](signals/phase-5-plan.md),
+written 2026-10-07; step 1 not started. The track before it, "Track 3"
+([`docs/gates/plan.md`](gates/plan.md)), is closed; its retrospect is
+[`docs/gates/summary.md`](gates/summary.md).
 
 ### Status vocabulary
 
@@ -176,6 +178,9 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A8](backlog-retired.md#a8) | `EvalService._activeStates` grows unboundedly | core | fix | **Retired — fixed 2026-09-25, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987, in two steps: `simpleEval`'s states ([`docs/a8/plan.md`](a8/plan.md)), then the set deleted ([`docs/a8/step-2-plan.md`](a8/step-2-plan.md)). Withdraws the published destroy-time registry clear |
 | [A9](backlog-retired.md#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [A23](backlog-retired.md#a23) | `safeSetProperty` defines the property instead of assigning it — setters never run, non-configurable properties cannot be written | core | decision, then fix | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-core` 0.10.0, tagged 0c3299e: a member write assigns, after the same refusals, so setters run |
+| [A24](#a24) | An `await` is a pass-through — inside an `async` arrow it hands the walk a promise as an operand, and the arrow returns no promise | core | decision, then fix | Open — opened 2026-10-07 by the Phase 5 plan |
+| [A25](#a25) | `awaitVisitor`'s timeout race — an uncleared 30 s timer per `await`, an undocumented `__awaitTimeout` key, and the caller's error mutated | core | fix | Open — opened 2026-10-07 by the Phase 5 plan |
+| [A26](#a26) | The parse cache ignores parser options | core | fix | Open — opened 2026-10-07 by the Phase 5 plan |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -187,6 +192,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [C3](backlog-retired.md#c3) | Whether `eval-signals` should work around [A4](backlog-retired.md#a4) locally | signals | decision | **Retired — decided and fixed 2026-10-01**; released 2026-10-02 in `eval-signals` 0.2.0, tagged c56f987: under `caseInsensitive` a source key is named as the source spells it, in `getKey`, write errors and the first segment of `dependencies` |
 | [C4](backlog-retired.md#c4) | A mutating method call escapes the member-write policy | signals | accepted, then fix | **Retired — fixed 2026-10-04**; released 2026-10-07 in `eval-core` 0.11.0, `eval-signals` 0.4.0 and `eval-forms` 0.4.0, tagged 776885a: `eval-core` asks the policy before a built-in method that writes into what it is handed, matched by identity; `eval-signals` refuses one with `kind` `'method'`; `eval-forms` by consequence |
 | [C5](backlog-retired.md#c5) | A built-in mutator reached through `call`, `apply` or `bind` escapes C4's check | signals | fix | **Retired — fixed 2026-10-05**; released 2026-10-07 in `eval-core` 0.11.0, with `eval-signals` 0.4.0 and `eval-forms` 0.4.0 by consequence, tagged 776885a: a method reached through `call` or `apply` is asked about as a direct call, with the `this` they pass, and `bind` is asked when it binds |
+| [C6](#c6) | The README's `resource` composition does not compile at Angular 19, inside the peer range | signals | docs | Open — opened 2026-10-07 by the Phase 5 plan, whose step 4 closes it |
 | [D1](backlog-retired.md#d1) | The throwing-subscriber premise is false in both halves | forms | fix + decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e: a late prototype-named control is not mirrored and is reported once, out of band, after the rest of the emission |
 | [D2](backlog-retired.md#d2) | Should `/reactive` reject prototype-shadowed identifiers too? | forms | decision, breaking | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e: yes, with `/signals`' own guard, shared from the core; no form that worked could have named one |
 | [D3](backlog-retired.md#d3) | Per-registration `caseInsensitive` reaches one of three levers | forms | decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.1, tagged 3d56994. The memo is keyed on the key and `caseInsensitive` together, and each rule context is built from its registration's options, so a registration's value reaches all three levers |
@@ -304,7 +310,9 @@ scoped to be additive.
 — the first consumer to reuse one `EvalContext` across many evaluations, which is what makes
 several of these visible at all. [A6](backlog-retired.md#a6) was surfaced by Phase 6 step 3. [A8](backlog-retired.md#a8) and
 [A9](backlog-retired.md#a9) were never recorded in the roadmap at all. [A23](backlog-retired.md#a23) was surfaced by
-[C1](backlog-retired.md#c1)'s fix.
+[C1](backlog-retired.md#c1)'s fix. [A24](#a24)–[A26](#a26) were surfaced by the Phase 5 plan's probes
+([`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.3), which keeps all three out of its scope
+(§ 3.1).
 
 **Identity-checked `exit`** (§ 3.8 of the Phase 1 plan) means the hook layer stays balanced in
 spite of [A1](backlog-retired.md#a1) and [A2](backlog-retired.md#a2), so neither was urgent — [A3](backlog-retired.md#a3)
@@ -553,6 +561,113 @@ short-lived reference without masking a kept one.
 
 ---
 
+<a id="a24"></a>
+## A24 — An `await` is a pass-through: inside an `async` arrow it hands the walk a promise as an operand
+
+**Package** core · **Kind** decision, then fix · **Status** Open. Opened 2026-10-07 by the Phase 5
+plan
+
+`awaitVisitor` pushes a promise — its operand raced against a timer ([A25](#a25)) — and the walk
+carries on with that promise as the value. Nothing waits for it. Only promises left in the result
+tree are resolved, by `evaluateAsync`, after the walk; the sync entry points resolve nothing. So an
+`await` gives the right answer only where its value reaches the result unchanged.
+
+**Reachable today at default parser options.** Top-level `await` is a `SyntaxError` there, but an
+`async` arrow parses at `ecmaVersion: 2020`, and the arrow visitor builds a plain closure that
+ignores `async`. Measured 2026-10-07:
+
+| Expression | `simpleEval` | `simpleEvalAsync` |
+| :--- | :--- | :--- |
+| `(async () => await p)()`, `p` resolving to 2 | a promise | `2` |
+| `(async () => (await p) * 10)()` | `NaN` | `NaN` |
+| `(async () => await p + await q)()` | `"[object Promise][object Promise]"` | — |
+| `(async () => (await u).name)()`, `u` resolving to `{ name }` | — | `undefined` |
+| `(async () => 1)()` | `1`, not a promise | — |
+
+The same table at top level, with `allowAwaitOutsideFunction` set, is the Phase 5 plan's § 1.2
+finding 2. The `eval-signals` README offers the `async`-arrow form as the way to use `await` in an
+expression (`modules/eval-signals/README.md:300-301`), and `eval-signal.spec.ts:998-1012` pins it in
+tail position, where it is right.
+
+**Two ways out, and leaving it is not one of them**, since it ships silent wrong answers:
+
+- **Refuse**: an `await` that is not in a result position throws, at parse or at walk time, and an
+  `async` arrow either does the same or returns a promise. A behavioural `eval-core` release.
+- **Implement**: a suspending walk. The Phase 5 plan costs it (§ 3.1, option A) as a rewrite of the
+  walker and every visitor, and finds that it still loses Angular's tracking for every read after the
+  first `await`.
+
+**Why not Phase 5**: that plan keeps `await` out of its async signal (§ 3.1, option C), and this path
+exists whatever Phase 5 decides. Its step 4 rewrites the README line above to say the `await` is a
+pass-through.
+
+*Recorded*: this entry; the evidence is [`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.2
+findings 2 and 3.
+*Verified*: measured 2026-10-07 at d080707, with a throwaway spec deleted the same day (that plan's
+§ 1.3, P1 and P1c).
+
+<a id="a25"></a>
+## A25 — `awaitVisitor`'s timeout race: an uncleared timer, an undocumented key, a mutated error
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-07 by the Phase 5 plan
+
+Three defects in `await-expression.ts`, reached wherever `awaitVisitor` runs — an `async` arrow at
+default options ([A24](#a24)), or an AST the caller parsed with `allowAwaitOutsideFunction`:
+
+- **A 30 s timer per `await`, never cleared** (`:14-20`, `:56-59`). Each evaluation of the node races
+  its operand against a `setTimeout`, and nothing clears it when the operand settles first. Measured:
+  one `setTimeout(…, 30000)` and no `clearTimeout`. Under Angular's zone the timer outlives the
+  evaluation — `NgZone.hasPendingMacrotasks` was `true` after the result had settled and `false` only
+  once the timeout elapsed — so an application waiting for stability, server rendering included,
+  waits out 30 s per `await` evaluated. The race does not cancel the operand either.
+- **An undocumented context key** (`:50-53`). The timeout is read from
+  `context.original['__awaitTimeout']`, documented nowhere and sitting in the consumer's own data
+  namespace. Measured from a plain-object context and from an `EvalContext`'s `original`.
+- **The caller's error is mutated** (`:67-69`). On a rejection that is an `Error` — the caller's own
+  object, by identity — `" at position …"` is appended to its `message`, once per evaluation that sees
+  it: a shared error read `boom at position 0-12 at position 0-12` after two.
+
+**A fix has a pinned spec to move.** `eval.service.await.spec.ts:82` asserts the suffix
+(`'later at position 0-17'`), so a fix that stops mutating decides where the position goes — a
+wrapping error with `cause`, say — and updates that assertion deliberately, raising it first as
+CLAUDE.md requires.
+
+**Why not Phase 5**: its async signal keeps `await` out (plan § 3.1), so it reaches this visitor only
+through an `async` arrow, exactly as the sync path does today. It adds no reach.
+
+*Recorded*: this entry; [`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.2 finding 4.
+*Verified*: measured 2026-10-07 at d080707, with a throwaway spec deleted the same day (that plan's
+§ 1.3, P2 and P2b).
+
+<a id="a26"></a>
+## A26 — The parse cache ignores parser options
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-07 by the Phase 5 plan
+
+`ParserService.parse` merges each call's options over its own (`parser.service.ts:122`) and caches
+the result under `getHashKey('', expr)` (`:135`) — the expression string alone. So the first parse
+of a string decides what every later caller gets for it, whatever options they pass, and
+`ParserService` is a root singleton whose `parse` is public.
+
+Measured: at default options `EvalService.simpleEval('await p')` throws a `SyntaxError`. After one
+`ParserService.parse('await p', { ecmaVersion: 2022, allowAwaitOutsideFunction: true })` on the
+same injector, the same `simpleEval` returns a promise.
+
+Read, not measured: `ParserService` defaults to `extractExpressions: true` (`parser.service.ts:44-47`)
+while `EvalService` and `CompilerService` pass `defaultParserOptions`, which sets it `false`, so the
+two share entries holding differently shaped nodes for one string.
+
+**Fix**: key the cache on the options that change the AST as well as the string.
+
+**Why not Phase 5**: its plan changes no parser options (§ 3.1). A later design that parses some path
+with options of its own needs this first — the plan's option B is the worked case.
+
+*Recorded*: this entry; [`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.2 finding 11.
+*Verified*: measured 2026-10-07 at d080707, with a throwaway spec deleted the same day (that plan's
+§ 1.3, P5).
+
+---
+
 # B. `eval-core` — security and hygiene
 
 [B1](backlog-retired.md#b1)–[B6](backlog-retired.md#b6) are retired.
@@ -563,6 +678,26 @@ short-lived reference without masking a kept one.
 
 [C1](backlog-retired.md#c1)–[C5](backlog-retired.md#c5) are retired. None of the five entries was
 ever recorded in `ROADMAP.md`.
+
+<a id="c6"></a>
+## C6 — The README's `resource` composition does not compile at Angular 19, inside the peer range
+
+**Package** signals · **Kind** docs · **Status** Open. Opened 2026-10-07 by the Phase 5 plan, whose
+step 4 closes it
+
+The "Async expressions" section shows `resource({ params: () => user() as Promise<User>, loader:
+({ params }) => params })` (`modules/eval-signals/README.md:284-290`). At `@angular/core` 19.x the
+option and the loader's parameter are named `request`; `params` arrives in 20.0.0. The package's peer
+range is `@angular/core >=19.0.0`, and the README presents the composition as working "at your own
+Angular floor" — at 19 it does not compile. `readme-examples.spec.ts` deliberately does not execute
+it (its header, `:68-72`), and the workspace runs 22, so nothing here could have caught it.
+
+**Fix**: give both spellings. Phase 5's step 4 rewrites the section and does
+([`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 4).
+
+*Recorded*: this entry; that plan's § 1.2 finding 6.
+*Verified*: read 2026-10-07 from `ResourceLoaderParams` and `BaseResourceOptions` in the published
+`.d.ts` of `@angular/core` 19.2.25 and 20.0.0, unpacked outside the repository.
 
 ---
 

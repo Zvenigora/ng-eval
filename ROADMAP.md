@@ -260,6 +260,8 @@ Reactive Forms, a worked example, tests, README.
 
 ### Phase 5 — Async expression signals (`eval-signals`)
 
+**Planned** in [`docs/signals/phase-5-plan.md`](docs/signals/phase-5-plan.md), which settles the questions below on measured evidence and corrects two of them; no step has started.
+
 Deferred out of Phase 3 by its step 5, with the reasoning and the evidence in
 [`docs/signals/phase-3-plan.md`](docs/signals/phase-3-plan.md) § 3.7. `eval-core` has had an
 async evaluation path since before Phase 1 (`evaluateAsync` / `compileAsync` / `callAsync`)

@@ -93,7 +93,7 @@ build before believing a type is sound.
   the prompt, and its backlog entry records what verified it.** **Neither does a batch of
   independent one-commit items**, however many commits it runs to: each item's exit criteria
   live in the prompt, as the A3/B4/D6/F6, D9/F13 and F2 batches did. `.claude/skills/step/SKILL.md`
-  still targets a finished document; it is retargeted with the next item's plan.
+  targets the active plan, `docs/signals/phase-5-plan.md`; it is retargeted with each new one.
 - **One retrospect per track; no per-step summaries.**
 - **Anything left for later work goes in `docs/backlog.md`; a commit body never carries it
   forward.**
