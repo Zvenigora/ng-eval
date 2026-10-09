@@ -1,4 +1,4 @@
-import { Injector, signal } from '@angular/core';
+import { EnvironmentInjector, Injector, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { CompilerService } from '@zvenigora/ng-eval-core';
 import { EvalSignalService } from './eval-signal.service';
@@ -73,6 +73,42 @@ describe('EvalSignalService', () => {
     expect(value()).toEqual(2);
     expect(delegate.compile).toHaveBeenCalledTimes(1);
     expect(delegate.createState).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * One case through `createAsync` rather than through the factory alone
+   * (Phase 3 S 6.1): a wiring call is not covered by testing what it calls.
+   *
+   * The registration count reads a private, as `eval-signal.memory.spec.ts`
+   * does and for its reason - a `DestroyRef` registration has no behavioural
+   * surface. The service's injector is the root one, so a factory that took
+   * its `DestroyRef` from `options.injector` would register here, once per
+   * signal, for the life of the application.
+   */
+  it('should create a working async signal from outside an injection context, with no teardown registration', async () => {
+    const root = TestBed.inject(EnvironmentInjector);
+    const hooks = (root as unknown as { _onDestroyHooks: unknown[] })._onDestroyHooks;
+    const before = hooks.length;
+    const c = signal(1);
+
+    const value = service.createAsync('c + 1', { c });
+
+    expect(value()).toBeUndefined();
+    expect(value.status()).toEqual('loading');
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(value()).toEqual(2);
+    expect(value.status()).toEqual('resolved');
+
+    c.set(4);
+
+    expect(value()).toBeUndefined();
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(value()).toEqual(5);
+    expect(hooks.length).toEqual(before);
   });
 
   it('should surface the write policy the same way the free function does', () => {

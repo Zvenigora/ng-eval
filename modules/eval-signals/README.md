@@ -65,9 +65,13 @@ itself down with the component. See [Lifetime](#lifetime) for every other case.
 | :--- | :--- |
 | `createEvalSignal(expression, source, options?)` | The primary API. Compiles once, returns an `EvalSignal`. |
 | `EvalSignalService.create(…)` | The same thing for callers outside an injection context. See [Lifetime](#lifetime). |
+| `createEvalSignalAsync(expression, source, options?)` | The async counterpart. Resolves the expression's value as `evaluateAsync` does, and returns an `EvalSignalAsync`. |
+| `EvalSignalService.createAsync(…)` | The same, for callers outside an injection context. |
 | `createSignalContext(source, options?)` | The context adapter on its own, for use with `EvalService` directly. |
 | `SignalContextWriteError` | Thrown when an expression assigns to a context key, or to a member of anything it did not create. |
 | `EvalSignal<T>` | `Signal<T>` plus `dependencies`, `invalidate()` and `destroy()`. The factory returns `EvalSignal<unknown>` — an expression's type is not knowable, so narrow at the call site. |
+| `EvalSignalAsync<T>` | `EvalSignal<T>` plus `status`. The value reads `undefined` while a run is pending. |
+| `EvalSignalStatus` | `'idle'`, `'loading'`, `'resolved'` or `'error'` — the words Angular's `ResourceStatus` uses for those states. |
 | `EvalSignalOptions` | `eval`, `equal`, `onError`, `trackDependencies`, `injector`. |
 
 `source` is a plain record whose values may be signals, plain values or functions — signals

@@ -1,6 +1,14 @@
 # Phase 5 Plan — async expression signals (`@zvenigora/ng-eval-signals`)
 
 **Date**: October 7, 2026
+**Revision**: 3 — amended during step 2, in its commit. § 3.2's option-3 sketch is rewritten: a run's
+outcome lives on its `Run` and `settled` is only a notification, so no outcome sits in a slot shared
+between runs; § 3.4 says what that rules out. Fixed at step 2's confirmation gate: its file list gains
+`eval-signal.ts` and the internal `track-dependencies.ts`, criteria 3 and 12 restate their wrong
+implementations, and criterion 13 gains a third arm. Two fixture findings from step 2's probes are
+recorded in § 3.5 and § 6.1, one from its review in § 3.4 (`destroy()` must make `run` drop the
+current run), and the `eval-signal.ts` citations follow the move.
+
 **Revision**: 2 — amended during step 1. Docs only. Step 1's review measured (P7) that
 `state.result.isError` at return is evidence in one direction only: a walk that threw has it `true`,
 and so does a walk whose arrow body threw into a consumer function that caught it — a walk that then
@@ -395,20 +403,21 @@ read at both levels, which is the property the other two cannot have.
 **Option 3 — a pull shape: two `computed`s and one `signal`.**
 
 ```ts
-const run = computed(() => { version(); return start(); });     // the walk: tracked, synchronous
-const settled = signal<Outcome | undefined>(undefined);          // written by run's settle handler
-const value = computed(() => read(run(), settled()), { equal }); // onError applied here, on read
-const status = computed(() => statusOf(run(), settled()));
+const run = computed(() => { version(); return start(); });   // the walk: tracked, synchronous
+const settled = signal(0);                                     // bumped by the current run's settle handler
+const value = computed(() => { settled(); return read(run()?.outcome); }, { equal }); // onError applied here
+const status = computed(() => { settled(); return statusOf(run()); });
 ```
 
 `start()` is § 3.3.1 and § 3.8.3 of Phase 3 with `callAsync` in place of `call`: a fresh state, the
-depth snapshot, the walk, the restore. It returns a `Run` holding the promise, its `AbortController`
-and its pending-task release. There is no synchronous failure: a walk that throws rejects the
-promise, and its outcome arrives through settlement like any other (§ 3.4). The settle handler
-writes `settled` a microtask later, outside any reactive context, and only if its run is still
-current and the signal is not destroyed. `value` and `status`
-read an outcome only when its run is `run()`'s current value — the check that makes a lazy supersede
-correct (§ 3.4).
+depth snapshot, the walk, the restore. It returns a `Run`, the object its own settle handler writes
+the run's outcome onto; step 3 adds its `AbortController` and its pending-task release. There is no
+synchronous failure: a walk that throws rejects the promise, and its outcome arrives through
+settlement like any other (§ 3.4). The settle handler fires a microtask later, outside any reactive
+context, and only if its run is still current and the signal is not destroyed does it write the
+outcome onto the run and bump `settled`. `settled` carries no outcome; it only tells `value` and
+`status` to look again. They read the outcome of `run()`'s current value and of no other run, so a
+lazy supersede is correct by construction (§ 3.4), and no outcome is kept anywhere but on its own run.
 
 - *Peer cost*: none. `signal` and `computed` are untagged at every floor; `PendingTasks.add()` is
   developer preview at 19 with the signature it has at 22 (finding 6). At 19 zoneless change detection
@@ -438,7 +447,7 @@ code this package owns and tests, against a breaking narrowing for either altern
 first (finding 8; step 3). A superseded run that never settles must not hold the application
 unstable.
 
-**`PendingTasks` comes from the same injector fork as `CompilerService`** (`eval-signal.ts:267-272`):
+**`PendingTasks` comes from the same injector fork as `CompilerService`** (`eval-signal.ts:228-233`):
 `options.injector.get(PendingTasks)` when an injector is given, `inject(PendingTasks)` otherwise.
 `EvalSignalService.createAsync` always passes one, the root injector, whose `PendingTasks` is the
 application's own, so stability holds through the service too. Phase 3 § 3.8.1's rule is untouched:
@@ -479,7 +488,7 @@ imported: at 19 that type is an `enum`, and it is `@experimental` until 22 (D1).
 
 **Rejection reaches `onError` with its existing contract.** `'throw'`: `value()` throws the rejection
 on every read until a new run starts — a `computed`'s rethrow-on-read, which is what
-`EvalSignalOptions.onError` already promises (`eval-signal.ts:149-161`). `'undefined'`: `undefined`.
+`EvalSignalOptions.onError` already promises (`eval-signal.ts:110-122`). `'undefined'`: `undefined`.
 A mapper: called **once per rejected run** with the rejection, its result cached by `value`. What
 arrives is what `evaluateAsync` rejects with, so a non-`Error` rejection arrives wrapped by
 `ensureError` (`evaluate.ts:141-163`) and an `Error` arrives by identity.
@@ -496,7 +505,7 @@ source change (§ 2).
 
 **`SignalContextWriteError` is recognised on the rejection, by `instanceof`.** It **bypasses
 `onError` in every mode** and is rethrown on every read, enriched with the expression, as on the sync
-path (`eval-signal.ts:428-430`; Phase 3 § 3.6.3). The class survives the trip: a walk's throw is the
+path (`eval-signal.ts:370-372`; Phase 3 § 3.6.3). The class survives the trip: a walk's throw is the
 rejection by identity — step 1's case 3 pins that — and an `Error` rejected later passes `ensureError`
 unchanged. [BL-C2](../backlog-retired.md#c2)'s reasoning holds: it declined a construction-time check
 because the runtime guard shows a consumer the violation before any value is delivered, and here it
@@ -517,8 +526,9 @@ between, its handler writes `settled` as it should for a current run.
 nothing, so a late resolution neither changes the value nor recomputes it — whatever order the two
 promises settle in. But the handler's check alone is not enough: in the window above, the old run's
 outcome is written while it is current, and the read that follows supersedes it. So `value` and
-`status` accept an outcome only when its run is `run()`'s current value, and that read returns
-`undefined` / `'loading'`. Step 2's criteria 3 and 12 each catch one of the two checks missing.
+`status` read only the outcome on `run()`'s current value — the old outcome was written onto the old
+run — and that read returns `undefined` / `'loading'`. Step 2's criterion 3 catches the handler's
+check missing, and criterion 12 a `value` that reads an outcome from anywhere but the current run.
 
 Between the change and the read, the old run's pending task still holds the application unstable. It
 is released at the read, or when the old run settles, whichever comes first — so with nothing reading
@@ -529,17 +539,27 @@ from the moment it is destroyed, and neither producer moves it. Here there is a 
 in-flight run's resolution — and the destroyed check in the settle handler is what keeps it inert.
 `destroy()` also aborts the current run's controller and releases its pending task.
 
+`destroy()` clears the run the handler compares against as well, so either guard alone keeps a late
+settlement inert: step 2 measured its criterion 13 "current run kept after `destroy()`" green on its
+own, and red only with the destroyed check removed too. And it recomputes `run`, untracked, so the
+`computed` drops the current run at once: marking it stale alone left the run, and the value it had
+resolved to, held for the life of a signal nothing read again (step 2, measured at its review; a
+retention case beside criterion 13's arms pins it).
+
 **The signal holds the current run and nothing older.** A superseded `Run` — its promise and so its
 resolved value, its state, its `AbortController`, its pending-task release — is referenced by nothing
 the signal keeps once `start()` has replaced it, and after `destroy()` not even the current one is. A
 list of runs, kept to abort or release them all at the end, would be the per-signal accumulator Phase 3
-§ 3.2.2 and § 3.8.1 describe, and the shape of [BL-A8](../backlog-retired.md#a8). Step 2's criterion 13
-and step 3's criterion 7 assert it.
+§ 3.2.2 and § 3.8.1 describe, and the shape of [BL-A8](../backlog-retired.md#a8). So would a slot
+shared between runs that holds the last outcome — how § 3.2's sketch read before Revision 3 — which,
+even tagged with its run and checked against `run()`, keeps the last settled run's value past its
+supersede until another run settles, and for good if none does; step 2's criterion 13 third arm is
+the case that rules it out. Step 2's criterion 13 and step 3's criterion 7 assert all of this.
 
 **`dependencies` reports the last run started.** The walk finishes before `callAsync` returns
 (finding 1), so a run's reads are complete when it starts, and however many older runs are still in
 flight, "the last recompute" (Phase 3 § 3.4) is one thing again. The tracker is uninstalled in the
-`finally` after the call, as on the sync path (`eval-signal.ts:371-384`), so a closure the promise
+`finally` after the call, as on the sync path (`eval-signal.ts:313-326`), so a closure the promise
 calls later records nothing — consistent with what Angular tracks.
 
 ### 3.5 The scope-depth restore under `callAsync` — decided: the same `finally`, around the synchronous call
@@ -555,9 +575,14 @@ discriminator.
 
 [BL-A9](../backlog-retired.md#a9) is fixed (`arrow-function-expression.ts:27-31`), so the arrow scope
 no longer leaks on any path, including a closure the promise machinery calls later. The guard stays for
-the reason `eval-signal.ts:392-401` gives: `EvalContext.push` and `pop` are public, so a scope can be
+the reason `eval-signal.ts:334-343` gives: `EvalContext.push` and `pop` are public, so a scope can be
 stranded with no visitor involved — for instance by a consumer function, which a bare call invokes
 with the context itself as `this` (`call-expression.ts:203`).
+
+What such a function strands is not always the scope it pushed (step 2, measured). The walk's own
+`Program` scope is on the stack when the function runs, and `program.ts`'s `finally` pops whatever is
+on top, so one pushed scope is popped in its place and the `Program`'s empty scope is left behind,
+shadowing nothing. A fixture that wants a stranded scope to shadow a key pushes two.
 
 ### 3.6 An `AbortSignal` for the expression's own functions — decided: yes, opt-in, through a per-run scope
 
@@ -687,8 +712,12 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
 ### Step 2 — `createEvalSignalAsync`: the value, its status and its errors
 
 - **New**: `modules/eval-signals/src/lib/eval-signal-async.ts`, `eval-signal-async.spec.ts`,
-  `eval-signal-async.memory.spec.ts`.
-- **Edit**: `src/public-api.ts` (the export); `eval-signal.service.ts` (`createAsync`) and its spec;
+  `eval-signal-async.memory.spec.ts`; `track-dependencies.ts`, an internal module `src/public-api.ts`
+  does not re-export, holding `respellRoots` and the `eval.hooks` conflict check so both factories
+  give `trackDependencies` one meaning.
+- **Edit**: `eval-signal.ts` (those two moved out, behaviour unchanged — gated by the existing suite,
+  green before any new spec is added); `src/public-api.ts` (the export); `eval-signal.service.ts`
+  (`createAsync`) and its spec;
   `README.md`, the "How it fits together" table only — rows naming `createEvalSignalAsync`,
   `EvalSignalAsync`, `EvalSignalStatus` and `createAsync` in code spans. [BL-F10](../backlog-retired.md#f10)'s
   gate (`export-list.spec.ts:482`) fails on an export the README names nowhere, and none of the five
@@ -712,9 +741,10 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
   3. **Out of order.** Two runs, their deferreds resolved first-then-second and second-then-first: the
      final value is the second run's in both orders, and the stale resolution does not recompute
      `value` (an `equal` spy's count does not move). *Wrong:* the settle handler's identity check
-     removed — the reverse order fails: the stale write lands last, and the value reads `undefined`
-     through `value`'s own check, or the stale value without it. `value`'s check removed alone is not
-     caught here; criterion 12 catches it.
+     removed — both orders fail on the `equal` spy: the stale handler's notification recomputes
+     `value`, though the value stays the second run's, since the stale outcome is written onto the
+     stale run and `value` never reads it. A `value` that reads an outcome from anywhere but the
+     current run is not caught here; criterion 12 catches it.
   4. **Rejection, after settlement, per mode.** `'throw'`: two consecutive reads throw the rejection
      by identity, and `status()` is `'error'`. `'undefined'`: `undefined`. Mapper: its result, and it
      is called once across five reads. *Wrong:* the mapper applied per read outside the `computed` —
@@ -754,27 +784,30 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
   12. **A lazy supersede** (§ 3.4). A run is pending; a dependency changes and **nothing reads**; the
       old run's deferred resolves; then a read returns `undefined` and `status()` `'loading'` — not
       the old run's value — and the next settle gives the new run's value. Asserted in that order,
-      with the old deferred resolved by the test before the read. *Wrong:* the run-identity check only
-      in the settle handler — the old run was still current when it settled, so its outcome was
-      written, and the read returns the stale value.
+      with the old deferred resolved by the test before the read. *Wrong:* `value` reading a shared
+      last-settled slot instead of `run()`'s outcome — the old run was still current when it settled,
+      so its outcome was written to the slot, and the read returns the stale value.
   13. **Retention** (§ 3.4), in `eval-signal-async.memory.spec.ts` with `eval-signal.memory.spec.ts`'s
       instrument: `WeakRef`s and a forced collection (`setFlagsFromString('--expose-gc')` /
       `runInNewContext('gc')`, a macrotask first), with `eval-core`'s several-round `collect` if one
-      round proves flaky ([BL-A19](../backlog.md#a19)'s 2026-10-07 note). Two arms:
+      round proves flaky ([BL-A19](../backlog.md#a19)'s 2026-10-07 note). Three arms:
       - after five supersedes — each a dependency change, the read that supersedes, and the old run's
         deferred resolved — no superseded run's state (caught by a read hook on a registry the test
         owns, as `eval-signal.memory.spec.ts` catches states) and no superseded run's resolved value
         survives; the current run's value, held by the signal alone, **does** survive, which is what
         shows the others were collected rather than never caught;
       - after `destroy()` with a run pending, and that run's deferred then resolved: its value does
-        not survive.
+        not survive;
+      - a run resolves while current; a dependency change and a read supersede it; the new run is left
+        pending; after a forced collection the old run's resolved value does not survive.
 
       The resolved values are class instances, which `awaitAllPromises` returns by identity (P4) — a
       plain object would be rebuilt and the `WeakRef` would watch a copy nothing holds. The fixture
       keeps no reference to a resolved deferred, its value or its state, and no `jest` spy or `equal`
       spy sits on the path (`mock.calls` and `mock.results` hold what they see) — BL-A19's "the fixture
       can keep the target alive". *Wrong:* runs kept in an array — the first arm fails, every
-      superseded value surviving; the current run kept after `destroy()` — the second arm fails.
+      superseded value surviving; the current run kept after `destroy()` — the second arm fails; a
+      shared last-settled slot read by `value` — the third arm fails.
   - The gate is green, and `git diff --name-only` lists only the files above and this document.
 - **Category**: additive to a published package, unreleased until step 4.
 
@@ -845,7 +878,9 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
   - `modules/eval-signals/README.md` — "Async expressions" rewritten: the primitive; § 3.4's table;
     `onError`; the two-signal form for operand-position use (§ 3.1); the resolution boundary and the
     copy-per-run consequence for `equal` (§ 3.7); `abortSignalKey` and its shadowing rule (§ 3.6);
-    stability. The sync path's promise pass-through stays documented, with the `resource` composition
+    stability; reads inside a callback the promise calls later (`load(id).then(u => u.x * rate)`) are
+    not tracked (§ 3.3) — show the two-signal form as the tracked way to write it. The sync path's
+    promise pass-through stays documented, with the `resource` composition
     given in both spellings — `request` on 19, `params` from 20 — closing [BL-C6](../backlog.md#c6). The
     `async`-arrow line says the `await` is a pass-through, right only as the arrow's result
     ([BL-A24](../backlog.md#a24)). "Before you use it"'s async bullet follows.
@@ -951,7 +986,12 @@ because an async assertion has one more way to be vacuous:
   Phase 3 § 3.8.2 — not on the value, which a stale write can restore to what it was.
 - **The run counter is the `createState` spy**, one call per run (§ 3.3.1).
 - **Unhandled rejections are observed**, with a listener the spec installs and removes, for every
-  case that supersedes or destroys a rejecting run.
+  case that supersedes or destroys a rejecting run. Here that listener is zone.js's own hook, the
+  function under `Zone.__symbol__('unhandledPromiseRejectionHandler')`: every promise in these specs
+  is a `ZoneAwarePromise`, and the window's `unhandledrejection`, Node's `process` event and zone.js's
+  console report all stay silent (step 2, measured). Beside it sits a permanent control — a plain
+  promise rejected with no handler must be recorded, by identity — so the cases cannot go vacuous if
+  the channel ever stops reporting.
 - **There are no effects to flush.** If an implementation ever adds one, its specs need
   `TestBed.tick()` and this section is wrong.
 - **The stability cases use S2's arrangement** — `provideZonelessChangeDetection()` and

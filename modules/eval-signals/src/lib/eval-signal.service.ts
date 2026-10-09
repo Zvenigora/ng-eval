@@ -1,6 +1,7 @@
 import { Injectable, Injector, inject } from '@angular/core';
 import { EvalContext } from '@zvenigora/ng-eval-core';
 import { EvalSignal, EvalSignalOptions, createEvalSignal } from './eval-signal';
+import { EvalSignalAsync, createEvalSignalAsync } from './eval-signal-async';
 import { SignalContextSource } from './signal-context';
 
 /**
@@ -80,6 +81,34 @@ export class EvalSignalService {
   ): EvalSignal<unknown> {
 
     return createEvalSignal(expression, source, {
+      ...options,
+      injector: options?.injector ?? this.injector,
+    });
+  }
+
+  /**
+   * Creates a `Signal` whose value is `expression` evaluated over `source`
+   * and resolved.
+   *
+   * See {@link createEvalSignalAsync} for the full contract. As with
+   * {@link create}, this method adds the injector, so the signal it returns
+   * has **no auto-teardown** and must be destroyed by hand.
+   *
+   * @param expression - A JavaScript expression.
+   * @param source - A record whose values may be signals, or a pre-built
+   *                 `EvalContext` the caller owns.
+   * @param options - See `EvalSignalOptions`. A supplied `injector` wins over
+   *                  this service's own, as on {@link create}.
+   * @returns A `Signal` carrying the latest run's resolved value, and its
+   *          `status`.
+   */
+  public createAsync(
+    expression: string,
+    source: SignalContextSource | EvalContext,
+    options?: EvalSignalOptions
+  ): EvalSignalAsync<unknown> {
+
+    return createEvalSignalAsync(expression, source, {
       ...options,
       injector: options?.injector ?? this.injector,
     });
