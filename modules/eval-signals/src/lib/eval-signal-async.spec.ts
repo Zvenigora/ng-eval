@@ -1,8 +1,8 @@
-import { WritableSignal, signal } from '@angular/core';
+import { ApplicationRef, WritableSignal, effect, provideZonelessChangeDetection, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { CompilerService, EvalContext, EvalHooks } from '@zvenigora/ng-eval-core';
 import { EvalSignalOptions } from './eval-signal';
-import { EvalSignalAsync, createEvalSignalAsync } from './eval-signal-async';
+import { EvalSignalAsync, EvalSignalAsyncOptions, createEvalSignalAsync } from './eval-signal-async';
 import { SignalContextSource, SignalContextWriteError, createSignalContext } from './signal-context';
 
 /**
@@ -46,6 +46,19 @@ const loader = () => {
   return { loads, load };
 };
 
+/**
+ * `loader()`, keeping the `AbortSignal` each run handed it, in call order.
+ */
+const aborting = () => {
+  const { loads, load: next } = loader();
+  const signals: AbortSignal[] = [];
+  const load = (_id: unknown, abort: AbortSignal): Promise<unknown> => {
+    signals.push(abort);
+    return next();
+  };
+  return { loads, signals, load };
+};
+
 describe('createEvalSignalAsync', () => {
 
   let compiler: CompilerService;
@@ -62,7 +75,7 @@ describe('createEvalSignalAsync', () => {
   const create = (
     expression: string,
     source: SignalContextSource | EvalContext,
-    options?: EvalSignalOptions
+    options?: EvalSignalAsyncOptions
   ): EvalSignalAsync<unknown> =>
     TestBed.runInInjectionContext(() => createEvalSignalAsync(expression, source, options));
 
@@ -706,6 +719,599 @@ describe('createEvalSignalAsync', () => {
       expect(user.status()).toEqual('resolved');
     });
 
+  });
+
+  describe('the AbortSignal reaches the function (step 3 criterion 1)', () => {
+
+    it('should abort a run at the read that supersedes it, not at the change, and not abort the new run', () => {
+      const { signals, load } = aborting();
+      const id = signal(1);
+      const user = create('load(id, abort)', { id, load }, { abortSignalKey: 'abort' });
+
+      expect(user()).toBeUndefined();
+      expect(signals).toHaveLength(1);
+      expect(signals[0]).toBeInstanceOf(AbortSignal);
+      expect(signals[0].aborted).toBe(false);
+
+      // A change only marks the run stale (Phase 5 S 3.4).
+      id.set(2);
+      expect(signals[0].aborted).toBe(false);
+
+      // The read is the supersede.
+      expect(user()).toBeUndefined();
+      expect(signals).toHaveLength(2);
+      expect(signals[0].aborted).toBe(true);
+      expect(signals[1].aborted).toBe(false);
+    });
+
+    it('should not abort a run that settles normally', async () => {
+      const { loads, signals, load } = aborting();
+      const user = create('load(id, abort)', { id: signal(1), load }, { abortSignalKey: 'abort' });
+
+      expect(user()).toBeUndefined();
+      loads[0].resolve('user-1');
+      await flush();
+
+      expect(user()).toEqual('user-1');
+      expect(signals[0].aborted).toBe(false);
+    });
+
+    it('should abort the pending run on destroy()', () => {
+      const { signals, load } = aborting();
+      const user = create('load(id, abort)', { id: signal(1), load }, { abortSignalKey: 'abort' });
+
+      expect(user()).toBeUndefined();
+      expect(signals[0].aborted).toBe(false);
+
+      user.destroy();
+
+      expect(signals[0].aborted).toBe(true);
+    });
+
+    // Settling releases a run's task and keeps its controller, so a supersede
+    // or `destroy()` still aborts it (Phase 5 S 3.4), as `resource()` does.
+    // Added during step 3 for a gap the review found.
+
+    it('should abort a run that settled normally at a later supersede', async () => {
+      const { loads, signals, load } = aborting();
+      const id = signal(1);
+      const user = create('load(id, abort)', { id, load }, { abortSignalKey: 'abort' });
+
+      expect(user()).toBeUndefined();
+      loads[0].resolve('user-1');
+      await flush();
+
+      expect(user()).toEqual('user-1');
+      expect(signals[0].aborted).toBe(false);
+
+      id.set(2);
+      expect(user()).toBeUndefined();
+
+      expect(signals[0].aborted).toBe(true);
+    });
+
+    it('should abort a run that settled normally on destroy()', async () => {
+      const { loads, signals, load } = aborting();
+      const user = create('load(id, abort)', { id: signal(1), load }, { abortSignalKey: 'abort' });
+
+      expect(user()).toBeUndefined();
+      loads[0].resolve('user-1');
+      await flush();
+
+      expect(user()).toEqual('user-1');
+      expect(signals[0].aborted).toBe(false);
+
+      user.destroy();
+
+      expect(signals[0].aborted).toBe(true);
+    });
+
+  });
+
+  /**
+   * A supersede happens inside `run`, a `computed`, and `abort()` calls the
+   * old run's listeners synchronously - so a listener runs in the walk's
+   * reactive context unless the abort is untracked: a signal it read would
+   * become a dependency of the walk, and a write would throw `NG0600`. Fixed
+   * at step 3's confirmation gate.
+   */
+  describe('an abort listener runs outside the walk\'s reactive context (step 3 criterion 8)', () => {
+
+    /** Registers `listener` on every run's signal, and supersedes the first. */
+    const superseding = (listener: () => void) => {
+      const { load: next } = loader();
+      const id = signal(1);
+      const load = (_id: unknown, abort: AbortSignal): Promise<unknown> => {
+        abort.addEventListener('abort', listener);
+        return next();
+      };
+      const user = create('load(id, abort)', { id, load }, { abortSignalKey: 'abort' });
+
+      expect(user()).toBeUndefined();
+      id.set(2);
+      expect(user()).toBeUndefined();
+
+      return user;
+    };
+
+    it('should not make a signal an abort listener reads a dependency of the walk', () => {
+      const watched = signal(0);
+      const heard: number[] = [];
+      const states = jest.spyOn(compiler, 'createState');
+
+      const user = superseding(() => {
+        heard.push(watched());
+      });
+
+      // The listener ran, at the supersede.
+      expect(heard).toEqual([0]);
+      expect(states).toHaveBeenCalledTimes(2);
+
+      watched.set(1);
+
+      expect(user()).toBeUndefined();
+      expect(states).toHaveBeenCalledTimes(2);
+    });
+
+    it('should let an abort listener write a signal', () => {
+      const written = signal('before');
+
+      superseding(() => written.set('aborted'));
+
+      expect(written()).toEqual('aborted');
+    });
+
+  });
+
+  /**
+   * The supersede aborts the old run before the new walk (Phase 5 S 3.4), so
+   * a listener that writes an input the walk reads is seen by it. Walking
+   * first left the walk on the old input: a `computed` marks itself clean
+   * after computing, so the write made during the computation was missed
+   * until some other signal was written. Added during step 3 for a defect the
+   * review found; criterion 8's write arm writes a signal the walk never
+   * reads, so it could not reach this.
+   */
+  describe('the supersede aborts before the new walk (added during step 3)', () => {
+
+    // The effect arm spies on `console.error`, which would otherwise keep
+    // every later error's arguments for the rest of the file.
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    /**
+     * The first run's listener writes `id`, which the walk reads; `calls`
+     * keeps what each `load` was called with.
+     */
+    const rewriting = () => {
+      const { loads, load: next } = loader();
+      const id = signal(1);
+      const calls: unknown[] = [];
+
+      const load = (value: unknown, abort: AbortSignal): Promise<unknown> => {
+        calls.push(value);
+        if (calls.length === 1) {
+          abort.addEventListener('abort', () => id.set(100));
+        }
+        return next();
+      };
+
+      const user = create('load(id, abort)', { id, load }, { abortSignalKey: 'abort' });
+      return { loads, id, calls, user };
+    };
+
+    it('should walk on an input the old run\'s abort listener wrote, with no third run', async () => {
+      const states = jest.spyOn(compiler, 'createState');
+      const { loads, id, calls, user } = rewriting();
+
+      expect(user()).toBeUndefined();
+      expect(states).toHaveBeenCalledTimes(1);
+
+      id.set(2);
+      expect(user()).toBeUndefined();
+
+      // One run for the supersede, and it walked the written value.
+      expect(states).toHaveBeenCalledTimes(2);
+      expect(calls).toEqual([1, 100]);
+
+      loads[1].resolve('user-100');
+      await flush();
+
+      expect(user()).toEqual('user-100');
+      expect(user.status()).toEqual('resolved');
+      expect(states).toHaveBeenCalledTimes(2);
+      expect(calls).toEqual([1, 100]);
+    });
+
+    it('should have aborted the old run when the new run\'s load is called', () => {
+      const { load: next } = loader();
+      const id = signal(1);
+      const signals: AbortSignal[] = [];
+      const previousAborted: boolean[] = [];
+
+      const load = (_id: unknown, abort: AbortSignal): Promise<unknown> => {
+        const previous = signals[signals.length - 1];
+        previousAborted.push(previous === undefined ? false : previous.aborted);
+        signals.push(abort);
+        return next();
+      };
+
+      const user = create('load(id, abort)', { id, load }, { abortSignalKey: 'abort' });
+
+      expect(user()).toBeUndefined();
+      id.set(2);
+      expect(user()).toBeUndefined();
+
+      expect(signals).toHaveLength(2);
+      expect(previousAborted).toEqual([false, true]);
+    });
+
+    /**
+     * The same supersede with a live consumer, an effect: Angular notifies a
+     * live consumer of a write made during a computation, a path a plain read
+     * never takes. The one case in these specs with an effect (Phase 5 S 6.1),
+     * and the arm the Angular 19-21 matrix reruns to see whether a version
+     * takes that path differently.
+     */
+    it('should walk on the written input under an effect, with no extra run after the tick', async () => {
+      const errors = jest.spyOn(console, 'error');
+      const states = jest.spyOn(compiler, 'createState');
+      const { loads, id, calls, user } = rewriting();
+      const seen: unknown[] = [];
+
+      const ref = TestBed.runInInjectionContext(() => effect(() => {
+        seen.push(user());
+      }));
+
+      TestBed.tick();
+      expect(states).toHaveBeenCalledTimes(1);
+
+      id.set(2);
+      TestBed.tick();
+
+      expect(states).toHaveBeenCalledTimes(2);
+      expect(calls).toEqual([1, 100]);
+
+      TestBed.tick();
+      expect(states).toHaveBeenCalledTimes(2);
+
+      loads[1].resolve('user-100');
+      await flush();
+      TestBed.tick();
+
+      expect(seen[seen.length - 1]).toEqual('user-100');
+      expect(states).toHaveBeenCalledTimes(2);
+      expect(calls).toEqual([1, 100]);
+      expect(errors.mock.calls.flat().map(String).filter((text) => text.includes('NG0600'))).toEqual([]);
+
+      ref.destroy();
+    });
+
+  });
+
+  /**
+   * An abort listener that pushes a scope on the shared context - one it can
+   * reach, as a caller-built context's owner can - is contained by the same
+   * restore as a consumer function (Phase 5 S 3.5): the snapshot is taken
+   * before the old run is retired, and `destroy()` takes one of its own.
+   * Added during step 3 for a gap the review found.
+   */
+  describe('the scope-depth restore contains an abort listener\'s push (added during step 3)', () => {
+
+    const pushing = () => {
+      const { loads, load: next } = loader();
+      const id = signal(1);
+      let heard = 0;
+      let calls = 0;
+
+      const context: EvalContext = createSignalContext({
+        x: signal('from source'),
+        id,
+        load: (_id: unknown, abort: AbortSignal): Promise<unknown> => {
+          calls++;
+          if (calls === 1) {
+            abort.addEventListener('abort', () => {
+              heard++;
+              context.push({ x: 'from listener' });
+            });
+          }
+          return next();
+        },
+      });
+
+      const value = create('[x, load(id, abort)]', context, { abortSignalKey: 'abort' });
+      return { loads, id, context, value, heard: () => heard };
+    };
+
+    it('should be back at the depth before a supersede whose old run\'s listener pushed a scope', async () => {
+      const { loads, id, context, value, heard } = pushing();
+
+      expect(value()).toBeUndefined();
+      const before = context.scopes.length;
+
+      id.set(2);
+      expect(value()).toBeUndefined();
+
+      // The listener ran, at the supersede.
+      expect(heard()).toEqual(1);
+      expect(context.scopes.length).toEqual(before);
+
+      // A later run reads the source key, not the listener's scope.
+      id.set(3);
+      expect(value()).toBeUndefined();
+      loads[2].resolve('third');
+      await flush();
+
+      expect(value()).toEqual(['from source', 'third']);
+    });
+
+    it('should be back at the depth before destroy() when the aborted run\'s listener pushed a scope', () => {
+      const { context, value, heard } = pushing();
+
+      expect(value()).toBeUndefined();
+      const before = context.scopes.length;
+
+      value.destroy();
+
+      expect(heard()).toEqual(1);
+      expect(context.scopes.length).toEqual(before);
+    });
+
+  });
+
+  describe('only the walk sees the AbortSignal (step 3 criterion 2)', () => {
+
+    /**
+     * A caller-built context holding the key - one the factory cannot check
+     * (Phase 5 S 3.6) - so the context's ordinary order has something to find.
+     * The array's first element is read by the walk; the second by a closure
+     * `defer` calls once its promise resolves, after the walk has returned.
+     */
+    it('should resolve the key through the context in a closure the promise calls later', async () => {
+      const pending = deferred<void>();
+      const context = createSignalContext({
+        abort: 'from source',
+        defer: (thunk: () => unknown) => pending.promise.then(() => thunk()),
+      });
+      const value = create('[abort, defer(() => abort)]', context, { abortSignalKey: 'abort' });
+
+      expect(context.scopes.length).toEqual(0);
+      expect(value()).toBeUndefined();
+      expect(context.scopes.length).toEqual(0);
+
+      pending.resolve();
+      await flush();
+
+      const [walked, later] = value() as [unknown, unknown];
+      expect(walked).toBeInstanceOf(AbortSignal);
+      expect(later).toEqual('from source');
+      expect(context.scopes.length).toEqual(0);
+    });
+
+  });
+
+  /**
+   * Matched by the signal context's own rule - `match`, exact first, then by
+   * case under `caseInsensitive` - which reads the source's keys and never
+   * its values. So a key holding `undefined` is found, which `getKey` would
+   * miss: it resolves through the context's resolver, and that reads an
+   * `undefined` value as "not found". Fixed at step 3's confirmation gate.
+   */
+  describe('a record source that already has the key (step 3 criterion 3)', () => {
+
+    const refused: [string, SignalContextSource, boolean, string][] = [
+      ['an exact own key', { abort: signal(1) }, false, 'abort'],
+      ['a key differing in case, under caseInsensitive', { Abort: signal(1) }, true, 'Abort'],
+      ['an exact own key holding undefined', { abort: signal(undefined) }, false, 'abort'],
+      ['a key differing in case and holding undefined, under caseInsensitive', { Abort: signal(undefined) }, true, 'Abort'],
+    ];
+
+    it.each(refused)('should refuse %s, naming the key and the option', (_, source, caseInsensitive, held) => {
+      const error = caught(() => create('abort', source, {
+        abortSignalKey: 'abort',
+        eval: { caseInsensitive },
+      })) as Error;
+
+      expect(error.message).toContain(`'abortSignalKey'`);
+      expect(error.message).toContain(`"abort"`);
+      expect(error.message).toContain(`"${held}"`);
+    });
+
+    it('should construct over a key differing in case when case matters, and leave it reading the source', async () => {
+      const value = create('Abort', { Abort: signal('from source') }, { abortSignalKey: 'abort' });
+
+      expect(value()).toBeUndefined();
+      await flush();
+
+      expect(value()).toEqual('from source');
+    });
+
+  });
+
+  describe('dependencies (step 3 criterion 4)', () => {
+
+    it.each([false, true])('should never report the key, caseInsensitive %p', (caseInsensitive) => {
+      const { load } = aborting();
+      const value = create('load(id, abort)', { id: signal(1), load }, {
+        abortSignalKey: 'abort',
+        trackDependencies: true,
+        eval: { caseInsensitive },
+      });
+
+      expect(value()).toBeUndefined();
+
+      // The tracker ran - it recorded the rest of the walk's reads.
+      expect([...value.dependencies].sort()).toEqual(['id', 'load']);
+    });
+
+  });
+
+  describe('a key no expression could read (step 3 criterion 6)', () => {
+
+    const refuses = (key: string, options?: EvalSignalAsyncOptions): void => {
+      const error = caught(() => create('1', {}, { ...options, abortSignalKey: key })) as Error;
+
+      expect(error.message).toContain(`'abortSignalKey'`);
+      expect(error.message).toContain(`"${key}"`);
+    };
+
+    it.each(['', 'not a name', 'a.b', '1abort', 'abort-signal', 'abort;'])(
+      'should refuse %p, which is not an identifier', (key) => refuses(key));
+
+    it.each(['class', 'new', 'this', 'null'])(
+      'should refuse the reserved word %p', (key) => refuses(key));
+
+    /**
+     * `eval-core`'s identifier-guard fixtures
+     * (`eval.service.identifier-guard.spec.ts`), copied rather than imported:
+     * this package reaches `eval-core` through its published surface only.
+     */
+    const guarded: [string, boolean][] = [
+      ['__proto__', false], ['__proto__', true],
+      ['constructor', false], ['constructor', true],
+      ['prototype', false], ['prototype', true],
+      ['__defineGetter__', false], ['__defineGetter__', true],
+      ['__defineSetter__', false], ['__defineSetter__', true],
+      ['__lookupGetter__', false], ['__lookupGetter__', true],
+      ['__lookupSetter__', false], ['__lookupSetter__', true],
+      ['hasOwnProperty', false], ['hasOwnProperty', true],
+      ['isPrototypeOf', false], ['isPrototypeOf', true],
+      ['propertyIsEnumerable', false], ['propertyIsEnumerable', true],
+      ['toString', false], ['toString', true],
+      ['valueOf', false], ['valueOf', true],
+      ['toLocaleString', false], ['toLocaleString', true],
+    ];
+
+    it.each(guarded)('should refuse %p, which the identifier guard refuses, caseInsensitive %p',
+      (key, caseInsensitive) => refuses(key, { eval: { caseInsensitive } }));
+
+    it.each([false, true])('should construct with an ordinary identifier and hand the function its signal, caseInsensitive %p', (caseInsensitive) => {
+      const { signals, load } = aborting();
+      const value = create('load(id, cancel)', { id: signal(1), load }, {
+        abortSignalKey: 'cancel',
+        eval: { caseInsensitive },
+      });
+
+      expect(value()).toBeUndefined();
+      expect(signals[0]).toBeInstanceOf(AbortSignal);
+    });
+
+    it('should fire none of the consumer\'s hooks while checking the key', () => {
+      const events: string[] = [];
+      const hooks = new EvalHooks();
+      hooks.on('before', '*', (event) => {
+        events.push(`before ${event.node.type}`);
+      });
+      hooks.on('after', '*', (event) => {
+        events.push(`after ${event.node.type}`);
+      });
+      hooks.onRead((event) => {
+        events.push(`read ${String(event.key)}`);
+      });
+
+      const value = create('c', { c: signal(1) }, { abortSignalKey: 'abort', eval: { hooks } });
+
+      expect(events).toEqual([]);
+
+      // The control: the same registry records the first run's walk.
+      expect(value()).toBeUndefined();
+      expect(events).toContain('read c');
+    });
+
+  });
+
+});
+
+/**
+ * S2's arrangement (Phase 5 S 6.1): zoneless, with `whenStable()` as the probe.
+ * A describe of its own because the one above instantiates its TestBed in
+ * `beforeEach`, after which it cannot be configured. Angular logs `NG0914`
+ * here because `test-setup.ts` loads zone.js - expected.
+ */
+describe('createEvalSignalAsync - application stability (step 3 criterion 5)', () => {
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideZonelessChangeDetection()] });
+  });
+
+  const create = (
+    expression: string,
+    source: SignalContextSource | EvalContext,
+    options?: EvalSignalAsyncOptions
+  ): EvalSignalAsync<unknown> =>
+    TestBed.runInInjectionContext(() => createEvalSignalAsync(expression, source, options));
+
+  /**
+   * Whether `whenStable()` resolves within a few macrotasks. A released task
+   * schedules change detection, which holds stability until its tick has run,
+   * so one turn is not always enough.
+   */
+  const isStable = async (): Promise<boolean> => {
+    let stable = false;
+    void TestBed.inject(ApplicationRef).whenStable().then(() => {
+      stable = true;
+    });
+    for (let i = 0; i < 3; i++) {
+      await flush();
+    }
+    return stable;
+  };
+
+  it('should hold the application unstable while the current run is pending', async () => {
+    const pending = deferred<unknown>();
+    const value = create('load()', { load: () => pending.promise });
+
+    // The control: lazy, so nothing is pending before the first read.
+    expect(await isStable()).toBe(true);
+
+    expect(value()).toBeUndefined();
+
+    expect(await isStable()).toBe(false);
+  });
+
+  it('should release it once the run settles', async () => {
+    const pending = deferred<unknown>();
+    const value = create('load()', { load: () => pending.promise });
+
+    expect(value()).toBeUndefined();
+    pending.resolve('done');
+    await flush();
+
+    expect(value()).toEqual('done');
+    expect(await isStable()).toBe(true);
+  });
+
+  it('should release a superseded run at the read that supersedes it, though it never settles', async () => {
+    const { loads, load } = loader();
+    const id = signal(1);
+    const value = create('load(id)', { id, load });
+
+    expect(value()).toBeUndefined();
+
+    id.set(2);
+    expect(value()).toBeUndefined();
+    expect(loads).toHaveLength(2);
+
+    // The new run holds it now.
+    expect(await isStable()).toBe(false);
+
+    // `loads[0]` is never settled.
+    loads[1].resolve('user-2');
+    await flush();
+
+    expect(value()).toEqual('user-2');
+    expect(await isStable()).toBe(true);
+  });
+
+  it('should release the pending run on destroy()', async () => {
+    const pending = deferred<unknown>();
+    const value = create('load()', { load: () => pending.promise });
+
+    expect(value()).toBeUndefined();
+    value.destroy();
+
+    expect(await isStable()).toBe(true);
   });
 
 });

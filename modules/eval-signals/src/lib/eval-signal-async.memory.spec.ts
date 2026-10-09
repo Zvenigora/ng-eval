@@ -1,10 +1,9 @@
-import { signal } from '@angular/core';
+import { PendingTasks, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { setFlagsFromString } from 'v8';
 import { runInNewContext } from 'vm';
 import { EvalContext, EvalHooks, EvalState } from '@zvenigora/ng-eval-core';
-import { EvalSignalOptions } from './eval-signal';
-import { EvalSignalAsync, createEvalSignalAsync } from './eval-signal-async';
+import { EvalSignalAsync, EvalSignalAsyncOptions, createEvalSignalAsync } from './eval-signal-async';
 import { SignalContextSource } from './signal-context';
 
 /**
@@ -35,7 +34,7 @@ describe('createEvalSignalAsync - what it keeps of its runs', () => {
   const create = (
     expression: string,
     source: SignalContextSource | EvalContext,
-    options?: EvalSignalOptions
+    options?: EvalSignalAsyncOptions
   ): EvalSignalAsync<unknown> =>
     TestBed.runInInjectionContext(() => createEvalSignalAsync(expression, source, options));
 
@@ -237,6 +236,116 @@ describe('createEvalSignalAsync - what it keeps of its runs', () => {
     expect(live).toEqual([false, true]);
     expect(value.status()).toEqual('loading');
     expect(kept() === values[1].deref()).toBe(true);
+  });
+
+  describe('its runs\' AbortSignals and pending-task releases (step 3 criterion 7)', () => {
+
+    let tasks: PendingTasks;
+    let add: PendingTasks['add'];
+    let releases: WeakRef<() => void>[];
+
+    /**
+     * Releases are caught by wrapping `PendingTasks.add` with a plain function
+     * that keeps only a `WeakRef` to each release it hands out - not a `jest`
+     * spy, whose `mock.results` would hold every one. Restored after each
+     * case.
+     */
+    beforeEach(() => {
+      tasks = TestBed.inject(PendingTasks);
+      add = tasks.add;
+      releases = [];
+      tasks.add = function (this: PendingTasks): () => void {
+        const release = add.call(this);
+        releases.push(new WeakRef(release));
+        return release;
+      };
+    });
+
+    afterEach(() => {
+      tasks.add = add;
+    });
+
+    /**
+     * `runs()`, with each run's `AbortSignal` watched through a `WeakRef`
+     * taken inside the source function. A run left pending is held only
+     * through the signal: once the fixture returns, nothing reaches the
+     * resolver that would settle it.
+     */
+    const aborting = () => {
+      const { load: next, settleOldest, values } = runs();
+      const signals: WeakRef<AbortSignal>[] = [];
+
+      const load = (_id: unknown, abort: AbortSignal): Promise<Resolved> => {
+        signals.push(new WeakRef(abort));
+        return next();
+      };
+
+      return { load, settleOldest, values, signals };
+    };
+
+    it('should keep no superseded run\'s AbortSignal or release, and keep the current run\'s', async () => {
+      const { value, signals } = await (async () => {
+        const { load, settleOldest, signals } = aborting();
+
+        const id = signal(0);
+        const value = create('load(id, abort)', { id, load }, { abortSignalKey: 'abort' });
+
+        expect(value()).toBeUndefined();
+
+        for (let i = 1; i <= 5; i++) {
+          id.set(i);
+          expect(value()).toBeUndefined();
+          settleOldest(i - 1);
+          await flush();
+        }
+
+        // The sixth run is left pending: its controller and its release are
+        // the signal's to keep.
+        return { value, signals };
+      })();
+
+      expect(signals).toHaveLength(6);
+      expect(releases).toHaveLength(6);
+
+      const liveSignals = await collect(signals);
+      const liveReleases = await collect(releases);
+
+      expect(liveSignals).toEqual([false, false, false, false, false, true]);
+      expect(liveReleases).toEqual([false, false, false, false, false, true]);
+      expect(value.status()).toEqual('loading');
+    });
+
+    it('should keep neither of a run pending at destroy(), once it settles', async () => {
+      const { destroyed, kept, signals } = await (async () => {
+        const { load, settleOldest, signals } = aborting();
+
+        const destroyed = create('load(0, abort)', { load }, { abortSignalKey: 'abort' });
+        // The control: the same fixture, not destroyed, its run left pending.
+        const kept = create('load(0, abort)', { load }, { abortSignalKey: 'abort' });
+
+        expect(destroyed()).toBeUndefined();
+        expect(kept()).toBeUndefined();
+
+        destroyed.destroy();
+
+        settleOldest(0);
+        await flush();
+
+        return { destroyed, kept, signals };
+      })();
+
+      expect(signals).toHaveLength(2);
+      expect(releases).toHaveLength(2);
+
+      const liveSignals = await collect(signals);
+      const liveReleases = await collect(releases);
+
+      expect(liveSignals).toEqual([false, true]);
+      expect(liveReleases).toEqual([false, true]);
+      expect(destroyed.status()).toEqual('idle');
+      expect(kept.status()).toEqual('loading');
+    });
+
   });
 
 });

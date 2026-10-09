@@ -1,6 +1,7 @@
 import { isSignal } from '@angular/core';
 import { EvalContext, EvalMemberWrite, EvalOptions } from '@zvenigora/ng-eval-core';
 import { warnOnNestedSignals } from './nested-signal-check';
+import { match } from './source-key';
 
 /**
  * The backing data of a signal context: a plain record whose values may be
@@ -270,33 +271,6 @@ class SignalEvalContext extends EvalContext {
     this.answeredBy = sourceKey;
   }
 }
-
-/**
- * Matches a key against the source, preferring an exact match, and returns
- * the source's own key - or undefined when the source holds none.
- *
- * Under `caseInsensitive` a key that does not match exactly falls back to the
- * first source key that differs only in case, in insertion order. An exact
- * match always wins, so enabling the option never changes how an
- * exactly-spelled key resolves.
- */
-const match = (
-  source: SignalContextSource,
-  key: unknown,
-  caseInsensitive: boolean
-): string | undefined => {
-
-  if (Object.prototype.hasOwnProperty.call(source, key as PropertyKey)) {
-    return key as string;
-  }
-
-  if (!caseInsensitive || typeof key !== 'string') {
-    return undefined;
-  }
-
-  const lowered = key.toLowerCase();
-  return Object.keys(source).find((candidate) => candidate.toLowerCase() === lowered);
-};
 
 /**
  * Creates an `EvalContext` whose reads resolve *through* signals.

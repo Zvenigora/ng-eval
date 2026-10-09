@@ -73,6 +73,7 @@ itself down with the component. See [Lifetime](#lifetime) for every other case.
 | `EvalSignalAsync<T>` | `EvalSignal<T>` plus `status`. The value reads `undefined` while a run is pending. |
 | `EvalSignalStatus` | `'idle'`, `'loading'`, `'resolved'` or `'error'` — the words Angular's `ResourceStatus` uses for those states. |
 | `EvalSignalOptions` | `eval`, `equal`, `onError`, `trackDependencies`, `injector`. |
+| `EvalSignalAsyncOptions` | `EvalSignalOptions` plus `abortSignalKey`: the name under which each run's own `AbortSignal` is visible to its walk. |
 
 `source` is a plain record whose values may be signals, plain values or functions — signals
 are unwrapped on read, everything else is passed through. It may also be an `EvalContext` you

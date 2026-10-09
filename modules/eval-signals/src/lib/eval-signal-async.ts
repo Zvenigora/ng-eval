@@ -1,8 +1,10 @@
-import { DestroyRef, Signal, computed, inject, signal, untracked } from '@angular/core';
-import { CompilerService, EvalContext, callAsync, createDependencyTracker } from '@zvenigora/ng-eval-core';
+import { DestroyRef, PendingTasks, Signal, computed, inject, signal, untracked } from '@angular/core';
+import { CompilerService, EvalContext, EvalState, call, callAsync, compile,
+  createDependencyTracker, defaultParserOptions, parse } from '@zvenigora/ng-eval-core';
 import type { stateCallbackAsync } from '@zvenigora/ng-eval-core';
 import { EvalSignal, EvalSignalOptions } from './eval-signal';
 import { SignalContextSource, SignalContextWriteError, createSignalContext } from './signal-context';
+import { match } from './source-key';
 import { assertTrackingCompatible, respellRoots } from './track-dependencies';
 
 /**
@@ -32,6 +34,32 @@ export interface EvalSignalAsync<T> extends EvalSignal<T> {
   readonly status: Signal<EvalSignalStatus>;
 }
 
+/**
+ * {@link EvalSignalOptions}, and what only an async run has.
+ */
+export interface EvalSignalAsyncOptions extends EvalSignalOptions {
+
+  /**
+   * The name under which each run's `AbortSignal` is visible to its walk.
+   * Unset by default, and then no run has one.
+   *
+   * Every run gets an `AbortController` of its own, aborted when a newer run
+   * supersedes it - at the first read after a change - and on `destroy()`;
+   * settling does not abort it. The expression passes the signal on:
+   * `load(id, abort)`. Only the walk sees the name: a closure the promise
+   * calls later resolves it like any other.
+   *
+   * The binding is a scope pushed for the walk, first in the context's
+   * resolution order, so it shadows a source key of the same name. A record
+   * source holding one - matched as the signal context matches keys, by case
+   * only under `caseInsensitive` - is refused at construction, and so is a
+   * name no expression could read. A caller-built `EvalContext` cannot be
+   * checked, so keeping the name free there is the caller's job. The name is
+   * never reported in `dependencies`.
+   */
+  abortSignalKey?: string;
+}
+
 /** How a run settled. */
 type Outcome =
   | { readonly resolved: true; readonly value: unknown }
@@ -48,7 +76,70 @@ type Outcome =
  */
 interface Run {
   outcome?: Outcome;
+
+  /** Aborted when the run is superseded or the signal destroyed. */
+  controller?: AbortController;
+
+  /**
+   * Holds the application unstable until the run settles, is superseded or
+   * the signal is destroyed, whichever comes first.
+   */
+  release?: () => void;
 }
+
+/**
+ * Refuses an `abortSignalKey` no expression could read (Phase 5 S 3.6), by
+ * asking `eval-core` rather than keeping a list here.
+ *
+ * The key must parse, as the evaluator parses, to one identifier of exactly
+ * that name - which refuses a character an identifier cannot hold, and a
+ * reserved word. Then it is evaluated once with the key pushed as a scope, as
+ * a run pushes it, and must find what was pushed: a name the identifier guard
+ * refuses throws there. The state is built from `caseInsensitive` alone, the
+ * one option the guard reads, so a consumer's hooks never see a walk that
+ * never happened.
+ */
+const assertReadableKey = (key: string, caseInsensitive: boolean): void => {
+
+  const refuse = (reason: string): Error => new Error(
+    `Cannot bind the run's AbortSignal under 'abortSignalKey' "${key}": ${reason}`
+  );
+
+  let program: ReturnType<typeof parse>;
+
+  try {
+    program = parse(key, defaultParserOptions);
+  } catch {
+    throw refuse('it is not an identifier, so no expression could name it.');
+  }
+
+  const statement = program?.type === 'Program' && program.body.length === 1
+    ? program.body[0]
+    : undefined;
+
+  if (statement?.type !== 'ExpressionStatement'
+    || statement.expression.type !== 'Identifier'
+    || statement.expression.name !== key) {
+    throw refuse('it is not an identifier, so no expression could name it.');
+  }
+
+  const sentinel = {};
+  const options = { caseInsensitive };
+  const context = new EvalContext({}, options);
+  context.push({ [key]: sentinel });
+
+  let found: unknown;
+
+  try {
+    found = call(compile(program), EvalState.fromContext(context, options));
+  } catch (error) {
+    throw refuse(`the evaluator refuses to read it (${error instanceof Error ? error.message : String(error)}).`);
+  }
+
+  if (found !== sentinel) {
+    throw refuse('an expression naming it would not read the binding.');
+  }
+};
 
 /**
  * Creates a `Signal` whose value is `expression` evaluated over `source` and
@@ -80,6 +171,12 @@ interface Run {
  * too. {@link SignalContextWriteError} bypasses `onError` in every mode, as on
  * the sync path.
  *
+ * **Each run holds the application unstable** through `PendingTasks` until it
+ * settles, is superseded or the signal is destroyed, so `whenStable()` - and
+ * server rendering - waits for the value. A superseded run that never settles
+ * holds nothing. With `abortSignalKey` set, each run also has an `AbortSignal`
+ * of its own - see {@link EvalSignalAsyncOptions.abortSignalKey}.
+ *
  * Everything else - one compile, a fresh `EvalState` per run on one shared
  * `EvalContext`, `trackDependencies`, `invalidate()`, `destroy()` and its
  * lifetime rule - is {@link createEvalSignal}'s, and documented there.
@@ -89,34 +186,59 @@ interface Run {
  * @param expression - A JavaScript expression.
  * @param source - A record whose values may be signals, or a pre-built
  *                 `EvalContext` the caller owns.
- * @param options - See {@link EvalSignalOptions}.
+ * @param options - See {@link EvalSignalAsyncOptions}.
  * @returns A `Signal` carrying the latest run's resolved value, and its
  *          `status`.
  */
 export function createEvalSignalAsync(
   expression: string,
   source: SignalContextSource | EvalContext,
-  options?: EvalSignalOptions
+  options?: EvalSignalAsyncOptions
 ): EvalSignalAsync<unknown> {
 
   let compiler: CompilerService;
+  let pendingTasks: PendingTasks;
 
   // The same fork as `createEvalSignal`, for its reasons: lifetime comes from
   // the ambient injection context and never from `options.injector`.
+  // `PendingTasks` is resolved beside `CompilerService` (Phase 5 S 3.2), so a
+  // signal made through `EvalSignalService` holds the application's own
+  // stability.
   let destroyRef: DestroyRef | null = null;
 
   if (options?.injector) {
     compiler = options.injector.get(CompilerService);
+    pendingTasks = options.injector.get(PendingTasks);
   } else {
     compiler = inject(CompilerService);
+    pendingTasks = inject(PendingTasks);
     destroyRef = inject(DestroyRef, { optional: true });
   }
 
   const evalOptions = options?.eval;
   const onError = options?.onError ?? 'throw';
   const trackDependencies = options?.trackDependencies ?? false;
+  const abortSignalKey = options?.abortSignalKey;
 
   assertTrackingCompatible(trackDependencies, evalOptions);
+
+  if (abortSignalKey !== undefined) {
+    assertReadableKey(abortSignalKey, !!evalOptions?.['caseInsensitive']);
+
+    // By the signal context's own rule, on keys alone: `getKey` would read an
+    // `undefined` value as no key at all, and the binding shadows the key
+    // whatever it holds.
+    const held = source instanceof EvalContext
+      ? undefined
+      : match(source, abortSignalKey, !!evalOptions?.['caseInsensitive']);
+
+    if (held !== undefined) {
+      throw new Error(
+        `Cannot bind the run's AbortSignal under 'abortSignalKey' "${abortSignalKey}": `
+        + `the source already has a key "${held}", which the binding would shadow in every run.`
+      );
+    }
+  }
 
   let context: EvalContext | undefined = source instanceof EvalContext
     ? source
@@ -141,15 +263,42 @@ export function createEvalSignalAsync(
   let current: Run | undefined;
   let destroyed = false;
 
+  /**
+   * Releases a run's pending task and, on a supersede or `destroy()`, aborts
+   * its controller. Settlement releases without aborting. Whichever of the
+   * three comes first releases, and a later call finds no task to release; a
+   * supersede or `destroy()` drops the controller too, so a superseded run
+   * keeps neither alive.
+   *
+   * Untracked, because a supersede happens inside `run`: `abort()` calls the
+   * consumer's listeners synchronously, and inside the `computed` a signal one
+   * read would become a dependency of the walk, and a write would throw.
+   */
+  const retire = (of: Run, abort: boolean): void => {
+    const { controller, release } = of;
+
+    of.release = undefined;
+    if (abort) {
+      of.controller = undefined;
+    }
+
+    untracked(() => {
+      release?.();
+      if (abort) {
+        controller?.abort();
+      }
+    });
+  };
+
   const settle = (of: Run, outcome: Outcome): void => {
     // A superseded run, or any run after `destroy()`, writes nothing - so a
     // late settlement neither changes the value nor recomputes it.
-    if (destroyed || of !== current) {
-      return;
+    if (!destroyed && of === current) {
+      of.outcome = outcome;
+      settled.update((count) => count + 1);
     }
 
-    of.outcome = outcome;
-    settled.update((count) => count + 1);
+    retire(of, false);
   };
 
   const start = (): Run | undefined => {
@@ -160,6 +309,17 @@ export function createEvalSignalAsync(
     const fn = compiled;
     const ctx = context;
     const state = compiler.createState(ctx, evalOptions);
+    const controller = abortSignalKey === undefined ? undefined : new AbortController();
+
+    // The supersede, before the walk (Phase 5 S 3.4): this read started a new
+    // run, so the one it replaces is aborted, and released if it has not
+    // settled. First, so that a listener that writes an input this walk reads
+    // is seen by it - Angular's `resource()` aborts before it loads, too. The
+    // new run's task is added before the old one's is released, so the count
+    // never touches zero between the two and lets the application stabilise.
+    const started: Run = { controller, release: untracked(() => pendingTasks.add()) };
+    const previous = current;
+    current = started;
 
     // Restored in the `finally` below, around the synchronous call: the walk
     // ends before the promise is returned, so the depth is already back when
@@ -167,11 +327,23 @@ export function createEvalSignalAsync(
     // run started before an earlier one settles walk on its leak (Phase 5
     // S 3.5).
     // Retained for `createEvalSignal`'s reason: `EvalContext.push` and `pop`
-    // are public.
+    // are public. Taken before the old run is retired, so the restore also
+    // pops anything one of its abort listeners pushed.
     const depth = ctx.scopes.length;
     let promise: Promise<unknown>;
 
     try {
+      if (previous) {
+        retire(previous, true);
+      }
+
+      // After the depth snapshot, so the loop below pops it with anything a
+      // consumer function stranded, and a closure the promise calls later no
+      // longer sees it (Phase 5 S 3.6).
+      if (controller && abortSignalKey !== undefined) {
+        ctx.push({ [abortSignalKey]: controller.signal });
+      }
+
       if (!trackDependencies) {
         promise = callAsync(fn, state);
       } else {
@@ -195,9 +367,6 @@ export function createEvalSignalAsync(
         ctx.pop();
       }
     }
-
-    const started: Run = {};
-    current = started;
 
     // On every run, superseded or not, so no rejection goes unhandled. A walk
     // that threw arrives here too: `evaluateAsync` rejects with it.
@@ -279,10 +448,29 @@ export function createEvalSignalAsync(
     }
 
     destroyed = true;
+
+    // The current run is aborted whether or not it has settled, and released
+    // if it has not (Phase 5 S 3.4) - between a depth snapshot and a restore,
+    // as `start()` retires a run, so a scope one of its abort listeners pushed
+    // on the context is popped (Phase 5 S 3.5).
+    const last = current;
+    const ctx = context;
+    const depth = ctx?.scopes.length ?? 0;
+
     compiled = undefined;
     context = undefined;
     current = undefined;
     dependencies = new Set<string>();
+
+    try {
+      if (last) {
+        retire(last, true);
+      }
+    } finally {
+      while (ctx && ctx.scopes.length > depth) {
+        ctx.pop();
+      }
+    }
 
     // As in `createEvalSignal`: makes `run` stale, so the next read finds no
     // run and reads `undefined` / `'idle'` from now on.

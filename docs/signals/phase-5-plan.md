@@ -1,6 +1,19 @@
 # Phase 5 Plan — async expression signals (`@zvenigora/ng-eval-signals`)
 
 **Date**: October 7, 2026
+**Revision**: 4 — amended during step 3, in its commit. Fixed at step 3's confirmation gate: § 3.6's
+collision check matches source keys with the signal context's own `match`, moved for it into an
+internal `source-key.ts`, rather than asking `getKey`, which misses a key holding `undefined`; step 3's
+file list gains both files, and its criterion 3 has five arms. A supersede's abort and pending-task
+release run untracked, which a new criterion 8 pins. Criterion 4 is met by the tracker alone, and
+criterion 6 runs all thirteen of the guard's fixture names with and without `caseInsensitive`. Found
+by step 3's review: the supersede walked first and aborted after, so a listener that wrote a walked
+input went unseen; § 3.4 now orders the abort before the walk, § 6.1 admits the one effect it needs
+to show that under a live consumer, and step 3 lists the cases added for it — and for the gaps the
+review found — apart from its criteria. § 3.5's restore now contains a scope an abort listener
+pushes, in `start()` and in `destroy()`. Step 4's README list gains the collision check's limit and
+the rule that an abort listener must not read or invalidate its own signal.
+
 **Revision**: 3 — amended during step 2, in its commit. § 3.2's option-3 sketch is rewritten: a run's
 outcome lives on its `Run` and `settled` is only a notification, so no outcome sits in a slot shared
 between runs; § 3.4 says what that rules out. Fixed at step 2's confirmation gate: its file list gains
@@ -534,6 +547,21 @@ Between the change and the read, the old run's pending task still holds the appl
 is released at the read, or when the old run settles, whichever comes first — so with nothing reading
 the signal, stability waits for the old run, not for a run nobody has started.
 
+**The supersede comes before the new walk.** `start()` adds the new run's pending task, then aborts
+the old run's controller and releases its task, then walks — all inside `run`, under `untracked`
+(§ 3.6). The order exists for one reason: a listener on the old run's signal that writes an input the
+walk reads must be seen by the walk that supersedes it. Walking first left it unseen. A `computed`
+marks itself clean when it finishes computing, so a write made during the computation was missed.
+Under a plain read it stayed missed until any signal was next written — usually the settle handler's
+own `settled` — after which a third run started on the written value (measured through the factory,
+with the new run settling and with it pending). Under a live consumer, an effect, it was still missed
+after three ticks and a flush with the new run pending (measured through the factory); the review's
+emulation with Angular's own primitives found that there only a write to one of `run`'s own producers
+recovers it, and settlement and unrelated writes do not. Aborting first is also Angular's order:
+`resource()` aborts the load in progress before it calls the loader. Adding before releasing keeps
+the pending count off zero between the two. Found by step 3's review and measured through the
+factory; the cases that pin it are listed in step 3.
+
 **`destroy()` during a run.** Phase 3 § 3.8.2's rule holds unchanged: a destroyed signal reads `undefined`
 from the moment it is destroyed, and neither producer moves it. Here there is a third producer — the
 in-flight run's resolution — and the destroyed check in the settle handler is what keeps it inert.
@@ -584,6 +612,15 @@ What such a function strands is not always the scope it pushed (step 2, measured
 on top, so one pushed scope is popped in its place and the `Program`'s empty scope is left behind,
 shadowing nothing. A fixture that wants a stranded scope to shadow a key pushes two.
 
+**An abort listener is contained the same way** (step 3, after its review). A supersede retires the old
+run inside `start()` before the walk (§ 3.4), and an abort listener that can reach the context — a
+caller-built one, say — can push on it there. So `start()` takes its snapshot *before* the old run is
+retired, and the `finally` pops what the listener pushed along with whatever the walk stranded; the
+new walk itself still sees the listener's scope, and no later run does. `destroy()` aborts the current
+run too, outside any walk, so it takes a snapshot of its own before the abort and restores to it
+after, in a `finally`. A snapshot taken after retirement left the listener's scope shadowing the source
+for every later run.
+
 ### 3.6 An `AbortSignal` for the expression's own functions — decided: yes, opt-in, through a per-run scope
 
 A function in the source receives exactly the arguments the expression passes it
@@ -605,9 +642,20 @@ A function in the source receives exactly the arguments the expression passes it
 **Consequences.** The key is visible to the walk and only to it; a closure the promise calls later
 resolves it like any other name, which a step-3 case pins. A pushed scope is first in
 `EvalContext.get`'s order, so it shadows a source key of that name: for a record source the factory
-**throws** at construction when the source has an own key equal to `abortSignalKey`; for a
-caller-built `EvalContext` it cannot know the keys, and the README says so. The key is never reported
-in `dependencies`.
+**throws** at construction when the signal context's own `match` finds `abortSignalKey` among the
+source's keys — exactly, or under `caseInsensitive` by case, the rule its resolver uses. Not
+`getKey`, which looked like the same question asked of the built context (step 3, at its
+confirmation gate): `getKey` resolves through that resolver, and the resolver reads a key holding
+`undefined` as no key at all, while the binding shadows it whatever it holds. `match` reads keys and
+never values, so it is moved out of `signal-context.ts` into the internal `source-key.ts` and
+both callers share one copy of the rule. For a caller-built `EvalContext` the factory cannot know
+the keys, and the README says so. The key is never reported in `dependencies`.
+
+A supersede happens inside `run`, so the old run's `abort()` — which calls the consumer's listeners
+synchronously — and its pending-task release run under `untracked`, as `PendingTasks.add()` does: a
+signal a listener read would otherwise become a dependency of the walk, and a write would throw
+`NG0600`. And they run before the new walk (§ 3.4), so that a listener's write to an input the walk
+reads is seen by it, as in `resource()`.
 
 **A key the expression could never read — decided: refused at construction.** Two kinds of key would
 leave the option silently inert: one that is not a plain identifier (an expression can only name a
@@ -626,7 +674,8 @@ would drift. Instead, at construction and only when `abortSignalKey` is set:
 1. `parse(key, defaultParserOptions)` must yield one `ExpressionStatement` whose expression is an
    `Identifier` named exactly `key`. That refuses anything with a character an identifier cannot hold,
    and a reserved word, as the evaluator's own parser sees them.
-2. That identifier, compiled and evaluated once on a throwaway `EvalContext` and state built from
+2. That identifier — the parsed `Program`, as a run walks one — compiled and evaluated once on a
+   throwaway `EvalContext` and state built from
    `{ caseInsensitive }` alone — taken from the signal's `eval` options — with `{ [key]: sentinel }`
    pushed as a scope, must return the sentinel. If the identifier guard refuses the name — or under
    `caseInsensitive` the matched key — the evaluation throws, and the factory refuses the key.
@@ -813,10 +862,13 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
 
 ### Step 3 — Cancellation and stability
 
+- **New**: `source-key.ts`, an internal module `src/public-api.ts` does not re-export, holding
+  `match` so that the signal context and § 3.6's collision check match a key by one rule.
 - **Edit**: `eval-signal-async.ts`, `eval-signal-async.spec.ts`, `eval-signal-async.memory.spec.ts`;
-  `eval-signal.service.ts`, whose `createAsync` now takes `EvalSignalAsyncOptions`, and its spec;
-  `README.md`'s "How it fits together" table, one row for `EvalSignalAsyncOptions` (F10, as in
-  step 2).
+  `signal-context.ts` (`match` moved out, behaviour unchanged — gated by the existing suite, green
+  before any new spec is added); `eval-signal.service.ts`, whose `createAsync` now takes
+  `EvalSignalAsyncOptions`, and its spec; `README.md`'s "How it fits together" table, one row for
+  `EvalSignalAsyncOptions` (F10, as in step 2).
 - **Builds**: § 3.6 (`EvalSignalAsyncOptions` with `abortSignalKey`, its construction-time check, an
   `AbortController` per run, aborted on supersede and destroy) and § 3.2's consequence
   (`PendingTasks.add()` per run, from the same injector fork as `CompilerService`).
@@ -830,9 +882,15 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
      context's ordinary order, not to the run's signal; the scope depth after a run equals the depth
      before.
   3. **A record source that already has the key throws** at construction, naming the key and the
-     option. *Wrong:* no check — the source key is silently shadowed.
-  4. **`dependencies` never contains the key** — whether the tracker's own scope handling drops it or a
-     filter has to. The report says which, with the probe that removes the mechanism and shows the key
+     option — as `match` finds it (§ 3.6). Five arms: an exact own key throws; under
+     `caseInsensitive`, `{ Abort }` with `'abort'` throws; without it, `{ Abort }` with `'abort'`
+     constructs and `Abort` still reads the source; `{ abort: signal(undefined) }` throws; and under
+     `caseInsensitive`, `{ Abort: signal(undefined) }` with `'abort'` throws. *Wrong:* no check — the
+     source key is silently shadowed; `getKey` in place of `match` — both `undefined` arms construct;
+     an exact `hasOwnProperty` check — both case-folded arms construct; always folding case — the
+     case-sensitive arm throws.
+  4. **`dependencies` never contains the key**, dropped by the tracker's own scope handling with no
+     filter in this package. The report gives the probe that removes the mechanism and shows the key
      appear.
   5. **Stability**, under `provideZonelessChangeDetection()` (S2's arrangement):
      `ApplicationRef.whenStable()` does not resolve while the current run is pending; it resolves once
@@ -847,9 +905,9 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
      catches).
   6. **A key the expression could never read is refused** (§ 3.6). Constructing with
      `abortSignalKey` set to a string that is not an identifier, to a reserved word, or to a name
-     `eval-core`'s identifier guard refuses — taken from that guard's existing spec fixtures — throws
-     at construction, naming the option and the key; the guard-refused name is refused under
-     `caseInsensitive` as well; and an ordinary identifier constructs and reaches the function, as in
+     `eval-core`'s identifier guard refuses — all thirteen of that guard's existing spec fixtures,
+     copied rather than imported, each with and without `caseInsensitive` — throws at construction,
+     naming the option and the key; and an ordinary identifier constructs and reaches the function, as in
      criterion 1. The cases assert refusal only. And with an `EvalHooks` registry in `eval` that
      records every event, constructing a signal with `abortSignalKey` set records **no** event — the
      check is not a walk the consumer's hooks may see. *Wrong:* a syntax check alone — the
@@ -865,7 +923,29 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
      `mock.results` would hold every release. *Wrong:* controllers kept in an array to abort them all
      at `destroy()` — the superseded signals survive; releases kept in a `Set` until `destroy()` —
      the superseded releases survive.
+  8. **An abort listener runs outside the walk's reactive context** (§ 3.6). A listener on the
+     superseded run's signal that reads a signal does not make it a dependency — the `createState`
+     count does not move when that signal changes — and one that writes a signal does not throw: the
+     write lands. *Wrong:* the `untracked` wrapper removed — the report says which arm goes red.
   - The gate is green; `git diff --name-only` lists only the files above and this document.
+- **Added during step 3, for a defect and the gaps its reviews found — not criterion amendments.**
+  - *The supersede aborts before the new walk* (§ 3.4), in `eval-signal-async.spec.ts`: (a) a listener
+    on the old run's signal writes an input the walk reads — the new walk sees the written value, the
+    `createState` count moves by one for the supersede with no third run, and `load` is called with
+    the written value; (b) the old run's signal is already aborted when the new run's `load` is
+    called; (c) arm (a) again under a live consumer, an effect reading the signal and flushed with
+    `TestBed.tick()` — the same assertions, no `NG0600`, and no extra run after the tick. *Wrong:* the
+    old order, walk first and abort after — all three go red.
+  - *A settled run is still aborted* at a later supersede and on `destroy()` (§ 3.4), beside
+    criterion 1. *Wrong:* the controller dropped at settlement — both go red.
+  - *`createAsync` forwards `abortSignalKey`*, in `eval-signal.service.spec.ts`: the function receives
+    an `AbortSignal` under the name given. *Wrong:* `createAsync` drops the option.
+  - *The scope-depth restore contains an abort listener's push* (§ 3.5), in
+    `eval-signal-async.spec.ts`: a listener on the old run's signal pushes a scope on the context;
+    after the supersede's walk the depth is the depth before it, and a later run reads the source
+    key, not the listener's scope; and after `destroy()` with the same listener the depth is the depth
+    before it. *Wrong:* the snapshot taken after retirement — the supersede case goes red; no restore
+    in `destroy()` — the `destroy()` case does.
 - **Category**: additive, unreleased until step 4.
 
 ### Step 4 — Docs and release
@@ -877,7 +957,12 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
 - **Edit**:
   - `modules/eval-signals/README.md` — "Async expressions" rewritten: the primitive; § 3.4's table;
     `onError`; the two-signal form for operand-position use (§ 3.1); the resolution boundary and the
-    copy-per-run consequence for `equal` (§ 3.7); `abortSignalKey` and its shadowing rule (§ 3.6);
+    copy-per-run consequence for `equal` (§ 3.7); `abortSignalKey` and its shadowing rule (§ 3.6),
+    including that the collision check sees a record source at construction only, so a key added
+    to it later is shadowed silently, and that an abort listener must not read, invalidate or
+    destroy the signal it belongs to — it runs inside that signal's `run`, so a read throws
+    Angular's cycle error into the listener, which a browser reports and Node treats as an uncaught
+    exception, and an `invalidate()` is missed (found by step 3's review);
     stability; reads inside a callback the promise calls later (`load(id).then(u => u.x * rate)`) are
     not tracked (§ 3.3) — show the two-signal form as the tracked way to write it. The sync path's
     promise pass-through stays documented, with the `resource` composition
@@ -993,7 +1078,13 @@ because an async assertion has one more way to be vacuous:
   promise rejected with no handler must be recorded, by identity — so the cases cannot go vacuous if
   the channel ever stops reporting.
 - **There are no effects to flush.** If an implementation ever adds one, its specs need
-  `TestBed.tick()` and this section is wrong.
+  `TestBed.tick()` and this section is wrong. **One case uses an effect as the consumer** — the
+  supersede-before-walk arm (c) added during step 3 — because Angular notifies a live consumer of a
+  write made while a `computed` is computing, a path a plain read never takes, and a listener's write
+  during the supersede is exactly such a write. At 22.2.1 the wrong order misses it there as it does
+  under a plain read; whether 19–21 take that path the same way is what § 8 q1's matrix finds out by
+  rerunning this arm. If a version lacks `TestBed.tick()`, its `TestBed.flushEffects()` is the
+  substitution to record.
 - **The stability cases use S2's arrangement** — `provideZonelessChangeDetection()` and
   `ApplicationRef.whenStable()` — and Angular logs `NG0914` there because `test-setup.ts` loads zone.js.
   Expected, not a defect.

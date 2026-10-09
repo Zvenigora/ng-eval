@@ -1,4 +1,4 @@
-import { EnvironmentInjector, Injector, signal } from '@angular/core';
+import { ApplicationRef, EnvironmentInjector, Injector, provideZonelessChangeDetection, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { CompilerService } from '@zvenigora/ng-eval-core';
 import { EvalSignalService } from './eval-signal.service';
@@ -111,6 +111,23 @@ describe('EvalSignalService', () => {
     expect(hooks.length).toEqual(before);
   });
 
+  // The option `createAsync` was widened for, through the caller. Added during
+  // Phase 5 step 3 for a gap the review found.
+  it('should forward abortSignalKey through createAsync', () => {
+    const received: unknown[] = [];
+
+    const value = service.createAsync('load(cancel)', {
+      load: (abort: unknown) => {
+        received.push(abort);
+        return new Promise(() => undefined);
+      },
+    }, { abortSignalKey: 'cancel' });
+
+    expect(value()).toBeUndefined();
+    expect(received).toHaveLength(1);
+    expect(received[0]).toBeInstanceOf(AbortSignal);
+  });
+
   it('should surface the write policy the same way the free function does', () => {
     const value = service.create('count = 5', { count: signal(1) });
 
@@ -121,5 +138,52 @@ describe('EvalSignalService', () => {
 
   const statesBuilt = (spy: jest.SpyInstance) =>
     spy.mock.results.map((result) => result.value as { hasHooks: boolean });
+
+});
+
+/**
+ * Phase 5 step 3's criterion 5, through the service: it passes the root
+ * injector, so the factory takes `PendingTasks` from `options.injector`, and
+ * a factory that took it only from the ambient injection context - or skipped
+ * it when handed an injector - fails here. S2's arrangement, in a describe of
+ * its own because the one above instantiates its TestBed in `beforeEach`.
+ * Angular logs `NG0914` here because `test-setup.ts` loads zone.js - expected.
+ */
+describe('EvalSignalService.createAsync - application stability', () => {
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideZonelessChangeDetection()] });
+  });
+
+  const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
+  /** Whether `whenStable()` resolves within a few macrotasks. */
+  const isStable = async (): Promise<boolean> => {
+    let stable = false;
+    void TestBed.inject(ApplicationRef).whenStable().then(() => {
+      stable = true;
+    });
+    for (let i = 0; i < 3; i++) {
+      await flush();
+    }
+    return stable;
+  };
+
+  it('should hold the application unstable while a run is pending, and release it once it settles', async () => {
+    let resolve!: (value: string) => void;
+    const pending = new Promise<string>((res) => {
+      resolve = res;
+    });
+    const value = TestBed.inject(EvalSignalService).createAsync('load()', { load: () => pending });
+
+    expect(value()).toBeUndefined();
+    expect(await isStable()).toBe(false);
+
+    resolve('done');
+    await flush();
+
+    expect(value()).toEqual('done');
+    expect(await isStable()).toBe(true);
+  });
 
 });
