@@ -54,8 +54,8 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 ### Work in flight
 
 **Phase 5**, async expression signals — [`docs/signals/phase-5-plan.md`](signals/phase-5-plan.md),
-written 2026-10-07; plan at Revision 2; step 1 done (`eval-core` test-only, the async-walk spec);
-step 2 next. The track before it, "Track 3" ([`docs/gates/plan.md`](gates/plan.md)), is closed; its
+written 2026-10-07; plan at Revision 3; steps 1 and 2 done (the `eval-core` async-walk spec;
+`createEvalSignalAsync`, unreleased); step 3 next. The track before it, "Track 3" ([`docs/gates/plan.md`](gates/plan.md)), is closed; its
 retrospect is [`docs/gates/summary.md`](gates/summary.md).
 
 ### Status vocabulary
@@ -194,6 +194,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [C4](backlog-retired.md#c4) | A mutating method call escapes the member-write policy | signals | accepted, then fix | **Retired — fixed 2026-10-04**; released 2026-10-07 in `eval-core` 0.11.0, `eval-signals` 0.4.0 and `eval-forms` 0.4.0, tagged 776885a: `eval-core` asks the policy before a built-in method that writes into what it is handed, matched by identity; `eval-signals` refuses one with `kind` `'method'`; `eval-forms` by consequence |
 | [C5](backlog-retired.md#c5) | A built-in mutator reached through `call`, `apply` or `bind` escapes C4's check | signals | fix | **Retired — fixed 2026-10-05**; released 2026-10-07 in `eval-core` 0.11.0, with `eval-signals` 0.4.0 and `eval-forms` 0.4.0 by consequence, tagged 776885a: a method reached through `call` or `apply` is asked about as a direct call, with the `this` they pass, and `bind` is asked when it binds |
 | [C6](#c6) | The README's `resource` composition does not compile at Angular 19, inside the peer range | signals | docs | Open — opened 2026-10-07 by the Phase 5 plan, whose step 4 closes it |
+| [C7](#c7) | Phase 3's scope-containment case discriminates only through its depth assertion — its end-to-end read passes with the guard disabled | signals | test gap | Open — the case still catches a missing guard through its depth assertion; opened 2026-10-08 by Phase 5 step 2 |
 | [D1](backlog-retired.md#d1) | The throwing-subscriber premise is false in both halves | forms | fix + decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e: a late prototype-named control is not mirrored and is reported once, out of band, after the rest of the emission |
 | [D2](backlog-retired.md#d2) | Should `/reactive` reject prototype-shadowed identifiers too? | forms | decision, breaking | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e: yes, with `/signals`' own guard, shared from the core; no form that worked could have named one |
 | [D3](backlog-retired.md#d3) | Per-registration `caseInsensitive` reaches one of three levers | forms | decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.1, tagged 3d56994. The memo is keyed on the key and `caseInsensitive` together, and each rule context is built from its registration's options, so a registration's value reaches all three levers |
@@ -228,6 +229,8 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [F14](backlog-retired.md#f14) | Six sites cite the retired `^0.3.0` range, two of them in published READMEs | signals, forms | fix (comments, docs) | **Retired — fixed, Phase 2 step 8**; filed as four sites, was six |
 | [F15](backlog-retired.md#f15) | The downstream peer ranges exclude `eval-core` 0.6.0 — **latent until the bump, then both downstream `lint` targets fail** | signals, forms | fix (release coordination) | **Retired — fixed and released 2026-09-26**; both ranges widened to `>=0.3.0 <0.7.0`, and both packages released: `eval-signals` 0.1.3 and `eval-forms` 0.2.3, tagged f26f987 |
 | [F16](#f16) | Workspace dependency advisories — 9 moderate on the workspace's Angular 22.0.8, and a **temporary `smol-toml` override under `nx`** | repo | fix | Open — **part 1 retired 2026-09-27**: `nx` 23.2.1, Angular 22.1.8 / 22.1.9, `npm audit` 0 at every severity. Part 2, the override, is live until a stable `nx` depends on `smol-toml >= 1.7.1`. **Re-audited 2026-09-30: 22 (14 high, 8 moderate)**, none reaching a published package; **fixed the same day**: Angular 22.2.1 / 22.2.0, two more `overrides.nx` entries, `verdaccio` removed, `npm audit` 0 |
+| [F17](#f17) | An unhandled rejection reaches no channel a spec would normally watch — only zone.js's `unhandledPromiseRejectionHandler` hook sees it | repo | test gap | Open — opened 2026-10-08 by Phase 5 step 2 |
+| [F18](#f18) | `eval-signal.ts` line citations in `eval-forms` comments and completed plans are stale | forms, repo | docs | Open — fix when next touching those files, or cite symbols; opened 2026-10-08 by Phase 5 step 2 |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -736,6 +739,34 @@ it (its header, `:68-72`), and the workspace runs 22, so nothing here could have
 *Verified*: read 2026-10-07 from `ResourceLoaderParams` and `BaseResourceOptions` in the published
 `.d.ts` of `@angular/core` 19.2.25 and 20.0.0, unpacked outside the repository.
 
+<a id="c7"></a>
+## C7 — Phase 3's scope-containment case discriminates only through its depth assertion
+
+**Package** signals · **Kind** test gap · **Status** Open — the case still catches a missing guard,
+through its depth assertion. Opened 2026-10-08 by Phase 5 step 2
+
+`eval-signal.memory.spec.ts`'s "should contain a scope stranded through the published push to the
+recompute that made it" strands a scope through a source function that pushes one and does not pop
+it, then asserts two things: the context's scope depth after the recompute, and, end to end, that a
+later recompute of `x` reads the source rather than `'stranded'`. Only the first discriminates.
+Measured by the reviewer: with the guard loop in `eval-signal.ts` disabled and the depth assertions
+removed, the end-to-end read still passes.
+
+The mechanism is the one [`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 3.5 records for its
+own criterion 10. The walk's own `Program` scope is on the stack when the source function runs, and
+`program.ts`'s `finally` pops whatever is on top — so it pops the single stranded scope, and what is
+left behind is the `Program`'s empty scope, which shadows nothing. The case's comment, "without the
+guard this reads `'stranded'`" (`:321`), is false.
+
+**Fix**: push twice, as Phase 5's criterion 10 fixture does (`eval-signal-async.spec.ts`, "the
+scope-depth restore"), and correct the comment. Test only; it ships in no package.
+
+*Recorded*: this entry.
+*Verified*: measured 2026-10-08 by Phase 5 step 2's reviewer — the guard loop disabled and the depth
+assertions removed, the case still green. The mechanism measured the same day by that step: with one
+push, its own criterion 10 case stayed green against a restore moved to settlement, and a probe
+showed the depth back at 1, the `Program`'s scope, when the run returned.
+
 ---
 
 # D. `eval-forms`
@@ -1072,3 +1103,54 @@ green at 1076 / 131 / 266. Again 2026-10-06, npm 12.0.1 on Node 26.4.0, before p
 38 moderate); after it, 2026-10-07: 25 moderate, as listed under part 3. Traced through the
 lockfile's dependency entries; clean `npm ci` under npm 12.0.1 and 11.21.0, and the gate green at
 2007 / 312 / 343; Dependabot's open alerts read with `gh api`.
+
+<a id="f17"></a>
+## F17 — An unhandled rejection reaches no channel a spec would normally watch
+
+**Package** repo · **Kind** test gap · **Status** Open. Opened 2026-10-08 by Phase 5 step 2
+
+Every project's `test-setup.ts` loads zone.js (`setupZoneTestEnv`), and every `tsconfig.spec.json`
+compiles at `target: es2016`, so `async` functions are down-levelled and a promise in a spec is a
+`ZoneAwarePromise`. For one rejected with no handler, the window's `unhandledrejection`, Node's
+`process` `unhandledRejection` and zone.js's console report all stay silent: the zone.js handler that
+would forward to the window is not installed, and `ignoreConsoleErrorUncaughtError` is `true`. zone.js
+still collects the rejection, and after the microtask drain calls the function under
+`Zone.__symbol__('unhandledPromiseRejectionHandler')` if one is set. Nothing else sees it.
+
+So **any spec that relies on an unhandled rejection failing the run is vacuous**: the run never
+fails. Phase 3's comment in `eval-signal.spec.ts`, in "should not route a rejection through onError"
+(`:1029`), awaits a rejection "rather than leaving the runtime to report it", which assumes such a
+report. Phase 5's criterion 5 observes through the hook, beside a permanent control — a plain promise
+rejected with no handler must be recorded, by identity — so its cases cannot go silently vacuous
+([`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 6.1).
+
+Measured in `eval-signals` only. `eval-core` and `eval-forms` load the same setup at the same target,
+so it holds there by construction, not by measurement.
+
+*Recorded*: this entry; that plan's § 6.1.
+*Verified*: measured 2026-10-08 in Phase 5 step 2, by throwaway specs in `eval-signals`, since deleted:
+a plain `new Promise` rejected with no handler reached none of the three channels; zone.js's
+`uncaughtPromiseErrors` queue held it until the macrotask, and a function set under the hook was
+called with it. Then by criterion 5's own cases: a wrong implementation that left superseded runs'
+rejections unhandled turned both red through the hook, with the control green.
+
+<a id="f18"></a>
+## F18 — `eval-signal.ts` line citations in `eval-forms` comments and completed plans are stale
+
+**Package** forms, repo · **Kind** docs · **Status** Open — fix when next touching those files, or
+cite symbols rather than lines. Opened 2026-10-08 by Phase 5 step 2
+
+Twenty-four citations of `eval-signal.ts` by line number sit outside the Phase 5 plan: three in
+`eval-forms` source comments (`reactive/src/lib/field-schema.ts`, `src/lib/error-policy.ts`) and
+twenty-one in completed documents (`a8/step-2-plan.md`, `forms/phase-4-plan.md`,
+`forms/phase-6-plan.md`, `gates/step-3-summary.md`, `statements/phase-2-plan.md`). Some were stale
+before Phase 5 step 2; that step's move of `respellRoots` and the `eval.hooks` conflict check into
+`track-dependencies.ts` shifted the rest. The doc-links gate resolves a link's file and `#anchor`,
+never a line number, so none of this turns it red.
+
+The Phase 5 plan's own five citations were remapped by that step (its Revision 3).
+
+*Recorded*: this entry.
+*Verified*: raised 2026-10-08 by Phase 5 step 2's code review; counted the same day with
+`git grep -n "eval-signal\.ts:[0-9]"` over `modules/eval-forms` and `docs/`, the Phase 5 plan
+excluded. Not checked citation by citation.
