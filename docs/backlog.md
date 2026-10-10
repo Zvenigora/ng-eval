@@ -235,7 +235,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [F15](backlog-retired.md#f15) | The downstream peer ranges exclude `eval-core` 0.6.0 — **latent until the bump, then both downstream `lint` targets fail** | signals, forms | fix (release coordination) | **Retired — fixed and released 2026-09-26**; both ranges widened to `>=0.3.0 <0.7.0`, and both packages released: `eval-signals` 0.1.3 and `eval-forms` 0.2.3, tagged f26f987 |
 | [F16](#f16) | Workspace dependency advisories — 9 moderate on the workspace's Angular 22.0.8, and a **temporary `smol-toml` override under `nx`** | repo | fix | Open — **part 1 retired 2026-09-27**: `nx` 23.2.1, Angular 22.1.8 / 22.1.9, `npm audit` 0 at every severity. Part 2, the override, is live until a stable `nx` depends on `smol-toml >= 1.7.1`. **Re-audited 2026-09-30: 22 (14 high, 8 moderate)**, none reaching a published package; **fixed the same day**: Angular 22.2.1 / 22.2.0, two more `overrides.nx` entries, `verdaccio` removed, `npm audit` 0 |
 | [F17](#f17) | An unhandled rejection reaches no channel a spec would normally watch — only zone.js's `unhandledPromiseRejectionHandler` hook sees it | repo | test gap | Open — opened 2026-10-08 by Phase 5 step 2 |
-| [F18](#f18) | `eval-signal.ts` line citations in `eval-forms` comments and completed plans are stale | forms, repo | docs | Open — fix when next touching those files, or cite symbols; opened 2026-10-08 by Phase 5 step 2 |
+| [F18](backlog-retired.md#f18) | `eval-signal.ts` line citations in `eval-forms` comments and completed plans are stale | forms, repo | docs | **Retired — fixed 2026-10-10** in live source; completed records kept as written, per `CLAUDE.md`. The three `eval-forms` comments cite symbols; `applyErrorPolicy`'s ships in the core `.d.ts` |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -1113,24 +1113,3 @@ a plain `new Promise` rejected with no handler reached none of the three channel
 `uncaughtPromiseErrors` queue held it until the macrotask, and a function set under the hook was
 called with it. Then by criterion 5's own cases: a wrong implementation that left superseded runs'
 rejections unhandled turned both red through the hook, with the control green.
-
-<a id="f18"></a>
-## F18 — `eval-signal.ts` line citations in `eval-forms` comments and completed plans are stale
-
-**Package** forms, repo · **Kind** docs · **Status** Open — fix when next touching those files, or
-cite symbols rather than lines. Opened 2026-10-08 by Phase 5 step 2
-
-Twenty-four citations of `eval-signal.ts` by line number sit outside the Phase 5 plan: three in
-`eval-forms` source comments (`reactive/src/lib/field-schema.ts`, `src/lib/error-policy.ts`) and
-twenty-one in completed documents (`a8/step-2-plan.md`, `forms/phase-4-plan.md`,
-`forms/phase-6-plan.md`, `gates/step-3-summary.md`, `statements/phase-2-plan.md`). Some were stale
-before Phase 5 step 2; that step's move of `respellRoots` and the `eval.hooks` conflict check into
-`track-dependencies.ts` shifted the rest. The doc-links gate resolves a link's file and `#anchor`,
-never a line number, so none of this turns it red.
-
-The Phase 5 plan's own five citations were remapped by that step (its Revision 3).
-
-*Recorded*: this entry.
-*Verified*: raised 2026-10-08 by Phase 5 step 2's code review; counted the same day with
-`git grep -n "eval-signal\.ts:[0-9]"` over `modules/eval-forms` and `docs/`, the Phase 5 plan
-excluded. Not checked citation by citation.

@@ -4776,6 +4776,53 @@ noted first and where a release would not look.
 `nx.json`'s `lint` inputs include `"^production"`. The lint failure itself is inferred from
 F12's measurement, not reproduced here.
 
+<a id="f18"></a>
+## F18 — `eval-signal.ts` line citations in `eval-forms` comments and completed plans are stale
+
+**Package** forms, repo · **Kind** docs · **Status** **Retired — fixed 2026-10-10** in live source;
+completed records kept as written, per `CLAUDE.md`. Was Open
+
+*Fixed* 2026-10-10. The three live citations name the construct rather than a line, each read at
+the commit that wrote it and checked against `eval-signal.ts` as it is now:
+
+| Site | Cited | At | Now |
+| ---- | ----- | -- | --- |
+| `reactive/src/lib/field-schema.ts`, `destroy` | `:408-414` | 9fd548d | `createEvalSignal`'s `destroyRef.onDestroy` wrapper, which clears its handle before calling `destroy()` |
+| `reactive/src/lib/field-schema.ts`, the injector note | `:215-216` | 9fd548d | the `options.injector` arm of the injector / `inject()` fork that resolves `CompilerService` |
+| `src/lib/error-policy.ts`, `applyErrorPolicy` | `:353` | 0a92553 | the `SignalContextWriteError` re-throw in the `catch` of `compute` |
+
+`:215-216` was a line off at its own commit: those were the blank line and the `if` before
+`options.injector.get(CompilerService)`. `applyErrorPolicy`'s JSDoc ships in the core entry point's
+`.d.ts`, so `eval-forms`' CHANGELOG gains a line under [Unreleased].
+
+The completed documents keep their twenty-one citations. They describe the code at the commits
+that wrote them; `forms/phase-4-plan.md`'s table of what it relied on heads its column of them
+"Verified at". `CLAUDE.md`'s paragraph on completed plans
+now says that their line citations, and their summaries', refer to the code at those commits, and
+that `git log` and `git show` reach it.
+
+*Verified*: `git grep -n "eval-signal\.ts:[0-9]" -- modules` finds nothing. Over `docs/` it finds
+26 lines, identical in file, line and text to HEAD's: these twenty-one, and the Phase 5 plan's five.
+The built `.d.ts` files against HEAD's build: `/reactive`'s and `/signals`' byte-identical, the core
+entry point's differing in `applyErrorPolicy`'s comment only.
+
+**The entry as it stood:**
+
+Twenty-four citations of `eval-signal.ts` by line number sit outside the Phase 5 plan: three in
+`eval-forms` source comments (`reactive/src/lib/field-schema.ts`, `src/lib/error-policy.ts`) and
+twenty-one in completed documents (`a8/step-2-plan.md`, `forms/phase-4-plan.md`,
+`forms/phase-6-plan.md`, `gates/step-3-summary.md`, `statements/phase-2-plan.md`). Some were stale
+before Phase 5 step 2; that step's move of `respellRoots` and the `eval.hooks` conflict check into
+`track-dependencies.ts` shifted the rest. The doc-links gate resolves a link's file and `#anchor`,
+never a line number, so none of this turns it red.
+
+The Phase 5 plan's own five citations were remapped by that step (its Revision 3).
+
+*Recorded*: this entry. Opened 2026-10-08 by Phase 5 step 2.
+*Verified*: raised 2026-10-08 by Phase 5 step 2's code review; counted the same day with
+`git grep -n "eval-signal\.ts:[0-9]"` over `modules/eval-forms` and `docs/`, the Phase 5 plan
+excluded. Not checked citation by citation.
+
 ---
 
 # Retired

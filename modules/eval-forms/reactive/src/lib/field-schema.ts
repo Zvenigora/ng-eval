@@ -410,7 +410,9 @@ export const bindFieldProperties = (
 
     // Cleared before it is called, so a teardown driven *by* the caller's
     // injector does not turn around and mutate the hook list that injector is
-    // iterating - `eval-signal.ts:408-414`'s pattern and its reason.
+    // iterating - the pattern and the reason of `createEvalSignal`'s
+    // `destroyRef.onDestroy` wrapper (`eval-signal.ts`), which clears its
+    // handle before calling `destroy()`.
     const release = unregister;
     unregister = undefined;
     release?.();
@@ -473,7 +475,8 @@ export const bindFieldProperties = (
 
       // `options.injector`, **not** the scope, and the distinction is not
       // cosmetic: `createEvalSignal` uses the injector it is given only to
-      // resolve `CompilerService` (`eval-signal.ts:215-216`) - it registers no
+      // resolve `CompilerService`, in the `options.injector` arm of its
+      // injector / `inject()` fork (`eval-signal.ts`) - it registers no
       // teardown against it - and the scope's parent is
       // `caller.get(EnvironmentInjector)`, which for a node injector is an
       // *ancestor*. Passing the scope would therefore skip providers the

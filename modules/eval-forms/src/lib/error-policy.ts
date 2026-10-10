@@ -74,13 +74,13 @@ export type ExpressionErrorPolicy =
  *
  * **`SignalContextWriteError` re-throws in every mode, including a handler
  * function** (plan S 3.4, 1.2.11). On `/reactive` that bypass came free -
- * `createEvalSignal` re-throws it regardless of `onError` (`eval-signal.ts:353`)
- * - and that behaviour lives *inside* `createEvalSignal`, which the `/signals`
- * path never calls. It does not travel with the type, so it is re-implemented
- * here or it does not exist. An assigning expression is illegal on every
- * recompute with every dataset, so under this module's default of
- * `'undefined'` it would otherwise render as a permanently blank field with
- * nothing in the console.
+ * `createEvalSignal` re-throws it regardless of `onError`, from the `catch` in
+ * its `compute` (`eval-signal.ts`), before the policy is consulted - and that
+ * behaviour lives *inside* `createEvalSignal`, which the `/signals` path never
+ * calls. It does not travel with the type, so it is re-implemented here or it
+ * does not exist. An assigning expression is illegal on every recompute with
+ * every dataset, so under this module's default of `'undefined'` it would
+ * otherwise render as a permanently blank field with nothing in the console.
  *
  * **The `instanceof` needs the constructor, so the import of that class is a
  * *value* import** - see the note above it, and the plan's revision 13, for

@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- `applyErrorPolicy`'s JSDoc cites `createEvalSignal`'s re-throw of `SignalContextWriteError` by
+  where it is, the `catch` in its `compute`, rather than by a line of `eval-signal.ts` that had
+  moved ([F18](../../docs/backlog-retired.md#f18)). Documentation only.
+
 ---
 
 ## [0.4.1] - 2026-10-10

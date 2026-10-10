@@ -114,7 +114,10 @@ build before believing a type is sound.
     status contract, and § 9 the downstream one.
 
   Their open questions are settled unless the document says otherwise. Two of them number
-  a § 9 and a § 9.1 on unrelated subjects, so name the document when citing one.
+  a § 9 and a § 9.1 on unrelated subjects, so name the document when citing one. Their line
+  citations, and those in their summaries, refer to the code at the commits that wrote them
+  and stay as written: `git log` on the document finds that commit, and
+  `git show <commit>:<file>` the code a citation names.
 - **Execute one numbered step per session.** Do not begin step N+1 in the same session.
 - Run the gate (above) after **every** step, not only at the end.
 - A step is done when its stated exit criteria are met, not when the code looks finished.
