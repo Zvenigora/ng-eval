@@ -30,6 +30,10 @@ Workspace tooling: nothing here reaches a consumer, so nothing here is versioned
   under `overrides.nx`, in-range updates of `brace-expansion`, `undici` and `fast-uri`, and the
   unused `verdaccio` removed. `ng-packagr` stays at 22.1.1 so the published `.d.ts` files do not
   change. `docs/backlog.md` F16.
+- **Dependency security, 2026-10-10**: `npm audit` 26 → 25, clearing the one critical.
+  `handlebars` 4.7.9 → 4.7.10, inside `ts-jest`'s `^4.7.9`, for GHSA-p8wg-vrv2-v86f,
+  GHSA-8r5x-fm3f-whwj (both critical) and GHSA-xw65-4hp5-5hc7. The 25 left are `sprintf-js`'s,
+  which has no patched version. `docs/backlog.md` F16, part 4.
 - **eval-core's tests no longer print ts-jest's TS151001 advice** once per worker. It is silenced
   in `modules/eval-core/jest.config.ts`; the reason is in the comment there.
 - **The README drift gates check every `@zvenigora/…` import**, 2026-10-03 — `docs/backlog.md`

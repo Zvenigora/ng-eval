@@ -920,7 +920,8 @@ Recorded 2026-09-26, by the commit that cleared the Dependabot high alert
 patched Angular versions and do not pin the vulnerable ones. So the work here is on the workspace's
 own toolchain, and no release is needed for it.
 
-**Three parts, and they are unrelated.** The third, recorded 2026-10-06, is the last section below.
+**Four parts, and they are unrelated.** The third, recorded 2026-10-06, and the fourth, recorded
+2026-10-10, are the last two sections below.
 
 **1. The 9 Angular moderates — Retired 2026-09-27, fixed.** `npx nx migrate 23.2.1` moved `nx`
 and every `@nx/*` package from 23.1.1 to 23.2.1, and with them the whole Angular set, each pinned
@@ -1112,6 +1113,22 @@ Dependabot had four open alerts the same day: #331 `postcss-selector-parser`, #3
 three. `braces` and `probe-image-size` were audit findings with no alert. Part 2 is unchanged,
 still waiting on `nx`.
 
+**4. `handlebars` — updated 2026-10-10, with no release.** A re-audit found 26: 1 critical and 25
+moderate. The 25 are part 3's `sprintf-js` chain, unchanged. The critical is `handlebars` 4.7.9,
+with three advisories against `4.0.0 - 4.7.9`, all JavaScript injection: GHSA-p8wg-vrv2-v86f
+(critical; own-property check bypass), GHSA-8r5x-fm3f-whwj (critical; AST type confusion in
+`compile`, a bypass of CVE-2026-33937's fix) and GHSA-xw65-4hp5-5hc7 (moderate; unsafe inline
+embedding of precompiled templates). It is dev-only, and `ts-jest` is its only consumer: the root
+`devDependency` `ts-jest` 29.4.9 and the `ts-jest` 29.4.12 nested under `jest-preset-angular`
+17.0.1 each declare `handlebars ^4.7.9`, deduped to one copy. `npm update handlebars` moved it to
+4.7.10, inside that range, with `package.json` unchanged. The lockfile changed in the `handlebars`
+entry alone: its `version`, `resolved` and `integrity`, and the `minimist` range in its
+`dependencies`, `^1.2.5` to `^1.2.8`, which is 4.7.10's published manifest. The installed `minimist`
+was already 1.2.8, and its own entry did not change. A clean `npm ci` left the lockfile
+byte-identical. Audit then found **25, all moderate**: part 3's `sprintf-js`, which still has no
+patched version. Dependabot's alerts #335–#337 are the three advisories, in the order above, open
+until this reaches the default branch. Parts 2 and 3 are unchanged.
+
 *Recorded*: this entry; `package.json` `overrides.nx`.
 *Verified*: `npm audit --package-lock-only`, 2026-09-26. Before the override: 12 high, 9 moderate.
 After: 0 high, 0 critical, 9 moderate, as listed above. Again 2026-09-27, after part 1: 0 at every
@@ -1121,7 +1138,10 @@ Again after the fix, 2026-09-30, npm 11 on Node 24: 0 at every severity; clean `
 green at 1076 / 131 / 266. Again 2026-10-06, npm 12.0.1 on Node 26.4.0, before part 3: 48 (10 high,
 38 moderate); after it, 2026-10-07: 25 moderate, as listed under part 3. Traced through the
 lockfile's dependency entries; clean `npm ci` under npm 12.0.1 and 11.21.0, and the gate green at
-2007 / 312 / 343; Dependabot's open alerts read with `gh api`.
+2007 / 312 / 343; Dependabot's open alerts read with `gh api`. Again 2026-10-10, npm 12.0.1 on
+Node 26.4.0, before part 4: 26 (1 critical, 25 moderate); after it: 25 moderate. Traced with
+`npm ls handlebars` and the lockfile's `ts-jest` entries; clean `npm ci`, the gate green at
+2023 / 421 / 343, and the three alerts read with `gh api`.
 
 <a id="f17"></a>
 ## F17 — An unhandled rejection reaches no channel a spec would normally watch
