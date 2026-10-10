@@ -136,7 +136,9 @@ const README_JAVASCRIPT_BLOCKS = 16;
  *    reachable from it is the other one — where `scoped` is `undefined`, not
  *    `false`. The case asserts that as printed *and* evaluates
  *    `list.map(x => x + 1)` to assert the `true` for an arrow parameter, the
- *    first of the three. The other two are not asserted here.
+ *    first of the three. The other two are asserted in `read-hooks.spec.ts`,
+ *    under "the scoped flag": a `let` and a block-scoped `const` read, and a
+ *    name bound by a scope the caller pushed, each walked from its `Program`.
  *
  * 8. **Two type narrowings.** The README prints `ast.type` and
  *    `expressions.length`; both accessors return `… | undefined` under this

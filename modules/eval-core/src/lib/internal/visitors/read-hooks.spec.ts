@@ -1,5 +1,6 @@
 import { AnyNode } from 'acorn';
-import { EvalContext, EvalHooks, EvalReadEvent, EvalScope, EvalScopeOptions, EvalState } from '../classes/eval';
+import { EvalContext, EvalHooks, EvalReadEvent, EvalScope, EvalScopeOptions, EvalState,
+  defaultParserOptions } from '../classes/eval';
 import { Context } from '../classes/common';
 import { evaluate, parse } from '../functions';
 
@@ -26,6 +27,19 @@ class ReadRecorder {
 
     const state = EvalState.fromContext(context, { hooks: this.hooks, ...options });
     evaluate(nodeOf(source), state);
+    return state;
+  }
+
+  /**
+   * Evaluates `source` from its `Program`, as `EvalService` does: its parser
+   * options leave `extractExpressions` off, so `program.ts` pushes a scope
+   * before any statement runs. A statement list needs this root, and so does a
+   * case about what sits under that scope.
+   */
+  runProgram(source: string, context: Context | EvalContext = {}): EvalState {
+
+    const state = EvalState.fromContext(context, { hooks: this.hooks });
+    evaluate(parse(source, defaultParserOptions) as AnyNode, state);
     return state;
   }
 
@@ -615,6 +629,62 @@ describe('read hooks', () => {
       const reads = recorder.reads.filter((e) => e.path === 'item');
       expect(reads.map((e) => e.value)).toEqual([1, 'ctx']);
       expect(reads.map((e) => e.scoped)).toEqual([true, undefined]);
+    });
+
+    it('should flag a read of a let binding', () => {
+      const recorder = new ReadRecorder();
+
+      // `y` is bound in the scope `program.ts` pushes.
+      recorder.runProgram('let y = a; y', { a: 1 });
+
+      const [binding] = recorder.reads.filter((e) => e.path === 'y');
+      expect(binding.value).toBe(1);
+      expect(binding.scoped).toBe(true);
+    });
+
+    it('should flag a read of a block-scoped const binding', () => {
+      const recorder = new ReadRecorder();
+
+      // `z` is bound in the scope `block-statement.ts` pushes, above the
+      // program's.
+      recorder.runProgram('{ const z = a; z }', { a: 2 });
+
+      const [binding] = recorder.reads.filter((e) => e.path === 'z');
+      expect(binding.value).toBe(2);
+      expect(binding.scoped).toBe(true);
+    });
+
+    it('should flag a read of a name bound by a scope the caller pushed', () => {
+      const context = new EvalContext({ a: 3 }, {});
+      context.push({ p: 4 });
+
+      // Pushed before the walk, so `program.ts` pushes its own scope on top:
+      // `p` is bound below the top of the stack when it is read.
+      const recorder = new ReadRecorder();
+      recorder.runProgram('p', context);
+      context.pop();
+
+      const [binding] = recorder.reads.filter((e) => e.path === 'p');
+      expect(binding.value).toBe(4);
+      expect(binding.scoped).toBe(true);
+    });
+
+    it('should not flag a context read in a walk that reads all three kinds of binding', () => {
+      const context = new EvalContext({ a: 5 }, {});
+      context.push({ p: 6 });
+
+      const recorder = new ReadRecorder();
+      recorder.runProgram('let y = a; { const z = y; z; } p + a', context);
+      context.pop();
+
+      // The walk read a `let`, a block's `const` and the caller's binding, so
+      // the scope stack was never empty at a read; `a` is the context's own
+      // key throughout, and the property is omitted rather than false.
+      expect(recorder.paths).toEqual(['a', 'y', 'z', 'p', 'a']);
+      const plain = recorder.reads.filter((e) => e.path === 'a');
+      for (const read of plain) {
+        expect(read).not.toHaveProperty('scoped');
+      }
     });
   });
 
