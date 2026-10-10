@@ -103,20 +103,11 @@ export class CompilerService extends BaseEval implements OnDestroy {
   }
 
   /**
-   * Generate cache key for expression
+   * Generate cache key for expression. Only a string is cached, so only a
+   * string has a key.
    */
-  private generateCacheKey(expression: string | AnyNode | undefined): string {
-    if (typeof expression === 'string') {
-      return `str:${expression}`;
-    } else if (expression && typeof expression === 'object') {
-      // Use a simplified hash for AST nodes to avoid deep serialization overhead
-      return `ast:${expression.type}:${JSON.stringify({
-        type: expression.type,
-        start: expression.start,
-        end: expression.end
-      })}:${expression.toString()}`;
-    }
-    return 'undefined';
+  private generateCacheKey(expression: string): string {
+    return `str:${expression}`;
   }
 
   /**
@@ -128,7 +119,8 @@ export class CompilerService extends BaseEval implements OnDestroy {
   }
 
   /**
-   * Compiles the given expression into a state callback function with caching.
+   * Compiles the given expression into a state callback function. A string is
+   * compiled once and cached; an AST is compiled on every call.
    * @param expression - The expression to compile.
    * @returns The compiled state callback function.
    * @throws Error if there is an error during compilation.
@@ -138,6 +130,16 @@ export class CompilerService extends BaseEval implements OnDestroy {
     // thrown. Each used to raise a bare `Error` carrying only the message in its
     // place, or a fixed message for a thrown non-`Error`
     // (`docs/backlog-retired.md` A5).
+
+    // Only a string is cached, here and in `compileAsync`. Compiling a node is
+    // binding `evaluate` to it, so caching one saves nothing, and the key it
+    // was cached under - its type, start, end and `toString()`, which is
+    // `[object Object]` for every node - gave two expressions of one shape and
+    // span one compiled function (`docs/backlog-retired.md` A29).
+    if (typeof expression !== 'string') {
+      return _compile(this.parse(expression));
+    }
+
     const cacheKey = this.generateCacheKey(expression);
 
     // Check cache first
@@ -219,12 +221,19 @@ export class CompilerService extends BaseEval implements OnDestroy {
   }
 
   /**
-   * Compiles the given expression into an asynchronous state callback function with caching.
+   * Compiles the given expression into an asynchronous state callback
+   * function. A string is compiled once and cached; an AST is compiled on
+   * every call.
    * @param expression - The expression to compile.
    * @returns The compiled asynchronous state callback function.
    * @throws Error if there is an error during compilation.
    */
   compileAsync(expression: string | AnyNode | undefined): stateCallbackAsync | undefined {
+    // Only a string is cached, as in `compile` (`docs/backlog-retired.md` A29).
+    if (typeof expression !== 'string') {
+      return _compileAsync(this.parse(expression));
+    }
+
     const cacheKey = this.generateCacheKey(expression);
 
     // Check cache first

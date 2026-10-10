@@ -20,6 +20,15 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   the README's `onRead` example, whose comment said `event.scoped` was true for arrow-function
   parameters. The flag's behaviour is unchanged.
 
+### Fixed
+- **`CompilerService` no longer returns one AST's compiled function for another —
+  [A29](../../docs/backlog-retired.md#a29).** `compile` and `compileAsync` cached an AST under its
+  type, start and end and `toString()`, which is `[object Object]` for every node, so two different
+  expressions of one shape and span shared a function: `compile(ast('a * b'))` then
+  `compile(ast('c * d'))` returned `a * b`'s, which over `{ a: 1, b: 3, c: 3, d: 4 }` answered `3`,
+  not `12`, for as long as the cache kept it. An AST is now compiled on every call and never cached.
+  Affected 0.2.1–0.11.0, 0.10.1 included. A string input was never affected, and is cached as before.
+
 ---
 
 ## [0.11.0] - 2026-10-07

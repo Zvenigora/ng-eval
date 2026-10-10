@@ -1568,6 +1568,61 @@ rule 1 disabled in `dependency-tracker.ts`, then reverted, turned both criterion
 `"abort"` in `dependencies` — so the key is dropped as a `scoped` read, which the comment says it
 is not.
 
+<a id="a29"></a>
+## A29 — `CompilerService` keys a compiled AST by type, start, end and `toString()`
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-10**; not yet released. Was
+Open
+
+*Fixed* 2026-10-10. `compile` and `compileAsync` cache a string only. Any other input — an AST, or
+nothing — is compiled on every call and never enters `_compilationCache`, and `generateCacheKey`
+takes a string. Not the entry's `WeakMap`: compiling a node is `evaluate.bind(null, node)`
+(`functions/compile.ts`), so a cache keyed by the node's identity would save one `bind` and add a
+second map to keep in step with the LRU and the TTL. A string is cached as before, under the same
+key. The defect came in with c087f69, so every published `eval-core` from 0.2.1 to 0.11.0 is
+affected, 0.10.1 included; a string input never was.
+
+*Verified*: test-first, four cases in `compiler.service.spec.ts`, "AST inputs": two ASTs of one shape
+and span, `a * b` and `c * d`, each a `Program` from 0 to 5, through `compile` and through
+`compileAsync`, over `{ a: 1, b: 3, c: 3, d: 4 }`; one text parsed twice, two node objects, each
+correct through both; and the control, a string compiled twice returning one function by identity,
+through both. Before the fix, the two shape cases failed, `12` expected and `3` received; the other
+two passed. Wrong implementations, each against the whole spec: the original key — both shape cases
+red, nothing else; a key of type, start and end without `toString()` — the same two; the bypass in
+`compile` only, `compileAsync` on the original key — the async shape case alone. No other case in the
+suite compiles an AST through the service.
+
+The fix's grep for other keys built from an object's shape found two, neither in `CompilerService`:
+[A31](backlog.md#a31), the case-insensitive property cache, live; and [A32](backlog.md#a32), the
+disabled visitor result cache.
+
+**The entry as it stood:**
+
+`CompilerService.compile` and `compileAsync` accept an AST as well as a string, and cache the compiled
+function under `generateCacheKey` (`compiler.service.ts:108-120`), which for a node is `ast:`, its
+type, a JSON of its type, start and end, and `expression.toString()`. An acorn node does not define
+`toString`, so the last part is `[object Object]` for every node, and any two ASTs with the same root
+type and span share one key.
+
+Measured: `compile(parse('a + b', defaultParserOptions))`, then
+`compile(parse('c * d', defaultParserOptions))`, returned the same function, under the key
+`ast:Program:{"type":"Program","start":0,"end":5}:[object Object]`; `simpleCall` of the second over
+`{ a: 1, b: 2, c: 3, d: 4 }` gave `3`, not `12`. A silent wrong answer, for up to the cache's
+10-minute TTL, to any caller that compiles ASTs it parsed itself.
+
+**Fix**: key a node by identity — a `WeakMap` beside the string cache — rather than by a description
+of it. Nothing in this repository compiles an AST through the service: `eval-signals` passes strings,
+and `eval-forms` uses the free `compile`.
+
+**Why not Phase 9**: its design passes `CompilerService` strings only, and its step 3, which rewrites
+the string key, is told to leave the AST branch alone. The finding does close one of that plan's
+options, "parse it yourself and compile the AST" (§ 3.1, option A).
+
+*Recorded*: this entry; [`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.2
+finding 7. Opened 2026-10-10 by the Phase 9 plan.
+*Verified*: measured 2026-10-10 at af81e24, with a throwaway spec deleted the same day (that plan's
+§ 1.3, P8).
+
 ---
 
 # B. `eval-core` — security and hygiene

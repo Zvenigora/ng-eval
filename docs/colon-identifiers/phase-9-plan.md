@@ -1,7 +1,12 @@
 # Phase 9 Plan — colon-joined identifiers (`@zvenigora/ng-eval-core`)
 
 **Date**: October 10, 2026
-**Revision**: 1 — initial plan.
+**Revision**: 2 — amended by [BL-A29](../backlog-retired.md#a29)'s fix, in its commit, before any step.
+`CompilerService` no longer caches an AST, so step 3's string key has no AST branch beside it to leave
+alone, and § 3.1's option A loses one of its two reasons. § 1 still records the code as this plan
+found it.
+
+**Revision**: 1 — initial plan (`d839072`).
 **Target package**: `@zvenigora/ng-eval-core` (`modules/eval-core`, published at 0.11.0)
 **Also touches**: `@zvenigora/ng-eval-signals` — one step, an error message and specs, released as a
 patch that also widens its peer range; `@zvenigora/ng-eval-forms` — one step, both adapters' parse
@@ -143,8 +148,9 @@ that shows it.
    returned the same function — key `ast:Program:{"type":"Program","start":0,"end":5}:[object Object]` —
    and `simpleCall` gave `3` for `c * d` over `{ a: 1, b: 2, c: 3, d: 4 }`, not `12`. Silent wrong
    answers for any caller that compiles ASTs. No design here hands `CompilerService` an AST, so it is
-   outside scope: [BL-A29](../backlog.md#a29). It does rule out "parse it yourself and compile the AST"
-   as this phase's per-call route through `CompilerService`.
+   outside scope: [BL-A29](../backlog-retired.md#a29), fixed since on its own — an AST is no longer
+   cached (Revision 2). Until then it ruled out "parse it yourself and compile the AST" as this phase's
+   per-call route through `CompilerService`.
 
 8. **A colon name, once parsed, needs nothing from the evaluator** (P3, measured through `EvalService`
    with a prototype parser, § 1.3). Over `{ 'Q1:1': 3, 'Q1:1:3': 4, Q1: 100, obj: { 'Q2:3': 5 },
@@ -266,9 +272,9 @@ switch (S1, F2). C1 ran in Node against the installed acorn. D1 read the `acorn@
   wildcard. Nothing splits it.
 - **`defaultParserOptions`** — unchanged, and § 1.2 finding 4 is why it must stay so.
 - **A per-signal parser option in `eval-signals`** — § 8 q5.
-- [BL-A29](../backlog.md#a29), [BL-A30](../backlog.md#a30), [BL-D13](../backlog.md#d13) — found by
-  this plan's probes, recorded, and not needed by it. Step 3 must not touch `CompilerService`'s AST
-  key branch, so A29's fix stays its own decision.
+- [BL-A30](../backlog.md#a30), [BL-D13](../backlog.md#d13) — found by this plan's probes, recorded,
+  and not needed by it. A third, [BL-A29](../backlog-retired.md#a29), was fixed on its own after this
+  plan was written (Revision 2).
 - **A source rewrite** — any approach that edits the text before acorn sees it (§ 3.5).
 
 ---
@@ -282,9 +288,9 @@ switch (S1, F2). C1 ran in Node against the installed acorn. D1 read the `acorn@
 
 - *Reach*: those two only. `EvalService`, `CompilerService` and `DiscoveryService` take no parser
   options per call, `eval-signals` hands `CompilerService` a string, and the way around that —
-  parse it yourself and compile the AST — is exactly what [BL-A29](../backlog.md#a29) answers wrongly
-  (§ 1.2 finding 7). Every layer would need a new option, and every call site in the one application
-  that needs it would have to remember it.
+  parse it yourself and compile the AST — was answered wrongly by [BL-A29](../backlog-retired.md#a29)
+  (§ 1.2 finding 7), and since its fix is answered right and uncached. Every layer would need a new
+  option, and every call site in the one application that needs it would have to remember it.
 
 **Option B — application-wide through `ParserService.parserOptions`, the setter that exists.**
 
@@ -361,8 +367,8 @@ object every call, pays two lookups per parse, not a serialization.
 **`CompilerService`, in step 3.** Its string key gains the fingerprint of the options its own parse
 would use — `ParserService`'s merged with its per-call `defaultParserOptions`. In step 1 nothing
 observable can vary that parse (finding 4), so the criterion that would discriminate it has nothing to
-turn on until `colonIdentifiers` exists; step 3 is where it does. The AST branch is not touched
-(§ 2).
+turn on until `colonIdentifiers` exists; step 3 is where it does. Only strings are keyed: since
+A29's fix an AST is never cached (Revision 2).
 
 ### 3.3 The option — decided: `ParserOptions.colonIdentifiers?: boolean`, and `provideColonIdentifiers()`
 
@@ -704,8 +710,8 @@ failure count for each, reading which cases failed rather than that the suite di
 
 - **New**: `actual/services/colon-identifiers.provider.ts` — `provideColonIdentifiers` and its internal
   token; `actual/services/eval.service.colon-identifiers.spec.ts`.
-- **Edit**: `parser.service.ts` (reads the token); `compiler.service.ts` (§ 3.2's string key; the AST
-  branch untouched); their specs; the services' `public-api.ts` (the export); `modules/eval-core/README.md`
+- **Edit**: `parser.service.ts` (reads the token); `compiler.service.ts` (§ 3.2's string key, the only
+  key it has since A29's fix); their specs; the services' `public-api.ts` (the export); `modules/eval-core/README.md`
   — a section naming `provideColonIdentifiers` and `colonIdentifiers` in code spans, with one executed
   ` ```javascript ` block; `src/lib/readme-examples.spec.ts` — that block executed and
   `README_JAVASCRIPT_BLOCKS` raised from 16 ([BL-F13](../backlog-retired.md#f13)); `export-list.spec.ts`
