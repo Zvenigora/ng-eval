@@ -1593,7 +1593,7 @@ red, nothing else; a key of type, start and end without `toString()` — the sam
 suite compiles an AST through the service.
 
 The fix's grep for other keys built from an object's shape found two, neither in `CompilerService`:
-[A31](backlog.md#a31), the case-insensitive property cache, live; and [A32](backlog.md#a32), the
+[A31](#a31), the case-insensitive property cache, live, and fixed since; and [A32](backlog.md#a32), the
 disabled visitor result cache.
 
 **The entry as it stood:**
@@ -1622,6 +1622,91 @@ options, "parse it yourself and compile the AST" (§ 3.1, option A).
 finding 7. Opened 2026-10-10 by the Phase 9 plan.
 *Verified*: measured 2026-10-10 at af81e24, with a throwaway spec deleted the same day (that plan's
 § 1.3, P8).
+
+<a id="a31"></a>
+## A31 — The case-insensitive property cache keys an object by its key count and first five keys
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-10**; not yet released. Was
+Open
+
+*Fixed* 2026-10-10. The cache is a `WeakMap` from the object to its answers, by lower-cased search
+key, together with the object's own-key count when they were made. A cached key is returned only
+while it is still an own property of the object, which `hasOwnProperty` checks without a scan; a key
+deleted or renamed since is scanned for again. A cached miss stands while the own-key count is
+unchanged, and a changed count makes the object's answers afresh. The one change it does not see is a
+key added in the same interval as another is deleted, which leaves the count as it was, so a cached
+miss can outlive it; catching that would mean comparing every name on every miss. An entry lives as
+long as its object, so nothing one object answered is read for another, and the old five-minute expiry
+and thousand-entry bound go with the shape key. `getPropertyLookupCacheStats` now counts the entries
+made since the last clear, the one figure a `WeakMap` can give; only `performance.spec.ts` reads it,
+and no barrel exports the module.
+
+**Kept, not removed.** The three strategies called directly, interleaved in one process, eleven runs
+of each, in two sessions; the lowest time per lookup, old shape key / identity / no cache:
+
+| Lookup | Old shape key | Identity | No cache |
+| :--- | ---: | ---: | ---: |
+| 3-key object, hit | 546–2,180 ns | 54–115 ns | 2,384–8,075 ns |
+| 50-key object, hit on the last key | 2,564–3,582 ns | 55 ns | 125,508–486,409 ns |
+| 50-key object, miss | 4,506–4,539 ns | 1,508–1,590 ns | 121,510–122,640 ns |
+| 1000-element array, `list.map` | 47,215–47,508 ns | 25,872–26,205 ns | 2.48–2.57 ms |
+
+Without a cache every read scans the object's names with `localeCompare`. `performance.spec.ts`,
+three runs each: its two lookup cases and its benchmark took 12–13, 4 and 18–19 ms on the old cache
+and 7–8, 2–3 and 13–14 ms on this one, and the whole spec 96–101 ms against 61–65 ms.
+
+*Verified*: test-first. A regression table in `eval.service.case-variant-guard.spec.ts`, "after a
+colliding cache entry, caseInsensitive: true": for each of the 15 spellings — the 12 upper-cased
+`Object.prototype` names and the four spellings of `constructor` — the spelling is read first as data
+from an object holding it, then from a second object with the same count and first five names, and
+must be refused. All 15 were red on the old cache. And eight cases in `property-lookup-cache.spec.ts`:
+two objects sharing their first five names, in both read orders; a fresh service after an earlier
+one's objects; two objects whose names join alike with `_`; two objects holding the same names in
+different orders; a key added after a cached miss; a cached key renamed away; and the control, one
+object read twice resolving one key. The old cache failed the first four of those. Wrong
+implementations, each against the cache, guard, carve-out and performance specs: the old key — the 15
+rows and those four, 19 in all; a key of the count and every name — only the joined-names case, and
+not the reordering case, since the order is part of the joined key; a cached key returned without the
+own-property check — only the renamed-key case; a cached miss kept whatever the count — only the
+added-key case.
+
+**The entry as it stood:**
+
+Under `caseInsensitive`, the member visitor asks `getCachedCaseInsensitiveProperty` which own key of
+the object matches the name (`member-expression.ts:183`). The answer is cached under
+`generateObjectHash` (`property-lookup-cache.ts:30-37`) — the object's own-key count and its first
+five own property names — plus the lower-cased name. Two objects with the same count and the same
+first five names share every entry, whatever their other keys are called. The cache is one instance
+for the whole module (`:135`), so it is shared by every evaluation, every service and every injector
+in the process; an entry lives five minutes from its last hit.
+
+Measured, with `caseInsensitive`: over `two = { a, b, c, d, e, EXTRA: 'two' }`, `o.extra` is `'two'`.
+After `o.extra` over `one = { a, b, c, d, e, Extra: 'one' }`, the same read over `two` is `undefined`
+— the cached key is `Extra`, which `two` does not have — and so it is from an `EvalService` in a new
+`TestBed` configuration. An object with five own keys or fewer is hashed on all its names, so two such
+objects differ whenever their spellings do: `{ Name: 'x' }` and `{ NAME: 'y' }` read `'x'` and `'y'`.
+
+**A collision can also turn a case-variant refusal into a silent `undefined`.** The prototype-pollution
+re-check runs on whatever key the cache returns (`isDangerousProperty(foundKey)`,
+`member-expression.ts:211`), and a key cached from another object is that object's spelling, not a
+blocked name. Measured, for the 12 upper-cased `Object.prototype` names and the four spellings of
+`constructor` in `eval.service.case-variant-guard.spec.ts`: each read is refused on a clean cache;
+with a colliding entry primed — the same spelling read first as data from an object of the same
+shape — each returns `undefined` instead, 15 of 15. The key read is the other object's non-blocked
+spelling, so no blocked property is reached. Otherwise the wrong answer is a missing or misattributed
+property, silently. The cache came in with c087f69, A29's commit, so every published version from
+`eval-core` 0.2.1 is affected.
+
+**Fix**: key the cache by the object's identity — a `WeakMap` — and decide what makes an entry stale
+when the object gains or renames a key, since a hash of its names was the only invalidation it had; or
+remove the cache. `performance.spec.ts` pins its existence ("should cache case-insensitive property
+lookups", `:97`, and `propertyStats.size` at `:213`), so a removal changes those assertions
+deliberately.
+
+*Recorded*: this entry, by the grep the A29 fix ran for other keys built from an object's shape.
+Opened 2026-10-10 by A29's fix.
+*Verified*: measured 2026-10-10 at d839072 with a throwaway spec, deleted before A29's commit; the
+refusal rows on A29's commit, with another, deleted the same day.
 
 ---
 

@@ -191,7 +191,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A28](backlog-retired.md#a28) | `scoped` is documented as a scope pushed during this walk; the code asks the whole scope stack | core | docs | **Retired — fixed 2026-10-10**, documentation comments only; not yet released. The `.d.ts` differs in four JSDoc blocks: every scope on the stack counts, whoever pushed it |
 | [A29](backlog-retired.md#a29) | `CompilerService` keys a compiled AST by type, start, end and `toString()` — two ASTs of one type and span share a compiled function | core | fix | **Retired — fixed 2026-10-10**; not yet released. An AST is compiled on every call and never cached; a string is cached as before. Affected `eval-core` 0.2.1–0.11.0 |
 | [A30](#a30) | `ParserService.parserOptions` reaches `EvalService`, `CompilerService` and `DiscoveryService` for no acorn option | core | decision | Open — opened 2026-10-10 by the Phase 9 plan |
-| [A31](#a31) | The case-insensitive property cache keys an object by its key count and first five keys — objects sharing them share answers, process-wide | core | fix | Open — opened 2026-10-10 by A29's fix |
+| [A31](backlog-retired.md#a31) | The case-insensitive property cache keys an object by its key count and first five keys — objects sharing them share answers, process-wide | core | fix | **Retired — fixed 2026-10-10**; not yet released. Keyed by the object itself, a cached key re-checked as the object's own; a colliding entry no longer turns a case-variant refusal into `undefined`. Affected `eval-core` 0.2.1–0.11.0 |
 | [A32](#a32) | The disabled visitor result cache keys a node without its operands — `a + b` and `c + d` share an entry | core | decision | Open — opened 2026-10-10 by A29's fix; latent, nothing calls it |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
@@ -331,8 +331,8 @@ several of these visible at all. [A6](backlog-retired.md#a6) was surfaced by Pha
 ([`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.3), which keeps all three out of its scope
 (§ 3.1). [A29](backlog-retired.md#a29) and [A30](#a30) were surfaced by the Phase 9 plan's probes
 ([`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.3), which needs neither.
-[A31](#a31) and [A32](#a32) were found by A29's fix, grepping for other keys built from an object's
-shape.
+[A31](backlog-retired.md#a31) and [A32](#a32) were found by A29's fix, grepping for other keys built
+from an object's shape.
 
 **Identity-checked `exit`** (§ 3.8 of the Phase 1 plan) means the hook layer stays balanced in
 spite of [A1](backlog-retired.md#a1) and [A2](backlog-retired.md#a2), so neither was urgent — [A3](backlog-retired.md#a3)
@@ -761,47 +761,6 @@ never carrying `colonIdentifiers` (§ 1.2 finding 4).
 finding 4.
 *Verified*: measured 2026-10-10 at af81e24 by spying on `acorn.parse`, with a throwaway spec deleted the
 same day (that plan's § 1.3, P6).
-
-<a id="a31"></a>
-## A31 — The case-insensitive property cache keys an object by its key count and first five keys
-
-**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-10 by [A29](backlog-retired.md#a29)'s
-fix
-
-Under `caseInsensitive`, the member visitor asks `getCachedCaseInsensitiveProperty` which own key of
-the object matches the name (`member-expression.ts:183`). The answer is cached under
-`generateObjectHash` (`property-lookup-cache.ts:30-37`) — the object's own-key count and its first
-five own property names — plus the lower-cased name. Two objects with the same count and the same
-first five names share every entry, whatever their other keys are called. The cache is one instance
-for the whole module (`:135`), so it is shared by every evaluation, every service and every injector
-in the process; an entry lives five minutes from its last hit.
-
-Measured, with `caseInsensitive`: over `two = { a, b, c, d, e, EXTRA: 'two' }`, `o.extra` is `'two'`.
-After `o.extra` over `one = { a, b, c, d, e, Extra: 'one' }`, the same read over `two` is `undefined`
-— the cached key is `Extra`, which `two` does not have — and so it is from an `EvalService` in a new
-`TestBed` configuration. An object with five own keys or fewer is hashed on all its names, so two such
-objects differ whenever their spellings do: `{ Name: 'x' }` and `{ NAME: 'y' }` read `'x'` and `'y'`.
-
-**A collision can also turn a case-variant refusal into a silent `undefined`.** The prototype-pollution
-re-check runs on whatever key the cache returns (`isDangerousProperty(foundKey)`,
-`member-expression.ts:211`), and a key cached from another object is that object's spelling, not a
-blocked name. Measured, for the 12 upper-cased `Object.prototype` names and the four spellings of
-`constructor` in `eval.service.case-variant-guard.spec.ts`: each read is refused on a clean cache;
-with a colliding entry primed — the same spelling read first as data from an object of the same
-shape — each returns `undefined` instead, 15 of 15. The key read is the other object's non-blocked
-spelling, so no blocked property is reached. Otherwise the wrong answer is a missing or misattributed
-property, silently. The cache came in with c087f69, A29's commit, so every published version from
-`eval-core` 0.2.1 is affected.
-
-**Fix**: key the cache by the object's identity — a `WeakMap` — and decide what makes an entry stale
-when the object gains or renames a key, since a hash of its names was the only invalidation it had; or
-remove the cache. `performance.spec.ts` pins its existence ("should cache case-insensitive property
-lookups", `:97`, and `propertyStats.size` at `:213`), so a removal changes those assertions
-deliberately.
-
-*Recorded*: this entry, by the grep the A29 fix ran for other keys built from an object's shape.
-*Verified*: measured 2026-10-10 at d839072 with a throwaway spec, deleted before A29's commit; the
-refusal rows at bc1dbd2, with another, deleted the same day.
 
 <a id="a32"></a>
 ## A32 — The disabled visitor result cache keys a node by a subset of it

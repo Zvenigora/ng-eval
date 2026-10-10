@@ -21,9 +21,11 @@ import { clearPropertyLookupCache } from '../../internal/visitors/property-looku
  * only the key as it was written. That second check is the load-bearing one:
  * neuter it and `x.CONSTRUCTOR` yields `Object` again. These specs pin it.
  *
- * The cache is cleared per test because `getCachedCaseInsensitiveProperty`
- * keys on object *shape*, so a lookup from a neighbouring spec can otherwise
- * answer this one's.
+ * The cache is cleared per test so that each case starts cold. Up to 0.11.0
+ * `getCachedCaseInsensitiveProperty` keyed on object *shape*, so a lookup from
+ * a neighbouring spec could answer this one's - and a colliding entry turned
+ * these refusals into a silent `undefined` (`docs/backlog-retired.md` A31),
+ * which the last block pins.
  */
 describe('EvalService - case-variant property guard (GHSA-pj3p-xpg7-h7gw)', () => {
   let service: EvalService;
@@ -176,6 +178,51 @@ describe('EvalService - case-variant property guard (GHSA-pj3p-xpg7-h7gw)', () =
       const context = { y: Object.assign(Object.create(null), { CONSTRUCTOR: 'own-value' }) };
 
       expect(service.simpleEval('y.CONSTRUCTOR', context, { caseInsensitive: true })).toBe('own-value');
+    });
+  });
+
+  // `docs/backlog-retired.md` A31. Each row first reads the variant as data,
+  // from an object holding that exact spelling - the case above - and then from
+  // a second object with the same key count and the same first five names. Up
+  // to 0.11.0 the second read was answered from the first object's entry: the
+  // other object's spelling, not a blocked name, so the re-check passed it and
+  // the read returned `undefined` instead of being refused.
+  describe('after a colliding cache entry, caseInsensitive: true', () => {
+    // Fifteen: `CONSTRUCTOR` is both an upper-cased name and a spelling.
+    const variants = [...new Set([
+      ...[
+        '__proto__',
+        'constructor',
+        '__defineGetter__',
+        '__defineSetter__',
+        '__lookupGetter__',
+        '__lookupSetter__',
+        'hasOwnProperty',
+        'isPrototypeOf',
+        'propertyIsEnumerable',
+        'toString',
+        'valueOf',
+        'toLocaleString'
+      ].map(name => name.toUpperCase()),
+      'CONSTRUCTOR',
+      'CoNsTrUcToR',
+      'Constructor',
+      'consTRUCTor'
+    ])];
+
+    it('should cover fifteen spellings', () => {
+      expect(variants.length).toBe(15);
+    });
+
+    it.each(variants)('should still refuse x.%s', (variant) => {
+      const shared = { a: 1, b: 1, c: 1, d: 1, e: 1 };
+
+      expect(service.simpleEval(`p.${variant}`,
+        { p: { ...shared, [variant]: 'own-value' } }, { caseInsensitive: true })).toBe('own-value');
+
+      expect(() => {
+        service.simpleEval(`x.${variant}`, { x: { ...shared, f: 1 } }, { caseInsensitive: true });
+      }).toThrow(BLOCKED);
     });
   });
 });

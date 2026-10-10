@@ -28,6 +28,15 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   `compile(ast('c * d'))` returned `a * b`'s, which over `{ a: 1, b: 3, c: 3, d: 4 }` answered `3`,
   not `12`, for as long as the cache kept it. An AST is now compiled on every call and never cached.
   Affected 0.2.1–0.11.0, 0.10.1 included. A string input was never affected, and is cached as before.
+- **Under `caseInsensitive`, a member read no longer resolves another object's spelling —
+  [A31](../../docs/backlog-retired.md#a31).** The cache of which own key a case variant names was
+  keyed by the object's own-key count and its first five key names, once for the whole process, so
+  objects that shared their first five key names could resolve each other's spelling: a read could
+  return the wrong property or `undefined`, and a case-variant read of a blocked name, such as
+  `x.CONSTRUCTOR`, could return `undefined` instead of throwing. No blocked property was ever read.
+  The cache is now keyed by the object itself, and a cached key is used only while it is still the
+  object's own. Affected 0.2.1–0.11.0, 0.10.1 included, from the same commit as A29; a read without
+  `caseInsensitive` never was.
 
 ---
 
