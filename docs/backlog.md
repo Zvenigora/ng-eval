@@ -53,10 +53,8 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-**Phase 5**, async expression signals — [`docs/signals/phase-5-plan.md`](signals/phase-5-plan.md),
-written 2026-10-07; plan at Revision 4; steps 1–3 done (the `eval-core` async-walk spec;
-`createEvalSignalAsync`, and its cancellation and stability, unreleased); step 4 next, once the
-Angular 19–21 matrix (the plan's § 8 q1) is run and recorded. The track before it, "Track 3" ([`docs/gates/plan.md`](gates/plan.md)), is closed; its
+[Phase 5 plan](signals/phase-5-plan.md) at Revision 4; steps 1–3 done; § 8 q1 recorded (the
+matrix passes at Angular 19–21); step 4 next. The track before it, "Track 3" ([`docs/gates/plan.md`](gates/plan.md)), is closed; its
 retrospect is [`docs/gates/summary.md`](gates/summary.md).
 
 ### Status vocabulary

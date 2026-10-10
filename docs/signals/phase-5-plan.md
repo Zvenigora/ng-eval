@@ -953,7 +953,9 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
 - **Precondition — § 8 q1 answered and recorded in this document.** The matrix run § 8 q1 describes
   is performed by the reviewer outside this workspace after step 3, and its result is written into
   § 8 q1 before this step starts. If any version failed, this step does not start: the plan is
-  replanned, and the `>=19` peer floor is not narrowed silently to make the release fit.
+  replanned, and the `>=19` peer floor is not narrowed silently to make the release fit. **Met
+  2026-10-09**: § 8 q1 records the matrix passing at 19.2.25, 20.3.33 and 21.2.25, with two test-API
+  substitutions at 19 and none in the library.
 - **Edit**:
   - `modules/eval-signals/README.md` — "Async expressions" rewritten: the primitive; § 3.4's table;
     `onError`; the two-signal form for operand-position use (§ 3.1); the resolution boundary and the
@@ -1130,7 +1132,37 @@ because an async assertion has one more way to be vacuous:
    substitution. A failure at any version stops step 4 and the plan is replanned (§ 4, step 4's
    precondition).
 
-   *Result*: not yet run.
+   *Result* — run 2026-10-09 by the reviewer, at the commit that recorded A28 (after step 3), in a
+   sandbox outside this workspace. Each version is a separate copy of eval-core's and
+   eval-signals' sources and tsconfigs, with every @angular/* package at that version, Jest
+   30.3.0, jest-preset-angular 16.2.0 (peer range Angular 19–22) and jsdom; eval-core is
+   resolved from source. The three spec files are eval-signal-async.spec.ts,
+   eval-signal-async.memory.spec.ts and eval-signal.service.spec.ts.
+
+   | @angular/core | TypeScript | zone.js | Result | Substitutions |
+   | :--- | :--- | :--- | :--- | :--- |
+   | 19.2.25 | 5.8.3 | 0.15.1 | 106 / 106 pass | two, below |
+   | 20.3.33 | 5.9.3 | 0.15.1 | 106 / 106 pass | none |
+   | 21.2.25 | 5.9.3 | 0.15.1 | 106 / 106 pass | none |
+   | 22.2.1 (control) | 6.0.3 | 0.16.3 | 106 / 106 pass | none — matches the workspace's own run of the three files |
+
+   - The library source ran unmodified at every version.
+   - Angular 19, unmodified specs: 6 failures, each a missing test API, none library
+     behaviour. Five stability cases called provideZonelessChangeDetection (19 has only
+     provideExperimentalZonelessChangeDetection, the substitution anticipated above). One
+     effect case called TestBed.tick() (19 has TestBed.flushEffects()). With both
+     substituted in the specs only: 106 / 106.
+   - Discrimination holds at every version. Three wrong implementations, each run at 19, 20,
+     21 and 22, failed the identical cases by name at all four:
+     - no PendingTasks: 5 (the three stability arms that need a task, and both criterion-7
+       retention arms);
+     - the walk before the old run is retired: 4 (cases a–c added during step 3, and the
+       supersede depth case);
+     - retire() outside untracked: 4 (both criterion-8 arms, and cases a and c).
+   - No NG0 error code was logged in any passing run.
+
+   Conclusion: the pull shape behaves the same at Angular 19–21 as at 22; the >=19.0.0 peer
+   floor stands.
 2. **`reloading` / stale-while-revalidate.** § 3.4 decided against it for the first release. *Reopens
    on* a consumer who needs the previous value kept across a run — `linkedSignal` over the value is the
    composition until then.
