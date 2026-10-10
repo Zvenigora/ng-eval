@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## [0.5.0] - 2026-10-09
+## [0.5.0] - 2026-10-10
 
 **An async signal, `createEvalSignalAsync` — Phase 5
 ([plan](../../docs/signals/phase-5-plan.md)).** A minor, additions only: four exports and one

@@ -12,11 +12,11 @@ independently and **all three published to npm** under the `@zvenigora` scope, e
   parser/evaluator built on `acorn` + `acorn-walk`, exposed as Angular DI services.
   Published at **0.11.0**. This is where nearly all the code is.
 - **`@zvenigora/ng-eval-signals`** (`modules/eval-signals`) — expression → Angular
-  `Signal`, built on the first library's published surface. Published at **0.4.0**;
+  `Signal`, built on the first library's published surface. Published at **0.5.0**;
   Phase 3 shipped 0.1.0.
 - **`@zvenigora/ng-eval-forms`** (`modules/eval-forms`) — Angular form field properties
   driven by expressions that arrive as strings at runtime, built on the other two.
-  Published at **0.4.0**; Phase 6 shipped 0.2.0. It ships **three entry points from one
+  Published at **0.4.1**; Phase 6 shipped 0.2.0. It ships **three entry points from one
   package**: the shared core at `@zvenigora/ng-eval-forms`, the Reactive Forms adapter at
   `@zvenigora/ng-eval-forms/reactive`, and the Signal Forms adapter at
   `@zvenigora/ng-eval-forms/signals`, which requires Angular 22.
@@ -25,10 +25,11 @@ independently and **all three published to npm** under the `@zvenigora` scope, e
 without a breaking release, in any of the three; "nothing has shipped yet" no longer
 applies to any of them.
 
-Phases 1, 2, 3, 4 and 6 are complete and their plan documents are design records rather than
-active work. Phase 2 shipped as `eval-core` 0.4.0, and its plan is
-`docs/statements/phase-2-plan.md`. What `ROADMAP.md` has left is async signals (Phase 5),
-and Phases 7 and 8, which it reserves without specifying them.
+Phases 1, 2, 3, 4, 5 and 6 are complete and their plan documents are design records rather
+than active work. Phase 2 shipped as `eval-core` 0.4.0, and its plan is
+`docs/statements/phase-2-plan.md`. Phase 5, the async signal, shipped as `eval-signals` 0.5.0,
+and its plan is `docs/signals/phase-5-plan.md`. What `ROADMAP.md` has left is Phases 7 and 8,
+which it reserves without specifying them.
 
 **Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left
 unfixed, decisions logged rather than made, gaps in what the suite can catch — is in
@@ -92,8 +93,9 @@ build before believing a type is sound.
   `docs/trace-surface/`. **A one-commit item gets no plan document: its exit criteria live in
   the prompt, and its backlog entry records what verified it.** **Neither does a batch of
   independent one-commit items**, however many commits it runs to: each item's exit criteria
-  live in the prompt, as the A3/B4/D6/F6, D9/F13 and F2 batches did. `.claude/skills/step/SKILL.md`
-  targets the active plan, `docs/signals/phase-5-plan.md`; it is retargeted with each new one.
+  live in the prompt, as the A3/B4/D6/F6, D9/F13 and F2 batches did. There is no active plan.
+  `.claude/skills/step/SKILL.md` still targets the Phase 5 plan, `docs/signals/phase-5-plan.md`,
+  until the next plan retargets it; it is retargeted with each new one.
 - **One retrospect per track; no per-step summaries.**
 - **Anything left for later work goes in `docs/backlog.md`; a commit body never carries it
   forward.**
@@ -108,6 +110,8 @@ build before believing a type is sound.
     `eval-forms` is entitled to rely on, and § 3.2.2 the construct-once finding.
   - `docs/forms/phase-4-plan.md` — Phase 4; its § 9 designs Phase 6 and § 9.1 states
     Phase 6's one correctness precondition.
+  - `docs/signals/phase-5-plan.md` — Phase 5, the async signal; its § 3.4 is the value and
+    status contract, and § 9 the downstream one.
 
   Their open questions are settled unless the document says otherwise. Two of them number
   a § 9 and a § 9.1 on unrelated subjects, so name the document when citing one.

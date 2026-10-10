@@ -53,12 +53,11 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-[Phase 5 plan](signals/phase-5-plan.md) at Revision 5; all four steps done, and its retrospect is
-[`signals/phase-5-summary.md`](signals/phase-5-summary.md). The release it prepared —
-`eval-signals` 0.5.0 and `eval-forms` 0.4.1 — is next: publish, tag, and record the Publication
-status and Register history rows ([`CONTRIBUTING.md`](../CONTRIBUTING.md), Releasing, steps 3–6).
-The track before it, "Track 3" ([`docs/gates/plan.md`](gates/plan.md)), is closed; its
-retrospect is [`docs/gates/summary.md`](gates/summary.md).
+Nothing is in flight. Phase 5 is complete: its [plan](signals/phase-5-plan.md), at Revision 5, and
+its retrospect, [`signals/phase-5-summary.md`](signals/phase-5-summary.md), are design records, and
+it shipped as `eval-signals` 0.5.0 and `eval-forms` 0.4.1, tagged at 577c4f0. The track before it,
+"Track 3" ([`docs/gates/plan.md`](gates/plan.md)), is closed; its retrospect is
+[`docs/gates/summary.md`](gates/summary.md).
 
 ### Status vocabulary
 
@@ -78,6 +77,8 @@ release, not a free change. Each package's release notes are in its own
 
 | Package | Version | Notes |
 | ------- | ------- | ----- |
+| `@zvenigora/ng-eval-signals` | 0.5.0 | Phase 5 ([plan](signals/phase-5-plan.md)): `createEvalSignalAsync`, `EvalSignalAsync`, `EvalSignalAsyncOptions`, `EvalSignalStatus` and `EvalSignalService.createAsync`. A minor, additions only: the `.d.ts` differs from 0.4.0 by those and their documentation comments. Peer ranges unchanged. Tested at Angular 19.2, 20.3, 21.2 and 22.2 (the plan's § 8 q1). [C6](backlog-retired.md#c6) retired by its README, which gives the `resource` composition for Angular 19 too. Tagged `eval-signals@0.5.0` at 577c4f0, published 2026-10-10 (npm: 02:07 UTC) |
+| `@zvenigora/ng-eval-forms` | 0.4.1 | Peer range on `eval-signals` widened to `>=0.4.0 <0.6.0`, which admits 0.5.0; no code changes. A patch: all three `.d.ts` files byte-identical to 0.4.0's. The README's "Anything asynchronous" bullet names `eval-signals`' `createEvalSignalAsync`, and its quoted peer range follows the manifest. Tagged `eval-forms@0.4.1` at 577c4f0, published 2026-10-10 (npm: 02:15 UTC) |
 | `@zvenigora/ng-eval-core` | 0.11.0 | [B6](backlog-retired.md#b6) fix, advisory [GHSA-jh43-xc7j-93c2](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-jh43-xc7j-93c2), as in 0.10.1: an identifier, `this.k` or a member of an `EvalScope` in the context refuses a name on the prototype-pollution blocklist before any lookup. [C4](backlog-retired.md#c4)/[C5](backlog-retired.md#c5): a context that implements `checkMemberWrite` is also asked before a built-in method writes into what it is handed, called directly or through `call`, `apply` or `bind`. [B5](backlog-retired.md#b5): seventeen unused exports removed. A breaking minor: the `.d.ts` loses the seventeen, gains `EvalMemberWrite.method`, and otherwise differs from 0.10.1 in documentation comments only. Peer ranges unchanged. Tagged `eval-core@0.11.0` at 776885a, published 2026-10-07 (npm: 00:59 UTC) |
 | `@zvenigora/ng-eval-signals` | 0.4.0 | [C4](backlog-retired.md#c4) fix: a built-in method that would write into anything the expression did not create throws `SignalContextWriteError` with `kind` `'method'`, called directly or through `call`, `apply` or `bind` ([C5](backlog-retired.md#c5)); what it created stays writable. A breaking minor: `kind` and the constructor's `kind` parameter widen to `'key' \| 'member' \| 'method'`, and the `.d.ts` otherwise differs from 0.3.0 in documentation comments only. Peer range `>=0.11.0 <0.12.0`, which brings `eval-core`'s [B6](backlog-retired.md#b6) fix. Tagged `eval-signals@0.4.0` at 776885a, published 2026-10-07 (npm: 01:47 UTC) |
 | `@zvenigora/ng-eval-forms` | 0.4.0 | [C4](backlog-retired.md#c4) by consequence: a rule's call of a built-in method that would write into the form's data throws `SignalContextWriteError` with `kind` `'method'`, in both adapters, called directly or through `call`, `apply` or `bind` ([C5](backlog-retired.md#c5)). A breaking minor with no code change: `/reactive`'s and `/signals`' `.d.ts` are byte-identical to 0.3.1's, and the core entry point's differs in `guardIdentifiers`'s documentation comment only. Peer ranges: `eval-core` `>=0.11.0 <0.12.0`, which brings its [B6](backlog-retired.md#b6) fix to rule evaluation, and `eval-signals` `>=0.4.0 <0.5.0`. Tagged `eval-forms@0.4.0` at 776885a, published 2026-10-07 (npm: 01:58 UTC) |
@@ -116,7 +117,7 @@ the two commits only that spec and two backlog files changed, so neither package
 0c3299e, so it carries B6's fix and none of 0.11.0's other changes. Master has the fix as 1a6ebdc,
 and 776885a copied the [0.10.1] CHANGELOG section from d77fa16.
 
-**Every published version now carries a tag** — the twenty-eight above (three at 776885a, one at d77fa16, one at 3d56994, three at 0c3299e, three at eb403c0, three at c56f987, three at 724d831, two at 587ebf1, three at f26f987,
+**Every published version now carries a tag** — the thirty above (two at 577c4f0, three at 776885a, one at d77fa16, one at 3d56994, three at 0c3299e, three at eb403c0, three at c56f987, three at 724d831, two at 587ebf1, three at f26f987,
 three at `016a313`, three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions,
 all on the remote.
 
@@ -137,7 +138,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.10.0, `eval-signals` 0.3.0, `eval-forms` 0.3.0 | `0c3299e` | 2026-10-04 | 20 | 2: A23, C4 | 6: A23, C1, C2, D1, D2, F11 | 16 |
 | `eval-forms` 0.3.1 | `3d56994` | 2026-10-04 | 16 | 1: B5 | 5: D3, D5, D11, F8, F10 | 12 |
 | `eval-core` 0.10.1 and 0.11.0, `eval-signals` 0.4.0, `eval-forms` 0.4.0 | `776885a` | 2026-10-07 | 12 | 2: B6, C5 | 5: F7, B5, C4, B6, C5 | 9 |
-| **Since the register opened** | | | **42** | **25** | **58** | **9** |
+| `eval-signals` 0.5.0, `eval-forms` 0.4.1 | `577c4f0` | 2026-10-10 | 9 | 9: A24–A28, C6, C7, F17, F18 | 1: C6 | 17 |
+| **Since the register opened** | | | **42** | **34** | **59** | **17** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,

@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## [0.4.1] - 2026-10-09
+## [0.4.1] - 2026-10-10
 
 Released because `eval-signals` 0.5.0 falls outside 0.4.0's declared peer range. No code in this
 package changes.

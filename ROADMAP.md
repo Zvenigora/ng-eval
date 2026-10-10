@@ -260,7 +260,7 @@ Reactive Forms, a worked example, tests, README.
 
 ### ✅ Phase 5 — Async expression signals (`eval-signals`) — **done**
 
-Ships in `@zvenigora/ng-eval-signals` **0.5.0**, with `@zvenigora/ng-eval-forms` **0.4.1** for
+Shipped in `@zvenigora/ng-eval-signals` **0.5.0**, with `@zvenigora/ng-eval-forms` **0.4.1** for
 its peer range. Design, findings and the step record are in
 [`docs/signals/phase-5-plan.md`](docs/signals/phase-5-plan.md), and the retrospect in
 [`docs/signals/phase-5-summary.md`](docs/signals/phase-5-summary.md); consumer documentation is
@@ -466,7 +466,7 @@ Entries are cited by stable ID — `BL-A8`, not a line number.
    behind them rather than adding to a queue in front of them.
 6. ~~Phase 2 (statements)~~ — **done**, shipped in `eval-core` 0.4.0. Opened with the step 0
    above ([BL-A9](docs/backlog-retired.md#a9), [BL-B2](docs/backlog-retired.md#b2)), both now fixed.
-7. ~~Phase 5 (async signals)~~ — **done**, ships in `eval-signals` 0.5.0, with `eval-forms`
+7. ~~Phase 5 (async signals)~~ — **done**, shipped in `eval-signals` 0.5.0, with `eval-forms`
    0.4.1 for its peer range. Ordered after Phase 2 because the sync primitive already composed
    with `resource` for the promise case.
 8. Phase 7 / Phase 8 — reserved above, neither costed nor scheduled. With Phase 5 done, they are
