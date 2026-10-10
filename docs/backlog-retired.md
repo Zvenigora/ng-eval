@@ -2445,6 +2445,53 @@ it (its header, `:68-72`), and the workspace runs 22, so nothing here could have
 *Verified*: read 2026-10-07 from `ResourceLoaderParams` and `BaseResourceOptions` in the published
 `.d.ts` of `@angular/core` 19.2.25 and 20.0.0, unpacked outside the repository.
 
+<a id="c7"></a>
+## C7 — Phase 3's scope-containment case discriminates only through its depth assertion
+
+**Package** signals · **Kind** test gap · **Status** **Retired — fixed 2026-10-10**, test only;
+ships in no package. Was Open
+
+*Fixed* 2026-10-10. The case's `strand` pushes `{ x: 'stranded' }` twice, as Phase 5's criterion-10
+fixture does. `program.ts`'s `finally` pops the second, so the first survives the walk and shadows
+`x`. The comment that said the end-to-end read gives `'stranded'` without the guard is now true, and
+it says why: one push leaves only the `Program`'s empty scope behind. The depth expectation stays
+1. The guard restores to the caller's mark, the same however many scopes a recompute strands;
+without the guard the depth is 3 (P1 below).
+
+*Verified*: four probes on the working tree, all reverted, `eval-signal.ts` matching HEAD afterwards.
+P2 is the one this entry is about: the guard loop in `eval-signal.ts` disabled and the case's two
+direct assertions removed, **1 failed of 421**, this case, at the end-to-end
+`expect(plain()).toEqual('from source')`, received `"stranded"`. The same with the single push put
+back: 421 passed, which is this entry's measurement reproduced. P1, the guard disabled with the
+assertions present: 1 failed, this case, at `expect(context.scopes.length).toEqual(1)`, received 3.
+P3, the guard popping to the bottom of the stack rather than to the mark: 1 failed, this case, the
+same assertion, received 0. No other case went red in any probe. With all of it reverted, the suite
+is green at 421, the count it had before.
+
+**The entry as it stood:**
+
+`eval-signal.memory.spec.ts`'s "should contain a scope stranded through the published push to the
+recompute that made it" strands a scope through a source function that pushes one and does not pop
+it, then asserts two things: the context's scope depth after the recompute, and, end to end, that a
+later recompute of `x` reads the source rather than `'stranded'`. Only the first discriminates.
+Measured by the reviewer: with the guard loop in `eval-signal.ts` disabled and the depth assertions
+removed, the end-to-end read still passes.
+
+The mechanism is the one [`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 3.5 records for its
+own criterion 10. The walk's own `Program` scope is on the stack when the source function runs, and
+`program.ts`'s `finally` pops whatever is on top — so it pops the single stranded scope, and what is
+left behind is the `Program`'s empty scope, which shadows nothing. The case's comment, "without the
+guard this reads `'stranded'`" (`:321`), is false.
+
+**Fix**: push twice, as Phase 5's criterion 10 fixture does (`eval-signal-async.spec.ts`, "the
+scope-depth restore"), and correct the comment. Test only; it ships in no package.
+
+*Recorded*: this entry. Opened 2026-10-08 by Phase 5 step 2.
+*Verified*: measured 2026-10-08 by Phase 5 step 2's reviewer — the guard loop disabled and the depth
+assertions removed, the case still green. The mechanism measured the same day by that step: with one
+push, its own criterion 10 case stayed green against a restore moved to settlement, and a probe
+showed the depth back at 1, the `Program`'s scope, when the run returned.
+
 ---
 
 # D. `eval-forms`

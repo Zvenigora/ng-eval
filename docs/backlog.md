@@ -199,7 +199,8 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [C4](backlog-retired.md#c4) | A mutating method call escapes the member-write policy | signals | accepted, then fix | **Retired — fixed 2026-10-04**; released 2026-10-07 in `eval-core` 0.11.0, `eval-signals` 0.4.0 and `eval-forms` 0.4.0, tagged 776885a: `eval-core` asks the policy before a built-in method that writes into what it is handed, matched by identity; `eval-signals` refuses one with `kind` `'method'`; `eval-forms` by consequence |
 | [C5](backlog-retired.md#c5) | A built-in mutator reached through `call`, `apply` or `bind` escapes C4's check | signals | fix | **Retired — fixed 2026-10-05**; released 2026-10-07 in `eval-core` 0.11.0, with `eval-signals` 0.4.0 and `eval-forms` 0.4.0 by consequence, tagged 776885a: a method reached through `call` or `apply` is asked about as a direct call, with the `this` they pass, and `bind` is asked when it binds |
 | [C6](backlog-retired.md#c6) | The README's `resource` composition does not compile at Angular 19, inside the peer range | signals | docs | **Retired — fixed 2026-10-09**, docs and tests only, by the Phase 5 plan's step 4; ships in the `eval-signals` 0.5.0 README: both spellings, the `params` one executed by `readme-examples.spec.ts` |
-| [C7](#c7) | Phase 3's scope-containment case discriminates only through its depth assertion — its end-to-end read passes with the guard disabled | signals | test gap | Open — the case still catches a missing guard through its depth assertion; opened 2026-10-08 by Phase 5 step 2 || [D1](backlog-retired.md#d1) | The throwing-subscriber premise is false in both halves | forms | fix + decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e: a late prototype-named control is not mirrored and is reported once, out of band, after the rest of the emission |
+| [C7](backlog-retired.md#c7) | Phase 3's scope-containment case discriminates only through its depth assertion — its end-to-end read passes with the guard disabled | signals | test gap | **Retired — fixed 2026-10-10**, test only: the fixture pushes twice, so the end-to-end read goes red with the guard disabled |
+| [D1](backlog-retired.md#d1) | The throwing-subscriber premise is false in both halves | forms | fix + decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e: a late prototype-named control is not mirrored and is reported once, out of band, after the rest of the emission |
 | [D2](backlog-retired.md#d2) | Should `/reactive` reject prototype-shadowed identifiers too? | forms | decision, breaking | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e: yes, with `/signals`' own guard, shared from the core; no form that worked could have named one |
 | [D3](backlog-retired.md#d3) | Per-registration `caseInsensitive` reaches one of three levers | forms | decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.1, tagged 3d56994. The memo is keyed on the key and `caseInsensitive` together, and each rule context is built from its registration's options, so a registration's value reaches all three levers |
 | [D4](backlog-retired.md#d4) | A top-level model key holding a signal is returned un-called | forms | fix or doc | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-forms` 0.2.4, tagged 587ebf1. `/signals` unwraps it as upstream does, and the README bullet is corrected |
@@ -723,36 +724,8 @@ is the same at cc0761e and 9d5715d.
 
 # C. `eval-signals`
 
-[C1](backlog-retired.md#c1)–[C6](backlog-retired.md#c6) are retired. None of the six entries was
+[C1](backlog-retired.md#c1)–[C7](backlog-retired.md#c7) are retired. None of the seven entries was
 ever recorded in `ROADMAP.md`.
-
-<a id="c7"></a>
-## C7 — Phase 3's scope-containment case discriminates only through its depth assertion
-
-**Package** signals · **Kind** test gap · **Status** Open — the case still catches a missing guard,
-through its depth assertion. Opened 2026-10-08 by Phase 5 step 2
-
-`eval-signal.memory.spec.ts`'s "should contain a scope stranded through the published push to the
-recompute that made it" strands a scope through a source function that pushes one and does not pop
-it, then asserts two things: the context's scope depth after the recompute, and, end to end, that a
-later recompute of `x` reads the source rather than `'stranded'`. Only the first discriminates.
-Measured by the reviewer: with the guard loop in `eval-signal.ts` disabled and the depth assertions
-removed, the end-to-end read still passes.
-
-The mechanism is the one [`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 3.5 records for its
-own criterion 10. The walk's own `Program` scope is on the stack when the source function runs, and
-`program.ts`'s `finally` pops whatever is on top — so it pops the single stranded scope, and what is
-left behind is the `Program`'s empty scope, which shadows nothing. The case's comment, "without the
-guard this reads `'stranded'`" (`:321`), is false.
-
-**Fix**: push twice, as Phase 5's criterion 10 fixture does (`eval-signal-async.spec.ts`, "the
-scope-depth restore"), and correct the comment. Test only; it ships in no package.
-
-*Recorded*: this entry.
-*Verified*: measured 2026-10-08 by Phase 5 step 2's reviewer — the guard loop disabled and the depth
-assertions removed, the case still green. The mechanism measured the same day by that step: with one
-push, its own criterion 10 case stayed green against a restore moved to settlement, and a probe
-showed the depth back at 1, the `Program`'s scope, when the run returned.
 
 ---
 

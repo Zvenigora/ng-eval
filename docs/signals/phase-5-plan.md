@@ -888,7 +888,7 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
   - The gate is green, and `git diff --name-only` lists only the files above and this document.
 - **Category**: additive to a published package, unreleased until step 4.
 - **Outcome** — done 2026-10-08, `cce76ae`, under the four plan corrections Revision 3 records.
-  It opened [BL-C7](../backlog.md#c7), [BL-F17](../backlog.md#f17) and
+  It opened [BL-C7](../backlog-retired.md#c7), [BL-F17](../backlog.md#f17) and
   [BL-F18](../backlog.md#f18), recorded in `f6007b6`.
 
 ### Step 3 — Cancellation and stability

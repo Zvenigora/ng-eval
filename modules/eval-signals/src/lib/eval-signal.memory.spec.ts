@@ -293,7 +293,18 @@ describe('createEvalSignal - lifetime and cleanup', () => {
         x: signal('from source'),
         // Referenced before its declaration on purpose: this runs only when a
         // recompute calls it, long after the line below.
+        //
+        // Two pushes, not one, as in Phase 5's criterion 10
+        // (`eval-signal-async.spec.ts`, "the scope-depth restore"). The walk's
+        // own `Program` scope is on the stack when this runs, and `program.ts`'s
+        // `finally` pops whatever is on top - so a single push is popped in the
+        // `Program`'s place, and what is left stranded is the `Program`'s empty
+        // scope, which shadows nothing. With one push the end-to-end read below
+        // stayed green with the guard disabled
+        // ([C7](../../../../docs/backlog-retired.md#c7)). With two, that `finally`
+        // pops the second, and the first survives the walk.
         strand: () => {
+          context.push({ x: 'stranded' });
           context.push({ x: 'stranded' });
 
           return 'ok';
@@ -311,16 +322,18 @@ describe('createEvalSignal - lifetime and cleanup', () => {
       expect(plain()).toEqual('from source');
       expect(stranding()).toEqual('ok');
 
-      // The direct assertion: the recompute stranded `{ x: 'stranded' }` on a
-      // context that outlives it, and the guard put the depth back - to the
-      // caller's mark, not to the bottom.
+      // The direct assertion: the recompute stranded two scopes on a context
+      // that outlives it - the `Program`'s empty one and the first
+      // `{ x: 'stranded' }` - and the guard put the depth back, to the caller's
+      // mark, not to the bottom. The mark is the same 1 however many scopes the
+      // recompute strands; without the guard the depth here is 3.
       expect(context.scopes.length).toEqual(1);
       expect(context.get('marker')).toEqual('the caller\'s own scope');
 
       // The end-to-end one (S 6.1). Scopes are step 1 of `EvalContext.get`'s
-      // resolution order, so without the guard this reads `'stranded'` - for
-      // this recompute and every one after it, on a context that lives as long
-      // as the signal does.
+      // resolution order, so without the guard this reads `'stranded'`, from
+      // the push that survived - for this recompute and every one after it, on
+      // a context that lives as long as the signal does.
       plain.invalidate();
 
       expect(plain()).toEqual('from source');
