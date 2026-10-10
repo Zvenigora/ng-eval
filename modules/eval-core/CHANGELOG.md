@@ -12,6 +12,18 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+---
+
+## [0.11.1] - 2026-10-10
+
+**Two cache fixes: `CompilerService` no longer returns one AST's compiled function for another, and
+under `caseInsensitive` a member read no longer resolves another object's spelling.** A patch. Both
+caches came in with 0.2.1, so every version since is affected. No exported symbol changes shape: the
+`.d.ts` differs from 0.11.0 in documentation comments only — `compile`'s and `compileAsync`'s, which
+now say an AST is compiled on every call, and the four [A28](../../docs/backlog-retired.md#a28)
+corrected. `eval-signals` 0.4.0–0.5.0 and `eval-forms` 0.4.x admit it: their peer range is
+`>=0.11.0 <0.12.0`.
+
 ### Changed
 - `EvalReadEvent.scoped`'s JSDoc no longer says the flag marks a scope pushed during the
   evaluation: it is set when any scope on the context's scope stack binds the name, one the caller
