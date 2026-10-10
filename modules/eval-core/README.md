@@ -205,7 +205,9 @@ state.hooks.onRead((event) => {
   event.kind;   // 'identifier' | 'member'
   event.key;    // the resolved key
   event.path;   // 'a.b' when statically reconstructible, else undefined
-  event.scoped; // true for arrow-function parameters - not dependencies
+  event.scoped; // true when a scope on the context's stack binds the name - an
+                // arrow parameter, a let or const, or a scope pushed with
+                // EvalContext.push - so not a dependency
 });
 ```
 

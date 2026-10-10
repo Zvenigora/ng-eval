@@ -129,13 +129,14 @@ const README_JAVASCRIPT_BLOCKS = 16;
  *    the block tests `hookErrors.some(…)`, which is vacuously `false` unless a
  *    hook returned a promise.
  *
- * 7. **An arrow-parameter read** in the `onRead` case. The block prints
- *    `event.scoped; // true for arrow-function parameters - not dependencies`,
- *    and its own program contains no arrow function, so the only half reachable
- *    from it is the other one — where `scoped` is `undefined`, not `false`. The
- *    case asserts that as printed *and* evaluates `list.map(x => x + 1)` to
- *    assert the `true` the comment is actually about. Without it the sentence's
- *    content would be ungated.
+ * 7. **An arrow-parameter read** in the `onRead` case. The block's comment on
+ *    `event.scoped` says it is true when a scope on the context's stack binds
+ *    the name - an arrow parameter, a let or const, or a scope pushed with
+ *    `EvalContext.push` - and its own program binds none, so the only half
+ *    reachable from it is the other one — where `scoped` is `undefined`, not
+ *    `false`. The case asserts that as printed *and* evaluates
+ *    `list.map(x => x + 1)` to assert the `true` for an arrow parameter, the
+ *    first of the three. The other two are not asserted here.
  *
  * 8. **Two type narrowings.** The README prints `ast.type` and
  *    `expressions.length`; both accessors return `… | undefined` under this

@@ -526,12 +526,15 @@ describe('read hooks', () => {
   });
 
   /**
-   * `scoped` separates an arrow-function parameter binding from a real context
-   * read. Its definition is **lifetime, not type**: the scopes stack that
-   * `arrow-function-expression.ts` pushes and pops around a call, *not*
-   * "came from an EvalScope". The priorScopes case below is the one that stops
-   * this being reimplemented as `instanceof EvalScope` by whoever touches it
-   * next - doing so would delete the very dependencies Phase 3 exists to find.
+   * `scoped` separates a scope binding from a real context read: a name bound
+   * by any scope on the context's scope stack when it is read, whoever pushed
+   * it - an arrow call's parameters, a `let` or `const` in the scope a
+   * program, block or `for` loop pushes, or a scope the caller pushed with
+   * `EvalContext.push`. Its definition is **lifetime, not type**: the scope
+   * stack, *not* "came from an EvalScope". The priorScopes case below is the
+   * one that stops this being reimplemented as `instanceof EvalScope` by
+   * whoever touches it next - doing so would delete the very dependencies
+   * Phase 3 exists to find.
    */
   describe('the scoped flag', () => {
 

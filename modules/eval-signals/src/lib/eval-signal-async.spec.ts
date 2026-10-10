@@ -635,7 +635,8 @@ describe('createEvalSignalAsync', () => {
      * whatever is on top - so a single pushed scope is popped in its place,
      * and what is left stranded is the Program's empty scope, which shadows
      * nothing. With one push this case passed against a restore moved to
-     * settlement. The second push is the one that survives the walk.
+     * settlement. With two, that `finally` pops the second, and the first
+     * survives the walk.
      */
     const stranding = () => {
       const { loads, load } = loader();
