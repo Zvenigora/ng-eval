@@ -2350,6 +2350,43 @@ Documented meanwhile in the `eval-signals` README's "Writes are not supported" a
 
 *Recorded*: C4's fix, 2026-10-04, from a probe run after it.
 
+<a id="c6"></a>
+## C6 — The README's `resource` composition does not compile at Angular 19, inside the peer range
+
+**Package** signals · **Kind** docs · **Status** **Retired — fixed 2026-10-09**, docs and tests
+only, by the Phase 5 plan's step 4; ships in the `eval-signals` 0.5.0 README
+
+*Fixed* 2026-10-09. The README's "Async expressions" section, rewritten by
+[Phase 5](signals/phase-5-plan.md)'s step 4, gives the composition in both spellings under "The
+sync path still carries the promise": `params` from Angular 20, and `request` at 19, the loader's
+parameter named to match in each.
+
+*Verified*: `readme-examples.spec.ts` now executes the `params` block — the signal carries the
+promise, the resource loads it, and it reloads when `id` changes. With the read moved into
+`loader`, that case fails on the reload and no other case does, so it carries the prose's "put the
+read in `params`". The `request` block cannot compile at the workspace's Angular 22 and is not
+executed; the spec's coverage list says so, and that the spelling is read from 19.2.25's published
+typings — this entry's evidence below — rather than from the plan's § 8 q1 matrix, which ran the
+async signal's own specs and not this block. **The old exclusion is how this entry went unseen**:
+the spec left the whole composition out as "Angular's API rather than this library's", so neither
+spelling ever ran.
+
+**The entry as it stood:**
+
+The "Async expressions" section shows `resource({ params: () => user() as Promise<User>, loader:
+({ params }) => params })` (`modules/eval-signals/README.md:284-290`). At `@angular/core` 19.x the
+option and the loader's parameter are named `request`; `params` arrives in 20.0.0. The package's peer
+range is `@angular/core >=19.0.0`, and the README presents the composition as working "at your own
+Angular floor" — at 19 it does not compile. `readme-examples.spec.ts` deliberately does not execute
+it (its header, `:68-72`), and the workspace runs 22, so nothing here could have caught it.
+
+**Fix**: give both spellings. Phase 5's step 4 rewrites the section and does
+([`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 4).
+
+*Recorded*: this entry; that plan's § 1.2 finding 6. Opened 2026-10-07 by the Phase 5 plan.
+*Verified*: read 2026-10-07 from `ResourceLoaderParams` and `BaseResourceOptions` in the published
+`.d.ts` of `@angular/core` 19.2.25 and 20.0.0, unpacked outside the repository.
+
 ---
 
 # D. `eval-forms`

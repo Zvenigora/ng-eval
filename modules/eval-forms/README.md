@@ -68,7 +68,7 @@ set of ranges covering both adapters:
   "rxjs": "^7.8.0",
   "acorn-walk": "^8.3.0",
   "@zvenigora/ng-eval-core": ">=0.11.0 <0.12.0",
-  "@zvenigora/ng-eval-signals": ">=0.4.0 <0.5.0"
+  "@zvenigora/ng-eval-signals": ">=0.4.0 <0.6.0"
 }
 ```
 
@@ -745,9 +745,11 @@ Deferred deliberately, each additive when it arrives:
 - **Form state keys**, `FormArray` and nested `FormGroup`, and field-local keys — see
   [What an expression can name](#what-an-expression-can-name).
 - **Anything asynchronous.** Every property is derived synchronously from control values,
-  which is all the mirror supplies; there is no `await` inside an expression and no async
-  variant of the binding. The upstream question is
-  [`@zvenigora/ng-eval-signals`](https://github.com/zvenigora/ng-eval/tree/master/modules/eval-signals#async-expressions)'.
+  which is all the mirror supplies. `@zvenigora/ng-eval-signals` has had an async signal since
+  0.5.0, `createEvalSignalAsync`
+  ([Async expressions](https://github.com/zvenigora/ng-eval/tree/master/modules/eval-signals#async-expressions)),
+  but this package has no async rule or binding at either entry point, and no `await` inside an
+  expression.
 
 ## Development
 

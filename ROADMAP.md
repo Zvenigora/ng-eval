@@ -258,9 +258,31 @@ Key design questions:
 Exit criteria: schema shape for a dynamic field, `visible`/`text` support wired to
 Reactive Forms, a worked example, tests, README.
 
-### Phase 5 — Async expression signals (`eval-signals`)
+### ✅ Phase 5 — Async expression signals (`eval-signals`) — **done**
 
-**Planned** in [`docs/signals/phase-5-plan.md`](docs/signals/phase-5-plan.md), which settles the questions below on measured evidence and corrects two of them; no step has started.
+Ships in `@zvenigora/ng-eval-signals` **0.5.0**, with `@zvenigora/ng-eval-forms` **0.4.1** for
+its peer range. Design, findings and the step record are in
+[`docs/signals/phase-5-plan.md`](docs/signals/phase-5-plan.md), and the retrospect in
+[`docs/signals/phase-5-summary.md`](docs/signals/phase-5-summary.md); consumer documentation is
+the package README's [Async expressions](modules/eval-signals/README.md#async-expressions).
+
+What landed: `createEvalSignalAsync(expression, source, options?)` and
+`EvalSignalService.createAsync`, returning an `EvalSignalAsync` — an `EvalSignal` plus a `status`
+signal. It is built from two `computed`s and a `signal` rather than `resource()` or an `effect`,
+so the `>=19` peer floor holds, and per-key tracking survives because the walk stays inside a
+`computed` and ends before the promise exists. It adopts `resource`'s status words minus
+`reloading`, routes rejections through `onError`, hands each run an `AbortSignal` under a key the
+consumer names (`abortSignalKey`), and holds the application unstable through `PendingTasks`.
+Nothing was added to `eval-core` — one test-only step pinned that the walk ends before the
+promise is returned — or to `eval-forms`.
+
+**`await` stays out of expressions** (plan § 3.1): a suspending walk would still lose Angular's
+tracking for every read after its first `await`, so operand-position use is written as two
+signals. **The framing below is wrong twice about `await`**, and the plan's § 1.2 finding 2
+corrects it: making `await` work is evaluator semantics, not a parser option, and acorn gates
+top-level `await` on `allowAwaitOutsideFunction` at any `ecmaVersion`, not on the version.
+
+The original framing follows, unchanged.
 
 Deferred out of Phase 3 by its step 5, with the reasoning and the evidence in
 [`docs/signals/phase-3-plan.md`](docs/signals/phase-3-plan.md) § 3.7. `eval-core` has had an
@@ -444,14 +466,11 @@ Entries are cited by stable ID — `BL-A8`, not a line number.
    behind them rather than adding to a queue in front of them.
 6. ~~Phase 2 (statements)~~ — **done**, shipped in `eval-core` 0.4.0. Opened with the step 0
    above ([BL-A9](docs/backlog-retired.md#a9), [BL-B2](docs/backlog-retired.md#b2)), both now fixed.
-7. Phase 5 (async signals) — depends on Phase 3, and nothing depends on it. Deferred
-   out of Phase 3 deliberately rather than left undone; it was ordered after Phase 2 because
-   the sync primitive already composes with `resource` for the promise case, and because
-   [BL-A9](docs/backlog-retired.md#a9) — Phase 2's step 0 — retires one of its open questions
-   outright. **A9 is now fixed, so that question is answered before Phase 5 opens.**
-   [BL-F12](docs/backlog-retired.md#f12) is the nearer piece of `eval-signals` work: its peer range
-   excludes `eval-core` 0.4.0, and Phase 5 releases that package anyway.
-8. Phase 7 / Phase 8 — reserved above, neither costed nor scheduled.
+7. ~~Phase 5 (async signals)~~ — **done**, ships in `eval-signals` 0.5.0, with `eval-forms`
+   0.4.1 for its peer range. Ordered after Phase 2 because the sync primitive already composed
+   with `resource` for the promise case.
+8. Phase 7 / Phase 8 — reserved above, neither costed nor scheduled. With Phase 5 done, they are
+   all this file has left; deferred work is in [`docs/backlog.md`](docs/backlog.md).
 
 The `eval-core` error-identity group is closed: [BL-A5](docs/backlog-retired.md#a5),
 [BL-A6](docs/backlog-retired.md#a6) and [BL-A7](docs/backlog-retired.md#a7) are fixed for 0.7.0,

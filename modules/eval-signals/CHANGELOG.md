@@ -10,6 +10,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.5.0] - 2026-10-09
+
+**An async signal, `createEvalSignalAsync` — Phase 5
+([plan](../../docs/signals/phase-5-plan.md)).** A minor, additions only: four exports and one
+service method. Nothing that shipped changes shape or behaviour — `createEvalSignal` still
+carries a promise as its value — and both peer ranges are unchanged. The `.d.ts` differs from
+0.4.0 by those additions and documentation comments.
+
+### Added
+- **`createEvalSignalAsync(expression, source, options?)`**, returning an `EvalSignalAsync`: a
+  `Signal` whose value is the latest run's result, resolved as `eval-core`'s `evaluateAsync`
+  resolves it — the value if it is a promise, and promises nested in arrays and plain objects.
+  The walk runs inside a `computed()` and ends before the promise exists, so its reads are
+  tracked per key as `createEvalSignal`'s are. A run starts at the first read after a change,
+  and until it settles the value reads `undefined`, even for an expression with no promise in
+  it. A superseded run's late settlement is discarded, and no rejection goes unhandled.
+- **`EvalSignalAsync<T>`**: `EvalSignal<T>` plus `status`, a `Signal<EvalSignalStatus>`.
+- **`EvalSignalStatus`**: `'idle' | 'loading' | 'resolved' | 'error'`, the words Angular's
+  `ResourceStatus` uses for those states, declared here because at Angular 19 that type is an
+  `enum`. There is no `'reloading'`: a new run, `invalidate()` included, discards the previous
+  value.
+- **`EvalSignalAsyncOptions`**: `EvalSignalOptions` plus `abortSignalKey`, the name under which
+  each run's own `AbortSignal` is visible to its walk, aborted when a newer run supersedes it and
+  on `destroy()`. A key no expression could read, or one a record source already has, is
+  refused at construction.
+- **`EvalSignalService.createAsync(expression, source, options?)`**, for callers outside an
+  injection context. Like `create`, it never tears a signal down.
+- **A rejection goes through `onError`**, with the contract it has on the sync path: rethrown on
+  every read, read as `undefined`, or mapped once per rejected run. `SignalContextWriteError`
+  bypasses it in every mode.
+- **Each run holds the application unstable through `PendingTasks`** until it settles, is
+  superseded or the signal is destroyed, so `ApplicationRef.whenStable()` and server rendering
+  wait for the value.
+- **Tested at Angular 19.2, 20.3, 21.2 and 22.2**, with the library unmodified (the plan's
+  § 8 q1).
+
+### Changed
+- **The README's "Async expressions" section is rewritten** for the new primitive. It no longer
+  offers an `async` arrow as the way to use `await`: the `await` there is a pass-through, right
+  only as the arrow's result ([A24](../../docs/backlog.md#a24)), and a second signal is the
+  tracked way to use a resolved value.
+
+### Fixed
+- **The README's `resource` composition is given for Angular 19 too** — `request` there,
+  `params` from 20. It named `params` only, which does not compile at 19, inside the `>=19`
+  peer range ([C6](../../docs/backlog-retired.md#c6)).
+
+---
+
 ## [0.4.0] - 2026-10-07
 
 **A built-in method that would write into what the expression was given is refused —

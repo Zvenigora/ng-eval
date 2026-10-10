@@ -10,6 +10,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.4.1] - 2026-10-09
+
+Released because `eval-signals` 0.5.0 falls outside 0.4.0's declared peer range. No code in this
+package changes.
+
+### Changed
+- **Peer range widened.** `@zvenigora/ng-eval-signals`: `>=0.4.0 <0.5.0` → `>=0.4.0 <0.6.0`. The
+  lower bound is unchanged, and so are the other peers. The `peerDependencies` block quoted in
+  the README shows the new range.
+
+---
+
 ## [0.4.0] - 2026-10-07
 
 **A rule's call of a built-in method that would write into the form's data is refused, by

@@ -53,8 +53,11 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-[Phase 5 plan](signals/phase-5-plan.md) at Revision 4; steps 1–3 done; § 8 q1 recorded (the
-matrix passes at Angular 19–21); step 4 next. The track before it, "Track 3" ([`docs/gates/plan.md`](gates/plan.md)), is closed; its
+[Phase 5 plan](signals/phase-5-plan.md) at Revision 5; all four steps done, and its retrospect is
+[`signals/phase-5-summary.md`](signals/phase-5-summary.md). The release it prepared —
+`eval-signals` 0.5.0 and `eval-forms` 0.4.1 — is next: publish, tag, and record the Publication
+status and Register history rows ([`CONTRIBUTING.md`](../CONTRIBUTING.md), Releasing, steps 3–6).
+The track before it, "Track 3" ([`docs/gates/plan.md`](gates/plan.md)), is closed; its
 retrospect is [`docs/gates/summary.md`](gates/summary.md).
 
 ### Status vocabulary
@@ -177,7 +180,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A8](backlog-retired.md#a8) | `EvalService._activeStates` grows unboundedly | core | fix | **Retired — fixed 2026-09-25, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987, in two steps: `simpleEval`'s states ([`docs/a8/plan.md`](a8/plan.md)), then the set deleted ([`docs/a8/step-2-plan.md`](a8/step-2-plan.md)). Withdraws the published destroy-time registry clear |
 | [A9](backlog-retired.md#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [A23](backlog-retired.md#a23) | `safeSetProperty` defines the property instead of assigning it — setters never run, non-configurable properties cannot be written | core | decision, then fix | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-core` 0.10.0, tagged 0c3299e: a member write assigns, after the same refusals, so setters run |
-| [A24](#a24) | An `await` is a pass-through — inside an `async` arrow it hands the walk a promise as an operand, and the arrow returns no promise | core | decision, then fix | Open — opened 2026-10-07 by the Phase 5 plan |
+| [A24](#a24) | An `await` is a pass-through — inside an `async` arrow it hands the walk a promise as an operand, and the arrow returns no promise | core | decision, then fix | Open — opened 2026-10-07 by the Phase 5 plan; the `eval-signals` README states it since 0.5.0 |
 | [A25](#a25) | `awaitVisitor`'s timeout race — an uncleared 30 s timer per `await`, an undocumented `__awaitTimeout` key, and the caller's error mutated | core | fix | Open — opened 2026-10-07 by the Phase 5 plan |
 | [A26](#a26) | The parse cache ignores parser options | core | fix | Open — opened 2026-10-07 by the Phase 5 plan |
 | [A27](#a27) | A nested `evaluate` writes the enclosing walk's `EvalResult` — and `start()` clears nothing, so a reused state shows the last run's outcome | core | decision | Open — recorded, not scheduled; opened 2026-10-08 by Phase 5 step 1 |
@@ -193,9 +196,8 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [C3](backlog-retired.md#c3) | Whether `eval-signals` should work around [A4](backlog-retired.md#a4) locally | signals | decision | **Retired — decided and fixed 2026-10-01**; released 2026-10-02 in `eval-signals` 0.2.0, tagged c56f987: under `caseInsensitive` a source key is named as the source spells it, in `getKey`, write errors and the first segment of `dependencies` |
 | [C4](backlog-retired.md#c4) | A mutating method call escapes the member-write policy | signals | accepted, then fix | **Retired — fixed 2026-10-04**; released 2026-10-07 in `eval-core` 0.11.0, `eval-signals` 0.4.0 and `eval-forms` 0.4.0, tagged 776885a: `eval-core` asks the policy before a built-in method that writes into what it is handed, matched by identity; `eval-signals` refuses one with `kind` `'method'`; `eval-forms` by consequence |
 | [C5](backlog-retired.md#c5) | A built-in mutator reached through `call`, `apply` or `bind` escapes C4's check | signals | fix | **Retired — fixed 2026-10-05**; released 2026-10-07 in `eval-core` 0.11.0, with `eval-signals` 0.4.0 and `eval-forms` 0.4.0 by consequence, tagged 776885a: a method reached through `call` or `apply` is asked about as a direct call, with the `this` they pass, and `bind` is asked when it binds |
-| [C6](#c6) | The README's `resource` composition does not compile at Angular 19, inside the peer range | signals | docs | Open — opened 2026-10-07 by the Phase 5 plan, whose step 4 closes it |
-| [C7](#c7) | Phase 3's scope-containment case discriminates only through its depth assertion — its end-to-end read passes with the guard disabled | signals | test gap | Open — the case still catches a missing guard through its depth assertion; opened 2026-10-08 by Phase 5 step 2 |
-| [D1](backlog-retired.md#d1) | The throwing-subscriber premise is false in both halves | forms | fix + decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e: a late prototype-named control is not mirrored and is reported once, out of band, after the rest of the emission |
+| [C6](backlog-retired.md#c6) | The README's `resource` composition does not compile at Angular 19, inside the peer range | signals | docs | **Retired — fixed 2026-10-09**, docs and tests only, by the Phase 5 plan's step 4; ships in the `eval-signals` 0.5.0 README: both spellings, the `params` one executed by `readme-examples.spec.ts` |
+| [C7](#c7) | Phase 3's scope-containment case discriminates only through its depth assertion — its end-to-end read passes with the guard disabled | signals | test gap | Open — the case still catches a missing guard through its depth assertion; opened 2026-10-08 by Phase 5 step 2 || [D1](backlog-retired.md#d1) | The throwing-subscriber premise is false in both halves | forms | fix + decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e: a late prototype-named control is not mirrored and is reported once, out of band, after the rest of the emission |
 | [D2](backlog-retired.md#d2) | Should `/reactive` reject prototype-shadowed identifiers too? | forms | decision, breaking | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.0, tagged 0c3299e: yes, with `/signals`' own guard, shared from the core; no form that worked could have named one |
 | [D3](backlog-retired.md#d3) | Per-registration `caseInsensitive` reaches one of three levers | forms | decision | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-forms` 0.3.1, tagged 3d56994. The memo is keyed on the key and `caseInsensitive` together, and each rule context is built from its registration's options, so a registration's value reaches all three levers |
 | [D4](backlog-retired.md#d4) | A top-level model key holding a signal is returned un-called | forms | fix or doc | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-forms` 0.2.4, tagged 587ebf1. `/signals` unwraps it as upstream does, and the README bullet is corrected |
@@ -589,9 +591,12 @@ ignores `async`. Measured 2026-10-07:
 | `(async () => 1)()` | `1`, not a promise | — |
 
 The same table at top level, with `allowAwaitOutsideFunction` set, is the Phase 5 plan's § 1.2
-finding 2. The `eval-signals` README offers the `async`-arrow form as the way to use `await` in an
-expression (`modules/eval-signals/README.md:300-301`), and `eval-signal.spec.ts:998-1012` pins it in
-tail position, where it is right.
+finding 2. Up to `eval-signals` 0.4.0 its README offered the `async`-arrow form as the way to use
+`await` in an expression, and `eval-signal.spec.ts:998-1012` pins it in tail position, where it is
+right. **Since 0.5.0 the README says what this entry does**: under "Async expressions", in "Two
+signals instead of `await`", an `async` arrow's `await` is a pass-through, right only as the
+arrow's result, with `(async () => (await loadUser(id)).name)()` as `undefined` and a second
+signal as the tracked way to use a resolved value.
 
 **Two ways out, and leaving it is not one of them**, since it ships silent wrong answers:
 
@@ -602,8 +607,8 @@ tail position, where it is right.
   first `await`.
 
 **Why not Phase 5**: that plan keeps `await` out of its async signal (§ 3.1, option C), and this path
-exists whatever Phase 5 decides. Its step 4 rewrites the README line above to say the `await` is a
-pass-through.
+exists whatever Phase 5 decides. Its step 4 rewrote the README line above to say the `await` is a
+pass-through — documentation of the defect, not a fix, so the entry stays Open.
 
 *Recorded*: this entry; the evidence is [`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.2
 findings 2 and 3.
@@ -748,28 +753,8 @@ is not.
 
 # C. `eval-signals`
 
-[C1](backlog-retired.md#c1)–[C5](backlog-retired.md#c5) are retired. None of the five entries was
+[C1](backlog-retired.md#c1)–[C6](backlog-retired.md#c6) are retired. None of the six entries was
 ever recorded in `ROADMAP.md`.
-
-<a id="c6"></a>
-## C6 — The README's `resource` composition does not compile at Angular 19, inside the peer range
-
-**Package** signals · **Kind** docs · **Status** Open. Opened 2026-10-07 by the Phase 5 plan, whose
-step 4 closes it
-
-The "Async expressions" section shows `resource({ params: () => user() as Promise<User>, loader:
-({ params }) => params })` (`modules/eval-signals/README.md:284-290`). At `@angular/core` 19.x the
-option and the loader's parameter are named `request`; `params` arrives in 20.0.0. The package's peer
-range is `@angular/core >=19.0.0`, and the README presents the composition as working "at your own
-Angular floor" — at 19 it does not compile. `readme-examples.spec.ts` deliberately does not execute
-it (its header, `:68-72`), and the workspace runs 22, so nothing here could have caught it.
-
-**Fix**: give both spellings. Phase 5's step 4 rewrites the section and does
-([`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 4).
-
-*Recorded*: this entry; that plan's § 1.2 finding 6.
-*Verified*: read 2026-10-07 from `ResourceLoaderParams` and `BaseResourceOptions` in the published
-`.d.ts` of `@angular/core` 19.2.25 and 20.0.0, unpacked outside the repository.
 
 <a id="c7"></a>
 ## C7 — Phase 3's scope-containment case discriminates only through its depth assertion

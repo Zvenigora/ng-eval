@@ -278,41 +278,220 @@ a context that asks, and nothing extra for one that does not.
 
 ## Async expressions
 
-There is no async primitive in this release — `createEvalSignalAsync` is Phase 5 of the
-[roadmap](https://github.com/zvenigora/ng-eval/blob/master/ROADMAP.md). You do not need one to
-call an async function: the walk is
-synchronous and returns the promise **as the value**, so the signal carries a promise you
-compose with in your own application, at your own Angular floor.
+`createEvalSignalAsync` evaluates an expression whose value is a promise, or holds promises,
+and gives you the resolved value as a signal (since 0.5.0):
+
+```ts
+import { signal } from '@angular/core';
+import { createEvalSignalAsync } from '@zvenigora/ng-eval-signals';
+
+const id = signal(1);
+const user = createEvalSignalAsync('loadUser(id)', { id, loadUser });
+
+user();           // undefined
+user.status();    // 'loading'
+
+// … once loadUser(1) resolves
+user();           // { id: 1, name: 'Ada' }
+user.status();    // 'resolved'
+
+id.set(2);
+user();           // undefined — this read starts the run for id 2
+user.status();    // 'loading'
+```
+
+It takes what `createEvalSignal` takes — the same source, every option, and the same
+[Lifetime](#lifetime) rules — and returns an `EvalSignal` with a `status` signal beside the
+value. `EvalSignalService.createAsync` is the same for callers outside an injection context,
+and like `create` it never tears a signal down for you.
+
+**Tracking is unchanged.** The walk runs inside a `computed()` and has finished before the
+promise exists, so every key it reads is tracked exactly as `createEvalSignal` tracks it, and
+`dependencies` reports the last run started. What runs after the promise resolves is not
+tracked — see [Two signals instead of `await`](#two-signals-instead-of-await).
+
+**A run starts at the first read after a change, not at the change.** A changed key marks the
+run stale, and reading the value or `status` starts the next one; that read is what supersedes
+the old run. Until a run settles the signal reads `undefined` — even
+`createEvalSignalAsync('1 + 1', {})`, which settles a few microtasks later, because the result
+always goes through `await`s.
+
+| Moment | `value()` | `status()` |
+| :--- | :--- | :--- |
+| A run is pending — the first, or any later one | `undefined` | `'loading'` |
+| The current run resolved with `v` | `v` | `'resolved'` |
+| The current run rejected with `e` | per `onError`, below | `'error'` |
+| Destroyed | `undefined` | `'idle'` |
+
+The words are the ones Angular's `ResourceStatus` uses for those states. There is no
+`'reloading'`: a new run discards the previous value, and so does `invalidate()`, which counts
+as a change — a source with no reactive surface calls it because its data changed, so keeping
+the old value would show data for inputs that no longer hold. A superseded run settles into
+nothing: its value or rejection is discarded whichever order the runs settle in, and no
+rejection goes unhandled.
+
+**A rejection goes through `onError`, with the contract it has on the sync path.** `'throw'`,
+the default, rethrows it on every read until a new run starts; `'undefined'` reads `undefined`;
+a function is called once per rejected run, and its result is what every read returns. A
+promise that rejects with something other than an `Error` arrives wrapped in one, as
+`eval-core`'s `evaluateAsync` wraps it. `status()` reads `'error'` in every mode, which is how
+you tell a rejection from a pending run under `'undefined'`. A throw during the walk itself is
+not thrown from the read: it rejects the run with what was thrown, unwrapped, and arrives once
+the run settles. `SignalContextWriteError` still bypasses `onError` in every mode, and is
+rethrown on every read once its run has settled.
+
+**`destroy()`** reads `undefined` and `'idle'` from that moment. A run still pending stops
+holding the application ([Stability](#stability)) and, with `abortSignalKey` set, is aborted
+([Cancellation](#cancellation)); its late settlement changes nothing, and `invalidate()`
+afterwards is a no-op.
+
+Tested at Angular 19.2, 20.3, 21.2 and 22.2: the async signal's own specs pass at each, with the
+library unmodified ([Phase 5 plan](https://github.com/zvenigora/ng-eval/blob/master/docs/signals/phase-5-plan.md),
+§ 8 q1).
+
+### Two signals instead of `await`
+
+There is no `await` in an expression. Top-level `await` is a parse error — the parser runs at
+`ecmaVersion: 2020` without `allowAwaitOutsideFunction` — and stays one: a promise enters the
+walk as a call's return value, the walk finishes, and only then is the result resolved. A
+promise in operand position is therefore an operand: `loadUser(id).name` reads `name` off the
+promise, and is `undefined`.
+
+Write it as two signals. An `EvalSignalAsync` is a `Signal`, so it can be a value in another
+signal context's source, and a `createEvalSignal` over it tracks it like any other:
+
+```ts
+const id = signal(1);
+const user = createEvalSignalAsync('loadUser(id)', { id, loadUser });
+const role = signal('admin');
+
+const label = createEvalSignal('user ? user.name + " (" + role + ")" : "loading"', { user, role });
+
+label();          // 'loading'
+
+// … once loadUser(id) resolves
+label();          // 'Ada (admin)'
+
+role.set('owner');
+label();          // 'Ada (owner)' — and no new run of `user`
+```
+
+`user` reads `undefined` while its run is pending, hence the conditional.
+
+**This is also the tracked way to use a resolved value.** `loadUser(id).then(u => u.name + role)`
+evaluates, but the arrow runs when the promise resolves — after the walk, outside the reactive
+context — so `role` is not tracked, and changing it starts no run. In the two-signal form every
+read is made by a walk.
+
+**An `async` arrow's `await` is a pass-through.** `(async () => await loadUser(id))()` parses
+and evaluates, but `eval-core` does not suspend at the `await`: it hands the walk the promise as
+an operand, and the walk carries on. That is right only where the `await` is the arrow's
+result, as here. `(async () => (await loadUser(id)).name)()` is `undefined`, and
+`(async () => (await p) * 10)()` is `NaN`; write those as two signals too. This is `eval-core`'s
+[BL-A24](https://github.com/zvenigora/ng-eval/blob/master/docs/backlog.md#a24).
+
+### What is resolved
+
+Exactly what `eval-core`'s `evaluateAsync` resolves: the value if it is a promise, and promises
+nested in arrays and plain objects, at any depth — `[loadUser(1), { b: loadUser(2) }]` resolves
+both. A promise inside a promise's resolved value is not resolved, and neither is one inside a
+`Map`, a class instance or a null-prototype object.
+
+**Every plain object and array the walk produces is rebuilt on each run** — a literal, or one
+read from the source — while a promise's resolved value comes back as it is. So an
+object-valued expression is a new object on every run, the default `Object.is` equality never
+finds two runs equal, and every consumer of the value re-runs. `equal` is forwarded to the
+value, as on `createEvalSignal`, and a structural one keeps the last value when a run's result
+has not changed — provided nothing read the value while the run was pending, since that read
+returned `undefined`. Reading `status()` first, and the value only once it is `'resolved'`, is
+the shape that lets it.
+
+### Cancellation
+
+Name a key with `abortSignalKey`, and each run gets an `AbortController` of its own, whose
+`AbortSignal` the expression can hand to your function:
+
+```ts
+const id = signal(1);
+const loadUser = (userId: number, abort: AbortSignal) =>
+  fetch(`/api/users/${userId}`, { signal: abort }).then((response) => response.json());
+
+const user = createEvalSignalAsync('loadUser(id, abort)', { id, loadUser }, {
+  abortSignalKey: 'abort',
+});
+```
+
+A run's signal is aborted when a newer run supersedes it — at the first read after a change,
+not at the change — and on `destroy()`; it is not aborted when the run settles. It is bound for
+the walk alone, as a scope pushed for it: a closure the promise calls later resolves `abort`
+like any other name, and `dependencies` never reports it.
+
+**The key is checked at construction**, and the factory throws, naming the option and the key:
+
+- when no expression could read it — a name that is not an identifier (`'abort-signal'`), a
+  reserved word (`'new'`), or one `eval-core`'s identifier guard refuses (`'constructor'`,
+  `'__proto__'`);
+- when a record source already has it — exactly, or under `caseInsensitive` by case, whatever
+  it holds, `undefined` included — since the binding would shadow it in every run.
+
+That second check sees the record **at construction only**: a key added to it later is
+shadowed silently. A caller-built `EvalContext` is not checked at all, so keeping the name
+free there is yours.
+
+**An abort listener must not read, invalidate or destroy the signal it belongs to.** A
+supersede aborts the old run inside the read that starts the new one — inside the signal's own
+recomputation — so a read there throws Angular's cycle error into the listener, which a browser
+reports and Node treats as an uncaught exception, and an `invalidate()` there is missed. Other
+signals are fine: the listener runs untracked, so a read adds no dependency, and a write lands
+before the new run's walk, which sees it.
+
+### Stability
+
+Each run holds the application unstable through Angular's `PendingTasks` until it settles, is
+superseded or the signal is destroyed, whichever comes first — so
+`ApplicationRef.whenStable()`, and server rendering, wait for the value rather than rendering
+`undefined`. A superseded run that never settles holds nothing. Until the read that supersedes
+it, though, the old run is still the current one: with nothing reading the signal, stability
+waits for that run, not for one nobody has started.
+
+This is what a zoneless application waits on — `provideZonelessChangeDetection()`, or
+`provideExperimentalZonelessChangeDetection()` on Angular 19. `PendingTasks` comes from the
+injection context, or from `injector` when you pass one; `EvalSignalService.createAsync` passes
+the root injector, so its signals hold the application's own stability too.
+
+### The sync path still carries the promise
+
+`createEvalSignal` resolves nothing. For a promise-returning expression its value is the
+promise itself, unresolved, as it always was — yours to unwrap if you would rather do it in your
+own application. `resource` takes a promise directly; put the read in `params`:
 
 ```ts
 const user = createEvalSignal('loadUser(id)', { id, loadUser });
 
-// The read goes in `params`, never in `loader`.
+// Angular 20 and later. The read goes in `params`, never in `loader`.
 const userResource = resource({
   params: () => user() as Promise<User>,
   loader: ({ params }) => params,
 });
 ```
 
-**Put the read in `params`.** A `resource`'s loader body runs `untracked`, so
-`resource({ loader: () => user() })` computes once and then never reloads when `id` changes —
-a signal that silently stops updating. `toSignal` and `rxResource` take an `Observable`, so
-they need `from(promise)` first; `resource` is the only one that takes a promise directly.
+On Angular 19 the option and the loader's parameter are named `request`:
 
-Three limits apply until Phase 5 closes them:
+```ts
+const userResource = resource({
+  request: () => user() as Promise<User>,
+  loader: ({ request }) => request,
+});
+```
 
-- **An expression cannot use top-level `await`** — the parser runs at `ecmaVersion: 2020`
-  without `allowAwaitOutsideFunction`, so `await load(id)` is a parse error. Inside an async
-  arrow it parses and evaluates: `(async () => await load(id))()`.
-- **Nested promises are not resolved.** A promise *inside* a returned object or array stays a
-  promise; only `eval-core`'s `evaluateAsync` walks a result resolving those, and this library
-  does not use it.
-- **`onError` never sees a rejection.** The error handling is synchronous, so a rejecting
-  promise passes straight through the signal and is yours to catch. Setting
-  `onError: 'undefined'` does *not* give you a blank here.
+**Put the read in `params`** — or `request`. A `resource`'s loader body runs `untracked`, so
+`resource({ loader: () => user() })` loads once and never reloads when `id` changes: a signal
+that silently stops updating. `toSignal` and `rxResource` take an `Observable`, so they need
+`from(promise)` first. On this path a promise nested in the result stays a promise, and a
+rejection is the promise's to deliver — `onError` never sees it.
 
-The return type is `EvalSignal<unknown>` — the promise is a runtime shape you narrow to, not
-something the type says.
+Both factories return `<unknown>`: the promise, or what it resolves to, is a runtime shape you
+narrow to, not something the type says.
 
 ## Before you use it
 
@@ -334,7 +513,10 @@ Four things that decide whether this library fits, rather than surprises you lat
   computation — that part is Angular's — but you pay the allocation and the dev-mode nested
   scan on every read, and you lose `EvalContext` identity, so anything you put on the context
   (prior scopes, extra lookups) has to be rebuilt with it.
-- **Async is not a first-class signal** — see [Async expressions](#async-expressions) above.
+- **An async signal reads `undefined` until its run settles** — at the first read, even for
+  `'1 + 1'`, and again at every run a change starts, since there is no stale-while-revalidate.
+  And there is no `await` in an expression: what you do with a resolved value goes in a second
+  signal. See [Async expressions](#async-expressions) above.
 
 ## Edge cases you may hit
 

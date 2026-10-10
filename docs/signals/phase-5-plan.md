@@ -1,6 +1,21 @@
 # Phase 5 Plan — async expression signals (`@zvenigora/ng-eval-signals`)
 
 **Date**: October 7, 2026
+**Revision**: 5 — amended during step 4, in its commit. Each step's outcome is recorded in § 4.
+Fixed at step 4's confirmation gate: the file list gains `modules/eval-forms/README.md` — its
+"Anything asynchronous" bullet, and the peer range its `peerDependencies` block quotes — so § 9's
+"nothing there does except the peer range" now reads its README too; the README's `resource`
+composition is executed in its `params` spelling, and only the Angular 19 `request` spelling is
+left out; and the README states the versions § 8 q1 ran. Measured during step 4, § 3.7's
+consequence is narrowed: a promise's resolved value comes back by identity, and `equal` keeps the
+last value only when nothing read the signal while the run was pending. [BL-C6](../backlog-retired.md#c6)
+is retired, and the plan's two links to it follow it there. Added after the step's review, before
+its commit: the file list gains `eval-signal-async.spec.ts`, for five cases pinning the README's
+prose claims that the step had measured only with a throwaway spec — a public claim needs a spec
+that discriminates ([Phase 3](phase-3-plan.md) § 3.7) — and `eval-signal-async.ts`, whose JSDoc
+said an expression with no promise in it settles "a microtask later", where it takes a few, as
+the README says.
+
 **Revision**: 4 — amended during step 3, in its commit. Fixed at step 3's confirmation gate: § 3.6's
 collision check matches source keys with the signal context's own `match`, moved for it into an
 internal `source-key.ts`, rather than asking `getKey`, which misses a key holding `undefined`; step 3's
@@ -177,7 +192,7 @@ that shows it.
    - **`resource`'s option is `request` at 19 and `params` from 20.0.0** (`ResourceLoaderParams` in
      19.2.25 against 20.0.0). The README's composition, `resource({ params: …, loader: ({ params }) =>
      … })` (`modules/eval-signals/README.md:284-290`), does not compile at 19, which the package's
-     `>=19.0.0` peer range admits. Recorded as [BL-C6](../backlog.md#c6); step 4 closes it.
+     `>=19.0.0` peer range admits. Recorded as [BL-C6](../backlog-retired.md#c6); step 4 closes it.
 
    `PendingTasks.add(): () => void` has the same signature at 19.0.0, 20.0.0 and 22.0.0; its `run`
    changed shape between 19 and 20 and is not used here.
@@ -702,6 +717,16 @@ instance or a null-prototype object is not resolved; every plain object and arra
 rebuilt on each run, so the default `Object.is` equality never dedupes an object-valued expression,
 and `equal` — forwarded to `value` — is the remedy.
 
+*Narrowed during step 4, measured with a throwaway spec through the factory.* "Rebuilt" covers the
+objects the walk produces — a literal, or one read from the source — and not a promise's resolved
+value, which is not walked (finding 5) and comes back by identity: `load(id)` resolving to one
+shared object returned that object on every run. And `equal` is a remedy only between two resolved
+values: a read while a run is pending computes `undefined`, which no `equal` can find equal to an
+object, so the next resolved value notifies whatever it is. With a structural `equal`, a signal
+whose `status()` was read across a run and whose value was read only after it kept its previous
+object; the same signal with its value read while the run was pending did not. The README says
+both.
+
 The sync path does not change: `createEvalSignal` keeps passing promises through, pinned by
 finding 12's specs.
 
@@ -757,6 +782,9 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
   - `git diff --name-only` lists the new spec and this document only; `performance.spec.ts` is
     untouched.
 - **Category**: test-only. It ships in no package: no version bump, no CHANGELOG entry.
+- **Outcome** — done 2026-10-08, `9d5715d`. Sixteen cases; W1 failed all sixteen, and W2 the four
+  failure cases and nothing else. Its review measured P7, which reversed § 3.4's synchronous
+  failure path (Revision 2). It opened [BL-A27](../backlog.md#a27), recorded in `6ade196`.
 
 ### Step 2 — `createEvalSignalAsync`: the value, its status and its errors
 
@@ -859,6 +887,9 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
       shared last-settled slot read by `value` — the third arm fails.
   - The gate is green, and `git diff --name-only` lists only the files above and this document.
 - **Category**: additive to a published package, unreleased until step 4.
+- **Outcome** — done 2026-10-08, `cce76ae`, under the four plan corrections Revision 3 records.
+  It opened [BL-C7](../backlog.md#c7), [BL-F17](../backlog.md#f17) and
+  [BL-F18](../backlog.md#f18), recorded in `f6007b6`.
 
 ### Step 3 — Cancellation and stability
 
@@ -947,6 +978,10 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
     before it. *Wrong:* the snapshot taken after retirement — the supersede case goes red; no restore
     in `destroy()` — the `destroy()` case does.
 - **Category**: additive, unreleased until step 4.
+- **Outcome** — done 2026-10-09, `dafe5f3`, under Revision 4. Its review found the supersede
+  walking before it aborted; § 3.4 was reordered, with the cases listed above. It opened
+  [BL-A28](../backlog.md#a28), recorded in `51e1f7c`. § 8 q1's matrix ran after it, at the commit
+  that recorded A28, and its result is `01f2e44`.
 
 ### Step 4 — Docs and release
 
@@ -968,14 +1003,30 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
     stability; reads inside a callback the promise calls later (`load(id).then(u => u.x * rate)`) are
     not tracked (§ 3.3) — show the two-signal form as the tracked way to write it. The sync path's
     promise pass-through stays documented, with the `resource` composition
-    given in both spellings — `request` on 19, `params` from 20 — closing [BL-C6](../backlog.md#c6). The
+    given in both spellings — `request` on 19, `params` from 20 — closing [BL-C6](../backlog-retired.md#c6). The
     `async`-arrow line says the `await` is a pass-through, right only as the arrow's result
-    ([BL-A24](../backlog.md#a24)). "Before you use it"'s async bullet follows.
+    ([BL-A24](../backlog.md#a24)). "Before you use it"'s async bullet follows. *Fixed at step 4's
+    confirmation gate*: one sentence giving the versions § 8 q1 ran.
   - `modules/eval-signals/src/lib/readme-examples.spec.ts` — every new ` ```ts ` block executed, and the
-    block count it claims updated ([BL-F13](../backlog-retired.md#f13)'s gate).
+    block count it claims updated ([BL-F13](../backlog-retired.md#f13)'s gate). *Fixed at step 4's
+    confirmation gate*: the `resource` composition is executed in its `params` spelling, and only
+    the Angular 19 `request` spelling is left out, with the reason in the spec's coverage list —
+    the workspace runs 22 — since leaving the whole composition out is how BL-C6 went unseen.
   - `modules/eval-signals/package.json` → 0.5.0; `modules/eval-signals/CHANGELOG.md` — `[0.5.0]`.
   - `modules/eval-forms/package.json` → 0.4.1, `@zvenigora/ng-eval-signals` `>=0.4.0 <0.6.0`;
     `modules/eval-forms/CHANGELOG.md` — `[0.4.1]`, the range and nothing else.
+  - `modules/eval-forms/README.md` — *added at step 4's confirmation gate*: "Anything
+    asynchronous" says `eval-signals` 0.5.0 has `createEvalSignalAsync` and this package has no
+    async rule or binding, and the range its `peerDependencies` block quotes follows the manifest.
+    Its `.d.ts` criterion below is unaffected: a README ships in no `.d.ts`.
+  - `modules/eval-signals/src/lib/eval-signal-async.spec.ts` — *added after the step's review*: a
+    `README: Async expressions` describe, one case per prose claim the README makes and no executed
+    block shows, each naming the README lines it pins. The step had measured them with a throwaway
+    spec, and a public claim needs a spec that discriminates (Phase 3 § 3.7).
+  - `modules/eval-signals/src/lib/eval-signal-async.ts` — *added after the step's review*: the
+    `createEvalSignalAsync` JSDoc says a run with no promise in it settles after a few microtasks,
+    not one, as the README does. A documentation comment in the `.d.ts`, so the criterion below
+    still holds.
   - `ROADMAP.md` — Phase 5 marked done, pointing here; § "Suggested order" updated.
   - `docs/backlog.md` / `docs/backlog-retired.md` — C6 retired; A24's entry notes the README
     wording.
@@ -995,6 +1046,21 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
 - **Category**: the release. Publishing, tags and the Publication status rows are CONTRIBUTING's
   Releasing procedure, steps 3–6, after this commit; so is CLAUDE.md's "Published at" line, which this
   step's bump does not yet falsify.
+- **Outcome** — done 2026-10-09, in the commit that records this line, under Revision 5. The gate
+  is green: `eval-core` 2023, unchanged; `eval-signals` 421, the README's one async case replaced
+  by four, and the five below; `eval-forms` 343; all three builds. With only the bump, `eval-forms:lint` failed on
+  `@nx/dependency-checks`, and passed once the range was widened. The `eval-signals` `.d.ts`
+  differs from the published 0.4.0's by the four exports, `createAsync` and their comments, and
+  the export lists that name them; the three `eval-forms` `.d.ts` files are byte-identical to
+  0.4.0's. Its review found that the README's prose claims rested on a throwaway spec, so five
+  cases now pin them in `eval-signal-async.spec.ts`. Three are `eval-core`'s resolution, pinned
+  observationally: a promise's resolved value by identity and a walked object rebuilt; the
+  resolution boundary; a member read off a promise in operand position. Two are this package's,
+  each run against wrong implementations over the whole `eval-signals` suite: `equal` and a
+  pending read — red alone with `equal` not forwarded (1 of 421), and among 10 with a value
+  that keeps the last outcome while pending, and 23 with the walk `untracked`; and a read
+  inside a `.then` — red among 7 with a resolver that reads every source signal, 10 and 23
+  under the last two. The phase's retrospect is [`phase-5-summary.md`](phase-5-summary.md).
 
 ---
 
@@ -1199,4 +1265,5 @@ What a consumer — and `eval-forms`, should it ever want an async rule — can 
    a pass-through ([BL-A24](../backlog.md#a24)); operand-position use of a promise in one expression;
    or resolution beyond `evaluateAsync`'s (§ 3.7).
 6. `createEvalSignal` is unchanged. Nothing in `eval-forms` has to change, and nothing there does
-   except the peer range.
+   except the peer range and its README — the quoted range, and the bullet that sends an async
+   reader here.

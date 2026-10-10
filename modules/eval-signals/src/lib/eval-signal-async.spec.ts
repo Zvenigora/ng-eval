@@ -1221,6 +1221,173 @@ describe('createEvalSignalAsync', () => {
 
   });
 
+  /**
+   * The README's prose claims that no executed block shows (Phase 5 step 4;
+   * Phase 3 S 3.7: a public claim needs a spec that discriminates). One case
+   * per claim, each naming the `modules/eval-signals/README.md` lines it
+   * pins. Three are `eval-core`'s resolution, pinned here observationally:
+   * no code in this package decides them, so no probe of it applies.
+   */
+  describe('README: Async expressions', () => {
+
+    describe('What is resolved', () => {
+
+      it('should hand back a promise\'s resolved value as it is, and rebuild an object the walk reads', async () => {
+        // README.md:400-401. `eval-core`'s `awaitAllPromises`: it does not
+        // walk a resolved value, and copies every plain object it walks.
+        const shared = { name: 'Ada' };
+        const held = { name: 'Ada' };
+        const load = (): Promise<unknown> => Promise.resolve(shared);
+
+        const resolved = create('load()', { load });
+        const read = create('held', { held });
+
+        expect(resolved()).toBeUndefined();
+        expect(read()).toBeUndefined();
+        await flush();
+
+        expect(resolved()).toBe(shared);
+        expect(read()).toEqual(held);
+        expect(read()).not.toBe(held);
+      });
+
+      it('should resolve promises in arrays and plain objects at any depth, and none inside a resolved value, a Map, a class instance or a null-prototype object', async () => {
+        // README.md:395-398. `eval-core`'s `awaitAllPromises`, as above.
+        class Box {
+          constructor(readonly inner: Promise<number>) {}
+        }
+        const inner = Promise.resolve(7);
+        const map = new Map([['inner', inner]]);
+        const box = new Box(inner);
+        const bare: Record<string, unknown> = Object.assign(Object.create(null), { inner });
+        const load = (n: number): Promise<number> => Promise.resolve(n * 10);
+        const wrap = (): Promise<unknown> => Promise.resolve({ inner });
+
+        const nested = create('[load(1), { b: [load(2)] }]', { load });
+        const kept = create('[wrap(), map, box, bare]', { wrap, map, box, bare });
+
+        expect(nested()).toBeUndefined();
+        expect(kept()).toBeUndefined();
+        await flush();
+
+        expect(nested()).toEqual([10, { b: [20] }]);
+
+        const [wrapped, keptMap, keptBox, keptBare] = kept() as [{ inner: unknown }, unknown, unknown, unknown];
+        expect(wrapped.inner).toBe(inner);
+        expect(keptMap).toBe(map);
+        expect(map.get('inner')).toBe(inner);
+        expect(keptBox).toBe(box);
+        expect(keptBare).toBe(bare);
+        expect(bare['inner']).toBe(inner);
+      });
+
+      it('should keep the last value under a structural equal only when nothing read it while the run was pending', async () => {
+        // README.md:402-407. This package's: `equal` is forwarded to the
+        // value's `computed`, and a pending run reads `undefined`.
+        const equal = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
+        const id = signal(1);
+        const load = (): Promise<string> => Promise.resolve('Ada');
+
+        // Each reads the same rebuilt literal on its own run. `plain` is the
+        // control: without `equal` the status-first pattern gets a new
+        // object, so the first arm cannot pass on identity alone.
+        const plain = create('({ name: load(id) })', { id, load });
+        const statusFirst = create('({ name: load(id) })', { id, load }, { equal });
+        const valueRead = create('({ name: load(id) })', { id, load }, { equal });
+
+        expect(plain()).toBeUndefined();
+        expect(statusFirst()).toBeUndefined();
+        expect(valueRead()).toBeUndefined();
+        await flush();
+
+        const plainBefore = plain();
+        const statusFirstBefore = statusFirst();
+        const valueReadBefore = valueRead();
+        expect(statusFirstBefore).toEqual({ name: 'Ada' });
+
+        id.set(2);
+
+        // Status first: the read starts the run, and the value is not read
+        // until it settles.
+        expect(plain.status()).toBe('loading');
+        expect(statusFirst.status()).toBe('loading');
+        // The value read while the run is pending.
+        expect(valueRead()).toBeUndefined();
+        await flush();
+
+        expect(plain.status()).toBe('resolved');
+        expect(plain()).not.toBe(plainBefore);
+        expect(statusFirst.status()).toBe('resolved');
+        expect(statusFirst()).toBe(statusFirstBefore);
+        expect(valueRead()).toEqual({ name: 'Ada' });
+        expect(valueRead()).not.toBe(valueReadBefore);
+      });
+
+    });
+
+    describe('Two signals instead of `await`', () => {
+
+      it('should not track a read inside a .then the expression set up, and should track the walk\'s own', async () => {
+        // README.md:381-383. This package's: the walk runs inside `run`,
+        // and the arrow runs after it, outside any reactive context.
+        const id = signal(1);
+        const role = signal('admin');
+        const loadUser = (key: number): Promise<{ name: string }> =>
+          Promise.resolve({ name: key === 1 ? 'Ada' : 'Grace' });
+        const states = jest.spyOn(compiler, 'createState');
+
+        const label = create('loadUser(id).then(u => u.name + " (" + role + ")")', { id, role, loadUser });
+
+        expect(label()).toBeUndefined();
+        await flush();
+        expect(label()).toBe('Ada (admin)');
+        expect(states).toHaveBeenCalledTimes(1);
+
+        role.set('owner');
+
+        expect(label()).toBe('Ada (admin)');
+        await flush();
+        expect(label()).toBe('Ada (admin)');
+        expect(states).toHaveBeenCalledTimes(1);
+
+        // The control: a key the walk read starts a run, whose arrow reads
+        // `role` afresh.
+        id.set(2);
+
+        expect(label()).toBeUndefined();
+        expect(states).toHaveBeenCalledTimes(2);
+        await flush();
+        expect(label()).toBe('Grace (owner)');
+      });
+
+      it('should read a member off the promise in operand position, inside an async arrow too', async () => {
+        // README.md:357-358 and :389. `eval-core`'s: a member read off a
+        // promise, and an `await` that passes the promise through (BL-A24).
+        const id = signal(1);
+        const loadUser = (): Promise<{ name: string }> => Promise.resolve({ name: 'Ada' });
+
+        // The control: the same call resolves to an object with a `name`.
+        const direct = create('loadUser(id)', { id, loadUser });
+        const member = create('loadUser(id).name', { id, loadUser });
+        const arrow = create('(async () => (await loadUser(id)).name)()', { id, loadUser });
+
+        expect(direct()).toBeUndefined();
+        expect(member()).toBeUndefined();
+        expect(arrow()).toBeUndefined();
+        await flush();
+
+        expect(direct()).toEqual({ name: 'Ada' });
+        // Resolved, not pending: the `undefined` is the run's value.
+        expect(member.status()).toBe('resolved');
+        expect(member()).toBeUndefined();
+        expect(arrow.status()).toBe('resolved');
+        expect(arrow()).toBeUndefined();
+      });
+
+    });
+
+  });
+
 });
 
 /**

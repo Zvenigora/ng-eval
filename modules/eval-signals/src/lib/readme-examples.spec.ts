@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, resource, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { CompilerService, EvalService } from '@zvenigora/ng-eval-core';
 // Through `../public-api` rather than `@zvenigora/ng-eval-signals`. See the
@@ -10,14 +10,32 @@ import {
   EvalSignalService,
   SignalContextWriteError,
   createEvalSignal,
+  createEvalSignalAsync,
   createSignalContext,
 } from '../public-api';
 
 /** The ` ```ts ` fences in `modules/eval-signals/README.md`. */
-const README_TS_BLOCKS = 10;
+const README_TS_BLOCKS = 14;
 
 /** The ` ```sh ` fences in the same file. */
 const README_SH_BLOCKS = 2;
+
+/** A promise whose settlement the case orders itself (substitution 9). */
+interface Deferred<T> {
+  readonly promise: Promise<T>;
+  resolve(value: T): void;
+}
+
+const deferred = <T>(): Deferred<T> => {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+};
+
+/** Microtasks and one macrotask (substitution 9). */
+const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 /**
  * Executes the snippets in `modules/eval-signals/README.md`.
@@ -56,7 +74,9 @@ const README_SH_BLOCKS = 2;
  * 4. `## Lifetime`, the `PriceComponent` block.
  * 5. `## Writes are not supported`, both blocks - one case each: the key
  *    write, and the spread copy written into.
- * 6. `## Async expressions`, its **first statement only**.
+ * 6. `## Async expressions`, four of its five blocks, one case each: the
+ *    primitive; the two-signal form; `abortSignalKey`; and the sync path's
+ *    promise with the `resource` composition in its `params` spelling.
  * 7. `## Using the adapter directly`.
  *
  * Not covered, with the reason in each case:
@@ -65,11 +85,14 @@ const README_SH_BLOCKS = 2;
  *   `isDeepEqual` and `injector` are undeclared, and completing it would mean
  *   inventing an example the document does not make. Each option it names is
  *   covered by `eval-signal.spec.ts` against the option's own behaviour.
- * - **The `resource(…)` composition in `## Async expressions`.** It documents
- *   Angular's API rather than this library's, and a runnable version would be a
- *   `resource` example this document does not otherwise make. The statement
- *   above it — the promise arriving as the signal's value — is the part that is
- *   this library's claim, and it *is* executed.
+ * - **The Angular 19 spelling of the `resource` composition** (`request`, in
+ *   `## Async expressions`). The workspace runs Angular 22, where `resource`
+ *   has no `request` option, so the block cannot compile here. The spelling is
+ *   read from 19.2.25's published typings (`docs/signals/phase-5-plan.md`
+ *   § 1.2 finding 6); § 8 q1's matrix ran the async signal's own specs at 19,
+ *   not this block. The `params` spelling beside it is executed: up to 0.4.0
+ *   this file left the whole composition out, which is how
+ *   `docs/backlog-retired.md` C6 went unseen.
  * - The `sh` blocks: `npm install`, and the three `nx` targets.
  *
  * ## The defect this step fixed in the README, rather than around
@@ -105,8 +128,13 @@ const README_SH_BLOCKS = 2;
  *    — the free function in a field initializer, `inject(EvalSignalService)`,
  *    `inject(EvalService)` — the case supplies `TestBed.createComponent`,
  *    `TestBed.runInInjectionContext` or `TestBed.inject`.
- * 5. **`id` and `loadUser`** in the async case. The block declares neither, and
- *    what a real `loadUser` returns is not something the document says.
+ * 5. **`id`, `loadUser` and `fetch`** in the async cases. The first three async
+ *    blocks each declare their own `id`, so each is a fresh start in fact; the
+ *    sync-path block declares none, and its case supplies one. Only the
+ *    cancellation block declares `loadUser`, and it calls `fetch`, which that
+ *    case declares as a stub — recording each request's `AbortSignal` and
+ *    answering with a deferred — so nothing reaches a network. What a real
+ *    `loadUser` returns is not something the document says.
  * 6. **A recompute counter**, which the README prints nowhere and which is here
  *    deliberately. `## Quick start` prints `// 40  — not recomputed` for the
  *    read after `shipping.set(0)`, and the value `40` cannot discriminate that
@@ -119,14 +147,42 @@ const README_SH_BLOCKS = 2;
  *    case asserts `30` for the service-created signal, and `undefined` after
  *    `ngOnDestroy()` — the second from the section's prose ("a destroyed signal
  *    reads `undefined` from that moment"), not from the block.
- * 8. **The async block's resolved value.** It prints nothing either; that the
- *    promise resolves to `{ id: 7 }` follows from substitution 5's bindings
- *    rather than from anything the document states.
+ * 8. **The sync-path block's values.** It prints nothing either: that the
+ *    promise resolves to `{ id: 7 }`, and that `userResource` reloads to
+ *    `{ id: 8 }` when `id` changes — the prose's claim for a read in `params` —
+ *    follow from substitution 5's bindings rather than from anything the
+ *    document states.
+ * 9. **The settlement the async blocks mark with a comment**
+ *    (`// … once loadUser(1) resolves`). The case resolves its own deferred,
+ *    then flushes microtasks and one macrotask before the next printed line —
+ *    `eval-signal-async.spec.ts`'s `deferred` and `flush`, copied above because
+ *    importing a spec would run its cases here. Every line printed before that
+ *    comment is asserted before anything is resolved
+ *    (`docs/signals/phase-5-plan.md` § 6.1).
+ * 10. **`TestBed.tick()`** in the `resource` case: `resource` loads from an
+ *    effect, and the case runs it.
+ * 11. **`User`**, the type the `resource` block names and does not declare.
+ * 12. **The cancellation block's behaviour.** It prints nothing; the case
+ *    asserts the prose under it — each run's own `AbortSignal` reaches `fetch`,
+ *    is aborted at the read that supersedes its run and not at the change, and
+ *    the new run's is not, nor once that run has settled ("it is not aborted
+ *    when the run settles") — and the settled value, `{ id: 2 }`, which follows
+ *    from the stub's reply.
+ * 13. **Load counts** in the primitive and two-signal cases. "This read starts
+ *    the run" and "no new run of `user`" are behavioural, as substitution 6's
+ *    claim is, and a value cannot carry them.
+ * 14. **The two-signal case's tail.** After the printed lines, `id.set(2)`, then
+ *    `'loading'` and `'Grace (owner)'`: the section's claim that the second
+ *    signal tracks the first "like any other", which the printed `role` change
+ *    alone does not show.
+ * 15. **The promise in the sync-path case.** `user()` is asserted to be a
+ *    `Promise` from the prose — "its value is the promise itself, unresolved" —
+ *    which the block does not print.
  *
- * Items 6, 7 and 8 are all the same class — a value asserted that the block
- * does not print — and they are listed separately because the enumeration is
- * the only thing standing against an unlisted one (`docs/gates/plan.md` § 7,
- * risk 3, which is accepted rather than gated).
+ * Items 6, 7, 8 and 12–15 are all the same class — a value or a behaviour
+ * asserted that the block does not print — and they are listed separately
+ * because the enumeration is the only thing standing against an unlisted one
+ * (`docs/gates/plan.md` § 7, risk 3, which is accepted rather than gated).
  */
 describe('documented examples', () => {
 
@@ -277,22 +333,165 @@ describe('documented examples', () => {
 
   describe('Async expressions', () => {
 
-    it('should carry the promise as the value', async () => {
-      // `id` and `loadUser` are this file's (substitution 5); the block
-      // declares neither, and the `resource(…)` composition below it is not
-      // covered — see the coverage list above.
-      const id = signal(7);
-      const loadUser = (key: number): Promise<{ id: number }> =>
-        Promise.resolve({ id: key });
+    interface Named {
+      readonly id: number;
+      readonly name: string;
+    }
+
+    /**
+     * `loadUser` (substitution 5): a deferred per call, settled by the case,
+     * and the key each call was given.
+     */
+    const loadUsers = () => {
+      const keys: number[] = [];
+      const loads: Deferred<Named>[] = [];
+      const loadUser = (key: number): Promise<Named> => {
+        const next = deferred<Named>();
+        keys.push(key);
+        loads.push(next);
+        return next.promise;
+      };
+      return { keys, loads, loadUser };
+    };
+
+    it('should read undefined and loading, then the value, and start a run at the read after a change', async () => {
+      const { keys, loads, loadUser } = loadUsers();
+
+      // The README's block, from `const id` on, in an injection context.
+      const id = signal(1);
+      const user = TestBed.runInInjectionContext(() =>
+        createEvalSignalAsync('loadUser(id)', { id, loadUser })
+      );
+
+      expect(user()).toBeUndefined();
+      expect(user.status()).toBe('loading');
+
+      // "… once loadUser(1) resolves" (substitution 9).
+      loads[0].resolve({ id: 1, name: 'Ada' });
+      await flush();
+      expect(user()).toEqual({ id: 1, name: 'Ada' });
+      expect(user.status()).toBe('resolved');
+
+      id.set(2);
+      // "This read starts the run for id 2": nothing has before it
+      // (substitution 13).
+      expect(keys).toEqual([1]);
+      expect(user()).toBeUndefined();
+      expect(keys).toEqual([1, 2]);
+      expect(user.status()).toBe('loading');
+    });
+
+    it('should derive from the async signal in a second one, tracking both', async () => {
+      const { keys, loads, loadUser } = loadUsers();
+
+      const { id, label, role } = TestBed.runInInjectionContext(() => {
+        // The README's block, as printed.
+        const id = signal(1);
+        const user = createEvalSignalAsync('loadUser(id)', { id, loadUser });
+        const role = signal('admin');
+
+        const label = createEvalSignal('user ? user.name + " (" + role + ")" : "loading"', { user, role });
+
+        return { id, label, role };
+      });
+
+      expect(label()).toBe('loading');
+
+      // "… once loadUser(id) resolves" (substitution 9).
+      loads[0].resolve({ id: 1, name: 'Ada' });
+      await flush();
+      expect(label()).toBe('Ada (admin)');
+
+      role.set('owner');
+      expect(label()).toBe('Ada (owner)');
+      // "No new run of `user`" (substitution 13).
+      expect(keys).toEqual([1]);
+
+      // And the async signal is tracked through the second: a change it read
+      // reaches `label`.
+      id.set(2);
+      expect(label()).toBe('loading');
+      expect(keys).toEqual([1, 2]);
+      loads[1].resolve({ id: 2, name: 'Grace' });
+      await flush();
+      expect(label()).toBe('Grace (owner)');
+    });
+
+    it('should hand each run its own AbortSignal, aborted by the read that supersedes the run', async () => {
+      // `fetch` is this case's (substitution 5): a stub that keeps each
+      // request's signal and answers with a deferred the case settles.
+      const requests: { url: string; signal: AbortSignal; reply: Deferred<{ json(): unknown }> }[] = [];
+      const fetch = (url: string, init: { signal: AbortSignal }): Promise<{ json(): unknown }> => {
+        const reply = deferred<{ json(): unknown }>();
+        requests.push({ url, signal: init.signal, reply });
+        return reply.promise;
+      };
+
+      // The README's block, as printed.
+      const id = signal(1);
+      const loadUser = (userId: number, abort: AbortSignal) =>
+        fetch(`/api/users/${userId}`, { signal: abort }).then((response) => response.json());
 
       const user = TestBed.runInInjectionContext(() =>
-        createEvalSignal('loadUser(id)', { id, loadUser })
+        createEvalSignalAsync('loadUser(id, abort)', { id, loadUser }, {
+          abortSignalKey: 'abort',
+        })
       );
+
+      // The prose under it (substitution 12).
+      expect(user()).toBeUndefined();
+      expect(requests.map((request) => request.url)).toEqual(['/api/users/1']);
+      expect(requests[0].signal.aborted).toBe(false);
+
+      id.set(2);
+      expect(requests[0].signal.aborted).toBe(false);
+
+      expect(user()).toBeUndefined();
+      expect(requests.map((request) => request.url)).toEqual(['/api/users/1', '/api/users/2']);
+      expect(requests[0].signal.aborted).toBe(true);
+      expect(requests[1].signal.aborted).toBe(false);
+
+      requests[1].reply.resolve({ json: () => ({ id: 2 }) });
+      await flush();
+      expect(user()).toEqual({ id: 2 });
+      expect(requests[1].signal.aborted).toBe(false);
+    });
+
+    it('should carry the promise as the value, and reload a resource that reads it in params', async () => {
+      // `User` (substitution 11), and `id` and `loadUser` (substitution 5).
+      interface User {
+        readonly id: number;
+      }
+      const id = signal(7);
+      const loadUser = (key: number): Promise<User> => Promise.resolve({ id: key });
+
+      const { user, userResource } = TestBed.runInInjectionContext(() => {
+        // The README's block, as printed.
+        const user = createEvalSignal('loadUser(id)', { id, loadUser });
+
+        // Angular 20 and later. The read goes in `params`, never in `loader`.
+        const userResource = resource({
+          params: () => user() as Promise<User>,
+          loader: ({ params }) => params,
+        });
+
+        return { user, userResource };
+      });
 
       // The section's claim is that the walk returns the promise *unresolved*,
       // so state that directly before resolving it.
       expect(user()).toBeInstanceOf(Promise);
-      await expect(user() as Promise<{ id: number }>).resolves.toEqual({ id: 7 });
+
+      // Substitutions 8 and 10: the resource loads, and reloads on a change
+      // its `params` read.
+      TestBed.tick();
+      await flush();
+      expect(userResource.value()).toEqual({ id: 7 });
+
+      id.set(8);
+      TestBed.tick();
+      await flush();
+      expect(userResource.value()).toEqual({ id: 8 });
     });
   });
 

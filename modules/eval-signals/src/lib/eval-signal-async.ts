@@ -160,8 +160,8 @@ const assertReadableKey = (key: string, caseInsensitive: boolean): void => {
  * **A run starts at the first read after a change**, not at the change: a
  * changed key marks the run stale, and reading `value` or `status` starts the
  * next one. Until a run settles the signal reads `undefined` and `'loading'`,
- * even for an expression with no promise in it, which settles a microtask
- * later. A run that has been superseded settles into nothing: its value, or
+ * even for an expression with no promise in it, which settles after a few
+ * microtasks. A run that has been superseded settles into nothing: its value, or
  * its rejection, is discarded.
  *
  * A rejection reaches `onError` with its existing contract: `'throw'`
