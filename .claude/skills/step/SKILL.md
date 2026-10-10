@@ -8,40 +8,45 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: `docs/signals/phase-5-plan.md`
-Target library: `@zvenigora/ng-eval-signals` (`modules/eval-signals`)
+Plan document: `docs/colon-identifiers/phase-9-plan.md`
+Target library: `@zvenigora/ng-eval-core` (`modules/eval-core`)
 Requested step: $ARGUMENTS
 
 **Each step's file list in the plan's § 4 is its scope, and it is not the same list every step.**
-Phase 5 builds an async signal in `eval-signals`, but two of its four steps reach elsewhere, by
-design and nowhere else:
+Phase 9 builds colon-joined identifiers in `eval-core`, and its seven steps reach the other two
+projects by design, at named steps and nowhere else:
 
-- **Step 1 is `eval-core`, test-only** — one new spec pinning that the walk ends before an async
-  entry point returns its promise. A non-spec file under `modules/eval-core/` at *any* step is a
-  stop-and-replan (plan § 2), not a wider step.
-- **Step 4 touches `eval-forms`' manifest and changelog** — the peer-range patch the
-  `eval-signals` bump forces (plan § 3.8) — and nothing else in that project.
+- **Steps 1–3 are `eval-core`** — the parse cache (BL-A26), the grammar, the application switch.
+- **Step 4 is `eval-core`, test-only** — the data-driven corpus. A non-spec, non-data file there is a
+  stop-and-replan.
+- **Step 5 is `eval-signals`** — one reworded message and specs. **Step 6 is `eval-forms`** — both
+  adapters' parse sites and `guardIdentifiers`.
+- **Step 7 is the release** — every package's manifest, changelog and README.
 
-Steps 2 and 3 are `eval-signals` and `docs/` only. Every other project's lint and test targets run
-below as the regression gate that catches a step which reached into one anyway.
+A file under `modules/eval-signals/` outside step 5 and step 7, or under `modules/eval-forms/`
+outside step 6 and step 7, is a stop-and-replan (plan § 2), not a wider step. Every other project's
+lint and test targets run below as the regression gate that catches a step which reached into one
+anyway.
 
-**All three packages are published**, and `eval-signals` is consumed by `eval-forms` — so a change
-can be in one of two categories:
+**All three packages are published**, and `eval-core` is consumed by the other two — so a change can
+be in one of two categories:
 
 - **Additive** work — a new exported symbol, a new member of a type nothing implements — is in scope
-  whenever the plan calls for it. Phase 5's surface (plan § 5) is all additive.
+  whenever the plan calls for it. Phase 9's surface (plan § 5) is additive.
 - A change to an **existing exported symbol's shape**, or to the behaviour of an already-shipped
   path, is a versioned release of that package: it needs an explicit callout in the step's report, a
   version bump, and an entry in that package's own `modules/<name>/CHANGELOG.md`
-  (`## [0.5.0] - <npm's publish date, UTC>`). The plan has none; finding one is a stop-and-replan.
+  (`## [0.12.0] - <npm's publish date, UTC>`). The plan names each one: step 1's and step 3's
+  cache fixes in `eval-core`, step 5's message in `eval-signals`, and step 6's label refusal in
+  `eval-forms`, a breaking minor (plan § 3.10). Finding any other is a stop-and-replan.
 
 **Every step says which of those two it is, in its § 2 restatement**, and whether it ships in a
-package at all — step 1 ships in none. The bumps land once, in step 4 (plan § 3.8); steps 2 and 3
-add to `eval-signals` unreleased.
+package at all — step 4 ships in none. The bumps land once, in step 7 (plan § 3.10); steps 1–6 add
+unreleased.
 
 The lint and test targets below cover project boundaries: a step that edits another project moves
 its row. They do **not** cover the second category — a widened signature or a changed behaviour
-inside `eval-signals` leaves every row green. Reading the diff is what covers that.
+inside `eval-core` leaves every row green. Reading the diff is what covers that.
 
 ## Current state
 
@@ -123,12 +128,12 @@ After I confirm:
 npx nx run-many -t lint test build --skip-nx-cache --output-style=static
 ```
 
-All must be clean, with the same exception § 1 allows and on the same terms. The `eval-core`
-row is the regression gate for the plan's § 2 — this phase changes no `eval-core` source, so its
-count moves only by step 1's new cases. The `eval-forms` row is the downstream witness: it consumes
-`eval-signals` at its published surface, so a step that alters an existing `eval-signals` path shows
-up there before it shows up in a consumer's build — and at step 4 its `lint` is what proves the peer
-range was widened (plan § 3.8).
+All must be clean, with the same exception § 1 allows and on the same terms. The `eval-core` row
+moves by each step's new cases and no existing assertion changes; `performance.spec.ts` gains one
+case, in step 2, and nothing else (plan § 3.9). The `eval-signals` and `eval-forms` rows are the
+downstream witnesses for steps 1–4: both parse through `eval-core` at its published surface, so a
+step that alters an existing parse path shows up there before it shows up in a consumer's build —
+and at step 7 their `lint` is what proves the peer ranges were widened (plan § 3.10).
 
 `build` is in this list because a green `test` run is not a type-check: Jest compiles per
 file through `tsconfig.spec` and `build:production` through `tsconfig.lib.prod`, and three
@@ -150,15 +155,14 @@ git diff --name-only HEAD
 ```
 
 Every path must be on the step's own file list in the plan's § 4, or be the plan document itself.
-Anything else is a **stop-and-replan**, not a judgement call — and a non-spec file under
-`modules/eval-core/`, or anything under `modules/eval-forms/` other than step 4's `package.json`
-and `CHANGELOG.md`, most of all. Report it and stop.
+Anything else is a **stop-and-replan**, not a judgement call — and a file under
+`modules/eval-signals/` or `modules/eval-forms/` outside the steps named above, most of all.
+Report it and stop.
 
-**Inside `eval-signals`, a `public-api.ts`, an `index.ts` or a `package.json` in the diff is not a
-stop condition** — steps 2 and 3 add exports, and step 4 bumps the version. What they are instead
-is the trigger for the categories' checklist: the report says which category the step is in, and
-where the callout, the bump and the `CHANGELOG.md` entry are — or that the plan puts them in
-step 4.
+**Inside `eval-core`, a `public-api.ts` or a `package.json` in the diff is not a stop condition**
+— step 3 adds an export, and step 7 bumps all three versions. What they are instead is the trigger
+for the categories' checklist: the report says which category the step is in, and where the
+callout, the bump and the `CHANGELOG.md` entry are — or that the plan puts them in step 7.
 
 If a pre-existing spec now fails, that is a regression in this step, not a stale test.
 Report it; do not edit the spec to match the new behaviour.

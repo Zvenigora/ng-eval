@@ -437,6 +437,10 @@ to a phase" that does not exist. Reserved now so the citations resolve:
 
 Neither is scheduled. A phase becomes real when it gets a plan document, per `CLAUDE.md`.
 
+### Phase 9 — Colon-joined identifiers (`eval-core`, with `eval-signals` and `eval-forms`)
+
+**Planned** in [`docs/colon-identifiers/phase-9-plan.md`](docs/colon-identifiers/phase-9-plan.md): context keys such as `Q1:1:3` named as written, opt-in, with [BL-A26](docs/backlog.md#a26) fixed first; no step has started.
+
 ## Deferred work
 
 Everything recorded-and-not-done lives in **[`docs/backlog.md`](docs/backlog.md)**: two
@@ -469,8 +473,10 @@ Entries are cited by stable ID — `BL-A8`, not a line number.
 7. ~~Phase 5 (async signals)~~ — **done**, shipped in `eval-signals` 0.5.0, with `eval-forms`
    0.4.1 for its peer range. Ordered after Phase 2 because the sync primitive already composed
    with `resource` for the promise case.
-8. Phase 7 / Phase 8 — reserved above, neither costed nor scheduled. With Phase 5 done, they are
-   all this file has left; deferred work is in [`docs/backlog.md`](docs/backlog.md).
+8. Phase 7 / Phase 8 — reserved above, neither costed nor scheduled; deferred work is in
+   [`docs/backlog.md`](docs/backlog.md).
+9. Phase 9 (colon-joined identifiers) — planned, not started. Numbered after the two reserved
+   phases, and ahead of them in practice: it is the one with a consumer waiting.
 
 The `eval-core` error-identity group is closed: [BL-A5](docs/backlog-retired.md#a5),
 [BL-A6](docs/backlog-retired.md#a6) and [BL-A7](docs/backlog-retired.md#a7) are fixed for 0.7.0,

@@ -29,7 +29,8 @@ Phases 1, 2, 3, 4, 5 and 6 are complete and their plan documents are design reco
 than active work. Phase 2 shipped as `eval-core` 0.4.0, and its plan is
 `docs/statements/phase-2-plan.md`. Phase 5, the async signal, shipped as `eval-signals` 0.5.0,
 and its plan is `docs/signals/phase-5-plan.md`. What `ROADMAP.md` has left is Phases 7 and 8,
-which it reserves without specifying them.
+which it reserves without specifying them, and Phase 9, colon-joined identifiers, which is planned
+and not started.
 
 **Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left
 unfixed, decisions logged rather than made, gaps in what the suite can catch — is in
@@ -93,9 +94,9 @@ build before believing a type is sound.
   `docs/trace-surface/`. **A one-commit item gets no plan document: its exit criteria live in
   the prompt, and its backlog entry records what verified it.** **Neither does a batch of
   independent one-commit items**, however many commits it runs to: each item's exit criteria
-  live in the prompt, as the A3/B4/D6/F6, D9/F13 and F2 batches did. There is no active plan.
-  `.claude/skills/step/SKILL.md` still targets the Phase 5 plan, `docs/signals/phase-5-plan.md`,
-  until the next plan retargets it; it is retargeted with each new one.
+  live in the prompt, as the A3/B4/D6/F6, D9/F13 and F2 batches did. The active plan is
+  Phase 9's, `docs/colon-identifiers/phase-9-plan.md`, and `.claude/skills/step/SKILL.md` targets
+  it; it is retargeted with each new one.
 - **One retrospect per track; no per-step summaries.**
 - **Anything left for later work goes in `docs/backlog.md`; a commit body never carries it
   forward.**

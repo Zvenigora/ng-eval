@@ -53,9 +53,11 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-Nothing is in flight. Phase 5 is complete: its [plan](signals/phase-5-plan.md), at Revision 5, and
-its retrospect, [`signals/phase-5-summary.md`](signals/phase-5-summary.md), are design records, and
-it shipped as `eval-signals` 0.5.0 and `eval-forms` 0.4.1, tagged at 577c4f0. The track before it,
+**Phase 9**, colon-joined identifiers — [`docs/colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md),
+written 2026-10-10; step 1, which fixes [A26](#a26), not started. Phase 5 is complete: its
+[plan](signals/phase-5-plan.md), at Revision 5, and its retrospect,
+[`signals/phase-5-summary.md`](signals/phase-5-summary.md), are design records, and it shipped as
+`eval-signals` 0.5.0 and `eval-forms` 0.4.1, tagged at 577c4f0. The track before it,
 "Track 3" ([`docs/gates/plan.md`](gates/plan.md)), is closed; its retrospect is
 [`docs/gates/summary.md`](gates/summary.md).
 
@@ -184,9 +186,11 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A23](backlog-retired.md#a23) | `safeSetProperty` defines the property instead of assigning it — setters never run, non-configurable properties cannot be written | core | decision, then fix | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-core` 0.10.0, tagged 0c3299e: a member write assigns, after the same refusals, so setters run |
 | [A24](#a24) | An `await` is a pass-through — inside an `async` arrow it hands the walk a promise as an operand, and the arrow returns no promise | core | decision, then fix | Open — opened 2026-10-07 by the Phase 5 plan; the `eval-signals` README states it since 0.5.0 |
 | [A25](#a25) | `awaitVisitor`'s timeout race — an uncleared 30 s timer per `await`, an undocumented `__awaitTimeout` key, and the caller's error mutated | core | fix | Open — opened 2026-10-07 by the Phase 5 plan |
-| [A26](#a26) | The parse cache ignores parser options | core | fix | Open — opened 2026-10-07 by the Phase 5 plan |
+| [A26](#a26) | The parse cache ignores parser options | core | fix | Open — opened 2026-10-07 by the Phase 5 plan; **scheduled as step 1 of the [Phase 9 plan](colon-identifiers/phase-9-plan.md)** |
 | [A27](#a27) | A nested `evaluate` writes the enclosing walk's `EvalResult` — and `start()` clears nothing, so a reused state shows the last run's outcome | core | decision | Open — recorded, not scheduled; opened 2026-10-08 by Phase 5 step 1 |
 | [A28](backlog-retired.md#a28) | `scoped` is documented as a scope pushed during this walk; the code asks the whole scope stack | core | docs | **Retired — fixed 2026-10-10**, documentation comments only; not yet released. The `.d.ts` differs in four JSDoc blocks: every scope on the stack counts, whoever pushed it |
+| [A29](#a29) | `CompilerService` keys a compiled AST by type, start, end and `toString()` — two ASTs of one type and span share a compiled function | core | fix | Open — opened 2026-10-10 by the Phase 9 plan |
+| [A30](#a30) | `ParserService.parserOptions` reaches `EvalService`, `CompilerService` and `DiscoveryService` for no acorn option | core | decision | Open — opened 2026-10-10 by the Phase 9 plan |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -212,6 +216,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [D10](backlog-retired.md#d10) | `applyErrorPolicy` has no runnable README block | forms | docs | **Retired — fixed**, and it created [F3](backlog-retired.md#f3)'s third gate's subject |
 | [D11](backlog-retired.md#d11) | `/signals` has no worked example | forms | docs | **Retired — fixed 2026-10-03**, docs and tests only: [`docs/forms/worked-example-signals.md`](forms/worked-example-signals.md), every ` ```ts ` block executed and counted; released 2026-10-04 in `eval-forms` 0.3.1, tagged 3d56994 — the example ships in no package, the README's link to it does |
 | [D12](backlog-retired.md#d12) | ~20 specs discard the binding and never call `destroy()` | forms | test hygiene | **Retired — fixed 2026-09-28, test only**; `destroy()`'s release path is pinned by `field-schema.memory.spec.ts`, the net's by `field-schema.spec.ts`'s subscription count. Injector-path memory cases removed 2026-09-29: timing-dependent |
+| [D13](#d13) | A rule whose top-level statement `eval-core` refuses registers in both adapters and renders blank under the default policy | forms | decision, then fix | Open — opened 2026-10-10 by the Phase 9 plan, whose step 6 refuses the labeled-statement case |
 | [E1](#e1) | Form-state keys across both adapters | forms | phase | Open — **no phase reserved** |
 | [E2](#e2) | Arrays — `applyEach` at `/signals`, `FormArray` at `/reactive` | forms | phase | Open |
 | [E3](#e3) | `dependencies` introspection at form scale | forms | phase | Open |
@@ -236,6 +241,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [F16](#f16) | Workspace dependency advisories — 9 moderate on the workspace's Angular 22.0.8, and a **temporary `smol-toml` override under `nx`** | repo | fix | Open — **part 1 retired 2026-09-27**: `nx` 23.2.1, Angular 22.1.8 / 22.1.9, `npm audit` 0 at every severity. Part 2, the override, is live until a stable `nx` depends on `smol-toml >= 1.7.1`. **Re-audited 2026-09-30: 22 (14 high, 8 moderate)**, none reaching a published package; **fixed the same day**: Angular 22.2.1 / 22.2.0, two more `overrides.nx` entries, `verdaccio` removed, `npm audit` 0 |
 | [F17](#f17) | An unhandled rejection reaches no channel a spec would normally watch — only zone.js's `unhandledPromiseRejectionHandler` hook sees it | repo | test gap | Open — opened 2026-10-08 by Phase 5 step 2 |
 | [F18](backlog-retired.md#f18) | `eval-signal.ts` line citations in `eval-forms` comments and completed plans are stale | forms, repo | docs | **Retired — fixed 2026-10-10** in live source; completed records kept as written, per `CLAUDE.md`. The three `eval-forms` comments cite symbols; `applyErrorPolicy`'s ships in the core `.d.ts` |
+| [F19](#f19) | `CLAUDE.md` cites the resolved-key re-check as `member-expression.ts:188`; it is at `:211` | repo | docs | Open — opened 2026-10-10 by the Phase 9 plan |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -321,7 +327,8 @@ several of these visible at all. [A6](backlog-retired.md#a6) was surfaced by Pha
 [A9](backlog-retired.md#a9) were never recorded in the roadmap at all. [A23](backlog-retired.md#a23) was surfaced by
 [C1](backlog-retired.md#c1)'s fix. [A24](#a24)–[A26](#a26) were surfaced by the Phase 5 plan's probes
 ([`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.3), which keeps all three out of its scope
-(§ 3.1).
+(§ 3.1). [A29](#a29) and [A30](#a30) were surfaced by the Phase 9 plan's probes
+([`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.3), which needs neither.
 
 **Identity-checked `exit`** (§ 3.8 of the Phase 1 plan) means the hook layer stays balanced in
 spite of [A1](backlog-retired.md#a1) and [A2](backlog-retired.md#a2), so neither was urgent — [A3](backlog-retired.md#a3)
@@ -654,7 +661,9 @@ through an `async` arrow, exactly as the sync path does today. It adds no reach.
 <a id="a26"></a>
 ## A26 — The parse cache ignores parser options
 
-**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-07 by the Phase 5 plan
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-07 by the Phase 5 plan; scheduled
+2026-10-10 as step 1 of the [Phase 9 plan](colon-identifiers/phase-9-plan.md), whose per-call option
+and published setter both need it (§ 3.2)
 
 `ParserService.parse` merges each call's options over its own (`parser.service.ts:122`) and caches
 the result under `getHashKey('', expr)` (`:135`) — the expression string alone. So the first parse
@@ -667,7 +676,15 @@ same injector, the same `simpleEval` returns a promise.
 
 Read, not measured: `ParserService` defaults to `extractExpressions: true` (`parser.service.ts:44-47`)
 while `EvalService` and `CompilerService` pass `defaultParserOptions`, which sets it `false`, so the
-two share entries holding differently shaped nodes for one string.
+two share entries holding differently shaped nodes for one string. **Measured 2026-10-10, both
+directions** (Phase 9 plan § 1.2 finding 5): after `ParserService.parse('a + b')`, a caller passing
+`defaultParserOptions` got the cached `BinaryExpression`; after `simpleEval('x + y')`,
+`ParserService.parse('x + y')` got a `Program`. And a change through the `parserOptions` setter after
+first use is ignored for text already cached and honoured for new text.
+
+`CompilerService` has a second cache of the same shape: it keys a compiled string on the text alone
+and never calls the parser again for it (that plan's finding 6). The Phase 9 plan fixes it in its
+step 3, where it first becomes observable.
 
 **Fix**: key the cache on the options that change the AST as well as the string.
 
@@ -714,6 +731,63 @@ settlement — so it is a decision before it is a fix.
 repo — P7 in that plan's § 1.3, and the reused-state and sync-path cases above. `eval-core`'s source
 is the same at cc0761e and 9d5715d.
 
+<a id="a29"></a>
+## A29 — `CompilerService` keys a compiled AST by type, start, end and `toString()`
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-10 by the Phase 9 plan
+
+`CompilerService.compile` and `compileAsync` accept an AST as well as a string, and cache the compiled
+function under `generateCacheKey` (`compiler.service.ts:108-120`), which for a node is `ast:`, its
+type, a JSON of its type, start and end, and `expression.toString()`. An acorn node does not define
+`toString`, so the last part is `[object Object]` for every node, and any two ASTs with the same root
+type and span share one key.
+
+Measured: `compile(parse('a + b', defaultParserOptions))`, then
+`compile(parse('c * d', defaultParserOptions))`, returned the same function, under the key
+`ast:Program:{"type":"Program","start":0,"end":5}:[object Object]`; `simpleCall` of the second over
+`{ a: 1, b: 2, c: 3, d: 4 }` gave `3`, not `12`. A silent wrong answer, for up to the cache's
+10-minute TTL, to any caller that compiles ASTs it parsed itself.
+
+**Fix**: key a node by identity — a `WeakMap` beside the string cache — rather than by a description
+of it. Nothing in this repository compiles an AST through the service: `eval-signals` passes strings,
+and `eval-forms` uses the free `compile`.
+
+**Why not Phase 9**: its design passes `CompilerService` strings only, and its step 3, which rewrites
+the string key, is told to leave the AST branch alone. The finding does close one of that plan's
+options, "parse it yourself and compile the AST" (§ 3.1, option A).
+
+*Recorded*: this entry; [`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.2
+finding 7.
+*Verified*: measured 2026-10-10 at af81e24, with a throwaway spec deleted the same day (that plan's
+§ 1.3, P8).
+
+<a id="a30"></a>
+## A30 — `ParserService.parserOptions` reaches the services for no acorn option
+
+**Package** core · **Kind** decision · **Status** Open. Opened 2026-10-10 by the Phase 9 plan
+
+`EvalService`, `CompilerService` and `DiscoveryService` parse through `BaseEval.parse`, which passes
+their own options per call — `defaultParserOptions`, or a copy of it (`base-eval.ts:41`). Those carry
+all of acorn's `defaultOptions`, 23 keys in all, and `ParserService.parse` lets a per-call key win
+(`parser.service.ts:122`). So a value set through `ParserService`'s public `parserOptions` setter is
+overridden, on every service path, for every key acorn defines; it reaches only callers of
+`ParserService.parse` itself.
+
+Measured: with the setter carrying `allowAwaitOutsideFunction: true`, `preserveParens: true` and
+`colonIdentifiers: true`, the options `simpleEval` handed `acorn.parse` held `null`, `false` — the
+defaults — and `true`; `simpleEval('await q')` still threw.
+
+**The decision**: whether the setter is meant to configure the services. If it is, the services'
+per-call options should stop restating acorn's defaults; if not, its JSDoc should say it configures
+direct `ParserService.parse` calls only. Either way the Phase 9 plan relies on the half that works —
+a key `defaultParserOptions` does not carry reaches every service — and on `defaultParserOptions`
+never carrying `colonIdentifiers` (§ 1.2 finding 4).
+
+*Recorded*: this entry; [`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.2
+finding 4.
+*Verified*: measured 2026-10-10 at af81e24 by spying on `acorn.parse`, with a throwaway spec deleted the
+same day (that plan's § 1.3, P6).
+
 ---
 
 # B. `eval-core` — security and hygiene
@@ -758,6 +832,36 @@ case is fixed. The nested case, where the diagnostic does not reach `/signals`, 
 documented in the package README.
 
 *Recorded*: [`forms/phase-4-plan.md` § 3.5.6](forms/phase-4-plan.md).
+
+<a id="d13"></a>
+## D13 — A rule whose top-level statement `eval-core` refuses registers, and renders blank
+
+**Package** forms · **Kind** decision, then fix · **Status** Open. Opened 2026-10-10 by the Phase 9
+plan, whose step 6 refuses the labeled-statement case
+
+Both adapters accept any rule that parses: `/signals`' `prepare` parses, guards identifiers and
+compiles; `/reactive`'s `validate` does the same before `createEvalSignal` compiles. Neither asks
+whether `eval-core` will evaluate the statements it parsed, and `dispatchStatement` throws
+`Unsupported statement type` for everything outside its six (`dispatch-statement.ts:66`) — a label, a
+`while`, a `switch` — on every evaluation. Under the default `onError: 'undefined'` that is a blank
+field, with nothing reported.
+
+Measured for a label, which is what a legacy rule starting with a colon name parses as: `/reactive`
+bound `visible: 'Q1:1 == 1'` and read `visible()` `false` and `text()` `''`; `/signals` registered
+`evalVisible(p.city, 'Q1:1 == 1')` and the field read `hidden()` `true`. The other statement types take
+the same path by construction.
+
+**Phase 9 closes the label case** — `guardIdentifiers` refuses a top-level `LabeledStatement`, since a
+forgotten `colonIdentifiers` switch is exactly that shape (that plan's § 3.8). **The rest is the
+decision**: refusing every unsupported top-level statement at registration needs `eval-core`'s list
+of supported statements, which it does not publish, and a copy in this package would drift — the
+problem the Phase 5 plan's § 3.6 solved for `abortSignalKey` by asking `eval-core` instead of copying
+its list.
+
+*Recorded*: this entry; [`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.2
+finding 10.
+*Verified*: measured 2026-10-10 at af81e24 for a label, through both adapters, with a throwaway spec
+deleted the same day (that plan's § 1.3, F1).
 
 ---
 
@@ -1113,3 +1217,24 @@ a plain `new Promise` rejected with no handler reached none of the three channel
 `uncaughtPromiseErrors` queue held it until the macrotask, and a function set under the hook was
 called with it. Then by criterion 5's own cases: a wrong implementation that left superseded runs'
 rejections unhandled turned both red through the hook, with the control green.
+
+<a id="f19"></a>
+## F19 — `CLAUDE.md` cites the resolved-key re-check by a line that moved
+
+**Package** repo · **Kind** docs · **Status** Open. Opened 2026-10-10 by the Phase 9 plan
+
+`CLAUDE.md`'s "Security-relevant code" names "the *resolved-key* re-check at `member-expression.ts:188`
+— `isDangerousProperty(foundKey)`". The line was right when b684317 wrote it, 2026-08-22; the check is
+now at `:211`, and `:188` is inside the lookup block above it. A reader sent to the security check by
+the file that tells them to read it first lands on the wrong line.
+
+**Fix**: cite the symbol rather than the line — `isDangerousProperty(foundKey)` in
+`member-expression.ts` — as [F18](backlog-retired.md#f18) did for `eval-signal.ts`, so the citation
+does not move again with the next edit above it.
+
+**Why not the Phase 9 plan's commit**, which edits `CLAUDE.md`: it was outside that plan's scope, and the
+request that commissioned it sent such findings here.
+
+*Recorded*: this entry.
+*Verified*: read 2026-10-10 at af81e24 — `grep -n "isDangerousProperty(foundKey)"` gives
+`member-expression.ts:211`; `git log -S` gives b684317 as the commit that wrote `:188`.
