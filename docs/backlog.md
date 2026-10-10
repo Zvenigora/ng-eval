@@ -186,7 +186,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A25](#a25) | `awaitVisitor`'s timeout race — an uncleared 30 s timer per `await`, an undocumented `__awaitTimeout` key, and the caller's error mutated | core | fix | Open — opened 2026-10-07 by the Phase 5 plan |
 | [A26](#a26) | The parse cache ignores parser options | core | fix | Open — opened 2026-10-07 by the Phase 5 plan |
 | [A27](#a27) | A nested `evaluate` writes the enclosing walk's `EvalResult` — and `start()` clears nothing, so a reused state shows the last run's outcome | core | decision | Open — recorded, not scheduled; opened 2026-10-08 by Phase 5 step 1 |
-| [A28](#a28) | `scoped` is documented as a scope pushed during this walk; the code asks the whole scope stack | core | docs | Open — opened 2026-10-09 by Phase 5 step 3 |
+| [A28](backlog-retired.md#a28) | `scoped` is documented as a scope pushed during this walk; the code asks the whole scope stack | core | docs | **Retired — fixed 2026-10-10**, documentation comments only; not yet released. The `.d.ts` differs in four JSDoc blocks: every scope on the stack counts, whoever pushed it |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -712,38 +712,6 @@ settlement — so it is a decision before it is a fix.
 *Verified*: measured 2026-10-08 against the gate-built `eval-core` bundle, by scripts outside the
 repo — P7 in that plan's § 1.3, and the reused-state and sync-path cases above. `eval-core`'s source
 is the same at cc0761e and 9d5715d.
-
-<a id="a28"></a>
-## A28 — `scoped` is documented as a scope pushed during this walk; the code asks the whole scope stack
-
-**Package** core · **Kind** docs · **Status** Open. Opened 2026-10-09 by Phase 5 step 3
-
-`identifier.ts`'s doc comment (`:26`) says a read's `scoped` flag marks a name bound by a scope
-pushed *during this walk*. The code asks `EvalContext.hasInScopes` (`:43-45`), which searches the
-whole scope stack, so a scope pushed before the walk is flagged too.
-
-`eval-signals` relies on the code, not the comment. Phase 5 step 3's `abortSignalKey` binds each
-run's `AbortSignal` as a scope pushed before the walk ([`signals/phase-5-plan.md`](signals/phase-5-plan.md)
-§ 3.6). Its read is flagged `scoped`, and the dependency tracker's rule 1 drops it, so the key never
-reaches `dependencies` — step 3's criterion 4, met by the tracker alone, with no filter in
-`eval-signals`. If the code were tightened to match the comment, the key would appear in
-`dependencies`, and the criterion-4 cases ("dependencies (step 3 criterion 4)" in
-`eval-signal-async.spec.ts`) would catch it.
-
-The same narrower wording is in three more docblocks, read rather than measured:
-`EvalReadEvent.scoped` (`eval-hooks.ts:71`, "a scope pushed *during this evaluation*"), which ships in
-the published `.d.ts`; `EvalContext.hasInScopes` (`eval-context.ts:292`); and the tracker's rule 1
-(`dependency-tracker.ts:49-50`).
-
-**Fix**: correct the comment to what the code asks — a scope on the stack when the name is read,
-whoever pushed it — and the three above with it. Documentation only: no behaviour changes, and the
-`.d.ts` differs in a documentation comment.
-
-*Recorded*: this entry; Phase 5 step 3's report, under "noticed, not fixed".
-*Verified*: Phase 5 step 3's criterion-4 probe, 2026-10-08, on the working tree committed as dafe5f3:
-rule 1 disabled in `dependency-tracker.ts`, then reverted, turned both criterion-4 cases red with
-`"abort"` in `dependencies` — so the key is dropped as a `scoped` read, which the comment says it
-is not.
 
 ---
 

@@ -47,9 +47,11 @@ const rootOf = (path: string): string => {
  * rules do the filtering:
  *
  * 1. **Scope bindings are not dependencies.** A read flagged `scoped` resolved
- *    from a scope pushed during the walk - an arrow-function parameter. Only
- *    the walker can tell one from a real context read, which is why the flag
- *    exists; a consumer using this tracker inherits the filtering for free.
+ *    from a scope on the context's scope stack, whoever pushed it - an
+ *    arrow-function parameter, a declaration in a program, block or `for`
+ *    scope, or a binding the caller pushed before the walk. Only the walker
+ *    can tell one from a real context read, which is why the flag exists; a
+ *    consumer using this tracker inherits the filtering for free.
  * 2. **Nor is anything reached *through* one.** `item` being a binding makes
  *    `item.name` one too, and that read carries no flag of its own: `scoped` is
  *    set at identifier resolution, and the member hop resolves against the

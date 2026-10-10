@@ -980,7 +980,7 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
 - **Category**: additive, unreleased until step 4.
 - **Outcome** — done 2026-10-09, `dafe5f3`, under Revision 4. Its review found the supersede
   walking before it aborted; § 3.4 was reordered, with the cases listed above. It opened
-  [BL-A28](../backlog.md#a28), recorded in `51e1f7c`. § 8 q1's matrix ran after it, at the commit
+  [BL-A28](../backlog-retired.md#a28), recorded in `51e1f7c`. § 8 q1's matrix ran after it, at the commit
   that recorded A28, and its result is `01f2e44`.
 
 ### Step 4 — Docs and release

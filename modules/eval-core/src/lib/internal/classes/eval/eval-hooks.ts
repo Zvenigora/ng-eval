@@ -68,10 +68,13 @@ export interface EvalReadEvent {
   readonly path?: string;
   readonly value: unknown;
   /**
-   * True when the key resolved from a scope pushed *during this evaluation* -
-   * `EvalContext.scopes`, the stack `arrow-function-expression.ts` pushes and
-   * pops around a call. Such a read is an arrow-function parameter binding,
-   * not a dependency, and a tracker should skip it.
+   * True when a scope on the context's scope stack - `EvalContext.scopes`,
+   * asked through `EvalContext.hasInScopes` - binds the name when it is read,
+   * whoever pushed that scope. That covers an arrow-function parameter, a
+   * declaration in the lexical scope the evaluator pushes for a program, a
+   * block or a `for` loop, and a binding the caller pushed with
+   * `EvalContext.push` before the walk. Such a read is a binding, not a
+   * dependency, and a tracker should skip it.
    *
    * The definition is **lifetime, not type**: caller-registered `priorScopes`
    * are `EvalScope` instances holding long-lived objects and are real

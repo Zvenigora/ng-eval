@@ -23,8 +23,13 @@ const literals: Registry<string, unknown>= Registry.fromObject({
  * the source name stands in. The path is always the source spelling, since it
  * is reconstructed statically.
  *
- * `scoped` marks a read of a name bound by a scope pushed *during this walk* -
- * an arrow-function parameter. It is asked of `EvalContext.hasInScopes`, which
+ * `scoped` marks a read of a name bound by any scope on the context's scope
+ * stack when the name is read, whoever pushed it: an arrow-function
+ * parameter, a declaration in the lexical scope `program.ts`,
+ * `block-statement.ts` or `for-statement.ts` pushes, or a binding the caller
+ * pushed with `EvalContext.push` before the walk - which is how `eval-signals`
+ * binds a run's `AbortSignal` under `abortSignalKey`, and why that key never
+ * reaches its `dependencies`. It is asked of `EvalContext.hasInScopes`, which
  * tests for the binding rather than for its value: a parameter bound to
  * `undefined` is still a parameter, and reading the flag off the resolved value
  * would make it vary with the data rather than with the expression.
@@ -35,8 +40,10 @@ const literals: Registry<string, unknown>= Registry.fromObject({
  * than set to false, so absent reads as "not scoped" the same way it does at
  * the member emission sites.
  *
- * The scope stack is empty for any expression without an arrow function, and
- * `Stack.asArray` allocates, so the common case is short-circuited on length.
+ * The scope stack is empty only for a walk that does not start at a `Program`
+ * and has nothing pushed by its caller: `program.ts` pushes a scope at the root
+ * of every walk through `EvalService`. `Stack.asArray` allocates, so that empty
+ * case is short-circuited on length.
  */
 const emitRead = (node: Identifier, st: EvalState, value: unknown) => {
   const key = st.context?.getKey(node.name) ?? node.name;

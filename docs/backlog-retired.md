@@ -1510,6 +1510,64 @@ and C1's `lastIndex` row. The frozen-object row stays green, as it must: a froze
 definition as it refuses an assignment, so that row pins the message and not the mechanism.
 `eval-signals`: 2 failed, exactly the two regex rows.
 
+<a id="a28"></a>
+## A28 — `scoped` is documented as a scope pushed during this walk; the code asks the whole scope stack
+
+**Package** core · **Kind** docs · **Status** **Retired — fixed 2026-10-10**, documentation
+comments only; not yet released. Was Open
+
+*Fixed* 2026-10-10. The docblocks now say what the code asks: a read is `scoped` when any scope on
+the context's scope stack binds the name when it is read, whoever pushed it. That is an arrow call's
+parameters, the lexical scope `program.ts`, `block-statement.ts` or `for-statement.ts` pushes, or a
+scope a caller pushed with `EvalContext.push` before the walk, which is how `eval-signals` binds
+`abortSignalKey`. `priorScopes` stay excluded, for the lifetime reason the comments already gave.
+Five docblocks: the four below, and `EvalContext.getFromScopes`, which this entry did not name. Its
+"the scopes pushed during this evaluation" is the same claim, in a docblock that names the flag.
+`emitRead`'s last paragraph also said the stack is empty for any expression without an arrow
+function. `program.ts` pushes a scope at the root of every walk through `EvalService`, so it now
+says the stack is empty only for a walk that does not start at a `Program` and has nothing pushed by
+its caller, and keeps the point that the length check short-circuits that case.
+
+*Verified*: comment tokens only. TypeScript's scanner, trivia skipped, gives the same token stream
+before and after in all four source files; run against `identifier.ts` before f96f1d0, the same
+check diverges at token 49, so it does see a code change. Every `+` and `-` line of `git diff -U0`
+over them is a comment line. `grep` finds no "during this walk", "during this evaluation" or
+"pushed during" in the four. The built `.d.ts` against HEAD's build: four hunks, 30 lines, every one
+a comment line, in `getFromScopes`, `hasInScopes`, `EvalReadEvent.scoped` and
+`createDependencyTracker`; `emitRead`'s does not ship. The fix was expected to change
+`EvalReadEvent.scoped`'s alone. The other three are on published symbols too, and their JSDoc ships
+with them.
+
+**The entry as it stood:**
+
+`identifier.ts`'s doc comment (`:26`) says a read's `scoped` flag marks a name bound by a scope
+pushed *during this walk*. The code asks `EvalContext.hasInScopes` (`:43-45`), which searches the
+whole scope stack, so a scope pushed before the walk is flagged too.
+
+`eval-signals` relies on the code, not the comment. Phase 5 step 3's `abortSignalKey` binds each
+run's `AbortSignal` as a scope pushed before the walk ([`signals/phase-5-plan.md`](signals/phase-5-plan.md)
+§ 3.6). Its read is flagged `scoped`, and the dependency tracker's rule 1 drops it, so the key never
+reaches `dependencies` — step 3's criterion 4, met by the tracker alone, with no filter in
+`eval-signals`. If the code were tightened to match the comment, the key would appear in
+`dependencies`, and the criterion-4 cases ("dependencies (step 3 criterion 4)" in
+`eval-signal-async.spec.ts`) would catch it.
+
+The same narrower wording is in three more docblocks, read rather than measured:
+`EvalReadEvent.scoped` (`eval-hooks.ts:71`, "a scope pushed *during this evaluation*"), which ships in
+the published `.d.ts`; `EvalContext.hasInScopes` (`eval-context.ts:292`); and the tracker's rule 1
+(`dependency-tracker.ts:49-50`).
+
+**Fix**: correct the comment to what the code asks — a scope on the stack when the name is read,
+whoever pushed it — and the three above with it. Documentation only: no behaviour changes, and the
+`.d.ts` differs in a documentation comment.
+
+*Recorded*: this entry; Phase 5 step 3's report, under "noticed, not fixed". Opened 2026-10-09 by
+Phase 5 step 3.
+*Verified*: Phase 5 step 3's criterion-4 probe, 2026-10-08, on the working tree committed as dafe5f3:
+rule 1 disabled in `dependency-tracker.ts`, then reverted, turned both criterion-4 cases red with
+`"abort"` in `dependencies` — so the key is dropped as a `scoped` read, which the comment says it
+is not.
+
 ---
 
 # B. `eval-core` — security and hygiene

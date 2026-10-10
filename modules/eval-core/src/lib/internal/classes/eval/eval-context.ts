@@ -209,8 +209,8 @@ export class EvalContext {
   }
 
   /**
-   * Step 1 of {@link get}'s resolution order on its own: the scopes pushed
-   * during this evaluation, innermost first.
+   * Step 1 of {@link get}'s resolution order on its own: the scope stack,
+   * innermost first, whoever pushed each scope.
    *
    * {@link get} calls this rather than inlining the loop, so that the read
    * hooks' `scoped` flag and the resolution it describes are the *same*
@@ -289,8 +289,11 @@ export class EvalContext {
   }
 
   /**
-   * Whether any scope pushed during this evaluation *binds* the key - the
-   * question the read hooks' `scoped` flag asks.
+   * Whether any scope on the scope stack *binds* the key - the question the
+   * read hooks' `scoped` flag asks. Every scope on the stack counts, whoever
+   * pushed it: an arrow call's parameters, the lexical scope of a program, a
+   * block or a `for` loop, and a scope a caller pushed with {@link push}
+   * before the walk.
    *
    * Deliberately about binding rather than about value. It no longer parts
    * company with {@link getFromScopes} over it: both go through

@@ -59,7 +59,7 @@ evidence instead of on the typings.
 
 Opened along the way and still live: [A27](../backlog.md#a27) (step 1),
 [C7](../backlog.md#c7), [F17](../backlog.md#f17) and [F18](../backlog.md#f18) (step 2), and
-[A28](../backlog.md#a28) (step 3). Closed: [C6](../backlog-retired.md#c6), by step 4.
+[A28](../backlog-retired.md#a28) (step 3). Closed: [C6](../backlog-retired.md#c6), by step 4.
 
 ## 4. What is left after this commit
 

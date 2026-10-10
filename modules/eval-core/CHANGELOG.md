@@ -12,6 +12,13 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Changed
+- `EvalReadEvent.scoped`'s JSDoc no longer says the flag marks a scope pushed during the
+  evaluation: it is set when any scope on the context's scope stack binds the name, one the caller
+  pushed with `EvalContext.push` before the walk included, and `hasInScopes`', `getFromScopes`'
+  and `createDependencyTracker`'s say the same ([A28](../../docs/backlog-retired.md#a28)). The
+  flag's behaviour is unchanged.
+
 ---
 
 ## [0.11.0] - 2026-10-07
