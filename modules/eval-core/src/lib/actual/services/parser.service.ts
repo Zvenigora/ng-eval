@@ -5,6 +5,7 @@ import { Expression, Program,
   version as acornVersion, AnyNode } from 'acorn';
 import { parse as _parse } from '../../internal/functions';
 import { defaultParserOptions } from '../../internal/classes/eval';
+import { ParseFingerprintMemo, parseFingerprint } from './parse-fingerprint';
 
 
 /**
@@ -19,6 +20,7 @@ export class ParserService implements OnDestroy {
 
   private _parserOptions!: ParserOptions;
   private _cache?: CacheType<Program | AnyNode | Expression | undefined>;
+  private readonly _fingerprints: ParseFingerprintMemo = new WeakMap();
   private _cacheCleanupInterval?: ReturnType<typeof setInterval>;
   private _isDestroyed = false;
 
@@ -122,7 +124,7 @@ export class ParserService implements OnDestroy {
       const parserOptions = { ...this.parserOptions, ...options };
       const isCache = this.parserOptions.cacheSize && this._cache;
       const ast = isCache
-        ? this.fromCacheOrParse(expr, parserOptions)
+        ? this.fromCacheOrParse(expr, parserOptions, options)
         : _parse(expr, parserOptions);
       return ast;
     }
@@ -130,12 +132,25 @@ export class ParserService implements OnDestroy {
   }
 
   //#region Private methods
-  private fromCacheOrParse(expr: string, options: ParserOptions) {
+  /**
+   * Serves a cached AST only to a parse whose parse-relevant options match the
+   * parse that cached it: the key is the text under a digest of the
+   * fingerprint of the service's options and the call's, not the text alone
+   * (`docs/backlog-retired.md` A26). A parse carrying a callback or a
+   * `program` neither reads nor writes the cache.
+   */
+  private fromCacheOrParse(expr: string, parserOptions: ParserOptions,
+                           callOptions?: ParserOptions) {
     if (this._cache) {
-      const hashKey = this._cache.getHashKey('', expr);
+      const namespace =
+        parseFingerprint(this._fingerprints, this.parserOptions, callOptions);
+      if (namespace === null) {
+        return _parse(expr, parserOptions);
+      }
+      const hashKey = this._cache.getHashKey(namespace, expr);
       let ast = this._cache.get(hashKey);
       if (!ast) {
-        ast = _parse(expr, options);
+        ast = _parse(expr, parserOptions);
         this._cache.set(hashKey, ast);
       }
       return ast;

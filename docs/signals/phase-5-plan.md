@@ -235,7 +235,7 @@ that shows it.
     (`parser.service.ts:122`) but caches under the expression string alone (`:135`). After one
     `ParserService.parse('await p', { ecmaVersion: 2022, allowAwaitOutsideFunction: true })`, the
     default-options `EvalService.simpleEval('await p')` stopped throwing and returned a promise.
-    Recorded as [BL-A26](../backlog.md#a26). It bears on any design that parses the async path with
+    Recorded as [BL-A26](../backlog-retired.md#a26). It bears on any design that parses the async path with
     options of its own (§ 3.1).
 
 12. **The sync path's promise pass-through is discriminated, in `eval-signals`.** Phase 3 § 3.7's "no
@@ -290,7 +290,7 @@ the repo against the `eval-core` bundle the gate built at `cc0761e`.
 
 - **Top-level `await`, and any change to what `await` means** — § 3.1 decides it. The `async`-arrow
   path stays as it is; [BL-A24](../backlog.md#a24) owns it.
-- **Any `eval-core` source change.** [BL-A25](../backlog.md#a25) and [BL-A26](../backlog.md#a26) are
+- **Any `eval-core` source change.** [BL-A25](../backlog.md#a25) and [BL-A26](../backlog-retired.md#a26) are
   `eval-core` defects that Phase 5 neither needs fixed nor makes more reachable (§ 3.1). If a step
   finds it needs a core change, that is a stop-and-replan, as it was in Phase 3 § 2.
 - **`defaultParserOptions`** — unchanged; finding 10 is why that matters beyond this package.
@@ -358,7 +358,7 @@ plain-object property value in it, a conditional's branches, the last operand of
 - *Cost.* A static check over the AST, with the position rules above and their error. Parser options
   for the async path that differ from `defaultParserOptions` — they cannot change in place, because
   `eval-forms` parses with them (finding 10) — and then a parse cache that keys on those options, or the
-  async path's permissive parse is served to the sync path ([BL-A26](../backlog.md#a26), P5). And it
+  async path's permissive parse is served to the sync path ([BL-A26](../backlog-retired.md#a26), P5). And it
   leaves the `async`-arrow path (finding 3) as it is unless the same check is applied there, which is
   an `eval-core` behaviour change.
 - *Finding 4's hazards*: made **more** reachable. Every recompute of an expression with a top-level

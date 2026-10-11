@@ -1510,6 +1510,127 @@ and C1's `lastIndex` row. The frozen-object row stays green, as it must: a froze
 definition as it refuses an assignment, so that row pins the message and not the mechanism.
 `eval-signals`: 2 failed, exactly the two regex rows.
 
+<a id="a26"></a>
+## A26 — The parse cache ignores parser options
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-10**, as step 1 of the
+[Phase 9 plan](colon-identifiers/phase-9-plan.md); not yet released. Was Open
+
+*Fixed* 2026-10-10. `ParserService` caches an AST under the expression and a fingerprint of the
+options that change the parse, the service's merged with the call's, so a cached AST is served only to
+a parse whose parse-relevant options match the one that cached it (that plan's § 3.2). The fingerprint
+is every option but `cacheSize`, the four callbacks and `program`, as sorted `[key, value]` pairs in
+JSON, and its sha256, in hex, is `getHashKey`'s namespace, which was always empty: 64 characters and
+no colon, so the `namespace:text` join is unambiguous and the hash input stays short. A key present as
+`undefined` is written `[key]`, apart from a missing one, since acorn reads the two differently:
+`checkPrivateFields` defaults to `true`. A parse carrying a callback or a `program` with a value acorn
+acts on neither reads nor writes the cache; `defaultParserOptions` carries all five as `null`, so the
+test is on the value, not the key. The digest is built once per pair of option objects and remembered
+by identity in a memo each `ParserService` holds (`actual/services/parse-fingerprint.ts`), so
+`EvalService` pays two `WeakMap` lookups per parse for it, not a serialization and a digest. Two inputs
+that parsed before the fix still do: options that are not an object, such as a JavaScript caller's
+`false`, are fingerprinted as none, and options JSON cannot hold, a cycle or a `BigInt`, bypass the
+cache. The text-only key came in with the cache itself, 8db6968, when the package was at 0.0.1, so
+every published `eval-core` to 0.11.1 is affected.
+
+**Not fixed by this retirement**: `CompilerService`'s string cache, which keys a compiled function on
+the text alone and never asks the parser again (that plan's § 1.2 finding 6). Nothing observable can
+vary its parse until `colonIdentifiers` exists; that plan's step 3 keys it on the same fingerprint.
+And a write into an options object in place keeps its remembered fingerprint:
+[A34](backlog.md#a34), opened by this fix.
+
+*Verified*: test-first, seventeen cases in `parser.service.spec.ts`, "ParserService cache keyed on
+parse-relevant options (A26)", against that plan's step 1 criteria: criterion 1, the permissive parse
+then `simpleEval('await p')`; criterion 2 in both orders; criterion 3 through the setter; criterion 4
+for each of the four callbacks and for `program`, each passed the same options object on both parses,
+then the write half — a parse with a `program` leaves nothing the services' parse of that text reads —
+and a callback on the service's own options; criterion 5 by identity, and over two equal option
+objects and DiscoveryService's `cacheSize: undefined`; criterion 6 by a spy on the exported
+`buildParseFingerprint`, which intercepts the memo's call; a key present as `undefined` against a
+missing one; and the two inputs above, `false` and a cyclic `startLocation`. Against the old key, 10 of
+the first twelve failed — criteria 1, 2 twice, 3, the five bypass rows and 6 — and the two criterion-5
+cases, the controls, passed. The last four came from the step's review; the two inputs failed with a
+`TypeError` each against the first version of the fix, which threw on both. `eval-core` 2055 → 2072.
+
+Wrong implementations, each against the whole `eval-core` suite of 2072, on the final code. All but
+the last were run earlier too, the first ten before the review's four cases existed; four rows fail
+more now, each by those cases alone:
+
+| Wrong implementation | Failed | Which |
+| :--- | :---: | :--- |
+| The key on the text alone, bypass and memo kept | 5 | Criteria 1, 2 twice, 3, and the `undefined` case |
+| The fingerprint without `extractExpressions` | 3 | Criterion 2 twice, criterion 3 |
+| The fingerprint from the per-call options alone | 2 | Criterion 3, and the service-options callback case |
+| No bypass, the five left out of the key | 7 | The five criterion-4 rows, the write-half case and the service-options callback case |
+| No bypass, the five keyed like any option | 6 | The five rows and the service-options callback case. The write-half case passes for a real reason: `program` in the key files that entry where the services' parse never reads |
+| The cache bypassed on every call | 3 | Both criterion-5 cases, and the memory-leak spec's "should clean up cache on service destruction" |
+| The memo removed | 1 | Criterion 6: 2 builds, not 1 |
+| Keyed by the options' identity, not their content | 1 | Criterion 5's equal-options case |
+| `cacheSize` in the key | 1 | The same case, at its `cacheSize: undefined` line |
+| A JSON object, which drops a key whose value is `undefined` | 1 | The `undefined` case |
+| A bypassed parse still writes, under the key without the five | 1 | The write-half case |
+| The bypass decided on the call's options alone | 1 | The service-options callback case |
+| A non-object call option used as the `WeakMap` key | 1 | The `false` case |
+| No `catch` around the serialization | 1 | The cyclic `startLocation` case |
+| The digest cut to its first 4 hex characters | 0 | None |
+
+The suite cannot see a truncated digest unless two option sets it compares collide, and none do: their
+digests begin `312f` (the service's own options), `581d` (merged with `defaultParserOptions`) and
+`28db` (criterion 1's permissive call). A collision is caught where there is one, and the text-only key,
+the first row, is the case where every option set collides. Truncation makes one only for particular
+pairs, which no fixture can promise, so the namespace is the whole sha256.
+
+*Cost*, best of five runs of 20 000 calls in Jest, in ms, the lowest of four rounds each, all in one
+session: before the fix; with the whole fingerprint as the namespace, as the fix first stood; and with
+its digest.
+
+| Path | Before | Whole fingerprint | Digest |
+| :--- | ---: | ---: | ---: |
+| A cache hit, no options | 105.5 | 118.2 | 111.4 |
+| A cache hit, `defaultParserOptions` | 151.0 | 162.1 | 155.0 |
+| `simpleEval` over five cached expressions | 190.0 | 200.6 | 194.6 |
+| A miss | 358.6 | 367.5 | 365.2 |
+| A new options object on every call | 107.1 | 244.2 | 267.6 |
+
+With the digest a cached parse costs 0.2–0.3 µs more than before, against 0.55–0.65 µs with the whole
+fingerprint, and `simpleEval` about 2.5% where it was 5.5%. A caller that passes a new options object
+on every call pays a serialization and a digest each time, about 8 µs; no service does, since each
+passes one object for its lifetime. Rounds of one variant differed by up to 20%, the first of each
+pair the slowest.
+
+**The entry as it stood:**
+
+`ParserService.parse` merges each call's options over its own (`parser.service.ts:122`) and caches
+the result under `getHashKey('', expr)` (`:135`) — the expression string alone. So the first parse
+of a string decides what every later caller gets for it, whatever options they pass, and
+`ParserService` is a root singleton whose `parse` is public.
+
+Measured: at default options `EvalService.simpleEval('await p')` throws a `SyntaxError`. After one
+`ParserService.parse('await p', { ecmaVersion: 2022, allowAwaitOutsideFunction: true })` on the
+same injector, the same `simpleEval` returns a promise.
+
+Read, not measured: `ParserService` defaults to `extractExpressions: true` (`parser.service.ts:44-47`)
+while `EvalService` and `CompilerService` pass `defaultParserOptions`, which sets it `false`, so the
+two share entries holding differently shaped nodes for one string. **Measured 2026-10-10, both
+directions** (Phase 9 plan § 1.2 finding 5): after `ParserService.parse('a + b')`, a caller passing
+`defaultParserOptions` got the cached `BinaryExpression`; after `simpleEval('x + y')`,
+`ParserService.parse('x + y')` got a `Program`. And a change through the `parserOptions` setter after
+first use is ignored for text already cached and honoured for new text.
+
+`CompilerService` has a second cache of the same shape: it keys a compiled string on the text alone
+and never calls the parser again for it (that plan's finding 6). The Phase 9 plan fixes it in its
+step 3, where it first becomes observable.
+
+**Fix**: key the cache on the options that change the AST as well as the string.
+
+**Why not Phase 5**: its plan changes no parser options (§ 3.1). A later design that parses some path
+with options of its own needs this first — the plan's option B is the worked case.
+
+*Recorded*: this entry; [`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.2 finding 11. Opened
+2026-10-07 by the Phase 5 plan; scheduled 2026-10-10 as step 1 of the Phase 9 plan.
+*Verified*: measured 2026-10-07 at d080707, with a throwaway spec deleted the same day (that plan's
+§ 1.3, P5).
+
 <a id="a28"></a>
 ## A28 — `scoped` is documented as a scope pushed during this walk; the code asks the whole scope stack
 

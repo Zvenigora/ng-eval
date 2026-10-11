@@ -12,6 +12,20 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Fixed
+- **`ParserService` serves a cached AST only to a parse with the options that produced it —
+  [A26](../../docs/backlog-retired.md#a26).** The parse cache was keyed on the expression alone, so
+  the first parse of a text decided what every later caller got for it, whatever options they
+  passed: after one `ParserService.parse('await p', { ecmaVersion: 2022, allowAwaitOutsideFunction:
+  true })`, `EvalService.simpleEval('await p')` returned a promise instead of throwing its
+  `SyntaxError`, and a direct `ParserService.parse` caller and the services, which ask for
+  differently shaped results, were each served the other's. The key now holds every option that
+  changes the parse, which is all but `cacheSize`, acorn's four callbacks and `program`. A parse
+  carrying a callback or a `program` neither reads nor writes the cache, so the callback runs on
+  every parse. A change made through the `parserOptions` setter is honoured for text already
+  cached; a write in place into an options object, the service's or one passed again, is not
+  ([A34](../../docs/backlog.md#a34)). Every published version to 0.11.1 is affected.
+
 ---
 
 ## [0.11.1] - 2026-10-10

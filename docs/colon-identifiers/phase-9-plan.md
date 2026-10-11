@@ -1,6 +1,11 @@
 # Phase 9 Plan — colon-joined identifiers (`@zvenigora/ng-eval-core`)
 
 **Date**: October 10, 2026
+**Revision**: 3 — step 1's file list corrected in step 1's own commit. Retiring A26 dangles the links
+to it in `ROADMAP.md` and two Phase 5 documents, which the doc-links gate fails on, so step 1 re-points
+them; and the fix goes under `eval-core`'s `[Unreleased]`, as A29's and A31's did. § 3.2's key and
+cost and § 3.9's hot-path sentence corrected to the code step 1 wrote and measured.
+
 **Revision**: 2 — amended by [BL-A29](../backlog-retired.md#a29)'s fix, in its commit, before any step.
 `CompilerService` no longer caches an AST, so step 3's string key has no AST branch beside it to leave
 alone, and § 3.1's option A loses one of its two reasons. § 1 still records the code as this plan
@@ -11,7 +16,7 @@ found it.
 **Also touches**: `@zvenigora/ng-eval-signals` — one step, an error message and specs, released as a
 patch that also widens its peer range; `@zvenigora/ng-eval-forms` — one step, both adapters' parse
 sites and `guardIdentifiers`, released as a breaking minor
-**Depends on**: [BL-A26](../backlog.md#a26), which the [Phase 5 plan](../signals/phase-5-plan.md)
+**Depends on**: [BL-A26](../backlog-retired.md#a26), which the [Phase 5 plan](../signals/phase-5-plan.md)
 recorded in its § 1.2 finding 11 with "a later design that parses some path with options of its own
 needs this first" — this is that design; [BL-D2](../backlog-retired.md#d2), whose guard the
 `eval-forms` step extends
@@ -42,7 +47,7 @@ breaking minor, because a rule that parses as a labeled statement is now refused
 | Free parse | `parse`, `internal/functions/parse.ts:12-21` | `acorn.parse(expr, { ecmaVersion: 2020, ...options })`; returns the `Program`, or its single expression when `extractExpressions` is set |
 | Parser options | `ParserOptions`, `internal/interfaces/parser-types.ts:3-7` | `Partial<acorn.Options>` plus `extractExpressions`, `cacheSize`, `ecmaVersion`. A type alias, published |
 | Defaults | `defaultParserOptions`, `internal/classes/eval/parser-options.ts:4-9` | acorn's `defaultOptions` spread — 23 keys in all — with `ecmaVersion: 2020`, `extractExpressions: false`, `cacheSize: 100` |
-| Service parse | `ParserService.parse`, `actual/services/parser.service.ts:113-130` | Merges `{ ...this.parserOptions, ...options }` (`:122`); caches under `getHashKey('', expr)` (`:135`), the text alone — [BL-A26](../backlog.md#a26). Its own defaults set `extractExpressions: true` (`:44-47`); `parserOptions` has a public setter (`:36-38`) |
+| Service parse | `ParserService.parse`, `actual/services/parser.service.ts:113-130` | Merges `{ ...this.parserOptions, ...options }` (`:122`); caches under `getHashKey('', expr)` (`:135`), the text alone — [BL-A26](../backlog-retired.md#a26). Its own defaults set `extractExpressions: true` (`:44-47`); `parserOptions` has a public setter (`:36-38`) |
 | The services' parse | `BaseEval.parse`, `actual/services/base-eval.ts:41` | `parserService.parse(expression, this.parserOptions)`, where `EvalService` and `CompilerService` set `defaultParserOptions` (`eval.service.ts:29`, `compiler.service.ts:44`) and `DiscoveryService` the same with `cacheSize: undefined` (`discovery.service.ts:25-28`) |
 | Compile cache | `CompilerService.compile` / `compileAsync`, `compiler.service.ts:136-182`, `:227-269` | Its own LRU (200) and 10-minute TTL, keyed by `generateCacheKey` (`:108-120`): `str:` + the text, or for an AST `ast:` + type, start, end and `toString()` |
 | Identifier guard | `refuseDangerousName` / `refuseDangerousMatch`, `internal/visitors/identifier.ts:79-104` | Exact-name blocklist (`prototype-pollution-guard.ts:12-26`, `:83-88`); under `caseInsensitive` the matched key is re-checked, asked of `getKey` only when `mayMatchDangerousProperty` lets the name through (`:125-126`) |
@@ -251,7 +256,7 @@ switch (S1, F2). C1 ran in Node against the installed acorn. D1 read the `acorn@
 
 ### In scope
 
-- [BL-A26](../backlog.md#a26): `ParserService`'s cache keyed on the options that change the parse
+- [BL-A26](../backlog-retired.md#a26): `ParserService`'s cache keyed on the options that change the parse
   (step 1), and `CompilerService`'s string cache keyed the same way (step 3) — § 3.2.
 - The grammar (§ 3.4), as an acorn plugin selected per parse (§ 3.5), behind
   `ParserOptions.colonIdentifiers` (§ 3.3).
@@ -358,11 +363,18 @@ writing: a cached AST runs no callback, and `program` makes acorn append to the 
 `getHashKey` as its namespace. `getHashKey` joins namespace and value with `:` (`cache.ts:52-55`), and
 until now the namespace was always empty; with expression text that now holds colons, an encoding in
 which one fingerprint plus `:` could be a prefix of another would let two (options, text) pairs share a
-key. A canonical JSON object cannot be: it ends at its closing brace.
+key. A canonical JSON value cannot be: it ends at its closing bracket. Step 1 builds it as an array of
+sorted `[key, value]` pairs, `[key]` for a value that is `undefined`, since a JSON object drops that key
+and acorn reads a present `undefined` apart from a missing key; and it passes `getHashKey` the
+fingerprint's sha256 in hex rather than the fingerprint, which is fixed-length and holds no colon, so
+the join is unambiguous for that reason too, and keeps the hash input short (Revision 3).
 
 **The cost.** The fingerprint is computed once per pair of option objects — the service's and the
 call's — and remembered by identity, so `EvalService`, which passes the same `defaultParserOptions`
-object every call, pays two lookups per parse, not a serialization.
+object every call, pays two lookups per parse, not a serialization. The memo holds the digest, so it
+saves that too; what is left is the hash over 65 more characters than before, 0.2–0.3 µs a cached
+parse as step 1 measured it, where the whole fingerprint cost 0.55–0.65 µs
+([A26](../backlog-retired.md#a26)).
 
 **`CompilerService`, in step 3.** Its string key gains the fingerprint of the options its own parse
 would use — `ParserService`'s merged with its per-call `defaultParserOptions`. In step 1 nothing
@@ -618,8 +630,9 @@ never the extended parser; with it on, the reverse. *Wrong*: one extended parser
 rule gated inside it — the first half fails. Timing stays out of the gate, as everywhere in this
 repository; each step that touches the parse path reports a P4-style measurement.
 
-Step 1's fingerprint memo (§ 3.2) is what keeps the cache fix off the `simpleEval` hot path, and its
-own criterion pins it.
+Step 1's fingerprint memo (§ 3.2) is what keeps the fingerprint's serialization off the `simpleEval`
+hot path, and its own criterion pins it. What is left on it is the hash over the 64-character digest
+and the text: about 2.5% on `simpleEval` over cached expressions, as step 1 measured it (Revision 3).
 
 ### 3.10 Versions — decided
 
@@ -654,7 +667,11 @@ failure count for each, reading which cases failed rather than that the suite di
 - **New**: `actual/services/parse-fingerprint.ts`, the fingerprint and its memo, exported from no
   barrel.
 - **Edit**: `actual/services/parser.service.ts`; `parser.service.spec.ts`; `docs/backlog.md` and
-  `docs/backlog-retired.md` — A26 retired as fixed, not yet released, its index row re-pointed.
+  `docs/backlog-retired.md` — A26 retired as fixed, not yet released, its index row re-pointed, and
+  [A34](../backlog.md#a34), the limit of its identity memo, opened; `modules/eval-core/CHANGELOG.md`
+  — the fix under `[Unreleased]`; `ROADMAP.md`, `docs/signals/phase-5-plan.md` and
+  `docs/signals/phase-5-summary.md` — their links to A26 re-pointed to `backlog-retired.md`, which
+  the doc-links gate requires once the entry moves. The last four were added by step 1 (Revision 3).
 - **Builds**: § 3.2 for `ParserService` — the fingerprint, the cache key, the bypass, the memo.
 - **Exit criteria**:
   1. **Per-call options are honoured.** After `ParserService.parse('await p', { ecmaVersion: 2022,

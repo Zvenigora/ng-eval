@@ -439,7 +439,7 @@ Neither is scheduled. A phase becomes real when it gets a plan document, per `CL
 
 ### Phase 9 — Colon-joined identifiers (`eval-core`, with `eval-signals` and `eval-forms`)
 
-**Planned** in [`docs/colon-identifiers/phase-9-plan.md`](docs/colon-identifiers/phase-9-plan.md): context keys such as `Q1:1:3` named as written, opt-in, with [BL-A26](docs/backlog.md#a26) fixed first; no step has started.
+**Planned** in [`docs/colon-identifiers/phase-9-plan.md`](docs/colon-identifiers/phase-9-plan.md): context keys such as `Q1:1:3` named as written, opt-in, with [BL-A26](docs/backlog-retired.md#a26) fixed first; step 1, that fix, is done, and step 2 is next.
 
 ## Deferred work
 

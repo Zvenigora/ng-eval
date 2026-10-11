@@ -55,7 +55,7 @@ evidence instead of on the typings.
 - **Any `eval-core` source change.** The defects the plan's probes surfaced there are recorded,
   not fixed: [A24](../backlog.md#a24) (an `async` arrow's `await` is a pass-through, which the
   README now states), [A25](../backlog.md#a25) (`awaitVisitor`'s timer, key and error mutation)
-  and [A26](../backlog.md#a26) (the parse cache ignores options).
+  and [A26](../backlog-retired.md#a26) (the parse cache ignores options).
 
 Opened along the way and still live: [A27](../backlog.md#a27) (step 1),
 [C7](../backlog-retired.md#c7), [F17](../backlog.md#f17) and [F18](../backlog-retired.md#f18) (step 2), and

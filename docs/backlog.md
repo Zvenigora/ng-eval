@@ -54,7 +54,8 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 ### Work in flight
 
 **Phase 9**, colon-joined identifiers — [`docs/colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md),
-written 2026-10-10, is the active plan; step 1, which fixes [A26](#a26), is next. `eval-core` 0.11.1,
+written 2026-10-10, is the active plan. Step 1 fixed [A26](backlog-retired.md#a26), unreleased, and
+opened [A34](#a34); step 2, the grammar, is next. `eval-core` 0.11.1,
 with the [A29](backlog-retired.md#a29) and [A31](backlog-retired.md#a31) fixes, is published and
 tagged at 7ee65fc. Phase 5 is complete: its
 [plan](signals/phase-5-plan.md), at Revision 5, and its retrospect,
@@ -190,7 +191,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A23](backlog-retired.md#a23) | `safeSetProperty` defines the property instead of assigning it — setters never run, non-configurable properties cannot be written | core | decision, then fix | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-core` 0.10.0, tagged 0c3299e: a member write assigns, after the same refusals, so setters run |
 | [A24](#a24) | An `await` is a pass-through — inside an `async` arrow it hands the walk a promise as an operand, and the arrow returns no promise | core | decision, then fix | Open — opened 2026-10-07 by the Phase 5 plan; the `eval-signals` README states it since 0.5.0 |
 | [A25](#a25) | `awaitVisitor`'s timeout race — an uncleared 30 s timer per `await`, an undocumented `__awaitTimeout` key, and the caller's error mutated | core | fix | Open — opened 2026-10-07 by the Phase 5 plan |
-| [A26](#a26) | The parse cache ignores parser options | core | fix | Open — opened 2026-10-07 by the Phase 5 plan; **scheduled as step 1 of the [Phase 9 plan](colon-identifiers/phase-9-plan.md)** |
+| [A26](backlog-retired.md#a26) | The parse cache ignores parser options | core | fix | **Retired — fixed 2026-10-10**, as step 1 of the [Phase 9 plan](colon-identifiers/phase-9-plan.md); not yet released. Keyed on the text and a fingerprint of the parse-relevant options; a callback or `program` bypasses the cache. `CompilerService`'s string cache is that plan's step 3. Affected every published `eval-core` to 0.11.1 |
 | [A27](#a27) | A nested `evaluate` writes the enclosing walk's `EvalResult` — and `start()` clears nothing, so a reused state shows the last run's outcome | core | decision | Open — recorded, not scheduled; opened 2026-10-08 by Phase 5 step 1 |
 | [A28](backlog-retired.md#a28) | `scoped` is documented as a scope pushed during this walk; the code asks the whole scope stack | core | docs | **Retired — fixed 2026-10-10**, documentation comments only; not yet released. The `.d.ts` differs in four JSDoc blocks: every scope on the stack counts, whoever pushed it |
 | [A29](backlog-retired.md#a29) | `CompilerService` keys a compiled AST by type, start, end and `toString()` — two ASTs of one type and span share a compiled function | core | fix | **Retired — fixed 2026-10-10**; not yet released. An AST is compiled on every call and never cached; a string is cached as before. Affected `eval-core` 0.2.1–0.11.0 |
@@ -198,6 +199,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A31](backlog-retired.md#a31) | The case-insensitive property cache keys an object by its key count and first five keys — objects sharing them share answers, process-wide | core | fix | **Retired — fixed 2026-10-10**; not yet released. Keyed by the object itself, a cached key re-checked as the object's own; a colliding entry no longer turns a case-variant refusal into `undefined`. Affected `eval-core` 0.2.1–0.11.0 |
 | [A32](#a32) | The disabled visitor result cache keys a node without its operands — `a + b` and `c + d` share an entry | core | decision | Open — opened 2026-10-10 by A29's fix; latent, nothing calls it |
 | [A33](#a33) | The case-insensitive property cache keeps a miss while the own-key count is unchanged — a key added as another is deleted reads `undefined` by a case variant | core | fix | Open — opened 2026-10-10, after the `eval-core` 0.11.1 tag; a limit [A31](backlog-retired.md#a31)'s fix documents in a code comment. No refusal is skipped |
+| [A34](#a34) | The parse fingerprint's memo does not see options written in place — a write into `parserOptions`, a reused per-call object or `defaultParserOptions` keeps the old fingerprint | core | fix | Open — opened 2026-10-10 by [A26](backlog-retired.md#a26)'s fix, Phase 9 step 1; no worse than the text-only key it replaced |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -332,12 +334,13 @@ scoped to be additive.
 — the first consumer to reuse one `EvalContext` across many evaluations, which is what makes
 several of these visible at all. [A6](backlog-retired.md#a6) was surfaced by Phase 6 step 3. [A8](backlog-retired.md#a8) and
 [A9](backlog-retired.md#a9) were never recorded in the roadmap at all. [A23](backlog-retired.md#a23) was surfaced by
-[C1](backlog-retired.md#c1)'s fix. [A24](#a24)–[A26](#a26) were surfaced by the Phase 5 plan's probes
+[C1](backlog-retired.md#c1)'s fix. [A24](#a24), [A25](#a25) and [A26](backlog-retired.md#a26) were surfaced by the Phase 5 plan's probes
 ([`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.3), which keeps all three out of its scope
 (§ 3.1). [A29](backlog-retired.md#a29) and [A30](#a30) were surfaced by the Phase 9 plan's probes
 ([`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.3), which needs neither.
 [A31](backlog-retired.md#a31) and [A32](#a32) were found by A29's fix, grepping for other keys built
-from an object's shape. [A33](#a33) is a limit A31's fix left, and documented in the code.
+from an object's shape. [A33](#a33) is a limit A31's fix left, and documented in the code; [A34](#a34)
+is one A26's fix left, documented the same way.
 
 **Identity-checked `exit`** (§ 3.8 of the Phase 1 plan) means the hook layer stays balanced in
 spite of [A1](backlog-retired.md#a1) and [A2](backlog-retired.md#a2), so neither was urgent — [A3](backlog-retired.md#a3)
@@ -667,43 +670,6 @@ through an `async` arrow, exactly as the sync path does today. It adds no reach.
 *Verified*: measured 2026-10-07 at d080707, with a throwaway spec deleted the same day (that plan's
 § 1.3, P2 and P2b).
 
-<a id="a26"></a>
-## A26 — The parse cache ignores parser options
-
-**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-07 by the Phase 5 plan; scheduled
-2026-10-10 as step 1 of the [Phase 9 plan](colon-identifiers/phase-9-plan.md), whose per-call option
-and published setter both need it (§ 3.2)
-
-`ParserService.parse` merges each call's options over its own (`parser.service.ts:122`) and caches
-the result under `getHashKey('', expr)` (`:135`) — the expression string alone. So the first parse
-of a string decides what every later caller gets for it, whatever options they pass, and
-`ParserService` is a root singleton whose `parse` is public.
-
-Measured: at default options `EvalService.simpleEval('await p')` throws a `SyntaxError`. After one
-`ParserService.parse('await p', { ecmaVersion: 2022, allowAwaitOutsideFunction: true })` on the
-same injector, the same `simpleEval` returns a promise.
-
-Read, not measured: `ParserService` defaults to `extractExpressions: true` (`parser.service.ts:44-47`)
-while `EvalService` and `CompilerService` pass `defaultParserOptions`, which sets it `false`, so the
-two share entries holding differently shaped nodes for one string. **Measured 2026-10-10, both
-directions** (Phase 9 plan § 1.2 finding 5): after `ParserService.parse('a + b')`, a caller passing
-`defaultParserOptions` got the cached `BinaryExpression`; after `simpleEval('x + y')`,
-`ParserService.parse('x + y')` got a `Program`. And a change through the `parserOptions` setter after
-first use is ignored for text already cached and honoured for new text.
-
-`CompilerService` has a second cache of the same shape: it keys a compiled string on the text alone
-and never calls the parser again for it (that plan's finding 6). The Phase 9 plan fixes it in its
-step 3, where it first becomes observable.
-
-**Fix**: key the cache on the options that change the AST as well as the string.
-
-**Why not Phase 5**: its plan changes no parser options (§ 3.1). A later design that parses some path
-with options of its own needs this first — the plan's option B is the worked case.
-
-*Recorded*: this entry; [`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.2 finding 11.
-*Verified*: measured 2026-10-07 at d080707, with a throwaway spec deleted the same day (that plan's
-§ 1.3, P5).
-
 <a id="a27"></a>
 ## A27 — A nested `evaluate` writes the enclosing walk's `EvalResult`
 
@@ -748,7 +714,7 @@ is the same at cc0761e and 9d5715d.
 `EvalService`, `CompilerService` and `DiscoveryService` parse through `BaseEval.parse`, which passes
 their own options per call — `defaultParserOptions`, or a copy of it (`base-eval.ts:41`). Those carry
 all of acorn's `defaultOptions`, 23 keys in all, and `ParserService.parse` lets a per-call key win
-(`parser.service.ts:122`). So a value set through `ParserService`'s public `parserOptions` setter is
+(`parser.service.ts:123`). So a value set through `ParserService`'s public `parserOptions` setter is
 overridden, on every service path, for every key acorn defines; it reaches only callers of
 `ParserService.parse` itself.
 
@@ -822,6 +788,49 @@ fixed.
 (8ace46d).
 *Verified*: measured 2026-10-10 at 7ee65fc through `EvalService.simpleEval` with `caseInsensitive:
 true`, with a throwaway spec deleted the same day.
+
+<a id="a34"></a>
+## A34 — The parse fingerprint's memo does not see options written in place
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-10 by [A26](backlog-retired.md#a26)'s
+fix, Phase 9 step 1
+
+A26's fix keys `ParserService`'s cache on a fingerprint of the parse-relevant options, built once per
+pair of option objects, the service's `parserOptions` and the call's, and remembered by identity
+(`parse-fingerprint.ts`, `parseFingerprint`). A change made by writing into one of those objects keeps
+the old fingerprint. Three kinds of object are open to it: the one the `parserOptions` getter returns,
+written in place rather than replaced through the setter; an options object a direct
+`ParserService.parse` caller passes again after writing into it; and the exported
+`defaultParserOptions`, which `EvalService` and `CompilerService` pass on every parse.
+`parseFingerprint`'s doc comment says so.
+
+Measured: (a) after `ParserService.parse('k + 1')`, a `BinaryExpression`, and
+`parserOptions.extractExpressions = false` written in place, `parse('k + 1')` was still a
+`BinaryExpression` and `parse('k + 2')` a `Program`. That `Program` is cached under the old
+fingerprint, so a caller whose own options produce that fingerprint is served it:
+`parse('k + 2', { extractExpressions: true })` returned the `Program`, where
+`parse('k + 3', { extractExpressions: true })` returned a `BinaryExpression`. (b) With
+`defaultParserOptions` written in place to `ecmaVersion: 2022` and `allowAwaitOutsideFunction: true`,
+`EvalService.simpleEval('await p')` returned a promise; with both values written back, it still did.
+The permissive AST stays cached under the default fingerprint, which is A26's own symptom. (c) With
+`o = { ecmaVersion: 2020 }`, `parse('await p', o)` threw a `SyntaxError`; with `o` written in place to
+`ecmaVersion: 2022` and `allowAwaitOutsideFunction: true`, `parse('await p', o)` was an
+`AwaitExpression`, and so was `parse('await p', { ecmaVersion: 2020 })`, which shares `o`'s old
+fingerprint.
+
+**No worse than before A26's fix**: with the text-only key, every read above gives the same answer.
+Cached text is served with the old options, and new text is parsed with the new ones. Nothing in this
+repository writes into either object (`git grep`).
+
+**Fix, if ever**: freeze the options the service stores, or validate the memo cheaply, for instance
+by comparing a stored copy of the values on each lookup. Freezing `defaultParserOptions` or the
+getter's object would refuse a write a consumer can make today; a comparison runs on every parse,
+on the path the memo exists to keep cheap. Measure it if this is fixed.
+
+*Recorded*: this entry; `parseFingerprint`'s doc comment, written by A26's fix.
+*Verified*: measured 2026-10-10 on A26's fix, uncommitted on 6e7fafb, through `ParserService.parse`
+and `EvalService.simpleEval`, with throwaway specs deleted the same day; (c) after the step's review
+found the per-call case.
 
 ---
 
