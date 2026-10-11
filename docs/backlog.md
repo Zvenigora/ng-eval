@@ -54,7 +54,9 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 ### Work in flight
 
 **Phase 9**, colon-joined identifiers — [`docs/colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md),
-written 2026-10-10; step 1, which fixes [A26](#a26), not started. Phase 5 is complete: its
+written 2026-10-10, is the active plan; step 1, which fixes [A26](#a26), is next. `eval-core` 0.11.1,
+with the [A29](backlog-retired.md#a29) and [A31](backlog-retired.md#a31) fixes, is published and
+tagged at 7ee65fc. Phase 5 is complete: its
 [plan](signals/phase-5-plan.md), at Revision 5, and its retrospect,
 [`signals/phase-5-summary.md`](signals/phase-5-summary.md), are design records, and it shipped as
 `eval-signals` 0.5.0 and `eval-forms` 0.4.1, tagged at 577c4f0. The track before it,
@@ -79,6 +81,7 @@ release, not a free change. Each package's release notes are in its own
 
 | Package | Version | Notes |
 | ------- | ------- | ----- |
+| `@zvenigora/ng-eval-core` | 0.11.1 | [A29](backlog-retired.md#a29) fix: `CompilerService` compiles an AST on every call and caches none, so two ASTs of one type and span no longer share a compiled function; a string is cached as before. [A31](backlog-retired.md#a31) fix: the case-insensitive property cache is keyed by the object itself, so under `caseInsensitive` a member read no longer resolves another object's spelling, and a case variant of a blocked name is refused rather than read as `undefined`; a regression table pins the 15 spellings refused after a colliding entry. Both caches came in with 0.2.1, so every version from it to 0.11.0 is affected. [A28](backlog-retired.md#a28): `scoped`'s documentation comments say every scope on the stack counts. A patch: the `.d.ts` differs from 0.11.0 in documentation comments only. Peer ranges unchanged; `eval-signals` 0.4.0–0.5.0 and `eval-forms` 0.4.x already admit it with `>=0.11.0 <0.12.0`, so their users get both fixes on install. Tagged `eval-core@0.11.1` at 7ee65fc, published 2026-10-10 (npm: 23:40 UTC) |
 | `@zvenigora/ng-eval-signals` | 0.5.0 | Phase 5 ([plan](signals/phase-5-plan.md)): `createEvalSignalAsync`, `EvalSignalAsync`, `EvalSignalAsyncOptions`, `EvalSignalStatus` and `EvalSignalService.createAsync`. A minor, additions only: the `.d.ts` differs from 0.4.0 by those and their documentation comments. Peer ranges unchanged. Tested at Angular 19.2, 20.3, 21.2 and 22.2 (the plan's § 8 q1). [C6](backlog-retired.md#c6) retired by its README, which gives the `resource` composition for Angular 19 too. Tagged `eval-signals@0.5.0` at 577c4f0, published 2026-10-10 (npm: 02:07 UTC) |
 | `@zvenigora/ng-eval-forms` | 0.4.1 | Peer range on `eval-signals` widened to `>=0.4.0 <0.6.0`, which admits 0.5.0; no code changes. A patch: all three `.d.ts` files byte-identical to 0.4.0's. The README's "Anything asynchronous" bullet names `eval-signals`' `createEvalSignalAsync`, and its quoted peer range follows the manifest. Tagged `eval-forms@0.4.1` at 577c4f0, published 2026-10-10 (npm: 02:15 UTC) |
 | `@zvenigora/ng-eval-core` | 0.11.0 | [B6](backlog-retired.md#b6) fix, advisory [GHSA-jh43-xc7j-93c2](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-jh43-xc7j-93c2), as in 0.10.1: an identifier, `this.k` or a member of an `EvalScope` in the context refuses a name on the prototype-pollution blocklist before any lookup. [C4](backlog-retired.md#c4)/[C5](backlog-retired.md#c5): a context that implements `checkMemberWrite` is also asked before a built-in method writes into what it is handed, called directly or through `call`, `apply` or `bind`. [B5](backlog-retired.md#b5): seventeen unused exports removed. A breaking minor: the `.d.ts` loses the seventeen, gains `EvalMemberWrite.method`, and otherwise differs from 0.10.1 in documentation comments only. Peer ranges unchanged. Tagged `eval-core@0.11.0` at 776885a, published 2026-10-07 (npm: 00:59 UTC) |
@@ -119,7 +122,7 @@ the two commits only that spec and two backlog files changed, so neither package
 0c3299e, so it carries B6's fix and none of 0.11.0's other changes. Master has the fix as 1a6ebdc,
 and 776885a copied the [0.10.1] CHANGELOG section from d77fa16.
 
-**Every published version now carries a tag** — the thirty above (two at 577c4f0, three at 776885a, one at d77fa16, one at 3d56994, three at 0c3299e, three at eb403c0, three at c56f987, three at 724d831, two at 587ebf1, three at f26f987,
+**Every published version now carries a tag** — the thirty-one above (one at 7ee65fc, two at 577c4f0, three at 776885a, one at d77fa16, one at 3d56994, three at 0c3299e, three at eb403c0, three at c56f987, three at 724d831, two at 587ebf1, three at f26f987,
 three at `016a313`, three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions,
 all on the remote.
 
@@ -141,7 +144,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-forms` 0.3.1 | `3d56994` | 2026-10-04 | 16 | 1: B5 | 5: D3, D5, D11, F8, F10 | 12 |
 | `eval-core` 0.10.1 and 0.11.0, `eval-signals` 0.4.0, `eval-forms` 0.4.0 | `776885a` | 2026-10-07 | 12 | 2: B6, C5 | 5: F7, B5, C4, B6, C5 | 9 |
 | `eval-signals` 0.5.0, `eval-forms` 0.4.1 | `577c4f0` | 2026-10-10 | 9 | 9: A24–A28, C6, C7, F17, F18 | 1: C6 | 17 |
-| **Since the register opened** | | | **42** | **34** | **59** | **17** |
+| `eval-core` 0.11.1 | `7ee65fc` | 2026-10-10 | 17 | 6: A29–A32, D13, F19 | 5: A28, C7, F18, A29, A31 | 18 |
+| **Since the register opened** | | | **42** | **40** | **64** | **18** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -193,6 +197,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A30](#a30) | `ParserService.parserOptions` reaches `EvalService`, `CompilerService` and `DiscoveryService` for no acorn option | core | decision | Open — opened 2026-10-10 by the Phase 9 plan |
 | [A31](backlog-retired.md#a31) | The case-insensitive property cache keys an object by its key count and first five keys — objects sharing them share answers, process-wide | core | fix | **Retired — fixed 2026-10-10**; not yet released. Keyed by the object itself, a cached key re-checked as the object's own; a colliding entry no longer turns a case-variant refusal into `undefined`. Affected `eval-core` 0.2.1–0.11.0 |
 | [A32](#a32) | The disabled visitor result cache keys a node without its operands — `a + b` and `c + d` share an entry | core | decision | Open — opened 2026-10-10 by A29's fix; latent, nothing calls it |
+| [A33](#a33) | The case-insensitive property cache keeps a miss while the own-key count is unchanged — a key added as another is deleted reads `undefined` by a case variant | core | fix | Open — opened 2026-10-10, after the `eval-core` 0.11.1 tag; a limit [A31](backlog-retired.md#a31)'s fix documents in a code comment. No refusal is skipped |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -332,7 +337,7 @@ several of these visible at all. [A6](backlog-retired.md#a6) was surfaced by Pha
 (§ 3.1). [A29](backlog-retired.md#a29) and [A30](#a30) were surfaced by the Phase 9 plan's probes
 ([`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.3), which needs neither.
 [A31](backlog-retired.md#a31) and [A32](#a32) were found by A29's fix, grepping for other keys built
-from an object's shape.
+from an object's shape. [A33](#a33) is a limit A31's fix left, and documented in the code.
 
 **Identity-checked `exit`** (§ 3.8 of the Phase 1 plan) means the hook layer stays balanced in
 spite of [A1](backlog-retired.md#a1) and [A2](backlog-retired.md#a2), so neither was urgent — [A3](backlog-retired.md#a3)
@@ -784,6 +789,39 @@ the key before anything calls it. Nothing calls it today.
 
 *Recorded*: this entry, by the grep the A29 fix ran for other keys built from an object's shape.
 *Verified*: measured 2026-10-10 at d839072 with a throwaway spec, deleted before A29's commit.
+
+<a id="a33"></a>
+## A33 — The case-insensitive property cache keeps a miss across a same-count key swap
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-10, after the `eval-core` 0.11.1
+tag, from a limit [A31](backlog-retired.md#a31)'s fix documents
+
+Since A31's fix, `getCachedCaseInsensitiveProperty` keeps an object's answers until its own-key count
+changes, and returns a cached miss while the count is unchanged (`property-lookup-cache.ts:59-65`). A
+key added in the same interval as another is deleted leaves the count as it was, so the miss outlives
+the new key: under `caseInsensitive`, a case variant of it is not found. The function's doc comment
+says so (`property-lookup-cache.ts:37-38`): "Not caught: a key added in the same interval as another is
+deleted, which leaves the count as it was, so a cached miss can outlive it."
+
+Measured: over `x = { a: 1, b: 2 }`, `x.C` reads `undefined`, as it should. After `delete x.a` and
+`x.c = 3`, `x.C` still reads `undefined`, while `x.c` reads `3`. Adding `c` without the delete changes
+the count, and `x.C` reads `3`.
+
+**Impact: a wrong `undefined`, never a skipped refusal.** On a cached miss the member visitor falls
+back to the key as written, then to the prototype's names (`member-expression.ts:190-208`), so the read
+returns `undefined` for the new key unless the spelling as written exists. The resolved-key re-check
+(`member-expression.ts:211`) runs on whatever key that fallback reads: with an own `constructor`
+swapped in the same way, `x.CONSTRUCTOR` was refused before the swap and after it.
+
+**Fix**: compare the own key names, not only their count, on every cached miss. The miss path already
+lists them (`property-lookup-cache.ts:57`); the cost is a stored copy per object and the comparison,
+on the path A31's measurements timed at 1.5 µs for a miss on a 50-key object. Measure it if this is
+fixed.
+
+*Recorded*: this entry; the doc comment at `property-lookup-cache.ts:35-38`, written by A31's fix
+(8ace46d).
+*Verified*: measured 2026-10-10 at 7ee65fc through `EvalService.simpleEval` with `caseInsensitive:
+true`, with a throwaway spec deleted the same day.
 
 ---
 
