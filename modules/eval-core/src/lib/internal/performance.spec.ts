@@ -8,7 +8,9 @@ import { clearVisitorResultCache, getVisitorResultCacheStats } from './visitors/
 import { clearPropertyLookupCache, getPropertyLookupCacheStats } from './visitors/property-lookup-cache';
 import { EvalContext, EvalHooks, EvalState } from './classes/eval';
 import { evaluate, parse } from './functions';
+import { ColonIdentifiersParser } from './functions/colon-identifiers';
 import { AnyNode } from 'acorn';
+import * as acorn from 'acorn';
 
 describe('Performance Optimizations', () => {
   let service: EvalService;
@@ -300,6 +302,39 @@ describe('Performance Optimizations', () => {
       expect(state.hasHooks).toBe(true);
       expect(hooks.hasReadHooks).toBe(false);
       expect(dispatchRead).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * The gate on the default parse path (`docs/colon-identifiers/phase-9-plan.md`
+   * § 3.9).
+   *
+   * With `colonIdentifiers` off, `parse` is acorn's own `parse`, the function
+   * it called before the grammar existed, so the default path pays one option
+   * check and nothing of the plugin. Structural rather than timed: one
+   * extended parser for every call, with the grammar switched off inside it,
+   * would be as fast in a benchmark and still put the plugin on every parse.
+   */
+  describe('Parser Selection', () => {
+    it('should parse with acorn\'s own parser unless colonIdentifiers is set', () => {
+      const acornParse = jest.spyOn(acorn, 'parse');
+      const colonParse = jest.spyOn(ColonIdentifiersParser, 'parse');
+      try {
+        parse('a + b', { ecmaVersion: 2020 });
+        parse('a + b', { ecmaVersion: 2020, colonIdentifiers: false });
+
+        expect(acornParse).toHaveBeenCalledTimes(2);
+        expect(colonParse).not.toHaveBeenCalled();
+
+        acornParse.mockClear();
+        parse('a + b', { ecmaVersion: 2020, colonIdentifiers: true });
+
+        expect(colonParse).toHaveBeenCalledTimes(1);
+        expect(acornParse).not.toHaveBeenCalled();
+      } finally {
+        acornParse.mockRestore();
+        colonParse.mockRestore();
+      }
     });
   });
 });

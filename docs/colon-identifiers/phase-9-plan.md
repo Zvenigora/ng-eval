@@ -1,6 +1,16 @@
 # Phase 9 Plan — colon-joined identifiers (`@zvenigora/ng-eval-core`)
 
 **Date**: October 10, 2026
+**Revision**: 4 — step 2, in its own commit. Its confirmation gate added six rows to the case table, five
+of them new to § 3.4; to criterion 3, errors that are not about a colon name, word for word; two wrong
+implementations, W7 and W8; and a "q3 inputs" line in § 8. Step 2 then found that "only in the two
+cases" needs the hint scoped to a level's statement: § 3.5's hint now holds only until the level's next
+`,`, `;` or statement start, and § 3.5 gains a fifth override, `parseStatement`, because a semicolon
+acorn inserts at a line break is a statement boundary that no token marks — found by the step's review
+(`x = a?b:c\ny = 1:2` was hinted). The review also found the closing of a level untested by the table;
+the rows step 2 added beyond § 3.4's table, for both, are listed under it. The header and step 7's
+`.d.ts` baseline name `eval-core` 0.11.1, published since the plan was written.
+
 **Revision**: 3 — step 1's file list corrected in step 1's own commit. Retiring A26 dangles the links
 to it in `ROADMAP.md` and two Phase 5 documents, which the doc-links gate fails on, so step 1 re-points
 them; and the fix goes under `eval-core`'s `[Unreleased]`, as A29's and A31's did. § 3.2's key and
@@ -12,7 +22,7 @@ alone, and § 3.1's option A loses one of its two reasons. § 1 still records th
 found it.
 
 **Revision**: 1 — initial plan (`d839072`).
-**Target package**: `@zvenigora/ng-eval-core` (`modules/eval-core`, published at 0.11.0)
+**Target package**: `@zvenigora/ng-eval-core` (`modules/eval-core`, published at 0.11.1)
 **Also touches**: `@zvenigora/ng-eval-signals` — one step, an error message and specs, released as a
 patch that also widens its peer range; `@zvenigora/ng-eval-forms` — one step, both adapters' parse
 sites and `guardIdentifiers`, released as a breaking minor
@@ -459,7 +469,8 @@ name. The `Identifier`'s `name` is the source text, character for character; its
    braces. The JavaScript reading and the name reading of one adjacency differ by exactly one such
    colon, so at most one of them parses: forgetting the parentheses always leaves a colon the grammar
    cannot place. That colon raises acorn's `SyntaxError` at its own position, with a hint added when a
-   join was suppressed in the same frame — measured: `c ? Q1:1 : 0` → `Unexpected token: a colon-joined
+   join was suppressed in the same frame since its last `,`, `;` or statement start (§ 3.5) — measured:
+   `c ? Q1:1 : 0` → `Unexpected token: a colon-joined
    name in the consequent of a conditional needs parentheses: (Q1:1) (1:9)`, `pos` 9, `loc` (1:9). The
    wording is the step's; the class, `pos`, `loc`, the name and the fix are criteria.
 
@@ -495,10 +506,12 @@ inside a literal at all. Rejected: `{Q1:1}` written for a shorthand would silent
 | `x + foo:1`, `f(foo:1, A1:2:3)` | `SyntaxError` | `x + foo:1`; a call with two identifiers |
 | `sheet:A1.value` | label `sheet` over `A1.value` | `(sheet:A1).value` |
 | `` `${foo:1}` `` | `SyntaxError` (1:6) | a template over one identifier |
-| `obj.Q1:1`, `obj.Q1:1.x`, `obj?.Q1:1`, `a?.[Q1:1]` | `SyntaxError` | property `Q1:1`; computed `Q1:1` |
+| `obj.Q1:1`, `obj.Q1:1.x`, `obj?.Q1:1`, `x?.Q1:1`, `a?.[Q1:1]` | `SyntaxError` | property `Q1:1`; computed `Q1:1` |
+| `a?.b + Q1:1` | `SyntaxError` | joined after an optional chain: `?.` is not a pending `?` |
 | `Q1:01`, `Q1:1e3`, `Q1:_x`, `Q1:$`, `a:b:c:d` | label | one identifier each |
-| `Q1:1 ? 1 : 0`, `c ? 0 : Q1:1`, `a ?? Q1:1`, `Q1:1 ?? a` | label or `SyntaxError` | joined in the test, the alternate and either side of `??` |
+| `Q1:1 ? 1 : 0`, `c ? 0 : Q1:1`, `c ? 0 : Q1:1:3`, `a ?? Q1:1`, `Q1:1 ?? a` | label or `SyntaxError` | joined in the test, the alternate and either side of `??` |
 | `c ? (Q1:1) : 0`, `c ? f(Q1:1) : 0`, `c ? [Q1:1][0] : 0`, `` c ? `${Q1:1}` : 0 ``, `c ? d ? (Q1:1) : 2 : 3` | `SyntaxError` | joined inside a delimiter the consequent opens |
+| `c ? f(Q1:1) : Q1:2`, `a ? (b ? (Q1:1) : 0) : Q1:2` | `SyntaxError` | joined inside the consequent's delimiter and in the alternate |
 | `let Q1:1 = 5; Q1:1 + 1`, `(Q1:1 => Q1:1 + 1)(2)`, `Q1:1 => 1`, `let {a: Q1:1} = o`, `[Q1:1] = [5]`, `Q1:1 = 2`, `Q1:1++` | `SyntaxError` | bindings and assignment targets |
 | `({a: Q1:1})`, `({[Q1:1]: 2})`, `({...o, k: Q1:1})`, `({a: [x, Q1:1]})` | `SyntaxError` | a value, a computed key, a spread, an element |
 | `a?b:c`, `a?b.c:d`, `a?1:b`, `a?"s":b`, `a?b:c?d:e`, `a?/x/g:b`, `f(a?b:c)`, `[a?b:c]`, `` `${a?b:c}` ``, `a?.5:1` | JavaScript | unchanged |
@@ -512,9 +525,27 @@ inside a literal at all. Rejected: `{Q1:1}` written for a shorthand would silent
 | `c ? Q1:1 : 0`, `f(c ? Q1:1 : 0)`, `Q1:1 ? Q2:2 : Q3:3`, `c ? x => Q1:1 : 2` | `SyntaxError` | `SyntaxError` at the leftover colon, with the parentheses hint |
 | `({a:b})`, `({a:1})`, `({Q1:1})`, `x ? 1 : {a:b}`, `let {a:b} = o` | JavaScript | `SyntaxError` at the key |
 
+**Rows step 2 added beyond this table** (Revision 4), each because a wrong implementation of its own
+survived the table:
+
+- `a?f(b)+c:d`, `a?x[0]+y:z`, `a?b.c(d).e:f`, `` a?`${b}`+c:d ``, `a?{k: 1}.k+b:c` — JavaScript,
+  unchanged — and `c ? f(x) + Q1:1 : 0`, the hint at (1:16): a name before the conditional's colon
+  after a delimiter the consequent opened and closed, one per kind of closer. Without them, a level
+  never closed, or closed without restoring its pending `?`, passed every row.
+- `enum:1` — today `The keyword 'enum' is reserved (1:0)`, under the option one identifier: `enum` is
+  reserved but not in acorn's `keywords`, the set § 3.4 names.
+- Stray colons, acorn's own error under the option: `a ? b : c : d`, at a level that joined nothing;
+  then after what ends the conditional whose consequent did not join `b:c` — `a?b:c; 1:2`,
+  `f(a?b:c, 1:2)`, `for (a?b:c; 1:2;) {}`, `x = a?b:c\ny = 1:2` (an inserted semicolon) and
+  `if (z) y = a?b:c\nelse (1):2` (a statement that starts with the `(` opening a level, and no other
+  statement start between).
+- **A pinned known limit**: `c ? Q1:1\n: 0`, the leftover colon on its own line, raises acorn's own
+  `Unexpected token (2:0)`, with no hint. acorn inserts a semicolon at the line break, which ends the
+  conditional, so the hint is not offered there.
+
 ### 3.5 The implementation — decided: an acorn plugin, chosen per parse, that rewrites no text
 
-`Parser.extend` with four overrides, in an internal module, `internal/functions/colon-identifiers.ts`,
+`Parser.extend` with five overrides, in an internal module, `internal/functions/colon-identifiers.ts`,
 which `functions/public-api.ts` does not re-export:
 
 - **`readWord`**: scans an ASCII first segment from the token start; if a colon and a segment character
@@ -530,9 +561,21 @@ which `functions/public-api.ts` does not re-export:
   lexer-context test is accurate too (finding 2, C1), but only because acorn's parser corrects a
   context its lexer guessed for regex detection — a dependency on that correction, and on its timing,
   that the parser-level hook does not have.
+- **`parseStatement`**: forgets the name its frame did not join when a statement starts in that frame —
+  the frame its first token was read in, which for a `(`, `[` or `{` is the one around the frame it
+  opens. A statement boundary ends the conditional whose consequent lost the name, and a semicolon
+  acorn inserts at a line break marks one with no token (Revision 4).
 - **`unexpected`**: adds the hint of § 3.4, 1, when the unexpected token is a colon and its frame
-  suppressed a join. The error stays acorn's: a `SyntaxError` with `pos`, `loc` and the ` (line:col)`
-  suffix, as A5 left every parse error ([BL-A5](../backlog-retired.md#a5)).
+  suppressed a join since the frame's last `,`, `;` or statement start — and in no other case: any
+  other error is acorn's, word for word. Each of those ends the conditional whose consequent lost the
+  name, so a stray colon after one is not that name's (Revision 4). The error stays acorn's: a
+  `SyntaxError` with `pos`, `loc` and the ` (line:col)` suffix, as A5 left every parse error
+  ([BL-A5](../backlog-retired.md#a5)).
+
+**q3 inputs.** The header comment of `internal/functions/colon-identifiers.ts` lists every acorn
+internal the module uses, in one place: the members it reads and writes, the methods it overrides and
+calls, what it assumes of acorn's tokenizer and parser, and the token types it compares. § 8 q3 checks exactly
+that list at the peer floor.
 
 The free `parse` uses the extended parser when `options.colonIdentifiers` is set and `acorn.parse`
 otherwise. The extended class is built once, at module load. No source text is rewritten, so every
@@ -707,7 +750,10 @@ failure count for each, reading which cases failed rather than that the suite di
      under `locations: true` (1:4)–(1:10).
   3. **Errors are exact.** `Q1:1 + * 2`, `x + Q1:1:3 +` and `Q1:1 Q2:2` raise at the positions the base
      parser reports for the same text with `_` in place of each joining colon (P2). The consequent case
-     names the colon name and parentheses; the key case names the key and both fixes.
+     names the colon name and parentheses; the key case names the key and both fixes. *Added at the
+     gate*: an error unrelated to a colon name has acorn's own message, `pos` and `loc`, word for word,
+     under the option, for example `a +`, `(1`, `f(,)`. The `unexpected` override adds a hint only in
+     the two cases § 3.4 names.
   4. **The default path** (§ 3.9) — the `performance.spec.ts` case.
   5. **The base parser is untouched**: `acorn.Parser.prototype.readWord` is the same function after the
      module loads.
@@ -720,6 +766,10 @@ failure count for each, reading which cases failed rather than that the suite di
     - W5 — any identifier character joins (`isIdentifierChar`): the non-ASCII and escape rows fail.
     - W6 — a text pre-pass that rewrites `\w:\w` before acorn: the string, template and regex rows
       fail.
+    - W7 — every `?` token counted as pending, `?.` and `??` among them: the gate's `x?.Q1:1`,
+      `a ?? Q1:1` and `a?.b + Q1:1` rows fail. *Added at the gate.*
+    - W8 — the hint appended to every unexpected-token error: criterion 3's unrelated-error rows fail.
+      *Added at the gate.*
   - The gate green; `git diff --name-only` lists the files above and this document.
 - **Category**: additive, unreleased until step 7.
 
@@ -854,7 +904,7 @@ failure count for each, reading which cases failed rather than that the suite di
   - The gate green; both downstream `lint` targets going green is the check that the ranges widened —
     they fail on the bump alone (finding 14).
   - The built `.d.ts` of each package against its published tarball (`npm pack` outside the repo):
-    `eval-core` 0.11.0 by § 3.10's additions and documentation comments; `eval-signals` 0.5.0 by the
+    `eval-core` 0.11.1 by § 3.10's additions and documentation comments; `eval-signals` 0.5.0 by the
     `abortSignalKey` comment only; `eval-forms` 0.4.1 by the `/signals` member and comments.
   - `readme-examples.spec.ts` and the F10 cases green in all three packages.
 - **Category**: the release. Publishing, tags and the Publication status rows are CONTRIBUTING's
@@ -952,6 +1002,8 @@ signature and refuses one more shape (§ 3.8).
    spec and step 4's runner, run against `acorn` 8.11.2 outside the workspace after step 6, with the
    installed version as the control; each result and any substitution recorded here. A failure stops
    step 7 (§ 4).
+   *q3 inputs*: the acorn internals to check are exactly those the header comment of
+   `internal/functions/colon-identifiers.ts` lists (§ 3.5).
 4. **Keyword prefixes and non-ASCII names.** Refused by § 3.4. *Reopens on* a real key that needs one.
 5. **A per-signal parser option in `eval-signals`.** Not provided: the provider covers the one
    application, and per-signal control would need `CompilerService` to take parser options per call.

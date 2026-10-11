@@ -2,10 +2,13 @@ import { AnyNode, Expression, ModuleDeclaration,
   Program, Statement, parse as _parse } from "acorn";
 import { ParserOptions } from "../interfaces";
 import * as acorn from 'acorn';
+import { ColonIdentifiersParser } from './colon-identifiers';
 
 /**
 * @description
 * Parses expression and returns ES6/ES2020 AST.
+* With `colonIdentifiers` set the parser is the colon-joined name grammar's;
+* otherwise it is acorn's own `parse`.
 * @param expr expression to parse
 * @param options parser options
 */
@@ -13,7 +16,9 @@ export const parse = (expr: string, options: ParserOptions)
   : Program | AnyNode | undefined => {
   options = {ecmaVersion: 2020, ...options};
   const acornOptions: acorn.Options = {ecmaVersion: 2020, ...options};
-  const program: Program = _parse(expr, acornOptions);
+  const program: Program = options.colonIdentifiers
+    ? ColonIdentifiersParser.parse(expr, acornOptions)
+    : _parse(expr, acornOptions);
   if (!options.extractExpressions) {
     return program;
   }
