@@ -36,9 +36,11 @@ be in one of two categories:
 - A change to an **existing exported symbol's shape**, or to the behaviour of an already-shipped
   path, is a versioned release of that package: it needs an explicit callout in the step's report, a
   version bump, and an entry in that package's own `modules/<name>/CHANGELOG.md`
-  (`## [0.12.0] - <npm's publish date, UTC>`). The plan names each one: step 1's and step 3's
-  cache fixes in `eval-core`, step 5's message in `eval-signals`, and step 6's label refusal in
-  `eval-forms`, a breaking minor (plan § 3.10). Finding any other is a stop-and-replan.
+  (`## [0.12.0] - <npm's publish date, UTC>`). The plan names each one: step 1's A26 fix in
+  `eval-core`, step 5's message in `eval-signals`, and step 6's label refusal in `eval-forms`, a
+  breaking minor (plan § 3.10). Step 3's `CompilerService` key is not one: it ships inside step 7's
+  Added entry, with the two caching exceptions the plan's step 3 records for that entry to word.
+  Finding any other is a stop-and-replan.
 
 **Every step says which of those two it is, in its § 2 restatement**, and whether it ships in a
 package at all — step 4 ships in none. The bumps land once, in step 7 (plan § 3.10); steps 1–6 add

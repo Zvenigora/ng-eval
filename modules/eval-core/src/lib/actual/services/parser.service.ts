@@ -6,6 +6,7 @@ import { Expression, Program,
 import { parse as _parse } from '../../internal/functions';
 import { defaultParserOptions } from '../../internal/classes/eval';
 import { ParseFingerprintMemo, parseFingerprint } from './parse-fingerprint';
+import { injectColonIdentifiers } from './colon-identifiers.provider';
 
 
 /**
@@ -40,12 +41,15 @@ export class ParserService implements OnDestroy {
   }
 
   /**
-   * Constructs a new instance of the ParserService class.
+   * Constructs a new instance of the ParserService class. Its options carry
+   * `colonIdentifiers: true` when the injector constructing it holds
+   * `provideColonIdentifiers()`, and no such key otherwise.
    */
   constructor() {
     this.parserOptions = {
       ...defaultParserOptions,
-      extractExpressions: true
+      extractExpressions: true,
+      ...(injectColonIdentifiers() ? { colonIdentifiers: true } : {})
     };
     if (this.parserOptions.cacheSize) {
       this._cache = new Cache<AnyNode>(this.parserOptions.cacheSize);

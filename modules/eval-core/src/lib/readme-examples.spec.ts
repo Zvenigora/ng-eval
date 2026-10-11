@@ -13,10 +13,11 @@ import {
   EvalService,
   ParserService,
   createTimingHook,
+  provideColonIdentifiers,
 } from '../public-api';
 
 /** The ` ```javascript ` fences in `modules/eval-core/README.md`, indented ones included. */
-const README_JAVASCRIPT_BLOCKS = 16;
+const README_JAVASCRIPT_BLOCKS = 17;
 
 /**
  * Executes the snippets in `modules/eval-core/README.md`.
@@ -51,15 +52,17 @@ const README_JAVASCRIPT_BLOCKS = 16;
  * excused. **A12's documentation added two more**, the `### Bounding the
  * trace` blocks, with no case, and this docblock went on claiming full
  * coverage until the count case below first read the file; both are covered
- * now. Sections whose later blocks continue an earlier one are a single case,
- * split only where the document declares a fresh start by re-declaring its own
- * bindings.
+ * now. **Phase 9 step 3 added one**, `### Colon-joined names`, covered in a
+ * `describe` of its own because it declares its own root providers. Sections
+ * whose later blocks continue an earlier one are a single case, split only
+ * where the document declares a fresh start by re-declaring its own bindings.
  *
  * | Case | Blocks |
  * | --- | --- |
  * | Parsing | `### Parsing` |
  * | Discovery | `### Discovery` |
  * | Scopes | `### Scopes` |
+ * | Colon-joined names | `### Colon-joined names` — **Phase 9 step 3** |
  * | Per-node timing | `### Per-node timing` |
  * | An adopted registry | the `createTimingHook` block — its own state, because its sentence is about a registry the caller built |
  * | Iteration budget | `### Iteration budget` — **step 6** |
@@ -147,6 +150,11 @@ const README_JAVASCRIPT_BLOCKS = 16;
  *    `() => Promise<unknown>` where the block calls `arrow()` directly. Neither
  *    changes a claim, and both are here because the enumeration is worth more
  *    than its tidiness.
+ *
+ * 9. **`TestBed`'s providers for `appConfig`.** The `### Colon-joined names`
+ *    block declares the application's root providers; the case hands the same
+ *    object to `TestBed.configureTestingModule`, whose injector is the root its
+ *    services resolve from, as the application's would be.
  *
  * Items 3 to 8 are the same class — a value, a precondition or a narrowing the
  * block does not print — and are listed separately because the enumeration is
@@ -441,6 +449,23 @@ describe('documented examples', () => {
     expect(() => arrow()).toThrow(/dangerous property/);
 
     expect(seen).toEqual([['MemberExpression', true], ['AwaitExpression', true]]);
+  });
+});
+
+// The `### Colon-joined names` block, under a root injector of its own: the
+// block's root providers are this case's `TestBed` providers (substitution 9).
+describe('documented examples, under the root providers they declare', () => {
+
+  it('should read a colon-joined name under provideColonIdentifiers()', () => {
+    const appConfig = { providers: [provideColonIdentifiers()] };
+    TestBed.configureTestingModule(appConfig);
+
+    const parser = TestBed.inject(ParserService);
+    expect(parser.parserOptions.colonIdentifiers).toBe(true);
+
+    const service = TestBed.inject(EvalService);
+    expect(service.simpleEval('Q1:1 + 1', { 'Q1:1': 2 })).toBe(3);
+    expect(service.simpleEval('Q1:1 + 1', { Q1: 100 })).toBeNaN();
   });
 });
 

@@ -54,8 +54,10 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 ### Work in flight
 
 **Phase 9**, colon-joined identifiers — [`docs/colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md),
-written 2026-10-10, is the active plan. Step 1 fixed [A26](backlog-retired.md#a26), unreleased, and
-opened [A34](#a34); step 2, the grammar, is next. `eval-core` 0.11.1,
+written 2026-10-10, is the active plan. Steps 1–3 are done, all unreleased: step 1 fixed
+[A26](backlog-retired.md#a26) and opened [A34](#a34), step 2 added the grammar, and step 3
+`provideColonIdentifiers()` and `CompilerService`'s fingerprinted string key. Step 4, the corpus, is
+next. `eval-core` 0.11.1,
 with the [A29](backlog-retired.md#a29) and [A31](backlog-retired.md#a31) fixes, is published and
 tagged at 7ee65fc. Phase 5 is complete: its
 [plan](signals/phase-5-plan.md), at Revision 5, and its retrospect,
@@ -821,6 +823,11 @@ fingerprint.
 **No worse than before A26's fix**: with the text-only key, every read above gives the same answer.
 Cached text is served with the old options, and new text is parsed with the new ones. Nothing in this
 repository writes into either object (`git grep`).
+
+**A second memo, since Phase 9 step 3.** `CompilerService` keys a compiled string on the same
+fingerprint, over `ParserService.parserOptions` and its own per-call options, in a memo of its own, so
+a write in place into either leaves a string it compiled before serving the old function. Read, not
+measured. No worse than before either: its key was the text alone, and ignored every change.
 
 **Fix, if ever**: freeze the options the service stores, or validate the memo cheaply, for instance
 by comparing a stored copy of the values on each lookup. Freezing `defaultParserOptions` or the

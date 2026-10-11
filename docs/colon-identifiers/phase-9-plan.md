@@ -1,6 +1,20 @@
 # Phase 9 Plan — colon-joined identifiers (`@zvenigora/ng-eval-core`)
 
 **Date**: October 10, 2026
+**Revision**: 5 — step 3, in its own commit. `ParserService` is published with a no-argument
+constructor, and `new ParserService()` outside any injection context — as `eval.service.memory-leaks.spec.ts`
+calls it — would throw `NG0203` on a bare `inject()`: § 3.1 now says how the token is read. Criterion 1's
+"today's error" did not exist for three of its four rows, and is replaced by today's results. The
+confirmation gate added three rows, recorded under step 3: `new ParserService()` outside a context, the
+null-fingerprint bypass and a narrowed catch's rethrow. The step found the second unreachable as the gate
+worded it, a callback on `ParserService`'s own options, and wrote it through `CompilerService`'s per-call
+options instead (§ 3.2). Step 3's category corrected: nothing published can vary `CompilerService`'s parse
+until `colonIdentifiers` exists, so its key ships as part of the addition, not as a fix — qualified by the
+step's review, which found two exceptions, and a third case it fixed: the key threw for a `ParserService`
+double with no `parserOptions`; it also found two limits of the misplacement check, accepted and recorded
+under step 3. Step 3's file list gains `docs/backlog.md`, for its status paragraph and A34's second memo,
+and `.claude/skills/step/SKILL.md`, whose list of versioned changes named step 3's key.
+
 **Revision**: 4 — step 2, in its own commit. Its confirmation gate added six rows to the case table, five
 of them new to § 3.4; to criterion 3, errors that are not about a colon name, word for word; two wrong
 implementations, W7 and W8; and a "q3 inputs" line in § 8. Step 2 then found that "only in the two
@@ -326,7 +340,15 @@ token; `ParserService`, which is `providedIn: 'root'`, reads it at construction 
   the root `ParserService`, which would silently ignore it. So the provider also registers an
   environment initializer that throws, naming the provider and the root, when the `ParserService` it
   resolves does not have the option on (Angular 19's `provideEnvironmentInitializer`, inside the
-  `>=19` peer range). Misplacement is loud at startup.
+  `>=19` peer range). Misplacement is loud when that injector is created — at startup, or for a lazy
+  route at its first navigation (Revision 5).
+- *The read*: `ParserService` is published with a no-argument constructor, and `new ParserService()`
+  outside any injection context worked before the provider existed. A bare `inject()` there throws
+  Angular's `NG0203`, and Angular has no public test for an injection context — only
+  `assertInInjectionContext`, which throws too. So the token is read in a `try` whose `catch` takes
+  `NG0203` — a `RuntimeError` with `code` `-203` — as "no provider" and rethrows anything else:
+  `new ParserService()` outside a context keeps the option off, and under DI the read is exact
+  (Revision 5).
 
 **Option D — process-wide**: write `colonIdentifiers` into the exported `defaultParserOptions`, or a
 module-level `setColonIdentifiers()`.
@@ -391,6 +413,17 @@ would use — `ParserService`'s merged with its per-call `defaultParserOptions`.
 observable can vary that parse (finding 4), so the criterion that would discriminate it has nothing to
 turn on until `colonIdentifiers` exists; step 3 is where it does. Only strings are keyed: since
 A29's fix an AST is never cached (Revision 2).
+
+As step 3 built it (Revision 5): the key is `str:<digest>:<text>`, the digest from `parseFingerprint`
+over `ParserService.parserOptions` and `CompilerService`'s own per-call options, remembered in a
+`ParseFingerprintMemo` the service keeps for itself. A `null` fingerprint — a callback or a `program`
+among those options, or a value JSON cannot hold — compiles without caching, as `ParserService` parses
+without its cache. A callback or a `program` reaches it only through `CompilerService`'s per-call
+options, which a subclass sets: one on `ParserService`'s own options never reaches this parse, because
+`defaultParserOptions` carries all five as `null` and wins the merge (finding 4). A value JSON cannot
+hold reaches it from either, under a key `defaultParserOptions` does not carry. A `ParserService` with
+no `parserOptions` — a consumer's test double — is fingerprinted as having none: the old key read
+nothing from it, and a missing one cannot key the memo (the step's review).
 
 ### 3.3 The option — decided: `ParserOptions.colonIdentifiers?: boolean`, and `provideColonIdentifiers()`
 
@@ -782,7 +815,9 @@ failure count for each, reading which cases failed rather than that the suite di
   — a section naming `provideColonIdentifiers` and `colonIdentifiers` in code spans, with one executed
   ` ```javascript ` block; `src/lib/readme-examples.spec.ts` — that block executed and
   `README_JAVASCRIPT_BLOCKS` raised from 16 ([BL-F13](../backlog-retired.md#f13)); `export-list.spec.ts`
-  only if its F10 case needs it ([BL-F10](../backlog-retired.md#f10)).
+  only if its F10 case needs it ([BL-F10](../backlog-retired.md#f10)) — it did not; `docs/backlog.md` —
+  its "Work in flight" paragraph, steps 1–3 done and step 4 next, and A34's second memo;
+  `.claude/skills/step/SKILL.md` — its list of versioned changes, which named step 3's key (Revision 5).
 - **Builds**: § 3.1's decision and § 3.2's `CompilerService` half.
 - **Exit criteria**:
   1. **Every service reaches it.** Under `provideColonIdentifiers()`: `EvalService.simpleEval('Q1:1 + 1',
@@ -790,6 +825,10 @@ failure count for each, reading which cases failed rather than that the suite di
      `simpleCallAsync` the same; `DiscoveryService.extract('Q1:1 + x', 'Identifier')` names `Q1:1` and
      `x`. Without the provider each is today's error. *Wrong*: `defaultParserOptions` gains
      `colonIdentifiers: false` — every row under the provider fails.
+     *Corrected in the step* (Revision 5): only `simpleEval` has an error today. `Q1:1 + 1` is the label
+     `Q1` over `1 + 1`, so `compile` and `compileAsync` succeed and `simpleCall` and `simpleCallAsync`
+     throw `Unsupported statement type: LabeledStatement`, and `extract` throws nothing and names `x`
+     alone. The rows without the provider pin those results.
   2. **Per call wins.** Under the provider, `ParserService.parse('Q1:1', { colonIdentifiers: false })`
      is a label.
   3. **A change after first use, through the setter, reaches compiled strings.** `CompilerService.compile('Q1:1 == 1')`
@@ -806,10 +845,40 @@ failure count for each, reading which cases failed rather than that the suite di
   7. **Refusals** (§ 3.6) — finding 9's rows, under the provider. *Wrong*: `refuseDangerousName` and
      `refuseDangerousMatch` removed — the identifier rows fail with the option on, which is what shows
      the rows reach the guards through colon-name expressions.
+  - *Added at the gate* (Revision 5):
+    - `new ParserService()` outside any injection context neither throws nor enables colon names:
+      `Q1:1` parses as a label. *Wrong*: the token read with no `catch` — that row and
+      `eval.service.memory-leaks.spec.ts` fail.
+    - Only `NG0203` reads as "no provider"; any other error from the read is rethrown. *Wrong*: a
+      `catch` that takes every error.
+    - A `null` fingerprint compiles without caching: two compiles of one text give two functions.
+      The gate placed the callback on `ParserService`'s options; *corrected in the step*, it is on
+      `CompilerService`'s per-call options, since `defaultParserOptions` keeps one on
+      `ParserService`'s from reaching the parse (§ 3.2). *Wrong*: a `null` fingerprint cached.
+  - *Added by the step's review* (Revision 5): a `ParserService` double with no `parserOptions` still
+    compiles and caches a string — *Wrong*: the service's options keyed as they come, which throws
+    `TypeError: Invalid value used as weak map key`; and three refusal rows that reach a guard through a
+    colon-name expression — `Q1:1 && CONSTRUCTOR` under `caseInsensitive`, `Q1:1 && obj.constructor`,
+    `Q1:1 && obj.CONSTRUCTOR` — since four of criterion 7's five rows hold no colon name and are
+    refused alike with the option off.
+  - *Accepted limits of the misplacement check*, found by the step's review (Revision 5): the
+    initializer checks the `ParserService` its own injector resolves. So a child injector that
+    re-provides `ParserService` beside the provider passes the check, while the root's `EvalService`,
+    `CompilerService` and `DiscoveryService` keep the root's `ParserService`, with the option off; and
+    a root initializer that replaces `ParserService.parserOptions` before ours runs, with an object
+    lacking the key, makes our error blame child placement. Both require a deliberate override by the
+    consumer.
   - `readme-examples.spec.ts` and the F10 case green with the new block counted; the gate green;
     `git diff --name-only` lists the files above and this document.
-- **Category**: additive, and a versioned behaviour fix to `CompilerService`'s cache; released in
-  step 7.
+- **Category**: additive; released in step 7. `CompilerService`'s key changes no published behaviour
+  for a caller of the published services: nothing such a caller can do varies its parse until
+  `colonIdentifiers` exists (A26's retirement, § 3.2), so it ships inside step 7's Added entry, not as
+  a Fixed line (Revision 5). Two exceptions, found by the step's review and the step: a subclass that
+  sets `CompilerService`'s protected per-call options — one carrying a callback now compiles uncached,
+  so the callback runs and a new function returns on every `compile`, and one that replaces them
+  between compiles is served a function for the new options rather than the old; and a value JSON
+  cannot hold, set in `ParserService.parserOptions` under a key `defaultParserOptions` does not carry,
+  which now compiles uncached, where it was cached. Step 7 decides whether its entry names them.
 
 ### Step 4 — The corpus: data-driven cases, synthetic until real ones arrive
 

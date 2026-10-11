@@ -78,6 +78,29 @@ const result = service.simpleEval('cat.action(args, cat.num, "times")', evalCont
 
 Note that an `EvalContext` may back any number of evaluations, and that `caseInsensitive` set on the context alone does not reach the walk — pass it in the evaluation options too.
 
+### Colon-joined names — `provideColonIdentifiers`
+
+Some expression languages name their values `Q1:1` or `VP14:0`. With `colonIdentifiers` on, such a name parses as one identifier and reads the context key of the same spelling, `context['Q1:1']`. It is off by default, and with it off every expression parses as it always has.
+
+`provideColonIdentifiers()` turns it on for an application: `ParserService` reads it when it is constructed, so every parse through `EvalService`, `CompilerService` and `DiscoveryService` follows it. Put it in the application's **root** providers. `ParserService` is provided in the root, so in a lazy route's providers, or any other child injector's, the provider would reach no parse; there it throws when that injector is created instead.
+
+A per-call `colonIdentifiers` in the options of `ParserService.parse`, or of the exported `parse`, overrides it — and the exported `parse` sees only the options it is given. Setting `ParserService.parserOptions` to a new object is the imperative alternative: every later parse or compile follows it, of a text seen before as of a new one, while a function already compiled keeps the reading it was compiled with.
+
+```javascript
+import { EvalService, ParserService,
+  provideColonIdentifiers } from '@zvenigora/ng-eval-core';
+
+// app.config.ts: the application's root providers, not a lazy route's
+export const appConfig = { providers: [provideColonIdentifiers()] };
+
+const parser = inject(ParserService);
+parser.parserOptions.colonIdentifiers;           // true - the effective setting
+
+const service = inject(EvalService);
+service.simpleEval('Q1:1 + 1', { 'Q1:1': 2 });   // 3
+service.simpleEval('Q1:1 + 1', { Q1: 100 });     // NaN - 'Q1:1' is a key of its own
+```
+
 ## Options
 
 ### Per-node timing

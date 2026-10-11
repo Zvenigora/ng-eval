@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { ParserService } from './parser.service';
 import { EvalService } from './eval.service';
 import * as fingerprint from './parse-fingerprint';
+import { COLON_IDENTIFIERS, provideColonIdentifiers } from './colon-identifiers.provider';
 import { ParserOptions } from '../../internal/interfaces';
 import { defaultParserOptions } from '../../internal/classes/eval';
 import { BinaryExpression, Literal, parse as acornParse } from 'acorn';
@@ -330,5 +331,62 @@ describe('ParserService cache keyed on parse-relevant options (A26)', () => {
     expect(evalService.simpleEval('m + 1', { m: 1 })).toBe(2);
     expect(evalService.simpleEval('m * 3', { m: 2 })).toBe(6);
     expect(build).toHaveBeenCalledTimes(1);
+  });
+});
+
+// `docs/colon-identifiers/phase-9-plan.md` § 3.1 and step 3: the service reads
+// `provideColonIdentifiers` from the injector constructing it. The rows for the
+// services above it are in `eval.service.colon-identifiers.spec.ts`.
+describe('ParserService reading provideColonIdentifiers (Phase 9 step 3)', () => {
+
+  const label = {
+    type: 'Program',
+    body: [{ type: 'LabeledStatement', label: { type: 'Identifier', name: 'Q1' } }],
+  };
+
+  it('criterion 2: a per-call colonIdentifiers: false wins over the provider', () => {
+    TestBed.configureTestingModule({ providers: [provideColonIdentifiers()] });
+    const parser = TestBed.inject(ParserService);
+    expect(parser.parserOptions.colonIdentifiers).toBe(true);
+    expect(parser.parse('Q1:1')).toMatchObject({ type: 'Identifier', name: 'Q1:1' });
+
+    // The service extracts the expression by default, and a label is none.
+    expect(parser.parse('Q1:1', { colonIdentifiers: false })).toBeUndefined();
+    expect(parser.parse('Q1:1', { colonIdentifiers: false, extractExpressions: false }))
+      .toMatchObject(label);
+  });
+
+  it('without the provider, the key is absent from the service\'s options', () => {
+    TestBed.configureTestingModule({});
+    const parser = TestBed.inject(ParserService);
+    expect('colonIdentifiers' in parser.parserOptions).toBe(false);
+    expect(parser.parse('Q1:1', { extractExpressions: false })).toMatchObject(label);
+  });
+
+  // `new ParserService()` constructed a working service before the provider
+  // existed, and `eval.service.memory-leaks.spec.ts` still does.
+  it('new ParserService() outside any injection context neither throws nor enables colon names', () => {
+    let parser: ParserService | undefined;
+    expect(() => { parser = new ParserService(); }).not.toThrow();
+    expect(parser?.parserOptions.colonIdentifiers).toBeUndefined();
+    expect(parser?.parse('Q1:1', { extractExpressions: false })).toMatchObject(label);
+  });
+
+  it('new ParserService() in an injection context under the provider reads it', () => {
+    TestBed.configureTestingModule({ providers: [provideColonIdentifiers()] });
+    const parser = TestBed.runInInjectionContext(() => new ParserService());
+    expect(parser.parserOptions.colonIdentifiers).toBe(true);
+    expect(parser.parse('Q1:1')).toMatchObject({ type: 'Identifier', name: 'Q1:1' });
+  });
+
+  // Only a missing injection context reads as no provider.
+  it('rethrows any other error from reading the provider', () => {
+    TestBed.configureTestingModule({
+      providers: [{
+        provide: COLON_IDENTIFIERS,
+        useFactory: () => { throw new Error('the token\'s factory failed'); },
+      }],
+    });
+    expect(() => TestBed.inject(ParserService)).toThrow('the token\'s factory failed');
   });
 });

@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { CompilerService } from './compiler.service';
+import { ParserService } from './parser.service';
 import { BaseContext } from '../../internal/classes/common';
 import { defaultParserOptions } from '../../internal/classes/eval';
 import { parse } from '../../internal/functions';
@@ -106,6 +107,85 @@ describe('CompilerService', () => {
     it('should return the cached function for a string compiled twice', () => {
       expect(service.compile('a * b')).toBe(service.compile('a * b'));
       expect(service.compileAsync('a * b')).toBe(service.compileAsync('a * b'));
+    });
+  });
+
+  // `docs/colon-identifiers/phase-9-plan.md` § 3.2 and step 3. A string is
+  // keyed under the fingerprint of the options its parse uses, `ParserService`'s
+  // merged with this service's, so a change through the setter reaches a string
+  // compiled before it.
+  describe('the string key under the parse fingerprint', () => {
+
+    const colonOn = () => {
+      const parser = TestBed.inject(ParserService);
+      parser.parserOptions = { ...parser.parserOptions, colonIdentifiers: true };
+    };
+
+    it('criterion 3: a string compiled before the setter turns colonIdentifiers on compiles a colon name after', () => {
+      const before = service.compile('Q1:1 == 1');
+      expect(() => service.simpleCall(before, { 'Q1:1': 1 }))
+        .toThrow('Unsupported statement type: LabeledStatement');
+
+      colonOn();
+      const after = service.compile('Q1:1 == 1');
+      expect(after).not.toBe(before);
+      expect(service.simpleCall(after, { 'Q1:1': 1 })).toBe(true);
+      expect(service.simpleCall(after, { Q1: 1 })).toBe(false);
+    });
+
+    it('criterion 3: the same for compileAsync', async () => {
+      const before = service.compileAsync('Q1:1 == 1');
+      await expect(service.simpleCallAsync(before, { 'Q1:1': 1 }))
+        .rejects.toThrow('Unsupported statement type: LabeledStatement');
+
+      colonOn();
+      const after = service.compileAsync('Q1:1 == 1');
+      expect(after).not.toBe(before);
+      expect(await service.simpleCallAsync(after, { 'Q1:1': 1 })).toBe(true);
+      expect(await service.simpleCallAsync(after, { Q1: 1 })).toBe(false);
+    });
+
+    // A parse that bypasses `ParserService`'s cache bypasses this one: a cached
+    // function runs no callback. A callback on `ParserService`'s own options
+    // cannot show it - the service's per-call `defaultParserOptions` carries
+    // every callback as `null`, which wins the merge (finding 4, A30) - so the
+    // callback is on this service's per-call options, which a subclass sets.
+    it('compiles a string whose parse carries a callback on every call, uncached', () => {
+      class CallbackCompiler extends CompilerService {
+        constructor(onToken: () => void) {
+          super();
+          this.parserOptions = { ...defaultParserOptions, onToken };
+        }
+      }
+      const onToken = jest.fn();
+      const compiler = TestBed.runInInjectionContext(() => new CallbackCompiler(onToken));
+
+      const first = compiler.compile('i + 1');
+      const once = onToken.mock.calls.length;
+      expect(once).toBeGreaterThan(0);
+      const second = compiler.compile('i + 1');
+      expect(second).not.toBe(first);
+      expect(onToken).toHaveBeenCalledTimes(2 * once);
+      expect(compiler.compileAsync('i + 1')).not.toBe(compiler.compileAsync('i + 1'));
+      expect(compiler.simpleCall(second, { i: 2 })).toBe(3);
+    });
+
+    // A consumer's test double for `ParserService` need not carry
+    // `parserOptions`; up to 0.11.1 the key read nothing from it.
+    it('compiles and caches a string through a ParserService double without parserOptions', () => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [{
+          provide: ParserService,
+          useValue: { parse: (text: string) => parse(text, defaultParserOptions) },
+        }],
+      });
+      const compiler = TestBed.inject(CompilerService);
+
+      const fn = compiler.compile('a + b');
+      expect(compiler.simpleCall(fn, { a: 1, b: 2 })).toBe(3);
+      expect(compiler.compile('a + b')).toBe(fn);
+      expect(compiler.compileAsync('a + b')).toBe(compiler.compileAsync('a + b'));
     });
   });
 });

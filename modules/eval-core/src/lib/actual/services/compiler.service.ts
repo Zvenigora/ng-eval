@@ -2,12 +2,17 @@ import { Injectable, OnDestroy, inject } from '@angular/core';
 import { BaseEval } from './base-eval';
 import { ParserService } from './parser.service';
 import { EvalService } from './eval.service';
+import { ParseFingerprintMemo, parseFingerprint } from './parse-fingerprint';
 import { EvalContext, EvalOptions, EvalState, defaultParserOptions } from '../../internal/classes/eval';
 import { Context } from '../../internal/classes/common';
 import { AnyNode } from 'acorn';
+import { ParserOptions } from '../../internal/interfaces';
 import { call as _call, callAsync as _callAsync,
   compile as _compile, compileAsync as _compileAsync,
   stateCallback, stateCallbackAsync } from '../../internal/functions';
+
+/** Stands for a `ParserService` that has no options object of its own. */
+const NO_SERVICE_OPTIONS: ParserOptions = Object.freeze({});
 
 /**
  * Interface for cached compilation result
@@ -35,6 +40,7 @@ export class CompilerService extends BaseEval implements OnDestroy {
   private readonly _accessOrder = new Set<string>();
   private _cacheCleanupInterval?: ReturnType<typeof setInterval>;
   private _isDestroyed = false;
+  private readonly _fingerprints: ParseFingerprintMemo = new WeakMap();
 
   protected override parserService = inject(ParserService);
   protected evalService = inject(EvalService);
@@ -104,10 +110,25 @@ export class CompilerService extends BaseEval implements OnDestroy {
 
   /**
    * Generate cache key for expression. Only a string is cached, so only a
-   * string has a key.
+   * string has a key: the text under the digest of the options its parse
+   * uses, `ParserService`'s merged with this service's, so a change through
+   * the `ParserService.parserOptions` setter reaches a string compiled before
+   * it (`docs/colon-identifiers/phase-9-plan.md` § 3.2). The memo is
+   * `ParserService`'s kind, and a write in place goes unseen here as there
+   * (`docs/backlog.md` A34). `null` when that parse bypasses `ParserService`'s
+   * cache - a callback or a `program` among its options, or a value JSON
+   * cannot hold - and this cache then bypasses too, since a cached function
+   * runs no callback.
    */
-  private generateCacheKey(expression: string): string {
-    return `str:${expression}`;
+  private generateCacheKey(expression: string): string | null {
+    // A test double for `ParserService` need not carry `parserOptions`, and a
+    // missing one cannot key the memo; it is fingerprinted as none.
+    const serviceOptions: ParserOptions | undefined = this.parserService.parserOptions;
+    const digest = parseFingerprint(this._fingerprints,
+      typeof serviceOptions === 'object' && serviceOptions !== null
+        ? serviceOptions : NO_SERVICE_OPTIONS,
+      this.parserOptions);
+    return digest === null ? null : `str:${digest}:${expression}`;
   }
 
   /**
@@ -120,7 +141,8 @@ export class CompilerService extends BaseEval implements OnDestroy {
 
   /**
    * Compiles the given expression into a state callback function. A string is
-   * compiled once and cached; an AST is compiled on every call.
+   * compiled once and cached, unless its parse bypasses `ParserService`'s
+   * cache; an AST is compiled on every call.
    * @param expression - The expression to compile.
    * @returns The compiled state callback function.
    * @throws Error if there is an error during compilation.
@@ -141,6 +163,9 @@ export class CompilerService extends BaseEval implements OnDestroy {
     }
 
     const cacheKey = this.generateCacheKey(expression);
+    if (cacheKey === null) {
+      return _compile(this.parse(expression));
+    }
 
     // Check cache first
     const cached = this._compilationCache.get(cacheKey);
@@ -222,8 +247,8 @@ export class CompilerService extends BaseEval implements OnDestroy {
 
   /**
    * Compiles the given expression into an asynchronous state callback
-   * function. A string is compiled once and cached; an AST is compiled on
-   * every call.
+   * function. A string is compiled once and cached, unless its parse bypasses
+   * `ParserService`'s cache; an AST is compiled on every call.
    * @param expression - The expression to compile.
    * @returns The compiled asynchronous state callback function.
    * @throws Error if there is an error during compilation.
@@ -235,6 +260,9 @@ export class CompilerService extends BaseEval implements OnDestroy {
     }
 
     const cacheKey = this.generateCacheKey(expression);
+    if (cacheKey === null) {
+      return _compileAsync(this.parse(expression));
+    }
 
     // Check cache first
     const cached = this._compilationCache.get(cacheKey);
