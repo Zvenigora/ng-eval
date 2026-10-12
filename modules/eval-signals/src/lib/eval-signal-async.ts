@@ -53,9 +53,11 @@ export interface EvalSignalAsyncOptions extends EvalSignalOptions {
    * resolution order, so it shadows a source key of the same name. A record
    * source holding one - matched as the signal context matches keys, by case
    * only under `caseInsensitive` - is refused at construction, and so is a
-   * name no expression could read. A caller-built `EvalContext` cannot be
-   * checked, so keeping the name free there is the caller's job. The name is
-   * never reported in `dependencies`.
+   * name that is not a plain identifier, or that an expression naming it
+   * could not read. A colon-joined name is not a plain identifier, even under
+   * `eval-core`'s `colonIdentifiers`, which lets an expression name one. A
+   * caller-built `EvalContext` cannot be checked, so keeping the name free
+   * there is the caller's job. The name is never reported in `dependencies`.
    */
   abortSignalKey?: string;
 }
@@ -88,16 +90,21 @@ interface Run {
 }
 
 /**
- * Refuses an `abortSignalKey` no expression could read (Phase 5 S 3.6), by
- * asking `eval-core` rather than keeping a list here.
+ * Refuses an `abortSignalKey` that is not a plain identifier, or that no
+ * expression could read (Phase 5 S 3.6), by asking `eval-core` rather than
+ * keeping a list here.
  *
- * The key must parse, as the evaluator parses, to one identifier of exactly
- * that name - which refuses a character an identifier cannot hold, and a
- * reserved word. Then it is evaluated once with the key pushed as a scope, as
- * a run pushes it, and must find what was pushed: a name the identifier guard
- * refuses throws there. The state is built from `caseInsensitive` alone, the
- * one option the guard reads, so a consumer's hooks never see a walk that
- * never happened.
+ * The key must parse, with `defaultParserOptions`, to one identifier of
+ * exactly that name - which refuses a character an identifier cannot hold,
+ * and a reserved word. The free `parse` sees only the options it is handed,
+ * so a colon-joined name is refused even where the application turns
+ * `colonIdentifiers` on and an expression could name it
+ * (`docs/colon-identifiers/phase-9-plan.md` S 3.8): a plain identifier is
+ * named alike with the option on and off. Then it is evaluated once with the
+ * key pushed as a scope, as a run pushes it, and must find what was pushed: a
+ * name the identifier guard refuses throws there. The state is built from
+ * `caseInsensitive` alone, the one option the guard reads, so a consumer's
+ * hooks never see a walk that never happened.
  */
 const assertReadableKey = (key: string, caseInsensitive: boolean): void => {
 
@@ -105,12 +112,16 @@ const assertReadableKey = (key: string, caseInsensitive: boolean): void => {
     `Cannot bind the run's AbortSignal under 'abortSignalKey' "${key}": ${reason}`
   );
 
+  // One reason for both shape refusals below: the key did not parse, or
+  // parsed to something other than that one identifier.
+  const notPlain = 'the key must be a plain identifier (a colon-joined name is not one, even under colonIdentifiers).';
+
   let program: ReturnType<typeof parse>;
 
   try {
     program = parse(key, defaultParserOptions);
   } catch {
-    throw refuse('it is not an identifier, so no expression could name it.');
+    throw refuse(notPlain);
   }
 
   const statement = program?.type === 'Program' && program.body.length === 1
@@ -120,7 +131,7 @@ const assertReadableKey = (key: string, caseInsensitive: boolean): void => {
   if (statement?.type !== 'ExpressionStatement'
     || statement.expression.type !== 'Identifier'
     || statement.expression.name !== key) {
-    throw refuse('it is not an identifier, so no expression could name it.');
+    throw refuse(notPlain);
   }
 
   const sentinel = {};

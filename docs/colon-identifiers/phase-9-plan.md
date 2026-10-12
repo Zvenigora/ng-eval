@@ -1,6 +1,12 @@
 # Phase 9 Plan — colon-joined identifiers (`@zvenigora/ng-eval-core`)
 
 **Date**: October 10, 2026
+**Revision**: 7 — step 5, in its own commit. Its file list gains `modules/eval-signals/CHANGELOG.md`:
+the refusal's message is published behaviour and the `abortSignalKey` JSDoc is on a published symbol,
+so the `[Unreleased]` line lands with the change, as step 1's did, and step 7 only versions it. It
+also names `assertReadableKey`'s JSDoc, which the option makes inexact as it does `abortSignalKey`'s.
+The confirmation gate fixed the wording, recorded under step 5.
+
 **Revision**: 6 — step 4, in its own commit. § 8 q6 is settled at the step's confirmation gate: legacy
 expressions are rewritten to JavaScript syntax before they reach `eval-core` — `<>` becomes `!=` — and
 colon-joined names are the only legacy construct it keeps, so real corpus cases arrive rewritten. The
@@ -957,10 +963,18 @@ failure count for each, reading which cases failed rather than that the suite di
 
 - **New**: `eval-signal.colon-identifiers.spec.ts`.
 - **Edit**: `eval-signal-async.ts` (the two messages, `:113`, `:123`, and the `abortSignalKey` JSDoc's
-  "a name no expression could read", `:56`, which the option makes inexact in the same way);
+  "a name no expression could read", `:56`, which the option makes inexact in the same way — and
+  so, *added at the gate*, `assertReadableKey`'s, `:91-100`);
   `eval-signal-async.spec.ts` — a case for the new wording beside the existing refusal cases, which
   assert only the option's name and the key (`:1153-1158`) and stay as they are; `docs/backlog.md` —
-  its "Work in flight" paragraph only (Revision 6; step 7 edits the file anyway).
+  its "Work in flight" paragraph only (Revision 6; step 7 edits the file anyway);
+  `modules/eval-signals/CHANGELOG.md` — a `### Changed` line under `[Unreleased]` (Revision 7).
+- **The wording**, fixed at the confirmation gate (Revision 7), the same at both sites:
+  `Cannot bind the run's AbortSignal under 'abortSignalKey' "<key>": the key must be a plain
+  identifier (a colon-joined name is not one, even under colonIdentifiers).`
+- **The CHANGELOG line**, *corrected in the step* (Revision 7): the message is published behaviour and
+  the `abortSignalKey` JSDoc is on a published symbol, so the `[Unreleased]` line lands with the
+  change, as step 1's did; step 7 only versions it.
 - **Exit criteria**, through the factories under `provideColonIdentifiers()`:
   1. `createEvalSignal` over `{ 'Q1:1': signal(1), 'Q2:3': signal(2), obj: { 'R:7': 4 } }` reads the
      sum, reports `dependencies` `Q1:1`, `Q2:3`, `obj`, `obj.R:7`, and recomputes when the `Q1:1`
@@ -1011,7 +1025,7 @@ failure count for each, reading which cases failed rather than that the suite di
     is not an identifier" (`:431`) says so; colon keys need nothing of `eval-signals`.
   - `modules/eval-forms/README.md` — completed from step 6, and the quoted peer range.
   - Each package's `package.json` and `CHANGELOG.md` per § 3.10; `eval-forms`' entry calls out the
-    breaking refusal.
+    breaking refusal. `eval-signals`' `[Unreleased]` line is step 5's, versioned here (Revision 7).
   - `ROADMAP.md` — Phase 9 marked done; "Suggested order" updated. `CLAUDE.md` — the plan named as a
     design record.
   - `docs/backlog.md` — the entries the phase touched, and the "Work in flight" paragraph steps 4–6

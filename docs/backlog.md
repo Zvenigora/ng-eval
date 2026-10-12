@@ -54,10 +54,12 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 ### Work in flight
 
 **Phase 9**, colon-joined identifiers — [`docs/colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md),
-written 2026-10-10, is the active plan. Steps 1–4 are done: step 1 fixed
+written 2026-10-10, is the active plan. Steps 1–5 are done: step 1 fixed
 [A26](backlog-retired.md#a26) and opened [A34](#a34), step 2 added the grammar, and step 3
 `provideColonIdentifiers()` and `CompilerService`'s fingerprinted string key, all unreleased; step 4
-added the corpus, test-only and synthetic until real cases arrive. Step 5, `eval-signals`, is next.
+added the corpus, test-only and synthetic until real cases arrive; step 5 pinned colon keys through
+both `eval-signals` factories and reworded its `abortSignalKey` refusal, unreleased. Step 6,
+`eval-forms`, is next.
 `eval-core` 0.11.1,
 with the [A29](backlog-retired.md#a29) and [A31](backlog-retired.md#a31) fixes, is published and
 tagged at 7ee65fc. Phase 5 is complete: its

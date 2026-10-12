@@ -1164,6 +1164,20 @@ describe('createEvalSignalAsync', () => {
       'should refuse the reserved word %p', (key) => refuses(key));
 
     /**
+     * The reason's wording, which the cases above leave free
+     * (`docs/colon-identifiers/phase-9-plan.md` step 5). One key per refusal
+     * site: `1abort` does not parse, and `a.b` parses to something other than
+     * one identifier. `eval-signal.colon-identifiers.spec.ts` has the
+     * colon-joined keys.
+     */
+    it.each(['1abort', 'a.b'])('should say that %p is not a plain identifier', (key) => {
+      const error = caught(() => create('1', {}, { abortSignalKey: key })) as Error;
+
+      expect(error.message).toEqual(`Cannot bind the run's AbortSignal under 'abortSignalKey' "${key}": `
+        + 'the key must be a plain identifier (a colon-joined name is not one, even under colonIdentifiers).');
+    });
+
+    /**
      * `eval-core`'s identifier-guard fixtures
      * (`eval.service.identifier-guard.spec.ts`), copied rather than imported:
      * this package reaches `eval-core` through its published surface only.

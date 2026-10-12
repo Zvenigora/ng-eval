@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- **`createEvalSignalAsync`'s `abortSignalKey` refusal says the key must be a plain identifier**,
+  and that a colon-joined name is refused even under `eval-core`'s `colonIdentifiers`. It said
+  "it is not an identifier, so no expression could name it", which that option makes false: under
+  it, an expression can name `run:abort`. The key is still parsed without the option, so what is
+  refused is unchanged; the `abortSignalKey` documentation says the same
+  ([Phase 9](../../docs/colon-identifiers/phase-9-plan.md) § 3.8).
+
 ---
 
 ## [0.5.0] - 2026-10-10
