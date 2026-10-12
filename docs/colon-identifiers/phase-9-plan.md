@@ -1,6 +1,21 @@
 # Phase 9 Plan — colon-joined identifiers (`@zvenigora/ng-eval-core`)
 
 **Date**: October 10, 2026
+**Revision**: 6 — step 4, in its own commit. § 8 q6 is settled at the step's confirmation gate: legacy
+expressions are rewritten to JavaScript syntax before they reach `eval-core` — `<>` becomes `!=` — and
+colon-joined names are the only legacy construct it keeps, so real corpus cases arrive rewritten. The
+corpus's `outOfScope` kind goes, with criterion 3's clause that reported it: a rewritten case leaves it
+nothing to catch, and one that still fails to parse is recorded with `syntaxError`. § 2's out-of-scope
+bullet says so. Criterion 2 names step 2's eight wrong implementations, W1–W8, where it said six: W7
+and W8 were added at step 2's gate, after it was written. Criterion 3's counts are over the synthetic
+cases, since no real one has arrived, and q1, q2 and q4 stay open until real ones do; q1 and q2
+say so where they stand. The gate also fixed the runner's rules, now under step 4, and the step's
+review added two checks to them. Step 4's file list gains `docs/backlog.md`, for its "Work
+in flight" paragraph; so do steps 5 and 6, for that paragraph only, since step 7 edits the file anyway.
+It also gains `.claude/skills/step/SKILL.md`, whose step 4 rule now allows that paragraph, as step 3
+gained it for its own. Step 4's record notes one unreproduced Jest exit message, and q1 how real cases
+are to be counted.
+
 **Revision**: 5 — step 3, in its own commit. `ParserService` is published with a no-argument
 constructor, and `new ParserService()` outside any injection context — as `eval.service.memory-leaks.spec.ts`
 calls it — would throw `NG0203` on a bare `inject()`: § 3.1 now says how the token is read. Criterion 1's
@@ -295,8 +310,11 @@ switch (S1, F2). C1 ran in Node against the installed acorn. D1 read the `acorn@
 
 ### Out of scope
 
-- **Other legacy syntax** — `<>`, templates, anything that is not a colon between name segments. The
-  corpus records an expression that uses one as out of scope, by name (step 4).
+- **Other legacy syntax** — `<>`, templates, anything that is not a colon between name segments.
+  Legacy expressions are rewritten to JavaScript before they reach `eval-core` — `<>` becomes `!=` —
+  and colon-joined names are the only legacy construct it keeps (§ 8 q6, Revision 6). A rewritten
+  expression that still fails to parse is a corpus case like any other, recorded with `syntaxError`
+  (step 4).
 - **Structure in a colon name.** `Q1:1:3` is an opaque key: no ranges, no segment access, no
   wildcard. Nothing splits it.
 - **`defaultParserOptions`** — unchanged, and § 1.2 finding 4 is why it must stay so.
@@ -885,25 +903,54 @@ failure count for each, reading which cases failed rather than that the suite di
 - **New**: `modules/eval-core/src/lib/colon-identifiers.corpus.json` — the data;
   `colon-identifiers.corpus.spec.ts` — the runner, which reads the JSON with `fs`, as
   `readme-examples.spec.ts` reads the README, so adding an expression changes no code.
+- **Edit**: `docs/backlog.md` — its "Work in flight" paragraph only; `.claude/skills/step/SKILL.md` —
+  its step 4 rule, which called any non-spec, non-data file a stop-and-replan (Revision 6).
 - **The format.** `{ "cases": [ … ] }`, each case `{ "id", "origin", "expression", "context"?,
   "expect" }`. `origin` is `"synthetic"` or where a real expression came from. `expect` is one of:
   `{ "value": … }`; `{ "syntaxError": "<message fragment>", "pos": n }`; `{ "error": "<message
   fragment>" }` for a throw at evaluation; `{ "reads": [ … ] }` — the `dependencies` it must record,
-  for a real expression whose value is unknown; `{ "outOfScope": "<construct>" }` — the runner asserts
-  it does **not** parse under the option, so an out-of-scope construct that starts parsing is noticed.
-  Every case runs through `EvalService` under `provideColonIdentifiers()`.
+  for a real expression whose value is unknown. Every case runs through `EvalService` under
+  `provideColonIdentifiers()`. A fifth kind, `outOfScope`, asserted that an unrewritten legacy
+  construct did not parse; it went with § 8 q6's settlement (Revision 6).
+- **The runner's rules**, fixed at the confirmation gate (Revision 6):
+  - A `syntaxError` is a `SyntaxError` whose message contains the fragment, at exactly that `pos`. A
+    fragment for an error that is not about a colon name carries acorn's ` (line:col)` suffix, so a
+    hint wedged between `Unexpected token` and the suffix fails it (W8).
+  - An `error` is a throw whose message contains the fragment, and not acorn's parse error.
+  - `reads` are the sorted `dependencies` of `createDependencyTracker`, compared exactly.
+  - JSON holds no function, `undefined` or `NaN`: a case that needs a function declares it in the
+    expression, and one that reads `undefined` compares with `=== undefined`.
+  - A duplicate `id`, a missing `origin`, or an `expect` without exactly one known kind fails the run;
+    so, as built, does an unknown key on a case or an `expect`, since a misspelt `context` would
+    otherwise run its case over none. *Added by the step's review*: a `syntaxError` fragment must end
+    with the ` (line:col)` acorn gives its `pos`, which enforces the first rule rather than leaving it
+    to whoever adds a case; and a kind with no arm in the runner throws rather than passing with no
+    assertion.
 - **Synthetic cases** now: § 3.4's table rows that evaluate, and legacy-shaped ones over the known
   names — `Q1:1 == 1 && Q2:3 > 2`, `VP14:0 + DEALERS_COUNT:0`, `Q1:1:3 || Q1:2:3`, `(Q1:1) ? 1 : 0`,
   `Q1:1 ? (Q2:2) : Q3:3`.
-- **Real cases**, when Mikhail supplies them, are appended as data. They are committed as he supplies
-  them, and names may be anonymised so long as the colon structure is kept.
+- **Real cases**, when Mikhail supplies them, are appended as data, in the rewritten JavaScript form
+  § 8 q6 settles. They are committed as he supplies them, and names may be anonymised so long as the
+  colon structure is kept.
 - **Exit criteria**:
   1. Every case passes.
-  2. Each of step 2's six wrong implementations fails at least one corpus case; the report names them.
+  2. Each of step 2's eight wrong implementations, W1–W8, fails at least one corpus case; the report
+     names them. *Corrected at the gate* (Revision 6): it said six, written before step 2's gate
+     added W7 and W8.
   3. The report gives, over the real cases if any have arrived and the synthetic ones otherwise: how
      many put a colon name in a consequent unparenthesised (§ 8 q1), how many use a compact object key
-     (§ 8 q2), how many need a keyword or non-ASCII prefix (§ 8 q4), and every `outOfScope` construct.
-  - The gate green; `git diff --name-only` lists the two files and this document.
+     (§ 8 q2), and how many need a keyword or non-ASCII prefix (§ 8 q4). *Corrected at the gate*
+     (Revision 6): its last clause, every `outOfScope` construct, went with the kind. No real case has
+     arrived, so the counts are over the synthetic cases, and q1, q2 and q4 stay open until real ones
+     do.
+  - The gate green; `git diff --name-only` lists the two files, `docs/backlog.md`,
+    `.claude/skills/step/SKILL.md` and this document.
+  - *Recorded by the step* (Revision 6): `Jest did not exit one second after the test run has
+    completed` followed eval-core's tests once in 8 full eval-core runs during this step, and was not
+    reproduced — `--detectOpenHandles` found no open handle, 4 later runs were clean, two with the
+    corpus and two without, and Claude's sandbox ran eval-core 11 of 11 clean at cf8fb1c, without the
+    corpus. It is to be rechecked once the corpus is pushed, and opened as a backlog entry if it
+    recurs.
 - **Category**: test-only; ships in no package.
 
 ### Step 5 — `eval-signals`: the reworded refusal, and colon keys through both factories
@@ -912,7 +959,8 @@ failure count for each, reading which cases failed rather than that the suite di
 - **Edit**: `eval-signal-async.ts` (the two messages, `:113`, `:123`, and the `abortSignalKey` JSDoc's
   "a name no expression could read", `:56`, which the option makes inexact in the same way);
   `eval-signal-async.spec.ts` — a case for the new wording beside the existing refusal cases, which
-  assert only the option's name and the key (`:1153-1158`) and stay as they are.
+  assert only the option's name and the key (`:1153-1158`) and stay as they are; `docs/backlog.md` —
+  its "Work in flight" paragraph only (Revision 6; step 7 edits the file anyway).
 - **Exit criteria**, through the factories under `provideColonIdentifiers()`:
   1. `createEvalSignal` over `{ 'Q1:1': signal(1), 'Q2:3': signal(2), obj: { 'R:7': 4 } }` reads the
      sum, reports `dependencies` `Q1:1`, `Q2:3`, `obj`, `obj.R:7`, and recomputes when the `Q1:1`
@@ -930,7 +978,8 @@ failure count for each, reading which cases failed rather than that the suite di
 - **Edit**: `reactive/src/lib/field-schema.ts` (`validate` through `ParserService`, § 3.8);
   `signals/src/lib/rules.ts` (`ExpressionRuleOptions.colonIdentifiers`, resolved per key, and `prepare`);
   `src/lib/guard-identifiers.ts` (the top-level label, and its JSDoc); their specs; `modules/eval-forms/README.md`
-  — the option, the provider's reach into `/reactive`, and the refusal.
+  — the option, the provider's reach into `/reactive`, and the refusal; `docs/backlog.md` — its "Work
+  in flight" paragraph only (Revision 6; step 7 edits the file anyway).
 - **Exit criteria**:
   1. **`/reactive` under the provider**: a schema with a control named `Q1:1` and `visible: 'Q1:1 == 1'`
      binds and follows the control; `x + Q1:1 > 0 || constructor` is refused at bind with
@@ -965,7 +1014,8 @@ failure count for each, reading which cases failed rather than that the suite di
     breaking refusal.
   - `ROADMAP.md` — Phase 9 marked done; "Suggested order" updated. `CLAUDE.md` — the plan named as a
     design record.
-  - `docs/backlog.md` — the entries the phase touched.
+  - `docs/backlog.md` — the entries the phase touched, and the "Work in flight" paragraph steps 4–6
+    kept current (Revision 6).
   - `docs/colon-identifiers/phase-9-summary.md` — the phase's one retrospect.
   - This document — each step's outcome.
 - **Exit criteria**:
@@ -1042,7 +1092,7 @@ signature and refuses one more shape (§ 3.8).
 
 | Risk | Likelihood | Mitigation — the criterion that fails |
 | :--- | :---: | :--- |
-| Legacy expressions put colon names in consequents, so the parentheses rule rejects much of the corpus | **Unknown until the corpus** | Step 4's count; § 8 q1 costs the alternative |
+| Legacy expressions put colon names in consequents, so the parentheses rule rejects much of the corpus | **Unknown until real corpus cases** — open after step 4 (§ 8 q1) | Step 4's count; § 8 q1 costs the alternative |
 | A compact object key in a working expression stops parsing under the option | Low for survey rules | Loud at parse; step 4's count; § 8 q2 |
 | `{Q1:1}` read silently as `{Q1: 1}` | Designed out | § 3.4, 2; step 2's W2 |
 | A forgotten switch renders `eval-forms` fields blank | **High** without the refusal — it is today's behaviour (F1) | Step 6 criterion 4 |
@@ -1064,9 +1114,15 @@ signature and refuses one more shape (§ 3.8).
    *Settled by* step 4's count over real expressions. Zero, or a handful the author can parenthesise:
    § 3.4 stands. More: the retry design is planned as a step of its own before step 7 — a replan, not
    an improvisation inside step 4.
+   *Open after step 4* (Revision 6): no real case has arrived, and step 4's counts are over synthetic
+   cases built to exercise the rule, which say nothing about legacy expressions. *Counting real
+   cases*: by the expression's shape — a colon name directly in a consequent — not by the error text.
+   A leftover colon on its own line raises acorn's plain `Unexpected token`, with no hint (§ 3.4's
+   pinned limit), so a count of hinted errors misses it.
 2. **Do they build compact object literals?** § 3.4 refuses `({a:1})` under the option. *Settled by*
    step 4's count. If they do and never mean a shorthand, keeping JavaScript's reading of a key is the
    reopening, with § 3.4's silent-shorthand cost stated against it.
+   *Open after step 4* (Revision 6), as q1 is.
 3. **Does the grammar hold at `acorn` 8.11.2? — a precondition of step 7.** *Evidence required*: step 2's
    spec and step 4's runner, run against `acorn` 8.11.2 outside the workspace after step 6, with the
    installed version as the control; each result and any substitution recorded here. A failure stops
@@ -1079,6 +1135,11 @@ signature and refuses one more shape (§ 3.8).
    *Reopens on* a consumer that mixes colon and non-colon parsing in one application.
 6. **What else the legacy expressions contain.** `<>` and templates are out of scope (§ 2); the corpus
    records anything else that fails, by construct, and a construct that recurs is a phase of its own.
+   *Settled* at step 4's confirmation gate (Revision 6): legacy expressions are rewritten to JavaScript
+   syntax before they reach `eval-core` — `<>` becomes `!=` — and colon-joined names are the only
+   legacy construct it keeps. Real corpus cases arrive in that rewritten form, so there is no other
+   construct for the corpus to record; a rewritten case that still fails to parse is recorded with
+   `syntaxError`, as any case is.
 
 ---
 

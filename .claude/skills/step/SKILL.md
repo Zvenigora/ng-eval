@@ -18,7 +18,8 @@ projects by design, at named steps and nowhere else:
 
 - **Steps 1–3 are `eval-core`** — the parse cache (BL-A26), the grammar, the application switch.
 - **Step 4 is `eval-core`, test-only** — the data-driven corpus. A non-spec, non-data file there is a
-  stop-and-replan.
+  stop-and-replan, except `docs/backlog.md`'s "Work in flight" paragraph, which steps 4–6 keep current
+  (plan Revision 6).
 - **Step 5 is `eval-signals`** — one reworded message and specs. **Step 6 is `eval-forms`** — both
   adapters' parse sites and `guardIdentifiers`.
 - **Step 7 is the release** — every package's manifest, changelog and README.
