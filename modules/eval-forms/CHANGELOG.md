@@ -8,10 +8,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Breaking
+- **A rule that parses as a labeled statement is refused at registration, at both entry points**
+  — `guardIdentifiers` checks the rule's top-level statements before its identifiers. Such a rule
+  never evaluated: `eval-core` throws `Unsupported statement type` for every label, so under the
+  default `onError` the field rendered blank, with nothing reported. It is what a rule starting
+  with a colon-joined name parses as when `colonIdentifiers` is off — `Q1:1 == 1` is the label
+  `Q1` over `1 == 1` — so the message names the rule, the label and each entry point's switch.
+  A label inside a function the rule defines, or inside a block, is not refused; the other
+  statements `eval-core` does not evaluate are [D13](../../docs/backlog.md#d13).
+
+### Added
+- **`/signals`: `ExpressionRuleOptions.colonIdentifiers`**, on the factory and per registration,
+  resolved like the other keys: registration wins, per key. It parses the rule with
+  `eval-core`'s `colonIdentifiers`, so a colon-joined name such as `Q1:1:3` reads the model's
+  `'Q1:1:3'` key.
+- **`/reactive` follows `eval-core`'s `provideColonIdentifiers()`** in the application's root
+  providers, with nothing passed to `bindFieldProperties`: it checks and compiles every rule
+  through the root `ParserService`, which the provider configures.
+
 ### Changed
 - `applyErrorPolicy`'s JSDoc cites `createEvalSignal`'s re-throw of `SignalContextWriteError` by
   where it is, the `catch` in its `compute`, rather than by a line of `eval-signal.ts` that had
   moved ([F18](../../docs/backlog-retired.md#f18)). Documentation only.
+- **`/reactive`'s bind-time check parses a rule through `ParserService`**, with the options its
+  compile uses, rather than with the exported `parse`. It reads the tree that is compiled, so
+  `guardIdentifiers` runs on every rule that compiles: under the provider, the exported `parse`
+  would fail on a rule holding a colon-joined name that the compile reads, and the check would be
+  skipped for it ([phase 9 plan](../../docs/colon-identifiers/phase-9-plan.md) § 1.2 finding 11).
+  Without the provider the tree is the one the exported `parse` gives. `bindFieldProperties`
+  resolves its injector's services before it checks the schema, so an error resolving them now
+  precedes the schema's: a caller with no `injector`, outside an injection context, sees NG0203
+  even when its schema is invalid, and one passing a destroyed injector NG0205, where each saw
+  the schema's error.
 
 ---
 

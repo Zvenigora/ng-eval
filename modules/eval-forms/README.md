@@ -162,10 +162,10 @@ worked example of a whole form is in
 | `toVisible(value)` / `toText(value)` | core | The two coercions, exported so an adapter or a test can apply the same rule. |
 | `ExpressionErrorPolicy` | core | `'throw' \| 'undefined' \| ((error) => unknown)`. |
 | `applyErrorPolicy(run, policy?)` | core | Runs `run` under a policy, **new in 0.2.0**. Rethrows a `SignalContextWriteError` whatever the policy says — see [When a rule fails](#when-a-rule-fails). Exported so an adapter applies the rule rather than reimplementing it. |
-| `guardIdentifiers(expression, node)` | core | Throws if a parsed expression names a member of `Object.prototype` as an identifier, **new in 0.3.0**. Both adapters call it before compiling — see [Prototype-shadowed identifiers are rejected](#prototype-shadowed-identifiers-are-rejected). Exported for the same reason as `applyErrorPolicy`. |
+| `guardIdentifiers(expression, node)` | core | Throws if a parsed expression names a member of `Object.prototype` as an identifier, **new in 0.3.0**, or parses as a top-level labeled statement — see [Colon-joined names](#colon-joined-names). Both adapters call it before compiling — see [Prototype-shadowed identifiers are rejected](#prototype-shadowed-identifiers-are-rejected). Exported for the same reason as `applyErrorPolicy`. |
 | `createExpressionRules(model, options?)` | `/signals` | The primary API. Binds one model signal and returns `evalVisible` / `evalText` / `evalDisabled`. |
 | `ExpressionRules` | `/signals` | The three registrars, each `(path, expression, options?) => void`. |
-| `ExpressionRuleOptions` | `/signals` | `{ eval?: EvalOptions; onError?: ExpressionErrorPolicy }`, accepted by the factory and per registration. |
+| `ExpressionRuleOptions` | `/signals` | `{ eval?: EvalOptions; onError?: ExpressionErrorPolicy; colonIdentifiers?: boolean }`, accepted by the factory and per registration. |
 | `TEXT` | `/signals` | The metadata key `evalText` writes through and `field().metadata(TEXT)` reads back. |
 
 `FieldProperties` members are `EvalSignal`, not plain `Signal`, and both extra members
@@ -193,7 +193,7 @@ rules naming a missing field resolve `undefined`.
 ### It is validated when you bind
 
 A schema that arrives from a server can be malformed in ways an expression cannot be, so
-`bindFieldProperties` checks five things and **throws** rather than letting them surface
+`bindFieldProperties` checks six things and **throws** rather than letting them surface
 later as an evaluation result nobody can trace:
 
 | Rejected | Why it is not a warning |
@@ -203,6 +203,7 @@ later as an evaluation result nobody can trace:
 | A field name that is a member of `Object.prototype` | See below. |
 | A control in the group that is not a `FormControl` | Nested groups and `FormArray` are out of scope; the alternative is a group's *aggregate object* arriving where a value was expected. |
 | An expression naming a member of `Object.prototype` | The same failure as the name, reached through the expression — see [Expressions are validated too](#expressions-are-validated-too). |
+| An expression that parses as a labeled statement | It never evaluates, so it would render blank. A rule that starts with a colon-joined name parses that way when colon-joined names are off — see [Colon-joined names](#colon-joined-names). |
 
 **Field and control names may not be `constructor`, `toString`, `valueOf`,
 `hasOwnProperty`, `__proto__` or any other member of `Object.prototype`.** `FormGroup`
@@ -261,6 +262,11 @@ binding. The check's bounds are `/signals`' too — see
 [Prototype-shadowed identifiers are rejected](#prototype-shadowed-identifiers-are-rejected). A
 rule that does not parse is not checked here; it throws when it is compiled, as before.
 
+The check parses a rule as it is compiled, through `@zvenigora/ng-eval-core`'s `ParserService`, so
+it reads the tree that is compiled and follows `provideColonIdentifiers()` as the compile does. Up
+to 0.4.x it parsed with the exported `parse`, which no provider reaches: under the provider, a rule
+holding a colon-joined name would have failed to parse here, skipped the check, and compiled.
+
 ## What an expression can name
 
 **The values of the form's controls, by control name.** Every control is mirrored,
@@ -293,6 +299,26 @@ though the field were not there:
 
 This is a limitation, not a design goal; distinguishing the two would need a sentinel
 threaded through `EvalContext.get`, which belongs to `@zvenigora/ng-eval-core`.
+
+### Colon-joined names
+
+Some form definitions name their fields `Q1:1` or `VP14:0`. `FormGroup` accepts such a control
+name, and with `@zvenigora/ng-eval-core`'s `colonIdentifiers` on, a rule names it as written:
+`visible: 'Q1:1 == 1'` reads the control `Q1:1`. The switch here is `eval-core`'s
+`provideColonIdentifiers()`, in the application's **root** providers. `bindFieldProperties` checks
+a rule and compiles it through the root `ParserService`, which the provider configures, so nothing
+is passed to the binding. How a colon-joined name is written — no space around the colon,
+parentheses around one in a conditional's consequent, a quoted key for a colon-named property — is
+`eval-core`'s rule, not this package's.
+
+**A rule that parses as a labeled statement is refused when it is bound.** With the switch off,
+`Q1:1 == 1` is JavaScript's label `Q1` over `1 == 1`, which `eval-core` never evaluates: up to 0.4.x
+such a rule bound, and under the default `onError` the field rendered blank, with nothing reported.
+`bindFieldProperties` now throws instead, naming the rule, the label and the switch. So it does for
+a label written with a space, `Q1: 1`, which is a label with the switch on too. Only a label among
+the rule's own statements is refused: one inside a function the rule defines is not, since that
+function may never be called, and nor is one inside a block. A colon-joined name anywhere else —
+`x + Q1:1 > 0` — is a syntax error with the switch off, thrown when the rule is compiled, as before.
 
 ## Coercion
 
@@ -671,12 +697,12 @@ Three bounds on the check, none of them obvious from the paragraph above:
 
 ### `caseInsensitive` per registration
 
-`ExpressionRuleOptions` — `{ eval?, onError? }` — is accepted by the factory and by each
+`ExpressionRuleOptions` — `{ eval?, onError?, colonIdentifiers? }` — is accepted by the factory and by each
 registration, and **registration wins per key**: a registration supplying only `onError` keeps
-the factory's `eval`, and vice versa. Neither key is deep-merged, so a registration's `eval: {}`
+the factory's `eval`, and vice versa. No key is deep-merged, so a registration's `eval: {}`
 turns off a factory's `caseInsensitive` for that rule.
 
-The resolution is exact for both keys. `caseInsensitive` has to reach three places — the
+The resolution is exact for every key. `caseInsensitive` has to reach three places — the
 factory's key memo, the evaluation context each rule is given, and the walk — and a
 registration's value reaches all three, so an *identifier* and a *property* name obey the same
 rule:
@@ -708,6 +734,25 @@ The memo holds one entry per key **and casing rule**, so two registrations on on
 name the same key under different settings each resolve it under their own. Up to 0.3.0 only
 the walk saw a registration's value: the memo and the context were built from the factory's
 options, and the block above printed `'undefinedHQ'`, one expression obeying two casing rules.
+
+### Colon-joined names, per factory or registration
+
+`colonIdentifiers: true`, on the factory or on one registration, parses rules with
+`@zvenigora/ng-eval-core`'s `colonIdentifiers`, so `rules.evalVisible(p.city, 'Q1:1 == 1')` reads
+the model's `'Q1:1'` key. It resolves like the other keys: registration wins, so a registration's
+`colonIdentifiers: false` turns a factory's `true` off for that rule, and a registration supplying
+only `onError` keeps it.
+
+`eval-core`'s `provideColonIdentifiers()` does **not** reach this entry point. It configures
+`ParserService`, and `createExpressionRules` parses with the exported `parse`, which sees only the
+options it is given, and has no injector to resolve a service with. So an application that provides
+it for `/reactive` sets this option too, for one rule string to mean the same thing at both entry
+points.
+
+As at `/reactive`, a rule that parses as a labeled statement is refused at registration — from
+`form()`, like the identifier check — naming the rule, the label and the switch. With the option
+off, that is what a rule starting with a colon-joined name parses as; see
+[Colon-joined names](#colon-joined-names).
 
 ### Two things that are not available here
 

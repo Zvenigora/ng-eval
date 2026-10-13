@@ -7,7 +7,7 @@ import {
   inject,
 } from '@angular/core';
 import { AbstractControl, FormGroup } from '@angular/forms';
-import { defaultParserOptions, parse } from '@zvenigora/ng-eval-core';
+import { ParserService, defaultParserOptions } from '@zvenigora/ng-eval-core';
 import {
   ExpressionErrorPolicy,
   createFieldContext,
@@ -153,8 +153,16 @@ const coerce = <T>(
  * authored rule string is refused at both entry points or at neither
  * (`docs/backlog-retired.md` D2). Everything else an expression may say is
  * `eval-core`'s, and already answered.
+ *
+ * @param parser - the `ParserService` the rules are compiled through, so the
+ *                 guard walks the tree that is compiled
+ *                 (`docs/colon-identifiers/phase-9-plan.md` S 3.8).
  */
-const validate = (schema: readonly FieldSchema[], group: FormGroup): void => {
+const validate = (
+  schema: readonly FieldSchema[],
+  group: FormGroup,
+  parser: ParserService
+): void => {
 
   const seen = new Set<string>();
 
@@ -214,9 +222,24 @@ const validate = (schema: readonly FieldSchema[], group: FormGroup): void => {
       // built, so the binding's release-on-failure path still runs for it.
       // Throwing the parse error from here instead would be earlier and
       // equally loud, and would leave that path with no rule that reaches it.
-      let node: ReturnType<typeof parse>;
+      //
+      // The parse is the compile path's own - `ParserService.parse` with
+      // `defaultParserOptions`, the call `BaseEval.parse` makes for
+      // `CompilerService` - so `eval-core`'s `provideColonIdentifiers()`
+      // reaches both, and the guard walks the AST that is compiled, the same
+      // cached object. Up to 0.4.x this was the exported `parse`, which no
+      // provider reaches: under the provider a rule like
+      // `x + Q1:1 > 0 || constructor` would fail to parse here, skip the
+      // guard, and compile - so whether the guard ran would depend on where in
+      // the rule a colon-joined name sat
+      // (`docs/colon-identifiers/phase-9-plan.md` S 1.2 finding 11).
+      //
+      // `ParserService.parse` answers `undefined` for an empty rule, without
+      // parsing, where the exported `parse` gave an empty `Program`; the guard
+      // declines both alike.
+      let node: ReturnType<ParserService['parse']>;
       try {
-        node = parse(rule, defaultParserOptions);
+        node = parser.parse(rule, defaultParserOptions);
       } catch {
         continue;
       }
@@ -352,11 +375,6 @@ export const bindFieldProperties = (
   options: { injector: Injector; onError?: ExpressionErrorPolicy }
 ): FormBinding => {
 
-  // Before the mirror, deliberately. A schema rejection then opens no
-  // subscription at all, which is a stronger statement than "the catch below
-  // releases it" and is asserted separately.
-  validate(schema, group);
-
   // `?.` and the `inject` fallback are not defensive dressing: the type makes
   // `injector` required, but a JavaScript caller can omit it, and reading
   // `.get` off `undefined` is a `TypeError` naming nothing. `toSignal` solves
@@ -364,8 +382,33 @@ export const bindFieldProperties = (
   // keeps the error a caller sees NG0203 - naming the injection context -
   // rather than a property read on `undefined`. `control-source.ts` orders
   // its own statements for that error; this preserves it one layer up.
+  //
+  // First, ahead of the parser below, because NG0203 names the token whose
+  // injection failed: so the error a caller with no injector sees outside a
+  // context still names `EnvironmentInjector`. It opens nothing, so `validate`
+  // still runs before any subscription exists - but after this line and the
+  // parser's, so an error resolving from the injector now precedes the
+  // schema's: NG0203 for a caller with no injector outside a context, NG0205
+  // for a destroyed one. Up to 0.4.x the schema's error came first
+  // (`docs/colon-identifiers/phase-9-plan.md` step 6).
   const parent =
     options?.injector?.get(EnvironmentInjector) ?? inject(EnvironmentInjector);
+
+  // Resolved as `createEvalSignal` resolves `CompilerService` - the given
+  // injector, or `inject()` without one - so the check below parses with the
+  // `ParserService` the rules are compiled through - for every bind, whether or
+  // not the schema holds a rule. Without an injector the binding throws below
+  // whatever this resolves; the fallback is reached only inside a context,
+  // where it succeeds, and it is what lets `validate` report a schema's error
+  // ahead of the missing injector there, as up to 0.4.x.
+  const parser = options?.injector
+    ? options.injector.get(ParserService)
+    : inject(ParserService);
+
+  // Before the mirror, deliberately. A schema rejection then opens no
+  // subscription at all, which is a stronger statement than "the catch below
+  // releases it" and is asserted separately.
+  validate(schema, group, parser);
 
   // The other arm of the same problem, and the fallback above is what opens
   // it: *inside* an injection context that fallback succeeds, so a caller who
@@ -373,7 +416,7 @@ export const bindFieldProperties = (
   // the ambient environment injector - with no auto-teardown and no
   // diagnostic. That is the exact silent variation S 3.7 makes `injector`
   // required to prevent, so it is rejected here by name rather than left to
-  // surface as a leak. Outside a context the line above has already thrown
+  // surface as a leak. Outside a context the `parent` line has already thrown
   // NG0203 and this is unreachable.
   if (!options?.injector) {
     throw new Error(

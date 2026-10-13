@@ -54,12 +54,14 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 ### Work in flight
 
 **Phase 9**, colon-joined identifiers — [`docs/colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md),
-written 2026-10-10, is the active plan. Steps 1–5 are done: step 1 fixed
+written 2026-10-10, is the active plan. Steps 1–6 are done: step 1 fixed
 [A26](backlog-retired.md#a26) and opened [A34](#a34), step 2 added the grammar, and step 3
 `provideColonIdentifiers()` and `CompilerService`'s fingerprinted string key, all unreleased; step 4
 added the corpus, test-only and synthetic until real cases arrive; step 5 pinned colon keys through
-both `eval-signals` factories and reworded its `abortSignalKey` refusal, unreleased. Step 6,
-`eval-forms`, is next.
+both `eval-signals` factories and reworded its `abortSignalKey` refusal, unreleased; step 6 gave
+`eval-forms` `/signals`' `colonIdentifiers` rule option, parsed `/reactive`'s bind-time check through
+`ParserService`, and refused a top-level label at registration, narrowing [D13](#d13), unreleased.
+Step 7, the release, is next.
 `eval-core` 0.11.1,
 with the [A29](backlog-retired.md#a29) and [A31](backlog-retired.md#a31) fixes, is published and
 tagged at 7ee65fc. Phase 5 is complete: its
@@ -230,7 +232,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [D10](backlog-retired.md#d10) | `applyErrorPolicy` has no runnable README block | forms | docs | **Retired — fixed**, and it created [F3](backlog-retired.md#f3)'s third gate's subject |
 | [D11](backlog-retired.md#d11) | `/signals` has no worked example | forms | docs | **Retired — fixed 2026-10-03**, docs and tests only: [`docs/forms/worked-example-signals.md`](forms/worked-example-signals.md), every ` ```ts ` block executed and counted; released 2026-10-04 in `eval-forms` 0.3.1, tagged 3d56994 — the example ships in no package, the README's link to it does |
 | [D12](backlog-retired.md#d12) | ~20 specs discard the binding and never call `destroy()` | forms | test hygiene | **Retired — fixed 2026-09-28, test only**; `destroy()`'s release path is pinned by `field-schema.memory.spec.ts`, the net's by `field-schema.spec.ts`'s subscription count. Injector-path memory cases removed 2026-09-29: timing-dependent |
-| [D13](#d13) | A rule whose top-level statement `eval-core` refuses registers in both adapters and renders blank under the default policy | forms | decision, then fix | Open — opened 2026-10-10 by the Phase 9 plan, whose step 6 refuses the labeled-statement case |
+| [D13](#d13) | A rule whose top-level statement `eval-core` refuses registers in both adapters and renders blank under the default policy | forms | decision, then fix | Open, narrowed — opened 2026-10-10 by the Phase 9 plan; a top-level label refused at registration since its step 6, unreleased. A label in a top-level block, `{ L: 1 }`, and every other such statement remain |
 | [E1](#e1) | Form-state keys across both adapters | forms | phase | Open — **no phase reserved** |
 | [E2](#e2) | Arrays — `applyEach` at `/signals`, `FormArray` at `/reactive` | forms | phase | Open |
 | [E3](#e3) | `dependencies` introspection at form scale | forms | phase | Open |
@@ -890,8 +892,8 @@ documented in the package README.
 <a id="d13"></a>
 ## D13 — A rule whose top-level statement `eval-core` refuses registers, and renders blank
 
-**Package** forms · **Kind** decision, then fix · **Status** Open. Opened 2026-10-10 by the Phase 9
-plan, whose step 6 refuses the labeled-statement case
+**Package** forms · **Kind** decision, then fix · **Status** Open, narrowed. Opened 2026-10-10 by the
+Phase 9 plan; its step 6 refuses a top-level label, unreleased
 
 Both adapters accept any rule that parses: `/signals`' `prepare` parses, guards identifiers and
 compiles; `/reactive`'s `validate` does the same before `createEvalSignal` compiles. Neither asks
@@ -905,17 +907,26 @@ bound `visible: 'Q1:1 == 1'` and read `visible()` `false` and `text()` `''`; `/s
 `evalVisible(p.city, 'Q1:1 == 1')` and the field read `hidden()` `true`. The other statement types take
 the same path by construction.
 
-**Phase 9 closes the label case** — `guardIdentifiers` refuses a top-level `LabeledStatement`, since a
-forgotten `colonIdentifiers` switch is exactly that shape (that plan's § 3.8). **The rest is the
-decision**: refusing every unsupported top-level statement at registration needs `eval-core`'s list
-of supported statements, which it does not publish, and a copy in this package would drift — the
-problem the Phase 5 plan's § 3.6 solved for `abortSignalKey` by asking `eval-core` instead of copying
-its list.
+**Phase 9 step 6 closed the top-level label case**, in `eval-forms`' `[Unreleased]`:
+`guardIdentifiers` refuses a `LabeledStatement` among the program's own statements, at both entry
+points, since a forgotten `colonIdentifiers` switch is exactly that shape (that plan's § 3.8). A label
+nested in a function body is left alone, since the function may never be called.
+
+**What remains.** A label inside a top-level block — `{ L: 1 }`, or `{a:b}` with the switch off —
+still registers and renders blank: the block always runs and the label in it throws, but only the
+program's own statements are checked. So does every other statement `eval-core` refuses. **The rest
+is the decision**: refusing every unsupported top-level statement at registration needs
+`eval-core`'s list of supported statements, which it does not publish, and a copy in this package
+would drift — the problem the Phase 5 plan's § 3.6 solved for `abortSignalKey` by asking `eval-core`
+instead of copying its list.
 
 *Recorded*: this entry; [`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.2
-finding 10.
+finding 10; narrowed by that plan's step 6 (Revision 8).
 *Verified*: measured 2026-10-10 at af81e24 for a label, through both adapters, with a throwaway spec
-deleted the same day (that plan's § 1.3, F1).
+deleted the same day (that plan's § 1.3, F1). The refusal and its bound are pinned by
+`modules/eval-forms/signals/src/lib/guard-identifiers.spec.ts`, through both adapters with the switch
+on and off: a top-level label refused, a label in a function body and one in a top-level block
+`{ L: 1 }` registered, both reading blank.
 
 ---
 

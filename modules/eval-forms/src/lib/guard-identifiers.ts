@@ -2,8 +2,10 @@ import type { parse } from '@zvenigora/ng-eval-core';
 import { simple } from 'acorn-walk';
 
 /**
- * Throws if the expression names an identifier that is an own property of
- * `Object.prototype` (plan S 3.8). Both adapters call it, before compiling: the
+ * Throws if the expression parses as a labeled statement at its top level
+ * (`docs/colon-identifiers/phase-9-plan.md` S 3.8), or names an identifier
+ * that is an own property of `Object.prototype` (`docs/forms/phase-6-plan.md`
+ * S 3.8). Both adapters call it, before compiling: the
  * `/signals` registrars between `parse` and `compile`, and `/reactive`'s
  * `bindFieldProperties` in the validation pass that checks field and control
  * names. Shared here, beside `applyErrorPolicy`, so the two cannot drift into
@@ -72,6 +74,19 @@ import { simple } from 'acorn-walk';
  * A hand-rolled scan over every node would reject `user.constructor` too,
  * which is the difference the borrow is checked at.
  *
+ * **A top-level label is refused first, and only a top-level one**
+ * (`docs/colon-identifiers/phase-9-plan.md` S 3.8). `eval-core` evaluates no
+ * labeled statement - it throws `Unsupported statement type` every time - and a
+ * top-level statement always runs, so such a rule never produced a value:
+ * under the default `onError` it rendered a blank. It is the shape a
+ * colon-joined name takes when `eval-core`'s `colonIdentifiers` is off - `Q1:1
+ * == 1` is the label `Q1` over `1 == 1` - so the message names the label and
+ * the switch for each adapter, and it is checked before the identifiers: with
+ * the switch off, the label is the first thing wrong. A label nested in a
+ * function body is left alone, since the function may never be called; so is
+ * one in a top-level block, and every other statement `eval-core` refuses
+ * (`docs/backlog.md` D13).
+ *
  * @param expression the source, named in the message so an author can tell
  * which of a schema's rules to fix
  * @param node the AST the caller has just parsed. Typed
@@ -83,21 +98,42 @@ import { simple } from 'acorn-walk';
 export const guardIdentifiers = (expression: string, node: ReturnType<typeof parse>): void => {
 
   // `parse`'s declared return is `Program | AnyNode | undefined` and `simple`
-  // takes a `Node`, so the narrowing is forced by the signature rather than
-  // by a case this package can reach: both callers - `/signals`' `prepare` and
-  // `/reactive`'s `validate` - pass `defaultParserOptions`, which sets
-  // `extractExpressions: false`, and `parse` then returns the
-  // `Program` unconditionally. `undefined` is `extractExpression`'s answer
-  // when a program's body is not exactly one `ExpressionStatement` - `'a; b'`
-  // as much as the empty program - so a caller passing different options
-  // could produce it.
+  // takes a `Node`, so the narrowing is forced by the signature. Both callers
+  // pass `defaultParserOptions` or a copy adding `colonIdentifiers`, which set
+  // `extractExpressions: false`, so a rule that parses is a `Program` - with
+  // one exception. `/signals`' `prepare` parses with the free `parse`, which
+  // returns a `Program` for any text, the empty rule included; `/reactive`'s
+  // `validate` parses with `ParserService.parse`, where per-call options win,
+  // and which answers `undefined` for the empty rule without parsing it.
+  // `undefined` is also `extractExpression`'s answer when a program's body is
+  // not exactly one `ExpressionStatement` - `'a; b'` as much as the empty
+  // program - so a caller passing different options could produce it.
   //
-  // **No spec covers this branch, and skipping the walk is still right if one
-  // ever reaches it**: nothing to walk is nothing to reject, and the caller
-  // hands the same value to `compile`, whose `evaluate` already answers
-  // `undefined` for a falsy node. The guard changes no contract by declining.
+  // **Skipping the walk is right**: nothing to walk is nothing to reject, and
+  // an empty rule compiles to nothing that evaluates - `/reactive` binds it,
+  // reading blank, as it did when the free `parse` gave an empty `Program`,
+  // and `field-schema.spec.ts` covers it. The guard changes no contract by
+  // declining.
   if (node === undefined) {
     return;
+  }
+
+  // The program's own statements, not a walk: a label anywhere below the top
+  // level runs only if what holds it does. Only a `Program` has them - a
+  // caller extracting the expression has a single `ExpressionStatement`'s
+  // expression, and no statement to check.
+  if (node.type === 'Program') {
+    for (const statement of node.body) {
+      if (statement.type === 'LabeledStatement') {
+        throw new Error(
+          `Expression '${expression}': it parses as a statement labeled ` +
+          `'${statement.label.name}', which never evaluates. A colon-joined key needs ` +
+          `colonIdentifiers on and no space around the colon - provideColonIdentifiers() ` +
+          `in the application's root providers for /reactive, or the colonIdentifiers ` +
+          `rule option for /signals.`
+        );
+      }
+    }
   }
 
   const check = (identifier: { name: string }): void => {

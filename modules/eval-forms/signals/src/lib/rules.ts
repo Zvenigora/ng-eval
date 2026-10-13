@@ -40,6 +40,21 @@ export interface ExpressionRuleOptions {
    * default - see `ExpressionErrorPolicy` for why.
    */
   onError?: ExpressionErrorPolicy;
+
+  /**
+   * Parses the rule with `@zvenigora/ng-eval-core`'s `colonIdentifiers`, so a
+   * colon-joined name such as `Q1:1:3` is one identifier, reading the model's
+   * `'Q1:1:3'` key (`docs/colon-identifiers/phase-9-plan.md` S 3.8).
+   *
+   * **This entry point's switch, not the provider's.** `eval-core`'s
+   * `provideColonIdentifiers()` reaches every parse through `ParserService`,
+   * and this entry point makes none: it parses with the exported `parse`, which
+   * sees only the options it is given, and it has no injector to resolve a
+   * service with. Off when absent at both levels. A rule that starts with a
+   * colon-joined name parses, with it off, as a label, which the registrar
+   * refuses rather than registering a blank.
+   */
+  colonIdentifiers?: boolean;
 }
 
 /**
@@ -145,10 +160,12 @@ export const createExpressionRules = <TModel extends object>(
   /**
    * Resolves the two levels `ExpressionRuleOptions` arrives at:
    * **registration wins, per key** (plan S 3.5.3). Each key is resolved
-   * independently and neither is a deep merge, so a registration supplying
-   * only `onError` keeps the factory's `eval` and vice versa.
+   * independently and none is a deep merge, so a registration supplying
+   * only `onError` keeps the factory's `eval` and vice versa. A registration's
+   * `colonIdentifiers: false` is a value, not an absence, so it turns a
+   * factory's `true` off for that rule.
    *
-   * Exact for both keys. The resolved `eval` builds the rule's context and
+   * Exact for every key. The resolved `eval` builds the rule's context and
    * reaches the walk, and the context reads the memo under its casing rule -
    * see the note on `ExpressionRuleOptions.eval`. Up to 0.3.0 the context
    * was built from the factory's `eval`, so `caseInsensitive` resolved per
@@ -157,6 +174,7 @@ export const createExpressionRules = <TModel extends object>(
   const resolveOptions = (rule?: ExpressionRuleOptions): ExpressionRuleOptions => ({
     eval: rule?.eval ?? options?.eval,
     onError: rule?.onError ?? options?.onError,
+    colonIdentifiers: rule?.colonIdentifiers ?? options?.colonIdentifiers,
   });
 
   /**
@@ -195,7 +213,17 @@ export const createExpressionRules = <TModel extends object>(
    */
   const prepare = (expression: string, ruleOptions?: ExpressionRuleOptions): (() => unknown) => {
     const resolved = resolveOptions(ruleOptions);
-    const node = parse(expression, defaultParserOptions);
+
+    // `defaultParserOptions` itself when the switch is off - the parse this
+    // entry point has always made - and a copy adding the key when it is on:
+    // the exported constant never carries `colonIdentifiers`
+    // (`docs/colon-identifiers/phase-9-plan.md` S 1.2 finding 4).
+    const node = parse(
+      expression,
+      resolved.colonIdentifiers
+        ? { ...defaultParserOptions, colonIdentifiers: true }
+        : defaultParserOptions
+    );
 
     guardIdentifiers(expression, node);
 

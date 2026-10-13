@@ -1,6 +1,17 @@
 # Phase 9 Plan — colon-joined identifiers (`@zvenigora/ng-eval-core`)
 
 **Date**: October 10, 2026
+**Revision**: 8 — step 6, in its own commit. Its file list gains `modules/eval-forms/CHANGELOG.md`, for
+the `[Unreleased]` lines that land with the change, as step 5's did; and `docs/backlog.md` may edit
+[D13](../backlog.md#d13)'s entry as well as its "Work in flight" paragraph: D13 stays open, narrowed
+to what the top-level refusal leaves. "Their specs" names the guard's, which is under `/signals`. The
+confirmation gate fixed the refusal's wording, added criterion 4's spaced-label row, kept the README
+to prose, and settled where `/reactive` resolves `ParserService`: after the `EnvironmentInjector` it
+resolved already, which changes which error comes first when that resolution fails — all recorded
+under step 6, with an accepted limit beside step 3's. Step 7's CHANGELOG line names step 6's lines;
+its work list gains the `eval-core` README dependency and `bindFieldProperties`' `@param schema`
+JSDoc; and § 8 q3 records the `acorn` 8.11.2 result, run on 2026-10-11 at 0718796.
+
 **Revision**: 7 — step 5, in its own commit. Its file list gains `modules/eval-signals/CHANGELOG.md`:
 the refusal's message is published behaviour and the `abortSignalKey` JSDoc is on a published symbol,
 so the `[Unreleased]` line lands with the change, as step 1's did, and step 7 only versions it. It
@@ -991,9 +1002,35 @@ failure count for each, reading which cases failed rather than that the suite di
 
 - **Edit**: `reactive/src/lib/field-schema.ts` (`validate` through `ParserService`, § 3.8);
   `signals/src/lib/rules.ts` (`ExpressionRuleOptions.colonIdentifiers`, resolved per key, and `prepare`);
-  `src/lib/guard-identifiers.ts` (the top-level label, and its JSDoc); their specs; `modules/eval-forms/README.md`
-  — the option, the provider's reach into `/reactive`, and the refusal; `docs/backlog.md` — its "Work
-  in flight" paragraph only (Revision 6; step 7 edits the file anyway).
+  `src/lib/guard-identifiers.ts` (the top-level label, and its JSDoc); their specs —
+  `reactive/src/lib/field-schema.spec.ts`, `signals/src/lib/rules.spec.ts` and
+  `signals/src/lib/guard-identifiers.spec.ts`, the guard's, which is under `/signals` (Revision 8);
+  `modules/eval-forms/README.md` — the option, the provider's reach into `/reactive`, and the refusal,
+  in prose and inline code only, since each entry point's `readme-examples.spec.ts` counts the fenced
+  blocks and is not on this list: executed blocks are step 7's (*decided at the gate*);
+  `docs/backlog.md` — its "Work in flight" paragraph (Revision 6; step 7 edits the file anyway) and,
+  *corrected at the gate*, [D13](../backlog.md#d13)'s entry, open and narrowed (Revision 8);
+  `modules/eval-forms/CHANGELOG.md` — `[Unreleased]` lines: Breaking, the refusal; Added, the
+  `/signals` option and `/reactive`'s reach; Changed, `validate`'s parse. *Corrected at the gate*, as
+  step 5's list was: the refusal is published behaviour, so its line lands with it (Revision 8).
+- **The wording**, fixed at the confirmation gate (Revision 8): `Expression '<expr>': it parses as a
+  statement labeled '<label>', which never evaluates. A colon-joined key needs colonIdentifiers on and
+  no space around the colon - provideColonIdentifiers() in the application's root providers for
+  /reactive, or the colonIdentifiers rule option for /signals.` The label is checked before the
+  identifiers, so with the switch off `Q1:1 && constructor` names the label.
+- **Where `/reactive` resolves `ParserService`**, settled at the gate (Revision 8). Angular's NG0203
+  names the token whose injection failed, and the missing-injector case outside a context asserts
+  only `/NG0203/`, while its comment says the error comes from the `inject(EnvironmentInjector)`
+  fallback. So `bindFieldProperties` resolves `parent` first, moved above `validate` with its comment,
+  then `ParserService` as `createEvalSignal` resolves `CompilerService`, then calls `validate`; the
+  injector check stays after it. Outside a context the error is unchanged, byte for byte; inside one,
+  `validate` runs and `bindFieldProperties requires an 'injector'` follows. **What changes**: the
+  injector's services are resolved before the schema is checked, so an error resolving them now
+  precedes the schema's — a call with no injector, outside a context, whose schema is invalid reports
+  NG0203, and one passing a destroyed injector NG0205, where each reported the schema's error; and
+  `ParserService` is resolved on every bind, so an injector that cannot resolve it fails even for a
+  schema with no rule, which only a deliberately unrooted injector does (the step's review). No
+  subscription opens before `validate` either way.
 - **Exit criteria**:
   1. **`/reactive` under the provider**: a schema with a control named `Q1:1` and `visible: 'Q1:1 == 1'`
      binds and follows the control; `x + Q1:1 > 0 || constructor` is refused at bind with
@@ -1006,9 +1043,30 @@ failure count for each, reading which cases failed rather than that the suite di
   4. **The label refusal**: without the switch, `Q1:1 == 1` is refused at registration in both adapters,
      naming `Q1` and `colonIdentifiers`; `[1].map(() => { L: 1 })` is not refused. *Wrong*: no refusal —
      both adapters' rows read a blank instead (F1); a label refused anywhere in the tree — the nested row
-     fails.
+     fails. *Added at the gate* (Revision 8): with the switch on, `L: 1` (spaced) is still refused in
+     both adapters with this message.
   5. **One string, both adapters**: `Q1:1 == 1`, `x + Q1:1 > 0` and `Q1:1 && constructor`, through both
      adapters with the switch on and off, are refused at both or evaluated at both.
+  - *Added by the step* (Revision 8): a case naming `EnvironmentInjector` in the NG0203 a caller with no
+    injector sees outside a context — *Wrong*: `ParserService` resolved ahead of `parent`, which the
+    existing `/NG0203/` case survives — and one pinning the error the gate's ordering changes, NG0203
+    over an invalid schema; criterion 3's per-key row, a registration supplying only `onError` keeping
+    the factory's `colonIdentifiers` — *Wrong*: a registration's options replacing the factory's whole;
+    a label that is not the program's first statement, refused — *Wrong*: only the first checked; and
+    a pinned known limit, `{ L: 1 }`, a label in a top-level block, registering and reading blank in
+    both adapters, which is [D13](../backlog.md#d13)'s.
+  - *Added by the step's review* (Revision 8): an empty rule binding at `/reactive` and reading blank —
+    `ParserService.parse` answers `undefined` for it, so it is the rule that reaches
+    `guardIdentifiers`' `undefined` branch, which no spec covered — *Wrong*: the branch removed; and,
+    inside a context with no injector, a duplicate-name schema reporting its own error before the
+    missing injector — the `inject()` arm's reason, which the existing in-context case binds a valid
+    schema and cannot see — *Wrong*: the injector check moved ahead of `validate`.
+  - *Accepted limit*, beside step 3's limits of the misplacement check (Revision 8): `validate`
+    resolves `ParserService` from the caller's injector, and `createEvalSignal` resolves
+    `CompilerService` there, whose `ParserService` is the root's — `BaseEval.parserService` is
+    `protected`, so the check cannot borrow it. A caller whose injector re-provides `ParserService`
+    below the root is checked against that service and compiled against the root's. It requires a
+    deliberate override by the consumer.
   - The gate green; `git diff --name-only` lists the files above and this document.
 - **Category**: a breaking minor (the refusal) and an addition (the option), released in step 7.
 
@@ -1021,11 +1079,18 @@ failure count for each, reading which cases failed rather than that the suite di
   - `modules/eval-core/README.md` — the section step 3 began, completed: the rule, the case table's
     gist, parentheses in a consequent, quoted keys, keywords and ASCII, `path` as dotted segments
     (§ 3.7), and where the provider goes. Every new ` ```javascript ` block executed and counted.
+    It must cover the spacing rule, the parentheses rule and quoted keys: `eval-forms`' README relies
+    on it for them since step 6, calling them "`eval-core`'s rule, not this package's". Once it does,
+    check that `eval-forms`' wording still matches (Revision 8).
   - `modules/eval-signals/README.md` — `abortSignalKey` stays a plain identifier, so its "a name that
     is not an identifier" (`:431`) says so; colon keys need nothing of `eval-signals`.
   - `modules/eval-forms/README.md` — completed from step 6, and the quoted peer range.
+  - `modules/eval-forms/reactive/src/lib/field-schema.ts` — `bindFieldProperties`' `@param schema`
+    JSDoc gains the expression checks it has omitted since 0.3.0. It is a doc comment on a published
+    symbol, so it gets an `[Unreleased]` line in `eval-forms`' CHANGELOG with it (Revision 8).
   - Each package's `package.json` and `CHANGELOG.md` per § 3.10; `eval-forms`' entry calls out the
-    breaking refusal. `eval-signals`' `[Unreleased]` line is step 5's, versioned here (Revision 7).
+    breaking refusal. `eval-signals`' `[Unreleased]` line is step 5's, versioned here (Revision 7);
+    `eval-forms`' Breaking, Added and Changed lines are step 6's, versioned here (Revision 8).
   - `ROADMAP.md` — Phase 9 marked done; "Suggested order" updated. `CLAUDE.md` — the plan named as a
     design record.
   - `docs/backlog.md` — the entries the phase touched, and the "Work in flight" paragraph steps 4–6
@@ -1143,6 +1208,13 @@ signature and refuses one more shape (§ 3.8).
    step 7 (§ 4).
    *q3 inputs*: the acorn internals to check are exactly those the header comment of
    `internal/functions/colon-identifiers.ts` lists (§ 3.5).
+   *Recorded* (Revision 8): run in Claude's sandbox on 2026-10-11 at 0718796, with `acorn` 8.11.2
+   installed. All 221 colon-identifier cases pass at runtime, `eval-core`'s library source
+   type-checks, and the rest of `eval-core` passes. Only `colon-identifiers.spec.ts`'s tree-printing
+   helper fails to type-check, because 8.11.2's `AnyNode` has no `VariableDeclarator`; nothing shipped
+   is affected. If step 7 re-runs q3, it adds a cast in that helper or records the type-check
+   exception. The run is at step 2's commit, so it predates step 4's runner and step 6, which the
+   evidence above names.
 4. **Keyword prefixes and non-ASCII names.** Refused by § 3.4. *Reopens on* a real key that needs one.
 5. **A per-signal parser option in `eval-signals`.** Not provided: the provider covers the one
    application, and per-signal control would need `CompilerService` to take parser options per call.

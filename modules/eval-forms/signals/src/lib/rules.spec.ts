@@ -618,6 +618,105 @@ describe('createExpressionRules', () => {
     });
   });
 
+  /**
+   * `docs/colon-identifiers/phase-9-plan.md` step 6, criterion 3: the
+   * `colonIdentifiers` rule option, at the factory and per registration,
+   * resolved like the other keys - registration wins, per key (plan S 3.8).
+   * Its own model type, since a colon-joined key is the fixture.
+   */
+  describe('colonIdentifiers', () => {
+
+    interface ColonModel {
+      city: string;
+      'Q1:1'?: number;
+      x?: number;
+    }
+
+    const buildColonForm = (
+      model: WritableSignal<ColonModel>,
+      s: Schema<ColonModel>
+    ): FieldTree<ColonModel> => TestBed.runInInjectionContext(() => form(model, s));
+
+    it('should make a factory\'s rules follow a colon-joined key', () => {
+      const model = signal<ColonModel>({ city: 'Boston', 'Q1:1': 1 });
+      const rules = createExpressionRules(model, { colonIdentifiers: true });
+
+      const f = buildColonForm(
+        model,
+        schema<ColonModel>((p) => {
+          rules.evalVisible(p.city, 'Q1:1 == 1');
+        })
+      );
+
+      expect(f.city().hidden()).toBe(false);
+
+      model.set({ city: 'Boston', 'Q1:1': 2 });
+
+      expect(f.city().hidden()).toBe(true);
+    });
+
+    // The registration's `false` is a value, not an absence, so it wins over
+    // the factory's `true` - and the rule parses as JavaScript does, a label,
+    // which the guard refuses.
+    it('should let a registration turn a factory\'s colonIdentifiers off for that rule', () => {
+      const model = signal<ColonModel>({ city: 'Boston', 'Q1:1': 1 });
+      const rules = createExpressionRules(model, { colonIdentifiers: true });
+
+      expect(() =>
+        buildColonForm(
+          model,
+          schema<ColonModel>((p) => {
+            rules.evalVisible(p.city, 'Q1:1 == 1', { colonIdentifiers: false });
+          })
+        )
+      ).toThrow(/statement labeled 'Q1'/);
+    });
+
+    // Per key: a registration that supplies only `onError` keeps the
+    // factory's `colonIdentifiers`, as it keeps the factory's `eval`.
+    it('should keep a factory\'s colonIdentifiers under a registration supplying another key', () => {
+      const model = signal<ColonModel>({ city: 'Boston', 'Q1:1': 1 });
+      const rules = createExpressionRules(model, { colonIdentifiers: true });
+
+      const f = buildColonForm(
+        model,
+        schema<ColonModel>((p) => {
+          rules.evalText(p.city, 'Q1:1 + 1', { onError: () => 'error' });
+        })
+      );
+
+      expect(f.city().metadata(TEXT)?.()).toBe('2');
+    });
+
+    it('should let a registration turn colonIdentifiers on when the factory has not', () => {
+      const model = signal<ColonModel>({ city: 'Boston', 'Q1:1': 1 });
+      const rules = createExpressionRules(model);
+
+      const f = buildColonForm(
+        model,
+        schema<ColonModel>((p) => {
+          rules.evalVisible(p.city, 'Q1:1 == 1', { colonIdentifiers: true });
+        })
+      );
+
+      expect(f.city().hidden()).toBe(false);
+    });
+
+    // With neither, a colon-joined name outside a statement's start is
+    // JavaScript's syntax error, at its colon, thrown at registration - which
+    // is `form()`, where the schema body runs.
+    it('should throw a SyntaxError at registration with neither', () => {
+      const model = signal<ColonModel>({ city: 'Boston', 'Q1:1': 1, x: 1 });
+      const rules = createExpressionRules(model);
+      const s = schema<ColonModel>((p) => {
+        rules.evalVisible(p.city, 'x + Q1:1 > 0');
+      });
+
+      expect(() => buildColonForm(model, s)).toThrow(SyntaxError);
+      expect(() => buildColonForm(model, s)).toThrow('Unexpected token (1:6)');
+    });
+  });
+
   describe('the rule context (docs/backlog-retired.md D5)', () => {
 
     interface Probe {

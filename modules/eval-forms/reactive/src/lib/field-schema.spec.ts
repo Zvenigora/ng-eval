@@ -5,7 +5,7 @@ import {
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AbstractControl, FormArray, FormControl, FormGroup } from '@angular/forms';
-import { EvalContext } from '@zvenigora/ng-eval-core';
+import { EvalContext, provideColonIdentifiers } from '@zvenigora/ng-eval-core';
 import { SignalContextWriteError } from '@zvenigora/ng-eval-signals';
 import { Subject } from 'rxjs';
 // Through the entry point's barrel rather than `./field-schema`, which is what
@@ -1053,6 +1053,144 @@ describe('bindFieldProperties', () => {
         [{ name: 'country', text: 'country' }],
         group(),
         {} as { injector: Injector }
+      )
+    ).toThrow(/NG0203/);
+  });
+});
+
+/**
+ * `docs/colon-identifiers/phase-9-plan.md` step 6, criterion 1: under
+ * `eval-core`'s `provideColonIdentifiers()`, `/reactive` needs nothing of its
+ * own. Its compile path reached the provider already, through
+ * `createEvalSignal`'s `CompilerService`; what this step changes is the check
+ * `bindFieldProperties` makes first, which now parses through the same
+ * `ParserService` (plan S 3.8). A block of its own, because the provider has to
+ * be configured before the outer block's `TestBed.inject` instantiates the
+ * module.
+ */
+describe('bindFieldProperties under provideColonIdentifiers()', () => {
+
+  let injector: Injector;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideColonIdentifiers()] });
+    injector = TestBed.inject(Injector);
+  });
+
+  it('should follow a control named by a colon-joined key', () => {
+    const control = new FormControl(1);
+    const form = new FormGroup<{ [key: string]: AbstractControl }>({ 'Q1:1': control });
+
+    const binding = bindFieldProperties([{ name: 'city', visible: 'Q1:1 == 1' }], form, { injector });
+
+    expect(binding.fields['city'].visible?.()).toBe(true);
+
+    control.setValue(2);
+
+    expect(binding.fields['city'].visible?.()).toBe(false);
+
+    binding.destroy();
+  });
+
+  // F2: with the check on the free `parse`, this rule did not parse there -
+  // so the guard was skipped - and compiled under the provider, binding a
+  // rule whose `||` short-circuits past `constructor`. Whether the guard ran
+  // depended on where in the rule the colon-joined name sat.
+  it('should refuse a prototype identifier beside a colon-joined name', () => {
+    const form = new FormGroup<{ [key: string]: AbstractControl }>({
+      'Q1:1': new FormControl(1),
+      x: new FormControl(1),
+    });
+
+    expect(() =>
+      bindFieldProperties(
+        [{ name: 'city', visible: 'x + Q1:1 > 0 || constructor' }],
+        form,
+        { injector }
+      )
+    ).toThrow(
+      "Expression 'x + Q1:1 > 0 || constructor': identifier 'constructor' is a member of " +
+      'Object.prototype'
+    );
+  });
+});
+
+/**
+ * `docs/colon-identifiers/phase-9-plan.md` step 6: the check's parse is
+ * `ParserService`'s, resolved from the injector or, inside a context with
+ * none, by `inject()`.
+ */
+describe('bindFieldProperties, checking through ParserService', () => {
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+  });
+
+  // `ParserService.parse` answers `undefined` for an empty rule without
+  // parsing it, where the exported `parse` gave an empty `Program`, so this is
+  // the rule that reaches `guardIdentifiers`' `undefined` branch. It binds and
+  // reads blank, as it did.
+  it('should bind an empty rule', () => {
+    const binding = bindFieldProperties(
+      [{ name: 'country', visible: '' }],
+      new FormGroup({ country: new FormControl('CA') }),
+      { injector: TestBed.inject(Injector) }
+    );
+
+    expect(binding.fields['country'].visible?.()).toBe(false);
+
+    binding.destroy();
+  });
+
+  // The `inject()` arm's reason: inside a context, with no injector, the
+  // schema is still checked before the missing injector is reported. The
+  // in-context case of the first block binds a valid schema, so it cannot see
+  // the order.
+  it('should report an invalid schema before a missing injector inside a context', () => {
+    expect(() =>
+      TestBed.runInInjectionContext(() =>
+        bindFieldProperties(
+          [{ name: 'country', text: 'country' }, { name: 'country' }],
+          new FormGroup({ country: new FormControl('CA') }),
+          {} as { injector: Injector }
+        )
+      )
+    ).toThrow(/^Duplicate field name 'country'/);
+  });
+});
+
+/**
+ * `docs/colon-identifiers/phase-9-plan.md` step 6: `bindFieldProperties` now
+ * resolves a `ParserService` for its check, and resolves it after the
+ * `EnvironmentInjector` it resolved before - so the NG0203 a caller with no
+ * injector sees outside a context still names that token, since Angular's
+ * message names the one whose injection failed. The `/NG0203/` case above
+ * cannot tell the two apart. Outside any `TestBed` injection context, as that
+ * case runs.
+ */
+describe('bindFieldProperties without an injector, outside an injection context', () => {
+
+  const noInjector = {} as { injector: Injector };
+
+  it('should name EnvironmentInjector in its NG0203', () => {
+    expect(() =>
+      bindFieldProperties(
+        [{ name: 'country', text: 'country' }],
+        new FormGroup({ country: new FormControl('CA') }),
+        noInjector
+      )
+    ).toThrow(/NG0203: The `EnvironmentInjector` token injection failed/);
+  });
+
+  // The change step 6 records: the injector is resolved before the schema is
+  // checked, so an invalid schema no longer decides which error this caller
+  // sees. Up to 0.4.x this threw the duplicate-name error.
+  it('should report NG0203 before an invalid schema', () => {
+    expect(() =>
+      bindFieldProperties(
+        [{ name: 'country', text: 'country' }, { name: 'country' }],
+        new FormGroup({ country: new FormControl('CA') }),
+        noInjector
       )
     ).toThrow(/NG0203/);
   });
