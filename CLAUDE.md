@@ -10,13 +10,13 @@ independently and **all three published to npm** under the `@zvenigora` scope, e
 
 - **`@zvenigora/ng-eval-core`** (`modules/eval-core`) — a JavaScript expression
   parser/evaluator built on `acorn` + `acorn-walk`, exposed as Angular DI services.
-  Published at **0.11.1**. This is where nearly all the code is.
+  Published at **0.12.0**. This is where nearly all the code is.
 - **`@zvenigora/ng-eval-signals`** (`modules/eval-signals`) — expression → Angular
-  `Signal`, built on the first library's published surface. Published at **0.5.0**;
+  `Signal`, built on the first library's published surface. Published at **0.5.1**;
   Phase 3 shipped 0.1.0.
 - **`@zvenigora/ng-eval-forms`** (`modules/eval-forms`) — Angular form field properties
   driven by expressions that arrive as strings at runtime, built on the other two.
-  Published at **0.4.1**; Phase 6 shipped 0.2.0. It ships **three entry points from one
+  Published at **0.5.0**; Phase 6 shipped 0.2.0. It ships **three entry points from one
   package**: the shared core at `@zvenigora/ng-eval-forms`, the Reactive Forms adapter at
   `@zvenigora/ng-eval-forms/reactive`, and the Signal Forms adapter at
   `@zvenigora/ng-eval-forms/signals`, which requires Angular 22.
@@ -28,7 +28,7 @@ applies to any of them.
 Phases 1, 2, 3, 4, 5, 6 and 9 are complete and their plan documents are design records rather
 than active work. Phase 2 shipped as `eval-core` 0.4.0, and its plan is
 `docs/statements/phase-2-plan.md`. Phase 5, the async signal, shipped as `eval-signals` 0.5.0,
-and its plan is `docs/signals/phase-5-plan.md`. Phase 9, colon-joined identifiers, ships as
+and its plan is `docs/signals/phase-5-plan.md`. Phase 9, colon-joined identifiers, shipped as
 `eval-core` 0.12.0, `eval-signals` 0.5.1 and `eval-forms` 0.5.0, and its plan is
 `docs/colon-identifiers/phase-9-plan.md`. What `ROADMAP.md` has left is Phases 7 and 8, which it
 reserves without specifying them.

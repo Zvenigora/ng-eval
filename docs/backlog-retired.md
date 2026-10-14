@@ -1514,7 +1514,8 @@ definition as it refuses an assignment, so that row pins the message and not the
 ## A26 — The parse cache ignores parser options
 
 **Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-10**, as step 1 of the
-[Phase 9 plan](colon-identifiers/phase-9-plan.md); not yet released. Was Open
+[Phase 9 plan](colon-identifiers/phase-9-plan.md); released 2026-10-14 in `eval-core` 0.12.0, tagged
+3466c80. Was Open
 
 *Fixed* 2026-10-10. `ParserService` caches an AST under the expression and a fingerprint of the
 options that change the parse, the service's merged with the call's, so a cached AST is served only to
@@ -1635,7 +1636,7 @@ with options of its own needs this first — the plan's option B is the worked c
 ## A28 — `scoped` is documented as a scope pushed during this walk; the code asks the whole scope stack
 
 **Package** core · **Kind** docs · **Status** **Retired — fixed 2026-10-10**, documentation
-comments only; not yet released. Was Open
+comments only; released 2026-10-10 in `eval-core` 0.11.1, tagged 7ee65fc. Was Open
 
 *Fixed* 2026-10-10. The docblocks now say what the code asks: a read is `scoped` when any scope on
 the context's scope stack binds the name when it is read, whoever pushed it. That is an arrow call's
@@ -1692,8 +1693,8 @@ is not.
 <a id="a29"></a>
 ## A29 — `CompilerService` keys a compiled AST by type, start, end and `toString()`
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-10**; not yet released. Was
-Open
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-10**; released 2026-10-10 in
+`eval-core` 0.11.1, tagged 7ee65fc. Was Open
 
 *Fixed* 2026-10-10. `compile` and `compileAsync` cache a string only. Any other input — an AST, or
 nothing — is compiled on every call and never enters `_compilationCache`, and `generateCacheKey`
@@ -1747,8 +1748,8 @@ finding 7. Opened 2026-10-10 by the Phase 9 plan.
 <a id="a31"></a>
 ## A31 — The case-insensitive property cache keys an object by its key count and first five keys
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-10**; not yet released. Was
-Open
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-10**; released 2026-10-10 in
+`eval-core` 0.11.1, tagged 7ee65fc. Was Open
 
 *Fixed* 2026-10-10. The cache is a `WeakMap` from the object to its answers, by lower-cased search
 key, together with the object's own-key count when they were made. A cached key is returned only

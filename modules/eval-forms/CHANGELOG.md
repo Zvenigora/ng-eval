@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## [0.5.0] - 2026-10-13
+## [0.5.0] - 2026-10-14
 
 **Colon-joined names at both entry points, and a rule that parses as a label refused — Phase 9
 ([plan](../../docs/colon-identifiers/phase-9-plan.md)).** A breaking minor: a schema holding a rule

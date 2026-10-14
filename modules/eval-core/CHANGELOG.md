@@ -14,7 +14,7 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ---
 
-## [0.12.0] - 2026-10-13
+## [0.12.0] - 2026-10-14
 
 **Colon-joined names, opt-in — Phase 9 ([plan](../../docs/colon-identifiers/phase-9-plan.md)) — and
 a parse cache that honours the options it is asked with.** A minor: two additions, the

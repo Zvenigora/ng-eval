@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## [0.5.1] - 2026-10-13
+## [0.5.1] - 2026-10-14
 
 **`abortSignalKey`'s refusal reworded, and the `eval-core` peer range widened to admit 0.12.0.** A
 patch, released with `eval-core` 0.12.0's colon-joined names

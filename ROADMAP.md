@@ -439,7 +439,7 @@ Neither is scheduled. A phase becomes real when it gets a plan document, per `CL
 
 ### ✅ Phase 9 — Colon-joined identifiers (`eval-core`, with `eval-signals` and `eval-forms`) — **done**
 
-Ships in `@zvenigora/ng-eval-core` **0.12.0**, with `@zvenigora/ng-eval-signals` **0.5.1** and
+Shipped in `@zvenigora/ng-eval-core` **0.12.0**, with `@zvenigora/ng-eval-signals` **0.5.1** and
 `@zvenigora/ng-eval-forms` **0.5.0**. Design, findings and the step record are in
 [`docs/colon-identifiers/phase-9-plan.md`](docs/colon-identifiers/phase-9-plan.md), and the
 retrospect in [`docs/colon-identifiers/phase-9-summary.md`](docs/colon-identifiers/phase-9-summary.md);
@@ -498,7 +498,7 @@ Entries are cited by stable ID — `BL-A8`, not a line number.
    with `resource` for the promise case.
 8. Phase 7 / Phase 8 — reserved above, neither costed nor scheduled; deferred work is in
    [`docs/backlog.md`](docs/backlog.md).
-9. ~~Phase 9 (colon-joined identifiers)~~ — **done**, ships in `eval-core` 0.12.0, with
+9. ~~Phase 9 (colon-joined identifiers)~~ — **done**, shipped in `eval-core` 0.12.0, with
    `eval-signals` 0.5.1 and `eval-forms` 0.5.0. Numbered after the two reserved phases, and run
    ahead of them: it was the one with a consumer waiting.
 
