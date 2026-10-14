@@ -25,12 +25,13 @@ independently and **all three published to npm** under the `@zvenigora` scope, e
 without a breaking release, in any of the three; "nothing has shipped yet" no longer
 applies to any of them.
 
-Phases 1, 2, 3, 4, 5 and 6 are complete and their plan documents are design records rather
+Phases 1, 2, 3, 4, 5, 6 and 9 are complete and their plan documents are design records rather
 than active work. Phase 2 shipped as `eval-core` 0.4.0, and its plan is
 `docs/statements/phase-2-plan.md`. Phase 5, the async signal, shipped as `eval-signals` 0.5.0,
-and its plan is `docs/signals/phase-5-plan.md`. What `ROADMAP.md` has left is Phases 7 and 8,
-which it reserves without specifying them, and Phase 9, colon-joined identifiers, which is planned
-and not started.
+and its plan is `docs/signals/phase-5-plan.md`. Phase 9, colon-joined identifiers, ships as
+`eval-core` 0.12.0, `eval-signals` 0.5.1 and `eval-forms` 0.5.0, and its plan is
+`docs/colon-identifiers/phase-9-plan.md`. What `ROADMAP.md` has left is Phases 7 and 8, which it
+reserves without specifying them.
 
 **Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left
 unfixed, decisions logged rather than made, gaps in what the suite can catch — is in
@@ -94,9 +95,9 @@ build before believing a type is sound.
   `docs/trace-surface/`. **A one-commit item gets no plan document: its exit criteria live in
   the prompt, and its backlog entry records what verified it.** **Neither does a batch of
   independent one-commit items**, however many commits it runs to: each item's exit criteria
-  live in the prompt, as the A3/B4/D6/F6, D9/F13 and F2 batches did. The active plan is
-  Phase 9's, `docs/colon-identifiers/phase-9-plan.md`, and `.claude/skills/step/SKILL.md` targets
-  it; it is retargeted with each new one.
+  live in the prompt, as the A3/B4/D6/F6, D9/F13 and F2 batches did. No plan is active.
+  `.claude/skills/step/SKILL.md` still targets the last one, Phase 9's
+  `docs/colon-identifiers/phase-9-plan.md`, and is retargeted with each new one.
 - **One retrospect per track; no per-step summaries.**
 - **Anything left for later work goes in `docs/backlog.md`; a commit body never carries it
   forward.**
@@ -113,6 +114,11 @@ build before believing a type is sound.
     Phase 6's one correctness precondition.
   - `docs/signals/phase-5-plan.md` — Phase 5, the async signal; its § 3.4 is the value and
     status contract, and § 9 the downstream one.
+  - `docs/colon-identifiers/phase-9-plan.md` — Phase 9, colon-joined identifiers; its § 3.4 is
+    the grammar, § 3.5 the acorn plugin and the internals it relies on, and § 9 the downstream
+    contract. Its § 8 q1, q2 and q4 are open, waiting on real expressions arriving as corpus
+    data, and say so; q5 is decided — not provided in Phase 9 — and reopens only on the condition
+    the plan states.
 
   Their open questions are settled unless the document says otherwise. Two of them number
   a § 9 and a § 9.1 on unrelated subjects, so name the document when citing one. Their line

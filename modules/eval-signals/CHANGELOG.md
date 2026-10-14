@@ -8,7 +8,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+---
+
+## [0.5.1] - 2026-10-13
+
+**`abortSignalKey`'s refusal reworded, and the `eval-core` peer range widened to admit 0.12.0.** A
+patch, released with `eval-core` 0.12.0's colon-joined names
+([Phase 9](../../docs/colon-identifiers/phase-9-plan.md)). No exported symbol changes shape: the
+`.d.ts` differs from 0.5.0 in the `abortSignalKey` documentation comment only.
+
 ### Changed
+- **Peer range widened.** `@zvenigora/ng-eval-core`: `>=0.11.0 <0.12.0` → `>=0.11.0 <0.13.0`.
+  The floor is unchanged, since nothing here needs 0.12. Under `eval-core`'s
+  `provideColonIdentifiers()` a signal reads a colon-joined key with nothing of this package's,
+  and `dependencies` reports it as one segment of a path, as the README now says.
 - **`createEvalSignalAsync`'s `abortSignalKey` refusal says the key must be a plain identifier**,
   and that a colon-joined name is refused even under `eval-core`'s `colonIdentifiers`. It said
   "it is not an identifier, so no expression could name it", which that option makes false: under

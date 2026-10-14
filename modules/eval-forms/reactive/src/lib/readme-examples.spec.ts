@@ -3,6 +3,7 @@ import * as path from 'path';
 import { Injectable, Injector, OnDestroy, inject } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AbstractControl, FormControl, FormGroup } from '@angular/forms';
+import { provideColonIdentifiers } from '@zvenigora/ng-eval-core';
 // Through the published specifier, which is legal from *this* folder only for
 // the core: `@nx/enforce-module-boundaries` exempts a self-import that crosses
 // entry points and rejects one that does not. So the two core symbols below
@@ -26,7 +27,7 @@ import {
  * `## Quick start — Reactive Forms (/reactive)` up to, not including,
  * `## Signal Forms — /signals`.
  */
-const README_REACTIVE_TS_BLOCKS = 10;
+const README_REACTIVE_TS_BLOCKS = 11;
 
 /** The ` ```ts ` fences in `docs/forms/worked-example.md`. */
 const WORKED_EXAMPLE_TS_BLOCKS = 11;
@@ -61,12 +62,14 @@ const WORKED_EXAMPLE_TS_BLOCKS = 11;
  *
  * 1. `## Quick start`, both blocks - **one case**; the second reads the
  *    binding the first builds.
- * 2. `## Coercion`, the `toVisible` block.
- * 3. `## Coercion`, the `toText` block.
- * 4. `## When a rule fails`, the `applyErrorPolicy` block - two cases
+ * 2. `### Colon-joined names`, under the root providers it declares - Phase 9
+ *    step 7.
+ * 3. `## Coercion`, the `toVisible` block.
+ * 4. `## Coercion`, the `toText` block.
+ * 5. `## When a rule fails`, the `applyErrorPolicy` block - two cases
  *    (`docs/backlog.md` D10).
- * 5. `### {emitEvent: false} freezes a value`.
- * 6. `### The key set is not reactive`.
+ * 6. `### {emitEvent: false} freezes a value`.
+ * 7. `### The key set is not reactive`.
  *
  * Executed by `signals/src/lib/readme-examples.spec.ts` instead, and this
  * sentence exists because the file's location would otherwise imply it is
@@ -122,6 +125,12 @@ const WORKED_EXAMPLE_TS_BLOCKS = 11;
  *    supplies the import from `@zvenigora/ng-eval-signals` instead. The block
  *    is therefore not runnable exactly as printed, which is the one place in
  *    this file that is true and is why it is listed here.
+ * 5. `TestBed`'s providers for `appConfig`. The `### Colon-joined names` block
+ *    declares the application's root providers; the case hands the same
+ *    object to `TestBed.configureTestingModule`, whose injector is the root
+ *    `ParserService` resolves from, as the application's would be - the
+ *    substitution `eval-core`'s `readme-examples.spec.ts` makes for its own
+ *    block.
  *
  * Nothing else was invented, and where a block *was* a fragment the fix went
  * into the document rather than into this file - the README's two reactivity
@@ -201,6 +210,41 @@ describe('documented examples', () => {
       service.ngOnDestroy();
     });
 
+  });
+
+  describe('README - Colon-joined names', () => {
+
+    // The block declares the application's root providers; they are this
+    // case's `TestBed` providers, whose injector is the root `ParserService`
+    // resolves from (item 5 of the list above). Reset first, as the Quick
+    // start does: the outer `beforeEach` has already instantiated the module.
+    beforeEach(() => {
+      const appConfig = { providers: [provideColonIdentifiers()] };
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule(appConfig);
+      injector = TestBed.inject(Injector);
+    });
+
+    it('should follow a colon-named control under provideColonIdentifiers()', () => {
+      const form = new FormGroup({
+        'Q1:1': new FormControl(0),
+        comments: new FormControl(''),
+      });
+
+      const binding = bindFieldProperties(
+        [{ name: 'comments', visible: 'Q1:1 == 1' }],
+        form,
+        { injector }
+      );
+
+      // Both reads are load-bearing: `false` alone is what a rule reading a
+      // blank would also answer, and only the change says the control was read.
+      expect(binding.fields['comments'].visible?.()).toBe(false);
+      form.controls['Q1:1'].setValue(1);
+      expect(binding.fields['comments'].visible?.()).toBe(true);
+
+      binding.destroy();
+    });
   });
 
   describe('README - Coercion', () => {

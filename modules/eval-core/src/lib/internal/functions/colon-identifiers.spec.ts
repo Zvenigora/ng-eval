@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { AnyNode, BinaryExpression, ExpressionStatement, Parser, Program,
-  parse as acornParse } from 'acorn';
+  VariableDeclarator, parse as acornParse } from 'acorn';
 import { parse } from './parse';
 import { ParserService } from '../../actual/services/parser.service';
 import { ParserOptions } from '../interfaces';
@@ -17,12 +17,16 @@ import { ParserOptions } from '../interfaces';
  * than that the text parsed. An identifier is its name, a literal its raw
  * text, a template's text its raw text quoted, and every other node
  * `(head child …)`.
+ *
+ * `VariableDeclarator` is named beside `AnyNode` because `acorn` 8.11.2's
+ * `AnyNode` omits it, and this file must type-check at the `^8.11.2` peer
+ * floor too (`docs/colon-identifiers/phase-9-plan.md` § 8 q3).
  */
-const sx = (node: AnyNode | null | undefined): string => {
+const sx = (node: AnyNode | VariableDeclarator | null | undefined): string => {
   if (!node) {
     return '_';
   }
-  const list = (head: string, nodes: (AnyNode | null)[]) =>
+  const list = (head: string, nodes: (AnyNode | VariableDeclarator | null)[]) =>
     `(${[head, ...nodes.map(sx)].join(' ')})`;
   switch (node.type) {
     case 'Program':

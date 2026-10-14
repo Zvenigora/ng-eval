@@ -19,7 +19,7 @@ import { SignalContextWriteError } from '@zvenigora/ng-eval-signals';
 import { ExpressionRules, TEXT, createExpressionRules } from '../public-api';
 
 /** The fenced blocks under `modules/eval-forms/README.md`'s `## Signal Forms — /signals`, any language. */
-const README_SIGNALS_BLOCKS = 5;
+const README_SIGNALS_BLOCKS = 6;
 
 /** The fenced blocks under the same file's `### Expressions are validated too`, a `/reactive` section. */
 const README_ASYMMETRY_BLOCKS = 1;
@@ -341,6 +341,32 @@ describe('documented examples - /signals', () => {
 
       expect(buildForm(profile, profileSchema).label().metadata(TEXT)?.())
         .toBe('USHQ');
+    });
+  });
+
+  describe('README - Colon-joined names, per factory or registration', () => {
+
+    interface Survey {
+      'Q1:1': number;
+      comments: string;
+    }
+
+    it('should follow the model\'s colon-named key under the factory option', () => {
+      const survey = signal<Survey>({ 'Q1:1': 0, comments: '' });
+
+      const rules = createExpressionRules(survey, { colonIdentifiers: true });
+
+      const surveySchema = schema<Survey>((p) => {
+        rules.evalVisible(p.comments, 'Q1:1 == 1');
+      });
+
+      const f = buildForm(survey, surveySchema);
+
+      // Both reads are load-bearing: `true` alone is what a rule reading a
+      // blank would also answer, and only the change says the key was read.
+      expect(f.comments().hidden()).toBe(true);
+      survey.set({ 'Q1:1': 1, comments: '' });
+      expect(f.comments().hidden()).toBe(false);
     });
   });
 

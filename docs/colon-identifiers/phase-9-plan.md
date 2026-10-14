@@ -1,6 +1,24 @@
 # Phase 9 Plan — colon-joined identifiers (`@zvenigora/ng-eval-core`)
 
 **Date**: October 10, 2026
+**Revision**: 9 — step 7, in its own commit. § 8 q3 is re-run at 1e3ee21, after step 6, as its
+evidence requires, and the record replaces Revision 8's run at 0718796, which predated step 4's
+runner and step 6. The grammar holds at `acorn` 8.11.2, with the installed 8.18.0 as the control, so
+step 7's precondition is met. The record adds a method note: a re-run passes Jest `--no-cache`, or
+the transform cache hides the one type-check failure. Step 7's file list gains
+`colon-identifiers.spec.ts`, for its tree-printing helper; the gate chose the fix over recording
+the exception, and the step made it by widening the helper's parameter type, since no cast reaches
+a `case` label the union lacks. The confirmation gate added the three `readme-examples.spec.ts`
+files that execute the README blocks step 7 adds, `eval-core`'s and one under each of `eval-forms`'
+two entry points; `eval-signals`' README's quoted peer range (`:20`) beside `:431`; and
+`CLAUDE.md`'s two sentences that called Phase 9 planned and active. It fixed the CHANGELOG
+headings' date and the wording of `eval-core`'s Added entry for step 3's caching exceptions, and it
+left the stale release status of A28, A29 and A31 to the post-publish commit. After the step's
+review, two more corrections: § 3.10's `eval-forms` range on `eval-signals` narrows from
+`>=0.4.0 <0.6.0` to `>=0.5.1 <0.6.0`, since it admitted versions that cannot be installed beside
+the new `eval-core` floor; and § 8 q5 is recorded as decided, not open, while q4 is marked open
+where it stands, as q1 and q2 are. Each step's outcome is recorded under it.
+
 **Revision**: 8 — step 6, in its own commit. Its file list gains `modules/eval-forms/CHANGELOG.md`, for
 the `[Unreleased]` lines that land with the change, as step 5's did; and `docs/backlog.md` may edit
 [D13](../backlog.md#d13)'s entry as well as its "Work in flight" paragraph: D13 stays open, narrowed
@@ -751,11 +769,16 @@ and the text: about 2.5% on `simpleEval` over cached expressions, as step 1 meas
 | :--- | :--- | :--- | :--- | :--- |
 | `@zvenigora/ng-eval-core` | Adds `ParserOptions.colonIdentifiers` and `provideColonIdentifiers`; fixes BL-A26 — a cached AST is served only to a caller whose parse-relevant options match — and keys compiled strings the same way | **0.12.0**, a minor | **No** — additions, and a fix whose old behaviour no caller could rely on | unchanged: `@angular/core >=19.0.0`, `acorn ^8.11.2` (§ 8 q3) |
 | `@zvenigora/ng-eval-signals` | `abortSignalKey`'s refusal reworded; specs | **0.5.1**, a patch | No | `@zvenigora/ng-eval-core >=0.11.0 <0.13.0` |
-| `@zvenigora/ng-eval-forms` | `/signals`' `ExpressionRuleOptions.colonIdentifiers`; `/reactive`'s `validate` parses as its compile path does; `guardIdentifiers` refuses a top-level label | **0.5.0**, a breaking minor | **Yes** — a schema holding a rule that starts with a label, which rendered blank, now fails to bind or register, as [BL-D2](../backlog-retired.md#d2)'s refusal did in 0.3.0 | `@zvenigora/ng-eval-core >=0.12.0 <0.13.0`; `@zvenigora/ng-eval-signals >=0.4.0 <0.6.0`, unchanged, admits 0.5.1 |
+| `@zvenigora/ng-eval-forms` | `/signals`' `ExpressionRuleOptions.colonIdentifiers`; `/reactive`'s `validate` parses as its compile path does; `guardIdentifiers` refuses a top-level label | **0.5.0**, a breaking minor | **Yes** — a schema holding a rule that starts with a label, which rendered blank, now fails to bind or register, as [BL-D2](../backlog-retired.md#d2)'s refusal did in 0.3.0 | `@zvenigora/ng-eval-core >=0.12.0 <0.13.0`; `@zvenigora/ng-eval-signals >=0.5.1 <0.6.0` (*corrected in step 7*, Revision 9: it read `>=0.4.0 <0.6.0`, unchanged) |
 
 `eval-signals` keeps its 0.11 floor: nothing in it needs 0.12. `eval-forms` raises its floor: its
 `/signals` option passes `colonIdentifiers` to `parse`, which 0.11 would ignore, and an option that
-does nothing should not be installable. All three bumps land in one step: the moment
+does nothing should not be installable. *Corrected in step 7* (Revision 9): `eval-forms`' range on
+`eval-signals` narrows to `>=0.5.1 <0.6.0`. Left at `>=0.4.0`, it admitted versions that cannot be
+installed beside the new `eval-core` floor: `eval-signals` 0.4.0–0.5.0 declare `eval-core
+>=0.11.0 <0.12.0`, so beside `eval-forms`' `>=0.12.0` only 0.5.1 resolves, and npm would report
+the conflict against `eval-signals` rather than against the range that let it in. All three bumps
+land in one step: the moment
 `modules/eval-core/package.json` reads 0.12.0, both downstream `lint` targets fail until their ranges
 admit it (finding 14).
 
@@ -803,6 +826,10 @@ failure count for each, reading which cases failed rather than that the suite di
   - `performance.spec.ts` green and untouched; the gate green; `git diff --name-only` lists the files
     above and this document.
 - **Category**: a fix to a published path's behaviour, released in step 7.
+- **Outcome** — done, `56e2049`, under Revision 3. Seventeen cases in `parser.service.spec.ts`,
+  written first; fourteen wrong implementations, each red on the cases it targets. A fifteenth, the
+  digest cut to 4 hex characters, stayed green: no two option sets the suite compares collide in
+  16 bits. It opened [A34](../backlog.md#a34).
 
 ### Step 2 — `eval-core`: the grammar, per call
 
@@ -840,6 +867,8 @@ failure count for each, reading which cases failed rather than that the suite di
       *Added at the gate.*
   - The gate green; `git diff --name-only` lists the files above and this document.
 - **Category**: additive, unreleased until step 7.
+- **Outcome** — done, `0718796`, under Revision 4, which gave § 3.5 its fifth override. § 8 q3 was
+  first run at this commit (Revision 8) and re-run after step 6 (Revision 9).
 
 ### Step 3 — `eval-core`: the application switch
 
@@ -914,6 +943,8 @@ failure count for each, reading which cases failed rather than that the suite di
   between compiles is served a function for the new options rather than the old; and a value JSON
   cannot hold, set in `ParserService.parserOptions` under a key `defaultParserOptions` does not carry,
   which now compiles uncached, where it was cached. Step 7 decides whether its entry names them.
+  *Decided at step 7's gate* (Revision 9): one sentence of the Added entry names both.
+- **Outcome** — done, `cf8fb1c`, under Revision 5.
 
 ### Step 4 — The corpus: data-driven cases, synthetic until real ones arrive
 
@@ -969,6 +1000,8 @@ failure count for each, reading which cases failed rather than that the suite di
     corpus. It is to be rechecked once the corpus is pushed, and opened as a backlog entry if it
     recurs.
 - **Category**: test-only; ships in no package.
+- **Outcome** — done, `3ac8d1a`, under Revision 6: 114 synthetic cases, each of W1–W8 failing at
+  least one. No real case has arrived, so q1, q2 and q4 stay open.
 
 ### Step 5 — `eval-signals`: the reworded refusal, and colon keys through both factories
 
@@ -997,6 +1030,7 @@ failure count for each, reading which cases failed rather than that the suite di
      with the reworded message.
   - The gate green; `git diff --name-only` lists the files above and this document.
 - **Category**: a patch — one message, released in step 7.
+- **Outcome** — done, `001232a`, under Revision 7.
 
 ### Step 6 — `eval-forms`: both adapters, and the label refusal
 
@@ -1069,12 +1103,13 @@ failure count for each, reading which cases failed rather than that the suite di
     deliberate override by the consumer.
   - The gate green; `git diff --name-only` lists the files above and this document.
 - **Category**: a breaking minor (the refusal) and an addition (the option), released in step 7.
+- **Outcome** — done, `1e3ee21`, under Revision 8.
 
 ### Step 7 — Docs and release
 
 - **Precondition — § 8 q3 answered and recorded in this document.** If the grammar spec fails at
   `acorn` 8.11.2, this step does not start: the floor is raised deliberately, as a decision recorded
-  here, not to make the release fit.
+  here, not to make the release fit. *Met* (Revision 9): § 8 q3's re-run at 1e3ee21.
 - **Edit**:
   - `modules/eval-core/README.md` — the section step 3 began, completed: the rule, the case table's
     gist, parentheses in a consequent, quoted keys, keywords and ASCII, `path` as dotted segments
@@ -1082,17 +1117,28 @@ failure count for each, reading which cases failed rather than that the suite di
     It must cover the spacing rule, the parentheses rule and quoted keys: `eval-forms`' README relies
     on it for them since step 6, calling them "`eval-core`'s rule, not this package's". Once it does,
     check that `eval-forms`' wording still matches (Revision 8).
+  - `modules/eval-core/src/lib/readme-examples.spec.ts` — the README's new block executed and
+    `README_JAVASCRIPT_BLOCKS` raised from 17 (*added at the gate*, Revision 9).
   - `modules/eval-signals/README.md` — `abortSignalKey` stays a plain identifier, so its "a name that
-    is not an identifier" (`:431`) says so; colon keys need nothing of `eval-signals`.
+    is not an identifier" (`:431`) says so; colon keys need nothing of `eval-signals`; and, *added at
+    the gate*, the quoted peer range at `:20` (Revision 9).
   - `modules/eval-forms/README.md` — completed from step 6, and the quoted peer range.
+  - `modules/eval-forms/reactive/src/lib/readme-examples.spec.ts` and
+    `modules/eval-forms/signals/src/lib/readme-examples.spec.ts` — one executed block each, `/reactive`
+    under the provider and `/signals` under the rule option, and their counts raised (*added at the
+    gate*, Revision 9).
   - `modules/eval-forms/reactive/src/lib/field-schema.ts` — `bindFieldProperties`' `@param schema`
     JSDoc gains the expression checks it has omitted since 0.3.0. It is a doc comment on a published
     symbol, so it gets an `[Unreleased]` line in `eval-forms`' CHANGELOG with it (Revision 8).
+  - `modules/eval-core/src/lib/internal/functions/colon-identifiers.spec.ts` — § 8 q3's fix rather
+    than a recorded exception, chosen at the gate: `sx` made to type-check against `acorn` 8.11.2's
+    `AnyNode`. Spec-only; it ships in no package (Revision 9).
   - Each package's `package.json` and `CHANGELOG.md` per § 3.10; `eval-forms`' entry calls out the
     breaking refusal. `eval-signals`' `[Unreleased]` line is step 5's, versioned here (Revision 7);
     `eval-forms`' Breaking, Added and Changed lines are step 6's, versioned here (Revision 8).
   - `ROADMAP.md` — Phase 9 marked done; "Suggested order" updated. `CLAUDE.md` — the plan named as a
-    design record.
+    design record, and, *added at the gate*, its two sentences that called Phase 9 planned and the
+    active plan (Revision 9).
   - `docs/backlog.md` — the entries the phase touched, and the "Work in flight" paragraph steps 4–6
     kept current (Revision 6).
   - `docs/colon-identifiers/phase-9-summary.md` — the phase's one retrospect.
@@ -1107,6 +1153,21 @@ failure count for each, reading which cases failed rather than that the suite di
   - `readme-examples.spec.ts` and the F10 cases green in all three packages.
 - **Category**: the release. Publishing, tags and the Publication status rows are CONTRIBUTING's
   Releasing procedure, after this commit; so is CLAUDE.md's "Published at" line.
+- **Outcome** — done 2026-10-13, in the commit that records this line, under Revision 9. The gate is
+  green: `eval-core` 2448, its count unchanged, since the README's second colon block continues the
+  first and is asserted in that block's case; `eval-signals` 438; `eval-forms` 375, a case for each
+  new README block; all three builds, `eval-forms`' three entry points among them. With only the
+  bumps, `eval-signals:lint` and `eval-forms:lint` each failed once on `@nx/dependency-checks`, and
+  passed once the ranges were widened (finding 14); `eval-forms:lint` stayed green once its
+  `eval-signals` range was narrowed to `>=0.5.1 <0.6.0`, after the review. The built `.d.ts` against the published
+  tarballs: `eval-core` 0.11.1 by `ParserOptions.colonIdentifiers`, `provideColonIdentifiers` with
+  its `EnvironmentProviders` import, documentation comments, and a private `_fingerprints` member
+  on `ParserService` and on `CompilerService` — both classes already declared private members, so
+  neither becomes nominal by it, and only a subclass declaring its own `_fingerprints` would see
+  it; `eval-signals` 0.5.0 by the `abortSignalKey` comment
+  only; `eval-forms` 0.4.1 by `/signals`' `ExpressionRuleOptions.colonIdentifiers` and comments —
+  `guardIdentifiers`' and `applyErrorPolicy`'s in the core, `bindFieldProperties`' at `/reactive`.
+  The phase's retrospect is [`phase-9-summary.md`](phase-9-summary.md).
 
 ---
 
@@ -1208,17 +1269,30 @@ signature and refuses one more shape (§ 3.8).
    step 7 (§ 4).
    *q3 inputs*: the acorn internals to check are exactly those the header comment of
    `internal/functions/colon-identifiers.ts` lists (§ 3.5).
-   *Recorded* (Revision 8): run in Claude's sandbox on 2026-10-11 at 0718796, with `acorn` 8.11.2
-   installed. All 221 colon-identifier cases pass at runtime, `eval-core`'s library source
-   type-checks, and the rest of `eval-core` passes. Only `colon-identifiers.spec.ts`'s tree-printing
-   helper fails to type-check, because 8.11.2's `AnyNode` has no `VariableDeclarator`; nothing shipped
-   is affected. If step 7 re-runs q3, it adds a cast in that helper or records the type-check
-   exception. The run is at step 2's commit, so it predates step 4's runner and step 6, which the
-   evidence above names.
+   *Recorded* (Revision 9, replacing Revision 8's run at 0718796, which predated step 4's runner and
+   step 6): re-run in Claude's sandbox on 2026-10-13 at 1e3ee21, after step 6. *Control*, the
+   installed `acorn` 8.18.0: `eval-core` 2448 tests, `eval-signals` 438, `eval-forms` 373, all green.
+   *At 8.11.2*, installed with `npm i --no-save` and Jest run with `--no-cache`: the same counts, all
+   green, step 2's `colon-identifiers.spec.ts` and step 4's corpus among them; `nx run-many -t build`
+   builds all three packages and both `eval-forms` adapter entry points. *The one substitution*:
+   `colon-identifiers.spec.ts` ran under `// @ts-nocheck`, because its tree-printing helper `sx` does
+   not type-check against 8.11.2's `AnyNode`, which has no `VariableDeclarator`; nothing shipped is
+   affected. *Method*: a q3 re-run passes `--no-cache`. Without it, Jest's transform cache
+   serves specs type-checked against the installed `acorn`, and the error does not appear.
+   Step 7's precondition is met.
+   *Fixed in step 7* (Revision 9): `sx` takes `AnyNode | VariableDeclarator`, so the spec
+   type-checks at both versions and a future q3 run needs no `// @ts-nocheck`. Checked with `tsc`
+   over the spec against 8.11.2's `acorn.d.ts`, unpacked outside the workspace and mapped in by
+   `paths`, so `node_modules` was not touched: 4 errors before the change, at the helper's
+   `VariableDeclarator` lines, and 0 after; 0 against the installed 8.18.0 both times.
 4. **Keyword prefixes and non-ASCII names.** Refused by § 3.4. *Reopens on* a real key that needs one.
+   *Open after step 4* (Revision 6), as q1 is: step 4's criterion 3 counts it, over real cases once
+   any arrive.
 5. **A per-signal parser option in `eval-signals`.** Not provided: the provider covers the one
    application, and per-signal control would need `CompilerService` to take parser options per call.
    *Reopens on* a consumer that mixes colon and non-colon parsing in one application.
+   *Decided* (Revision 9): not provided in Phase 9. It is not open, and only the condition above
+   reopens it.
 6. **What else the legacy expressions contain.** `<>` and templates are out of scope (§ 2); the corpus
    records anything else that fails, by construct, and a construct that recurs is a phase of its own.
    *Settled* at step 4's confirmation gate (Revision 6): legacy expressions are rewritten to JavaScript

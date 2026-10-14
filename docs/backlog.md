@@ -54,14 +54,16 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 ### Work in flight
 
 **Phase 9**, colon-joined identifiers — [`docs/colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md),
-written 2026-10-10, is the active plan. Steps 1–6 are done: step 1 fixed
-[A26](backlog-retired.md#a26) and opened [A34](#a34), step 2 added the grammar, and step 3
-`provideColonIdentifiers()` and `CompilerService`'s fingerprinted string key, all unreleased; step 4
-added the corpus, test-only and synthetic until real cases arrive; step 5 pinned colon keys through
-both `eval-signals` factories and reworded its `abortSignalKey` refusal, unreleased; step 6 gave
-`eval-forms` `/signals`' `colonIdentifiers` rule option, parsed `/reactive`'s bind-time check through
-`ParserService`, and refused a top-level label at registration, narrowing [D13](#d13), unreleased.
-Step 7, the release, is next.
+at Revision 9 — is complete: all seven steps are done, and its retrospect is
+[`colon-identifiers/phase-9-summary.md`](colon-identifiers/phase-9-summary.md). It fixed
+[A26](backlog-retired.md#a26), opened [A34](#a34) and narrowed [D13](#d13). The release it prepared
+— `eval-core` 0.12.0, `eval-signals` 0.5.1 and `eval-forms` 0.5.0 — is next: publish, tag, and
+record the Publication status and Register history rows ([`CONTRIBUTING.md`](../CONTRIBUTING.md),
+Releasing, steps 3–6). That post-publish commit also brings the index's release status up to date:
+A26's row says "ships in", and the rows of [A28](backlog-retired.md#a28),
+[A29](backlog-retired.md#a29) and [A31](backlog-retired.md#a31), and their retired entries with
+A26's, still say "not yet released", though 0.11.1 released them. The corpus stays synthetic until
+real expressions arrive as data; the plan's § 8 q1, q2 and q4 wait on them.
 `eval-core` 0.11.1,
 with the [A29](backlog-retired.md#a29) and [A31](backlog-retired.md#a31) fixes, is published and
 tagged at 7ee65fc. Phase 5 is complete: its
@@ -198,7 +200,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A23](backlog-retired.md#a23) | `safeSetProperty` defines the property instead of assigning it — setters never run, non-configurable properties cannot be written | core | decision, then fix | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-core` 0.10.0, tagged 0c3299e: a member write assigns, after the same refusals, so setters run |
 | [A24](#a24) | An `await` is a pass-through — inside an `async` arrow it hands the walk a promise as an operand, and the arrow returns no promise | core | decision, then fix | Open — opened 2026-10-07 by the Phase 5 plan; the `eval-signals` README states it since 0.5.0 |
 | [A25](#a25) | `awaitVisitor`'s timeout race — an uncleared 30 s timer per `await`, an undocumented `__awaitTimeout` key, and the caller's error mutated | core | fix | Open — opened 2026-10-07 by the Phase 5 plan |
-| [A26](backlog-retired.md#a26) | The parse cache ignores parser options | core | fix | **Retired — fixed 2026-10-10**, as step 1 of the [Phase 9 plan](colon-identifiers/phase-9-plan.md); not yet released. Keyed on the text and a fingerprint of the parse-relevant options; a callback or `program` bypasses the cache. `CompilerService`'s string cache is that plan's step 3. Affected every published `eval-core` to 0.11.1 |
+| [A26](backlog-retired.md#a26) | The parse cache ignores parser options | core | fix | **Retired — fixed 2026-10-10**, as step 1 of the [Phase 9 plan](colon-identifiers/phase-9-plan.md); ships in `eval-core` 0.12.0. Keyed on the text and a fingerprint of the parse-relevant options; a callback or `program` bypasses the cache. `CompilerService`'s string cache is that plan's step 3. Affected every published `eval-core` to 0.11.1 |
 | [A27](#a27) | A nested `evaluate` writes the enclosing walk's `EvalResult` — and `start()` clears nothing, so a reused state shows the last run's outcome | core | decision | Open — recorded, not scheduled; opened 2026-10-08 by Phase 5 step 1 |
 | [A28](backlog-retired.md#a28) | `scoped` is documented as a scope pushed during this walk; the code asks the whole scope stack | core | docs | **Retired — fixed 2026-10-10**, documentation comments only; not yet released. The `.d.ts` differs in four JSDoc blocks: every scope on the stack counts, whoever pushed it |
 | [A29](backlog-retired.md#a29) | `CompilerService` keys a compiled AST by type, start, end and `toString()` — two ASTs of one type and span share a compiled function | core | fix | **Retired — fixed 2026-10-10**; not yet released. An AST is compiled on every call and never cached; a string is cached as before. Affected `eval-core` 0.2.1–0.11.0 |
@@ -232,7 +234,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [D10](backlog-retired.md#d10) | `applyErrorPolicy` has no runnable README block | forms | docs | **Retired — fixed**, and it created [F3](backlog-retired.md#f3)'s third gate's subject |
 | [D11](backlog-retired.md#d11) | `/signals` has no worked example | forms | docs | **Retired — fixed 2026-10-03**, docs and tests only: [`docs/forms/worked-example-signals.md`](forms/worked-example-signals.md), every ` ```ts ` block executed and counted; released 2026-10-04 in `eval-forms` 0.3.1, tagged 3d56994 — the example ships in no package, the README's link to it does |
 | [D12](backlog-retired.md#d12) | ~20 specs discard the binding and never call `destroy()` | forms | test hygiene | **Retired — fixed 2026-09-28, test only**; `destroy()`'s release path is pinned by `field-schema.memory.spec.ts`, the net's by `field-schema.spec.ts`'s subscription count. Injector-path memory cases removed 2026-09-29: timing-dependent |
-| [D13](#d13) | A rule whose top-level statement `eval-core` refuses registers in both adapters and renders blank under the default policy | forms | decision, then fix | Open, narrowed — opened 2026-10-10 by the Phase 9 plan; a top-level label refused at registration since its step 6, unreleased. A label in a top-level block, `{ L: 1 }`, and every other such statement remain |
+| [D13](#d13) | A rule whose top-level statement `eval-core` refuses registers in both adapters and renders blank under the default policy | forms | decision, then fix | Open, narrowed — opened 2026-10-10 by the Phase 9 plan; a top-level label refused at registration since its step 6, which ships in `eval-forms` 0.5.0. A label in a top-level block, `{ L: 1 }`, and every other such statement remain |
 | [E1](#e1) | Form-state keys across both adapters | forms | phase | Open — **no phase reserved** |
 | [E2](#e2) | Arrays — `applyEach` at `/signals`, `FormArray` at `/reactive` | forms | phase | Open |
 | [E3](#e3) | `dependencies` introspection at form scale | forms | phase | Open |
@@ -893,7 +895,7 @@ documented in the package README.
 ## D13 — A rule whose top-level statement `eval-core` refuses registers, and renders blank
 
 **Package** forms · **Kind** decision, then fix · **Status** Open, narrowed. Opened 2026-10-10 by the
-Phase 9 plan; its step 6 refuses a top-level label, unreleased
+Phase 9 plan; its step 6 refuses a top-level label, which ships in `eval-forms` 0.5.0
 
 Both adapters accept any rule that parses: `/signals`' `prepare` parses, guards identifiers and
 compiles; `/reactive`'s `validate` does the same before `createEvalSignal` compiles. Neither asks
@@ -907,7 +909,7 @@ bound `visible: 'Q1:1 == 1'` and read `visible()` `false` and `text()` `''`; `/s
 `evalVisible(p.city, 'Q1:1 == 1')` and the field read `hidden()` `true`. The other statement types take
 the same path by construction.
 
-**Phase 9 step 6 closed the top-level label case**, in `eval-forms`' `[Unreleased]`:
+**Phase 9 step 6 closed the top-level label case**, which ships in `eval-forms` 0.5.0:
 `guardIdentifiers` refuses a `LabeledStatement` among the program's own statements, at both entry
 points, since a forgotten `colonIdentifiers` switch is exactly that shape (that plan's § 3.8). A label
 nested in a function body is left alone, since the function may never be called.

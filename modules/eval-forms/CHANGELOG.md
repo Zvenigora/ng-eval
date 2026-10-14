@@ -8,6 +8,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+---
+
+## [0.5.0] - 2026-10-13
+
+**Colon-joined names at both entry points, and a rule that parses as a label refused — Phase 9
+([plan](../../docs/colon-identifiers/phase-9-plan.md)).** A breaking minor: a schema holding a rule
+that parses as a top-level labeled statement, which rendered blank, now fails to bind at
+`/reactive` and to register at `/signals`, as [D2](../../docs/backlog-retired.md#d2)'s refusal did
+in 0.3.0. The `.d.ts` differs from 0.4.1 by `/signals`' `ExpressionRuleOptions.colonIdentifiers`
+and documentation comments. The `eval-core` floor rises to 0.12.0, which adds the option this
+release passes it, and the `eval-signals` floor to 0.5.1, the first that can sit beside it.
+
 ### Breaking
 - **A rule that parses as a labeled statement is refused at registration, at both entry points**
   — `guardIdentifiers` checks the rule's top-level statements before its identifiers. Such a rule
@@ -41,6 +53,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   precedes the schema's: a caller with no `injector`, outside an injection context, sees NG0203
   even when its schema is invalid, and one passing a destroyed injector NG0205, where each saw
   the schema's error.
+- **Peer ranges raised.** `@zvenigora/ng-eval-core`: `>=0.11.0 <0.12.0` → `>=0.12.0 <0.13.0`.
+  `/signals`' `colonIdentifiers` hands `eval-core`'s parser an option 0.11 would ignore, and an
+  option that does nothing should not be installable. `@zvenigora/ng-eval-signals`:
+  `>=0.4.0 <0.6.0` → `>=0.5.1 <0.6.0`, because `eval-signals` below 0.5.1 requires `eval-core`
+  below 0.12.0, so it cannot sit beside this release. The `peerDependencies` block quoted in the
+  README shows the new ranges.
+- `bindFieldProperties`' `@param schema` JSDoc names the expression checks it has made since
+  0.3.0 and omitted: a rule `guardIdentifiers` refuses — an identifier naming an
+  `Object.prototype` member, and since this release a top-level label — throws at the bind.
+  Documentation only.
 
 ---
 

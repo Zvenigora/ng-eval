@@ -356,7 +356,14 @@ const validate = (
  *                 name, a non-string rule, a name that resolves off
  *                 `Object.prototype`, and a control that is not a
  *                 `FormControl` all throw here rather than surfacing later as
- *                 an evaluation result nobody can trace.
+ *                 an evaluation result nobody can trace. So does a rule that
+ *                 `guardIdentifiers` refuses, parsed as it is compiled: one
+ *                 naming a member of `Object.prototype` as an identifier
+ *                 (since 0.3.0), or one that parses as a top-level labeled
+ *                 statement (since 0.5.0), which is what a rule starting with
+ *                 a colon-joined name is when `eval-core`'s
+ *                 `provideColonIdentifiers()` is absent. A rule that does not
+ *                 parse throws from its compile, later in this call.
  * @param group - A flat `FormGroup` of `FormControl`s.
  * @param options - `injector` is **required**, not optional: S 3.7's argument
  *                  is that every `EvalSignal` here has no auto-teardown, and

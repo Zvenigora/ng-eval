@@ -101,6 +101,28 @@ service.simpleEval('Q1:1 + 1', { 'Q1:1': 2 });   // 3
 service.simpleEval('Q1:1 + 1', { Q1: 100 });     // NaN - 'Q1:1' is a key of its own
 ```
 
+**The rule.** A colon-joined name is a first segment — an ASCII letter, `_` or `$`, then ASCII letters, digits, `_` or `$` — followed by one or more segments of the same characters, each after a `:`, which may start with a digit: `Q1:1`, `VP14:0`, `Q1:1:3`, `Q1:_x`. Nothing may sit inside it, no space, comment or line break, and the longest match wins, so `Q1:1:3` is one name. The name is an opaque key: `Q1:01` and `Q1:1` are different keys, and nothing splits one into segments. It joins wherever an identifier can stand — in an expression, after `.` and `?.` (`obj.Q1:1` reads `obj['Q1:1']`, and `sheet:A1.value` is `(sheet:A1).value`), as a binding (`let Q1:1 = 5`, `(Q1:1) => …`) and inside a template's `${…}` — and text stays text: `"Q1:1"`, a template's own text, a regex, a comment.
+
+Some spellings keep the meaning they always had. A keyword does not start a name, so `true:1`, `this:1` and `typeof:1` are syntax errors as before, while a word acorn reads as a name, such as `let` or `async`, does start one. A first segment holding a non-ASCII character or a `\u` escape does not join, and neither does a colon followed by a non-ASCII character, so `Вопрос:1` and `Q1:Ответ` are labels; so is a colon with a space beside it: `Q1: 1` is the label `Q1`, under the option too. A non-ASCII character later in a segment ends the name there, and what follows it is a `SyntaxError`: `Q1:1é`.
+
+**Where JavaScript already gives the colon a meaning**, the name gives way or is refused, and never reads silently as something else:
+
+- **A conditional's consequent.** Between a `?` and the `:` that closes it, a name does not join at the conditional's own level, so `a?b:c` keeps its meaning. Put a colon-joined name there in parentheses, `c ? (Q1:1) : 0`; inside a call, an array or a template the consequent opens it joins as anywhere else, as it does in the test and the alternate: `Q1:1 ? f(Q2:2) : Q3:3`. Without the parentheses the leftover colon is a `SyntaxError` at its own position, whose message names the fix — except when the `:` that closes the conditional starts a line of its own, where it is acorn's plain `Unexpected token`.
+- **An object key.** `{Q1:1}` would be `{Q1: 1}` to JavaScript and the shorthand `{'Q1:1': Q1:1}` here, so a colon-joined key is a `SyntaxError` naming both fixes. Quote a colon-named key, `{'Q1:1': v}`. A value, a computed key and a spread join as usual: `({a: Q1:1})`, `({[Q1:1]: 2})`, `({...o, k: Q1:1})`. So under the option a compact literal or pattern — `({a:1})`, `let {a:b} = o` — needs a space after the key's colon.
+
+```javascript
+const ctx = { c: true, 'Q1:1': 5 };
+
+service.simpleEval('c ? (Q1:1) : 0', ctx);       // 5
+service.simpleEval('c ? Q1:1 : 0', ctx);         // throws SyntaxError: Unexpected token: a colon-joined
+                                                 // name in the consequent of a conditional needs
+                                                 // parentheses: (Q1:1) (1:9)
+service.simpleEval("({ 'Q1:1': 2 })['Q1:1']");   // 2 - a colon-named key is quoted
+service.simpleEval('({a:1}).a');                 // throws SyntaxError - write ({a: 1})
+```
+
+**Read events and dependencies stay dotted.** A colon-joined name is one segment of a `path`: reading `obj.Q2:3` reports the `key` `Q2:3` and the `path` `obj.Q2:3`, and `createDependencyTracker()` records `obj.Q2:3`. Split a path on `.`, never on `:`.
+
 ## Options
 
 ### Per-node timing

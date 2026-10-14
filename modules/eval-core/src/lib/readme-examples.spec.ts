@@ -17,7 +17,7 @@ import {
 } from '../public-api';
 
 /** The ` ```javascript ` fences in `modules/eval-core/README.md`, indented ones included. */
-const README_JAVASCRIPT_BLOCKS = 17;
+const README_JAVASCRIPT_BLOCKS = 18;
 
 /**
  * Executes the snippets in `modules/eval-core/README.md`.
@@ -53,7 +53,9 @@ const README_JAVASCRIPT_BLOCKS = 17;
  * trace` blocks, with no case, and this docblock went on claiming full
  * coverage until the count case below first read the file; both are covered
  * now. **Phase 9 step 3 added one**, `### Colon-joined names`, covered in a
- * `describe` of its own because it declares its own root providers. Sections
+ * `describe` of its own because it declares its own root providers, and
+ * **step 7 a second**, the section's writing rules, which continues the
+ * first's `service` and so is the same case. Sections
  * whose later blocks continue an earlier one are a single case, split only
  * where the document declares a fresh start by re-declaring its own bindings.
  *
@@ -62,7 +64,7 @@ const README_JAVASCRIPT_BLOCKS = 17;
  * | Parsing | `### Parsing` |
  * | Discovery | `### Discovery` |
  * | Scopes | `### Scopes` |
- * | Colon-joined names | `### Colon-joined names` — **Phase 9 step 3** |
+ * | Colon-joined names | `### Colon-joined names` — **Phase 9 step 3** **+** the section's second block, the consequent and the quoted key — **step 7** |
  * | Per-node timing | `### Per-node timing` |
  * | An adopted registry | the `createTimingHook` block — its own state, because its sentence is about a registry the caller built |
  * | Iteration budget | `### Iteration budget` — **step 6** |
@@ -452,8 +454,9 @@ describe('documented examples', () => {
   });
 });
 
-// The `### Colon-joined names` block, under a root injector of its own: the
-// block's root providers are this case's `TestBed` providers (substitution 9).
+// The `### Colon-joined names` blocks, under a root injector of their own: the
+// first block's root providers are this case's `TestBed` providers
+// (substitution 9).
 describe('documented examples, under the root providers they declare', () => {
 
   it('should read a colon-joined name under provideColonIdentifiers()', () => {
@@ -466,6 +469,19 @@ describe('documented examples, under the root providers they declare', () => {
     const service = TestBed.inject(EvalService);
     expect(service.simpleEval('Q1:1 + 1', { 'Q1:1': 2 })).toBe(3);
     expect(service.simpleEval('Q1:1 + 1', { Q1: 100 })).toBeNaN();
+
+    // The section's second block, which continues the first's `service`.
+    const ctx = { c: true, 'Q1:1': 5 };
+
+    expect(service.simpleEval('c ? (Q1:1) : 0', ctx)).toBe(5);
+    expect(() => service.simpleEval('c ? Q1:1 : 0', ctx)).toThrow(SyntaxError);
+    expect(() => service.simpleEval('c ? Q1:1 : 0', ctx)).toThrow(
+      'Unexpected token: a colon-joined name in the consequent of a conditional ' +
+      'needs parentheses: (Q1:1) (1:9)');
+    expect(service.simpleEval("({ 'Q1:1': 2 })['Q1:1']")).toBe(2);
+    expect(() => service.simpleEval('({a:1}).a')).toThrow(SyntaxError);
+    // The fix the comment prints.
+    expect(service.simpleEval('({a: 1}).a')).toBe(1);
   });
 });
 

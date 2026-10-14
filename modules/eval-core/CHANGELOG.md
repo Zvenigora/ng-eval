@@ -12,6 +12,44 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+---
+
+## [0.12.0] - 2026-10-13
+
+**Colon-joined names, opt-in — Phase 9 ([plan](../../docs/colon-identifiers/phase-9-plan.md)) — and
+a parse cache that honours the options it is asked with.** A minor: two additions, the
+compiled-string key that goes with them, and the [A26](../../docs/backlog-retired.md#a26) fix. No
+exported symbol changes shape: the `.d.ts` differs from 0.11.1 by `ParserOptions.colonIdentifiers`,
+`provideColonIdentifiers` and documentation comments, beside a private member each on
+`ParserService` and `CompilerService`. The peer ranges are unchanged, `acorn ^8.11.2` included: the
+grammar's spec and corpus pass at 8.11.2 (the plan's § 8 q3). `eval-signals` 0.5.1 and `eval-forms` 0.5.0 admit it;
+`eval-signals` 0.4.0–0.5.0 and `eval-forms` 0.4.x declare `>=0.11.0 <0.12.0` and do not.
+
+### Added
+- **`ParserOptions.colonIdentifiers`.** With it on, a colon-joined name such as `Q1:1` or `VP14:0`
+  parses as one `Identifier` whose `name` is the whole key, so it reads `context['Q1:1']`. It is
+  off by default, and with it off a parse is acorn's own, as before. Where JavaScript already gives
+  the colon a meaning, the name gives way or is refused and is never read as something else: in a
+  conditional's consequent it is written in parentheses, `c ? (Q1:1) : 0`, and as an object key it
+  is a `SyntaxError` — quote it. So under the option a compact object literal, `({a:1})`, needs a
+  space after the key's colon. Hooks, dependency tracking and every prototype-pollution refusal see
+  an ordinary identifier. The README's "Colon-joined names" gives the rule.
+- **`provideColonIdentifiers()`**, which turns `colonIdentifiers` on for an application.
+  `ParserService` reads it when it is constructed, so every parse through `EvalService`,
+  `CompilerService` and `DiscoveryService` follows it, and a per-call `colonIdentifiers` overrides
+  it. It belongs in the root providers: in a child environment injector, such as a lazy route's, it
+  throws when that injector is created. `new ParserService()` outside an injection context keeps
+  the option off.
+- **`CompilerService` keys a compiled string on the options its parse uses**, as `ParserService`
+  keys an AST, so a text compiled before `ParserService.parserOptions` was replaced through its
+  setter — with `colonIdentifiers` turned on, for one — is compiled again rather than served the
+  old function. A write in place into that object is not seen, as it is not for an AST
+  ([A34](../../docs/backlog.md#a34)). Two narrower
+  changes: a subclass that sets `CompilerService`'s protected per-call options is served a function
+  for its current ones, compiled on every call when they carry an acorn callback or `program`, and
+  a value JSON cannot hold, set in `ParserService.parserOptions` under a key `defaultParserOptions`
+  does not carry, now compiles uncached.
+
 ### Fixed
 - **`ParserService` serves a cached AST only to a parse with the options that produced it —
   [A26](../../docs/backlog-retired.md#a26).** The parse cache was keyed on the expression alone, so

@@ -17,7 +17,7 @@ signals library.
 npm install @zvenigora/ng-eval-signals @zvenigora/ng-eval-core
 ```
 
-Peer dependencies: `@angular/core >=19` and `@zvenigora/ng-eval-core >=0.11.0 <0.12.0`. The floor
+Peer dependencies: `@angular/core >=19` and `@zvenigora/ng-eval-core >=0.11.0 <0.13.0`. The floor
 is the write guard, which needs `eval-core` 0.11.0 to ask about a built-in method's write as well
 as a member write — see [Writes are not supported](#writes-are-not-supported).
 
@@ -134,6 +134,12 @@ Setting it together with your own hook registry (`eval: { hooks }`) **throws at
 `createEvalSignal`**, rather than installing a read hook into a registry this library does not
 own and cannot hand you an unsubscribe for. The escape hatch is to install
 `createDependencyTracker()` on your registry yourself — it is the same tracker.
+
+**A colon-joined name is one segment.** Under `eval-core`'s `provideColonIdentifiers()` an
+expression names a key such as `Q1:1` as written, and this library needs nothing of its own for
+that: it compiles through `eval-core`'s `CompilerService`, whose `ParserService` the provider
+configures. `'Q1:1 + obj.R:7'` reports `Q1:1`, `obj` and `obj.R:7`, and under `caseInsensitive`
+`q1:1` is respelled to the record's `Q1:1`. A path splits on `.`, never on `:`.
 
 **An empty set means one of three things, and they look identical.** Either
 `trackDependencies` was never set; or it was set and the `computed` has **not run yet**, since
@@ -428,9 +434,11 @@ like any other name, and `dependencies` never reports it.
 
 **The key is checked at construction**, and the factory throws, naming the option and the key:
 
-- when no expression could read it — a name that is not an identifier (`'abort-signal'`), a
-  reserved word (`'new'`), or one `eval-core`'s identifier guard refuses (`'constructor'`,
-  `'__proto__'`);
+- when it is not a plain identifier an expression could read — a name that is not an identifier
+  (`'abort-signal'`), a reserved word (`'new'`), one `eval-core`'s identifier guard refuses
+  (`'constructor'`, `'__proto__'`), or a colon-joined name (`'run:abort'`), which is refused even
+  where `eval-core`'s `colonIdentifiers` lets an expression name it, since the key is checked
+  without that option;
 - when a record source already has it — exactly, or under `caseInsensitive` by case, whatever
   it holds, `undefined` included — since the binding would shadow it in every run.
 

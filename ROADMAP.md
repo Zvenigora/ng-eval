@@ -437,9 +437,32 @@ to a phase" that does not exist. Reserved now so the citations resolve:
 
 Neither is scheduled. A phase becomes real when it gets a plan document, per `CLAUDE.md`.
 
-### Phase 9 — Colon-joined identifiers (`eval-core`, with `eval-signals` and `eval-forms`)
+### ✅ Phase 9 — Colon-joined identifiers (`eval-core`, with `eval-signals` and `eval-forms`) — **done**
 
-**Planned** in [`docs/colon-identifiers/phase-9-plan.md`](docs/colon-identifiers/phase-9-plan.md): context keys such as `Q1:1:3` named as written, opt-in, with [BL-A26](docs/backlog-retired.md#a26) fixed first; step 1, that fix, is done, and step 2 is next.
+Ships in `@zvenigora/ng-eval-core` **0.12.0**, with `@zvenigora/ng-eval-signals` **0.5.1** and
+`@zvenigora/ng-eval-forms` **0.5.0**. Design, findings and the step record are in
+[`docs/colon-identifiers/phase-9-plan.md`](docs/colon-identifiers/phase-9-plan.md), and the
+retrospect in [`docs/colon-identifiers/phase-9-summary.md`](docs/colon-identifiers/phase-9-summary.md);
+consumer documentation is the `eval-core` README's
+[Colon-joined names](modules/eval-core/README.md#colon-joined-names--providecolonidentifiers).
+
+What landed: context keys such as `Q1:1:3` named as written, opt-in — per call through
+`ParserOptions.colonIdentifiers`, per application through `provideColonIdentifiers()`, which
+`ParserService` reads. A colon-joined name is one `Identifier` whose `name` is the key, so the
+evaluator, the prototype-pollution guards, the hooks and the dependency tracker change nothing.
+Where JavaScript already gives the colon a meaning the name gives way or is refused, never read
+silently: a conditional's consequent takes it in parentheses, and an object key refuses it.
+[BL-A26](docs/backlog-retired.md#a26) was fixed first, so a cached parse or compile honours the
+options it is asked with. `eval-signals` needed no source change for the feature, and rewords one
+refusal; `eval-forms` gains `/signals`' `colonIdentifiers` rule option, parses `/reactive`'s
+bind-time check as its compile does, and refuses a rule that parses as a top-level label at both
+entry points — the breaking change, since such a rule rendered blank.
+
+**Open**: whether legacy expressions put colon-joined names in consequents or build compact object
+literals, and whether any needs a keyword or non-ASCII prefix — the plan's § 8 q1, q2 and q4 —
+waits on real expressions arriving as corpus data; the corpus is synthetic until then. § 8 q5, a
+per-signal parser option in `eval-signals`, is decided: not provided in Phase 9, and reopened only
+by a consumer that mixes colon and non-colon parsing in one application.
 
 ## Deferred work
 
@@ -475,8 +498,9 @@ Entries are cited by stable ID — `BL-A8`, not a line number.
    with `resource` for the promise case.
 8. Phase 7 / Phase 8 — reserved above, neither costed nor scheduled; deferred work is in
    [`docs/backlog.md`](docs/backlog.md).
-9. Phase 9 (colon-joined identifiers) — planned, not started. Numbered after the two reserved
-   phases, and ahead of them in practice: it is the one with a consumer waiting.
+9. ~~Phase 9 (colon-joined identifiers)~~ — **done**, ships in `eval-core` 0.12.0, with
+   `eval-signals` 0.5.1 and `eval-forms` 0.5.0. Numbered after the two reserved phases, and run
+   ahead of them: it was the one with a consumer waiting.
 
 The `eval-core` error-identity group is closed: [BL-A5](docs/backlog-retired.md#a5),
 [BL-A6](docs/backlog-retired.md#a6) and [BL-A7](docs/backlog-retired.md#a7) are fixed for 0.7.0,

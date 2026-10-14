@@ -67,8 +67,8 @@ set of ranges covering both adapters:
   "@angular/forms": ">=19.0.0",
   "rxjs": "^7.8.0",
   "acorn-walk": "^8.3.0",
-  "@zvenigora/ng-eval-core": ">=0.11.0 <0.12.0",
-  "@zvenigora/ng-eval-signals": ">=0.4.0 <0.6.0"
+  "@zvenigora/ng-eval-core": ">=0.12.0 <0.13.0",
+  "@zvenigora/ng-eval-signals": ">=0.5.1 <0.6.0"
 }
 ```
 
@@ -78,6 +78,11 @@ say so: narrowing it to `>=22.0.0` would break every Reactive Forms consumer on 
 diagnostic for an entry point they do not import. An older consumer importing `/signals` gets
 `Cannot find module '@angular/forms/signals'` from Angular's own `exports` map rather than
 anything this library declares.
+
+**The `eval-core` floor is 0.12.0, since 0.5.0.** `/signals`' `colonIdentifiers` option hands
+`eval-core`'s parser an option that 0.11 would ignore, and an option that does nothing should not
+be installable. The `eval-signals` floor is 0.5.1 for the same release: every earlier
+`eval-signals` requires `eval-core` below 0.12.0, so none can be installed beside it.
 
 **`acorn-walk` is new in 0.2.0 and imposes no new install.** Both adapters walk the parsed
 expression with it, through the shared `guardIdentifiers` — `/signals` since 0.2.0, `/reactive`
@@ -310,6 +315,29 @@ a rule and compiles it through the root `ParserService`, which the provider conf
 is passed to the binding. How a colon-joined name is written — no space around the colon,
 parentheses around one in a conditional's consequent, a quoted key for a colon-named property — is
 `eval-core`'s rule, not this package's.
+
+```ts
+import { provideColonIdentifiers } from '@zvenigora/ng-eval-core';
+
+// app.config.ts: the application's root providers, not a lazy route's
+export const appConfig = { providers: [provideColonIdentifiers()] };
+
+// in a service of that application
+const form = new FormGroup({
+  'Q1:1': new FormControl(0),
+  comments: new FormControl(''),
+});
+
+const binding = bindFieldProperties(
+  [{ name: 'comments', visible: 'Q1:1 == 1' }],
+  form,
+  { injector }
+);
+
+binding.fields['comments'].visible?.();   // => false
+form.controls['Q1:1'].setValue(1);
+binding.fields['comments'].visible?.();   // => true
+```
 
 **A rule that parses as a labeled statement is refused when it is bound.** With the switch off,
 `Q1:1 == 1` is JavaScript's label `Q1` over `1 == 1`, which `eval-core` never evaluates: up to 0.4.x
@@ -742,6 +770,27 @@ options, and the block above printed `'undefinedHQ'`, one expression obeying two
 the model's `'Q1:1'` key. It resolves like the other keys: registration wins, so a registration's
 `colonIdentifiers: false` turns a factory's `true` off for that rule, and a registration supplying
 only `onError` keeps it.
+
+```ts
+interface Survey {
+  'Q1:1': number;
+  comments: string;
+}
+
+const survey = signal<Survey>({ 'Q1:1': 0, comments: '' });
+
+const rules = createExpressionRules(survey, { colonIdentifiers: true });
+
+const surveySchema = schema<Survey>((p) => {
+  rules.evalVisible(p.comments, 'Q1:1 == 1');
+});
+
+const f = form(survey, surveySchema);
+
+f.comments().hidden();                    // => true
+survey.set({ 'Q1:1': 1, comments: '' });
+f.comments().hidden();                    // => false
+```
 
 `eval-core`'s `provideColonIdentifiers()` does **not** reach this entry point. It configures
 `ParserService`, and `createExpressionRules` parses with the exported `parse`, which sees only the
