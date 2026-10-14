@@ -53,7 +53,12 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-Nothing is in flight. Phase 9, colon-joined identifiers, is complete: its
+Phase 10, the documentation restructure, is in flight: its
+[plan](documentation/phase-10-plan.md) is at Revision 1, no step has run, and step 1 is next. It
+rewrites `SECURITY.md` in its step 2 and retires [F19](#f19) in its step 6; its § 8 q4 records what it
+found and left undecided.
+
+Phase 9, colon-joined identifiers, is complete: its
 [plan](colon-identifiers/phase-9-plan.md), at Revision 9, and its retrospect,
 [`colon-identifiers/phase-9-summary.md`](colon-identifiers/phase-9-summary.md), are design records,
 and it shipped as `eval-core` 0.12.0, `eval-signals` 0.5.1 and `eval-forms` 0.5.0, tagged at

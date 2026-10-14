@@ -464,6 +464,16 @@ waits on real expressions arriving as corpus data; the corpus is synthetic until
 per-signal parser option in `eval-signals`, is decided: not provided in Phase 9, and reopened only
 by a consumer that mixes colon and non-colon parsing in one application.
 
+### Phase 10 — Documentation restructure (repository-wide) — **in flight**
+
+Two entry pages over documents that are each true where they stand: the root README becomes a
+consumer landing page with no `javascript` block, and `CONTRIBUTING.md` leads maintainers to a new
+`docs/README.md` index. Ten stale documents are deleted after a per-file audit, `SECURITY.md` is
+rewritten to the protections the code has, `eval-core`'s API documentation moves into its package
+README with every block executed, and the three package READMEs share one opening, with their quoted
+peer ranges gated against their manifests. Nothing under `docs/` moves. The plan, its decisions and its
+measurements are in [`docs/documentation/phase-10-plan.md`](docs/documentation/phase-10-plan.md).
+
 ## Deferred work
 
 Everything recorded-and-not-done lives in **[`docs/backlog.md`](docs/backlog.md)**: two

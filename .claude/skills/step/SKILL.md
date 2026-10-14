@@ -3,53 +3,62 @@ name: step
 description: Execute exactly one numbered step of the active plan document, with a confirmation gate and verification against the step's exit criteria.
 argument-hint: [step-number]
 disable-model-invocation: true
-allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branch *) Read Grep Glob Edit Write
+allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branch *) Bash(git grep *) Bash(git ls-files *) Read Grep Glob Edit Write
 ---
 
 # Execute one plan step
 
-Plan document: `docs/colon-identifiers/phase-9-plan.md`
-Target library: `@zvenigora/ng-eval-core` (`modules/eval-core`)
+Plan document: `docs/documentation/phase-10-plan.md`
+Target: the repository's documents — no library code
 Requested step: $ARGUMENTS
 
 **Each step's file list in the plan's § 4 is its scope, and it is not the same list every step.**
-Phase 9 builds colon-joined identifiers in `eval-core`, and its seven steps reach the other two
-projects by design, at named steps and nowhere else:
+Phase 10 restructures the documentation. It reaches the three projects only through READMEs,
+CHANGELOGs, specs and comment lines, at named steps and nowhere else:
 
-- **Steps 1–3 are `eval-core`** — the parse cache (BL-A26), the grammar, the application switch.
-- **Step 4 is `eval-core`, test-only** — the data-driven corpus. A non-spec, non-data file there is a
-  stop-and-replan, except `docs/backlog.md`'s "Work in flight" paragraph, which steps 4–6 keep current
-  (plan Revision 6).
-- **Step 5 is `eval-signals`** — one reworded message and specs. **Step 6 is `eval-forms`** — both
-  adapters' parse sites and `guardIdentifiers`.
-- **Step 7 is the release** — every package's manifest, changelog and README.
+- **Step 1 is documents only** — the ten stale files of D3 deleted, the three links into them
+  re-pointed, the `qs` reason moved to F16. No file under `modules/`.
+- **Step 2 is `SECURITY.md`** — rewritten to what the code does (D7), and three cases in
+  `modules/eval-core/src/public-api.spec.ts` that resolve every identifier it names.
+- **Step 3 is `eval-core`** — its README absorbs the root README's API sections; seven
+  `readme-examples.spec.ts` cases; `export-list.spec.ts` comments; its CHANGELOG's `[Unreleased]`.
+- **Step 4 is all three packages' READMEs** — the `eval-signals` and `eval-forms` openings, their
+  CHANGELOGs' `[Unreleased]`, one peer-range case in each project's `src/public-api.spec.ts`, and spec
+  **comment** lines.
+- **Step 5 is the root README** — the landing page; `eval-core`'s `public-api.spec.ts` and
+  `export-list.spec.ts` lose their root-README cases and gain the D5 case (plan § 4, step 5, which
+  lists and flags those removals); comment lines in `eval-core` and `eval-signals` specs.
+- **Step 6 is documents only** — `docs/README.md`, `CONTRIBUTING.md`, `ROADMAP.md`, `CLAUDE.md`, the
+  register (F19). No file under `modules/`.
+- **Step 7 is held on the plan's § 8 q1** and is not a step until the plan writes it.
 
-A file under `modules/eval-signals/` outside step 5 and step 7, or under `modules/eval-forms/`
-outside step 6 and step 7, is a stop-and-replan (plan § 2), not a wider step. Every other project's
-lint and test targets run below as the regression gate that catches a step which reached into one
-anyway.
+A file under `modules/` outside steps 2–5, or under a project a step does not name, is a
+stop-and-replan (plan § 2), not a wider step. Three more are stop-and-replans in every step:
 
-**All three packages are published**, and `eval-core` is consumed by the other two — so a change can
-be in one of two categories:
+- **A non-spec `.ts` file with a change outside its comment lines.** This phase changes no library
+  code (plan § 5).
+- **A rename (`R`) anywhere, or a delete (`D`) outside step 1's ten.** Nothing under `docs/` moves
+  (plan § 3.2, D2).
+- **A `package.json` in the diff.** No version moves in steps 1–6 (plan § 3.9). A spec may read one;
+  none may edit one.
 
-- **Additive** work — a new exported symbol, a new member of a type nothing implements — is in scope
-  whenever the plan calls for it. Phase 9's surface (plan § 5) is additive.
-- A change to an **existing exported symbol's shape**, or to the behaviour of an already-shipped
-  path, is a versioned release of that package: it needs an explicit callout in the step's report, a
-  version bump, and an entry in that package's own `modules/<name>/CHANGELOG.md`
-  (`## [0.12.0] - <npm's publish date, UTC>`). The plan names each one: step 1's A26 fix in
-  `eval-core`, step 5's message in `eval-signals`, and step 6's label refusal in `eval-forms`, a
-  breaking minor (plan § 3.10). Step 3's `CompilerService` key is not one: it ships inside step 7's
-  Added entry, with the two caching exceptions the plan's step 3 records for that entry to word.
-  Finding any other is a stop-and-replan.
+**All three packages are published**, and a README or CHANGELOG under `modules/<name>/` ships in that
+package's tarball — so a change is in one of two categories:
 
-**Every step says which of those two it is, in its § 2 restatement**, and whether it ships in a
-package at all — step 4 ships in none. The bumps land once, in step 7 (plan § 3.10); steps 1–6 add
-unreleased.
+- **Ships in no package** — steps 1, 2, 5 and 6. Their CHANGELOG line, if any, is the root
+  `CHANGELOG.md`'s Workspace section (plan § 3.9). `SECURITY.md` is in no tarball.
+- **Ships in a package's next release, with no code change** — step 3 (`eval-core`) and step 4
+  (`eval-signals`, `eval-forms`): a README rewrite, with an `[Unreleased]` line in that package's own
+  `modules/<name>/CHANGELOG.md` in the same commit. No bump; whether these are released is the plan's
+  § 8 q1. A change to an exported symbol's shape or to a shipped path's behaviour is not in this
+  phase at all: finding one is a stop-and-replan.
+
+**Every step says which of those two it is, in its § 2 restatement.**
 
 The lint and test targets below cover project boundaries: a step that edits another project moves
-its row. They do **not** cover the second category — a widened signature or a changed behaviour
-inside `eval-core` leaves every row green. Reading the diff is what covers that.
+its row. They do **not** cover a stale sentence or a mention the doc-links gate cannot see — a
+plain-text path, a line citation in a comment. Reading the diff, and running the step's one-off
+checks, is what covers that.
 
 ## Current state
 
@@ -104,9 +113,9 @@ Read the plan document and locate the requested step. Then report back, without
 editing anything:
 
 - The step's objective in one sentence.
-- Every file it says to create or edit, marked **new** or **edit**.
-- **Which category the step is in** — additive, or a versioned change to an already-shipped
-  path — and, if the second, what the plan says about the bump and the `CHANGELOG.md` entry.
+- Every file it says to create, edit or delete, marked **new**, **edit** or **delete**.
+- **Which category the step is in** — ships in no package, or ships in a package's next release —
+  and, if the second, the `[Unreleased]` line the plan gives it (plan § 3.9).
 - Its stated exit criteria, verbatim.
 - Anything in the step you find ambiguous, or that disagrees with what the code
   actually looks like now.
@@ -120,10 +129,13 @@ After I confirm:
 
 - Touch only the files identified in step 2. If the work genuinely requires a file
   not on that list, stop and ask first.
-- Follow the testing rules in CLAUDE.md: new behaviour is written test-first; a pure
-  refactor is gated by the existing suite instead, with new specs added after it is
-  green.
-- Never weaken or delete an existing assertion to make something pass.
+- Follow the testing rules in CLAUDE.md. A README case mirrors its block by hand, so its probe
+  is a wrong *library* implementation, reverted after the run (plan § 6.1).
+- Never weaken or delete an existing assertion to make something pass. Step 5's removals of the
+  root-README cases are the one exception: the plan lists each, with its reason and its measured
+  count, and confirming that step approves them. Nothing else is removed.
+- A case that reads a document is probed by breaking the document (plan § 6.1): `SECURITY.md`'s
+  identifiers, a quoted range, the root README's D5. Each probe is reverted.
 
 ### 4. Verify
 
@@ -131,12 +143,11 @@ After I confirm:
 npx nx run-many -t lint test build --skip-nx-cache --output-style=static
 ```
 
-All must be clean, with the same exception § 1 allows and on the same terms. The `eval-core` row
-moves by each step's new cases and no existing assertion changes; `performance.spec.ts` gains one
-case, in step 2, and nothing else (plan § 3.9). The `eval-signals` and `eval-forms` rows are the
-downstream witnesses for steps 1–4: both parse through `eval-core` at its published surface, so a
-step that alters an existing parse path shows up there before it shows up in a consumer's build —
-and at step 7 their `lint` is what proves the peer ranges were widened (plan § 3.10).
+All must be clean, with the same exception § 1 allows and on the same terms. The test rows move
+exactly as the plan's § 4 table says: `eval-core` +3 at step 2, +7 at step 3, +1 at step 4 and −5 at
+step 5; `eval-signals` and `eval-forms` +1 each at step 4; every other row unchanged in every step. A
+row that moves anywhere else is a regression or a scope breach, not a count to correct. The root project's `test` target is the doc-links gate: its file and link counts
+move as the same table says, and the report gives both figures.
 
 `build` is in this list because a green `test` run is not a type-check: Jest compiles per
 file through `tsconfig.spec` and `build:production` through `tsconfig.lib.prod`, and three
@@ -150,29 +161,27 @@ before reporting it as a regression.
 Then the check a green build cannot make, which for this phase is the scope gate itself.
 
 **Nothing moved outside the step's file list.** A green suite is weak evidence for this: an edit
-to another project that keeps that project's own suite green moves no row at all, and the second
-category above moves none by construction.
+to a document or a comment moves no test row at all, and that is most of what this phase edits.
 
 ```sh
-git diff --name-only HEAD
+git diff --name-status HEAD
 ```
 
 Every path must be on the step's own file list in the plan's § 4, or be the plan document itself.
-Anything else is a **stop-and-replan**, not a judgement call — and a file under
-`modules/eval-signals/` or `modules/eval-forms/` outside the steps named above, most of all.
+Anything else is a **stop-and-replan**, not a judgement call — and so is any `R` line, a `D` line
+outside step 1's ten, a `package.json`, or a non-spec `.ts` file changed outside its comment lines.
 Report it and stop.
 
-**Inside `eval-core`, a `public-api.ts` or a `package.json` in the diff is not a stop condition**
-— step 3 adds an export, and step 7 bumps all three versions. What they are instead is the trigger
-for the categories' checklist: the report says which category the step is in, and where the
-callout, the bump and the `CHANGELOG.md` entry are — or that the plan puts them in step 7.
+Then the step's **one-off checks**, the commands its criteria name — the mention grep, the heading
+listing, step 3's peer-sentence comparison (a case from step 4 on), the index completeness check.
+They are not in the gate, so the report gives each command and its output.
 
 If a pre-existing spec now fails, that is a regression in this step, not a stale test.
 Report it; do not edit the spec to match the new behaviour.
 
 ### 5. Report
 
-Before writing your report, invoke the `code-reviewer` subagent on this step's changes. Include its findings in your report. If it raises anything Critical, stop and surface it rather than closing out the step.
+Before writing your report, for steps 2–5, invoke the `code-reviewer` subagent on this step's changes. Include its findings in your report. If it raises anything Critical, stop and surface it rather than closing out the step. Steps 1 and 6 change no file under `modules/`, so none of its checklists applies; their report gives the step's one-off checks instead, and says that the reviewer was not run and why.
 
 **Expect a permission prompt for that invocation, and approve it.** The `allowed-tools` above
 deliberately does not name the subagent tool: its token is not the same in every build — `Task`
