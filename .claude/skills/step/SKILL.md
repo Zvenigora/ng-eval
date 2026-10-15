@@ -18,10 +18,12 @@ A35 plan until its step 6 and the post-publish commit have landed, and is then r
 **Each step's file list in the plan's § 4 is its scope, and it is not the same list every step.**
 The A35 plan closes the call sandbox's gaps in `eval-core`, at named steps and nowhere else:
 
-- **Step 1 is A36** — the tag call through `safeCall`: `tagged-template-expression.ts`,
-  `call-expression.ts` (exporting `safeCall`, which stays internal), and a new spec.
+- **Step 1 is A36** — the tag call through the call's own path: `tagged-template-expression.ts`,
+  `call-expression.ts` (the member branch as the internal `callMember`, and `safeCall` exported,
+  which stays internal), and a new spec.
 - **Step 2 is K1 and the identity set** — the new internal `dangerous-values.ts`;
-  `isFunctionSafe` and `isConstructorSafe`; a new `eval.service.dangerous-values.spec.ts`.
+  `isFunctionSafe` and `isConstructorSafe`; a new `eval.service.dangerous-values.spec.ts`; T11 and
+  T12 in `tagged-template-expression.spec.ts`; and `member-write-policy.ts`'s stale comment.
 - **Step 3 is A37** — a `SequenceExpression` visitor, its registration and spec, and the root
   README's node list.
 - **Step 4 is the funnel** — `pushVisitorResult`, the callee and `typeof` marks, and the spec's value
@@ -137,7 +139,7 @@ npx nx run-many -t lint test build --skip-nx-cache --output-style=static
 ```
 
 All must be clean, with the same exception § 1 allows and on the same terms. The test rows move
-exactly as the plan's § 4 table says: `eval-core` +6 at step 1, +17 at step 2, +6 at step 3 and +19
+exactly as the plan's § 4 table says: `eval-core` +10 at step 1, +21 at step 2, +6 at step 3 and +19
 at step 4; `eval-signals` and `eval-forms` unchanged in every step. A row that moves anywhere else is
 a regression or a scope breach, not a count to correct. `performance.spec.ts` stays green and
 untouched; it is the gate. Step 4 also reports the plan's timing method (§ 1.3, M6) beside its

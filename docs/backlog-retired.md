@@ -1830,6 +1830,74 @@ Opened 2026-10-10 by A29's fix.
 *Verified*: measured 2026-10-10 at d839072 with a throwaway spec, deleted before A29's commit; the
 refusal rows on A29's commit, with another, deleted the same day.
 
+<a id="a36"></a>
+## A36 — A tagged template's tag is called with no sandbox check
+
+**Package** core · **Kind** fix, security · **Status** **Retired — fixed 2026-10-15**, as step 1 of
+the [A35 plan](a35/plan.md); not yet released, and ships in `eval-core` 0.12.1. Was Open
+
+*Fixed* 2026-10-15. The tag is called as a callee is.
+- **A member tag** goes through `callMember`, which the call visitor's member branch became
+  (`call-expression.ts`), so the two cannot drift. It is checked under its property name, a computed
+  key included. It is called with its object as `this`, or a prior scope's `thisArg`. The context's
+  write policy is asked first.
+- **Any other tag** goes through `safeCall` with the context as `this`, after the same question, as a
+  bare call does.
+
+The tag is still evaluated before the template's expressions.
+
+Besides the refusals, a consumer can see three things:
+- a member tag's `this` used to be the context, so `` a.push`x` `` wrote into the context and now
+  appends to `a`;
+- a member tag's own `MemberExpression` no longer raises `before` or `after` node-hook events or
+  leaves a trace entry, as a member callee never has. Its read event still fires;
+- a tag that is not a function throws the call's error, where it threw a `TypeError` from `apply`.
+
+The visitor was unchanged from 2023-12 until this fix, so every published `eval-core` up to 0.12.0 is
+affected.
+
+*Verified*: test-first, with ten cases in `tagged-template-expression.spec.ts`, the plan's T1–T10:
+- the call sandbox's three checks, through a tag:
+  - `Function` bound: T1, by name;
+  - `eval`: T2;
+  - `setTimeout`: T3;
+  - a host tag whose source names `globalThis`: T4;
+  - `obj.fetch`: T5;
+  - `obj["fetch"]`: T7;
+  - `FUNCTION` under `caseInsensitive`: T8, by identity;
+- a benign tag's arguments and its `this`, the context: T6;
+- the write policy, through a member tag and through an identifier tag: T9;
+- a member tag's receiver, and a prior scope's `thisArg`: T10.
+
+Before the fix, nine cases failed and T6 passed. Wrong implementations, each run against the whole
+`eval-core` suite:
+- **the old visitor restored**: T1–T5 and T7–T10 failed, nine in all, and nothing else;
+- **the write policy dropped from the tag path only**: T9 alone failed. With it dropped from one
+  branch at a time, T9 alone failed each time, on that branch's own leg.
+
+The step's confirmation gate measured T7's and T8's routes on the old visitor (the plan's M10).
+
+**The entry as it stood:**
+
+`tagged-template-expression.ts:25` calls the tag as `tag.apply(st.context, [quasi,
+...quasiExpressions])`. It does not go through `safeCall`, so none of the call sandbox's three
+checks runs: neither the name, nor the identity of `Function`, nor the source text. Measured
+2026-10-14 against the built `eval-core` at efe2803:
+- with `Function` in the context under its own name, `` Function`return 7`() `` gives 7, where
+  `Function("return 7")()` is refused;
+- with `eval` bound as `run`, `` run`1+1` `` calls `eval`. It returns the strings array, since `eval`
+  of a non-string returns its argument.
+
+A35's class covers values under other names. This one needs no other name at all.
+
+**Fix**: call the tag through `safeCall`, with the tag's identifier or property name as the checked
+name. Planned as step 1 of [`docs/a35/plan.md`](a35/plan.md), fixed alone, and released with A35 in
+`eval-core` 0.12.1.
+
+*Recorded*: this entry; the A35 plan, § 1.2 finding 2. Opened 2026-10-14 by the A35 plan.
+*Verified*: read at `tagged-template-expression.ts:25`, then measured with a throwaway script against
+`dist/modules/eval-core`, built from efe2803 with no library change.
+
 ---
 
 # B. `eval-core` — security and hygiene

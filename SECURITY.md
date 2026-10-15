@@ -73,6 +73,11 @@ A call is refused, with the message `'Function call blocked for security reasons
   `eval`, `Function` or `new Function`, a `__proto__` member, `prototype.constructor`, or
   `globalThis`.
 
+A tagged template's tag goes through the same checks and the same write policy as a callee: a member
+tag is checked under its property name, a computed key included, and called with its object as
+`this`, and any other tag is called with the context as `this`, as a bare call is; pinned by
+[tagged-template-expression.spec.ts](modules/eval-core/src/lib/internal/visitors/tagged-template-expression.spec.ts).
+
 `new` has three checks of its own, and refuses with the message
 `'Constructor blocked for security reasons: <name>'`:
 - a list of ten constructor names, read only when the constructor is a bare identifier, so a

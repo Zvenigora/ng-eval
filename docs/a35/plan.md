@@ -1,6 +1,50 @@
 # A35 — dangerous function values past the call sandbox (`@zvenigora/ng-eval-core`)
 
 **Date**: October 14, 2026
+**Revision**: 2 — step 1, in its own commit. Its confirmation gate widened the step from "the tag
+through `safeCall`" to "the tag through the call's own path":
+- **One helper.** The call visitor's member branch becomes `callMember`: the receiver
+  `scopeReceiver` gives, the write policy, then `safeCall` under the property name. The call and tag
+  visitors both use it. So a member tag gets the computed-key name check, the receiver JavaScript
+  gives it and the write policy. A tag that is not a member keeps the context as `this`, as a bare
+  call does.
+- **Four cases**, and a second probe, which drops the write policy from the tag path:
+  - T7, a computed key;
+  - T8, a case variant refused by identity;
+  - T9, the write policy;
+  - T10, the receiver.
+- **The Security entry** states the receiver and hook-event changes beside the refusals.
+- **The case-variant route** (M10) joins § 1.2 finding 1 and § 3.5 item 2, and step 2 gains C15 and
+  C15t.
+
+`callMember` takes the result of `evaluateMember` instead of evaluating the member itself, so each
+visitor keeps its own order: a call evaluates its arguments before its callee, a tag evaluates itself
+before its template's expressions. A helper that evaluated the member after arguments handed to it
+would have made a member tag evaluate its expressions first. That is a change the gate did not list.
+
+The step found two more consequences, and the Security entry states both:
+- a member tag's own `MemberExpression` leaves no trace entry, just as it raises no `before` or
+  `after` node-hook events. Its read event still fires, so the gate's wording, "raises no hook
+  events", was corrected after the step's code review measured that event;
+- a tag that is not a function throws the call's error. It used to throw a `TypeError` from `apply`
+  (M10).
+
+T9 also has an identifier-tag leg. That leg asks the policy about the context, as a bare call does,
+so the entry's "tags go through the write policy" holds for both kinds of tag. The step's code review
+found no Critical issue. It found the hook-event wording wrong, and that is corrected wherever it
+appeared. The entry also gained a consequence of the receiver change: `` a.push`x` `` now appends to
+`a`.
+
+Three more of the review's findings were routed before the commit:
+- **Two behaviours step 1 documents and no case pins.** They are the tag being evaluated before its
+  expressions, and a non-function tag's error. They become step 2's T11 and T12, each with a probe,
+  since step 1's count was fixed at its gate. Step 2 now adds 21.
+- **A comment made stale by step 1**, in `member-write-policy.ts`, joins step 2's file list.
+- **The tag's strings array is not JavaScript's.** It is not frozen, has no `raw`, is built anew per
+  evaluation, and is not recorded as created. This is recorded as [A38](../backlog.md#a38), fidelity
+  rather than security, and outside 0.12.1. This step's file list
+gains `.claude/skills/step/SKILL.md`, whose per-step counts the gate changed.
+
 **Revision**: 1 — initial plan.
 **Target package**: `@zvenigora/ng-eval-core`, released as **0.12.1**. That is a patch (§ 2), and
 both downstream peer ranges already admit it: `eval-signals`' `>=0.11.0 <0.13.0` and `eval-forms`'
@@ -8,7 +52,7 @@ both downstream peer ranges already admit it: `eval-signals`' `>=0.11.0 <0.13.0`
 **Also touches**: no downstream code. `eval-signals` and `eval-forms` run as the downstream
 witnesses, with their counts unchanged.
 **Fixes**:
-- [A36](../backlog.md#a36) in step 1;
+- [A36](../backlog-retired.md#a36) in step 1;
 - [A35](../backlog.md#a35) in steps 2 and 4;
 - [A37](../backlog.md#a37) in step 3.
 
@@ -63,7 +107,7 @@ The baseline is the gate at this plan's commit: `eval-core` 2451, `eval-signals`
 
 Each finding cites the measurement in § 1.3 that produced it.
 
-1. **Every route past the name check is open** (M1, M2, M3). With `eval` in the context under its
+1. **Every route past the name check is open** (M1, M2, M3, M10). With `eval` in the context under its
    own name, `eval("1+1")` is refused, while each of these gives 2 (or `[2]`, or a promise of 2):
    - **an alias**: `run("1+1")`, and `run?.("1+1")` as an optional call;
    - **a member**: `tools.run("1+1")`, `tools["ev" + "al"].call(…)`, `["1+1"].map(tools.eval)`;
@@ -78,12 +122,16 @@ Each finding cites the measurement in § 1.3 that produced it.
    - **a value nested in an array the expression builds**:
      `[[run, null, ["1+1"]]].map(apply.bind(Reflect.apply, null))`;
    - **a host-bound function**: `e("1+1")` with `e = eval.bind(null)`, whose `name` is
-     `"bound eval"`.
+     `"bound eval"`;
+   - **a case variant under `caseInsensitive`**: `EVAL("1+1")`, since the name check reads the
+     written name, which the list does not hold (M10). `` EVAL`1+1` `` reaches `eval` the same way
+     once step 1 checks a tag by name. `FUNCTION` is refused by `Function`'s identity, as a call and,
+     after step 1, as a tag.
 
    `eval?.("1+1")` alone is refused today, by name, since its callee is the identifier `eval`.
 2. **The tag call is not sandboxed at all** (M2). With `Function` under its own name,
    `` Function`return 7`() `` gives 7. `` run`1+1` `` calls `eval` (it returns the strings array,
-   since `eval` of a non-string returns its argument). This is [A36](../backlog.md#a36).
+   since `eval` of a non-string returns its argument). This is [A36](../backlog-retired.md#a36).
 3. **A host-provided container defeats any check on pushed values** (M3).
    `Reflect.apply(...pair)`, with `pair = [eval, null, ["1+1"]]` in the context, gives 2. The
    spread hands `eval` to native code without pushing it. Neither the funnel nor the sites see it
@@ -122,7 +170,7 @@ Each finding cites the measurement in § 1.3 that produced it.
 
 ### 1.3 Measurements run for this plan
 
-M1–M4, M6, M8 and M9 ran against `dist/modules/eval-core`, or in Jest, with throwaway code. M5–M8
+M1–M4, M6, M8, M9 and M10 ran against `dist/modules/eval-core`, or in Jest, with throwaway code. M5–M8
 used throwaway prototypes of both shapes in the library: a shared check module, the callee marks,
 and the gated checks. Everything was **reverted** and its files deleted before this plan's commit:
 `git status` showed only the plan's files, and the library had no diff against `HEAD`.
@@ -138,6 +186,7 @@ and the gated checks. Everything was **reverted** and its files deleted before t
 | M7 | Existing suites under each shape | `nx run-many -t test` with each shape on | Funnel and sites alike: `eval-core` 2451 of 2451 existing cases, `eval-signals` 438, `eval-forms` 375 |
 | M8 | Routes under each shape | A throwaway Jest spec over 23 routes, with each shape on | § 3.3 |
 | M9 | `SequenceExpression` today | `evaluate(parse(…))` against the built bundle, with an `after` hook on the node and `state.result.stack.length` read after the walk | Finding 4 |
+| M10 | Case variants, member tags, a tag that is not a function | The same, at step 1's confirmation gate and in the step | Under `caseInsensitive`: `EVAL("1+1")` 2, `` Eval`1+1` `` `["1+1"]`, `` FUNCTION`return 7`() `` 7. `` obj["fetch"]`x` `` runs a stand-in where `obj["fetch"]()` is refused. An undefined or a string tag throws a `TypeError` from `apply` |
 
 ---
 
@@ -333,13 +382,20 @@ or the member's property name, or the function's own `name`. No existing asserti
 `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Security entry, which step 6 versions, lists
 exactly these, and nothing else. A **listed value** is any member of § 3.1's set, or a bound function
 whose name, stripped of its `bound ` prefixes, is a listed name.
-1. **A tagged template whose tag the call sandbox refuses**, by its written name, by `Function`'s
-   identity, or by the source-pattern test: `Function call blocked for security reasons: <name>`
-   (A36, step 1).
+1. **A tagged template whose tag the call sandbox refuses** — by its written name, a member tag's
+   property name, a computed key included, by `Function`'s identity, or by the source-pattern test —
+   throws `Function call blocked for security reasons: <name>`. A tag that is a built-in writing into
+   its receiver or first argument throws the refusal of the context's write policy. (A36, step 1.)
+
+   The same entry states three changes that are not refusals:
+   - a member tag's `this` is its object, or a prior scope's `thisArg`; it was the context;
+   - a member tag's own `MemberExpression` raises no `before` or `after` node-hook events and
+     leaves no trace entry, as a member callee already does. Its read event is unchanged;
+   - a tag that is not a function throws the call's error instead of a `TypeError` from `apply`.
 2. **A call, `new` or tagged template whose callee value is a listed value**, under any name or
    callee shape: an alias, a member, a call result, `this.k`, a scope namespace, a destructured name,
-   or an optional call. The error is today's message for that site, naming the written name, the
-   property name or `anonymous` (step 2).
+   an optional call, or a case variant under `caseInsensitive`. The error is today's message for that
+   site, naming the written name, the property name or `anonymous` (step 2).
 3. **Any other read of a listed value**, which throws
    `Access to dangerous function "<name>" is blocked for security reasons` (step 4). That covers:
    - an argument;
@@ -367,30 +423,40 @@ and 4, and › Fixed for step 3. No version moves until step 6.
 
 | Step | Subject | Files (main) | Tests: `eval-core` / `eval-signals` / `eval-forms` | Ships in |
 | :--- | :--- | :--- | :--- | :--- |
-| 1 | A36: the tag call through the sandbox | `tagged-template-expression.ts`, `call-expression.ts` (export `safeCall`), new `tagged-template-expression.spec.ts` | **+6** / 0 / 0 | `eval-core` 0.12.1 |
-| 2 | K1 and the identity set | new `dangerous-values.ts`; `call-expression.ts`, `new-expression.ts`; new `eval.service.dangerous-values.spec.ts` | **+17** / 0 / 0 | `eval-core` 0.12.1 |
+| 1 | A36: the tag call through the sandbox | `tagged-template-expression.ts`, `call-expression.ts` (`callMember`, and `safeCall` exported), new `tagged-template-expression.spec.ts` | **+10** / 0 / 0 | `eval-core` 0.12.1 |
+| 2 | K1 and the identity set | new `dangerous-values.ts`; `call-expression.ts`, `new-expression.ts`, `member-write-policy.ts`'s comment; new `eval.service.dangerous-values.spec.ts`; T11 and T12 in `tagged-template-expression.spec.ts` | **+21** / 0 / 0 | `eval-core` 0.12.1 |
 | 3 | A37: a `SequenceExpression` visitor | new `sequence-expression.ts` and its spec; `recursive-visitors.ts`; the root `README.md`'s node list | **+6** / 0 / 0 | `eval-core` 0.12.1 |
 | 4 | The funnel | `visitor-result.ts`, `dangerous-values.ts`, the marks in `call-expression.ts`, `new-expression.ts`, `tagged-template-expression.ts` and `unary-expression.ts`; the spec | **+19** / 0 / 0 | `eval-core` 0.12.1 |
 | 5 | `SECURITY.md`'s limit becomes a protection; A35 retired | `SECURITY.md`, `public-api.spec.ts`'s allowlist if it needs entries, the register | 0 / 0 / 0 | no package |
 | 6 | Release `eval-core` 0.12.1 | `modules/eval-core/package.json`, `CHANGELOG.md` | 0 / 0 / 0 | `eval-core` 0.12.1 |
 
-From 2451, `eval-core` ends at 2499 if every step lands as planned.
+From 2451, `eval-core` ends at 2507 if every step lands as planned.
 
 ### Step 1 — A36: the tag call through the sandbox
 
 - **Edit**:
-  - `internal/visitors/call-expression.ts`: export `safeCall`. The module is internal; `public-api.ts`
-    does not re-export `internal/visitors`, so the `.d.ts` is unchanged.
-  - `internal/visitors/tagged-template-expression.ts`: call the tag through `safeCall`. The
-    receiver is `st.context`, as today. The checked name is the tag's identifier, or its property
-    name when it is a non-computed member, and otherwise none.
+  - `internal/visitors/call-expression.ts`:
+    - the call visitor's member branch becomes the internal `callMember`, which takes
+      `evaluateMember`'s result, gives the receiver `scopeReceiver` gives, asks the write policy,
+      and calls `safeCall` under the property name;
+    - `safeCall` is exported.
+
+    The module is internal: `public-api.ts` does not re-export `internal/visitors`, so the `.d.ts`
+    does not change. A call's behaviour does not change either.
+  - `internal/visitors/tagged-template-expression.ts`. A member tag goes through `evaluateMember`
+    and then `callMember`. Any other tag gets the write policy and `safeCall`, with `st.context` as
+    `this` as a bare call has, under its identifier's name or none. The tag is evaluated before the
+    template's expressions, as today. *Changed at the confirmation gate* (Revision 2): before that,
+    every tag was to go through `safeCall` with `st.context`, and a computed key was not to be
+    checked by name.
   - `modules/eval-core/CHANGELOG.md`: `[Unreleased]` › Security, § 3.5's item 1.
   - `SECURITY.md`: one sentence under Call sandboxing, saying a tagged template's tag goes through
     the same checks. `public-api.spec.ts`'s identifier case stays green.
   - `docs/backlog.md` and `docs/backlog-retired.md`: A36 retired as fixed and not yet released, with
     its index row re-pointed; "Work in flight".
-  - This document: the outcome.
-- **New**: `internal/visitors/tagged-template-expression.spec.ts`, with six cases:
+  - `.claude/skills/step/SKILL.md`: step 1's description and the per-step counts (Revision 2).
+  - This document: Revision 2 and the outcome.
+- **New**: `internal/visitors/tagged-template-expression.spec.ts`, with ten cases:
   - **T1** `` Function`return 7`() ``, with `Function` bound: refused,
     `Function call blocked for security reasons: Function`.
   - **T2** `` eval`1+1` ``: refused, naming `eval`.
@@ -399,13 +465,33 @@ From 2451, `eval-core` ends at 2499 if every step lands as planned.
   - **T5** `` obj.fetch`x` ``: refused by its property name.
   - **T6** a benign tag: called with the cooked strings and the values, and `this` is `st.context`,
     pinned as today's behaviour.
-- **Exit criteria**:
-  1. T1–T6 pass.
-  2. **The probe.** *Wrong*: restore `tag.apply(…)`. T1–T5 fail, five failures, and T6 stays green.
-     Read case by case.
-  3. No existing assertion changes. `performance.spec.ts` is green and untouched. The gate is green.
-     `git diff --name-only` lists the files above and this document.
+  - **T7** `` obj["fetch"]`x` ``: refused, naming `fetch`, as `obj["fetch"]()` is.
+  - **T8** `` FUNCTION`return 7`() `` under `caseInsensitive`: refused, by `Function`'s identity.
+  - **T9** a member tag that reaches a mutating built-in asks the context's write policy, and a
+    policy that refuses makes the tag throw its refusal. A second leg checks the same for an
+    identifier tag, whose receiver is the context.
+  - **T10** `` obj.m`x` `` sees `this === obj`, and through a prior scope with a `thisArg`, it sees
+    the `thisArg`.
+- **Exit criteria**, fixed at the confirmation gate (Revision 2):
+  1. T1–T10 pass.
+  2. **The probes**, read case by case:
+     - **(i)** *Wrong*: restore the old visitor. T1–T5 and T7–T10 fail, and T6 stays green.
+     - **(ii)** *Wrong*: drop the write policy from the tag path only. T9 alone fails.
+  3. No existing assertion changes, and the call specs are untouched and green.
+     `performance.spec.ts` is green and untouched. The gate is green. `git diff --name-only` lists
+     the files above and this document.
 - **Category**: a behaviour change on a published path, released in step 6.
+- **Outcome** — done 2026-10-15, under Revision 2.
+  - **Red first.** Written before the fix, nine cases failed and T6 passed. Each failure was for its
+    named reason:
+    - T1–T5, T7 and T8 did not throw;
+    - T9 did not throw, because the old visitor's `push` wrote into the context object;
+    - T10 received the context.
+  - **Probe (i)**: 9 failures, T1–T5 and T7–T10. T6 stayed green, and nothing else in the suite
+    failed.
+  - **Probe (ii)**: T9 alone failed. Dropping the policy from one branch at a time also failed T9
+    alone, each time on that branch's own leg.
+  - **Totals.** The gate is green at 2461 / 438 / 375, so `eval-core` gained exactly ten cases.
 
 ### Step 2 — K1 and the identity set
 
@@ -417,7 +503,17 @@ From 2451, `eval-core` ends at 2499 if every step lands as planned.
 - **Edit**: `call-expression.ts` (`isFunctionSafe`) and `new-expression.ts` (`isConstructorSafe`)
   refuse `isDangerousValue` with today's messages. Also `modules/eval-core/CHANGELOG.md`'s
   `[Unreleased]` › Security (§ 3.5's item 2), "Work in flight", and this document's outcome.
-- **New**: `actual/services/eval.service.dangerous-values.spec.ts`, with seventeen cases:
+- **Edit**, added by Revision 2:
+  - `member-write-policy.ts`: `consultMethodWrite`'s docblock still says it is called by
+    `call-expression.ts`. Since step 1, `tagged-template-expression.ts` calls it too. Step 1's code
+    review found this (its N3). It is a comment only.
+  - `tagged-template-expression.spec.ts` gains two cases. Both pin step 1's behaviour, which the step 1
+    review found no case pinning (its W2):
+    - **T11** a member tag and an identifier tag are each evaluated before the template's
+      expressions. The case asserts the order through side effects.
+    - **T12** a tag that is not a function throws the call's own error,
+      `Value is not a function: <type>`.
+- **New**: `actual/services/eval.service.dangerous-values.spec.ts`, with nineteen cases:
   - **S1** the set in this realm, by identity: `Function`, `eval`, `setTimeout` and its zone
     original, `setInterval` and its zone original, `XMLHttpRequest`, `WebSocket`, `GeneratorFunction`.
     The helper records `AsyncFunction` and `AsyncGeneratorFunction` as not captured, since this realm
@@ -441,19 +537,26 @@ From 2451, `eval-core` ends at 2499 if every step lands as planned.
   - **C13** a timer global replaced after the capture: the case installs a new `setTimeout`, binds
     it as `t`, and restores the original after.
   - **C14** `eval?.("1+1")`: today's name refusal, pinned.
+  - **C15** `EVAL("1+1")` under `caseInsensitive`, with `eval` bound under its own name. Today it
+    gives 2 (M10). Added by Revision 2.
+  - **C15t** `` EVAL`1+1` `` under `caseInsensitive`, the same route as a tag. After step 1 it is
+    checked by name, which the list does not hold, so it still reaches `eval`. Added by Revision 2.
 
-  Each C case is refused with today's message and its written name: `run`, `e`, `t`, `X`, or
+  Each C case is refused with today's message and its written name: `run`, `e`, `t`, `X`, `EVAL`, or
   `anonymous`.
 - **Exit criteria**:
-  1. S1–S3 and C1–C14 pass.
+  1. S1–S3, C1–C15, C15t, T11 and T12 pass.
   2. **The probes**, one fix removed at a time, read case by case:
-     - **(i)** `isDangerousValue` taken out of both safety checks: C1–C13 fail, and C14 stays green.
+     - **(i)** `isDangerousValue` taken out of both safety checks: C1–C13, C15 and C15t fail, and C14
+       stays green.
      - **(ii)** the bound-name rule removed: C8 and C9 alone fail.
      - **(iii)** one `bound ` prefix stripped instead of all of them: C9 alone fails.
      - **(iv)** zone's originals left out of the capture: C12 alone fails.
      - **(v)** the sentinel removed: C13 alone fails.
      - **(vi)** the helper's `=== Function` guard removed: S3 alone fails, since it records
        `Function` as captured.
+     - **(vii)** the template's expressions evaluated before the tag: T11 fails.
+     - **(viii)** `safeCall`'s function check bypassed for the tag: T12 fails.
   3. No existing assertion changes. `eval.service.call-security.spec.ts` and `public-api.spec.ts`,
      including `sandboxRefuses`' benign stand-in, are green and unmodified. `performance.spec.ts` is
      green and untouched. The gate is green. `git diff --name-only` lists the files above and this
@@ -612,7 +715,7 @@ entries.
 | Gate | Command | Expected |
 | :--- | :--- | :--- |
 | Everything | `npx nx run-many -t lint test build --skip-nx-cache --output-style=static` | Green, every step |
-| `eval-core` tests | (in the above) | +6, +17, +6, +19, then 0 and 0 |
+| `eval-core` tests | (in the above) | +10, +21, +6, +19, then 0 and 0 |
 | `eval-signals` / `eval-forms` tests | (in the above) | Unchanged in every step |
 | Perf | `internal/performance.spec.ts` | Green and untouched in every step; the gate. M6's method is reported in step 4 and gates nothing |
 | Scope | `git diff --name-status` | The step's file list. No `R`. In steps 1–4 a non-spec `.ts` change outside `modules/eval-core/src/lib/internal/visitors/` is a stop-and-replan |

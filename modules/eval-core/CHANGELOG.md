@@ -12,6 +12,27 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Security
+- **A tagged template's tag goes through the call sandbox and the write policy —
+  [A36](../../docs/backlog-retired.md#a36).** The visitor applied the tag with no check at all, so
+  with `Function` in the context `` Function`return 7`() `` gave 7. Every published version up to
+  0.12.0 is affected.
+  - **Now refused**, with the call's message `Function call blocked for security reasons: <name>`:
+    a tag the call sandbox refuses, by its written name, by `Function`'s identity, or by the
+    source-pattern test. A member tag is checked under its property name, a computed key included,
+    as a member call is, so `` obj["fetch"]`x` `` is refused as `obj["fetch"]()` is.
+  - **Now asked**: a context's `checkMemberWrite`, before a tag that is a built-in writing into its
+    receiver or its first argument, as before such a call.
+  - **A member tag's `this` is now its object**, or a prior scope's `thisArg`, as a member call's
+    is. It was the evaluation context. So a mutating built-in used as a member tag writes into its
+    object: `` a.push`x` `` now appends to `a`, where it wrote into the context. Any other tag's
+    `this` is still the context, as a bare call's is.
+  - **A member tag raises no `before` or `after` node-hook events, and leaves no trace entry, for
+    its own `MemberExpression` node**, as a member call's callee already does. Its read event is
+    unchanged.
+  - **A tag that is not a function** throws the call's error, `Cannot call undefined or null
+    function` or `Value is not a function: <type>`. It threw a `TypeError` from `apply`.
+
 ---
 
 ## [0.12.0] - 2026-10-14

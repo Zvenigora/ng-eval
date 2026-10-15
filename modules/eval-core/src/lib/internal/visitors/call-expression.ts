@@ -105,8 +105,11 @@ const isFunctionSafe = (fn: unknown, fnName?: string): boolean => {
  * re-raised as a new `Error` with a fixed prefix on its message, which no
  * caller could route around, since the call is inside the walk
  * (`docs/backlog-retired.md` A6).
+ *
+ * Also the call a tag that is not a member goes through
+ * (`tagged-template-expression.ts`).
  */
-const safeCall = (
+export const safeCall = (
   caller: unknown,
   thisArg: unknown,
   args: unknown[],
@@ -162,6 +165,31 @@ const scopeReceiver = (st: EvalState, object: unknown): unknown => {
 };
 
 /**
+ * Calls the function a member callee reads, from what `evaluateMember`
+ * returned for it: the receiver `scopeReceiver` gives, the context's write
+ * policy asked first, then the sandbox, with the property name as the checked
+ * name - a computed key included, since `obj["fetch"]` reads the key `fetch`.
+ *
+ * Shared by a member call and a member tag (`tagged-template-expression.ts`),
+ * so the two cannot drift. Up to 0.12.0 a tag was applied with the context as
+ * `this` and no check at all (`docs/backlog-retired.md` A36). Each visitor
+ * evaluates the member itself and hands the result in, so each keeps its own
+ * order: a call's arguments before its callee, a tag before its template's
+ * expressions.
+ */
+export const callMember = (st: EvalState, [object, propertyName, fn]: readonly unknown[],
+  args: unknown[], optional: boolean): unknown => {
+
+  const functionName = typeof propertyName === 'string' ? propertyName : undefined;
+  const receiver = scopeReceiver(st, object);
+  const created = st.createdObjects;
+  if (created) {
+    consultMethodWrite(st, created, fn, receiver, args);
+  }
+  return safeCall(fn, receiver, args, optional, functionName);
+};
+
+/**
  * Enhanced call expression visitor with security checks
  *
  * A context with a member-write policy is asked, before the call, about a
@@ -177,14 +205,7 @@ export const callExpressionVisitor = (node: CallExpression, st: EvalState, callb
   const args = evaluateArray(node, node.arguments, st, callback);
 
   if (node.callee.type === 'MemberExpression') {
-    const [object, propertyName, fn] = evaluateMember(node.callee, st, callback);
-    const functionName = typeof propertyName === 'string' ? propertyName : undefined;
-    const receiver = scopeReceiver(st, object);
-    const created = st.createdObjects;
-    if (created) {
-      consultMethodWrite(st, created, fn, receiver, args);
-    }
-    const value = safeCall(fn, receiver, args, node.callee.optional, functionName);
+    const value = callMember(st, evaluateMember(node.callee, st, callback), args, node.callee.optional);
     pushVisitorResult(node, st, value);
   } else {
     callback(node.callee, st);
