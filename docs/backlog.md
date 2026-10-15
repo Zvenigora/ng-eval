@@ -54,9 +54,10 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 ### Work in flight
 
 Phase 10, the documentation restructure, is in flight: its
-[plan](documentation/phase-10-plan.md) is at Revision 1, no step has run, and step 1 is next. It
-rewrites `SECURITY.md` in its step 2 and retires [F19](#f19) in its step 6; its § 8 q4 records what it
-found and left undecided.
+[plan](documentation/phase-10-plan.md) is at Revision 2. Step 1 is done: the ten stale documents
+are deleted, and the `qs` override's reason is in F16. Step 2 is next. The plan rewrites
+`SECURITY.md` in its step 2 and retires [F19](#f19) in its step 6; its § 8 q4 records what it found
+and left undecided.
 
 Phase 9, colon-joined identifiers, is complete: its
 [plan](colon-identifiers/phase-9-plan.md), at Revision 9, and its retrospect,
@@ -259,7 +260,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [F13](backlog-retired.md#f13) | Nothing gates the README block count `readme-examples.spec.ts` claims | core, signals, forms | test gap | **Retired — fixed 2026-09-27**, test only; all four specs gated. The gate's first run found `eval-core`'s count wrong a third time |
 | [F14](backlog-retired.md#f14) | Six sites cite the retired `^0.3.0` range, two of them in published READMEs | signals, forms | fix (comments, docs) | **Retired — fixed, Phase 2 step 8**; filed as four sites, was six |
 | [F15](backlog-retired.md#f15) | The downstream peer ranges exclude `eval-core` 0.6.0 — **latent until the bump, then both downstream `lint` targets fail** | signals, forms | fix (release coordination) | **Retired — fixed and released 2026-09-26**; both ranges widened to `>=0.3.0 <0.7.0`, and both packages released: `eval-signals` 0.1.3 and `eval-forms` 0.2.3, tagged f26f987 |
-| [F16](#f16) | Workspace dependency advisories — 9 moderate on the workspace's Angular 22.0.8, and a **temporary `smol-toml` override under `nx`** | repo | fix | Open — **part 1 retired 2026-09-27**: `nx` 23.2.1, Angular 22.1.8 / 22.1.9, `npm audit` 0 at every severity. Part 2, the override, is live until a stable `nx` depends on `smol-toml >= 1.7.1`. **Re-audited 2026-09-30: 22 (14 high, 8 moderate)**, none reaching a published package; **fixed the same day**: Angular 22.2.1 / 22.2.0, two more `overrides.nx` entries, `verdaccio` removed, `npm audit` 0 |
+| [F16](#f16) | Workspace dependency advisories — 9 moderate on the workspace's Angular 22.0.8, and a **temporary `smol-toml` override under `nx`**; beside the `nx` overrides, the **`qs` override**, whose `^6.14.1` floor does not exclude GHSA-w7fw-mjwx-w883 (fixed 6.14.2) | repo | fix | Open — **part 1 retired 2026-09-27**: `nx` 23.2.1, Angular 22.1.8 / 22.1.9, `npm audit` 0 at every severity. Part 2, the override, is live until a stable `nx` depends on `smol-toml >= 1.7.1`. **Re-audited 2026-09-30: 22 (14 high, 8 moderate)**, none reaching a published package; **fixed the same day**: Angular 22.2.1 / 22.2.0, two more `overrides.nx` entries, `verdaccio` removed, `npm audit` 0. **`qs` recorded 2026-10-14**: the override was added for GHSA-6rw7-vpxm-498p, not prototype pollution; raising its floor is held here |
 | [F17](#f17) | An unhandled rejection reaches no channel a spec would normally watch — only zone.js's `unhandledPromiseRejectionHandler` hook sees it | repo | test gap | Open — opened 2026-10-08 by Phase 5 step 2 |
 | [F18](backlog-retired.md#f18) | `eval-signal.ts` line citations in `eval-forms` comments and completed plans are stale | forms, repo | docs | **Retired — fixed 2026-10-10** in live source; completed records kept as written, per `CLAUDE.md`. The three `eval-forms` comments cite symbols; `applyErrorPolicy`'s ships in the core `.d.ts` |
 | [F19](#f19) | `CLAUDE.md` cites the resolved-key re-check as `member-expression.ts:188`; it is at `:211` | repo | docs | Open — opened 2026-10-10 by the Phase 9 plan |
@@ -1245,7 +1246,20 @@ byte-identical. Audit then found **25, all moderate**: part 3's `sprintf-js`, wh
 patched version. Dependabot's alerts #335–#337 are the three advisories, in the order above, open
 until this reaches the default branch. Parts 2 and 3 are unchanged.
 
-*Recorded*: this entry; `package.json` `overrides.nx`.
+**The `qs` override — recorded 2026-10-14, by Phase 10 step 1.** It predates this entry.
+`package.json`'s `overrides.qs` is `^6.14.1`, added by 2b655a7 on 2026-01-02 for GHSA-6rw7-vpxm-498p /
+CVE-2025-15284: moderate, an `arrayLimit` bypass in bracket notation, a denial of service by memory
+exhaustion, affecting `qs <6.14.1` and fixed in 6.14.1. `docs/repository-audit.md`, the only document
+that gave a reason for the override and deleted by the same step, called it a prototype-pollution
+advisory. The range and the date say otherwise. A later advisory, GHSA-w7fw-mjwx-w883 /
+CVE-2026-2391, is **not** excluded by the override's floor: low, an `arrayLimit` bypass in comma
+parsing, also a denial of service, affecting `>=6.7.0 <=6.14.1`, fixed in 6.14.2 and published
+2026-02-12. `^6.14.1` admits 6.14.1. `qs` is dev-only, reached through `@nx/angular` → `@nx/web` →
+`http-server` → `union` → `qs`, where `union` declares `qs ^6.4.0`, and the lockfile resolves 6.16.0.
+On 2026-10-14, `npm audit` (npm 12.0.1, Node 26.4.0) reported 25 moderate, part 3's `sprintf-js`
+chain, and nothing for `qs`. Raising the floor is outside Phase 10, and this entry holds it.
+
+*Recorded*: this entry; `package.json` `overrides.nx` and `overrides.qs`.
 *Verified*: `npm audit --package-lock-only`, 2026-09-26. Before the override: 12 high, 9 moderate.
 After: 0 high, 0 critical, 9 moderate, as listed above. Again 2026-09-27, after part 1: 0 at every
 severity. Again 2026-09-30, npm 12.0.1: 14 high, 8 moderate, as tabled above; traced with
@@ -1257,7 +1271,10 @@ lockfile's dependency entries; clean `npm ci` under npm 12.0.1 and 11.21.0, and 
 2007 / 312 / 343; Dependabot's open alerts read with `gh api`. Again 2026-10-10, npm 12.0.1 on
 Node 26.4.0, before part 4: 26 (1 critical, 25 moderate); after it: 25 moderate. Traced with
 `npm ls handlebars` and the lockfile's `ts-jest` entries; clean `npm ci`, the gate green at
-2023 / 421 / 343, and the three alerts read with `gh api`.
+2023 / 421 / 343, and the three alerts read with `gh api`. The `qs` paragraph, 2026-10-14: both
+advisories read with `gh api advisories/<id>` for their CVE, range and fix, the chain with `npm ls qs`,
+the lockfile's `node_modules/qs` and `node_modules/union` entries read, and 2b655a7's diff of
+`package.json`.
 
 <a id="f17"></a>
 ## F17 — An unhandled rejection reaches no channel a spec would normally watch

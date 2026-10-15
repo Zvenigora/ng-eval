@@ -458,8 +458,6 @@ Although this package does [avoid the use of `eval()`](https://developer.mozilla
 | Document | Purpose |
 |----------|---------|
 | [`README.md`](README.md) | Main project overview and quick start guide |
-| [`IMPROVEMENTS.md`](IMPROVEMENTS.md) | Systematic improvements implementation and status |
-| [`PERFORMANCE.md`](PERFORMANCE.md) | Performance optimizations and benchmarking guide |
 | [`SECURITY.md`](SECURITY.md) | Security enhancements and threat mitigation |
 | [`modules/eval-core/README.md`](modules/eval-core/README.md) | Comprehensive usage guide and API documentation |
 | [`docs/`](docs/) | Technical documentation and implementation details |

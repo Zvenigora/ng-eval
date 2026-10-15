@@ -20,6 +20,14 @@ which gained "(not published to npm)". This file now holds only changes that shi
 Workspace tooling: nothing here reaches a consumer, so nothing here is versioned.
 
 ### Removed
+- **Ten stale documents**, 2026-10-14: `IMPROVEMENTS.md`, `PERFORMANCE.md`,
+  `docs/common-classes.md`, `docs/eval-classes.md`, `docs/eval-functions.md`,
+  `docs/eval-visitors.md`, `docs/services.md`, `docs/steps.txt`, `docs/remediation-plan.md` and
+  `docs/repository-audit.md`. Each was audited first, in § 3.3 of the Phase 10 plan
+  (`docs/documentation/phase-10-plan.md`). Most of what they said was false or stated elsewhere. Two
+  facts are kept for `eval-core`'s README (Phase 10 step 3). The `qs` override's reason, corrected
+  from the audit's "prototype pollution" to the denial-of-service advisory it was added for, moved to
+  `docs/backlog.md` F16. Phase 10 step 1.
 - **`@angular/animations` and `@angular/platform-browser-dynamic`**, 2026-09-30: both deprecated
   in Angular 22.2 and imported nowhere in the repository, leftovers of the workspace scaffold. No
   published package depended on either.

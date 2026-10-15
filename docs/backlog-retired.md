@@ -2113,7 +2113,7 @@ barrels that export them. One comment named `getContextKey`, in `eval-context.ts
   `QueueType` and `RecursiveVisitorState` as its fixtures, and now uses `StackType` and `Context`.
   Its comment had called `RecursiveVisitorState` a type alias, which it never was; `Context` is
   one;
-- `Queue`'s line in [`docs/common-classes.md`](common-classes.md).
+- `Queue`'s line in [`docs/common-classes.md`](https://github.com/Zvenigora/ng-eval/blob/811b2cb62dc6438b83ec8b416387f3cb05067e4d/docs/common-classes.md).
 
 *Verified*: the built `.d.ts` against npm's 0.10.0 lists 59 exports to 76, missing exactly the
 seventeen and adding none, and every other line it changes is a removal, 133 of them. The built

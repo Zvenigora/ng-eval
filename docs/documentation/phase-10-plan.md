@@ -1,6 +1,14 @@
 # Phase 10 Plan — documentation restructure
 
 **Date**: October 14, 2026
+**Revision**: 2 — step 1, in its own commit. Finding 8 and § 3.3's `repository-audit.md` row are
+corrected: the reason that file gave for the `qs` override, prototype pollution, is wrong. The override
+was added for GHSA-6rw7-vpxm-498p / CVE-2025-15284, a denial of service, and F16 records that
+advisory, a later one the override's floor does not exclude, the dependency chain, the lockfile's
+version and an `npm audit` run. The confirmation gate fixed that paragraph's content and added three
+things: the new lines carry no link, so criterion 2's count is exact; the permalink uses the full
+SHA; and step 1 gets an outcome line.
+
 **Revision**: 1 — initial plan.
 **Target**: the repository's documents. Shipped files touched: `modules/eval-core/README.md` (step 3),
 `modules/eval-signals/README.md` and `modules/eval-forms/README.md` (step 4), and each package's
@@ -114,9 +122,13 @@ citations.
    current. Step 2 rewrites the rest (D7).
 8. **The `qs` override's reason is recorded only in a file D3 deletes** (M7). The root `package.json`
    overrides `qs` to `^6.14.1`, added by 2b655a7 on 2026-01-02. `docs/repository-audit.md` is the only
-   document that says why: the transitive `qs` prototype-pollution advisory in the dev toolchain. Every
-   other override (`nx`'s three, `postcss`, `less` and `@hono/node-server`) is recorded in
+   document that gives a reason, "the transitive `qs` prototype-pollution vulnerability". Every other
+   override (`nx`'s three, `postcss`, `less` and `@hono/node-server`) is recorded in
    [F16](../backlog.md#f16).
+   *Corrected in step 1* (Revision 2): that reason is wrong. The range and the date match
+   GHSA-6rw7-vpxm-498p / CVE-2025-15284, a denial of service fixed in 6.14.1, and not any
+   prototype-pollution advisory; the last of those in `qs` was fixed in 6.10.3 in 2022. F16 now records
+   the advisory, and a later one the override's floor does not exclude.
 9. **Nothing gates a quoted peer range** (M7). No spec reads a `peerDependencies` field.
    `modules/eval-signals/README.md:20` and `modules/eval-forms/README.md:66-71` quote ranges today, and
    Phase 9 step 7 found the first of these at its confirmation gate rather than through a failing check.
@@ -267,7 +279,7 @@ them.
 | `docs/services.md` | 106 | 9e836b1, 2024-01-09 | Nothing. It gives `ParserService`'s `extractExpressions` default as `false`, when it is `true`. Its `compilerService.call(fn, context, options)` is wrong: `call` takes a state, and `simpleCall` takes a context. Its imports name `'ng-eval'` | nothing | none |
 | `docs/steps.txt` | 99 | 2462613, 2023-12-29 | Nothing: generator commands from 2023 and a to-do list | nothing | none (the two below, deleted with it) |
 | `docs/remediation-plan.md` | 181 | 64fa3ab, 2026-08-02 | Nothing. Its ERR-1 to ERR-4 are fixed (no `@angular/common` peer, and `inject()` in every service), and HYG-1 is done (`scripts/debug/`). Its HYG-2, "review `docs/steps.txt`", is marked COMPLETED while the file is still there, and this phase finishes it | nothing | plain text `modules/eval-core/CHANGELOG.md:848` (stays, D3) |
-| `docs/repository-audit.md` | 129 | 64fa3ab, 2026-08-02 | **The `qs` override's reason** (finding 8). The rest describes one project with 511 tests at 0.2.4 | step 1: one sentence in [F16](../backlog.md#f16) | plain text `docs/a8/step-2-plan.md:364` (design record); `modules/eval-core/CHANGELOG.md:848` (stays) |
+| `docs/repository-audit.md` | 129 | 64fa3ab, 2026-08-02 | **That the `qs` override has a reason at all** (finding 8). The reason it gives, prototype pollution, is wrong, and step 1 records the right one (Revision 2). The rest describes one project with 511 tests at 0.2.4 | step 1: a paragraph in [F16](../backlog.md#f16) | plain text `docs/a8/step-2-plan.md:364` (design record); `modules/eval-core/CHANGELOG.md:848` (stays) |
 
 **So, outside the ten files**: 3 checked links (`README.md:461` and `:462`, `docs/backlog-retired.md:2116`)
 and 3 plain-text mentions on 3 lines. The mentions are 2 lines of `docs/a8/step-2-plan.md`, which is a
@@ -557,10 +569,17 @@ From the gate's 2448 at this plan's commit, `eval-core` ends at 2454 if every st
      CHANGELOG line, and F16 if it names its source. *Wrong*: leave one "Documentation Structure" row,
      and it appears in the listing as well as failing criterion 2.
   4. **The audit's step 1 row is done**: F16 states the `qs` override's reason. Step 3's two rows are
-     its criteria.
+     its criteria. *Fixed at the confirmation gate* (Revision 2): the reason F16 states is the verified
+     one, not the audit's, with the contents the gate listed.
   - Tests unchanged in all three projects. The gate is green. `git diff --name-only` lists the files
     above and this document.
 - **Category**: documents only. Ships in no package.
+- **Outcome** — done 2026-10-14, under Revision 2. The ten files are deleted: ten `D` lines and no
+  `R`. Run before the link edits, doc-links reported exactly criterion 2's three dangling lines. After
+  them it reported 334 files and 1356 links, 9 and 4 fewer than at the plan's commit, with 0 dangling;
+  the new lines carry no link. The mention grep lists only criterion 3's set: the design record's two
+  lines, `eval-core`'s 0.2.3 CHANGELOG line, the permalink, F16, the root CHANGELOG line and this
+  document. The gate is green at 2448 / 438 / 375, with each count unchanged.
 
 ### Step 2 — `SECURITY.md`, rewritten and gated (D7)
 
