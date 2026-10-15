@@ -54,10 +54,11 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 ### Work in flight
 
 Phase 10, the documentation restructure, is in flight: its
-[plan](documentation/phase-10-plan.md) is at Revision 2. Step 1 is done: the ten stale documents
-are deleted, and the `qs` override's reason is in F16. Step 2 is next. The plan rewrites
-`SECURITY.md` in its step 2 and retires [F19](#f19) in its step 6; its § 8 q4 records what it found
-and left undecided.
+[plan](documentation/phase-10-plan.md) is at Revision 3. Step 1 is done: the ten stale documents
+are deleted, and the `qs` override's reason is in F16. Step 2 is done: `SECURITY.md` is rewritten
+to what the code does, and a case in `eval-core`'s `public-api.spec.ts` resolves every identifier
+it names; it opened A35, from its review, and F20. Step 3 is next. The plan retires [F19](#f19) in its step 6; its § 8 q4
+records what it found and left undecided.
 
 Phase 9, colon-joined identifiers, is complete: its
 [plan](colon-identifiers/phase-9-plan.md), at Revision 9, and its retrospect,
@@ -213,6 +214,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A32](#a32) | The disabled visitor result cache keys a node without its operands — `a + b` and `c + d` share an entry | core | decision | Open — opened 2026-10-10 by A29's fix; latent, nothing calls it |
 | [A33](#a33) | The case-insensitive property cache keeps a miss while the own-key count is unchanged — a key added as another is deleted reads `undefined` by a case variant | core | fix | Open — opened 2026-10-10, after the `eval-core` 0.11.1 tag; a limit [A31](backlog-retired.md#a31)'s fix documents in a code comment. No refusal is skipped |
 | [A34](#a34) | The parse fingerprint's memo does not see options written in place — a write into `parserOptions`, a reused per-call object or `defaultParserOptions` keeps the old fingerprint | core | fix | Open — opened 2026-10-10 by [A26](backlog-retired.md#a26)'s fix, Phase 9 step 1; no worse than the text-only key it replaced |
+| [A35](#a35) | A dangerous function value reachable from the context is callable past the name-based call sandbox — by an alias, through `call` / `apply` / `bind`, and as a native callback (`map`, `Reflect.apply`, `then`); `eval("1+1")` is refused, `["1+1"].map(eval)` is `[2]` | core | decision, security | Open — opened 2026-10-14 by Phase 10 step 2's review; `SECURITY.md` lists it as a limit, with the host's mitigation; a candidate direction is recorded, not decided; a fix ships as `eval-core` 0.12.1 |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -264,6 +266,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [F17](#f17) | An unhandled rejection reaches no channel a spec would normally watch — only zone.js's `unhandledPromiseRejectionHandler` hook sees it | repo | test gap | Open — opened 2026-10-08 by Phase 5 step 2 |
 | [F18](backlog-retired.md#f18) | `eval-signal.ts` line citations in `eval-forms` comments and completed plans are stale | forms, repo | docs | **Retired — fixed 2026-10-10** in live source; completed records kept as written, per `CLAUDE.md`. The three `eval-forms` comments cite symbols; `applyErrorPolicy`'s ships in the core `.d.ts` |
 | [F19](#f19) | `CLAUDE.md` cites the resolved-key re-check as `member-expression.ts:188`; it is at `:211` | repo | docs | Open — opened 2026-10-10 by the Phase 9 plan |
+| [F20](#f20) | `CODE_OF_CONDUCT.md`'s enforcement contact is an address of the upstream `jse-eval` author, not this repository's maintainer | repo | docs | Open — opened 2026-10-14 by Phase 10 step 2; the fix needs a contact the maintainer chooses |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -850,6 +853,70 @@ on the path the memo exists to keep cheap. Measure it if this is fixed.
 and `EvalService.simpleEval`, with throwaway specs deleted the same day; (c) after the step's review
 found the per-call case.
 
+<a id="a35"></a>
+## A35 — A dangerous function value reachable from the context is callable past the name-based call sandbox
+
+**Package** core · **Kind** decision, security · **Status** Open. Opened 2026-10-14 by Phase 10
+step 2's review
+
+**The class.** The call sandbox (`call-expression.ts`) refuses a call in three ways:
+- by the callee's **name** as the expression writes it, against fourteen names;
+- by **identity** only for `Function`, and only when `Function` is the callee;
+- by the **source text** of a callee that is not native.
+
+So a dangerous function *value* — `eval`, `Function`, a timer, any other function the list names —
+that the context holds, or that is reachable from it, is callable whenever the call does not name
+it. The expression's author chooses how, not only the host.
+
+Measured 2026-10-14 against the built `eval-core`. `eval` was in the context under its own name, and
+`eval("1+1")` is refused:
+
+| Route | Expression | Result |
+| :--- | :--- | :--- |
+| Alias | `run("1+1")`, with `eval` bound as `run` | 2 |
+| `call` | `eval.call(null, "1+1")` | 2 |
+| `apply` | `eval.apply(null, ["1+1"])` | 2 |
+| `bind` | `eval.bind(null)("1+1")` | 2 |
+| `Function` through `call` | `Function.call(null, "return 7")()`, with `Function` bound | 7, where `Function("return 7")()` is refused |
+| A native callback | `["1+1"].map(eval)` | `[2]` |
+| `Reflect.apply` | `Reflect.apply(eval, null, ["1+1"])`, with `Reflect` bound | 2 |
+| A promise callback | `Promise.resolve("1+1").then(eval)`, with `Promise` bound | resolves to 2 |
+| A host function the source test refuses | `host.call(null)` | runs, where `host()` is refused |
+
+In each route, the function the sandbox checks is a native method, `call`, `apply`, `bind`, `map`,
+`Reflect.apply` or `then`, or a value under a name not on the list. The dangerous function is an
+argument or a receiver, which no check reads. The write policy already follows `call`, `apply` and
+`bind` to their target ([C5](backlog-retired.md#c5)); the call checks do not.
+
+**The reach** is bounded by the context: the target must be something the context holds, or
+something reachable from it. **The host's mitigation**, stated in `SECURITY.md`: never place `eval`,
+`Function`, the timers or any other member of the call sandbox's list in the context, under any
+name, nor an object from which one is reachable.
+
+**A candidate direction, not a decision**: refuse at value resolution, not at the call, by identity
+against the real globals. When an identifier, a member read or a scope resolves to the realm's own
+`eval`, `Function`, a timer or another listed global, refuse there, whatever the name. The value then
+never reaches a call, an argument or a callback, and every route above closes at once. What it leaves:
+- **`bind`'s loss of identity.** `eval.bind(null)` is a new function, and nothing in the language
+  recovers its target. Within an expression, reading `eval` to bind it is already refused. But a
+  bound dangerous function the host places in the context matches nothing, and needs a decision of
+  its own: refuse `bind` on a listed value, or accept that a host-made bound function is the host's.
+- **Which realm.** The real globals are this realm's, read once. A function from another realm, such
+  as an iframe's `eval`, has another identity.
+- **What a host loses.** A host that today exposes `setTimeout` on purpose loses it. That is a
+  behaviour change.
+
+**The release**: a fix ships as `eval-core` **0.12.1**, so both downstream peer ranges still admit
+it: `eval-signals`' `>=0.11.0 <0.13.0` and `eval-forms`' `>=0.12.0 <0.13.0`.
+
+*Recorded*: this entry; `SECURITY.md`, "Documented limits".
+*Verified*: found by the code review of Phase 10 step 2. Measured on 2026-10-14 against
+`dist/modules/eval-core` built at 3f00e3c plus that step's uncommitted spec, with no library change.
+The measurement used throwaway scripts outside the repository that called `evaluate(parse(…),
+EvalState.fromContext(…))` and awaited the result. The cause is at `call-expression.ts:181-196`: a
+member call passes the property name as the checked name, and `safeCall` checks only the function it
+is handed.
+
 ---
 
 # B. `eval-core` — security and hygiene
@@ -1326,3 +1393,29 @@ request that commissioned it sent such findings here.
 *Recorded*: this entry.
 *Verified*: read 2026-10-10 at af81e24 — `grep -n "isDangerousProperty(foundKey)"` gives
 `member-expression.ts:211`; `git log -S` gives b684317 as the commit that wrote `:188`.
+
+<a id="f20"></a>
+## F20 — `CODE_OF_CONDUCT.md` names the upstream `jse-eval` author as its enforcement contact
+
+**Package** repo · **Kind** docs · **Status** Open. Opened 2026-10-14 by Phase 10 step 2
+
+`CODE_OF_CONDUCT.md:62-63` sends reports "to the community leaders responsible for enforcement" at an
+address of the `6utt3rfly` account. The root README credits that account for `jse-eval`
+(`README.md:30`, `:418`), the separate project ng-eval was inspired by. It is not this repository's
+maintainer. The file came in with 2c42d3d on 2023-12-21, apparently carried over from `jse-eval`'s
+own. A report sent there reaches someone outside this project.
+
+**Fix**: replace the address with a contact this repository's maintainer chooses. No such contact is
+published today: the only one is the author field of each package's manifest, "Zvenigora
+(https://github.com/zvenigora)", and GitHub's private vulnerability reporting is not enabled.
+Phase 10 step 2 left the file unedited, by instruction, since the replacement is the maintainer's
+choice.
+
+**Why it surfaced here**: Phase 10 step 2 looked for a reporting channel for `SECURITY.md` and found
+that this address was the only one in the repository. `SECURITY.md` does not use it.
+
+*Recorded*: this entry.
+*Verified*: read 2026-10-14 at 3f00e3c. `CODE_OF_CONDUCT.md:63` holds the address; `git log
+--follow` gives 2c42d3d as the file's only commit; `README.md:30` and `:418` link `jse-eval` to
+`github.com/6utt3rfly`; and `gh api repos/Zvenigora/ng-eval/private-vulnerability-reporting`
+answers `{"enabled":false}`.

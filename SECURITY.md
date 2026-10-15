@@ -1,423 +1,153 @@
-# ng-eval Security Enhancements
+# Security
 
-This document outlines the comprehensive security improvements implemented in ng-eval, providing details about protection mechanisms, threat mitigation, and security best practices.
+This document covers what `@zvenigora/ng-eval-core`'s evaluator protects against, how it does so, and
+where the protection stops. The two other packages in this repository, `@zvenigora/ng-eval-signals`
+and `@zvenigora/ng-eval-forms`, evaluate through it and add the write policies described below.
 
-## 🔒 Security Overview
+**ng-eval is not a sandbox.** Read the threat model and the documented limits before you evaluate an
+expression you did not write.
 
-ng-eval has been systematically hardened against common JavaScript evaluation vulnerabilities while maintaining performance and usability. All security enhancements have been thoroughly tested with 35/35 security tests passing.
+## Threat model
 
----
+- **The expression is the untrusted input.** It may come from a user, an API or a database. The
+  protections below assume it was written to escape.
+- **The context is trusted.** The host chooses it, and every value and function in it is the host's.
+  An expression reaches only what the context holds: its keys, the members of what they hold, and
+  what the functions it calls return. A function the context holds runs with the host's privileges,
+  as any JavaScript function does.
+- **The evaluator runs in the host's JavaScript realm.** It walks the parsed expression itself and
+  never hands the expression to `eval` or `Function`, but it shares the realm's globals and built-in
+  prototypes. The protections below exist to keep an expression from reaching those through the
+  values it holds.
 
-## 1. Prototype Pollution Prevention
+## Protections
 
-### Threat Overview
-Prototype pollution is a critical vulnerability where attackers modify JavaScript object prototypes, potentially affecting all objects in the application and leading to:
-- Property injection attacks
-- Application logic bypass
-- Remote code execution
-- Data corruption
+### The prototype-pollution guard
 
-### Protection Implemented
-```typescript
-// Dangerous property access prevention
-const dangerousProperties = new Set([
-  '__proto__',
-  'constructor',
-  'prototype',
-  '__defineGetter__',
-  '__defineSetter__',
-  '__lookupGetter__',
-  '__lookupSetter__',
-  'valueOf',
-  'toString'
-]);
+Implemented in
+[prototype-pollution-guard.ts](modules/eval-core/src/lib/internal/visitors/prototype-pollution-guard.ts),
+applied by the identifier, member, assignment, update, object, pattern and variable-declaration
+visitors, and pinned by
+[eval.service.prototype-pollution.spec.ts](modules/eval-core/src/lib/actual/services/eval.service.prototype-pollution.spec.ts).
 
-function isDangerousProperty(key: string): boolean {
-  return dangerousProperties.has(key);
-}
-```
+- **A blocklist, matched by exact name**: `__proto__`, `constructor`, `prototype`,
+  `__defineGetter__`, `__defineSetter__`, `__lookupGetter__`, `__lookupSetter__`, `hasOwnProperty`,
+  `isPrototypeOf`, `propertyIsEnumerable`, `toString`, `valueOf` and `toLocaleString`. It is a set
+  lookup, not a pattern, so no spelling can match by accident.
+- **Identifiers are checked before any lookup.** A bare identifier, `this.k`, and a member of an
+  `EvalScope` held in the context refuse a blocklisted name before the context is consulted, so an
+  expression cannot read what the context inherits from `Object.prototype`. This is the fix for
+  GHSA-jh43-xc7j-93c2, below.
+- **Member reads and writes** refuse a blocklisted key on an object receiver, in member access,
+  assignment, update and object literals. **Binding names** — an arrow parameter, a `let` or `const`,
+  a destructuring target — refuse it too.
+- **The resolved-key re-check.** Under `caseInsensitive`, a key written as `CONSTRUCTOR` resolves to
+  whatever key it matched, and the guard checks the key it matched, not only the key as written, for
+  identifiers and members alike. Pinned by
+  [eval.service.case-variant-guard.spec.ts](modules/eval-core/src/lib/actual/services/eval.service.case-variant-guard.spec.ts).
+- **The primitive carve-out.** On a string, number or boolean receiver, seven of the names are
+  refused — `__proto__`, `constructor`, `prototype` and the four accessor definers — and the other
+  six, `toString` and its kin, stay readable, since they are ordinary reads on a primitive. Pinned by
+  [eval.service.primitive-carve-out.spec.ts](modules/eval-core/src/lib/actual/services/eval.service.primitive-carve-out.spec.ts).
 
-### Safe Property Access
-```typescript
-function safeGetProperty(obj: unknown, key: PropertyKey): unknown {
-  if (obj === null || obj === undefined) {
-    return undefined;
-  }
+A refusal throws an `Error` whose message names the property. On an identifier, a member read or
+write, an update or a binding the message is
+`'Access to dangerous property "<name>" is blocked for security reasons'`. On an object literal's key
+it is `'Object creation blocked: Cannot create object with dangerous property "<name>"'`, and on a
+spread `'Spread operation blocked: Object contains dangerous property "<name>" that could lead to prototype pollution'`.
 
-  if (typeof key === 'string' && isDangerousProperty(key)) {
-    throw new Error(`Access to dangerous property "${key}" is blocked for security reasons`);
-  }
+### Call sandboxing
 
-  // Use safe property access patterns
-  const target = obj as Record<PropertyKey, unknown>;
-  return target[key];
-}
-```
+Implemented in
+[call-expression.ts](modules/eval-core/src/lib/internal/visitors/call-expression.ts) and, for `new`,
+[new-expression.ts](modules/eval-core/src/lib/internal/visitors/new-expression.ts); pinned by
+[eval.service.call-security.spec.ts](modules/eval-core/src/lib/actual/services/eval.service.call-security.spec.ts).
 
-### Test Coverage
-```typescript
-// Comprehensive prototype pollution tests (35/35 passing)
-describe('Prototype Pollution Prevention', () => {
-  it('should block __proto__ manipulation', () => {
-    expect(() => service.simpleEval('obj.__proto__.isAdmin = true', context))
-      .toThrow('Access to dangerous property "__proto__" is blocked');
-  });
-  
-  it('should block constructor manipulation', () => {
-    expect(() => service.simpleEval('obj.constructor.prototype.isAdmin = true', context))
-      .toThrow('Access to dangerous property "constructor" is blocked');
-  });
-});
-```
+A call is refused, with the message `'Function call blocked for security reasons: <name>'`, when:
 
----
+- the callee's name, as the expression writes it, is one of fourteen: `Function`, `eval`,
+  `setTimeout`, `setInterval`, `setImmediate`, `require`, `import`, `importScripts`,
+  `XMLHttpRequest`, `fetch`, `WebSocket`, `Worker`, `SharedWorker` and `ServiceWorker`;
+- the callee is the realm's `Function` itself, called directly, whatever name it is bound under;
+- the callee is not a native function, and its source text matches one of six patterns: a call of
+  `eval`, `Function` or `new Function`, a `__proto__` member, `prototype.constructor`, or
+  `globalThis`.
 
-## 2. Call Expression Security
+`new` has three checks of its own, and refuses with the message
+`'Constructor blocked for security reasons: <name>'`:
+- a list of ten constructor names, read only when the constructor is a bare identifier, so a
+  constructor reached as a member is not name-checked;
+- the four function constructors, by identity;
+- a source-text test, which applies to native constructors too.
 
-### Enhanced Function Call Validation
-Comprehensive validation and sandboxing of function calls to prevent:
-- Unauthorized function execution
-- Code injection through function calls
-- Access to dangerous global functions
-- Execution context escaping
+### The iteration budget
 
-### Security Implementation
-```typescript
-// Function call security validation
-function validateFunctionCall(func: unknown, context: EvalContext): void {
-  // Validate function is safe to call
-  if (typeof func !== 'function') {
-    throw new Error('Invalid function call attempt');
-  }
-  
-  // Check against whitelist of allowed functions
-  if (!isAllowedFunction(func)) {
-    throw new Error('Function call blocked for security reasons');
-  }
-  
-  // Additional security checks
-  validateFunctionContext(func, context);
-}
+Every `for` loop in an evaluation charges one shared budget, `maxIterations`, 100,000 iterations per
+evaluation by default, and exceeding it throws `'Iteration budget exhausted after <n> iterations'`
+rather than returning a partial value. `maxTraceItems`, 10,000 by default, bounds the memory the
+evaluation's trace can take. Implemented in
+[for-statement.ts](modules/eval-core/src/lib/internal/visitors/for-statement.ts) and
+[eval-state.ts](modules/eval-core/src/lib/internal/classes/eval/eval-state.ts); pinned by
+[for-statement.spec.ts](modules/eval-core/src/lib/internal/visitors/for-statement.spec.ts) and
+[trace-bound.spec.ts](modules/eval-core/src/lib/internal/visitors/trace-bound.spec.ts).
 
-// Safe function execution with timeout and resource limits
-function safeExecuteFunction(func: Function, args: unknown[], timeout: number): unknown {
-  return executeWithTimeout(func, args, timeout);
-}
-```
+### Write policies
 
-### Sandboxing Features
-- **Function Whitelist**: Only approved functions can be executed
-- **Context Isolation**: Functions execute in controlled contexts
-- **Timeout Protection**: Prevents infinite loops and DoS attacks
-- **Resource Limits**: Memory and CPU usage constraints
+- **`eval-core`**: a context may implement `EvalContext.checkMemberWrite`, which is asked before
+  every member write and before a built-in method writes into what it is handed, called directly or
+  through `call`, `apply` or `bind`, and refuses by throwing. Implemented in
+  [eval-context.ts](modules/eval-core/src/lib/internal/classes/eval/eval-context.ts) and
+  [member-write-policy.ts](modules/eval-core/src/lib/internal/visitors/member-write-policy.ts);
+  pinned by
+  [member-write-policy.spec.ts](modules/eval-core/src/lib/internal/visitors/member-write-policy.spec.ts).
+- **`eval-signals`**: an expression may write into what it created and into nothing it was given:
+  such a write throws `SignalContextWriteError`, whose `kind` says whether a key, a member or a
+  method wrote. Implemented in
+  [signal-context.ts](modules/eval-signals/src/lib/signal-context.ts); pinned by
+  [signal-context.spec.ts](modules/eval-signals/src/lib/signal-context.spec.ts).
+- **`eval-forms`**: `guardIdentifiers` refuses, when a rule is registered, any identifier named
+  after an own property of `Object.prototype`, at both entry points. Implemented in
+  [guard-identifiers.ts](modules/eval-forms/src/lib/guard-identifiers.ts); pinned by
+  [guard-identifiers.spec.ts](modules/eval-forms/signals/src/lib/guard-identifiers.spec.ts).
 
----
+## Documented limits
 
-## 3. Binary Expression Type Safety
+- **It is not a sandbox.** An expression runs in the host's realm, against the host's context, and
+  the checks above are a guard on that path, not an isolation boundary.
+- **The call checks refuse a name, not a value.** They read three things: the callee's name as the
+  expression writes it, the identity of `Function` when it is the callee, and the source text of a
+  function that is not native. So a dangerous function the context holds, or that is reachable from
+  it, can be called whenever the call does not name it. The expression's author chooses how, not
+  only the host. Measured with `eval` in the context under its own name, where `eval("1+1")` is
+  refused:
+  - under another name: with `eval` bound as `run`, `run("1 + 1")` is 2;
+  - through `call`, `apply` or `bind`: `eval.call(null, "1+1")`, `eval.apply(null, ["1+1"])` and
+    `eval.bind(null)("1+1")` are each 2. With `Function` bound,
+    `Function.call(null, "return 7")()` is 7;
+  - as a callback that a native function makes: `["1+1"].map(eval)` is `[2]`;
+    `Reflect.apply(eval, null, ["1+1"])` is 2 with `Reflect` bound; and
+    `Promise.resolve("1+1").then(eval)` resolves to 2 with `Promise` bound;
+  - and a host function whose source text a pattern refuses is refused as `host()`, and runs as
+    `host.call(null)`.
 
-### Type Confusion Prevention
-Enhanced type checking prevents type confusion attacks and ensures safe operations across different data types.
+  In each, the function checked is a native method or an unlisted name, and the dangerous function is
+  an argument or a receiver, which no check reads ([A35](docs/backlog.md#a35)).
 
-### Implementation Details
-```typescript
-// Safe binary operation handling
-function safeBinaryOperation(left: unknown, right: unknown, operator: string): unknown {
-  switch (operator) {
-    case '+':
-      // Handle string concatenation vs numeric addition safely
-      if (typeof left === 'string' || typeof right === 'string') {
-        return String(left) + String(right);
-      }
-      return Number(left) + Number(right);
-      
-    case '-':
-    case '*':
-    case '/':
-    case '%':
-      // Numeric operations with type validation
-      const numLeft = validateNumeric(left);
-      const numRight = validateNumeric(right);
-      return performNumericOperation(numLeft, numRight, operator);
-      
-    default:
-      throw new Error(`Unsupported binary operator: ${operator}`);
-  }
-}
+  **The host's mitigation**: never place `eval`, `Function`, the timers (`setTimeout`,
+  `setInterval`, `setImmediate`) or any other function the call sandbox lists in the context, under
+  any name, nor an object from which one is reachable. Put in the context only what the expression's
+  author may use.
+- **The budget counts loop iterations, not time or depth.** Recursion through arrow functions is not
+  charged: `(f => f(f))(f => f(f))` ends in the engine's own stack overflow, a `RangeError`, whatever
+  `maxIterations` is. Neither is the time a host function takes.
+- **Calls and arrow functions are marked potentially unsafe** in the list of supported syntax, for
+  the reasons above.
+- **Open register entries that bear on this**:
+  [A25](docs/backlog.md#a25), each `await` starts a 30-second timer that is never cleared; and
+  [A33](docs/backlog.md#a33), under `caseInsensitive` a cached miss can hide a key added later — no
+  refusal is skipped.
 
-function validateNumeric(value: unknown): number {
-  const num = Number(value);
-  if (isNaN(num)) {
-    throw new Error(`Invalid numeric value: ${value}`);
-  }
-  return num;
-}
-```
-
-### Edge Case Handling
-- **NaN Prevention**: Validates numeric operations
-- **Infinity Handling**: Manages infinite values safely
-- **Type Coercion**: Controlled and predictable type conversions
-- **Overflow Protection**: Prevents numeric overflow attacks
-
----
-
-## 4. Async Operation Security
-
-### Promise Safety
-Robust error handling for asynchronous operations prevents:
-- Unhandled promise rejections
-- Resource leaks from failed async operations
-- Race conditions in concurrent evaluations
-- Memory exhaustion from pending promises
-
-### Implementation
-```typescript
-// Secure async evaluation with proper cleanup
-async function secureAsyncEval(expression: string, context: EvalContext): Promise<unknown> {
-  const cleanup = new Set<() => void>();
-  
-  try {
-    // Set up error boundaries
-    const errorBoundary = createErrorBoundary();
-    cleanup.add(() => errorBoundary.dispose());
-    
-    // Execute with timeout
-    const result = await executeWithTimeout(async () => {
-      return evaluateExpression(expression, context);
-    }, 5000); // 5 second timeout
-    
-    return result;
-    
-  } catch (error) {
-    // Secure error handling
-    throw new Error(`Evaluation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    
-  } finally {
-    // Guaranteed resource cleanup
-    cleanup.forEach(cleanupFn => {
-      try {
-        cleanupFn();
-      } catch (cleanupError) {
-        console.warn('Cleanup error:', cleanupError);
-      }
-    });
-  }
-}
-```
-
-### Resource Management
-- **Automatic Cleanup**: Resources are cleaned up regardless of success/failure
-- **Timeout Controls**: Prevents indefinite resource usage
-- **Error Boundaries**: Contains errors within evaluation scope
-- **Memory Protection**: Prevents memory leaks from failed operations
-
----
-
-## 5. Memory Safety
-
-### Memory Attack Prevention
-Comprehensive memory management prevents:
-- Memory exhaustion attacks
-- Circular reference exploits
-- Resource starvation
-- Memory-based denial of service
-
-### Implementation Features
-```typescript
-class SecureMemoryManager {
-  private readonly resourceLimits = {
-    maxStates: 1000,
-    maxContexts: 500,
-    maxMemoryMB: 100
-  };
-  
-  private activeStates = new WeakSet<EvalState>();
-  private activeContexts = new WeakSet<object>();
-  
-  trackResource(resource: object, type: 'state' | 'context'): void {
-    // Track resource usage with limits
-    if (type === 'state' && this.getStateCount() >= this.resourceLimits.maxStates) {
-      throw new Error('Maximum evaluation states exceeded');
-    }
-    
-    if (type === 'context' && this.getContextCount() >= this.resourceLimits.maxContexts) {
-      throw new Error('Maximum contexts exceeded');
-    }
-    
-    // Add to tracking
-    if (type === 'state') {
-      this.activeStates.add(resource as EvalState);
-    } else {
-      this.activeContexts.add(resource);
-    }
-  }
-  
-  cleanup(): void {
-    // Comprehensive cleanup implementation
-    this.activeStates.clear?.();
-    this.activeContexts.clear?.();
-  }
-}
-```
-
----
-
-## 6. Security Configuration
-
-### Configurable Security Options
-```typescript
-interface SecurityOptions {
-  // Prototype pollution protection
-  preventPrototypePollution?: boolean; // Default: true
-  
-  // Function call restrictions
-  allowedFunctions?: Set<string>; // Default: safe subset
-  
-  // Resource limits
-  maxExecutionTime?: number; // Default: 5000ms
-  maxMemoryUsage?: number;   // Default: 100MB
-  maxRecursionDepth?: number; // Default: 100
-  
-  // Type safety
-  strictTypeChecking?: boolean; // Default: true
-  
-  // Error handling
-  sanitizeErrors?: boolean; // Default: true
-}
-
-// Usage example
-const secureOptions: SecurityOptions = {
-  preventPrototypePollution: true,
-  maxExecutionTime: 3000,
-  strictTypeChecking: true,
-  sanitizeErrors: true
-};
-
-const result = service.secureEval(expression, context, secureOptions);
-```
-
----
-
-## 7. Security Best Practices
-
-### 1. Input Validation
-```typescript
-// Always validate user inputs
-function validateExpression(expression: string): void {
-  if (!expression || typeof expression !== 'string') {
-    throw new Error('Invalid expression');
-  }
-  
-  if (expression.length > 10000) {
-    throw new Error('Expression too long');
-  }
-  
-  // Check for suspicious patterns
-  const dangerousPatterns = [
-    /eval\s*\(/,
-    /Function\s*\(/,
-    /__proto__/,
-    /constructor\s*\./
-  ];
-  
-  for (const pattern of dangerousPatterns) {
-    if (pattern.test(expression)) {
-      throw new Error('Potentially dangerous expression detected');
-    }
-  }
-}
-```
-
-### 2. Context Sanitization
-```typescript
-// Sanitize evaluation contexts
-function sanitizeContext(context: unknown): Record<string, unknown> {
-  if (!context || typeof context !== 'object') {
-    return {};
-  }
-  
-  const sanitized: Record<string, unknown> = {};
-  
-  for (const [key, value] of Object.entries(context)) {
-    // Skip dangerous properties
-    if (isDangerousProperty(key)) {
-      continue;
-    }
-    
-    // Recursively sanitize nested objects
-    sanitized[key] = typeof value === 'object' && value !== null
-      ? sanitizeContext(value)
-      : value;
-  }
-  
-  return sanitized;
-}
-```
-
-### 3. Error Information Leakage Prevention
-```typescript
-// Sanitize error messages to prevent information leakage
-function sanitizeError(error: Error): Error {
-  const sanitized = new Error('Evaluation error occurred');
-  
-  // In development, provide more details
-  if (process.env.NODE_ENV === 'development') {
-    sanitized.message = error.message;
-    sanitized.stack = error.stack;
-  }
-  
-  return sanitized;
-}
-```
-
----
-
-## 8. Security Testing
-
-### Comprehensive Test Suite
-```typescript
-// Security test categories (35 tests total)
-describe('Security Tests', () => {
-  describe('Prototype Pollution Prevention', () => {
-    // 15 tests covering various prototype pollution vectors
-  });
-  
-  describe('Function Call Security', () => {
-    // 10 tests for function call validation
-  });
-  
-  describe('Type Safety', () => {
-    // 5 tests for type confusion prevention
-  });
-  
-  describe('Memory Safety', () => {
-    // 5 tests for memory attack prevention
-  });
-});
-```
-
-### Penetration Testing Scenarios
-- **Prototype Chain Manipulation**: Attempted modification of prototype chains
-- **Constructor Pollution**: Attacks through constructor properties
-- **Function Hijacking**: Attempts to execute unauthorized functions
-- **Memory Exhaustion**: Resource starvation attacks
-- **Type Confusion**: Mixed-type operations designed to cause errors
-
----
-
-## 9. Threat Model
-
-### Protected Against
-✅ **Prototype Pollution**: Complete protection with comprehensive property blocking  
-✅ **Code Injection**: Function call validation and sandboxing  
-✅ **Type Confusion**: Enhanced type safety with edge case handling  
-✅ **Memory Attacks**: Resource limits and comprehensive cleanup  
-✅ **DoS Attacks**: Timeout controls and resource monitoring  
-
-### Limitations
-⚠️ **Sandbox Escape**: Advanced sandbox escape techniques may still pose risks  
-⚠️ **Supply Chain**: Security depends on the security of dependencies  
-⚠️ **Environment**: Host environment vulnerabilities are outside ng-eval's scope  
+## Advisories
 
 ### Advisories for ng-eval
 
@@ -527,52 +257,11 @@ the third block of `eval.service.primitive-carve-out.spec.ts` fails if that ever
 the variants would then need refusing. That spec covers the rest, and the probe results are kept
 in [`docs/backlog-retired.md`](docs/backlog-retired.md#b1), B1.
 
-### Recommended Additional Security Measures
-- **Content Security Policy (CSP)**: Implement strict CSP headers
-- **Input Validation**: Always validate expressions before evaluation
-- **Rate Limiting**: Implement evaluation rate limits per user/session  
-- **Monitoring**: Log and monitor expression evaluations for suspicious patterns
-- **Isolation**: Consider running evaluations in isolated processes for high-security applications
+## Reporting a vulnerability
 
----
-
-## 10. Security Compliance
-
-### Standards Alignment
-- **OWASP Top 10**: Protection against relevant web application vulnerabilities
-- **CWE Mitigation**: Common Weakness Enumeration protections implemented
-- **Secure Coding**: Follows secure JavaScript coding practices
-
-### Audit Trail
-- All security enhancements are thoroughly tested and documented
-- Regular security reviews and updates
-- Community security feedback integration
-
----
-
-## 11. Reporting Security Issues
-
-### Security Vulnerability Disclosure
-If you discover a security vulnerability in ng-eval:
-
-1. **DO NOT** create a public GitHub issue
-2. Email security concerns to the maintainers privately
-3. Provide detailed reproduction steps
-4. Allow reasonable time for response and fixes
-
-### Security Updates
-- Security patches will be released promptly
-- Users will be notified through appropriate channels
-- Backward compatibility will be maintained where possible
-
----
-
-## Conclusion
-
-The security enhancements in ng-eval provide comprehensive protection against common JavaScript evaluation vulnerabilities while maintaining performance and usability. The systematic approach ensures thorough coverage with extensive testing validating all security measures.
-
-For security-related questions or to report security issues, please follow our responsible disclosure process.
-
----
-
-*Security enhancements and documentation created with assistance from GitHub Copilot on August 20, 2025.
+Do not open a public issue for a vulnerability. GitHub's private vulnerability reporting is not
+enabled for this repository (checked 2026-10-14), and the repository publishes no security address.
+Contact the maintainer named as the author of every package here, Zvenigora, through
+[github.com/zvenigora](https://github.com/zvenigora), and ask for a private channel before sending
+details. Fixed vulnerabilities are published as advisories on the repository and listed under
+"Advisories for ng-eval" above.

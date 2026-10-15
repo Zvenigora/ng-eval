@@ -72,6 +72,14 @@ Workspace tooling: nothing here reaches a consumer, so nothing here is versioned
   the warning once to 19.3 s with none, on 20 cores.
 
 ### Changed
+- **`SECURITY.md` rewritten to what the code does**, 2026-10-14. It covers the threat model; the
+  protections that exist, each with its source and the spec that pins it (the prototype-pollution
+  guard with its resolved-key re-check and primitive carve-out, call sandboxing, the iteration
+  budget, the write policies); the documented limits, each measured; the advisories, unchanged; and
+  reporting. Gone: the `SecurityOptions` interface, `secureEval`, `executeWithTimeout` and
+  `safeExecuteFunction`, none of which existed, the "35/35 tests" count, and every claim of complete
+  or comprehensive protection. A case in `modules/eval-core/src/public-api.spec.ts` now fails on any
+  identifier the document names in code that the code does not have. Phase 10 step 2.
 - **Each package now carries a copy of the root `LICENSE`** (`modules/*/LICENSE`), which
   ng-packagr includes by default, so the next release of each package ships it. Earlier releases
   declared `"license": "MIT"` in the manifest and shipped no file. ng-packagr refuses an asset

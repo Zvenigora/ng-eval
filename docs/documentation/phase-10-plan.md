@@ -1,6 +1,36 @@
 # Phase 10 Plan — documentation restructure
 
 **Date**: October 14, 2026
+**Revision**: 3 — step 2, in its own commit. § 3.10's rule is corrected in four places, each because
+`SECURITY.md`'s advisory sections, which criterion 4 keeps byte-identical, name what the first rule
+could not resolve:
+- the tokenizer skips a span that is one hyphenated word;
+- the member route reads object types only;
+- a source route resolves top-level declarations under `modules/eval-core/src/lib/`;
+- the allowlist gains three reasons, `js-member`, `package-name` and `regex-text`.
+
+The confirmation gate fixed:
+- the sandbox route's exact refusal message;
+- the file-name skip's matching rule;
+- the source route's scope;
+- `js-global` and `js-member` as reasons, never routes;
+- the stale case's no-code-route check;
+- the `fetch` and `__proto__` probes, with their single-route precondition.
+
+The step opened F20.
+
+The step's code review found four warnings, each fixed in the step:
+- the member route also admitted the default library's members, so three blocklisted names had a
+  second route;
+- criterion 5's source links were missing for the budget and the write policies;
+- `SECURITY.md` quoted one refusal message where object literals and spreads have their own;
+- the documented limits omitted the `call` / `apply` / `bind` route past the call sandbox. Widened
+  before the commit to the whole class, it opened A35: dangerous function values callable past the
+  name-based call sandbox, by an alias, `call` / `apply` / `bind`, or a native callback.
+
+It also corrected `new`'s checks and one "supported syntax" pointer, and made the tokenizer read an
+unclosed fence.
+
 **Revision**: 2 — step 1, in its own commit. Finding 8 and § 3.3's `repository-audit.md` row are
 corrected: the reason that file gave for the `qs` override, prototype pollution, is wrong. The override
 was added for GHSA-6rw7-vpxm-498p / CVE-2025-15284, a denial of service, and F16 records that
@@ -467,7 +497,12 @@ it, as relative links, which the doc-links gate checks.
      names is refused, as is `Function` by identity, and so is a non-native function whose source text
      matches one of six patterns. The section says what this does not do: a native function passes the
      source check, and the name check reads the name as written, so a host function under another
-     name is not refused.
+     name is not refused. *Corrected after step 2's review* (Revision 3): the checks refuse a name,
+     not a value. A dangerous function value reachable from the context is callable whenever the
+     call does not name it: under an alias; through `call`, `apply` or `bind`; or as a callback a
+     native function makes, such as `map`, `Reflect.apply` or `then`. The expression's author chooses
+     the route, not only the host. The section states the host's mitigation
+     ([A35](../backlog.md#a35)).
    - **The iteration budget**: `maxIterations`, 100,000 per evaluation by default, shared by every
      `for` loop in the expression.
    - **The write policies**, one sentence each: `EvalContext.checkMemberWrite`; `eval-signals`'
@@ -499,21 +534,59 @@ The rule:
 
 - **Tokens**: every identifier in `SECURITY.md`'s code spans and fenced blocks, member names after `.`
   included, after removing string literals, comments and JavaScript keywords. Link targets are not
-  read: source files and specs are cited as links.
+  read: source files and specs are cited as links. A code span is skipped whole if it is a path or a
+  file name, meaning it holds a path separator or ends in `.ts`, `.md`, `.json` or `.mjs`, not
+  merely that it contains a dot (*fixed at step 2's gate*). So is a span that is one hyphenated
+  lower-case word, such as `acorn-walk`, `eval-core` or `jse-eval`: an identifier cannot hold a
+  hyphen, so such a span is a package or file name (*corrected in step 2*, Revision 3).
 - **A token resolves** if it is any of:
   - an export of any of the five entry points in `SPECIFIER_ENTRY`;
   - a property, instance or static, of an exported class, interface or type. This includes
-    `EvalKnownOptions`' keys, which are the `EvalOptions` keys;
+    `EvalKnownOptions`' keys, which are the `EvalOptions` keys. **Object types only** (*corrected in
+    step 2*, Revision 3). An exported union of string literals, such as `EvalReadKind`, has `String`'s
+    methods as its apparent properties, and reading those let 310 member names in, `toUpperCase` and
+    `charAt` among them. **And the packages' own declarations only** (*corrected after step 2's
+    review*): a property declared only in the default library or under `node_modules`, and a class's
+    static `prototype`, does not count. `EvalTrace` extends `Array` and `SignalContextWriteError`
+    extends `Error`, so without this, `toString`, `toLocaleString` and `prototype` resolved by this
+    route as well as by the guard's. The case then stayed green with `toString` removed from the
+    guard. The route does not check which object a member is on;
+  - **a top-level declaration** — a function, a `const`, a class, an interface or a type alias,
+    exported or not — of a non-spec `.ts` file under `modules/eval-core/src/lib/`, read by parsing the
+    file, so a name that appears there only inside a string literal is not one (*added in step 2*,
+    Revision 3, with its scope fixed at the gate). The advisory sections, which criterion 4 keeps
+    unchanged, name `isDangerousProperty` and `isDangerousPrimitiveProperty`, internal functions that
+    no export list holds. This route checks them against the code where an allowlist entry would not;
   - a name the guard refuses or may refuse, meaning `isDangerousProperty`,
     `isDangerousPrimitiveProperty` or `mayMatchDangerousProperty` returns true for it. A blocked name
     the document lists is then checked against the guard itself;
-  - a callee the call sandbox refuses, confirmed by evaluating a call to a harmless function bound
-    under that name and seeing it refused;
-  - an entry in the case's allowlist, with one reason from a fixed set: `js-global`, `attack-input`
-    (the reviewed advisory's proof-of-concept) or `example-binding`.
-- **Three cases**, all in `public-api.spec.ts`: every token resolves; every allowlist entry still
-  occurs in `SECURITY.md`, as F10 checks its allowlist against the exports; and a fixture case for
-  the tokenizer (strings and comments stripped, members kept, keywords skipped).
+  - a callee the call sandbox refuses. A call to it, with a benign stand-in function bound under that
+    name in the context, must throw the sandbox's own refusal,
+    `Function call blocked for security reasons: <name>`. Any other throw — "Cannot call undefined or
+    null function", "Value is not a function", the guard's refusal — does not resolve it (*fixed at
+    step 2's gate*);
+  - an entry in the case's allowlist, with one reason from a fixed set: `js-global`, `js-member` (a
+    method of a built-in prototype), `package-name` (a package named in a single-word span),
+    `regex-text` (an anchor or a flag in a regular expression quoted as text), `attack-input` (the
+    reviewed advisory's proof-of-concept) or `example-binding`. The middle three were *added in step
+    2* (Revision 3): the unchanged advisory sections name `acorn`, `jsep`, `toUpperCase`, `$`,
+    `constructor$` and `i`, which no route resolves and the first set of reasons did not describe.
+- **`js-global` and `js-member` are allowlist reasons, never runtime routes** (*fixed at step 2's
+  gate*). A route that resolved a name because it is in `globalThis`, or on a built-in prototype,
+  would give a probe target a second route: `fetch` is a global in Node, and `__proto__` and
+  `constructor` are on `Object.prototype`.
+- **Three cases**, all in `public-api.spec.ts`:
+  - every token resolves;
+  - every allowlist entry still occurs in `SECURITY.md`, as F10 checks its allowlist against the
+    exports, and resolves by no code route, so the allowlist cannot mask a probe (*fixed at step 2's
+    gate*);
+  - a fixture case that pins how the other two read the document: the tokenizer, with strings and
+    comments stripped, members kept, keywords skipped, paths, file names and hyphenated words skipped,
+    `service.secureEval` read as tokens, and an unclosed fence read to the end of the document; the
+    member route reading the packages' own object types only; the source
+    route reading declarations, not string literals, with `fetch` as the live instance; the sandbox
+    route resolving only on its own refusal, with a name absent from the context not resolving; and
+    each probe target resolving by exactly one route.
 
 ---
 
@@ -604,6 +677,12 @@ From the gate's 2448 at this plan's commit, `eval-core` ends at 2454 if every st
        that nothing exports;
      - misspell `maxIterations` as `maxIteration` in the document: the case lists it;
      - remove from the document a name the allowlist holds: the stale-allowlist case fails.
+     - *Added at the gate*: make the call sandbox accept a callee `SECURITY.md` names as refused, by
+       removing `fetch` from `DANGEROUS_FUNCTIONS`; and, separately, make the guard accept a blocked
+       property it names, by removing `__proto__` from both `DANGEROUS_PROPERTY_NAMES` and
+       `DANGEROUS_PRIMITIVE_PROPERTY_NAMES`. Before each, the target resolves by exactly one route,
+       the source route included. In each, the identifier case lists exactly that name. Each break is
+       reverted, and the report reads every case that failed.
   3. **The anchor survives.** The doc-links gate is green, and it checks `README.md:438`'s link to
      `SECURITY.md#reviewed-external-advisories`, since the root README is unchanged until step 5.
      *Wrong*: retitle the heading, and the gate reports `README.md:438`.
@@ -612,7 +691,67 @@ From the gate's 2448 at this plan's commit, `eval-core` ends at 2454 if every st
   5. **Every protection cites its source and spec as links**, all resolved by the gate.
   - `eval-core` +3, all in `public-api.spec.ts`; `eval-signals` and `eval-forms` unchanged. The gate is
     green. `git diff --name-only` lists the files above and this document.
+  - *Added in the step* (Revision 3): `docs/backlog.md` gains [F20](../backlog.md#f20), with its index
+    row. `CODE_OF_CONDUCT.md`'s enforcement contact is an address of the upstream `jse-eval` author.
+    It was found looking for a reporting channel, and left unedited by instruction, since its fix is a
+    contact the maintainer chooses. It also gains [A35](../backlog.md#a35), with its index row:
+    dangerous function values callable past the name-based call sandbox, by an alias, `call` /
+    `apply` / `bind`, or a native callback. It was found by the step's review, measured route by route,
+    and listed in `SECURITY.md` as a limit with the host's mitigation. A candidate direction is
+    recorded, not decided, and a fix ships as `eval-core` 0.12.1.
 - **Category**: a document and a spec. Ships in no package: `SECURITY.md` is in no tarball.
+- **Outcome** — done 2026-10-14, under Revision 3.
+  - **Criterion 1**: both greps list nothing. No "complete" or "comprehensive" is left.
+  - **Criterion 4**: the two advisory sections are byte-identical to the previous commit's, 108 lines
+    with the trailing blank.
+  - **Criterion 5**: every protection links its source and its spec, 9 of each, 18 relative links,
+    each resolved by the gate. Six of the sources were added after the review: the budget's
+    `for-statement.ts` and `eval-state.ts`, and the write policies' four.
+  - **doc-links**: 334 files and 1383 links, 27 more than at step 1. `SECURITY.md` went from 2
+    relative links to 23, which is 21 more: the 18 to sources and specs, plus A25, A33 and A35. The
+    other six are A35's and F20's index rows, C5's link in A35, and this document's link to F20 and
+    two to A35.
+  - **Reporting**: it names the published author contact, since private vulnerability reporting was
+    still disabled when checked.
+  - **Limits, measured against the built bundle**:
+    - with `eval` bound as `run`, `run("1 + 1")` is 2;
+    - `(f => f(f))(f => f(f))` ends in a `RangeError` whatever `maxIterations` is, and a `for` loop
+      stops at it;
+    - `eval.call(null, "1+1")`, `.apply` and `.bind` each give 2 where `eval("1+1")` is refused;
+    - `Function.call(null, "return 7")()` is 7;
+    - `host.call(null)` runs a host function `host()` is refused for;
+    - as callbacks, `["1+1"].map(eval)` is `[2]`, `Reflect.apply(eval, null, ["1+1"])` is 2, and
+      `Promise.resolve("1+1").then(eval)` resolves to 2;
+    - an object literal's key and a spread refuse with their own messages, now quoted.
+  - **The allowlist** holds 28 entries: 9 `js-global`, 5 `js-member`, 2 `package-name`, 3
+    `regex-text`, 2 `attack-input` and 7 `example-binding`. `isDangerousProperty` and
+    `isDangerousPrimitiveProperty` resolve by the source route, and so does `resolve`.
+  - **Probes**, each reverted, run on the final spec. They ran before the A35 limit was widened,
+    which added four allowlist entries (`Promise`, `Reflect`, `map`, `then`) and no route:
+    - `service.secureEval(…)` restored: the identifier case alone, listing `secureEval`,
+      `secureOptions` and `service`.
+    - The `SecurityOptions` block restored: the identifier case alone, listing `SecurityOptions`, its
+      seven members, `secureEval`, `secureOptions`, `service`, and the type words `boolean`, `number`
+      and `string`.
+    - `maxIteration`: the identifier case alone, listing it alone.
+    - `RangeError` removed: the stale-allowlist case alone.
+    - The heading retitled: doc-links reports `README.md:438` alone.
+    - `fetch` removed from the sandbox: 2 of `eval-core`'s 2451 cases. The identifier case lists
+      exactly `fetch`, and the fixture case fails its live-instance precondition. No other spec pins
+      that refusal, so the new case is its only witness.
+    - `__proto__` removed from the guard: 95 cases in 10 suites. The identifier case lists exactly
+      `__proto__`, and the fixture case fails `codeRoutes('__proto__')`. The other 93 are the guard's
+      own specs.
+    - *Added after the review*: `toString` removed from the guard, run on `public-api.spec.ts`. The
+      identifier case lists exactly `toString`, and the fixture case fails `codeRoutes('toString')`.
+      Before the member route was narrowed, this probe left the case green.
+  - **The review's notes**:
+    - `isDangerousPrimitiveProperty` adds no name the full set lacks.
+    - The source route resolves 225 internal names.
+    - `eval` resolves as a member of `EvalService`, so the sandbox route checks 12 of the 14 callee
+      names, `import` being a keyword.
+
+  The gate is green at 2451 / 438 / 375.
 
 ### Step 3 — `eval-core`'s README absorbs the root's API sections (D4)
 
