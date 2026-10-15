@@ -32,6 +32,23 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
     unchanged.
   - **A tag that is not a function** throws the call's error, `Cannot call undefined or null
     function` or `Value is not a function: <type>`. It threw a `TypeError` from `apply`.
+- **A call, `new` or tagged template whose callee is a dangerous function is refused by its value,
+  under any name — [A35](../../docs/backlog.md#a35).** The sandboxes read the callee's written name,
+  so with `eval` in the context as `run`, `run("1+1")` gave 2. `new`'s list of names never held the
+  timers either. In a browser application with zone.js, `new setTimeout("<code>", 0)` constructed
+  under the timer's own name, and zone.js handed the string to the browser's timer, which runs it
+  unless a CSP forbids `unsafe-eval`. Every published version up to 0.12.0 is affected.
+  - **A listed value** is one of the realm's dangerous functions, matched by identity: the global
+    value of each name the call sandbox refuses, where the realm has it, and zone.js's saved
+    original of each; and `GeneratorFunction`, `AsyncFunction` and `AsyncGeneratorFunction`, read
+    from function literals, where they are not `Function` itself. A bound function is a listed value
+    too when its name, stripped of every `bound ` prefix, is one of those names.
+  - **Now refused**, with the site's existing message, `Function call blocked for security
+    reasons: <name>` or `Constructor blocked for security reasons: <name>`: a callee whose value is
+    a listed value, however it is reached. That covers an alias, a member, a call result, `this.k`,
+    a scope namespace, a destructured name, an optional call, a case variant under
+    `caseInsensitive`, and `new setTimeout(…)` or `new setInterval(…)` under the timer's own name.
+    The name is the written name, the property name, or `anonymous`.
 
 ---
 

@@ -1,6 +1,33 @@
 # A35 — dangerous function values past the call sandbox (`@zvenigora/ng-eval-core`)
 
 **Date**: October 14, 2026
+**Revision**: 3 — step 2, in its own commit. Its confirmation gate changed four things:
+- **C11's subject.** In jsdom, `XMLHttpRequest` and `WebSocket` are classes written in JavaScript,
+  whose source holds `constructor(`. So `isConstructorSafe`'s source-text test already refused
+  `new X()` with `X = XMLHttpRequest`, with the message C11 asserts. C11 would have been green before
+  the fix and under probe (i), and nothing would have probed the `new` site's identity check. C11 is
+  now `new X(f, 0)` with `X` the realm's `setTimeout`, asserting the refusal and that `f` never ran.
+  The gate read that route as one only jsdom's timers open, not a browser attack route. Step 2's
+  code review found otherwise (§ 1.2 finding 1, M11). zone.js's timer wrapper is a plain function
+  that `new` can construct, whose `toString` shows the original's `[native code]`, and it hands a
+  string handler to the browser's timer. So C11's comment and the Security entry state it as a
+  browser route in a zone.js application.
+- **Probe (vi)** reads "S1 and S3 fail". S1 records the realm's own capture, and removing the guard
+  changes that capture too.
+- **§ 8 q2 is decided**: no shallow container check (§ 8).
+- **C14's name**, `eval`, joins the written names its cases assert.
+
+The gate also fixed three readings:
+- the bound-name rule fires only on a name with at least one `bound ` prefix, so an unbound function
+  named `fetch` is not refused by it;
+- C13 runs one evaluation of its own before it replaces `setTimeout`, so the set is captured first;
+- T12 covers an identifier tag and a member tag, so probe (viii) has a case on either branch.
+
+The step itself made two more changes:
+- **Probe (iv) was corrected in place** to "C12 and S1", as (vi) was at the gate.
+- **U3 is rated by a CVSS 3.1 vector** (§ 5), in place of "low". The rating weighs the string-timer
+  route the code review found. Step 5's `SECURITY.md` and the advisory recommend the same CSP.
+
 **Revision**: 2 — step 1, in its own commit. Its confirmation gate widened the step from "the tag
 through `safeCall`" to "the tag through the call's own path":
 - **One helper.** The call visitor's member branch becomes `callMember`: the receiver
@@ -107,7 +134,7 @@ The baseline is the gate at this plan's commit: `eval-core` 2451, `eval-signals`
 
 Each finding cites the measurement in § 1.3 that produced it.
 
-1. **Every route past the name check is open** (M1, M2, M3, M10). With `eval` in the context under its
+1. **Every route past the name check is open** (M1, M2, M3, M10, M11). With `eval` in the context under its
    own name, `eval("1+1")` is refused, while each of these gives 2 (or `[2]`, or a promise of 2):
    - **an alias**: `run("1+1")`, and `run?.("1+1")` as an optional call;
    - **a member**: `tools.run("1+1")`, `tools["ev" + "al"].call(…)`, `["1+1"].map(tools.eval)`;
@@ -127,6 +154,11 @@ Each finding cites the measurement in § 1.3 that produced it.
      written name, which the list does not hold (M10). `` EVAL`1+1` `` reaches `eval` the same way
      once step 1 checks a tag by name. `FUNCTION` is refused by `Function`'s identity, as a call and,
      after step 1, as a tag.
+   - **a timer under `new`, under its own name** (M11): `new`'s list of names never held the timers,
+     and zone.js's timer wrapper is a plain function that `new` can construct, whose `toString`
+     shows the original's source. So in a browser application with zone.js,
+     `new setTimeout("<code>", 0)` constructed, and zone.js handed the string to the browser's
+     timer, which runs it unless a CSP forbids `unsafe-eval`. Step 2's code review found this.
 
    `eval?.("1+1")` alone is refused today, by name, since its callee is the identifier `eval`.
 2. **The tag call is not sandboxed at all** (M2). With `Function` under its own name,
@@ -187,6 +219,7 @@ and the gated checks. Everything was **reverted** and its files deleted before t
 | M8 | Routes under each shape | A throwaway Jest spec over 23 routes, with each shape on | § 3.3 |
 | M9 | `SequenceExpression` today | `evaluate(parse(…))` against the built bundle, with an `after` hook on the node and `state.result.stack.length` read after the walk | Finding 4 |
 | M10 | Case variants, member tags, a tag that is not a function | The same, at step 1's confirmation gate and in the step | Under `caseInsensitive`: `EVAL("1+1")` 2, `` Eval`1+1` `` `["1+1"]`, `` FUNCTION`return 7`() `` 7. `` obj["fetch"]`x` `` runs a stand-in where `obj["fetch"]()` is refused. An undefined or a string tag throws a `TypeError` from `apply` |
+| M11 | A timer under `new` | Step 2's code review: zone.js 0.16.3's source, and the 0.12.0 tarball with a zone-shaped timer bound under its own name. Step 2's red-first run of C11 in the test realm | `new setTimeout("…", 0)` constructs, and the string reaches the native timer. The wrapper is `function () { return patchDelegate(this, arguments); }`, its `toString` shows the original's, and a handler that is not a function goes to `delegate.apply` |
 
 ---
 
@@ -213,7 +246,7 @@ and the gated checks. Everything was **reverted** and its files deleted before t
     prototype source.
 - **0.12.1 is a patch.** The `[Unreleased]` › Security entry lists exactly what now throws (§ 3.5).
 - **The release** is a separate commit after the fix steps, following CONTRIBUTING's Releasing
-  procedure and the Publication status / release-tags process. A GHSA advisory of low severity
+  procedure and the Publication status / release-tags process. A GHSA advisory, rated in § 5,
   follows the publish, once private vulnerability reporting is enabled. **Both are the maintainer's
   actions** (§ 5).
 
@@ -257,11 +290,12 @@ Four things make this safe against zone.js patching the timers:
   code runs, so by the first evaluation `globalThis.setTimeout` is already zone's wrapper.
 - **Both identities.** zone keeps the original under `__zone_symbol__setTimeout`, and the capture
   takes it too. A context holding either the wrapper or the original is refused.
-- **Late patching, additively.** If a timer global is replaced after the capture, by a zone.js loaded
+- **Late patching, additively.** If `setTimeout` is replaced after the capture, by a zone.js loaded
   late or by any other patcher, a **sentinel** catches it. Each check that reaches the set compares
   the last captured `setTimeout` with the current `globalThis.setTimeout`. When they differ, the
-  current timer values are **added** and the sentinel moves on. Nothing already captured is removed,
-  so a value a context took before the replacement stays refused.
+  current value of every listed global is **added** and the sentinel moves on. Nothing already
+  captured is removed, so a value a context took before the replacement stays refused. Another
+  listed global replaced on its own is not seen until `setTimeout` changes (§ 3.4).
 - **Cost.** M6's prototypes carried the sentinel, and § 3.3 gives their cost.
 
 A capture at module load would be unsafe: an eval-core module evaluated before zone.js would hold the
@@ -370,6 +404,16 @@ or the member's property name, or the function's own `name`. No existing asserti
 - **A function from another realm**, such as an iframe's `eval`.
 - **`AsyncFunction` and `AsyncGeneratorFunction` in a downlevelled realm**: not captured, and the
   capture records that (§ 3.1). Only a host can supply one, and the mitigation forbids it.
+- **A listed global replaced on its own after the capture**, such as `fetch` or `XMLHttpRequest`
+  wrapped late by instrumentation. The sentinel watches `setTimeout` only, so the replacement is not
+  in the set until `setTimeout` changes (§ 3.1). Step 2's code review found this.
+- **A host function that forwards to a listed one**: a closure, a `Proxy`, or a bound `call`,
+  `apply` or `Reflect.apply`. It is not a listed value by identity or by name:
+  `Function.prototype.call.bind(eval)` is named `bound call`, and `new Proxy(eval, {})` is named
+  `eval`, with no `bound ` prefix. Neither K1 nor the funnel sees it, and the mitigation covers it.
+  Step 2's code review measured both. **Only a host can make one once step 4 lands**: building
+  either reads the listed function as an argument or a receiver, which the funnel refuses. Until
+  then, an expression with a listed function in reach can build one.
 - **The two heuristics**:
   - The source-pattern test can be evaded, and can refuse a benign function.
   - The bound-name rule refuses a host's own bound function that merely carries a listed name, such
@@ -394,8 +438,9 @@ whose name, stripped of its `bound ` prefixes, is a listed name.
    - a tag that is not a function throws the call's error instead of a `TypeError` from `apply`.
 2. **A call, `new` or tagged template whose callee value is a listed value**, under any name or
    callee shape: an alias, a member, a call result, `this.k`, a scope namespace, a destructured name,
-   an optional call, or a case variant under `caseInsensitive`. The error is today's message for that
-   site, naming the written name, the property name or `anonymous` (step 2).
+   an optional call, a case variant under `caseInsensitive`, or a timer under `new` with its own name,
+   which `new`'s list of names never held (M11). The error is today's message for that site, naming
+   the written name, the property name or `anonymous` (step 2).
 3. **Any other read of a listed value**, which throws
    `Access to dangerous function "<name>" is blocked for security reasons` (step 4). That covers:
    - an argument;
@@ -532,7 +577,10 @@ From 2451, `eval-core` ends at 2507 if every step lands as planned.
   - **C8** a host-bound callee, `e = eval.bind(null)`.
   - **C9** a doubly bound callee, `e = eval.bind(null).bind(null)`, named `"bound bound eval"`.
   - **C10** a tag alias, `` run`1+1` ``.
-  - **C11** `new X()`, with `X = XMLHttpRequest`. Today it constructs.
+  - **C11** `new X(f, 0)`, with `X` the realm's `setTimeout` and `f` a `jest.fn()`: refused, and `f`
+    never runs. Today it constructs and schedules `f`. *Changed at the confirmation gate*
+    (Revision 3): it was `new X()` with `X = XMLHttpRequest`, which jsdom's source text already
+    refuses.
   - **C12** a context holding zone's original `setTimeout`, called as `t(…)`.
   - **C13** a timer global replaced after the capture: the case installs a new `setTimeout`, binds
     it as `t`, and restores the original after.
@@ -542,8 +590,8 @@ From 2451, `eval-core` ends at 2507 if every step lands as planned.
   - **C15t** `` EVAL`1+1` `` under `caseInsensitive`, the same route as a tag. After step 1 it is
     checked by name, which the list does not hold, so it still reaches `eval`. Added by Revision 2.
 
-  Each C case is refused with today's message and its written name: `run`, `e`, `t`, `X`, `EVAL`, or
-  `anonymous`.
+  Each C case is refused with today's message and its written name: `run`, `e`, `t`, `X`, `EVAL`,
+  `eval`, or `anonymous`.
 - **Exit criteria**:
   1. S1–S3, C1–C15, C15t, T11 and T12 pass.
   2. **The probes**, one fix removed at a time, read case by case:
@@ -551,10 +599,12 @@ From 2451, `eval-core` ends at 2507 if every step lands as planned.
        stays green.
      - **(ii)** the bound-name rule removed: C8 and C9 alone fail.
      - **(iii)** one `bound ` prefix stripped instead of all of them: C9 alone fails.
-     - **(iv)** zone's originals left out of the capture: C12 alone fails.
+     - **(iv)** zone's originals left out of the capture: C12 and S1 fail. *Corrected in step 2*
+       (Revision 3): it read "C12 alone", which S1 made unsatisfiable, since S1 checks the same
+       capture by identity.
      - **(v)** the sentinel removed: C13 alone fails.
-     - **(vi)** the helper's `=== Function` guard removed: S3 alone fails, since it records
-       `Function` as captured.
+     - **(vi)** the helper's `=== Function` guard removed: S1 and S3 fail, since each records
+       `Function` as captured. *Changed at the confirmation gate* (Revision 3): it read "S3 alone".
      - **(vii)** the template's expressions evaluated before the tag: T11 fails.
      - **(viii)** `safeCall`'s function check bypassed for the tag: T12 fails.
   3. No existing assertion changes. `eval.service.call-security.spec.ts` and `public-api.spec.ts`,
@@ -562,6 +612,51 @@ From 2451, `eval-core` ends at 2507 if every step lands as planned.
      green and untouched. The gate is green. `git diff --name-only` lists the files above and this
      document.
 - **Category**: a behaviour change on a published path, released in step 6.
+- **Outcome** — done 2026-10-15, under Revision 3.
+  - **Red first.** Written before the fix, C1–C13, C15 and C15t failed, each because it did not
+    throw. C14 passed, as today's name refusal. T11 and T12 passed, since they pin step 1's
+    behaviour. Against the visitor before step 1, T11 also passes and T12 does not.
+  - **C11's and C12's second leg.** With K1 out and each refusal swallowed, both failed because `f`
+    had run, so "`f` never runs" can fail.
+  - **Probes**, each against the whole `eval-core` suite:
+    - **(i)**: 15 failures, C1–C13, C15 and C15t. C14 stayed green, and nothing else failed.
+    - **(ii)**: C8 and C9 alone.
+    - **(iii)**: C9 alone.
+    - **(iv)**: C12 and S1. The criterion fixed at the gate said "C12 alone", which S1 made
+      unsatisfiable: S1 checks the same capture by identity, and it failed at that check. So the
+      leg is corrected in place, not amended, as (vi) was at the gate. The correction turns more
+      cases red, and weakens none.
+    - **(v)**: C13 alone.
+    - **(vi)**: S1 and S3, each at its record of what was captured.
+    - **(vii)**: T11, at its member leg. With only the identifier branch reordered, T11 failed at
+      its identifier leg.
+    - **(viii)**: T12, at its identifier leg. With only the member branch bypassed, T12 failed at
+      its member leg.
+  - **An import cycle, by design.** `dangerous-values.ts` imports `DANGEROUS_FUNCTIONS` from
+    `call-expression.ts`, which imports it back. The list stays in `call-expression.ts` because
+    `public-api.spec.ts` asserts its `'fetch',` literal there. The list is read at the first
+    capture, never while either module loads. That has to hold: the flattened bundle declares
+    `dangerous-values`' code before `DANGEROUS_FUNCTIONS`, so a read at load would be a
+    temporal-dead-zone `ReferenceError` on import. The review loaded the built bundle in Node and
+    evaluated through K1 without one. The build's silence is no evidence either way, since
+    ng-packagr discards rollup's circular-dependency warnings.
+  - **The code review** found no Critical issue. Its three warnings changed text, not code:
+    - **W1**: the gate's "not a browser attack route" for C11 was wrong (M11). C11's comment,
+      finding 1, § 3.5 item 2 and the Security entry now state the route.
+    - **W2**: the Security entry's bullet on the sentinel claimed any replaced timer is added,
+      where only `setTimeout` is watched. The bullet is gone, § 3.1 is corrected, and the residual
+      is in § 3.4.
+    - **W3**: a host function that forwards to a listed one is not a listed value. That joins
+      § 3.4 and § 9.
+
+    Of its notes:
+    - the set is a `WeakSet`, assigned once it is filled (N1);
+    - zone's prefix is read as zone.js reads it, from `__Zone_symbol_prefix` (N2);
+    - C14 binds a stand-in under `eval`, so only the name check can refuse it (N4). With the name
+      check removed, C14 alone fails. With K1 removed from the call check, C14 stays green.
+
+    Probes (iv), (v) and (vi) were run again on the revised module, with the same results as above.
+  - **Totals.** The gate is green at 2482 / 438 / 375, so `eval-core` gained exactly 21 cases.
 
 ### Step 3 — A37: a `SequenceExpression` visitor
 
@@ -662,6 +757,9 @@ From 2451, `eval-core` ends at 2507 if every step lands as planned.
       and why, K1 and the funnel with its two exemptions, and the bound-name rule beside the
       source-pattern heuristic.
     - The limits keep § 3.4's list.
+    - It recommends a Content Security Policy without `'unsafe-eval'` as the mitigation that holds
+      in every version. In a browser, that stops `eval`, `Function` and a string timer, whatever
+      reaches them. U3's advisory recommends the same (§ 5).
     - The Reporting section points at the repository's "Report a vulnerability" form once the
       maintainer has enabled private vulnerability reporting (§ 5, U1). Until then it stays as it is.
   - `modules/eval-core/src/public-api.spec.ts`: allowlist entries only if the new text needs them,
@@ -702,7 +800,14 @@ From 2451, `eval-core` ends at 2507 if every step lands as planned.
 | :--- | :--- | :--- |
 | U1 | Enable private vulnerability reporting on the repository | Before U3, and before step 5 if `SECURITY.md`'s Reporting section is to point at the form in that commit |
 | U2 | Publish `eval-core` 0.12.1 and push its tag, per CONTRIBUTING steps 3–5 | After step 6's release commit |
-| U3 | Publish a GHSA advisory of **low** severity for `@zvenigora/ng-eval-core`: affected `<= 0.12.0`, patched 0.12.1. It covers dangerous function values callable past the name-based call sandbox (A35), and the unsandboxed tag call (A36) | After U2 |
+| U3 | Publish a GHSA advisory for `@zvenigora/ng-eval-core`, rated `CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:L/I:L/A:N`, **4.7 Medium**: affected `<= 0.12.0`, patched 0.12.1. It covers dangerous function values callable past the name-based call sandbox (A35), and the unsandboxed tag call (A36). Its text names `new setTimeout("…")` under zone.js, and recommends a Content Security Policy without `'unsafe-eval'` as the mitigation that holds in every version | After U2 |
+
+U3's rating, in two lines (Revision 3; it was "low"):
+- **AC:H**: the attack needs the host to have placed a listed function in the context, a condition
+  the expression's author does not control. AV:N, PR:N and UI:R read the expression as arriving from
+  elsewhere and evaluated in a victim's page.
+- **S:C, C:L, I:L**: the impact is code execution in the consumer's origin, through `eval` or a
+  string timer, beyond the evaluator's sandbox. That is scored as FIRST scores cross-site scripting.
 
 After U3 comes a docs-only commit. It adds the advisory to `SECURITY.md`'s "Advisories for ng-eval"
 table, a section otherwise unchanged since Phase 10 step 2, and its ID to A35's and A36's retired
@@ -746,7 +851,11 @@ entries.
    (step 2, S2 and S3).
 2. **A container the host provides, handed to native code** (finding 3). A shallow check at the call
    site, over the expanded arguments and the receiver, would close `Reflect.apply(...pair)`. A
-   deeper container would stay open. *To decide*: in this plan, as part of K1, or a limit only.
+   deeper container would stay open. *Decided* at step 2's confirmation gate (Revision 3): **no
+   container check; a limit only**. A partial check of host containers has no boundary that can be
+   stated: one level of nesting, or two, or the receiver's own properties, each leaves the next
+   level open, and none matches anything a host could rely on. So the limit is stated whole instead,
+   in `SECURITY.md` at step 5 (§ 3.4).
 3. **Is 0.12.1 a patch, and how is the change worded?** *Decided* (§ 2): a patch. The funnel exempts
    `typeof`'s operand, so `typeof eval === "function"` still holds, and the Security entry lists
    exactly what now throws (§ 3.5).
@@ -762,5 +871,6 @@ entries.
 3. A `SequenceExpression` leaves exactly one value on the stack, and shows one node to hooks.
 4. Every existing assertion holds, and nothing in the `.d.ts` changes.
 5. **Not provided**: protection for a host-provided container handed to native code, for a function
-   from another realm, or for `AsyncFunction` and `AsyncGeneratorFunction` where they are downlevelled
-   (§ 3.4).
+   from another realm, for `AsyncFunction` and `AsyncGeneratorFunction` where they are downlevelled,
+   for a listed global other than `setTimeout` replaced on its own after the capture, or for a host
+   function that forwards to a listed one (§ 3.4).

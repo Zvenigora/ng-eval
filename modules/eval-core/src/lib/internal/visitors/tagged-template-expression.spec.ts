@@ -14,8 +14,10 @@ import { evaluate, parse } from '../functions';
  * Up to 0.12.0 the visitor applied the tag directly, with the context as
  * `this` and no check at all: `` Function`return 7`() `` gave 7 with
  * `Function` in the context (`docs/backlog-retired.md` A36). Every case below
- * but T6 is red against that visitor; T6, a benign identifier tag, is green
- * against both.
+ * but T6 and T11 is red against that visitor. T6, a benign identifier tag, is
+ * green against both, and so is T11: that visitor evaluated the tag first too.
+ * T11 and T12 pin what the fix kept and what it changed: the tag's order, and
+ * the call's own error for a tag that is not a function.
  *
  * T1, T2 and T8 bind the real `Function` and `eval`. The other refused cases
  * bind a stand-in, so each can assert that nothing ran: the name is what is
@@ -148,5 +150,31 @@ describe('tagged template visitor - the tag through the call sandbox', () => {
     }));
 
     expect(run('cat.m`x`', context)).toBe(foreign);
+  });
+
+  it('T11: should evaluate the tag before the template\'s expressions, member or not', () => {
+    // A call evaluates its arguments before its callee; a tag is evaluated
+    // first, as in JavaScript. Each side records its turn as it is evaluated.
+    const order: string[] = [];
+    const mark = (label: string) => { order.push(label); return label; };
+    const tag = () => 'tagged';
+
+    // A member tag: its object comes from a call, which records the tag's turn.
+    const pick = () => { order.push('tag'); return { m: tag }; };
+
+    expect(run('pick().m`a${mark("expression")}b`', { pick, mark })).toBe('tagged');
+    expect(order).toEqual(['tag', 'expression']);
+
+    // An identifier tag: a getter on the context records the read.
+    order.length = 0;
+    const context = { mark, get t() { order.push('tag'); return tag; } };
+
+    expect(run('t`a${mark("expression")}b`', context)).toBe('tagged');
+    expect(order).toEqual(['tag', 'expression']);
+  });
+
+  it('T12: should throw the call\'s own error for a tag that is not a function, member or not', () => {
+    expect(() => run('s`x`', { s: 'str' })).toThrow(new Error('Value is not a function: string'));
+    expect(() => run('obj.n`x`', { obj: { n: 5 } })).toThrow(new Error('Value is not a function: number'));
   });
 });

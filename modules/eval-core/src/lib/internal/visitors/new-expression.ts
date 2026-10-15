@@ -5,6 +5,7 @@ import { pushVisitorResult, popVisitorResult } from './visitor-result';
 import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 import { evaluateArray } from './array-expression';
+import { isDangerousValue } from './dangerous-values';
 
 /**
  * Security: List of dangerous constructors that should not be instantiated
@@ -40,6 +41,13 @@ const isConstructorSafe = (constructor: unknown, constructorName?: string): bool
       constructor === (async function(){ /* async function constructor test */ }).constructor ||
       constructor === (function*(){ /* generator function constructor test */ }).constructor ||
       constructor === (async function*(){ /* async generator function constructor test */ }).constructor) {
+    return false;
+  }
+
+  // A dangerous function by value, under whatever name it was reached
+  // (`dangerous-values.ts`). Up to 0.12.0 only a bare identifier's name was
+  // checked (`docs/backlog.md` A35).
+  if (isDangerousValue(constructor)) {
     return false;
   }
 

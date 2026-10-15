@@ -53,10 +53,12 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-**The A35 plan is in flight**: [`docs/a35/plan.md`](a35/plan.md), at Revision 2, where step 1 is
-done and step 2 is next.
+**The A35 plan is in flight**: [`docs/a35/plan.md`](a35/plan.md), at Revision 3, where steps 1 and
+2 are done and step 3 is next.
 - Step 1 fixed [A36](backlog-retired.md#a36), unreleased, and its review opened [A38](#a38).
-- Steps 2 and 4 fix [A35](#a35), with step 3 fixing [A37](#a37) between them.
+- Step 2 refuses a dangerous function by its value at the call, `new` and tag sites, unreleased.
+  That is [A35](#a35) at the callee; step 4 closes its other routes, with step 3 fixing [A37](#a37)
+  between them.
 - Step 5 retires A35; A37 retires in its own step, as A36 did.
 - Step 6 releases `eval-core` 0.12.1.
 

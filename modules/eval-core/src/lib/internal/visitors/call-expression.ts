@@ -7,11 +7,15 @@ import { afterVisitor } from './after-visitor';
 import { evaluateMember } from './member-expression';
 import { evaluateArray } from './array-expression';
 import { consultMethodWrite } from './member-write-policy';
+import { isDangerousValue } from './dangerous-values';
 
 /**
  * Security: List of dangerous functions that should not be callable
+ *
+ * Also the names `dangerous-values.ts` reads from `globalThis` into its
+ * identity set, and the names its bound-function rule refuses.
  */
-const DANGEROUS_FUNCTIONS = new Set([
+export const DANGEROUS_FUNCTIONS = new Set([
   'Function',
   'eval',
   'setTimeout',
@@ -80,6 +84,13 @@ const isFunctionSafe = (fn: unknown, fnName?: string): boolean => {
 
   // Special check for Function constructor
   if (fn === Function) {
+    return false;
+  }
+
+  // A dangerous function by value, under whatever name it was reached:
+  // an alias, a member, a call result, a case variant (`dangerous-values.ts`).
+  // Up to 0.12.0 only the written name was checked (`docs/backlog.md` A35).
+  if (isDangerousValue(fn)) {
     return false;
   }
 

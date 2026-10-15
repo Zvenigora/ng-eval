@@ -134,8 +134,10 @@ const argumentsOf = (list: unknown): readonly unknown[] =>
  * arguments: binding a built-in to an object the walk did not create is
  * refused before the bound function exists (`docs/backlog-retired.md` C5).
  *
- * Called by `call-expression.ts` immediately before the call, and only after
- * it has read `st.createdObjects` and found it set, as for a member write.
+ * Called by `call-expression.ts` immediately before a call, and by
+ * `tagged-template-expression.ts` immediately before a tag is called, in each
+ * case only after the caller has read `st.createdObjects` and found it set, as
+ * for a member write.
  *
  * @param st - The state of the walk making the call.
  * @param created - `st.createdObjects`, already read by the caller.
