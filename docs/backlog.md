@@ -53,12 +53,22 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-Phase 10, the documentation restructure, is in flight: its
-[plan](documentation/phase-10-plan.md) is at Revision 3. Step 1 is done: the ten stale documents
-are deleted, and the `qs` override's reason is in F16. Step 2 is done: `SECURITY.md` is rewritten
-to what the code does, and a case in `eval-core`'s `public-api.spec.ts` resolves every identifier
-it names; it opened A35, from its review, and F20. Step 3 is next. The plan retires [F19](#f19) in its step 6; its § 8 q4
-records what it found and left undecided.
+**The A35 plan is in flight**: [`docs/a35/plan.md`](a35/plan.md), at Revision 1, where no step has
+run and step 1 is next.
+- Step 1 fixes [A36](#a36).
+- Steps 2 and 4 fix [A35](#a35), with step 3 fixing [A37](#a37) between them.
+- Step 5 retires A35; A36 and A37 retire in their own steps.
+- Step 6 releases `eval-core` 0.12.1.
+
+**Phase 10, the documentation restructure, is paused** after its step 2, until the A35 plan's step 6
+and its post-publish commit have landed. Its [plan](documentation/phase-10-plan.md) is at Revision 3.
+- Step 1 is done: the ten stale documents are deleted, and the `qs` override's reason is in F16.
+- Step 2 is done: `SECURITY.md` is rewritten to what the code does, and a case in `eval-core`'s
+  `public-api.spec.ts` resolves every identifier it names. That step opened A35, from its review,
+  and F20.
+
+Step 3 is next when it resumes. The plan retires [F19](#f19) in its step 6, and its § 8 q4 records
+what it found and left undecided.
 
 Phase 9, colon-joined identifiers, is complete: its
 [plan](colon-identifiers/phase-9-plan.md), at Revision 9, and its retrospect,
@@ -214,7 +224,9 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A32](#a32) | The disabled visitor result cache keys a node without its operands — `a + b` and `c + d` share an entry | core | decision | Open — opened 2026-10-10 by A29's fix; latent, nothing calls it |
 | [A33](#a33) | The case-insensitive property cache keeps a miss while the own-key count is unchanged — a key added as another is deleted reads `undefined` by a case variant | core | fix | Open — opened 2026-10-10, after the `eval-core` 0.11.1 tag; a limit [A31](backlog-retired.md#a31)'s fix documents in a code comment. No refusal is skipped |
 | [A34](#a34) | The parse fingerprint's memo does not see options written in place — a write into `parserOptions`, a reused per-call object or `defaultParserOptions` keeps the old fingerprint | core | fix | Open — opened 2026-10-10 by [A26](backlog-retired.md#a26)'s fix, Phase 9 step 1; no worse than the text-only key it replaced |
-| [A35](#a35) | A dangerous function value reachable from the context is callable past the name-based call sandbox — by an alias, through `call` / `apply` / `bind`, and as a native callback (`map`, `Reflect.apply`, `then`); `eval("1+1")` is refused, `["1+1"].map(eval)` is `[2]` | core | decision, security | Open — opened 2026-10-14 by Phase 10 step 2's review; `SECURITY.md` lists it as a limit, with the host's mitigation; a candidate direction is recorded, not decided; a fix ships as `eval-core` 0.12.1 |
+| [A35](#a35) | A dangerous function value reachable from the context is callable past the name-based call sandbox — by an alias, through `call` / `apply` / `bind`, and as a native callback (`map`, `Reflect.apply`, `then`); `eval("1+1")` is refused, `["1+1"].map(eval)` is `[2]` | core | decision, security | Open — opened 2026-10-14 by Phase 10 step 2's review; `SECURITY.md` lists it as a limit, with the host's mitigation; **planned** in [`docs/a35/plan.md`](a35/plan.md), steps 2 and 4; a fix ships as `eval-core` 0.12.1 |
+| [A36](#a36) | A tagged template's tag is called with no sandbox check — `` Function`return 7`() `` gives 7 with `Function` under its own name | core | fix, security | Open — opened 2026-10-14 by the A35 plan; its step 1; ships as `eval-core` 0.12.1 |
+| [A37](#a37) | `SequenceExpression` has no visitor: `(0, 1)` leaves a value on the stack | core | fix | Open — opened 2026-10-14 by the A35 plan; its step 3; ships as `eval-core` 0.12.1 |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -916,6 +928,64 @@ The measurement used throwaway scripts outside the repository that called `evalu
 EvalState.fromContext(…))` and awaited the result. The cause is at `call-expression.ts:181-196`: a
 member call passes the property name as the checked name, and `safeCall` checks only the function it
 is handed.
+
+**Planned**: [`docs/a35/plan.md`](a35/plan.md), steps 2 and 4. [A36](#a36) is its step 1 and
+[A37](#a37) its step 3. The plan measures more routes than this entry's table: a member, a call
+result, destructuring, `this`, a scope namespace, `(0, eval)`, `(c ? eval : f)`, a parenthesised
+callee, and a host container.
+
+<a id="a36"></a>
+## A36 — A tagged template's tag is called with no sandbox check
+
+**Package** core · **Kind** fix, security · **Status** Open. Opened 2026-10-14 by the A35 plan
+
+`tagged-template-expression.ts:25` calls the tag as `tag.apply(st.context, [quasi,
+...quasiExpressions])`. It does not go through `safeCall`, so none of the call sandbox's three
+checks runs: neither the name, nor the identity of `Function`, nor the source text. Measured
+2026-10-14 against the built `eval-core` at efe2803:
+- with `Function` in the context under its own name, `` Function`return 7`() `` gives 7, where
+  `Function("return 7")()` is refused;
+- with `eval` bound as `run`, `` run`1+1` `` calls `eval`. It returns the strings array, since `eval`
+  of a non-string returns its argument.
+
+A35's class covers values under other names. This one needs no other name at all.
+
+**Fix**: call the tag through `safeCall`, with the tag's identifier or property name as the checked
+name. Planned as step 1 of [`docs/a35/plan.md`](a35/plan.md), fixed alone, and released with A35 in
+`eval-core` 0.12.1.
+
+*Recorded*: this entry; the A35 plan, § 1.2 finding 2.
+*Verified*: read at `tagged-template-expression.ts:25`, then measured with a throwaway script against
+`dist/modules/eval-core`, built from efe2803 with no library change.
+
+<a id="a37"></a>
+## A37 — `SequenceExpression` has no visitor, and leaves values on the stack
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-14 by the A35 plan
+
+`recursive-visitors.ts` registers no `SequenceExpression` visitor, so `acorn-walk`'s base walker walks
+its expressions. Each pushes its value, and nothing pops the ones before the last. That breaks the
+first stack invariant `CLAUDE.md` names: a node pushes exactly one value. Measured 2026-10-14 against
+the built `eval-core`, reading `state.result.stack.length` after the walk:
+- `(0, 1)` gives 1 and leaves one entry;
+- `(0, eval)("1+1")` gives 2 and leaves one entry.
+
+The value read is right only because the sequence's last expression is pushed last. `ChainExpression`
+and `ParenthesizedExpression` have no visitor either, but they wrap a single child, and measured, they
+leave nothing behind.
+
+Measured further for the plan (its M9), the value is right every time, since each consumer pops
+only the top entry. Every sequence leaves its other values on the stack: `[(1, 2), 3]`,
+`f((1, 2), 3)`, `(x = 1, x + 1)`, `1 + (2, 3)` and `(1, 2) + 10` leave one entry each, and
+`((1, 2), 3)` leaves two. No hook sees the node. A reused state accumulates the leftovers.
+
+**Fix**: a `SequenceExpression` visitor that evaluates each expression, pops each value, and pushes
+the last, so it leaves exactly one. Planned as step 3 of [`docs/a35/plan.md`](a35/plan.md), before
+its funnel, so the funnel's `(0, eval)` case runs on a correct walk. It ships in `eval-core` 0.12.1
+as a Fixed entry.
+
+*Recorded*: this entry; the A35 plan, § 1.2 finding 4.
+*Verified*: the A35 plan's M3, a throwaway script against `dist/modules/eval-core` built from efe2803.
 
 ---
 

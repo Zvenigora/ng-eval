@@ -8,57 +8,51 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: `docs/documentation/phase-10-plan.md`
-Target: the repository's documents — no library code
+Plan document: `docs/a35/plan.md`
+Target library: `@zvenigora/ng-eval-core` (`modules/eval-core`), released as 0.12.1
 Requested step: $ARGUMENTS
 
+**Phase 10 (`docs/documentation/phase-10-plan.md`) is paused after its step 2.** This skill runs the
+A35 plan until its step 6 and the post-publish commit have landed, and is then retargeted back.
+
 **Each step's file list in the plan's § 4 is its scope, and it is not the same list every step.**
-Phase 10 restructures the documentation. It reaches the three projects only through READMEs,
-CHANGELOGs, specs and comment lines, at named steps and nowhere else:
+The A35 plan closes the call sandbox's gaps in `eval-core`, at named steps and nowhere else:
 
-- **Step 1 is documents only** — the ten stale files of D3 deleted, the three links into them
-  re-pointed, the `qs` reason moved to F16. No file under `modules/`.
-- **Step 2 is `SECURITY.md`** — rewritten to what the code does (D7), and three cases in
-  `modules/eval-core/src/public-api.spec.ts` that resolve every identifier it names.
-- **Step 3 is `eval-core`** — its README absorbs the root README's API sections; seven
-  `readme-examples.spec.ts` cases; `export-list.spec.ts` comments; its CHANGELOG's `[Unreleased]`.
-- **Step 4 is all three packages' READMEs** — the `eval-signals` and `eval-forms` openings, their
-  CHANGELOGs' `[Unreleased]`, one peer-range case in each project's `src/public-api.spec.ts`, and spec
-  **comment** lines.
-- **Step 5 is the root README** — the landing page; `eval-core`'s `public-api.spec.ts` and
-  `export-list.spec.ts` lose their root-README cases and gain the D5 case (plan § 4, step 5, which
-  lists and flags those removals); comment lines in `eval-core` and `eval-signals` specs.
-- **Step 6 is documents only** — `docs/README.md`, `CONTRIBUTING.md`, `ROADMAP.md`, `CLAUDE.md`, the
-  register (F19). No file under `modules/`.
-- **Step 7 is held on the plan's § 8 q1** and is not a step until the plan writes it.
+- **Step 1 is A36** — the tag call through `safeCall`: `tagged-template-expression.ts`,
+  `call-expression.ts` (exporting `safeCall`, which stays internal), and a new spec.
+- **Step 2 is K1 and the identity set** — the new internal `dangerous-values.ts`;
+  `isFunctionSafe` and `isConstructorSafe`; a new `eval.service.dangerous-values.spec.ts`.
+- **Step 3 is A37** — a `SequenceExpression` visitor, its registration and spec, and the root
+  README's node list.
+- **Step 4 is the funnel** — `pushVisitorResult`, the callee and `typeof` marks, and the spec's value
+  routes.
+- **Step 5 is documents** — `SECURITY.md`'s limit becomes a protection, and A35 is retired. No
+  library file.
+- **Step 6 is the release** — `modules/eval-core/package.json` and its CHANGELOG, then
+  CONTRIBUTING's Releasing steps. Publishing and tagging are the maintainer's (plan § 5).
 
-A file under `modules/` outside steps 2–5, or under a project a step does not name, is a
-stop-and-replan (plan § 2), not a wider step. Three more are stop-and-replans in every step:
+Stop-and-replans in every step:
 
-- **A non-spec `.ts` file with a change outside its comment lines.** This phase changes no library
-  code (plan § 5).
-- **A rename (`R`) anywhere, or a delete (`D`) outside step 1's ten.** Nothing under `docs/` moves
-  (plan § 3.2, D2).
-- **A `package.json` in the diff.** No version moves in steps 1–6 (plan § 3.9). A spec may read one;
-  none may edit one.
+- **A file under `modules/eval-signals/` or `modules/eval-forms/`.** Their code does not change; their
+  suites run as the downstream witnesses, with their counts unchanged.
+- **A non-spec `.ts` change outside `modules/eval-core/src/lib/internal/visitors/`** in steps 1–4, and
+  any non-spec `.ts` change in steps 5–6.
+- **A `public-api.ts` change, or anything else that alters the built `.d.ts`.** Every change is
+  internal (plan § 4, step 6, criterion 2).
+- **A `package.json` change outside step 6.**
+- **An existing assertion that would have to change.** Option (a) keeps every one (plan § 2). If one
+  fails, the design is wrong, not the assertion.
 
-**All three packages are published**, and a README or CHANGELOG under `modules/<name>/` ships in that
-package's tarball — so a change is in one of two categories:
+**The change is in one category**: a change on a published path, released as the patch 0.12.1.
+Steps 1, 2 and 4 each add an `[Unreleased]` › Security line to `modules/eval-core/CHANGELOG.md` with
+the change, and step 3 a › Fixed line. The bump lands once, in step 6. Step 5 ships in no package.
 
-- **Ships in no package** — steps 1, 2, 5 and 6. Their CHANGELOG line, if any, is the root
-  `CHANGELOG.md`'s Workspace section (plan § 3.9). `SECURITY.md` is in no tarball.
-- **Ships in a package's next release, with no code change** — step 3 (`eval-core`) and step 4
-  (`eval-signals`, `eval-forms`): a README rewrite, with an `[Unreleased]` line in that package's own
-  `modules/<name>/CHANGELOG.md` in the same commit. No bump; whether these are released is the plan's
-  § 8 q1. A change to an exported symbol's shape or to a shipped path's behaviour is not in this
-  phase at all: finding one is a stop-and-replan.
+**Every step says which of these it is, in its § 2 restatement.**
 
-**Every step says which of those two it is, in its § 2 restatement.**
-
-The lint and test targets below cover project boundaries: a step that edits another project moves
-its row. They do **not** cover a stale sentence or a mention the doc-links gate cannot see — a
-plain-text path, a line citation in a comment. Reading the diff, and running the step's one-off
-checks, is what covers that.
+The lint and test targets below cover project boundaries. They do **not** cover a refusal that
+fires for the wrong reason, which only the plan's probes do (each fix removed, read case by case),
+or a change in timing, which only the plan's step 4 measurement reports. `performance.spec.ts` is
+the timing gate.
 
 ## Current state
 
@@ -114,8 +108,8 @@ editing anything:
 
 - The step's objective in one sentence.
 - Every file it says to create, edit or delete, marked **new**, **edit** or **delete**.
-- **Which category the step is in** — ships in no package, or ships in a package's next release —
-  and, if the second, the `[Unreleased]` line the plan gives it (plan § 3.9).
+- **Which category the step is in**: a change on a published path (steps 1–4, each with its
+  `[Unreleased]` line), documents (step 5), or the release (step 6).
 - Its stated exit criteria, verbatim.
 - Anything in the step you find ambiguous, or that disagrees with what the code
   actually looks like now.
@@ -129,13 +123,12 @@ After I confirm:
 
 - Touch only the files identified in step 2. If the work genuinely requires a file
   not on that list, stop and ask first.
-- Follow the testing rules in CLAUDE.md. A README case mirrors its block by hand, so its probe
-  is a wrong *library* implementation, reverted after the run (plan § 6.1).
-- Never weaken or delete an existing assertion to make something pass. Step 5's removals of the
-  root-README cases are the one exception: the plan lists each, with its reason and its measured
-  count, and confirming that step approves them. Nothing else is removed.
-- A case that reads a document is probed by breaking the document (plan § 6.1): `SECURITY.md`'s
-  identifiers, a quoted range, the root README's D5. Each probe is reverted.
+- Follow the testing rules in CLAUDE.md. New behaviour is written test-first: the route cases
+  before the fix, each red for the reason it names.
+- Never weaken or delete an existing assertion to make something pass. This plan changes none
+  (option (a)). An existing case that fails means the design is wrong: stop and report.
+- Each fix is probed by removing it, one at a time, as the step's criteria list. Read which cases
+  fail, and revert each probe.
 
 ### 4. Verify
 
@@ -144,10 +137,11 @@ npx nx run-many -t lint test build --skip-nx-cache --output-style=static
 ```
 
 All must be clean, with the same exception § 1 allows and on the same terms. The test rows move
-exactly as the plan's § 4 table says: `eval-core` +3 at step 2, +7 at step 3, +1 at step 4 and −5 at
-step 5; `eval-signals` and `eval-forms` +1 each at step 4; every other row unchanged in every step. A
-row that moves anywhere else is a regression or a scope breach, not a count to correct. The root project's `test` target is the doc-links gate: its file and link counts
-move as the same table says, and the report gives both figures.
+exactly as the plan's § 4 table says: `eval-core` +6 at step 1, +17 at step 2, +6 at step 3 and +19
+at step 4; `eval-signals` and `eval-forms` unchanged in every step. A row that moves anywhere else is
+a regression or a scope breach, not a count to correct. `performance.spec.ts` stays green and
+untouched; it is the gate. Step 4 also reports the plan's timing method (§ 1.3, M6) beside its
+figures, and that report gates nothing.
 
 `build` is in this list because a green `test` run is not a type-check: Jest compiles per
 file through `tsconfig.spec` and `build:production` through `tsconfig.lib.prod`, and three
@@ -161,27 +155,25 @@ before reporting it as a regression.
 Then the check a green build cannot make, which for this phase is the scope gate itself.
 
 **Nothing moved outside the step's file list.** A green suite is weak evidence for this: an edit
-to a document or a comment moves no test row at all, and that is most of what this phase edits.
+to another project that keeps that project's own suite green moves no row at all.
 
 ```sh
 git diff --name-status HEAD
 ```
 
 Every path must be on the step's own file list in the plan's § 4, or be the plan document itself.
-Anything else is a **stop-and-replan**, not a judgement call — and so is any `R` line, a `D` line
-outside step 1's ten, a `package.json`, or a non-spec `.ts` file changed outside its comment lines.
-Report it and stop.
+Anything else is a **stop-and-replan**, not a judgement call — and so is anything the list at the
+top names. Report it and stop.
 
-Then the step's **one-off checks**, the commands its criteria name — the mention grep, the heading
-listing, step 3's peer-sentence comparison (a case from step 4 on), the index completeness check.
-They are not in the gate, so the report gives each command and its output.
+Then the step's **probes**, the fixes its criteria name, each removed alone and reverted. The
+report gives each probe's failure count and names the cases that failed.
 
 If a pre-existing spec now fails, that is a regression in this step, not a stale test.
 Report it; do not edit the spec to match the new behaviour.
 
 ### 5. Report
 
-Before writing your report, for steps 2–5, invoke the `code-reviewer` subagent on this step's changes. Include its findings in your report. If it raises anything Critical, stop and surface it rather than closing out the step. Steps 1 and 6 change no file under `modules/`, so none of its checklists applies; their report gives the step's one-off checks instead, and says that the reviewer was not run and why.
+Before writing your report, for steps 1–4 and 6, invoke the `code-reviewer` subagent on this step's changes. Include its findings in your report. If it raises anything Critical, stop and surface it rather than closing out the step. Step 5 changes no file under `modules/` except, possibly, `public-api.spec.ts`'s allowlist. Its report gives that step's checks instead, and says whether the reviewer was run and why.
 
 **Expect a permission prompt for that invocation, and approve it.** The `allowed-tools` above
 deliberately does not name the subagent tool: its token is not the same in every build — `Task`
