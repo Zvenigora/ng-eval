@@ -53,17 +53,23 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-**The A35 plan is in flight**: [`docs/a35/plan.md`](a35/plan.md), at Revision 4, where steps 1 to 3
-are done and step 4 is next.
+**The A35 plan is in flight**: [`docs/a35/plan.md`](a35/plan.md), at Revision 6, the replan after
+step 4's code review.
 - Step 1 fixed [A36](backlog-retired.md#a36), unreleased, and its review opened [A38](#a38).
 - Step 2 refuses a dangerous function by its value at the call, `new` and tag sites, unreleased.
-  That is [A35](#a35) at the callee; step 4 closes its other routes.
+  That is [A35](#a35) at the callee.
 - Step 3 fixed [A37](backlog-retired.md#a37), unreleased: a sequence leaves one value on the stack.
-- Step 5 retires A35.
-- Step 6 releases `eval-core` 0.12.1.
+- Step 4, the funnel, is implemented and verified in the working tree and **not committed**. It
+  refuses a dangerous function at every read the walk makes. Its review found a route the funnel
+  cannot see, through `this`, opened as [A39](#a39), and opened [A40](#a40).
+- **The release shape is pending.** Either 0.12.1 ships the funnel with A39 as a stated limit and
+  0.13.0 then closes `this`, or everything ships in 0.13.0. It is settled before any release step.
+  The plan's § 4 sets out the steps of each shape.
 
-**Phase 10, the documentation restructure, is paused** after its step 2, until the A35 plan's step 6
-and its post-publish commit have landed. Its [plan](documentation/phase-10-plan.md) is at Revision 3.
+**Phase 10, the documentation restructure, is paused** after its step 2, until the A35 plan's first
+release and its post-publish commit have landed: step 6 under shape (i), step 9 under shape (ii).
+Under shape (i), whether Phase 10's step 3 or the A35 plan's step 7 runs next is settled with the
+release shape. Its [plan](documentation/phase-10-plan.md) is at Revision 3.
 - Step 1 is done: the ten stale documents are deleted, and the `qs` override's reason is in F16.
 - Step 2 is done: `SECURITY.md` is rewritten to what the code does, and a case in `eval-core`'s
   `public-api.spec.ts` resolves every identifier it names. That step opened A35, from its review,
@@ -226,10 +232,12 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A32](#a32) | The disabled visitor result cache keys a node without its operands — `a + b` and `c + d` share an entry | core | decision | Open — opened 2026-10-10 by A29's fix; latent, nothing calls it |
 | [A33](#a33) | The case-insensitive property cache keeps a miss while the own-key count is unchanged — a key added as another is deleted reads `undefined` by a case variant | core | fix | Open — opened 2026-10-10, after the `eval-core` 0.11.1 tag; a limit [A31](backlog-retired.md#a31)'s fix documents in a code comment. No refusal is skipped |
 | [A34](#a34) | The parse fingerprint's memo does not see options written in place — a write into `parserOptions`, a reused per-call object or `defaultParserOptions` keeps the old fingerprint | core | fix | Open — opened 2026-10-10 by [A26](backlog-retired.md#a26)'s fix, Phase 9 step 1; no worse than the text-only key it replaced |
-| [A35](#a35) | A dangerous function value reachable from the context is callable past the name-based call sandbox — by an alias, through `call` / `apply` / `bind`, and as a native callback (`map`, `Reflect.apply`, `then`); `eval("1+1")` is refused, `["1+1"].map(eval)` is `[2]` | core | decision, security | Open — opened 2026-10-14 by Phase 10 step 2's review; `SECURITY.md` lists it as a limit, with the host's mitigation; **planned** in [`docs/a35/plan.md`](a35/plan.md), steps 2 and 4; a fix ships as `eval-core` 0.12.1 |
+| [A35](#a35) | A dangerous function value reachable from the context is callable past the name-based call sandbox — by an alias, through `call` / `apply` / `bind`, and as a native callback (`map`, `Reflect.apply`, `then`); `eval("1+1")` is refused, `["1+1"].map(eval)` is `[2]` | core | decision, security | Open — opened 2026-10-14 by Phase 10 step 2's review; `SECURITY.md` lists it as a limit, with the host's mitigation; **planned** in [`docs/a35/plan.md`](a35/plan.md): steps 2 and 4 refuse it at the callee and at every read the walk makes, and the route through `this` is [A39](#a39). The release shape is pending (the plan's § 2) |
 | [A36](backlog-retired.md#a36) | A tagged template's tag is called with no sandbox check — `` Function`return 7`() `` gives 7 with `Function` under its own name | core | fix, security | **Retired — fixed 2026-10-15**, as step 1 of the [A35 plan](a35/plan.md); not yet released, ships as `eval-core` 0.12.1. A tag is called as a callee is, through the call sandbox and the write policy; a member tag shares the member call's path, so its `this` is its object. Affected every published `eval-core` to 0.12.0 |
 | [A37](backlog-retired.md#a37) | `SequenceExpression` has no visitor: `(0, 1)` leaves a value on the stack | core | fix | **Retired — fixed 2026-10-15**, as step 3 of the [A35 plan](a35/plan.md); not yet released, ships as `eval-core` 0.12.1. A sequence leaves one value on the stack, and raises one `before` and one `after` event and one trace entry; no evaluated value changes. Affected every published `eval-core` to 0.12.0 |
 | [A38](#a38) | A tag's strings array is not JavaScript's: not frozen, no `raw` — so `` String.raw`a\nb` `` throws — a new array per evaluation, and not recorded as created | core | fix | Open — opened 2026-10-15 by the code review of the A35 plan's step 1. Fidelity, not security; not in 0.12.1 |
+| [A39](#a39) | `this` evaluates to the `EvalContext`, which exposes the caller's context object to native code — with `Object` in the context, a listed function reaches a native call through a spread, past the funnel | core | fix, security | Open — opened 2026-10-16 by the code review of the A35 plan's step 4. A fix changes what `this` returns, so it ships as `eval-core` 0.13.0; the target is the [plan](a35/plan.md)'s § 8 q4 |
+| [A40](#a40) | A postfix update of a listed function writes, then the funnel refuses the old value — the failed evaluation leaves its write behind | core | fix | Open — opened 2026-10-16 by the code review of the A35 plan's step 4. Not a security route; the fix checks the operand before writing |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -921,8 +929,11 @@ never reaches a call, an argument or a callback, and every route above closes at
 - **What a host loses.** A host that today exposes `setTimeout` on purpose loses it. That is a
   behaviour change.
 
-**The release**: a fix ships as `eval-core` **0.12.1**, so both downstream peer ranges still admit
-it: `eval-signals`' `>=0.11.0 <0.13.0` and `eval-forms`' `>=0.12.0 <0.13.0`.
+**The release is pending**, between two shapes the [A35 plan](a35/plan.md)'s § 2 sets out:
+- **(i)**: 0.12.1 now, as hardening, which both downstream peer ranges admit: `eval-signals`'
+  `>=0.11.0 <0.13.0` and `eval-forms`' `>=0.12.0 <0.13.0`. The route through `this`
+  ([A39](#a39)) and a host container are stated limits. Then 0.13.0 closes `this`.
+- **(ii)**: everything in 0.13.0.
 
 *Recorded*: this entry; `SECURITY.md`, "Documented limits".
 *Verified*: found by the code review of Phase 10 step 2. Measured on 2026-10-14 against
@@ -937,6 +948,14 @@ its step 1 and [A37](backlog-retired.md#a37) its step 3, both fixed 2026-10-15. 
 more routes than this entry's table: a member, a call result, destructuring, `this`, a scope
 namespace, `(0, eval)`, `(c ? eval : f)`, a parenthesised callee, a host container, and a case
 variant under `caseInsensitive`.
+
+Step 4's code review found two things, each now its own entry:
+- **[A39](#a39)**: a route the funnel cannot see. `this` hands native code the caller's object, so
+  an expression can build a container of the listed functions in the context and spread it into a
+  native call.
+- **[A40](#a40)**: under the funnel, a postfix update of a listed function writes, then throws.
+
+So A35 stays open until the release shape is decided.
 
 <a id="a38"></a>
 ## A38 — A tag's strings array is not JavaScript's
@@ -980,6 +999,95 @@ write policy ([A36](backlog-retired.md#a36)). **It is not in 0.12.1.**
 `evaluate(parse(…), EvalState.fromContext(…))` against the built bundle, used a subclass of
 `EvalContext` whose `checkMemberWrite` refuses what the walk did not create, and ran the same tags
 natively beside it.
+
+<a id="a39"></a>
+## A39 — `this` hands native code the caller's context object, past the funnel
+
+**Package** core · **Kind** fix, security · **Status** Open. Opened 2026-10-16 by the code review of
+the A35 plan's step 4
+
+**The route.** `this` evaluates to the walk's `EvalContext`, in `this-expression.ts` and in
+`identifier.ts` for `this` written as a name. That object exposes the caller's context object in two
+ways: as the enumerable own field `_original`, and through the public getter `original`.
+- **An expression cannot read either itself.** `this.k` resolves `k` against the context, so
+  `this.original` gives `undefined`.
+- **Native code can.** `Object.values(this)` returns the field, and `Reflect.get(this, "original")`
+  calls the getter. Either way the caller's object comes back, and a native method then returns its
+  values, among them any listed function the host put in the context.
+- **A spread hands those elements to a native call.** The elements a native method returns are not
+  pushed, and neither are the elements a spread expands. So the funnel, step 4 of the
+  [A35 plan](a35/plan.md), never sees the listed value: it sees only what passes through the walk's
+  own stack.
+
+**Why it matters.** It defeats the funnel under the most common configuration that needs the funnel
+at all: a listed function in the context, plus `Object` there too, or `Reflect` and `Array`. It
+needs no container from the host, because the library supplies one. That makes it distinct from the
+host-container limit, the plan's § 8 q2, where the host builds the container. The plan states both
+as limits (its finding 8 and § 3.4).
+
+**The probes**, the code review's two reproductions. Measured 2026-10-16 on step 3's bundle and on
+step 4's, which has the funnel:
+
+| Probe | Context | Step 3 | Step 4 | Its control without `this`, on step 4 |
+| :--- | :--- | :--- | :--- | :--- |
+| **P1** `["1+1"].map(...Object.values(Object.values(this)[1]).slice(0, 1))` | `{ eval, Object }` | `[2]` | `[2]` | `["1+1"].map(eval)`: refused |
+| **P2** `Reflect.apply(...Object.values(Object.values(this)[1]).slice(0, 1), null, ["return 7"])()` | `{ Function, Object, Reflect }` | 7 | 7 | `Reflect.apply(Function, null, ["return 7"])()`: refused |
+
+`Object.values(this)[1]` is `_original`. An `EvalContext`'s own enumerable keys are `type`,
+`_original`, `_priorScopes`, `_scopes`, `_options` and `_lookups`, in that order.
+
+**Making the field non-enumerable is not enough**, because the getter exposes the same object.
+- **G1** `["1+1"].map(...Object.values(Reflect.get(this, "original")).slice(0, 1))`, with
+  `{ eval, Object, Reflect }`, gives `[2]` on step 4's bundle too.
+- `toObject()`, also public, returns the same object as well.
+
+**The fix changes what `this` evaluates to**, which is published behaviour. So it is a breaking
+change, released as `eval-core` **0.13.0**, not 0.12.1. Neither downstream peer range admits 0.13.0:
+`eval-signals` declares `>=0.11.0 <0.13.0` and `eval-forms` declares `>=0.12.0 <0.13.0`. So each
+needs a release of its own to take the fix.
+
+What `this` should return instead is the A35 plan's § 8 q4, which is decided from a measurement
+first.
+
+*Recorded*: this entry; the [A35 plan](a35/plan.md)'s finding 8, § 3.4, § 8 q4 and § 9.
+*Verified*: found by the code review of the A35 plan's step 4, which measured four expressions on
+that step's bundle. P1, P2 and G1 were measured again on 2026-10-16 with a throwaway script outside
+the repository. It called `evaluate(parse(…), EvalState.fromContext(…))` against step 3's bundle,
+built at eea3555, and against step 4's, built from its uncommitted working tree.
+
+<a id="a40"></a>
+## A40 — A postfix update of a listed function writes, then the funnel refuses it
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-16 by the code review of the A35
+plan's step 4
+
+For a postfix update, `update-expression.ts` does three things in order:
+1. reads its target;
+2. writes the new value;
+3. pushes the old value, which is the update's result.
+
+Under the funnel, step 4 of the [A35 plan](a35/plan.md), the push in step 3 throws when the old
+value is a listed function. By then the write has happened, so the failed evaluation leaves it
+behind. Measured 2026-10-16 with `eval` in the context:
+
+| Expression | Step 3's bundle | Step 4's bundle | Afterwards, on both |
+| :--- | :--- | :--- | :--- |
+| `tools.eval++`, `tools = { eval }` | gives `eval` itself | throws `Access to dangerous function "eval" is blocked for security reasons` | `tools.eval` is `"function eval() { [native code] }1"` |
+| `e++`, `e = eval` | gives `eval` itself | throws, the same | `e` is that string |
+| `++tools.eval` | gives the string | gives the string | the same |
+
+Step 3's column is an [A35](#a35) route that the funnel closes: the postfix result was the listed
+function itself. What it leaves is not a security route either. The write replaces the listed
+function with a string, and the old value reaches nothing. It is a failed evaluation with a side
+effect. The prefix form pushes the new value, so it never throws.
+
+**The fix**: check the operand before writing. A listed old value is then refused before the
+write, so the update throws having changed nothing.
+
+*Recorded*: this entry; `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Security entry for
+step 4, once that step commits.
+*Verified*: the code review of the A35 plan's step 4 found it (its W1). Measured 2026-10-16 with a
+throwaway script outside the repository, against step 3's bundle and step 4's.
 
 ---
 

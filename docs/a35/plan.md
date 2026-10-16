@@ -1,6 +1,73 @@
 # A35 — dangerous function values past the call sandbox (`@zvenigora/ng-eval-core`)
 
 **Date**: October 14, 2026
+**Revision**: 6 — the replan, in its own commit, after step 4's code review. Step 4 is implemented
+and verified in the working tree (its status, in § 4), and is **not committed**.
+
+The review found a route the funnel cannot see, **through `this`** (finding 8, M14):
+- `this` hands native code the caller's context object.
+- With `Object` in the context, an expression builds a container of the listed functions there, and
+  spreads it into a native call.
+- Nothing pushes them, so the funnel never sees them.
+
+That route is [A39](../backlog.md#a39), opened as Open, security. Closing it changes what `this`
+evaluates to, a breaking change, so it belongs to 0.13.0.
+
+The replan changes eight things:
+- **The funnel's objective is narrowed** to the values that pass through the walk's own stack. The
+  route through `this`, and a container the host provides, are stated limits (§ 3.4, § 9).
+- **The texts the review measured false are corrected here**, not in step 4's commit:
+  - the Objective;
+  - M8's "not constructible";
+  - § 3.3's account of `this`, `update` and `await`;
+  - § 3.4's "only a host can make one once step 4 lands";
+  - § 3.5's item 3;
+  - § 9 item 5.
+- **§ 3.5 item 3 states the rule**, and names the reads that only inspect a value but throw anyway.
+  Those are:
+  - assigning over a listed function;
+  - an operator's operand, and a conditional's test;
+  - a template interpolation;
+  - `typeof (eval)` under `preserveParens`.
+
+  The exemptions are not widened.
+- **The postfix update's write before the refusal** is [A40](../backlog.md#a40). This plan does not
+  fix it.
+- **§ 8 q4 is what `this` should evaluate to.** It is decided from a measurement taken first.
+- **§ 8 q5 and § 2 set out the release shape, (i) or (ii), which is pending.** § 4 sets out the
+  steps of both shapes.
+- **A35 stays open** until the route through `this` is closed (§ 4, step 8).
+- **`.claude/skills/step/SKILL.md`** follows the revised steps.
+
+**Revision**: 5 — step 4's confirmation gate. At it:
+- M3 and M7 were measured again with a funnel prototype on the tree after step 3 (M12).
+- The timing harness was measured on the same prototype (M13).
+- Each exemption was probed both ways.
+
+The gate changed five things:
+- **Two cases, V20 and V21.** Without them, widening the `new` or the tag exemption turns no case
+  red. So step 4 adds 21, and `eval-core` ends at 2509.
+- **Probe (ii) becomes three probes, and probe (vi) is added.** Each exemption is now probed widened
+  and narrowed, one at a time.
+  - As written, (ii) predicted that V8–V10 alone fail. V3 and V4 fail too, since each one's callee
+    is a call whose subtree holds the read.
+  - Widening a member callee's subtree also turns V1, V2, V12 and V14 red.
+- **V19's subject** is `[f].map(t)`, with `f` a `jest.fn()` that must never run. The
+  `["x"].map(t)` it replaces would hand the string `"x"` to the realm's timer under any probe that
+  let it through.
+- **Criterion 4 gains a timing line, which stops the step.** It read "gates nothing".
+- **`.claude/skills/step/SKILL.md` joins the file list.** It changes in three places: its counts,
+  its timing wording, and its stop-and-replan rule. The rule is narrowed from any `public-api.ts` to
+  the published barrels.
+
+The gate also fixed three readings:
+- **The marks go where the callee or tag is visited.** A member callee or a member tag is
+  evaluated by `evaluateMember` and never pushed, so it is not marked.
+- **The read's name** is the identifier, then a dotted or literal key, then the function's own
+  `name`.
+- **The CHANGELOG's K1 bullet** no longer says "however it is reached". A sequence, conditional or
+  parenthesised callee now takes the read's message.
+
 **Revision**: 4 — step 3, in its own commit. Its confirmation gate changed three things:
 - **The visitors barrel joins step 3's file list.** The visitor is exported from
   `internal/visitors/public-api.ts`, and `recursive-visitors.ts` imports it from there, as it imports
@@ -91,23 +158,34 @@ Three more of the review's findings were routed before the commit:
 gains `.claude/skills/step/SKILL.md`, whose per-step counts the gate changed.
 
 **Revision**: 1 — initial plan.
-**Target package**: `@zvenigora/ng-eval-core`, released as **0.12.1**. That is a patch (§ 2), and
-both downstream peer ranges already admit it: `eval-signals`' `>=0.11.0 <0.13.0` and `eval-forms`'
-`>=0.12.0 <0.13.0`.
-**Also touches**: no downstream code. `eval-signals` and `eval-forms` run as the downstream
-witnesses, with their counts unchanged.
+**Target package**: `@zvenigora/ng-eval-core`. The release shape is pending (§ 2, § 8 q5):
+- **(i)**: **0.12.1**, a patch, then **0.13.0**;
+- **(ii)**: 0.13.0 alone.
+
+Both downstream peer ranges admit 0.12.1: `eval-signals`' `>=0.11.0 <0.13.0` and `eval-forms`'
+`>=0.12.0 <0.13.0`. Neither admits 0.13.0.
+**Also touches**: no downstream code through step 8. `eval-signals` and `eval-forms` run as the
+downstream witnesses, with their counts unchanged. For 0.13.0 to reach them, each widens its peer
+range in a release of its own (step 9).
 **Fixes**:
 - [A36](../backlog-retired.md#a36) in step 1;
-- [A35](../backlog.md#a35) in steps 2 and 4;
+- [A35](../backlog.md#a35) in steps 2 and 4, and its route through `this`, [A39](../backlog.md#a39),
+  in step 7;
 - [A37](../backlog-retired.md#a37) in step 3.
 
 **Pauses**: Phase 10 after its step 2 ([plan](../documentation/phase-10-plan.md)). It resumes at its
-step 3 once this plan's step 6 and the post-publish commit have landed.
+step 3 once this plan's first release and its post-publish commit have landed: step 6 under shape
+(i), step 9 under shape (ii).
 **Source**: the requests of 2026-10-14. Phase 10 step 2's review found the class, which was then
 measured route by route. The decisions in § 2 were fixed before this plan was committed.
-**Objective**: an expression cannot call, or hand to native code, a dangerous function value that
-the context holds or that is reachable from it, whatever name or route it uses. Every existing
-assertion holds.
+**Objective**: an expression cannot call a dangerous function value that the context holds or that
+is reachable from it, whatever name it uses. Nor can it hand one to native code through the walk's
+own values: an argument, a receiver, an element, a branch or a result. *Narrowed by Revision 6*:
+- **Two routes reach native code without passing through the walk's values**, and are stated
+  limits: a container the host provides (finding 3), and `this` (finding 8).
+- **Step 7 closes the route through `this`.**
+- **Through step 4, every existing assertion holds.** Step 7 changes what `this` evaluates to, so
+  its own gate decides which assertions it changes (§ 8 q4).
 
 **Conclusion, stated first so the rest reads as its argument**:
 - Fix A36 first and alone: the tag call goes through the sandbox.
@@ -125,8 +203,13 @@ assertion holds.
     three rotations, while the minimums were equal. `performance.spec.ts` remains the gate.
   - **Why the funnel**: it holds for visitors not yet written, and states its invariant in one place.
 - A bound function whose name, stripped of its `bound ` prefixes, is a listed name is refused too.
-- Then `SECURITY.md` moves the limit into the protections, A35 retires, and a separate commit
-  releases 0.12.1.
+- **The funnel sees only the walk's own values** (Revision 6). Step 4's review found that `this`
+  hands native code the caller's object, from which an expression builds a container of the listed
+  functions and spreads it into a native call (finding 8).
+  - That route and a host container are stated limits.
+  - Closing `this` is a breaking change: step 7, for 0.13.0.
+- Then `SECURITY.md` states the protections and the limits. The release shape decides whether
+  0.12.1 ships before 0.13.0 (§ 2). A35 retires with A39, once `this` is closed.
 
 ---
 
@@ -218,13 +301,31 @@ Each finding cites the measurement in § 1.3 that produced it.
    sixfold, and the IDE re-ran the spec on save. Interleaving the shapes in one process gave a 5×
    spread within one mode, probably because the mode switch deoptimised the hot path. That
    measurement is recorded and discarded, and M6 is the method this plan uses.
+8. **`this` hands native code a container the library supplies** (M14). *Added by Revision 6*:
+   - `this` evaluates to the walk's `EvalContext`. That object exposes the caller's context object
+     as the enumerable own field `_original`, and through the public getter `original`.
+   - An expression cannot read either, since `this.k` resolves `k` against the context. Native code
+     can: `Object.values(this)` or `Reflect.get(this, "original")` returns the caller's object.
+   - A native method then returns that object's values, any listed function among them. A spread
+     hands them to a native call.
+   - Neither the native result's elements nor the spread's are pushed, so the funnel never sees
+     them.
+
+   With `eval` and `Object` in the context, `["1+1"].map(eval)` is refused after step 4. The same
+   call reached through `this` still gives `[2]`, and `Function` reached the same way runs. This
+   differs from finding 3 in who supplies the container: there the host builds it, and here the
+   library does, so it needs only a listed function and `Object` in the context. Making
+   `_original` non-enumerable would not close it, since the getter exposes the same object. It is
+   [A39](../backlog.md#a39), which records the probes, and step 7 closes it.
 
 ### 1.3 Measurements run for this plan
 
 M1–M4, M6, M8, M9 and M10 ran against `dist/modules/eval-core`, or in Jest, with throwaway code. M5–M8
 used throwaway prototypes of both shapes in the library: a shared check module, the callee marks,
 and the gated checks. Everything was **reverted** and its files deleted before this plan's commit:
-`git status` showed only the plan's files, and the library had no diff against `HEAD`.
+`git status` showed only the plan's files, and the library had no diff against `HEAD`. M12 and M13
+used a throwaway funnel prototype, reverted the same way before step 4 began. M14 ran throwaway
+scripts outside the repository against the built bundles.
 
 | ID | Question | Method | Result |
 | :--- | :--- | :--- | :--- |
@@ -235,19 +336,22 @@ and the gated checks. Everything was **reverted** and its files deleted before t
 | M5 | Timing inside Jest | A throwaway timing spec, in separate runs and interleaved | Discarded: finding 7 |
 | M6 | **Timing, the method this plan uses** | A production build of each shape, fixed per process; Node against the bundle; 6 cached expressions; 15 rounds of 120,000 evaluations; one process per shape, rotated three times | § 3.3's table |
 | M7 | Existing suites under each shape | `nx run-many -t test` with each shape on | Funnel and sites alike: `eval-core` 2451 of 2451 existing cases, `eval-signals` 438, `eval-forms` 375 |
-| M8 | Routes under each shape | A throwaway Jest spec over 23 routes, with each shape on | § 3.3 |
+| M8 | Routes under each shape | A throwaway Jest spec over 23 routes, with each shape on | § 3.3. Its "`this` handed to a callback: not constructible" was wrong: M14 |
 | M9 | `SequenceExpression` today | `evaluate(parse(…))` against the built bundle, with an `after` hook on the node and `state.result.stack.length` read after the walk | Finding 4 |
 | M10 | Case variants, member tags, a tag that is not a function | The same, at step 1's confirmation gate and in the step | Under `caseInsensitive`: `EVAL("1+1")` 2, `` Eval`1+1` `` `["1+1"]`, `` FUNCTION`return 7`() `` 7. `` obj["fetch"]`x` `` runs a stand-in where `obj["fetch"]()` is refused. An undefined or a string tag throws a `TypeError` from `apply` |
 | M11 | A timer under `new` | Step 2's code review: zone.js 0.16.3's source, and the 0.12.0 tarball with a zone-shaped timer bound under its own name. Step 2's red-first run of C11 in the test realm | `new setTimeout("…", 0)` constructs, and the string reaches the native timer. The wrapper is `function () { return patchDelegate(this, arguments); }`, its `toString` shows the original's, and a handler that is not a function goes to `delegate.apply` |
+| M12 | M3 and M7 on the tree after step 3 | Step 4's confirmation gate: a funnel prototype; M3's routes against step 3's bundle and the prototype's; `nx run-many -t test` with the prototype on; each exemption widened and narrowed against the V cases | K1 already refuses `(0, eval)()`, `(c ? eval : f)()` and `(eval)()` under `preserveParens` with `Function call blocked for security reasons: anonymous`. The prototype refuses each at the read of `eval`. `run?.()` is K1's; `Reflect.apply(...pair)` gives 2 under both; `(0, 1)` leaves no entry; `typeof eval` is `"function"`. M7 holds: 2488 / 438 / 375, all green |
+| M13 | Timing, previewed | Step 4's confirmation gate: M6's parameters with six recorded expressions (step 4's outcome); step 3's bundle against the prototype's; six rotations | Slower in all five valid rotations, by +1.1% to +8.5% on the median. The minimums moved from −22% to +5%. One rotation was void, from interference. Step 3's medians spread 5.7% over rotations 1–3, which sets step 4's line at 10.7% |
+| M14 | `this` handed to native code | Step 4's code review, on that step's bundle. The review's two reproductions and the getter route measured again with a throwaway script, against step 3's bundle and step 4's | With `eval` and `Object`, and with `Function`, `Object` and `Reflect`, the routes in [A39](../backlog.md#a39) give `[2]` and 7 on both bundles, while each control without `this` is refused on step 4's. Through `Reflect.get(this, "original")` the first gives `[2]` too. An `EvalContext`'s own enumerable keys are `type`, `_original`, `_priorScopes`, `_scopes`, `_options`, `_lookups` |
 
 ---
 
 ## 2. Decisions — recorded, not reopened
 
 - **A36 is its own entry and step 1, fixed alone**, with its own cases and its own probe. It ships in
-  the same 0.12.1.
+  the same release as A35's first steps: 0.12.1 under shape (i), 0.13.0 under shape (ii).
 - **A37 joins this plan as step 3, before the funnel**: a `SequenceExpression` visitor that leaves
-  exactly one value. It has its own cases and its own probe, and ships in 0.12.1.
+  exactly one value. It has its own cases and its own probe, and ships in the same release.
 - **The refusal surfaces as option (a).** The callee position keeps today's messages, and no
   existing assertion changes. The route cases include `(0, eval)("1+1")`, `(c ? eval : f)("1+1")` and
   `eval?.("1+1")`, so the callee exemption is shown not to leak.
@@ -263,8 +367,33 @@ and the gated checks. Everything was **reverted** and its files deleted before t
     the captured constructor `=== Function`, as in a downlevelled realm such as an Angular zone.js
     build, the capture adds nothing and records it. The capture helper is tested with an injected
     prototype source.
-- **0.12.1 is a patch.** The `[Unreleased]` › Security entry lists exactly what now throws (§ 3.5).
-- **The release** is a separate commit after the fix steps, following CONTRIBUTING's Releasing
+- **0.12.1, under shape (i), is a patch.** The `[Unreleased]` › Security entry states the rule and
+  lists exactly what now throws, and the two routes it does not cover (§ 3.5). **0.13.0 is a minor
+  that carries a breaking change**: what `this` evaluates to (step 7).
+- **The exemptions are not widened** (Revision 6). A read that only inspects a listed value throws
+  as any other read does: an operator's operand, a conditional's test, an assignment's target. The
+  Security entry names them instead (§ 3.5).
+- **A35 retires with A39**, once the route through `this` is closed (step 8), under either shape.
+- **The release shape is pending**, and is settled before any release step (Revision 6, § 8 q5).
+  - **(i) 0.12.1 as hardening, then 0.13.0.**
+    - 0.12.1 ships steps 1–4: A36, K1, A37 and the funnel.
+    - Its `SECURITY.md` and Security entry lead with the guidance that holds whatever the route:
+      place no listed function in the context, and in a browser, serve a Content Security Policy
+      without `'unsafe-eval'`.
+    - They state the route through `this` (A39) and a host container as limits.
+    - Both downstream ranges admit 0.12.1, so every consumer can take it with no other release.
+    - Then 0.13.0 closes `this` (step 7), and each downstream package widens its peer range to
+      take it (step 9).
+  - **(ii) Everything in 0.13.0.** Steps 5 and 6 are skipped. Nothing ships until `this` is closed.
+    A consumer through `eval-signals` or `eval-forms` gets none of it until that package widens its
+    range.
+  - **Recommended: (i).**
+    - It ships the callee and funnel refusals now, to every consumer, with no downstream release.
+      They close every route measured except those two.
+    - (ii) would ship nothing sooner than (i) does.
+    - Its cost is a published version with an open route that is documented. The advisory has to
+      state that route (§ 5, U3).
+- **Each release** is a separate commit after the fix steps, following CONTRIBUTING's Releasing
   procedure and the Publication status / release-tags process. A GHSA advisory, rated in § 5,
   follows the publish, once private vulnerability reporting is enabled. **Both are the maintainer's
   actions** (§ 5).
@@ -367,8 +496,9 @@ As measured:
   difference of this size is within what this machine produced by itself, though not ruled out by
   it.
 
-**`performance.spec.ts` remains the gate.** M6's method is reported in the funnel's step, beside
-these figures, and it gates nothing.
+**`performance.spec.ts` remains the gate.** The funnel's step also runs a timing line of its own,
+fixed at its confirmation gate (Revision 5): M6's method against step 3's bundle, which stops the
+step on a red (step 4, criterion 4).
 
 **Coverage** (M8). The 23 routes divide the same way under both shapes:
 - **15 refused by both**, at the read: `eval.call`, `eval.bind`, `Function.call`, `map(eval)`,
@@ -382,8 +512,13 @@ these figures, and it gates nothing.
     callee, a call-result callee, a host-bound callee;
   - `run?.()`, an optional alias, which K1 also closes;
   - `Reflect.apply(...pair)` over a host container (finding 3).
-- **1 not constructible**: `this` handed to a callback. `this` is always the `EvalContext` object,
-  so no listed value can arrive that way.
+- **1 recorded as not constructible, wrongly**: `this` handed to a callback.
+  - M8 reasoned that `this`, always the `EvalContext` object, could carry no listed value.
+  - It carries the caller's object, from which native code returns the listed values, and a spread
+    hands them on.
+  - Neither shape sees that, since nothing is pushed (finding 8, M14).
+
+  *Corrected by Revision 6.*
 
 **Which value-producing visitors each shape covers without a site of its own.**
 - **The funnel** covers all 25 visitor files that push, with no site in any of them, and any visitor
@@ -393,21 +528,31 @@ these figures, and it gates nothing.
   - **Forwarding a child's value**, which a site already checked: conditional, logical, assignment,
     block, expression-statement, for, if, program.
   - **Producing values that are never a listed function**: arrow (an expression-made closure), array
-    and object (containers), literal, template-literal, binary, unary, update, empty,
+    and object (containers), literal, template-literal, binary, unary, empty,
     variable-declaration.
-  - **`this`**, which pushes `st.context`, always an `EvalContext` object.
-  - **`await`**, which pushes a promise through `pushVisitorResultAsync`.
+  - **`update`**, which this list once put among those never producing one. A postfix update
+    pushes its target's old value, which can be a listed function. Before step 4, `tools.eval++`
+    gave `eval` itself (A40's table), so `["1+1"].map(tools.eval++)` handed it on. The sites shape
+    has no site there. The funnel refuses it, and its write is [A40](../backlog.md#a40).
+  - **`this`**, which pushes `st.context`, an `EvalContext` object and never itself a function. But
+    it carries the caller's object to native code, and neither shape sees that (finding 8).
+  - **`await`**, which pushes its promise through `pushVisitorResult`. `pushVisitorResultAsync`
+    has no caller.
 
-  So **today** no visitor outside the five can push a listed value that no site has checked, and
-  coverage is equal. The difference is **tomorrow's**. A visitor that brings a value into the walk
-  from outside, as identifier, member, call, `new` and tag do, needs its own site under the sites
-  shape and nothing under the funnel.
+  *`update` and `await` were corrected by Revision 6*, from step 4's code review. So coverage was
+  **not** equal: no site under the sites shape covers `update`. Every other visitor outside the five
+  forwards a value a site has checked, or produces one that is never listed. The rest of the
+  difference is **tomorrow's**. A visitor that brings a value into the walk from outside, as
+  identifier, member, call, `new` and tag do, needs its own site under the sites shape, and nothing
+  under the funnel.
 
 **Decided: the funnel.** Coverage is equal today, and § 1.2 finding 6 gives the cost as measured.
 The sites shape would add a fourth per-visitor invariant beside `CLAUDE.md`'s three: every visitor
 that introduces a value must check it. That is the kind of count this repository has recorded wrong
 twice. The funnel states the invariant once: no listed function value is pushed, except at a callee
-or as `typeof`'s operand. It holds for every visitor, and it is probed in one place.
+or as `typeof`'s operand. It holds for every visitor, and it is probed in one place. It says nothing
+about a value that never passes through the stack: an element a native method returns, or one a
+spread expands (finding 8; *Revision 6*).
 
 What the funnel gives up is attribution by visitor. Removing it turns every value route red at once,
 where removing one site would turn only its own routes red. The route cases are still read one by
@@ -419,6 +564,9 @@ or the member's property name, or the function's own `name`. No existing asserti
 
 ### 3.4 What stays open
 
+- **`this` handed to native code** (finding 8; [A39](../backlog.md#a39)). Here the library supplies
+  the container, so an expression needs only a listed function and `Object` in the context. Step 7
+  closes it, in 0.13.0. Under shape (i), 0.12.1 ships with it as a limit. *Added by Revision 6.*
 - **A container the host provides, handed to native code** (finding 3; § 8 q2).
 - **A function from another realm**, such as an iframe's `eval`.
 - **`AsyncFunction` and `AsyncGeneratorFunction` in a downlevelled realm**: not captured, and the
@@ -430,21 +578,28 @@ or the member's property name, or the function's own `name`. No existing asserti
   `apply` or `Reflect.apply`. It is not a listed value by identity or by name:
   `Function.prototype.call.bind(eval)` is named `bound call`, and `new Proxy(eval, {})` is named
   `eval`, with no `bound ` prefix. Neither K1 nor the funnel sees it, and the mitigation covers it.
-  Step 2's code review measured both. **Only a host can make one once step 4 lands**: building
-  either reads the listed function as an argument or a receiver, which the funnel refuses. Until
-  then, an expression with a listed function in reach can build one.
+  Step 2's code review measured both.
+
+  **An expression can still build one after step 4**, through `this`. *Corrected by Revision 6*: this
+  item said only a host could, once step 4 lands. Building one by reading the listed function as an
+  argument or a receiver is refused: `(fwd => fwd(null, "1+1"))(f.call.bind(eval))` throws. But
+  `this` hands the listed function to native code without a read (finding 8). So the same forwarder,
+  bound to the function taken from `Object.values(Object.values(this)[1])`, gives 2, with `eval`,
+  `Object` and a benign `f` in the context. Step 4's code review measured it, and M14 measured it
+  again. It closes with A39.
 - **The two heuristics**:
   - The source-pattern test can be evaded, and can refuse a benign function.
   - The bound-name rule refuses a host's own bound function that merely carries a listed name, such
     as a wrapper bound as `fetch`.
 
-`SECURITY.md` lists each of these as a limit (step 5).
+`SECURITY.md` lists each of these as a limit, in step 5, or in step 8 under shape (ii).
 
 ### 3.5 What now throws — the Security entry's list
 
-`modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Security entry, which step 6 versions, lists
-exactly these, and nothing else. A **listed value** is any member of § 3.1's set, or a bound function
-whose name, stripped of its `bound ` prefixes, is a listed name.
+`modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Security entry, which the first release versions,
+lists exactly these, and nothing else. It also states the two routes it does not cover. A **listed
+value** is any member of § 3.1's set, or a bound function whose name, stripped of its `bound `
+prefixes, is a listed name.
 1. **A tagged template whose tag the call sandbox refuses** — by its written name, a member tag's
    property name, a computed key included, by `Function`'s identity, or by the source-pattern test —
    throws `Function call blocked for security reasons: <name>`. A tag that is a built-in writing into
@@ -455,22 +610,51 @@ whose name, stripped of its `bound ` prefixes, is a listed name.
    - a member tag's own `MemberExpression` raises no `before` or `after` node-hook events and
      leaves no trace entry, as a member callee already does. Its read event is unchanged;
    - a tag that is not a function throws the call's error instead of a `TypeError` from `apply`.
-2. **A call, `new` or tagged template whose callee value is a listed value**, under any name or
-   callee shape: an alias, a member, a call result, `this.k`, a scope namespace, a destructured name,
-   an optional call, a case variant under `caseInsensitive`, or a timer under `new` with its own name,
-   which `new`'s list of names never held (M11). The error is today's message for that site, naming
-   the written name, the property name or `anonymous` (step 2).
-3. **Any other read of a listed value**, which throws
-   `Access to dangerous function "<name>" is blocked for security reasons` (step 4). That covers:
+2. **A call, `new` or tagged template whose callee value is a listed value**, under any name. That
+   covers an alias, a member, a call result, `this.k`, a scope namespace, a destructured name, an
+   optional call, and a case variant under `caseInsensitive`. It also covers a timer under `new` with
+   its own name, which `new`'s list of names never held (M11).
+   - **The error** is today's message for that site, naming the written name, the property name or
+     `anonymous` (step 2).
+   - **A callee under which the listed value is read takes item 3's message instead.** Such a
+     callee is a sequence, a conditional, a logical, an assignment, or a parenthesised or
+     optional-chain expression. The read under it is refused first (step 4).
+
+   *Corrected by Revision 6*: item 2 read "under any name or callee shape".
+3. **Every read of a listed value the walk makes**, which throws
+   `Access to dangerous function "<name>" is blocked for security reasons` (step 4). The rule is one
+   rule: a listed value pushed by any node but an exempt one. Among the reads that hand the value
+   on:
    - an argument;
    - the receiver of `call`, `apply` or `bind`;
    - an element of an array or a property of an object the expression builds;
    - a branch of a conditional or a logical;
-   - the last expression of a sequence used as a callee;
+   - the last expression of a sequence used as a callee, a constructor or a tag;
    - a parenthesised callee under `preserveParens`;
    - the expression's own result.
 
-   Two positions do not throw: a callee itself, which is item 2's, and the operand of `typeof`.
+   **Reads that only inspect the value throw too**, and the entry names them. *Added by Revision 6*,
+   from step 4's code review:
+   - assigning over a listed function, `fetch = 1` or `obj.fetch = 1`, since an assignment reads
+     its target before writing it;
+   - a postfix update, `obj.fetch++`, which writes first and then throws
+     ([A40](../backlog.md#a40));
+   - an operator's operand, `x instanceof Function` or `obj.fetch != null`;
+   - a conditional's test;
+   - a template interpolation, and a declaration's initializer;
+   - `typeof (eval)` under `preserveParens`, whose operand is the parenthesis, not the identifier.
+
+   Two positions do not throw: a callee or tag itself, which is item 2's, and the operand of
+   `typeof`. The exemptions are not widened (§ 2).
+
+   **Not covered**, and stated as such in the entry, with the mitigations that hold whatever the
+   route: a host places no listed function in the context, and in a browser, a CSP without
+   `'unsafe-eval'` stops `eval`, `Function` and a string timer. The two routes are:
+   - a container the host provides, spread into a native call (finding 3);
+   - `this`, from which an expression builds such a container itself (finding 8,
+     [A39](../backlog.md#a39)).
+
+   The entry describes both in prose, and does not print the expressions.
 
 A37's visitor changes no value an expression evaluates to, and makes nothing throw (finding 4). It is
 a `### Fixed` line, not a Security one.
@@ -483,18 +667,25 @@ Each step is one commit, leaves all three projects and the workspace root green,
 session. "Wrong" in a criterion names the change the executor makes to show the criterion goes red.
 The report gives the failure count for each and reads which cases failed, case by case. Steps 1–4 add
 `[Unreleased]` lines to `modules/eval-core/CHANGELOG.md` with their change: › Security for steps 1, 2
-and 4, and › Fixed for step 3. No version moves until step 6.
+and 4, and › Fixed for step 3. No version moves until the first release step: step 6 under shape (i),
+step 9 under shape (ii) (§ 2).
 
-| Step | Subject | Files (main) | Tests: `eval-core` / `eval-signals` / `eval-forms` | Ships in |
-| :--- | :--- | :--- | :--- | :--- |
-| 1 | A36: the tag call through the sandbox | `tagged-template-expression.ts`, `call-expression.ts` (`callMember`, and `safeCall` exported), new `tagged-template-expression.spec.ts` | **+10** / 0 / 0 | `eval-core` 0.12.1 |
-| 2 | K1 and the identity set | new `dangerous-values.ts`; `call-expression.ts`, `new-expression.ts`, `member-write-policy.ts`'s comment; new `eval.service.dangerous-values.spec.ts`; T11 and T12 in `tagged-template-expression.spec.ts` | **+21** / 0 / 0 | `eval-core` 0.12.1 |
-| 3 | A37: a `SequenceExpression` visitor | new `sequence-expression.ts` and its spec; `recursive-visitors.ts`; the visitors barrel; the root `README.md`'s node list | **+6** / 0 / 0 | `eval-core` 0.12.1 |
-| 4 | The funnel | `visitor-result.ts`, `dangerous-values.ts`, the marks in `call-expression.ts`, `new-expression.ts`, `tagged-template-expression.ts` and `unary-expression.ts`; the spec | **+19** / 0 / 0 | `eval-core` 0.12.1 |
-| 5 | `SECURITY.md`'s limit becomes a protection; A35 retired | `SECURITY.md`, `public-api.spec.ts`'s allowlist if it needs entries, the register | 0 / 0 / 0 | no package |
-| 6 | Release `eval-core` 0.12.1 | `modules/eval-core/package.json`, `CHANGELOG.md` | 0 / 0 / 0 | `eval-core` 0.12.1 |
+*Revised by Revision 6.* Steps 5 and 6 run under shape (i) only. Steps 7–9 are new, and run under
+either shape.
 
-From 2451, `eval-core` ends at 2507 if every step lands as planned.
+| Step | Subject | Files (main) | Tests: `eval-core` / `eval-signals` / `eval-forms` | Shape | Ships in | State |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | A36: the tag call through the sandbox | `tagged-template-expression.ts`, `call-expression.ts` (`callMember`, and `safeCall` exported), new `tagged-template-expression.spec.ts` | **+10** / 0 / 0 | both | the first release | done |
+| 2 | K1 and the identity set | new `dangerous-values.ts`; `call-expression.ts`, `new-expression.ts`, `member-write-policy.ts`'s comment; new `eval.service.dangerous-values.spec.ts`; T11 and T12 in `tagged-template-expression.spec.ts` | **+21** / 0 / 0 | both | the first release | done |
+| 3 | A37: a `SequenceExpression` visitor | new `sequence-expression.ts` and its spec; `recursive-visitors.ts`; the visitors barrel; the root `README.md`'s node list | **+6** / 0 / 0 | both | the first release | done |
+| 4 | The funnel: every read through the walk's own stack | `visitor-result.ts`, `dangerous-values.ts`, the marks in `call-expression.ts`, `new-expression.ts`, `tagged-template-expression.ts` and `unary-expression.ts`; the spec; `.claude/skills/step/SKILL.md` | **+21** / 0 / 0 | both | the first release | **implemented, verified, not committed** |
+| 5 | `SECURITY.md` for 0.12.1: the funnel as a protection, the route through `this` and a host container as limits, the mitigations first | `SECURITY.md`, `public-api.spec.ts`'s allowlist if it needs entries | 0 / 0 / 0 | (i) only | no package | |
+| 6 | Release `eval-core` 0.12.1 | `modules/eval-core/package.json`, `CHANGELOG.md` | 0 / 0 / 0 | (i) only | `eval-core` 0.12.1 | |
+| 7 | A39: what `this` evaluates to | specified once § 8 q4 is decided | set at its gate | both | `eval-core` 0.13.0 | |
+| 8 | `SECURITY.md`'s `this` limit becomes a protection; A39 and A35 retired | `SECURITY.md`, the register; under shape (ii), step 5's text too | 0 / 0 / 0 | both | no package | |
+| 9 | Release `eval-core` 0.13.0; each downstream package then widens its peer range | `modules/eval-core/package.json`, `CHANGELOG.md`; the downstream releases are planned with step 7 | 0 / 0 / 0 | both | `eval-core` 0.13.0 | |
+
+From 2451, `eval-core` is at 2509 once step 4 commits. Step 7 sets its own count at its gate.
 
 ### Step 1 — A36: the tag call through the sandbox
 
@@ -766,16 +957,27 @@ From 2451, `eval-core` ends at 2507 if every step lands as planned.
 
 ### Step 4 — the funnel
 
+- **Objective**: no listed value passes through the walk's own stack, except at a callee, a tag or
+  `typeof`'s operand. Every value an expression reads and hands on is checked where it is pushed.
+  *Narrowed by Revision 6*:
+  - It was every value the expression could hand to native code.
+  - It does not cover a value that reaches native code without a push: a host container's elements,
+    or what native code returns from `this` (§ 3.4, findings 3 and 8).
 - **Edit**:
   - `visitor-result.ts`: `pushVisitorResult` calls the check only when
     `typeof value === 'function'`. A value that is not a function pays one comparison and no frame,
     and the docblock says so.
   - `dangerous-values.ts`: the refusal, and the exempt-node `WeakSet`.
   - The marks: `call-expression.ts`, `new-expression.ts` and `tagged-template-expression.ts` mark
-    the callee node before evaluating it, and `unary-expression.ts` marks a `typeof` operand.
-  - The spec. `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Security (§ 3.5's item 3), "Work
-    in flight", and this document's outcome.
-- **The spec gains nineteen cases**, each refused with
+    the callee or tag node they visit, before evaluating it, and `unary-expression.ts` marks a
+    `typeof` operand. A member callee or member tag is evaluated by `evaluateMember` and never
+    pushed, so it is not marked. *That reading was fixed at the confirmation gate* (Revision 5).
+  - The spec, `eval.service.dangerous-values.spec.ts`. `modules/eval-core/CHANGELOG.md`'s
+    `[Unreleased]` › Security (§ 3.5's item 3), "Work in flight", and this document's outcome.
+  - `.claude/skills/step/SKILL.md`, in three places: the step 4 count, the timing wording, and the
+    stop-and-replan rule, narrowed from any `public-api.ts` to the published barrels. *Added at the
+    confirmation gate* (Revision 5).
+- **The spec gains 21 cases**, each refused with
   `Access to dangerous function "<name>" is blocked for security reasons`, except V16:
   - **V1** `eval.call(null, "1+1")`.
   - **V2** `eval.apply(null, ["1+1"])`.
@@ -797,55 +999,142 @@ From 2451, `eval-core` ends at 2507 if every step lands as planned.
   - **V18** `typeof f(eval)`: refused, naming `eval`, since the argument is not `typeof`'s operand.
   - **V19** **additive recapture**: after a first evaluation, replace `globalThis.setTimeout`. Both
     the value captured before the replacement and the replacement are refused when passed to
-    `["x"].map(…)`. The original global is restored after.
+    `[f].map(…)`, and `f`, a `jest.fn()`, never runs. The original global is restored after.
+    *Changed at the confirmation gate* (Revision 5): it was `["x"].map(…)`.
+  - **V20** `new (0, X)(f, 0)`, with `X` the realm's `setTimeout`: refused, naming `X`, and `f`
+    never runs. *Added at the confirmation gate* (Revision 5).
+  - **V21** `` (0, eval)`1+1` ``: refused, naming `eval`. *Added at the confirmation gate*
+    (Revision 5).
 
-  V8–V10 assert the **read** message, not the call message. That is what shows the callee exemption
-  does not leak: their identifier is not the callee node.
-- **Exit criteria**:
-  1. V1–V19 pass, and every step 1–3 case still passes.
-  2. **The probes**, read case by case:
+  V8–V10, V20 and V21 assert the **read** message, not the site's message. That is what shows the
+  callee and tag exemptions do not leak: their identifier is not the callee or tag node. K1 already
+  refuses each of them with the site's message, naming `anonymous` (M12), so before the fix they are
+  red by message, not by running.
+- **Exit criteria**, fixed at the confirmation gate (Revision 5):
+  1. V1–V21 pass, and every step 1–3 case still passes.
+  2. **The probes**, each against the whole `eval-core` suite, read case by case:
      - **(i)** the funnel's check removed: every V case fails except V16, which passes either way.
        Nothing else fails.
-     - **(ii)** the callee exemption widened to the callee's whole subtree: V8–V10 alone fail. They
-       reach K1 and take its call message instead.
+     - **(ii)** each callee exemption widened to its node's whole subtree, one at a time:
+       - the call's, a member callee's subtree included: V1–V4, V8–V10, V12 and V14 alone fail;
+       - `new`'s: V20 alone;
+       - the tag's: V21 alone.
+
+       *Changed at the confirmation gate* (Revision 5). It was one probe, under which V8–V10 alone
+       failed. M12 showed V3 and V4 fail too, since each one's callee is a call whose subtree holds
+       the read.
      - **(iii)** the `typeof` exemption widened to the operand's whole subtree: V18 alone fails.
      - **(iv)** the bound-name rule removed: V15 fails, and so do step 2's C8 and C9.
      - **(v)** recapture that replaces the set instead of adding to it: V19 alone fails.
-  3. **No existing assertion changes**, in all three projects. M7 measured this for the prototype.
-  4. **Performance.** `performance.spec.ts` is green and untouched; it is the gate. The step reports
-     M6's method on the step's bundle beside § 3.3's figures, and that report gates nothing.
-  - The gate is green. `git diff --name-only` lists the files above and this document.
-- **Category**: a behaviour change on a published path, released in step 6. § 3.5's item 3 is the
-  change a consumer can notice.
+     - **(vi)** each mark removed, one at a time. Existing cases fail, each because it gets the read
+       message instead of its site's:
+       - the call's: 13 cases. Those are `eval.service.call-security.spec.ts`'s direct calls to
+         `eval`, `Function`, `setTimeout` and `setInterval`, and C1, C3, C6–C9, C12, C13 and C15;
+       - `new`'s: 2 cases, `eval.service.call-security.spec.ts`'s `new Function` and C11;
+       - the tag's: 5 cases, T1, T2, T8, C10 and C15t;
+       - `typeof`'s: V16 alone.
 
-### Step 5 — `SECURITY.md`'s limit becomes a protection; A35 retired
+       *Added at the confirmation gate* (Revision 5).
+  3. **No existing assertion changes**, in all three projects. M7 measured this for the prototype,
+     and M12 did again on the tree after step 3.
+  4. **Performance.** `performance.spec.ts` is green and untouched. **The timing line**, fixed at
+     the confirmation gate from M13 (Revision 5):
+     - **The harness.** Plain Node against the production bundle: step 3's, built at its commit,
+       against this step's. Six cached expressions, recorded in the outcome; a fresh state per
+       evaluation; 15 rounds of 120,000 evaluations; min and median per process. Three rotations,
+       one process per bundle in each, with the order alternating.
+     - **Void.** A rotation is void when either process's slowest round is more than twice its
+       fastest. All three are void when step 3's three medians spread by more than 8%. A void is
+       re-run, up to three times, and every void is reported.
+     - **Red** when this step's median is above step 3's by more than **10.7%** in at least two of
+       three valid rotations. That is M13's baseline spread, 5.7%, plus 5%, and it does not move
+       with a run's own noise. A red stops the step.
+     - **The outcome states the cost as measured**: the mean of the median deltas, and how many
+       rotations were slower. Pass or fail alone is not enough.
+  - The gate is green. `git diff --name-only` lists the files above and this document.
+- **Category**: a behaviour change on a published path, released in the first release: step 6 under
+  shape (i), step 9 under shape (ii). § 3.5's item 3 is the change a consumer can notice.
+- **Status — implemented and verified 2026-10-16 under Revision 5, and not committed** (Revision 6).
+  The code, the spec and the rewritten Security entry are in the working tree. The step commits after
+  this replan, under the corrected § 3.5, and closes out then.
+  - **Red first.** Written before the fix, 20 V cases failed and V16 passed.
+    - V3, V8–V10, V20 and V21 failed on K1's call message, as M12 predicted.
+    - The other 14 failed because nothing threw.
+  - **Probes**, each against the whole `eval-core` suite. Every one turned exactly its named cases
+    red, and nothing else:
+    - (i): 20 cases, every V case except V16.
+    - (ii): the call's, V1–V4, V8–V10, V12 and V14; `new`'s, V20; the tag's, V21.
+    - (iii): V18.
+    - (iv): V15, C8 and C9.
+    - (v): V19.
+    - (vi): the call's, the 13 named; `new`'s, the 2; the tag's, the 5; `typeof`'s, V16.
+  - **Timing, criterion 4: green**, and no rotation was void or re-run.
+
+    | Rotation | Step 3 min / median | Step 4 min / median | Median delta |
+    | :--- | :--- | :--- | :--- |
+    | 1 | 212.5 / 222.1 | 221.4 / 233.5 | +5.1% |
+    | 2 | 212.3 / 224.6 | 212.0 / 226.2 | +0.7% |
+    | 3 | 210.1 / 220.5 | 214.9 / 225.4 | +2.2% |
+
+    - **The cost as measured.** Step 4 was slower in all three rotations, by a mean of **+2.7%** on
+      the median. That is under the 10.7% line in every rotation. The minimums moved +4.2%, −0.1%
+      and +2.3%.
+    - **The run itself.** Step 3's three medians spread 1.9%, against the 8% that would void the
+      run. Values agree across the two bundles.
+    - **The six expressions**:
+      - `a + b * c - d / e`
+      - `user.profile.name.length > 3 && user.active`
+      - `max(a, b) + min(c, d)`
+      - `items.filter(x => x > 2).map(x => x * k)`
+      - `` flag ? `${first} ${last}` : "none" ``
+      - `typeof fn === "function" ? fn(a) : 0`
+
+      Each is evaluated 20,000 times per round, with a fresh `EvalState.fromContext` each time.
+  - **The gate** was green at 2509 / 438 / 375. The built `.d.ts` is byte-identical to step 3's, and
+    the bundle loads and evaluates in plain Node, so the wider import cycle is safe.
+  - **The code review** raised one Critical, which stopped the step and produced this replan:
+    - **The Critical**: the route through `this` (finding 8, [A39](../backlog.md#a39)).
+    - **W1**: reads that only inspect a value throw too. They went into § 3.5 item 3, and the
+      postfix update's write became [A40](../backlog.md#a40).
+    - **W2**: the timing and this status. The timing had run before the review, but its brief
+      omitted it.
+    - **N1**: § 3.3's account of `update` and `await`, corrected.
+    - **N2**: the exempt set's docblock now states its tree assumption.
+
+### Step 5 — `SECURITY.md` for 0.12.1 (shape (i) only)
+
+*Revised by Revision 6.* It no longer retires A35, which retires with A39 in step 8. Under shape
+(ii) this step is skipped, and step 8 carries its text.
 
 - **Edit**:
   - `SECURITY.md`:
+    - **It leads with the mitigations that hold whatever the route**: place no listed function in
+      the context, under any name, nor an object from which one is reachable. In a browser, a
+      Content Security Policy without `'unsafe-eval'` stops `eval`, `Function` and a string timer,
+      whatever reaches them. U3's advisory recommends the same (§ 5).
     - "The call checks refuse a name, not a value" moves from the limits to the protections, as
-      "Dangerous function values". It covers the set as § 3.1 lists it, when the set is captured
-      and why, K1 and the funnel with its two exemptions, and the bound-name rule beside the
-      source-pattern heuristic.
-    - The limits keep § 3.4's list.
-    - It recommends a Content Security Policy without `'unsafe-eval'` as the mitigation that holds
-      in every version. In a browser, that stops `eval`, `Function` and a string timer, whatever
-      reaches them. U3's advisory recommends the same (§ 5).
+      "Dangerous function values". It covers:
+      - the set as § 3.1 lists it, and when and why it is captured;
+      - K1, and the funnel with its two exemptions, and that the funnel sees only the walk's own
+        values;
+      - the bound-name rule, beside the source-pattern heuristic.
+    - The limits keep § 3.4's list, with the route through `this` first, fixed in 0.13.0
+      ([A39](../backlog.md#a39)). It is described in prose, without the expressions.
     - The Reporting section points at the repository's "Report a vulnerability" form once the
       maintainer has enabled private vulnerability reporting (§ 5, U1). Until then it stays as it is.
   - `modules/eval-core/src/public-api.spec.ts`: allowlist entries only if the new text needs them,
     each with its reason.
-  - `docs/backlog.md` and `docs/backlog-retired.md`: A35 retired as fixed and not yet released, with
-    its index row re-pointed, and the links the gate lists re-pointed. "Work in flight" is updated.
+  - `docs/backlog.md`: "Work in flight". A35 stays open.
   - This document: the outcome.
 - **Exit criteria**:
   1. `public-api.spec.ts`'s three `SECURITY.md` cases are green. The advisory sections are unchanged.
      doc-links is green.
-  2. **Every route in § 1.2 finding 1 appears in `SECURITY.md`**, as refused or as a limit, and each
-     limit names its case or its measurement.
+  2. **Every route in § 1.2 findings 1 and 8 appears in `SECURITY.md`**, as refused or as a limit,
+     and each limit names its case or its measurement.
   - Tests unchanged in all three projects. The gate is green.
 - **Category**: documents. Ships in no package.
 
-### Step 6 — Release `eval-core` 0.12.1
+### Step 6 — Release `eval-core` 0.12.1 (shape (i) only)
 
 - **The release commit**: bump `modules/eval-core/package.json` to 0.12.1, and move
   `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` items under `## [0.12.1] - <date>`. The full gate
@@ -855,12 +1144,55 @@ From 2451, `eval-core` ends at 2507 if every step lands as planned.
      each range already admits 0.12.1.
   2. **The built `.d.ts` is byte-identical to 0.12.0's tarball** (`npm pack` outside the repository).
      Every change in steps 1–4 is internal.
-  3. **The Security entry lists exactly § 3.5's three items**, and the Fixed entry lists A37.
+  3. **The Security entry lists exactly § 3.5's three items**, and states the two routes item 3 does
+     not cover. The Fixed entry lists A37.
   4. Then CONTRIBUTING's Releasing steps 3–6: publish, confirm with `npm view`, tag
      `eval-core@0.12.1` at the release commit, and write the post-publish commit. That commit adds a
      Publication status row and a Register history row, and `tools/release-tags.mjs` is green on it.
      Publishing and tagging are the maintainer's actions (§ 5).
 - **Category**: the release, a patch.
+
+### Step 7 — A39: what `this` evaluates to
+
+*Added by Revision 6.*
+- **Specified once § 8 q4 is decided.** Q4's measurement runs first. The decision is a plan
+  revision in its own commit, and this step's files, cases, probes and count are fixed then, at its
+  confirmation gate.
+- **What it must do, whatever the target**:
+  - A39's probes, P1, P2 and G1, no longer yield a listed value to native code.
+  - Every case that pins what `this` is today, as q4's measurement finds them, either holds or is
+    changed deliberately and listed as breaking.
+- **Scope.** What `this` evaluates to is decided in `this-expression.ts` and `identifier.ts`, inside
+  `internal/visitors/`. A change to `EvalContext` would fall outside that, and its gate would have to
+  name it.
+- **Category**: a breaking change on a published path, released in step 9 as 0.13.0.
+
+### Step 8 — `SECURITY.md`'s `this` limit becomes a protection; A39 and A35 retired
+
+*Added by Revision 6.*
+- **Edit**:
+  - `SECURITY.md`: the route through `this` moves from the limits to the protections. Under shape
+    (ii), this step also carries step 5's text.
+  - `docs/backlog.md` and `docs/backlog-retired.md`: A39 and A35 retired as fixed and not yet
+    released, with their index rows re-pointed and the links the gate lists re-pointed. "Work in
+    flight" is updated.
+  - This document: the outcome.
+- **Exit criteria**: step 5's, with every route in findings 1 and 8 accounted for.
+- **Category**: documents. Ships in no package.
+
+### Step 9 — Release `eval-core` 0.13.0
+
+*Added by Revision 6.*
+- **The release commit**: bump `modules/eval-core/package.json` to 0.13.0, and move the
+  `[Unreleased]` items under `## [0.13.0] - <date>`, with step 7's breaking change stated first.
+- **Downstream.** Neither peer range admits 0.13.0: `eval-signals`' is `>=0.11.0 <0.13.0` and
+  `eval-forms`' is `>=0.12.0 <0.13.0`. Step 6's criterion 1 reads both downstream `lint` targets as
+  checking their range against `eval-core`'s version. So the bump cannot land alone: each range
+  widens in a release of its own. That is planned with step 7, where this plan's "no downstream
+  code" rule changes.
+- **Exit criteria**: set when step 7 is specified. They include the `.d.ts` against the previous
+  release's tarball, differing only as step 7 states.
+- **Category**: the release, a minor carrying a breaking change.
 
 ---
 
@@ -869,8 +1201,8 @@ From 2451, `eval-core` ends at 2507 if every step lands as planned.
 | # | Action | When |
 | :--- | :--- | :--- |
 | U1 | Enable private vulnerability reporting on the repository | Before U3, and before step 5 if `SECURITY.md`'s Reporting section is to point at the form in that commit |
-| U2 | Publish `eval-core` 0.12.1 and push its tag, per CONTRIBUTING steps 3–5 | After step 6's release commit |
-| U3 | Publish a GHSA advisory for `@zvenigora/ng-eval-core`, rated `CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:L/I:L/A:N`, **4.7 Medium**: affected `<= 0.12.0`, patched 0.12.1. It covers dangerous function values callable past the name-based call sandbox (A35), and the unsandboxed tag call (A36). Its text names `new setTimeout("…")` under zone.js, and recommends a Content Security Policy without `'unsafe-eval'` as the mitigation that holds in every version | After U2 |
+| U2 | Publish the release and push its tag, per CONTRIBUTING steps 3–5: `eval-core` 0.12.1 under shape (i), then 0.13.0 under either | After step 6's release commit, and after step 9's |
+| U3 | Publish a GHSA advisory for `@zvenigora/ng-eval-core`, rated `CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:L/I:L/A:N`, **4.7 Medium**, affected `<= 0.12.0`. It covers dangerous function values callable past the name-based call sandbox (A35), and the unsandboxed tag call (A36). Its text names `new setTimeout("…")` under zone.js, and recommends a Content Security Policy without `'unsafe-eval'` as the mitigation that holds in every version. *Revised by Revision 6*: under shape (i), "patched 0.12.1" must state that the route through `this` (A39) is fixed in 0.13.0; under shape (ii), patched 0.13.0 | After U2 |
 
 U3's rating, in two lines (Revision 3; it was "low"):
 - **AC:H**: the attack needs the host to have placed a listed function in the context, a condition
@@ -878,6 +1210,9 @@ U3's rating, in two lines (Revision 3; it was "low"):
   elsewhere and evaluated in a victim's page.
 - **S:C, C:L, I:L**: the impact is code execution in the consumer's origin, through `eval` or a
   string timer, beyond the evaluator's sandbox. That is scored as FIRST scores cross-site scripting.
+
+U3's AC:H holds for the route through `this` as well. The expression's author needs the host to
+have placed a listed function, and `Object` or `Reflect`, in the context.
 
 After U3 comes a docs-only commit. It adds the advisory to `SECURITY.md`'s "Advisories for ng-eval"
 table, a section otherwise unchanged since Phase 10 step 2, and its ID to A35's and A36's retired
@@ -890,11 +1225,12 @@ entries.
 | Gate | Command | Expected |
 | :--- | :--- | :--- |
 | Everything | `npx nx run-many -t lint test build --skip-nx-cache --output-style=static` | Green, every step |
-| `eval-core` tests | (in the above) | +10, +21, +6, +19, then 0 and 0 |
+| `eval-core` tests | (in the above) | +10, +21, +6 and +21 in steps 1–4; step 7's is set at its gate; 0 in steps 5, 6, 8 and 9 |
 | `eval-signals` / `eval-forms` tests | (in the above) | Unchanged in every step |
-| Perf | `internal/performance.spec.ts` | Green and untouched in every step; the gate. M6's method is reported in step 4 and gates nothing |
+| Perf | `internal/performance.spec.ts` | Green and untouched in every step; the gate |
+| Timing | Step 4's harness against step 3's bundle | Step 4 only: green on its line, fixed at that step's confirmation gate (step 4, criterion 4). A red stops the step |
 | Scope | `git diff --name-status` | The step's file list. No `R`. In steps 1–4 a non-spec `.ts` change outside `modules/eval-core/src/lib/internal/visitors/` is a stop-and-replan |
-| Surface | The built `.d.ts` against the 0.12.0 tarball | Step 6: byte-identical |
+| Surface | The built `.d.ts` against the previous release's tarball | Step 6: byte-identical to 0.12.0's. Step 9: differs only as step 7 states |
 
 ---
 
@@ -906,10 +1242,12 @@ entries.
 | The set captures the wrong timers under zone.js | Medium without the lazy capture | Step 2's S1, C12 and C13 |
 | A recapture drops a value captured earlier | Medium without the additive rule | Step 4's V19, probe (v) |
 | An exemption is wider than its node | Medium | Step 4, probes (ii) and (iii) |
-| The funnel slows the hot path | Low: medians up to about 3.5% (§ 3.3) | `performance.spec.ts`, the gate; step 4's M6 report |
+| The funnel slows the hot path | Low: medians up to about 3.5% (§ 3.3), and up to 8.5% in M13's preview | `performance.spec.ts`, the gate; step 4's timing line (criterion 4) |
 | The bound-name rule refuses a host's harmless wrapper | Low | Documented as a heuristic (§ 3.4) |
 | Async constructors not captured in a downlevelled realm | Certain in the test realm (finding 5) | Recorded by the helper (S1, S3); a limit in `SECURITY.md` (§ 3.4) |
 | A host container reaches native code | Certain (finding 3) | § 8 q2; `SECURITY.md`'s limit |
+| `this` hands native code a container the library supplies | Certain with `Object` in the context (finding 8) | [A39](../backlog.md#a39), step 7, in 0.13.0. Until then, a limit in `SECURITY.md` and the Security entry, with the mitigations first |
+| A consumer feature-tests or compares a listed function: `obj.fetch != null`, `x instanceof Function` | Low | § 3.5 item 3 names these reads; the exemptions are not widened (§ 2) |
 
 ---
 
@@ -929,18 +1267,57 @@ entries.
 3. **Is 0.12.1 a patch, and how is the change worded?** *Decided* (§ 2): a patch. The funnel exempts
    `typeof`'s operand, so `typeof eval === "function"` still holds, and the Security entry lists
    exactly what now throws (§ 3.5).
+4. **What should `this` evaluate to?** ([A39](../backlog.md#a39), step 7.) *Open, added by
+   Revision 6.* **Measure first, then decide.**
+
+   The measurement answers two questions:
+   - **Who relies on it today.** Find every expression in the three projects' specs, and in the
+     READMEs' and `docs/` examples, that evaluates `this` or `this.k`. Read what each asserts about
+     what `this` is.
+   - **What breaks under each candidate.** Prototype each, and run all three suites and A39's probes:
+     - **the host's original object**;
+     - **a frozen shallow view** of it;
+     - **nothing**: `undefined`, or a refusal.
+
+     Read case by case: which assertions fail, and whether P1, P2 and G1 close.
+
+   **One expectation to measure, not assume.** The original object and a plain shallow view both
+   hold the listed values themselves. So `Object.values(this)` would still return them, and on their
+   own they would not close the route. A view would have to leave listed values out. Each candidate
+   is therefore read twice: for what it breaks, and for whether it closes the route.
+
+   `this.k` resolves `k` against the context today (`member-expression.ts`), independently of what
+   `this` alone evaluates to. Whether that stays is part of the decision.
+
+   The target is decided from the measurement, as a plan revision before step 7 is specified.
+5. **The release shape: (i) 0.12.1 then 0.13.0, or (ii) 0.13.0 alone?** *Open, added by Revision 6*
+   (§ 2). Recommended: (i). Settled before any release step, and before step 5, which runs under
+   (i) only.
 
 ---
 
 ## 9. Contract after this lands
 
+*Revised by Revision 6.* Items 1–4 hold once step 4 lands. Item 6 holds once step 7 lands.
+
 1. A call, `new` or tag whose callee value is in the identity set, or is a bound function of a
-   listed name, is refused with today's message, whatever name or callee shape it is reached by.
-2. Outside a callee and `typeof`'s operand, no such value is pushed into the walk. Reading one throws
-   `Access to dangerous function "<name>" is blocked for security reasons`.
+   listed name, is refused, whatever name it is reached by. The refusal uses today's message, or
+   item 2's when the value is read under the callee.
+2. Outside a callee, a tag and `typeof`'s operand, no such value is pushed into the walk. Reading
+   one throws `Access to dangerous function "<name>" is blocked for security reasons`. That covers
+   every read the walk makes, including those that only inspect the value (§ 3.5 item 3). It covers
+   nothing that never passes through the walk's stack.
 3. A `SequenceExpression` leaves exactly one value on the stack, and shows one node to hooks.
-4. Every existing assertion holds, and nothing in the `.d.ts` changes.
-5. **Not provided**: protection for a host-provided container handed to native code, for a function
-   from another realm, for `AsyncFunction` and `AsyncGeneratorFunction` where they are downlevelled,
-   for a listed global other than `setTimeout` replaced on its own after the capture, or for a host
-   function that forwards to a listed one (§ 3.4).
+4. Through step 4, every existing assertion holds, and nothing in the `.d.ts` changes.
+5. **Not provided**, in either shape:
+   - protection for a host-provided container handed to native code;
+   - protection for a function from another realm;
+   - protection for `AsyncFunction` and `AsyncGeneratorFunction` where they are downlevelled;
+   - protection for a listed global other than `setTimeout`, replaced on its own after the capture;
+   - protection for a host function that forwards to a listed one (§ 3.4).
+
+   **Until step 7 lands**, also not provided: protection for the route through `this`, by which an
+   expression builds a container of the context's listed functions itself
+   ([A39](../backlog.md#a39)). It can build such a forwarder the same way.
+6. **Once step 7 lands**, `this` no longer hands native code the caller's context object. What it
+   evaluates to is § 8 q4's decision.
