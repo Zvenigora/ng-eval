@@ -1898,6 +1898,81 @@ name. Planned as step 1 of [`docs/a35/plan.md`](a35/plan.md), fixed alone, and r
 *Verified*: read at `tagged-template-expression.ts:25`, then measured with a throwaway script against
 `dist/modules/eval-core`, built from efe2803 with no library change.
 
+<a id="a37"></a>
+## A37 — `SequenceExpression` has no visitor, and leaves values on the stack
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-15**, as step 3 of the
+[A35 plan](a35/plan.md); not yet released, and ships in `eval-core` 0.12.1. Was Open
+
+*Fixed* 2026-10-15. `sequence-expression.ts` is registered for the node. It evaluates each expression
+in order, pops each value as it arrives, and pushes the last, so a sequence leaves exactly one value
+on the stack. It brackets its body with `beforeVisitor` and `afterVisitor`, and pushes no scope.
+
+No value an expression evaluates to changes. A consumer can see three things:
+- nothing is left on the stack, so a reused state no longer accumulates values;
+- each sequence raises one `before` and one `after` node-hook event, the `after` carrying the last
+  value, where it raised none. So under `trackTime`, `nodeTimings` gains a `SequenceExpression`
+  entry;
+- each sequence leaves one trace entry, carrying the last value, where it left none. So
+  `tracePushCount` counts one more per sequence, and `traceTruncated` can be set on a walk that used
+  to fit under `maxTraceItems`.
+
+The leftovers were worse than one entry per sequence. Within one walk, a `for` loop whose update is
+a sequence left one entry per iteration, and an arrow body that is a sequence one per call. The
+step's code review measured both on the built bundle with only the registration removed:
+`for (let i = 0, j = 10; i < 5; i++, j--) {…}` left 5 entries, and `[1,2,3,4].map(x => (x, x * 2))`
+left 4. With the visitor, each leaves none, with the same values.
+
+The node never had a visitor, so every published `eval-core` up to 0.12.0 is affected.
+
+*Verified*: test-first, with six cases in `sequence-expression.spec.ts`, the plan's Q1–Q6:
+- the stack left empty: `(0, 1)`, Q1; `((1, 2), 3)`, Q2; a sequence as an element and as an
+  argument, Q3;
+- each expression evaluated once, left to right, Q4: `(x = 1, x + 1)` gives 2, and `(n++, n++)` gives
+  1 and leaves `n` at 2;
+- one `before` and one `after` event and one trace entry, each carrying the last value, Q5;
+- a reused state, after three evaluations of `(0, 1)`, with its stack still empty, Q6.
+
+Before the fix, five cases failed, each at its stack or hook assertion, and Q4 passed. Wrong
+implementations, each run against the whole `eval-core` suite:
+- **the visitor unregistered**: Q1, Q2, Q3, Q5 and Q6 failed, and nothing else;
+- **the last value pushed and the others left on the stack**: Q1, Q2, Q3 and Q6 failed, and nothing
+  else. Q4 and Q5 stayed green: no value changes, the `after` event reads the top of the stack, which
+  is still the last value, and the one push still makes the one trace entry;
+- **each expression evaluated twice**: Q4 failed at its counting leg. So did the existing
+  `member-write-policy.spec.ts` case that writes through `(xs[0] = 7, xs[0])`, which recorded two
+  writes;
+- **the push made without its trace entry**: Q5 alone failed, at its trace leg.
+
+Before the fix, the step searched every spec in the three projects for a comma expression asserted
+through hook events or trace entries, and found none.
+
+**The entry as it stood:**
+
+`recursive-visitors.ts` registers no `SequenceExpression` visitor, so `acorn-walk`'s base walker walks
+its expressions. Each pushes its value, and nothing pops the ones before the last. That breaks the
+first stack invariant `CLAUDE.md` names: a node pushes exactly one value. Measured 2026-10-14 against
+the built `eval-core`, reading `state.result.stack.length` after the walk:
+- `(0, 1)` gives 1 and leaves one entry;
+- `(0, eval)("1+1")` gives 2 and leaves one entry.
+
+The value read is right only because the sequence's last expression is pushed last. `ChainExpression`
+and `ParenthesizedExpression` have no visitor either, but they wrap a single child, and measured, they
+leave nothing behind.
+
+Measured further for the plan (its M9), the value is right every time, since each consumer pops
+only the top entry. Every sequence leaves its other values on the stack: `[(1, 2), 3]`,
+`f((1, 2), 3)`, `(x = 1, x + 1)`, `1 + (2, 3)` and `(1, 2) + 10` leave one entry each, and
+`((1, 2), 3)` leaves two. No hook sees the node. A reused state accumulates the leftovers.
+
+**Fix**: a `SequenceExpression` visitor that evaluates each expression, pops each value, and pushes
+the last, so it leaves exactly one. Planned as step 3 of [`docs/a35/plan.md`](a35/plan.md), before
+its funnel, so the funnel's `(0, eval)` case runs on a correct walk. It ships in `eval-core` 0.12.1
+as a Fixed entry.
+
+*Recorded*: this entry; the A35 plan, § 1.2 finding 4. Opened 2026-10-14 by the A35 plan.
+*Verified*: the A35 plan's M3, a throwaway script against `dist/modules/eval-core` built from efe2803.
+
 ---
 
 # B. `eval-core` — security and hygiene

@@ -12,6 +12,24 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Fixed
+- **A sequence leaves exactly one value on the stack, and shows one node to hooks —
+  [A37](../../docs/backlog-retired.md#a37).** No visitor was registered for `SequenceExpression`, so
+  the walk left every value but the last on the stack: `(0, 1)` left one entry and `((1, 2), 3)` two.
+  Within one walk, a `for` loop whose update is a sequence (`i++, j--`) left one entry per iteration,
+  and an arrow body `x => (a, b)` one per call, and a reused state accumulated them all. No hook saw
+  the node. Every published version up to 0.12.0 is affected.
+  - **No residual stack values**: each sequence leaves only its own value, so a reused state no
+    longer accumulates anything.
+  - **One `before` and one `after` node-hook event per sequence**, the `after` carrying the last
+    value, where there were none. So under `trackTime`, `nodeTimings` gains a `SequenceExpression`
+    entry.
+  - **One trace entry per sequence**, carrying the last value, where there was none. So
+    `tracePushCount` counts one more per sequence, and `traceTruncated` can be set on a walk that
+    used to fit under `maxTraceItems`.
+  - **Evaluated values are unchanged.** A sequence's value was already its last expression's, since
+    each consumer reads only the top of the stack.
+
 ### Security
 - **A tagged template's tag goes through the call sandbox and the write policy —
   [A36](../../docs/backlog-retired.md#a36).** The visitor applied the tag with no check at all, so

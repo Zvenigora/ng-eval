@@ -5,7 +5,7 @@ import {
   forStatementVisitor, ifStatementVisitor,
   identifierVisitor, literalVisitor, logicalExpressionVisitor,
   memberExpressionVisitor, newExpressionVisitor, objectExpressionVisitor,
-  programVisitor, variableDeclarationVisitor,
+  programVisitor, sequenceExpressionVisitor, variableDeclarationVisitor,
   taggedTemplateExpressionVisitor, templateLiteralVisitor,
   thisExpressionVisitor, unaryExpressionVisitor, updateExpressionVisitor
 } from '../../internal/visitors';
@@ -43,6 +43,7 @@ export const getDefaultVisitors = () => {
   visitors['AssignmentExpression'] = assignmentExpressionVisitor;
   visitors['UpdateExpression'] = updateExpressionVisitor;
   visitors['ArrowFunctionExpression'] = arrowFunctionExpressionVisitor;
+  visitors['SequenceExpression'] = sequenceExpressionVisitor;
 
   // The statement family. `Program` is the root of every walk that arrives
   // through `EvalService`, whose parser options leave `extractExpressions` off.

@@ -233,6 +233,7 @@ The project has been tested with the following node types:
  - `UpdateExpression` — to an identifier or a member, parenthesised or not
  - `ArrowFunctionExpression` *potentially unsafe* (AssignmentPattern is not implemented, so a
    destructuring default — `({ a = 1 }) => a` — is rejected rather than defaulted)
+ - `SequenceExpression` — each expression in order, the value the last one's
 
 Object and array destructuring bind the names JavaScript binds, in parameter lists and in
 `let` / `const` declarations alike: shorthand, renaming, nesting, literal and computed keys,

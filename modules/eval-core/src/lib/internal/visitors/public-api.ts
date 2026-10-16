@@ -29,6 +29,7 @@ export {emptyStatementVisitor} from './empty-statement';
 export {blockStatementVisitor} from './block-statement';
 export {ifStatementVisitor} from './if-statement';
 export {forStatementVisitor} from './for-statement';
+export {sequenceExpressionVisitor} from './sequence-expression';
 export {variableDeclarationVisitor, assignToBinding} from './variable-declaration';
 export {evaluatePattern, evaluatePatterns} from './pattern';
 export {getKeyValue, equalIgnoreCase, getValueIgnoreCase} from './utils';

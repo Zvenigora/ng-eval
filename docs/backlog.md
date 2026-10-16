@@ -53,13 +53,13 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-**The A35 plan is in flight**: [`docs/a35/plan.md`](a35/plan.md), at Revision 3, where steps 1 and
-2 are done and step 3 is next.
+**The A35 plan is in flight**: [`docs/a35/plan.md`](a35/plan.md), at Revision 4, where steps 1 to 3
+are done and step 4 is next.
 - Step 1 fixed [A36](backlog-retired.md#a36), unreleased, and its review opened [A38](#a38).
 - Step 2 refuses a dangerous function by its value at the call, `new` and tag sites, unreleased.
-  That is [A35](#a35) at the callee; step 4 closes its other routes, with step 3 fixing [A37](#a37)
-  between them.
-- Step 5 retires A35; A37 retires in its own step, as A36 did.
+  That is [A35](#a35) at the callee; step 4 closes its other routes.
+- Step 3 fixed [A37](backlog-retired.md#a37), unreleased: a sequence leaves one value on the stack.
+- Step 5 retires A35.
 - Step 6 releases `eval-core` 0.12.1.
 
 **Phase 10, the documentation restructure, is paused** after its step 2, until the A35 plan's step 6
@@ -228,7 +228,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A34](#a34) | The parse fingerprint's memo does not see options written in place — a write into `parserOptions`, a reused per-call object or `defaultParserOptions` keeps the old fingerprint | core | fix | Open — opened 2026-10-10 by [A26](backlog-retired.md#a26)'s fix, Phase 9 step 1; no worse than the text-only key it replaced |
 | [A35](#a35) | A dangerous function value reachable from the context is callable past the name-based call sandbox — by an alias, through `call` / `apply` / `bind`, and as a native callback (`map`, `Reflect.apply`, `then`); `eval("1+1")` is refused, `["1+1"].map(eval)` is `[2]` | core | decision, security | Open — opened 2026-10-14 by Phase 10 step 2's review; `SECURITY.md` lists it as a limit, with the host's mitigation; **planned** in [`docs/a35/plan.md`](a35/plan.md), steps 2 and 4; a fix ships as `eval-core` 0.12.1 |
 | [A36](backlog-retired.md#a36) | A tagged template's tag is called with no sandbox check — `` Function`return 7`() `` gives 7 with `Function` under its own name | core | fix, security | **Retired — fixed 2026-10-15**, as step 1 of the [A35 plan](a35/plan.md); not yet released, ships as `eval-core` 0.12.1. A tag is called as a callee is, through the call sandbox and the write policy; a member tag shares the member call's path, so its `this` is its object. Affected every published `eval-core` to 0.12.0 |
-| [A37](#a37) | `SequenceExpression` has no visitor: `(0, 1)` leaves a value on the stack | core | fix | Open — opened 2026-10-14 by the A35 plan; its step 3; ships as `eval-core` 0.12.1 |
+| [A37](backlog-retired.md#a37) | `SequenceExpression` has no visitor: `(0, 1)` leaves a value on the stack | core | fix | **Retired — fixed 2026-10-15**, as step 3 of the [A35 plan](a35/plan.md); not yet released, ships as `eval-core` 0.12.1. A sequence leaves one value on the stack, and raises one `before` and one `after` event and one trace entry; no evaluated value changes. Affected every published `eval-core` to 0.12.0 |
 | [A38](#a38) | A tag's strings array is not JavaScript's: not frozen, no `raw` — so `` String.raw`a\nb` `` throws — a new array per evaluation, and not recorded as created | core | fix | Open — opened 2026-10-15 by the code review of the A35 plan's step 1. Fidelity, not security; not in 0.12.1 |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
@@ -933,39 +933,10 @@ member call passes the property name as the checked name, and `safeCall` checks 
 is handed.
 
 **Planned**: [`docs/a35/plan.md`](a35/plan.md), steps 2 and 4. [A36](backlog-retired.md#a36) was
-its step 1, fixed 2026-10-15, and [A37](#a37) is its step 3. The plan measures more routes than this
-entry's table: a member, a call result, destructuring, `this`, a scope namespace, `(0, eval)`,
-`(c ? eval : f)`, a parenthesised callee, a host container, and a case variant under
-`caseInsensitive`.
-
-<a id="a37"></a>
-## A37 — `SequenceExpression` has no visitor, and leaves values on the stack
-
-**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-14 by the A35 plan
-
-`recursive-visitors.ts` registers no `SequenceExpression` visitor, so `acorn-walk`'s base walker walks
-its expressions. Each pushes its value, and nothing pops the ones before the last. That breaks the
-first stack invariant `CLAUDE.md` names: a node pushes exactly one value. Measured 2026-10-14 against
-the built `eval-core`, reading `state.result.stack.length` after the walk:
-- `(0, 1)` gives 1 and leaves one entry;
-- `(0, eval)("1+1")` gives 2 and leaves one entry.
-
-The value read is right only because the sequence's last expression is pushed last. `ChainExpression`
-and `ParenthesizedExpression` have no visitor either, but they wrap a single child, and measured, they
-leave nothing behind.
-
-Measured further for the plan (its M9), the value is right every time, since each consumer pops
-only the top entry. Every sequence leaves its other values on the stack: `[(1, 2), 3]`,
-`f((1, 2), 3)`, `(x = 1, x + 1)`, `1 + (2, 3)` and `(1, 2) + 10` leave one entry each, and
-`((1, 2), 3)` leaves two. No hook sees the node. A reused state accumulates the leftovers.
-
-**Fix**: a `SequenceExpression` visitor that evaluates each expression, pops each value, and pushes
-the last, so it leaves exactly one. Planned as step 3 of [`docs/a35/plan.md`](a35/plan.md), before
-its funnel, so the funnel's `(0, eval)` case runs on a correct walk. It ships in `eval-core` 0.12.1
-as a Fixed entry.
-
-*Recorded*: this entry; the A35 plan, § 1.2 finding 4.
-*Verified*: the A35 plan's M3, a throwaway script against `dist/modules/eval-core` built from efe2803.
+its step 1 and [A37](backlog-retired.md#a37) its step 3, both fixed 2026-10-15. The plan measures
+more routes than this entry's table: a member, a call result, destructuring, `this`, a scope
+namespace, `(0, eval)`, `(c ? eval : f)`, a parenthesised callee, a host container, and a case
+variant under `caseInsensitive`.
 
 <a id="a38"></a>
 ## A38 — A tag's strings array is not JavaScript's

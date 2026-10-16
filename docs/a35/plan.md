@@ -1,6 +1,24 @@
 # A35 — dangerous function values past the call sandbox (`@zvenigora/ng-eval-core`)
 
 **Date**: October 14, 2026
+**Revision**: 4 — step 3, in its own commit. Its confirmation gate changed three things:
+- **The visitors barrel joins step 3's file list.** The visitor is exported from
+  `internal/visitors/public-api.ts`, and `recursive-visitors.ts` imports it from there, as it imports
+  every other visitor. The barrel is internal: `src/public-api.ts` does not re-export
+  `internal/visitors`, and `export-list.spec.ts:403-412` pins that. So criterion 4 gains a leg: the
+  built `.d.ts` is byte-identical to step 2's.
+- **Q4 gains a counting leg**: `(n++, n++)` gives 1 and leaves `n` at 2. `(x = 1, x + 1)` alone cannot
+  fail on an expression evaluated twice, since assigning 1 twice changes nothing.
+- **The Fixed line** states the visible change: one `before` and `after` pair and one trace entry per
+  sequence, no value left on the stack, and no evaluated value changed.
+
+The gate also asked for a search before the code: every spec in the three projects, for a comma
+expression asserted through hook events or trace entries. It found none (step 3's outcome).
+
+The step itself made one more change. **Q5 gains a trace leg**, so the trace entry the Fixed line
+states is pinned by a case. Neither probe's list changes: Q5 already fails with the visitor
+unregistered, and its trace entry is right under the second wrong implementation.
+
 **Revision**: 3 — step 2, in its own commit. Its confirmation gate changed four things:
 - **C11's subject.** In jsdom, `XMLHttpRequest` and `WebSocket` are classes written in JavaScript,
   whose source holds `constructor(`. So `isConstructorSafe`'s source-text test already refused
@@ -81,7 +99,7 @@ witnesses, with their counts unchanged.
 **Fixes**:
 - [A36](../backlog-retired.md#a36) in step 1;
 - [A35](../backlog.md#a35) in steps 2 and 4;
-- [A37](../backlog.md#a37) in step 3.
+- [A37](../backlog-retired.md#a37) in step 3.
 
 **Pauses**: Phase 10 after its step 2 ([plan](../documentation/phase-10-plan.md)). It resumes at its
 step 3 once this plan's step 6 and the post-publish commit have landed.
@@ -175,8 +193,9 @@ Each finding cites the measurement in § 1.3 that produced it.
      leave one entry;
    - `((1, 2), 3)` leaves two.
 
-   No hook sees the node: there are 0 `after` events for it. This is [A37](../backlog.md#a37), which
-   joins this plan as step 3, so the funnel's `(0, eval)` case runs on a correct walk.
+   No hook sees the node: there are 0 `after` events for it. This is
+   [A37](../backlog-retired.md#a37), which joins this plan as step 3, so the funnel's `(0, eval)` case
+   runs on a correct walk.
 5. **The test realm, measured** (M4).
    - **Timers**: zone.js has replaced `setTimeout` and `setInterval` with wrappers that are not
      native, and keeps the originals under `__zone_symbol__setTimeout` and
@@ -470,7 +489,7 @@ and 4, and › Fixed for step 3. No version moves until step 6.
 | :--- | :--- | :--- | :--- | :--- |
 | 1 | A36: the tag call through the sandbox | `tagged-template-expression.ts`, `call-expression.ts` (`callMember`, and `safeCall` exported), new `tagged-template-expression.spec.ts` | **+10** / 0 / 0 | `eval-core` 0.12.1 |
 | 2 | K1 and the identity set | new `dangerous-values.ts`; `call-expression.ts`, `new-expression.ts`, `member-write-policy.ts`'s comment; new `eval.service.dangerous-values.spec.ts`; T11 and T12 in `tagged-template-expression.spec.ts` | **+21** / 0 / 0 | `eval-core` 0.12.1 |
-| 3 | A37: a `SequenceExpression` visitor | new `sequence-expression.ts` and its spec; `recursive-visitors.ts`; the root `README.md`'s node list | **+6** / 0 / 0 | `eval-core` 0.12.1 |
+| 3 | A37: a `SequenceExpression` visitor | new `sequence-expression.ts` and its spec; `recursive-visitors.ts`; the visitors barrel; the root `README.md`'s node list | **+6** / 0 / 0 | `eval-core` 0.12.1 |
 | 4 | The funnel | `visitor-result.ts`, `dangerous-values.ts`, the marks in `call-expression.ts`, `new-expression.ts`, `tagged-template-expression.ts` and `unary-expression.ts`; the spec | **+19** / 0 / 0 | `eval-core` 0.12.1 |
 | 5 | `SECURITY.md`'s limit becomes a protection; A35 retired | `SECURITY.md`, `public-api.spec.ts`'s allowlist if it needs entries, the register | 0 / 0 / 0 | no package |
 | 6 | Release `eval-core` 0.12.1 | `modules/eval-core/package.json`, `CHANGELOG.md` | 0 / 0 / 0 | `eval-core` 0.12.1 |
@@ -669,13 +688,18 @@ From 2451, `eval-core` ends at 2507 if every step lands as planned.
   - **Q3** `[(1, 2), 3]` gives `[2, 3]`, and `f((1, 2), 3)` passes `2, 3`; each leaves the stack
     empty. Today each leaves one.
   - **Q4** `(x = 1, x + 1)` gives 2: each expression is evaluated once, left to right. Pinned; it is
-    right today too.
+    right today too. A second leg: `(n++, n++)` gives 1 and leaves `n` at 2. *Changed at the
+    confirmation gate* (Revision 4).
   - **Q5** one `before` and one `after` event for the `SequenceExpression`, the `after` carrying the
-    last value. Today there are none.
+    last value. Today there are none. The case also asserts one trace entry for the node, carrying
+    the last value. *Changed in step 3* (Revision 4).
   - **Q6** a reused state, `createState` and then three evaluations of `(0, 1)`, still has an empty
     stack. Today it holds three entries.
 - **Edit**:
   - `internal/visitors/recursive-visitors.ts`: register the visitor.
+  - `internal/visitors/public-api.ts`, the visitors barrel: export the visitor, which
+    `recursive-visitors.ts` imports from it, as it imports every other visitor. The barrel is not
+    re-exported by `src/public-api.ts`. *Added at the confirmation gate* (Revision 4).
   - The root `README.md`: add `SequenceExpression` to its "ESTree nodes supported" list, which
     `CLAUDE.md` requires of a new visitor. Phase 10's step 3 carries the list into the package
     README when Phase 10 resumes.
@@ -691,8 +715,54 @@ From 2451, `eval-core` ends at 2507 if every step lands as planned.
   3. **A second wrong implementation**: the visitor pushes the last value without popping the
      others. Q1, Q2, Q3 and Q6 fail.
   4. No existing assertion changes. `performance.spec.ts` is green and untouched. The gate is green.
-     `git diff --name-only` lists the files above and this document.
+     `git diff --name-only` lists the files above and this document. The built `.d.ts` is
+     byte-identical to step 2's. *That leg was added at the confirmation gate* (Revision 4).
 - **Category**: a fix on a published path, released in step 6. No value changes (finding 4).
+- **Outcome** — done 2026-10-15, under Revision 4.
+  - **The search, before the code.** Every string and template literal in the three projects' 90
+    spec files was parsed: with acorn, then with the built `eval-core` `parse`, with and without
+    `colonIdentifiers`. Three literals hold a sequence, and none is asserted through hook events or
+    trace entries:
+    - `(xs[0] = 7, xs[0])` in `member-write-policy.spec.ts`, which asserts the value;
+    - `'call, bound'`, a test label;
+    - `'1,2'` in `eval-forms`' `coercion.spec.ts`, an expected string.
+
+    Of the literals that contain a comma and parse with neither parser, none that reads as code is
+    an expression. No spec builds a `SequenceExpression` node.
+  - **Red first.** Written before the visitor, five cases failed and Q4 passed:
+    - Q1, Q2, Q3 and Q6 left 1, 2, 1 and 3 entries on the stack;
+    - Q5 saw no event.
+  - **Probes**, each against the whole `eval-core` suite:
+    - **criterion 2**, the visitor unregistered: 5 failures, Q1, Q2, Q3, Q5 and Q6. Q4 stayed green,
+      and nothing else failed.
+    - **criterion 3**, the last value pushed and the others left on the stack: 4 failures, Q1, Q2, Q3
+      and Q6. Nothing else failed. Q4 and Q5 stayed green: no value changes, the `after` event reads
+      the top of the stack, which is still the last value, and the one push still makes the one
+      trace entry.
+
+    In both, each failure was at its stack assertion, and Q5's at its `before` events. Q3 failed at
+    its element leg, which stops it before its argument leg.
+  - **Two more wrong implementations**, for the legs Revision 4 added:
+    - each expression evaluated twice: Q4 failed at its counting leg, and its `(x = 1, x + 1)` leg
+      passed. The existing `member-write-policy.spec.ts` case that writes through `(xs[0] = 7, xs[0])`
+      failed too, by recording two writes;
+    - the push made without its trace entry: Q5 alone failed, at its trace leg.
+  - **The code review** found no Critical issue and no warning. Its two notes changed text, not code:
+    - **N1**: the leftovers were worse than one entry per sequence. Within one walk, a `for` update
+      `i++, j--` left one entry per iteration, and an arrow body `x => (a, b)` one per call; the
+      review measured 5 and 4 on the bundle with the registration removed. The Fixed line and A37's
+      retired entry now say so.
+    - **N2**: two more visible changes follow from the hook and trace bullets. Under `trackTime`,
+      `nodeTimings` gains a `SequenceExpression` entry, and `tracePushCount` counts one more per
+      sequence, so `traceTruncated` can be set on a walk that used to fit. Both texts now list them.
+
+    It also measured what the step's probes did not reach: Q3's argument leg alone leaves one entry
+    with the visitor unregistered, and an empty `expressions` array, built by hand since acorn
+    never produces one, still leaves the stack balanced.
+  - **The surface.** The built `.d.ts` is byte-identical to step 2's: one file,
+    `types/zvenigora-ng-eval-core.d.ts`, with the same SHA-256 from a build at step 2's commit and a
+    build in this step's gate, whose bundle holds the visitor.
+  - **Totals.** The gate is green at 2488 / 438 / 375, so `eval-core` gained exactly six cases.
 
 ### Step 4 — the funnel
 
