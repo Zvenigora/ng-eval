@@ -16,11 +16,10 @@ before step 4 committed. Step 4's status becomes its outcome.
 **Revision**: 6 — the replan, in its own commit, after step 4's code review. Step 4 is implemented
 and verified in the working tree (its status, in § 4), and is **not committed**.
 
-The review found a route the funnel cannot see, **through `this`** (finding 8, M14):
-- `this` hands native code the caller's context object.
-- With `Object` in the context, an expression builds a container of the listed functions there, and
-  spreads it into a native call.
-- Nothing pushes them, so the funnel never sees them.
+The review found a route the funnel cannot see, **through `this`** (finding 8, M14): evaluating
+`this` lets native code reach a listed function the context holds, without any value passing through
+the walk's stack for the funnel to check. Its mechanism and probes are held in the repository's
+draft security advisory, not on the default branch (§ 2's disclosure rule).
 
 That route is [A39](../backlog.md#a39), opened as Open, security. Closing it changes what `this`
 evaluates to, a breaking change, so it belongs to 0.13.0.
@@ -214,9 +213,8 @@ own values: an argument, a receiver, an element, a branch or a result. *Narrowed
     three rotations, while the minimums were equal. `performance.spec.ts` remains the gate.
   - **Why the funnel**: it holds for visitors not yet written, and states its invariant in one place.
 - A bound function whose name, stripped of its `bound ` prefixes, is a listed name is refused too.
-- **The funnel sees only the walk's own values** (Revision 6). Step 4's review found that `this`
-  hands native code the caller's object, from which an expression builds a container of the listed
-  functions and spreads it into a native call (finding 8).
+- **The funnel sees only the walk's own values** (Revision 6). Step 4's review found that evaluating
+  `this` lets native code reach a listed function the context holds, past the funnel (finding 8).
   - That route and a host container are stated limits.
   - Closing `this` is a breaking change: step 7, for 0.13.0.
 - Then `SECURITY.md` states the protections and the limits. The release shape decides whether
@@ -312,22 +310,15 @@ Each finding cites the measurement in § 1.3 that produced it.
    sixfold, and the IDE re-ran the spec on save. Interleaving the shapes in one process gave a 5×
    spread within one mode, probably because the mode switch deoptimised the hot path. That
    measurement is recorded and discarded, and M6 is the method this plan uses.
-8. **`this` hands native code a container the library supplies** (M14). *Added by Revision 6*:
-   - `this` evaluates to the walk's `EvalContext`. That object exposes the caller's context object
-     as the enumerable own field `_original`, and through the public getter `original`.
-   - An expression cannot read either, since `this.k` resolves `k` against the context. Native code
-     can: `Object.values(this)` or `Reflect.get(this, "original")` returns the caller's object.
-   - A native method then returns that object's values, any listed function among them. A spread
-     hands them to a native call.
-   - Neither the native result's elements nor the spread's are pushed, so the funnel never sees
-     them.
+8. **`this` lets native code reach a listed function the context holds, past the funnel** (M14).
+   *Added by Revision 6; cut to the disclosure limit by Revision 7.*
+   - The funnel sees only what passes through the walk's own stack, and this route does not.
+   - It needs no container from the host — the library supplies one — which is what makes it
+     distinct from finding 3, where the host builds the container.
+   - Its mechanism and the probes that reproduce it are held in the repository's draft security
+     advisory, not on the default branch, under § 2's disclosure rule.
 
-   With `eval` and `Object` in the context, `["1+1"].map(eval)` is refused after step 4. The same
-   call reached through `this` still gives `[2]`, and `Function` reached the same way runs. This
-   differs from finding 3 in who supplies the container: there the host builds it, and here the
-   library does, so it needs only a listed function and `Object` in the context. Making
-   `_original` non-enumerable would not close it, since the getter exposes the same object. It is
-   [A39](../backlog.md#a39), which records the probes, and step 7 closes it.
+   It is [A39](../backlog.md#a39), and step 7 closes it, in 0.13.0.
 
 ### 1.3 Measurements run for this plan
 
@@ -353,7 +344,7 @@ scripts outside the repository against the built bundles.
 | M11 | A timer under `new` | Step 2's code review: zone.js 0.16.3's source, and the 0.12.0 tarball with a zone-shaped timer bound under its own name. Step 2's red-first run of C11 in the test realm | `new setTimeout("…", 0)` constructs, and the string reaches the native timer. The wrapper is `function () { return patchDelegate(this, arguments); }`, its `toString` shows the original's, and a handler that is not a function goes to `delegate.apply` |
 | M12 | M3 and M7 on the tree after step 3 | Step 4's confirmation gate: a funnel prototype; M3's routes against step 3's bundle and the prototype's; `nx run-many -t test` with the prototype on; each exemption widened and narrowed against the V cases | K1 already refuses `(0, eval)()`, `(c ? eval : f)()` and `(eval)()` under `preserveParens` with `Function call blocked for security reasons: anonymous`. The prototype refuses each at the read of `eval`. `run?.()` is K1's; `Reflect.apply(...pair)` gives 2 under both; `(0, 1)` leaves no entry; `typeof eval` is `"function"`. M7 holds: 2488 / 438 / 375, all green |
 | M13 | Timing, previewed | Step 4's confirmation gate: M6's parameters with six recorded expressions (step 4's outcome); step 3's bundle against the prototype's; six rotations | Slower in all five valid rotations, by +1.1% to +8.5% on the median. The minimums moved from −22% to +5%. One rotation was void, from interference. Step 3's medians spread 5.7% over rotations 1–3, which sets step 4's line at 10.7% |
-| M14 | `this` handed to native code | Step 4's code review, on that step's bundle. The review's two reproductions and the getter route measured again with a throwaway script, against step 3's bundle and step 4's | With `eval` and `Object`, and with `Function`, `Object` and `Reflect`, the routes in [A39](../backlog.md#a39) give `[2]` and 7 on both bundles, while each control without `this` is refused on step 4's. Through `Reflect.get(this, "original")` the first gives `[2]` too. An `EvalContext`'s own enumerable keys are `type`, `_original`, `_priorScopes`, `_scopes`, `_options`, `_lookups` |
+| M14 | `this` handed to native code | Step 4's code review, on that step's bundle; the probes measured again with a throwaway script against step 3's bundle and step 4's | The route reaches a listed function past the funnel on both bundles, where each control without `this` is refused on step 4's. The probes and the mechanism are held in the draft advisory ([A39](../backlog.md#a39)), under § 2's disclosure rule |
 
 ---
 
@@ -530,9 +521,9 @@ step on a red (step 4, criterion 4).
   - `Reflect.apply(...pair)` over a host container (finding 3).
 - **1 recorded as not constructible, wrongly**: `this` handed to a callback.
   - M8 reasoned that `this`, always the `EvalContext` object, could carry no listed value.
-  - It carries the caller's object, from which native code returns the listed values, and a spread
-    hands them on.
-  - Neither shape sees that, since nothing is pushed (finding 8, M14).
+  - Evaluating `this` in fact lets native code reach a listed function the context holds, which
+    neither shape sees, since nothing is pushed (finding 8, M14). The detail is held off the default
+    branch (§ 2).
 
   *Corrected by Revision 6.*
 
@@ -551,7 +542,8 @@ step on a red (step 4, criterion 4).
     gave `eval` itself (A40's table), so `["1+1"].map(tools.eval++)` handed it on. The sites shape
     has no site there. The funnel refuses it, and its write is [A40](../backlog.md#a40).
   - **`this`**, which pushes `st.context`, an `EvalContext` object and never itself a function. But
-    it carries the caller's object to native code, and neither shape sees that (finding 8).
+    evaluating it lets native code reach a listed function the context holds, which neither shape
+    sees (finding 8).
   - **`await`**, which pushes its promise through `pushVisitorResult`. `pushVisitorResultAsync`
     has no caller.
 
@@ -598,11 +590,10 @@ or the member's property name, or the function's own `name`. No existing asserti
 
   **An expression can still build one after step 4**, through `this`. *Corrected by Revision 6*: this
   item said only a host could, once step 4 lands. Building one by reading the listed function as an
-  argument or a receiver is refused: `(fwd => fwd(null, "1+1"))(f.call.bind(eval))` throws. But
-  `this` hands the listed function to native code without a read (finding 8). So the same forwarder,
-  bound to the function taken from `Object.values(Object.values(this)[1])`, gives 2, with `eval`,
-  `Object` and a benign `f` in the context. Step 4's code review measured it, and M14 measured it
-  again. It closes with A39.
+  argument or a receiver is refused. But `this` lets native code reach it without a read (finding 8),
+  so a forwarder built that way still runs. Step 4's code review measured it, and M14 measured it
+  again. It is [A39](../backlog.md#a39), it closes with step 7, and its detail is held in the draft
+  advisory under § 2's disclosure rule.
 - **The two heuristics**:
   - The source-pattern test can be evaded, and can refuse a benign function.
   - The bound-name rule refuses a host's own bound function that merely carries a listed name, such
@@ -667,8 +658,8 @@ prefixes, is a listed name.
    route: a host places no listed function in the context, and in a browser, a CSP without
    `'unsafe-eval'` stops `eval`, `Function` and a string timer. The two routes are:
    - a container the host provides, spread into a native call (finding 3);
-   - `this`, from which an expression builds such a container itself (finding 8,
-     [A39](../backlog.md#a39)).
+   - a route through `this`, by which native code reaches a listed function the context holds
+     (finding 8, [A39](../backlog.md#a39)).
 
    The entry describes both in prose, and does not print the expressions. *Since Revision 7*, its
    prose about `this` goes no further than `SECURITY.md`'s limit (§ 2). It says that the route
@@ -1234,8 +1225,8 @@ U3's rating, in two lines (Revision 3; it was "low"):
 - **S:C, C:L, I:L**: the impact is code execution in the consumer's origin, through `eval` or a
   string timer, beyond the evaluator's sandbox. That is scored as FIRST scores cross-site scripting.
 
-U3's AC:H holds for the route through `this` as well. The expression's author needs the host to
-have placed a listed function, and `Object` or `Reflect`, in the context.
+U3's AC:H holds for the route through `this` as well: it needs the host to have placed a listed
+function, and ordinary built-ins, in the context, which the expression's author does not control.
 
 After U3 comes a docs-only commit. It adds the advisory to `SECURITY.md`'s "Advisories for ng-eval"
 table, a section otherwise unchanged since Phase 10 step 2, and its ID to the retired entries of A35,
@@ -1307,13 +1298,14 @@ A36 and A39.
        as the callee's is: the member visitor marks its object node when that is a `this`, and the
        push of an unmarked `this` is refused or replaced.
 
-     Read case by case: which assertions fail, and whether P1, P2 and G1 close. **Every candidate is
-     measured before step 7 is specified.**
+     Read case by case: which assertions fail, and whether A39's probes close against it. **Every
+     candidate is measured before step 7 is specified.**
 
-   **One expectation to measure, not assume.** The original object and a plain shallow view both
-   hold the listed values themselves. So `Object.values(this)` would still return them, and on their
-   own they would not close the route. A view would have to leave listed values out. Each candidate
-   is therefore read twice: for what it breaks, and for whether it closes the route.
+   **One expectation to measure, not assume.** A candidate that returns an object still holding the
+   context's listed functions does not, on its own, close the route; only one that withholds them, or
+   refuses, does. The host's original object and a plain shallow view do not withhold them, so each
+   candidate is read twice: for what it breaks, and for whether it closes the route. (The probes are
+   held in the draft advisory, § 2.)
 
    `this.k` resolves `k` against the context today (`member-expression.ts`), independently of what
    `this` alone evaluates to. Whether that stays is part of the decision.
@@ -1345,8 +1337,8 @@ A36 and A39.
    - protection for a listed global other than `setTimeout`, replaced on its own after the capture;
    - protection for a host function that forwards to a listed one (§ 3.4).
 
-   **Until step 7 lands**, also not provided: protection for the route through `this`, by which an
-   expression builds a container of the context's listed functions itself
-   ([A39](../backlog.md#a39)). It can build such a forwarder the same way.
-6. **Once step 7 lands**, `this` no longer hands native code the caller's context object. What it
+   **Until step 7 lands**, also not provided: protection for the route through `this`
+   ([A39](../backlog.md#a39)), by which native code reaches a listed function the context holds. Its
+   detail is held in the draft advisory under § 2's disclosure rule.
+6. **Once step 7 lands**, `this` no longer lets native code reach the context that way. What it
    evaluates to is § 8 q4's decision.

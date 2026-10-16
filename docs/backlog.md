@@ -234,7 +234,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A36](backlog-retired.md#a36) | A tagged template's tag is called with no sandbox check — `` Function`return 7`() `` gives 7 with `Function` under its own name | core | fix, security | **Retired — fixed 2026-10-15**, as step 1 of the [A35 plan](a35/plan.md); not yet released, ships as `eval-core` 0.12.1. A tag is called as a callee is, through the call sandbox and the write policy; a member tag shares the member call's path, so its `this` is its object. Affected every published `eval-core` to 0.12.0 |
 | [A37](backlog-retired.md#a37) | `SequenceExpression` has no visitor: `(0, 1)` leaves a value on the stack | core | fix | **Retired — fixed 2026-10-15**, as step 3 of the [A35 plan](a35/plan.md); not yet released, ships as `eval-core` 0.12.1. A sequence leaves one value on the stack, and raises one `before` and one `after` event and one trace entry; no evaluated value changes. Affected every published `eval-core` to 0.12.0 |
 | [A38](#a38) | A tag's strings array is not JavaScript's: not frozen, no `raw` — so `` String.raw`a\nb` `` throws — a new array per evaluation, and not recorded as created | core | fix | Open — opened 2026-10-15 by the code review of the A35 plan's step 1. Fidelity, not security; not in 0.12.1 |
-| [A39](#a39) | `this` evaluates to the `EvalContext`, which exposes the caller's context object to native code — with `Object` in the context, a listed function reaches a native call through a spread, past the funnel | core | fix, security | Open — opened 2026-10-16 by the code review of the A35 plan's step 4. A fix changes what `this` returns, so it ships as `eval-core` 0.13.0; the target is the [plan](a35/plan.md)'s § 8 q4 |
+| [A39](#a39) | Evaluating `this` lets native code reach a dangerous function the host placed in the context, past the funnel; mechanism and probes held in the draft advisory | core | fix, security | Open — opened 2026-10-16 by the code review of the A35 plan's step 4. A fix changes what `this` returns, so it ships as `eval-core` 0.13.0; the target is the [plan](a35/plan.md)'s § 8 q4 |
 | [A40](#a40) | A postfix update of a listed function writes, then the funnel refuses the old value — the failed evaluation leaves its write behind | core | fix | Open — opened 2026-10-16 by the code review of the A35 plan's step 4. Not a security route; the fix checks the operand before writing |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
@@ -948,9 +948,9 @@ namespace, `(0, eval)`, `(c ? eval : f)`, a parenthesised callee, a host contain
 variant under `caseInsensitive`.
 
 Step 4's code review found two things, each now its own entry:
-- **[A39](#a39)**: a route the funnel cannot see. `this` hands native code the caller's object, so
-  an expression can build a container of the listed functions in the context and spread it into a
-  native call.
+- **[A39](#a39)**: a route the funnel cannot see, through `this`, by which native code reaches a
+  listed function the context holds. Its detail is held in the draft advisory (§ 2's disclosure
+  rule).
 - **[A40](#a40)**: under the funnel, a postfix update of a listed function writes, then throws.
 
 So A35 stays open until the route through `this` is closed. It retires with A39, in the plan's step 8.
@@ -999,45 +999,25 @@ write policy ([A36](backlog-retired.md#a36)). **It is not in 0.12.1.**
 natively beside it.
 
 <a id="a39"></a>
-## A39 — `this` hands native code the caller's context object, past the funnel
+## A39 — a route through `this` reaches a dangerous function past the funnel
 
 **Package** core · **Kind** fix, security · **Status** Open. Opened 2026-10-16 by the code review of
 the A35 plan's step 4
 
-**The route.** `this` evaluates to the walk's `EvalContext`, in `this-expression.ts` and in
-`identifier.ts` for `this` written as a name. That object exposes the caller's context object in two
-ways: as the enumerable own field `_original`, and through the public getter `original`.
-- **An expression cannot read either itself.** `this.k` resolves `k` against the context, so
-  `this.original` gives `undefined`.
-- **Native code can.** `Object.values(this)` returns the field, and `Reflect.get(this, "original")`
-  calls the getter. Either way the caller's object comes back, and a native method then returns its
-  values, among them any listed function the host put in the context.
-- **A spread hands those elements to a native call.** The elements a native method returns are not
-  pushed, and neither are the elements a spread expands. So the funnel, step 4 of the
-  [A35 plan](a35/plan.md), never sees the listed value: it sees only what passes through the walk's
-  own stack.
+**The route.** When an expression evaluates `this`, a value escapes from which native code can reach
+a dangerous function the host placed in the context, past the funnel ([A35](#a35) step 4). The
+funnel sees only what passes through the walk's own stack, and this route does not. It needs no
+container from the host — the library supplies one — which is what makes it distinct from the
+host-container limit, the plan's § 8 q2.
 
-**Why it matters.** It defeats the funnel under the most common configuration that needs the funnel
-at all: a listed function in the context, plus `Object` there too, or `Reflect` and `Array`. It
-needs no container from the host, because the library supplies one. That makes it distinct from the
-host-container limit, the plan's § 8 q2, where the host builds the container. The plan states both
-as limits (its finding 8 and § 3.4).
+**Held off the default branch until the fix ships.** The route's mechanism and the probes that
+reproduce it are in the repository's draft security advisory, not here, under the disclosure rule the
+[A35 plan](a35/plan.md) § 2 sets (Revision 7). This entry says only that the route exists, that
+0.13.0 closes it, and how a host stops it.
 
-**The probes**, the code review's two reproductions. Measured 2026-10-16 on step 3's bundle and on
-step 4's, which has the funnel:
-
-| Probe | Context | Step 3 | Step 4 | Its control without `this`, on step 4 |
-| :--- | :--- | :--- | :--- | :--- |
-| **P1** `["1+1"].map(...Object.values(Object.values(this)[1]).slice(0, 1))` | `{ eval, Object }` | `[2]` | `[2]` | `["1+1"].map(eval)`: refused |
-| **P2** `Reflect.apply(...Object.values(Object.values(this)[1]).slice(0, 1), null, ["return 7"])()` | `{ Function, Object, Reflect }` | 7 | 7 | `Reflect.apply(Function, null, ["return 7"])()`: refused |
-
-`Object.values(this)[1]` is `_original`. An `EvalContext`'s own enumerable keys are `type`,
-`_original`, `_priorScopes`, `_scopes`, `_options` and `_lookups`, in that order.
-
-**Making the field non-enumerable is not enough**, because the getter exposes the same object.
-- **G1** `["1+1"].map(...Object.values(Reflect.get(this, "original")).slice(0, 1))`, with
-  `{ eval, Object, Reflect }`, gives `[2]` on step 4's bundle too.
-- `toObject()`, also public, returns the same object as well.
+**The mitigations**, which hold whatever the route: a host places no listed function in the context,
+under any name, nor an object from which one is reachable. In a browser, a Content Security Policy
+without `'unsafe-eval'` stops `eval`, `Function` and a string timer.
 
 **The fix changes what `this` evaluates to**, which is published behaviour. So it is a breaking
 change, released as `eval-core` **0.13.0**, not 0.12.1. Neither downstream peer range admits 0.13.0:
@@ -1047,11 +1027,12 @@ needs a release of its own to take the fix.
 What `this` should return instead is the A35 plan's § 8 q4, which is decided from a measurement
 first.
 
-*Recorded*: this entry; the [A35 plan](a35/plan.md)'s finding 8, § 3.4, § 8 q4 and § 9.
-*Verified*: found by the code review of the A35 plan's step 4, which measured four expressions on
-that step's bundle. P1, P2 and G1 were measured again on 2026-10-16 with a throwaway script outside
-the repository. It called `evaluate(parse(…), EvalState.fromContext(…))` against step 3's bundle,
-built at eea3555, and against step 4's, built from its uncommitted working tree.
+*Recorded*: this entry; the [A35 plan](a35/plan.md)'s finding 8, § 3.4, § 8 q4 and § 9. The probes
+that reproduce the route are held in the repository's draft security advisory, not on the default
+branch, under the plan's § 2 disclosure rule.
+*Verified*: found by the code review of the A35 plan's step 4, and reproduced on 2026-10-16 with
+throwaway scripts outside the repository, against the built bundles at step 3's commit (eea3555) and
+step 4's. The measurements are recorded in the draft advisory.
 
 <a id="a40"></a>
 ## A40 — A postfix update of a listed function writes, then the funnel refuses it
