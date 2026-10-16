@@ -53,23 +53,21 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-**The A35 plan is in flight**: [`docs/a35/plan.md`](a35/plan.md), at Revision 6, the replan after
-step 4's code review.
+**The A35 plan is in flight**: [`docs/a35/plan.md`](a35/plan.md), at Revision 7, where steps 1 to 4
+are done and step 5 is next.
 - Step 1 fixed [A36](backlog-retired.md#a36), unreleased, and its review opened [A38](#a38).
 - Step 2 refuses a dangerous function by its value at the call, `new` and tag sites, unreleased.
   That is [A35](#a35) at the callee.
 - Step 3 fixed [A37](backlog-retired.md#a37), unreleased: a sequence leaves one value on the stack.
-- Step 4, the funnel, is implemented and verified in the working tree and **not committed**. It
-  refuses a dangerous function at every read the walk makes. Its review found a route the funnel
-  cannot see, through `this`, opened as [A39](#a39), and opened [A40](#a40).
-- **The release shape is pending.** Either 0.12.1 ships the funnel with A39 as a stated limit and
-  0.13.0 then closes `this`, or everything ships in 0.13.0. It is settled before any release step.
-  The plan's § 4 sets out the steps of each shape.
+- Step 4, the funnel, refuses a dangerous function at every read the walk makes, unreleased. Its
+  review found a route the funnel cannot see, through `this`, opened as [A39](#a39). It also opened
+  [A40](#a40).
+- **Shape (i) is chosen.** 0.12.1 ships steps 1–4 as partial hardening, with A39 as a stated limit
+  (steps 5 and 6). 0.13.0 then closes `this` (steps 7–9). One advisory follows 0.13.0.
 
 **Phase 10, the documentation restructure, is paused** after its step 2, until the A35 plan's first
-release and its post-publish commit have landed: step 6 under shape (i), step 9 under shape (ii).
-Under shape (i), whether Phase 10's step 3 or the A35 plan's step 7 runs next is settled with the
-release shape. Its [plan](documentation/phase-10-plan.md) is at Revision 3.
+release, 0.12.1, and its post-publish commit have landed: step 6. Whether Phase 10's step 3 or the
+A35 plan's step 7 runs after that is not yet decided. Its [plan](documentation/phase-10-plan.md) is at Revision 3.
 - Step 1 is done: the ten stale documents are deleted, and the `qs` override's reason is in F16.
 - Step 2 is done: `SECURITY.md` is rewritten to what the code does, and a case in `eval-core`'s
   `public-api.spec.ts` resolves every identifier it names. That step opened A35, from its review,
@@ -232,7 +230,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A32](#a32) | The disabled visitor result cache keys a node without its operands — `a + b` and `c + d` share an entry | core | decision | Open — opened 2026-10-10 by A29's fix; latent, nothing calls it |
 | [A33](#a33) | The case-insensitive property cache keeps a miss while the own-key count is unchanged — a key added as another is deleted reads `undefined` by a case variant | core | fix | Open — opened 2026-10-10, after the `eval-core` 0.11.1 tag; a limit [A31](backlog-retired.md#a31)'s fix documents in a code comment. No refusal is skipped |
 | [A34](#a34) | The parse fingerprint's memo does not see options written in place — a write into `parserOptions`, a reused per-call object or `defaultParserOptions` keeps the old fingerprint | core | fix | Open — opened 2026-10-10 by [A26](backlog-retired.md#a26)'s fix, Phase 9 step 1; no worse than the text-only key it replaced |
-| [A35](#a35) | A dangerous function value reachable from the context is callable past the name-based call sandbox — by an alias, through `call` / `apply` / `bind`, and as a native callback (`map`, `Reflect.apply`, `then`); `eval("1+1")` is refused, `["1+1"].map(eval)` is `[2]` | core | decision, security | Open — opened 2026-10-14 by Phase 10 step 2's review; `SECURITY.md` lists it as a limit, with the host's mitigation; **planned** in [`docs/a35/plan.md`](a35/plan.md): steps 2 and 4 refuse it at the callee and at every read the walk makes, and the route through `this` is [A39](#a39). The release shape is pending (the plan's § 2) |
+| [A35](#a35) | A dangerous function value reachable from the context is callable past the name-based call sandbox — by an alias, through `call` / `apply` / `bind`, and as a native callback (`map`, `Reflect.apply`, `then`); `eval("1+1")` is refused, `["1+1"].map(eval)` is `[2]` | core | decision, security | Open — opened 2026-10-14 by Phase 10 step 2's review; `SECURITY.md` lists it as a limit, with the host's mitigation; **planned** in [`docs/a35/plan.md`](a35/plan.md): steps 2 and 4 refuse it at the callee and at every read the walk makes, and the route through `this` is [A39](#a39). Shape (i): 0.12.1 as partial hardening, then 0.13.0 closes `this` |
 | [A36](backlog-retired.md#a36) | A tagged template's tag is called with no sandbox check — `` Function`return 7`() `` gives 7 with `Function` under its own name | core | fix, security | **Retired — fixed 2026-10-15**, as step 1 of the [A35 plan](a35/plan.md); not yet released, ships as `eval-core` 0.12.1. A tag is called as a callee is, through the call sandbox and the write policy; a member tag shares the member call's path, so its `this` is its object. Affected every published `eval-core` to 0.12.0 |
 | [A37](backlog-retired.md#a37) | `SequenceExpression` has no visitor: `(0, 1)` leaves a value on the stack | core | fix | **Retired — fixed 2026-10-15**, as step 3 of the [A35 plan](a35/plan.md); not yet released, ships as `eval-core` 0.12.1. A sequence leaves one value on the stack, and raises one `before` and one `after` event and one trace entry; no evaluated value changes. Affected every published `eval-core` to 0.12.0 |
 | [A38](#a38) | A tag's strings array is not JavaScript's: not frozen, no `raw` — so `` String.raw`a\nb` `` throws — a new array per evaluation, and not recorded as created | core | fix | Open — opened 2026-10-15 by the code review of the A35 plan's step 1. Fidelity, not security; not in 0.12.1 |
@@ -929,11 +927,11 @@ never reaches a call, an argument or a callback, and every route above closes at
 - **What a host loses.** A host that today exposes `setTimeout` on purpose loses it. That is a
   behaviour change.
 
-**The release is pending**, between two shapes the [A35 plan](a35/plan.md)'s § 2 sets out:
-- **(i)**: 0.12.1 now, as hardening, which both downstream peer ranges admit: `eval-signals`'
-  `>=0.11.0 <0.13.0` and `eval-forms`' `>=0.12.0 <0.13.0`. The route through `this`
-  ([A39](#a39)) and a host container are stated limits. Then 0.13.0 closes `this`.
-- **(ii)**: everything in 0.13.0.
+**The release is shape (i)**, chosen 2026-10-16 (the [A35 plan](a35/plan.md)'s § 2):
+- **0.12.1 first, as partial hardening.** Both downstream peer ranges admit it: `eval-signals`'
+  `>=0.11.0 <0.13.0` and `eval-forms`' `>=0.12.0 <0.13.0`. The route through `this` ([A39](#a39))
+  and a host container are stated limits.
+- **Then 0.13.0 closes `this`.** One advisory follows it.
 
 *Recorded*: this entry; `SECURITY.md`, "Documented limits".
 *Verified*: found by the code review of Phase 10 step 2. Measured on 2026-10-14 against
@@ -955,7 +953,7 @@ Step 4's code review found two things, each now its own entry:
   native call.
 - **[A40](#a40)**: under the funnel, a postfix update of a listed function writes, then throws.
 
-So A35 stays open until the release shape is decided.
+So A35 stays open until the route through `this` is closed. It retires with A39, in the plan's step 8.
 
 <a id="a38"></a>
 ## A38 — A tag's strings array is not JavaScript's
@@ -1084,8 +1082,8 @@ effect. The prefix form pushes the new value, so it never throws.
 **The fix**: check the operand before writing. A listed old value is then refused before the
 write, so the update throws having changed nothing.
 
-*Recorded*: this entry; `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Security entry for
-step 4, once that step commits.
+*Recorded*: this entry; `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Security entry, from
+step 4.
 *Verified*: the code review of the A35 plan's step 4 found it (its W1). Measured 2026-10-16 with a
 throwaway script outside the repository, against step 3's bundle and step 4's.
 

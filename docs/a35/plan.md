@@ -1,6 +1,18 @@
 # A35 — dangerous function values past the call sandbox (`@zvenigora/ng-eval-core`)
 
 **Date**: October 14, 2026
+**Revision**: 7 — step 4, in its own commit, with three decisions made after the replan:
+- **Shape (i) is chosen** (§ 2, § 8 q5): 0.12.1 as hardening, then 0.13.0 closes `this`.
+- **One advisory, after 0.13.0** (§ 5, U3). It names 0.13.0 as the patched version and describes
+  0.12.1 as partial hardening. Until 0.13.0 ships, nothing public describes the route through `this`
+  beyond `SECURITY.md`'s prose limit. No expression appears in the advisory, the CHANGELOG,
+  `SECURITY.md` or a commit message (§ 2).
+- **§ 8 q4 gains a fourth candidate**, the positional one, and every candidate is measured before
+  step 7 is specified.
+
+The CHANGELOG entry and a code comment in `dangerous-values.ts` were cut back to that prose limit
+before step 4 committed. Step 4's status becomes its outcome.
+
 **Revision**: 6 — the replan, in its own commit, after step 4's code review. Step 4 is implemented
 and verified in the working tree (its status, in § 4), and is **not committed**.
 
@@ -158,9 +170,8 @@ Three more of the review's findings were routed before the commit:
 gains `.claude/skills/step/SKILL.md`, whose per-step counts the gate changed.
 
 **Revision**: 1 — initial plan.
-**Target package**: `@zvenigora/ng-eval-core`. The release shape is pending (§ 2, § 8 q5):
-- **(i)**: **0.12.1**, a patch, then **0.13.0**;
-- **(ii)**: 0.13.0 alone.
+**Target package**: `@zvenigora/ng-eval-core`, in **shape (i)**, chosen in Revision 7 (§ 2, § 8 q5):
+**0.12.1**, a patch, then **0.13.0**. Shape (ii), 0.13.0 alone, was the alternative.
 
 Both downstream peer ranges admit 0.12.1: `eval-signals`' `>=0.11.0 <0.13.0` and `eval-forms`'
 `>=0.12.0 <0.13.0`. Neither admits 0.13.0.
@@ -374,8 +385,13 @@ scripts outside the repository against the built bundles.
   as any other read does: an operator's operand, a conditional's test, an assignment's target. The
   Security entry names them instead (§ 3.5).
 - **A35 retires with A39**, once the route through `this` is closed (step 8), under either shape.
-- **The release shape is pending**, and is settled before any release step (Revision 6, § 8 q5).
-  - **(i) 0.12.1 as hardening, then 0.13.0.**
+- **Disclosure of the route through `this`** (Revision 7). Until 0.13.0 ships, nothing public
+  describes it beyond `SECURITY.md`'s prose limit. That limit says the route exists, that 0.13.0
+  closes it, and how a host stops it. No expression appears in the advisory, the CHANGELOG,
+  `SECURITY.md` or a commit message.
+- **The release shape is (i)**, chosen 2026-10-16 (Revision 7, § 8 q5). Shape (ii) is recorded
+  below as the alternative that was weighed.
+  - **(i) 0.12.1 as hardening, then 0.13.0.** *Chosen.*
     - 0.12.1 ships steps 1–4: A36, K1, A37 and the funnel.
     - Its `SECURITY.md` and Security entry lead with the guidance that holds whatever the route:
       place no listed function in the context, and in a browser, serve a Content Security Policy
@@ -387,12 +403,12 @@ scripts outside the repository against the built bundles.
   - **(ii) Everything in 0.13.0.** Steps 5 and 6 are skipped. Nothing ships until `this` is closed.
     A consumer through `eval-signals` or `eval-forms` gets none of it until that package widens its
     range.
-  - **Recommended: (i).**
+  - **Why (i).**
     - It ships the callee and funnel refusals now, to every consumer, with no downstream release.
       They close every route measured except those two.
     - (ii) would ship nothing sooner than (i) does.
-    - Its cost is a published version with an open route that is documented. The advisory has to
-      state that route (§ 5, U3).
+    - Its cost is a published version with a documented open route. The one advisory waits for
+      0.13.0, and calls 0.12.1 partial hardening (§ 5, U3).
 - **Each release** is a separate commit after the fix steps, following CONTRIBUTING's Releasing
   procedure and the Publication status / release-tags process. A GHSA advisory, rated in § 5,
   follows the publish, once private vulnerability reporting is enabled. **Both are the maintainer's
@@ -654,7 +670,10 @@ prefixes, is a listed name.
    - `this`, from which an expression builds such a container itself (finding 8,
      [A39](../backlog.md#a39)).
 
-   The entry describes both in prose, and does not print the expressions.
+   The entry describes both in prose, and does not print the expressions. *Since Revision 7*, its
+   prose about `this` goes no further than `SECURITY.md`'s limit (§ 2). It says that the route
+   exists, that 0.13.0 closes it, and that a host stops it by placing no listed function in the
+   context.
 
 A37's visitor changes no value an expression evaluates to, and makes nothing throw (finding 4). It is
 a `### Fixed` line, not a Security one.
@@ -671,14 +690,14 @@ and 4, and › Fixed for step 3. No version moves until the first release step: 
 step 9 under shape (ii) (§ 2).
 
 *Revised by Revision 6.* Steps 5 and 6 run under shape (i) only. Steps 7–9 are new, and run under
-either shape.
+either shape. *Revision 7 chose shape (i)*, so every step runs.
 
 | Step | Subject | Files (main) | Tests: `eval-core` / `eval-signals` / `eval-forms` | Shape | Ships in | State |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | A36: the tag call through the sandbox | `tagged-template-expression.ts`, `call-expression.ts` (`callMember`, and `safeCall` exported), new `tagged-template-expression.spec.ts` | **+10** / 0 / 0 | both | the first release | done |
 | 2 | K1 and the identity set | new `dangerous-values.ts`; `call-expression.ts`, `new-expression.ts`, `member-write-policy.ts`'s comment; new `eval.service.dangerous-values.spec.ts`; T11 and T12 in `tagged-template-expression.spec.ts` | **+21** / 0 / 0 | both | the first release | done |
 | 3 | A37: a `SequenceExpression` visitor | new `sequence-expression.ts` and its spec; `recursive-visitors.ts`; the visitors barrel; the root `README.md`'s node list | **+6** / 0 / 0 | both | the first release | done |
-| 4 | The funnel: every read through the walk's own stack | `visitor-result.ts`, `dangerous-values.ts`, the marks in `call-expression.ts`, `new-expression.ts`, `tagged-template-expression.ts` and `unary-expression.ts`; the spec; `.claude/skills/step/SKILL.md` | **+21** / 0 / 0 | both | the first release | **implemented, verified, not committed** |
+| 4 | The funnel: every read through the walk's own stack | `visitor-result.ts`, `dangerous-values.ts`, the marks in `call-expression.ts`, `new-expression.ts`, `tagged-template-expression.ts` and `unary-expression.ts`; the spec; `.claude/skills/step/SKILL.md` | **+21** / 0 / 0 | both | the first release | done |
 | 5 | `SECURITY.md` for 0.12.1: the funnel as a protection, the route through `this` and a host container as limits, the mitigations first | `SECURITY.md`, `public-api.spec.ts`'s allowlist if it needs entries | 0 / 0 / 0 | (i) only | no package | |
 | 6 | Release `eval-core` 0.12.1 | `modules/eval-core/package.json`, `CHANGELOG.md` | 0 / 0 / 0 | (i) only | `eval-core` 0.12.1 | |
 | 7 | A39: what `this` evaluates to | specified once § 8 q4 is decided | set at its gate | both | `eval-core` 0.13.0 | |
@@ -1054,9 +1073,11 @@ From 2451, `eval-core` is at 2509 once step 4 commits. Step 7 sets its own count
   - The gate is green. `git diff --name-only` lists the files above and this document.
 - **Category**: a behaviour change on a published path, released in the first release: step 6 under
   shape (i), step 9 under shape (ii). § 3.5's item 3 is the change a consumer can notice.
-- **Status — implemented and verified 2026-10-16 under Revision 5, and not committed** (Revision 6).
-  The code, the spec and the rewritten Security entry are in the working tree. The step commits after
-  this replan, under the corrected § 3.5, and closes out then.
+- **Outcome** — done 2026-10-16. It was implemented and verified under Revision 5, held through
+  Revision 6's replan, and committed under Revision 7.
+  - **Before the commit**, the Security entry and the funnel's docblock in `dangerous-values.ts`
+    were cut back to § 2's prose limit for the route through `this`. Neither changes code, and the
+    gate ran again on the result.
   - **Red first.** Written before the fix, 20 V cases failed and V16 passed.
     - V3, V8–V10, V20 and V21 failed on K1's call message, as M12 predicted.
     - The other 14 failed because nothing threw.
@@ -1119,7 +1140,9 @@ From 2451, `eval-core` is at 2509 once step 4 commits. Step 7 sets its own count
         values;
       - the bound-name rule, beside the source-pattern heuristic.
     - The limits keep § 3.4's list, with the route through `this` first, fixed in 0.13.0
-      ([A39](../backlog.md#a39)). It is described in prose, without the expressions.
+      ([A39](../backlog.md#a39)). It is described at § 2's prose limit: that it exists, that
+      0.13.0 closes it, and how a host stops it. Neither its mechanism nor an expression appears.
+      *Revision 7.*
     - The Reporting section points at the repository's "Report a vulnerability" form once the
       maintainer has enabled private vulnerability reporting (§ 5, U1). Until then it stays as it is.
   - `modules/eval-core/src/public-api.spec.ts`: allowlist entries only if the new text needs them,
@@ -1201,8 +1224,8 @@ From 2451, `eval-core` is at 2509 once step 4 commits. Step 7 sets its own count
 | # | Action | When |
 | :--- | :--- | :--- |
 | U1 | Enable private vulnerability reporting on the repository | Before U3, and before step 5 if `SECURITY.md`'s Reporting section is to point at the form in that commit |
-| U2 | Publish the release and push its tag, per CONTRIBUTING steps 3–5: `eval-core` 0.12.1 under shape (i), then 0.13.0 under either | After step 6's release commit, and after step 9's |
-| U3 | Publish a GHSA advisory for `@zvenigora/ng-eval-core`, rated `CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:L/I:L/A:N`, **4.7 Medium**, affected `<= 0.12.0`. It covers dangerous function values callable past the name-based call sandbox (A35), and the unsandboxed tag call (A36). Its text names `new setTimeout("…")` under zone.js, and recommends a Content Security Policy without `'unsafe-eval'` as the mitigation that holds in every version. *Revised by Revision 6*: under shape (i), "patched 0.12.1" must state that the route through `this` (A39) is fixed in 0.13.0; under shape (ii), patched 0.13.0 | After U2 |
+| U2 | Publish each release and push its tag, per CONTRIBUTING steps 3–5: `eval-core` 0.12.1, then 0.13.0 | After step 6's release commit, and after step 9's |
+| U3 | **One** GHSA advisory for `@zvenigora/ng-eval-core`, published **after 0.13.0**. Rated `CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:L/I:L/A:N`, **4.7 Medium**; affected `<= 0.12.1`, **patched 0.13.0**. It covers dangerous function values callable past the name-based call sandbox (A35, A39), and the unsandboxed tag call (A36). It describes 0.12.1 as partial hardening: it refuses those values at the callee and at every read through the walk, and leaves one route open that 0.13.0 closes. It names `new setTimeout("…")` under zone.js, and recommends a Content Security Policy without `'unsafe-eval'` as the mitigation that holds in every version. It prints no expression for the route through `this` (§ 2). *Revised by Revision 7*: it was patched 0.12.1, then one advisory per shape | After 0.13.0's U2 |
 
 U3's rating, in two lines (Revision 3; it was "low"):
 - **AC:H**: the attack needs the host to have placed a listed function in the context, a condition
@@ -1215,8 +1238,8 @@ U3's AC:H holds for the route through `this` as well. The expression's author ne
 have placed a listed function, and `Object` or `Reflect`, in the context.
 
 After U3 comes a docs-only commit. It adds the advisory to `SECURITY.md`'s "Advisories for ng-eval"
-table, a section otherwise unchanged since Phase 10 step 2, and its ID to A35's and A36's retired
-entries.
+table, a section otherwise unchanged since Phase 10 step 2, and its ID to the retired entries of A35,
+A36 and A39.
 
 ---
 
@@ -1277,9 +1300,15 @@ entries.
    - **What breaks under each candidate.** Prototype each, and run all three suites and A39's probes:
      - **the host's original object**;
      - **a frozen shallow view** of it;
-     - **nothing**: `undefined`, or a refusal.
+     - **nothing**: `undefined`, or a refusal;
+     - **by position**, *added by Revision 7*. `this` is allowed as the object of a member read,
+       which keeps the documented `this.k` resolution ([B6](../backlog-retired.md#b6)). Wherever
+       else it escapes as a value, it is refused or made opaque. The exemption is by node position,
+       as the callee's is: the member visitor marks its object node when that is a `this`, and the
+       push of an unmarked `this` is refused or replaced.
 
-     Read case by case: which assertions fail, and whether P1, P2 and G1 close.
+     Read case by case: which assertions fail, and whether P1, P2 and G1 close. **Every candidate is
+     measured before step 7 is specified.**
 
    **One expectation to measure, not assume.** The original object and a plain shallow view both
    hold the listed values themselves. So `Object.values(this)` would still return them, and on their
@@ -1290,9 +1319,9 @@ entries.
    `this` alone evaluates to. Whether that stays is part of the decision.
 
    The target is decided from the measurement, as a plan revision before step 7 is specified.
-5. **The release shape: (i) 0.12.1 then 0.13.0, or (ii) 0.13.0 alone?** *Open, added by Revision 6*
-   (§ 2). Recommended: (i). Settled before any release step, and before step 5, which runs under
-   (i) only.
+5. **The release shape: (i) 0.12.1 then 0.13.0, or (ii) 0.13.0 alone?** Added by Revision 6.
+   *Decided 2026-10-16* (Revision 7): **(i)** (§ 2). Steps 5 and 6 run. Whether Phase 10's step 3
+   or this plan's step 7 runs after step 6 is not yet decided.
 
 ---
 

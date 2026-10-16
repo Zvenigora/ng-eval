@@ -7,7 +7,7 @@ import { afterVisitor } from './after-visitor';
 import { evaluateMember } from './member-expression';
 import { evaluateArray } from './array-expression';
 import { consultMethodWrite } from './member-write-policy';
-import { isDangerousValue } from './dangerous-values';
+import { exemptFromFunnel, isDangerousValue } from './dangerous-values';
 
 /**
  * Security: List of dangerous functions that should not be callable
@@ -219,6 +219,9 @@ export const callExpressionVisitor = (node: CallExpression, st: EvalState, callb
     const value = callMember(st, evaluateMember(node.callee, st, callback), args, node.callee.optional);
     pushVisitorResult(node, st, value);
   } else {
+    // The callee's own value is checked by `safeCall`, with the call's
+    // message; what is read under it still passes the funnel.
+    exemptFromFunnel(node.callee);
     callback(node.callee, st);
     const caller = popVisitorResult(node, st);
 

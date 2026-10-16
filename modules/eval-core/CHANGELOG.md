@@ -63,10 +63,51 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
     too when its name, stripped of every `bound ` prefix, is one of those names.
   - **Now refused**, with the site's existing message, `Function call blocked for security
     reasons: <name>` or `Constructor blocked for security reasons: <name>`: a callee whose value is
-    a listed value, however it is reached. That covers an alias, a member, a call result, `this.k`,
-    a scope namespace, a destructured name, an optional call, a case variant under
-    `caseInsensitive`, and `new setTimeout(…)` or `new setInterval(…)` under the timer's own name.
-    The name is the written name, the property name, or `anonymous`.
+    a listed value, under any name. That covers an alias, a member, a call result, `this.k`, a scope
+    namespace, a destructured name, an optional call, a case variant under `caseInsensitive`, and
+    `new setTimeout(…)` or `new setInterval(…)` under the timer's own name. The name is the written
+    name, the property name, or `anonymous`. A callee under which the listed value is read takes
+    the read's message instead, from the entry below, since the value is refused where it is read,
+    before the call. Such a callee is a sequence, a conditional, a logical, an assignment, or a
+    parenthesised or optional-chain expression.
+- **Every read of a dangerous function the walk makes is refused, except as a callee, a tag or
+  `typeof`'s operand — [A35](../../docs/backlog.md#a35).** The call sandbox checked only the
+  callee, so a listed value handed on as anything else reached the native code that calls it. With
+  `eval` in the context, `["1+1"].map(eval)` gave `[2]` and `eval.call(null, "1+1")` gave 2. With
+  `Function`, `Function.call(null, "return 7")()` gave 7. Every published version up to 0.12.0 is
+  affected.
+  - **The rule.** Whenever the walk reads a listed value, as defined above, it throws
+    `Access to dangerous function "<name>" is blocked for security reasons`. The name is the
+    identifier, the member's property name, or the function's own `name`. Among the reads that
+    hand it on:
+    - an argument;
+    - the receiver of `call`, `apply` or `bind`;
+    - an element of an array or a property of an object the expression builds;
+    - a branch of a conditional or a logical;
+    - the last expression of a sequence used as a callee, a constructor or a tag;
+    - a parenthesised callee under `preserveParens`;
+    - the expression's own result.
+  - **Reads that only inspect the value throw too**, since the rule has no exception for them:
+    - assigning over a listed function, `fetch = 1` or `obj.fetch = 1`, since an assignment reads
+      its target before writing it;
+    - updating one, `obj.fetch++`, which writes first and then throws, so the failed evaluation
+      leaves its write behind ([A40](../../docs/backlog.md#a40));
+    - an operator's operand, `x instanceof Function` or `obj.fetch != null`;
+    - a conditional's test, `obj.fetch ? 1 : 0`;
+    - a template interpolation, `` `${eval}` ``, and a declaration's initializer;
+    - `typeof (eval)` under `preserveParens`, whose operand is the parenthesis, not the identifier.
+  - **Not refused.** A callee or a tag itself is refused by the entry above, with its site's
+    message. `typeof`'s operand is exempt, so `typeof eval` is still `"function"`. Only that node
+    itself is exempt, never what is under it: in `(0, eval)("1+1")` the callee is the sequence, so
+    the read of `eval` inside it is refused.
+  - **Not covered: two routes by which a listed value reaches native code without passing through
+    the walk's own values.** So this release is partial hardening.
+    - **A container the host provides**, whose elements are spread into a native call.
+    - **A route through `this`**, which 0.13.0 closes.
+
+    `SECURITY.md` states both as limits. It gives the mitigations that hold whatever the route:
+    a host places no listed function in the context, and in a browser, a Content Security Policy
+    without `'unsafe-eval'` stops `eval`, `Function` and a string timer.
 
 ---
 

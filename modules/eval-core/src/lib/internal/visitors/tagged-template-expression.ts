@@ -7,6 +7,7 @@ import { EvalState } from '../classes/eval';
 import { callMember, safeCall } from './call-expression';
 import { evaluateMember } from './member-expression';
 import { consultMethodWrite } from './member-write-policy';
+import { exemptFromFunnel } from './dangerous-values';
 
 /**
  * The tag's arguments: the template's cooked strings, then the value of each
@@ -55,6 +56,8 @@ export const taggedTemplateExpressionVisitor = (node: TaggedTemplateExpression, 
     const value = callMember(st, member, args, false);
     pushVisitorResult(node, st, value);
   } else {
+    // As a call's callee: the tag's own value is checked by `safeCall`.
+    exemptFromFunnel(node.tag);
     callback(node.tag, st);
     const tag = popVisitorResult(node, st);
     const args = templateArguments(node, st, callback);

@@ -1,5 +1,6 @@
 import { AnyNode } from 'acorn';
 import { EvalState } from '../classes/eval';
+import { refuseDangerousRead } from './dangerous-values';
 
 /**
  * The two push helpers each carry their own trace-bound call rather than
@@ -21,8 +22,19 @@ import { EvalState } from '../classes/eval';
  * **The value stack is not bounded and must not be.** It is how visitors return
  * values to each other, and dropping an entry desynchronises every node above
  * it. Only the trace - which nothing in this library reads - is capped.
+ *
+ * **Every function value pushed here passes the funnel**, `refuseDangerousRead`
+ * (`docs/a35/plan.md` § 3.3): a dangerous function is refused wherever it was
+ * read, unless the node pushing it is a callee, a tag or `typeof`'s operand.
+ * The call is behind `typeof value === 'function'`, so a value that is not a
+ * function pays one comparison and no frame on this per-node path. `await`
+ * pushes its promise here too, which is not a function.
+ * `pushVisitorResultAsync` has no caller, and no check.
  */
 export const pushVisitorResult = (node: AnyNode, st: EvalState, value: unknown) => {
+  if (typeof value === 'function') {
+    refuseDangerousRead(node, value);
+  }
   const result = st.result;
   result.stack.push(value);
   result.addTraceBounded(node, value, st.maxTraceItems);

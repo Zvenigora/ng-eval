@@ -1,3 +1,4 @@
+import { AnyNode } from 'acorn';
 import { DANGEROUS_FUNCTIONS } from './call-expression';
 
 /**
@@ -8,13 +9,16 @@ import { DANGEROUS_FUNCTIONS } from './call-expression';
  * check does not see `eval` bound as `run`, read as `tools.run`, returned by
  * a call or spelt `EVAL` under `caseInsensitive` (`docs/backlog.md` A35). The
  * set below holds the values themselves, so a callee is refused whatever it
- * is called.
+ * is called, and the funnel at the end of this module refuses one read
+ * anywhere else.
  *
  * `DANGEROUS_FUNCTIONS` is imported from `call-expression.ts`, which imports
- * this module in turn. The list is read only at the first capture, never
- * while either module is loading, so the cycle is safe. It has to be: the
- * flattened bundle declares this module's code before the list, so a read at
- * load would be a temporal-dead-zone `ReferenceError` on import.
+ * this module in turn, as does `visitor-result.ts`, which `call-expression.ts`
+ * imports. The list is read only at the first capture, never while any of
+ * them is loading, and nothing here reads an import at load, so the cycle is
+ * safe. It has to be: the flattened bundle declares this module's code before
+ * the list, so a read at load would be a temporal-dead-zone `ReferenceError`
+ * on import.
  */
 
 /** The three function constructors no global names. */
@@ -189,4 +193,74 @@ export const isDangerousValue = (value: unknown): boolean => {
     return false;
   }
   return dangerousValueSet().has(value) || isBoundListedFunction(value);
+};
+
+/**
+ * The nodes whose own pushed value the funnel leaves to the site that uses
+ * it. Weak, so a cached AST that is dropped takes its marks with it.
+ *
+ * Keyed by node object, so it assumes a tree: no node object in two places.
+ * acorn never shares one, and nothing in this library builds nodes. A
+ * host-built AST that reused one object as both a callee and an argument
+ * would see the argument refused until the callee had been visited once, and
+ * exempt after.
+ */
+const exemptNodes = new WeakSet<AnyNode>();
+
+/**
+ * Exempts `node`'s own pushed value from {@link refuseDangerousRead}, and
+ * nothing under it.
+ *
+ * - The call, `new` and tag visitors mark the callee or tag they visit. Its
+ *   value is checked by that site's sandbox, with that site's message (K1).
+ * - The unary visitor marks `typeof`'s operand, so `typeof eval` is still
+ *   `"function"`.
+ *
+ * Only the node itself: in `(0, eval)("1+1")` the callee is the sequence, so
+ * the identifier `eval` under it is refused when it is pushed. A mark records
+ * the node's place in the AST, which never changes, so it is never cleared.
+ */
+export const exemptFromFunnel = (node: AnyNode): void => {
+  exemptNodes.add(node);
+};
+
+/**
+ * The name a refused read reports: the identifier, the member's property name
+ * where the node holds it, or the function's own `name`.
+ */
+const readName = (node: AnyNode, fn: { name?: unknown }): string => {
+  if (node.type === 'Identifier') {
+    return node.name;
+  }
+  if (node.type === 'MemberExpression') {
+    if (!node.computed && node.property.type === 'Identifier') {
+      return node.property.name;
+    }
+    if (node.property.type === 'Literal') {
+      return String(node.property.value);
+    }
+  }
+  return typeof fn.name === 'string' && fn.name ? fn.name : 'anonymous';
+};
+
+/**
+ * The funnel (`docs/a35/plan.md` § 3.3): refuses a dangerous function pushed
+ * by any node but an exempt one, so no visitor - including one not yet
+ * written - can hand it on as an argument, a receiver, an element, a branch
+ * or the expression's result. `pushVisitorResult` calls it for a function
+ * value only.
+ *
+ * It sees only what passes through the walk's own stack. A value that reaches
+ * native code without being pushed is not seen: the elements of an array the
+ * host built, spread into a call, and the route `docs/backlog.md` A39
+ * records, which 0.13.0 closes.
+ *
+ * Up to 0.12.0 nothing refused such a read: `["1+1"].map(eval)` gave `[2]`
+ * (`docs/backlog.md` A35).
+ */
+export const refuseDangerousRead = (node: AnyNode, value: unknown): void => {
+  if (exemptNodes.has(node) || !isDangerousValue(value)) {
+    return;
+  }
+  throw new Error(`Access to dangerous function "${readName(node, value as { name?: unknown })}" is blocked for security reasons`);
 };

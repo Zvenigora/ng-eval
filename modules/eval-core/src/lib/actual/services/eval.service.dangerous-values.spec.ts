@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { EvalService } from './eval.service';
 import { EvalContext, EvalScope } from '../../internal/classes/eval';
 import { captureFunctionConstructors, isDangerousValue } from '../../internal/visitors/dangerous-values';
+import { parse } from '../../internal/functions';
 
 /**
  * The call, `new` and tag sandboxes refuse a dangerous function by its value
@@ -204,6 +205,142 @@ describe('EvalService - dangerous function values (A35, K1)', () => {
     it('C15t: should refuse a case variant of eval as a tag under caseInsensitive', () => {
       expect(() => service.simpleEval('EVAL`1+1`', { eval }, { caseInsensitive: true }))
         .toThrow(refusal('EVAL'));
+    });
+  });
+
+  /**
+   * Outside a callee, a tag and `typeof`'s operand, a dangerous function is
+   * refused where its value is pushed, whatever visitor pushes it
+   * (`docs/a35/plan.md` § 3.3, the funnel). Up to 0.12.0 nothing refused it:
+   * `["1+1"].map(eval)` gave `[2]`, and `eval.call(null, "1+1")` gave 2.
+   *
+   * The exemptions are by node: only the callee, tag or operand node itself is
+   * exempt, never what is under it. V8–V10, V20 and V21 put the read under a
+   * callee or tag node, so they take this message and not the call's; K1
+   * refused each of them with the call's message before the funnel.
+   */
+  describe('the value, read anywhere but a callee, a tag or typeof\'s operand', () => {
+
+    /** The funnel's refusal, compared by its whole message. */
+    const read = (name: string): Error =>
+      new Error(`Access to dangerous function "${name}" is blocked for security reasons`);
+
+    it('V1: should refuse eval as the receiver of call', () => {
+      expect(() => service.simpleEval('eval.call(null, "1+1")', { eval })).toThrow(read('eval'));
+    });
+
+    it('V2: should refuse eval as the receiver of apply', () => {
+      expect(() => service.simpleEval('eval.apply(null, ["1+1"])', { eval })).toThrow(read('eval'));
+    });
+
+    it('V3: should refuse eval as the receiver of bind', () => {
+      expect(() => service.simpleEval('eval.bind(null)("1+1")', { eval })).toThrow(read('eval'));
+    });
+
+    it('V4: should refuse Function as the receiver of call', () => {
+      expect(() => service.simpleEval('Function.call(null, "return 7")()', { Function }))
+        .toThrow(read('Function'));
+    });
+
+    it('V5: should refuse eval as an argument to a native callback', () => {
+      expect(() => service.simpleEval('["1+1"].map(eval)', { eval })).toThrow(read('eval'));
+    });
+
+    it('V6: should refuse eval as an argument to Reflect.apply', () => {
+      expect(() => service.simpleEval('Reflect.apply(eval, null, ["1+1"])', { eval, Reflect }))
+        .toThrow(read('eval'));
+    });
+
+    it('V7: should refuse eval handed to then, synchronously, at the read', () => {
+      expect(() => service.simpleEval('Promise.resolve("1+1").then(eval)', { eval, Promise }))
+        .toThrow(read('eval'));
+    });
+
+    it('V8: should refuse eval as the last expression of a sequence called', () => {
+      expect(() => service.simpleEval('(0, eval)("1+1")', { eval })).toThrow(read('eval'));
+    });
+
+    it('V9: should refuse eval as a branch of a conditional called', () => {
+      expect(() => service.simpleEval('(c ? eval : f)("1+1")', { eval, c: true, f: () => 0 }))
+        .toThrow(read('eval'));
+    });
+
+    it('V10: should refuse eval as a parenthesised callee under preserveParens', () => {
+      const ast = parse('(eval)("1+1")', { preserveParens: true });
+
+      expect(() => service.simpleEval(ast, { eval })).toThrow(read('eval'));
+    });
+
+    it('V11: should refuse eval read as a member and passed', () => {
+      expect(() => service.simpleEval('["1+1"].map(tools.eval)', { tools: { eval } }))
+        .toThrow(read('eval'));
+    });
+
+    it('V12: should refuse eval read through a computed key, by its own name', () => {
+      expect(() => service.simpleEval('tools["ev" + "al"].call(null, "1+1")', { tools: { eval } }))
+        .toThrow(read('eval'));
+    });
+
+    it('V13: should refuse eval returned by a call and passed, by its own name', () => {
+      expect(() => service.simpleEval('["1+1"].map(getEval())', { getEval: () => eval }))
+        .toThrow(read('eval'));
+    });
+
+    it('V14: should refuse eval nested in an array the expression builds', () => {
+      expect(() => service.simpleEval('[[run, null, ["1+1"]]].map(apply.bind(Reflect.apply, null))',
+        { run: eval, apply: Function.prototype.apply, Reflect })).toThrow(read('run'));
+    });
+
+    it('V15: should refuse a host-bound eval passed, by the bound-name rule', () => {
+      expect(() => service.simpleEval('["1+1"].map(e)', { e: eval.bind(null) })).toThrow(read('e'));
+    });
+
+    it('V16: should let typeof read eval, its operand being exempt', () => {
+      expect(service.simpleEval('typeof eval === "function"', { eval })).toBe(true);
+    });
+
+    it('V17: should refuse eval as the expression\'s own result', () => {
+      expect(() => service.simpleEval('eval', { eval })).toThrow(read('eval'));
+    });
+
+    it('V18: should refuse eval as an argument inside typeof\'s operand', () => {
+      expect(() => service.simpleEval('typeof f(eval)', { f: () => 1, eval })).toThrow(read('eval'));
+    });
+
+    it('V19: should refuse both the setTimeout captured before a replacement and the replacement', async () => {
+      // One evaluation first, so the set is captured before the replacement.
+      // The value captured then must stay refused once the sentinel adds the
+      // replacement: recapture adds and never replaces.
+      expect(service.simpleEval('ping()', { ping: () => 1 })).toBe(1);
+
+      const before = realm['setTimeout'];
+      const received: unknown[] = [];
+      const replacement = function (...args: unknown[]) { received.push(...args); };
+      const f = jest.fn();
+      realm['setTimeout'] = replacement;
+      try {
+        expect(() => service.simpleEval('[f].map(t)', { t: replacement, f })).toThrow(read('t'));
+        expect(() => service.simpleEval('[f].map(t)', { t: before, f })).toThrow(read('t'));
+      } finally {
+        realm['setTimeout'] = before;
+      }
+
+      await pastTheDelay();
+      expect(received).toEqual([]);
+      expect(f).not.toHaveBeenCalled();
+    });
+
+    it('V20: should refuse a timer as the last expression of a sequence constructed, and schedule nothing', async () => {
+      const f = jest.fn();
+
+      expect(() => service.simpleEval('new (0, X)(f, 0)', { X: setTimeout, f })).toThrow(read('X'));
+
+      await pastTheDelay();
+      expect(f).not.toHaveBeenCalled();
+    });
+
+    it('V21: should refuse eval as the last expression of a sequence used as a tag', () => {
+      expect(() => service.simpleEval('(0, eval)`1+1`', { eval })).toThrow(read('eval'));
     });
   });
 });

@@ -5,7 +5,7 @@ import { pushVisitorResult, popVisitorResult } from './visitor-result';
 import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 import { evaluateArray } from './array-expression';
-import { isDangerousValue } from './dangerous-values';
+import { exemptFromFunnel, isDangerousValue } from './dangerous-values';
 
 /**
  * Security: List of dangerous constructors that should not be instantiated
@@ -96,6 +96,9 @@ export const newExpressionVisitor = (node: NewExpression, st: EvalState, callbac
 
   const args = evaluateArray(node, node.arguments, st, callback);
 
+  // The callee's own value is checked by `safeNew`, with the constructor's
+  // message; what is read under it still passes the funnel.
+  exemptFromFunnel(node.callee);
   callback(node.callee, st);
 
   const constructor = popVisitorResult(node, st);

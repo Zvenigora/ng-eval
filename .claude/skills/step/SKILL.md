@@ -9,15 +9,13 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 # Execute one plan step
 
 Plan document: `docs/a35/plan.md`
-Target library: `@zvenigora/ng-eval-core` (`modules/eval-core`). The release shape is pending (plan
-§ 2, § 8 q5): (i) 0.12.1, then 0.13.0; or (ii) 0.13.0 alone. It is settled before any release step,
-and before step 5.
+Target library: `@zvenigora/ng-eval-core` (`modules/eval-core`), in shape (i), chosen in the plan's
+Revision 7 (§ 2): 0.12.1 as partial hardening, then 0.13.0.
 Requested step: $ARGUMENTS
 
 **Phase 10 (`docs/documentation/phase-10-plan.md`) is paused after its step 2.** This skill runs the
-A35 plan until its first release and that release's post-publish commit have landed: step 6 under
-shape (i), step 9 under shape (ii). It is then retargeted. Which runs next, Phase 10's step 3 or this
-plan's step 7, is settled with the release shape.
+A35 plan until 0.12.1 and its post-publish commit have landed (step 6). Whether Phase 10's step 3 or
+this plan's step 7 runs after that is not yet decided.
 
 **Each step's file list in the plan's § 4 is its scope, and it is not the same list every step.**
 The A35 plan closes the call sandbox's gaps in `eval-core`, at named steps and nowhere else:
@@ -34,18 +32,16 @@ The A35 plan closes the call sandbox's gaps in `eval-core`, at named steps and n
 - **Step 3 is A37**: a `SequenceExpression` visitor, its registration and spec, and the root
   README's node list.
 - **Step 4 is the funnel**: `pushVisitorResult`, the callee and `typeof` marks, and the spec's value
-  routes. Its objective is narrowed to the walk's own values (plan Revision 6). It is implemented
-  and verified in the working tree, and not committed.
-- **Step 5 is documents, under shape (i) only**: `SECURITY.md` for 0.12.1, with the mitigations
-  first. The funnel is a protection; the route through `this` and a host container are limits. It
-  touches no library file, and does not retire A35.
-- **Step 6 is the 0.12.1 release, under shape (i) only**: `modules/eval-core/package.json` and its
-  CHANGELOG, then CONTRIBUTING's Releasing steps. Publishing and tagging are the maintainer's (plan
-  § 5).
+  routes. Its objective is narrowed to the walk's own values (plan Revision 6).
+- **Step 5 is documents**: `SECURITY.md` for 0.12.1, with the mitigations first. The funnel is a
+  protection; the route through `this` and a host container are limits. It touches no library file,
+  and does not retire A35.
+- **Step 6 is the 0.12.1 release**: `modules/eval-core/package.json` and its CHANGELOG, then
+  CONTRIBUTING's Releasing steps. Publishing and tagging are the maintainer's (plan § 5).
 - **Step 7 is A39**: what `this` evaluates to, a breaking change for 0.13.0. It is specified once
   the plan's § 8 q4 is decided from its measurement, and its scope is fixed at its gate.
 - **Step 8 is documents**: `SECURITY.md`'s `this` limit becomes a protection, and A39 and A35 are
-  retired. Under shape (ii) it also carries step 5's text.
+  retired.
 - **Step 9 is the 0.13.0 release.** Each downstream package widens its peer range in a release of its
   own, which is planned with step 7.
 
@@ -63,6 +59,10 @@ Stop-and-replans in every step:
   - Every change in steps 1–4 is internal (plan § 4, step 6, criterion 2). Step 7's surface change
     is fixed at its gate.
 - **A `package.json` change outside the release steps, 6 and 9.**
+- **Public text about the route through `this` beyond `SECURITY.md`'s prose limit**, until 0.13.0
+  ships (plan § 2). That covers an expression or a mechanism in the CHANGELOG, `SECURITY.md`, a
+  commit message or the advisory. The limit says only that the route exists, that 0.13.0 closes it,
+  and how a host stops it.
 - **An existing assertion that would have to change, in steps 1–4.** Option (a) keeps every one (plan
   § 2). If one fails, the design is wrong, not the assertion. Step 7 changes what `this` evaluates
   to, and its gate names the assertions it changes.
