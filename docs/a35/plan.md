@@ -183,9 +183,9 @@ range in a release of its own (step 9).
   in step 7;
 - [A37](../backlog-retired.md#a37) in step 3.
 
-**Pauses**: Phase 10 after its step 2 ([plan](../documentation/phase-10-plan.md)). It resumes at its
-step 3 once this plan's first release and its post-publish commit have landed: step 6 under shape
-(i), step 9 under shape (ii).
+**Pauses**: Phase 10 after its step 2 ([plan](../documentation/phase-10-plan.md)). This plan runs to
+its end before Phase 10 resumes at its step 3: steps 7–9 run consecutively after step 6, so 0.13.0
+closes the route through `this` without Phase 10 in between (Revision 7, § 2).
 **Source**: the requests of 2026-10-14. Phase 10 step 2's review found the class, which was then
 measured route by route. The decisions in § 2 were fixed before this plan was committed.
 **Objective**: an expression cannot call a dangerous function value that the context holds or that
@@ -391,6 +391,9 @@ scripts outside the repository against the built bundles.
     - Both downstream ranges admit 0.12.1, so every consumer can take it with no other release.
     - Then 0.13.0 closes `this` (step 7), and each downstream package widens its peer range to
       take it (step 9).
+    - **Steps 7–9 run consecutively after step 6, ahead of Phase 10's step 3**, so the window in
+      which a public 0.12.1 carries the open route is as short as the work allows. 0.13.0 is
+      published promptly after step 9 commits.
   - **(ii) Everything in 0.13.0.** Steps 5 and 6 are skipped. Nothing ships until `this` is closed.
     A consumer through `eval-signals` or `eval-forms` gets none of it until that package widens its
     range.
@@ -1173,12 +1176,19 @@ From 2451, `eval-core` is at 2509 once step 4 commits. Step 7 sets its own count
   revision in its own commit, and this step's files, cases, probes and count are fixed then, at its
   confirmation gate.
 - **What it must do, whatever the target**:
-  - A39's probes, P1, P2 and G1, no longer yield a listed value to native code.
+  - A39's probes no longer reach a listed value through `this`.
   - Every case that pins what `this` is today, as q4's measurement finds them, either holds or is
     changed deliberately and listed as breaking.
 - **Scope.** What `this` evaluates to is decided in `this-expression.ts` and `identifier.ts`, inside
   `internal/visitors/`. A change to `EvalContext` would fall outside that, and its gate would have to
   name it.
+- **Disclosure** (Revision 7, § 2). This is the step that ends the embargo on the route's detail.
+  - **The spec cases that hold the probe expressions commit only with the fix, in this one commit.**
+    They do not land on the default branch before step 7's code does, so no public commit reproduces
+    the route while a release is still vulnerable to it.
+  - **0.13.0 is published promptly after step 9 commits** (step 6's 0.12.1 carries the open route
+    until then), and the advisory (§ 5, U3) follows that publish. Steps 7–9 run consecutively, ahead
+    of Phase 10, to keep that window short.
 - **Category**: a breaking change on a published path, released in step 9 as 0.13.0.
 
 ### Step 8 — `SECURITY.md`'s `this` limit becomes a protection; A39 and A35 retired
@@ -1312,8 +1322,9 @@ A36 and A39.
 
    The target is decided from the measurement, as a plan revision before step 7 is specified.
 5. **The release shape: (i) 0.12.1 then 0.13.0, or (ii) 0.13.0 alone?** Added by Revision 6.
-   *Decided 2026-10-16* (Revision 7): **(i)** (§ 2). Steps 5 and 6 run. Whether Phase 10's step 3
-   or this plan's step 7 runs after step 6 is not yet decided.
+   *Decided 2026-10-16* (Revision 7): **(i)** (§ 2). Steps 7–9 run consecutively after step 6, ahead
+   of Phase 10's step 3, so the window in which a public version carries the open route is as short
+   as the work allows.
 
 ---
 

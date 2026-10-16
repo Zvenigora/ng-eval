@@ -14,8 +14,8 @@ Revision 7 (§ 2): 0.12.1 as partial hardening, then 0.13.0.
 Requested step: $ARGUMENTS
 
 **Phase 10 (`docs/documentation/phase-10-plan.md`) is paused after its step 2.** This skill runs the
-A35 plan until 0.12.1 and its post-publish commit have landed (step 6). Whether Phase 10's step 3 or
-this plan's step 7 runs after that is not yet decided.
+A35 plan to its end, steps 1–9: 0.12.1 (step 6), then steps 7–9 consecutively, so 0.13.0 closes the
+route through `this` before Phase 10 resumes at its step 3.
 
 **Each step's file list in the plan's § 4 is its scope, and it is not the same list every step.**
 The A35 plan closes the call sandbox's gaps in `eval-core`, at named steps and nowhere else:
@@ -61,8 +61,11 @@ Stop-and-replans in every step:
 - **A `package.json` change outside the release steps, 6 and 9.**
 - **Public text about the route through `this` beyond `SECURITY.md`'s prose limit**, until 0.13.0
   ships (plan § 2). That covers an expression or a mechanism in the CHANGELOG, `SECURITY.md`, a
-  commit message or the advisory. The limit says only that the route exists, that 0.13.0 closes it,
-  and how a host stops it.
+  commit message, a doc or a spec on the default branch, or the advisory. The limit says only that
+  the route exists, that 0.13.0 closes it, and how a host stops it. The one exception is **step 7**:
+  its spec cases hold the probe expressions and commit in the same commit as the fix, never before
+  it, and 0.13.0 is published promptly after. Through step 6 those expressions live only in the
+  draft advisory, off the default branch.
 - **An existing assertion that would have to change, in steps 1–4.** Option (a) keeps every one (plan
   § 2). If one fails, the design is wrong, not the assertion. Step 7 changes what `this` evaluates
   to, and its gate names the assertions it changes.

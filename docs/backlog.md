@@ -65,9 +65,9 @@ are done and step 5 is next.
 - **Shape (i) is chosen.** 0.12.1 ships steps 1–4 as partial hardening, with A39 as a stated limit
   (steps 5 and 6). 0.13.0 then closes `this` (steps 7–9). One advisory follows 0.13.0.
 
-**Phase 10, the documentation restructure, is paused** after its step 2, until the A35 plan's first
-release, 0.12.1, and its post-publish commit have landed: step 6. Whether Phase 10's step 3 or the
-A35 plan's step 7 runs after that is not yet decided. Its [plan](documentation/phase-10-plan.md) is at Revision 3.
+**Phase 10, the documentation restructure, is paused** after its step 2, until the A35 plan runs to
+its end. Its steps 7–9 run consecutively after 0.12.1 (step 6), so 0.13.0 closes the route through
+`this` before Phase 10 resumes at its step 3. Its [plan](documentation/phase-10-plan.md) is at Revision 3.
 - Step 1 is done: the ten stale documents are deleted, and the `qs` override's reason is in F16.
 - Step 2 is done: `SECURITY.md` is rewritten to what the code does, and a case in `eval-core`'s
   `public-api.spec.ts` resolves every identifier it names. That step opened A35, from its review,
