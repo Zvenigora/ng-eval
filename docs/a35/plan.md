@@ -1,6 +1,22 @@
 # A35 — dangerous function values past the call sandbox (`@zvenigora/ng-eval-core`)
 
 **Date**: October 14, 2026
+**Revision**: 8 — step 5, in its own commit. Its confirmation gate changed three things:
+- **The protections are framed as defense in depth.** K1 and the funnel narrow the routes and are
+  not a boundary, and each links to the limits. The route through `this` and a host container also
+  sit beside the protections, in "What these checks do not cover", not only under "Documented
+  limits".
+- **The mitigations lead**, and their first line is "the context is trusted — place no listed
+  function in it".
+- **Node's --disallow-code-generation-from-strings flag joins the mitigations**, stated only as far
+  as it was measured on this step's bundle.
+
+The gate also asked that the source-text limit be stated with a fresh measurement, and added a check:
+nothing `SECURITY.md` marks as refused is in fact let through (step 5's outcome).
+
+The step made one correction of its own. A35's and A39's *Recorded* lines in `docs/backlog.md` named
+`SECURITY.md`'s limits only, and now name where step 5 puts each.
+
 **Revision**: 7 — step 4, in its own commit, with three decisions made after the replan:
 - **Shape (i) is chosen** (§ 2, § 8 q5): 0.12.1 as hardening, then 0.13.0 closes `this`.
 - **One advisory, after 0.13.0** (§ 5, U3). It names 0.13.0 as the patched version and describes
@@ -692,7 +708,7 @@ either shape. *Revision 7 chose shape (i)*, so every step runs.
 | 2 | K1 and the identity set | new `dangerous-values.ts`; `call-expression.ts`, `new-expression.ts`, `member-write-policy.ts`'s comment; new `eval.service.dangerous-values.spec.ts`; T11 and T12 in `tagged-template-expression.spec.ts` | **+21** / 0 / 0 | both | the first release | done |
 | 3 | A37: a `SequenceExpression` visitor | new `sequence-expression.ts` and its spec; `recursive-visitors.ts`; the visitors barrel; the root `README.md`'s node list | **+6** / 0 / 0 | both | the first release | done |
 | 4 | The funnel: every read through the walk's own stack | `visitor-result.ts`, `dangerous-values.ts`, the marks in `call-expression.ts`, `new-expression.ts`, `tagged-template-expression.ts` and `unary-expression.ts`; the spec; `.claude/skills/step/SKILL.md` | **+21** / 0 / 0 | both | the first release | done |
-| 5 | `SECURITY.md` for 0.12.1: the funnel as a protection, the route through `this` and a host container as limits, the mitigations first | `SECURITY.md`, `public-api.spec.ts`'s allowlist if it needs entries | 0 / 0 / 0 | (i) only | no package | |
+| 5 | `SECURITY.md` for 0.12.1: the funnel as a protection, the route through `this` and a host container as limits, the mitigations first | `SECURITY.md`, `public-api.spec.ts`'s allowlist if it needs entries | 0 / 0 / 0 | (i) only | no package | done |
 | 6 | Release `eval-core` 0.12.1 | `modules/eval-core/package.json`, `CHANGELOG.md` | 0 / 0 / 0 | (i) only | `eval-core` 0.12.1 | |
 | 7 | A39: what `this` evaluates to | specified once § 8 q4 is decided | set at its gate | both | `eval-core` 0.13.0 | |
 | 8 | `SECURITY.md`'s `this` limit becomes a protection; A39 and A35 retired | `SECURITY.md`, the register; under shape (ii), step 5's text too | 0 / 0 / 0 | both | no package | |
@@ -1137,6 +1153,15 @@ From 2451, `eval-core` is at 2509 once step 4 commits. Step 7 sets its own count
       ([A39](../backlog.md#a39)). It is described at § 2's prose limit: that it exists, that
       0.13.0 closes it, and how a host stops it. Neither its mechanism nor an expression appears.
       *Revision 7.*
+    - *Changed at the confirmation gate* (Revision 8):
+      - K1 and the funnel are stated as defense in depth that narrows the routes, not as a boundary,
+        and each links to the limits;
+      - the route through `this` and a host container are also stated beside the protections, in
+        "What these checks do not cover";
+      - the mitigations open with "the context is trusted — place no listed function in it";
+      - Node's --disallow-code-generation-from-strings joins them, stated only as far as it was
+        measured on this step's bundle;
+      - the source-text limit is stated with a fresh measurement.
     - The Reporting section points at the repository's "Report a vulnerability" form once the
       maintainer has enabled private vulnerability reporting (§ 5, U1). Until then it stays as it is.
   - `modules/eval-core/src/public-api.spec.ts`: allowlist entries only if the new text needs them,
@@ -1150,6 +1175,65 @@ From 2451, `eval-core` is at 2509 once step 4 commits. Step 7 sets its own count
      and each limit names its case or its measurement.
   - Tests unchanged in all three projects. The gate is green.
 - **Category**: documents. Ships in no package.
+- **Outcome** — done 2026-10-16.
+  - **`SECURITY.md`** now opens with "Mitigations", ahead of the threat model. That section has
+    three items:
+    - the context is trusted — place no listed function in it;
+    - a CSP without `'unsafe-eval'`;
+    - Node's flag, as measured.
+
+    "Call sandboxing" gains the check by value. A new "Dangerous function values" section states
+    the set, its capture, the check at the callee and the funnel, each as defense in depth. It ends
+    with "What these checks do not cover": the route through `this` and a host container.
+    "Documented limits" replaces "The call checks refuse a name, not a value" with § 3.4's list, the
+    route through `this` first.
+  - **Criterion 1: met.** `public-api.spec.ts` is 29 of 29, its three `SECURITY.md` cases among
+    them. From "Advisories" to the end, the document is byte-identical to `HEAD`, the Reporting
+    section included: private vulnerability reporting was still off when checked on 2026-10-16
+    (U1). doc-links is green.
+  - **Criterion 2: met.** Every route in finding 1 is listed as refused, under the check at the
+    callee (C1–C15t) or the funnel (V1–V21). Finding 8 is the first limit. It names
+    [A39](../backlog.md#a39) and M14, and its prose stays at § 2's limit.
+  - **The allowlist** gains eight entries and loses none. `EvalError` and `Proxy` are `js-global`.
+    `c`, `e`, `getEval`, `ns`, `obj` and `tools` are `example-binding`.
+    - **Kept out of code spans**: names that fit none of the six reasons. They are the three
+      constructors no global names, Node's flag, its vm module, the parser's preserveParens option
+      and the upper-case variant.
+    - **Quoted as a string**: `'anonymous'`, a word of the refusal message.
+    - **The probe**, reverted: `tools` and `Proxy` dropped and a stale `vm` added. The identifier
+      case listed exactly `Proxy` and `tools`, and the allowlist case exactly `vm`.
+  - **Nothing marked refused is let through** (the gate's added check). A throwaway script ran
+    against this step's production bundle, outside the repository. It ran every route the document
+    states: 15 at the callee, 21 funnel reads, 8 reads that only inspect, the `typeof` exemption,
+    17 behind the limits and 4 ordinary expressions. Each gave what the document says: the stated
+    message, the stated value, or a run. A postfix update wrote before it threw (A40).
+  - **The fresh measurements behind the limits.** A host function whose source names `globalThis`
+    is refused as `host()`, and runs through `call`, `apply`, `bind` and `map`. Further runs measured:
+    - an `eval` from a new vm context;
+    - a `fetch` replaced after the capture;
+    - `Function.prototype.call.bind(eval)` and `new Proxy(eval, {})`;
+    - a host container holding `eval`, `Function` or any of the three other constructors.
+
+    Each of those reached its function. A benign wrapper bound as `fetch` was refused, and Node's
+    `setTimeout` rejected a string handler of its own accord.
+  - **Node's flag**, measured on the bundle linked by the Angular linker, as an application build
+    links it.
+    - **What it stops**: the seven routes that build code from a string — the host containers of
+      `eval` and the four constructors, and the two forwarders — each threw an `EvalError`.
+    - **Unchanged**: every other route's result.
+    - **What it does not stop**: `fetch` still fetched, and the vm context's `eval` still ran.
+    - **Node's timers** reject a string handler with or without the flag.
+    - **The unlinked bundle**, loaded through Angular's JIT compiler, fails under the flag, since
+      that compiler calls `new Function`.
+  - **Disclosure**: probe-pattern grep clean over every added line. Each added `this` in code is
+    the refused `this.k` callee, or the prose limit.
+  - **The reviewer was not run.** This step changes no library file, and the skill gives a
+    documents step its own checks instead (above).
+  - **Plan correction**: A35's and A39's *Recorded* lines in `docs/backlog.md`, as Revision 8
+    states.
+  - **Opened [A41](../backlog.md#a41)**, fidelity and not in 0.12.1. An update does not convert its
+    operand to a number, so `++` concatenates on a string or an object, and a postfix update gives
+    the operand as read. Measured on a string, a numeric string and an object before the commit.
 
 ### Step 6 — Release `eval-core` 0.12.1 (shape (i) only)
 

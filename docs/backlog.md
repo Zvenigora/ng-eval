@@ -53,8 +53,8 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-**The A35 plan is in flight**: [`docs/a35/plan.md`](a35/plan.md), at Revision 7, where steps 1 to 4
-are done and step 5 is next.
+**The A35 plan is in flight**: [`docs/a35/plan.md`](a35/plan.md), at Revision 8, where steps 1 to 5
+are done and step 6, the 0.12.1 release, is next.
 - Step 1 fixed [A36](backlog-retired.md#a36), unreleased, and its review opened [A38](#a38).
 - Step 2 refuses a dangerous function by its value at the call, `new` and tag sites, unreleased.
   That is [A35](#a35) at the callee.
@@ -62,6 +62,9 @@ are done and step 5 is next.
 - Step 4, the funnel, refuses a dangerous function at every read the walk makes, unreleased. Its
   review found a route the funnel cannot see, through `this`, opened as [A39](#a39). It also opened
   [A40](#a40).
+- Step 5 rewrote `SECURITY.md` for 0.12.1. It leads with the mitigations, Node's flag among them as
+  measured. The refusals are protections, stated as defense in depth, and the route through `this`
+  and a host container are limits beside them. A35 stays open. The step opened [A41](#a41).
 - **Shape (i) is chosen.** 0.12.1 ships steps 1–4 as partial hardening, with A39 as a stated limit
   (steps 5 and 6). 0.13.0 then closes `this` (steps 7–9). One advisory follows 0.13.0.
 
@@ -236,6 +239,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A38](#a38) | A tag's strings array is not JavaScript's: not frozen, no `raw` — so `` String.raw`a\nb` `` throws — a new array per evaluation, and not recorded as created | core | fix | Open — opened 2026-10-15 by the code review of the A35 plan's step 1. Fidelity, not security; not in 0.12.1 |
 | [A39](#a39) | Evaluating `this` lets native code reach a dangerous function the host placed in the context, past the funnel; mechanism and probes held in the draft advisory | core | fix, security | Open — opened 2026-10-16 by the code review of the A35 plan's step 4. A fix changes what `this` returns, so it ships as `eval-core` 0.13.0; the target is the [plan](a35/plan.md)'s § 8 q4 |
 | [A40](#a40) | A postfix update of a listed function writes, then the funnel refuses the old value — the failed evaluation leaves its write behind | core | fix | Open — opened 2026-10-16 by the code review of the A35 plan's step 4. Not a security route; the fix checks the operand before writing |
+| [A41](#a41) | An update does not convert its operand to a number: `x++` on `"5"` writes `"51"`, on `{}` writes `"[object Object]1"`, and a postfix update gives the operand as read | core | fix | Open — opened 2026-10-16 in the A35 plan's step 5. Fidelity, not security; not in 0.12.1. Distinct from [A40](#a40), the order of a write and a refusal |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -933,7 +937,9 @@ never reaches a call, an argument or a callback, and every route above closes at
   and a host container are stated limits.
 - **Then 0.13.0 closes `this`.** One advisory follows it.
 
-*Recorded*: this entry; `SECURITY.md`, "Documented limits".
+*Recorded*: this entry; `SECURITY.md`, "Dangerous function values", which since the A35 plan's step 5
+states the refusals as protections and the routes still open as limits. Until then it recorded this
+entry under "Documented limits".
 *Verified*: found by the code review of Phase 10 step 2. Measured on 2026-10-14 against
 `dist/modules/eval-core` built at 3f00e3c plus that step's uncommitted spec, with no library change.
 The measurement used throwaway scripts outside the repository that called `evaluate(parse(…),
@@ -1027,9 +1033,10 @@ needs a release of its own to take the fix.
 What `this` should return instead is the A35 plan's § 8 q4, which is decided from a measurement
 first.
 
-*Recorded*: this entry; the [A35 plan](a35/plan.md)'s finding 8, § 3.4, § 8 q4 and § 9. The probes
-that reproduce the route are held in the repository's draft security advisory, not on the default
-branch, under the plan's § 2 disclosure rule.
+*Recorded*: this entry; the [A35 plan](a35/plan.md)'s finding 8, § 3.4, § 8 q4 and § 9;
+`SECURITY.md`, "What these checks do not cover" and "Documented limits", at the plan's § 2 prose
+limit, since its step 5. The probes that reproduce the route are held in the repository's draft
+security advisory, not on the default branch, under the plan's § 2 disclosure rule.
 *Verified*: found by the code review of the A35 plan's step 4, and reproduced on 2026-10-16 with
 throwaway scripts outside the repository, against the built bundles at step 3's commit (eea3555) and
 step 4's. The measurements are recorded in the draft advisory.
@@ -1067,6 +1074,54 @@ write, so the update throws having changed nothing.
 step 4.
 *Verified*: the code review of the A35 plan's step 4 found it (its W1). Measured 2026-10-16 with a
 throwaway script outside the repository, against step 3's bundle and step 4's.
+
+<a id="a41"></a>
+## A41 — An update on a string or an object concatenates, and a postfix update gives the operand unconverted
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-16 in the A35 plan's step 5
+
+`update-expression.ts` computes the new value as `value + 1` or `value - 1` on the operand as it was
+read. JavaScript first converts the operand to a number, then adds or subtracts, and a postfix
+update gives that converted old value. So for an operand that is not a number, two things differ:
+- **`++` concatenates.** On a string, a numeric string or an object, `+` joins rather than adds, and
+  the update writes a string.
+- **A postfix update gives the operand as read**, not its number: the string, or the object itself.
+
+`-` converts, so `--` writes what JavaScript writes, and a prefix `--` matches it in full.
+
+Measured 2026-10-16 against this tree's production bundle, beside the same updates run natively.
+An identifier target and a member target gave the same results:
+
+| Operand | Form | JavaScript: result, then the operand | The evaluator: result, then the operand |
+| :--- | :--- | :--- | :--- |
+| `"a"` | `x++` | `NaN`, `NaN` | `"a"`, `"a1"` |
+| `"a"` | `x--` | `NaN`, `NaN` | `"a"`, `NaN` |
+| `"a"` | `++x` | `NaN`, `NaN` | `"a1"`, `"a1"` |
+| `"5"` | `x++` | `5`, `6` | `"5"`, `"51"` |
+| `"5"` | `x--` | `5`, `4` | `"5"`, `4` |
+| `"5"` | `++x` | `6`, `6` | `"51"`, `"51"` |
+| `{}` | `x++` | `NaN`, `NaN` | the object itself, `"[object Object]1"` |
+| `{}` | `x--` | `NaN`, `NaN` | the object itself, `NaN` |
+| `{}` | `++x` | `NaN`, `NaN` | `"[object Object]1"`, `"[object Object]1"` |
+
+`--x` matches JavaScript on all three, and a number operand matches it in all four forms.
+
+**Distinct from [A40](#a40).** A40 is the order of a write and the funnel's refusal, for a listed
+function. This entry is the arithmetic, for any operand that is not a number. A40's table shows it on
+a function: the string it writes ends in `}1`.
+
+**Fidelity, not security.** No check is skipped. **It is not in 0.12.1.**
+
+**A direction, not a decision**: convert the operand once, as JavaScript does, and use the converted
+value for the new value and for the postfix result. That changes what the updates above evaluate to,
+so which release can carry it is part of the fix.
+
+*Recorded*: this entry.
+*Verified*: noticed in the A35 plan's step 5, while measuring the routes `SECURITY.md` states, where
+a postfix update of `fetch` wrote its source text and `1`. Measured 2026-10-16 with a throwaway
+script outside the repository. It called `evaluate(parse(…), EvalState.fromContext(…))` against the
+production bundle built from step 5's tree, both as built and as the Angular linker links it, and ran
+each update natively beside it. The two gave the same table.
 
 ---
 
