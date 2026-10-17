@@ -12,6 +12,24 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+---
+
+## [0.12.1] - 2026-10-17
+
+**Partial hardening of the call sandbox, which does not close every route, so keep
+[`SECURITY.md`'s mitigations](../../SECURITY.md#mitigations) in place whatever the version.** A
+tagged template's tag goes through the call sandbox ([A36](../../docs/backlog-retired.md#a36)), and
+a dangerous function value is refused at the call, `new` and tag sites and at every other read the
+walk makes but `typeof`'s operand ([A35](../../docs/backlog.md#a35)). A sequence leaves one value on
+the stack ([A37](../../docs/backlog-retired.md#a37)). Two routes past the walk's own values stay
+open: a container the host provides, which stays a limit, and a route through `this`, which 0.13.0
+closes. The Security entry below states both, and `SECURITY.md`'s
+[documented limits](../../SECURITY.md#documented-limits) give the rest. It is a patch although an
+expression that reads a dangerous function now throws where it used to give a value: none of the
+three packages' existing cases reads one, and the defect is a security one. No exported symbol
+changes shape: the `.d.ts` is byte-identical to 0.12.0's. `eval-signals` 0.5.1 and `eval-forms` 0.5.0 admit it: their peer
+ranges are `>=0.11.0 <0.13.0` and `>=0.12.0 <0.13.0`.
+
 ### Fixed
 - **A sequence leaves exactly one value on the stack, and shows one node to hooks —
   [A37](../../docs/backlog-retired.md#a37).** No visitor was registered for `SequenceExpression`, so
