@@ -1,6 +1,23 @@
 # A35 — dangerous function values past the call sandbox (`@zvenigora/ng-eval-core`)
 
 **Date**: October 14, 2026
+**Revision**: 10 — § 8 q4 decided, in its own commit, before step 7. **`this` is allowed by
+position, and refused anywhere else**: as the object of a member read it keeps resolving against the
+context, and wherever else it is evaluated it throws. M15 measured every candidate first. Four
+things change:
+- **M15 joins § 1.3.** It covers:
+  - the reliance inventory;
+  - five values for `this`, each with `this.k` kept and not kept, against all three suites;
+  - A39's probes on two bundles, by ID only.
+- **§ 8 q4 is decided**, with the measurement behind it.
+- **Step 7 is specified**:
+  - its files, including two `eval-forms` spec files as test-only edits;
+  - the three `eval-forms` assertions it changes, as breaking;
+  - its counts;
+  - a hard gate on three receivers that M15 did not measure.
+- **`.claude/skills/step/SKILL.md`** gives step 7's scope and its two exceptions: the downstream
+  spec files, and the receiver gate's stop.
+
 **Revision**: 9 — step 6, in its post-publish commit. `eval-core` 0.12.1 is published, tagged at
 7cc8d30. The step changed two things:
 - **The CHANGELOG section opens with a summary paragraph**, settled at the confirmation gate. Its
@@ -350,7 +367,10 @@ used throwaway prototypes of both shapes in the library: a shared check module, 
 and the gated checks. Everything was **reverted** and its files deleted before this plan's commit:
 `git status` showed only the plan's files, and the library had no diff against `HEAD`. M12 and M13
 used a throwaway funnel prototype, reverted the same way before step 4 began. M14 ran throwaway
-scripts outside the repository against the built bundles.
+scripts outside the repository against the built bundles. M15 used a throwaway prototype in the
+library, switched per process. Two production bundles were built from it and copied outside the
+repository, and A39's probes ran on those bundles with the maintainer's harness. The prototype was
+reverted before Revision 10's commit, and the bundles and scripts were deleted.
 
 | ID | Question | Method | Result |
 | :--- | :--- | :--- | :--- |
@@ -368,6 +388,7 @@ scripts outside the repository against the built bundles.
 | M12 | M3 and M7 on the tree after step 3 | Step 4's confirmation gate: a funnel prototype; M3's routes against step 3's bundle and the prototype's; `nx run-many -t test` with the prototype on; each exemption widened and narrowed against the V cases | K1 already refuses `(0, eval)()`, `(c ? eval : f)()` and `(eval)()` under `preserveParens` with `Function call blocked for security reasons: anonymous`. The prototype refuses each at the read of `eval`. `run?.()` is K1's; `Reflect.apply(...pair)` gives 2 under both; `(0, 1)` leaves no entry; `typeof eval` is `"function"`. M7 holds: 2488 / 438 / 375, all green |
 | M13 | Timing, previewed | Step 4's confirmation gate: M6's parameters with six recorded expressions (step 4's outcome); step 3's bundle against the prototype's; six rotations | Slower in all five valid rotations, by +1.1% to +8.5% on the median. The minimums moved from −22% to +5%. One rotation was void, from interference. Step 3's medians spread 5.7% over rotations 1–3, which sets step 4's line at 10.7% |
 | M14 | `this` handed to native code | Step 4's code review, on that step's bundle; the probes measured again with a throwaway script against step 3's bundle and step 4's | The route reaches a listed function past the funnel on both bundles, where each control without `this` is refused on step 4's. The probes and the mechanism are held in the draft advisory ([A39](../backlog.md#a39)), under § 2's disclosure rule |
+| M15 | What `this` should evaluate to (§ 8 q4) | Revision 10, at 0.12.1. (1) Every expression in the three projects' specs, the READMEs and `docs/` that evaluates `this`, read for what it asserts. (2) A throwaway prototype giving `this`, outside a member's object, one of five values: the host's original object, a frozen shallow view of it, `undefined`, a refusal, an opaque frozen object. Each ran with `this.k` kept by position and not kept, and all three suites ran under each. (3) For each value, whether it withholds the context's functions (§ 8 q4's expectation). (4) The positional refusal's production bundle and 0.12.1's, outside the repository, with A39's probes P1, P2 and G1 run by the maintainer | § 8 q4. P1, P2 and G1 each reach a listed function on 0.12.1 and are refused on the prototype, where `this` escapes. Three receivers were not measured, and step 7's criterion 4 gates them |
 
 ---
 
@@ -717,7 +738,7 @@ either shape. *Revision 7 chose shape (i)*, so every step runs.
 | 4 | The funnel: every read through the walk's own stack | `visitor-result.ts`, `dangerous-values.ts`, the marks in `call-expression.ts`, `new-expression.ts`, `tagged-template-expression.ts` and `unary-expression.ts`; the spec; `.claude/skills/step/SKILL.md` | **+21** / 0 / 0 | both | the first release | done |
 | 5 | `SECURITY.md` for 0.12.1: the funnel as a protection, the route through `this` and a host container as limits, the mitigations first | `SECURITY.md`, `public-api.spec.ts`'s allowlist if it needs entries | 0 / 0 / 0 | (i) only | no package | done |
 | 6 | Release `eval-core` 0.12.1 | `modules/eval-core/package.json`, `CHANGELOG.md`; the post-publish commit's register, `CLAUDE.md` and this document | 0 / 0 / 0 | (i) only | `eval-core` 0.12.1 | done |
-| 7 | A39: what `this` evaluates to | specified once § 8 q4 is decided | set at its gate | both | `eval-core` 0.13.0 | |
+| 7 | A39: `this` by position, refused anywhere else | `member-expression.ts`'s mark, `this-expression.ts`, `identifier.ts`; a new spec; `CHANGELOG.md`; two `eval-forms` specs, test-only (Revision 10) | set at its gate / 0 / 0 | both | `eval-core` 0.13.0 | |
 | 8 | `SECURITY.md`'s `this` limit becomes a protection; A39 and A35 retired | `SECURITY.md`, the register; under shape (ii), step 5's text too | 0 / 0 / 0 | both | no package | |
 | 9 | Release `eval-core` 0.13.0; each downstream package then widens its peer range | `modules/eval-core/package.json`, `CHANGELOG.md`; the downstream releases are planned with step 7 | 0 / 0 / 0 | both | `eval-core` 0.13.0 | |
 
@@ -1298,19 +1319,65 @@ From 2451, `eval-core` is at 2509 once step 4 commits. Step 7 sets its own count
   - **Plan correction**: the post-publish commit's files, which this step's text did not list. Its
     precedents, the 0.11.1 and 0.12.0 post-publish commits, touched the same files.
 
-### Step 7 — A39: what `this` evaluates to
+### Step 7 — A39: `this` by position, refused anywhere else
 
-*Added by Revision 6.*
-- **Specified once § 8 q4 is decided.** Q4's measurement runs first. The decision is a plan
-  revision in its own commit, and this step's files, cases, probes and count are fixed then, at its
-  confirmation gate.
-- **What it must do, whatever the target**:
-  - A39's probes no longer reach a listed value through `this`.
-  - Every case that pins what `this` is today, as q4's measurement finds them, either holds or is
-    changed deliberately and listed as breaking.
-- **Scope.** What `this` evaluates to is decided in `this-expression.ts` and `identifier.ts`, inside
-  `internal/visitors/`. A change to `EvalContext` would fall outside that, and its gate would have to
-  name it.
+*Added by Revision 6. Specified by Revision 10, from § 8 q4's decision.*
+- **Edit**, all in `internal/visitors/`:
+  - `member-expression.ts`: `evaluateMember` marks its object node before visiting it, when that
+    node is a `this`. That means a `ThisExpression`, or under `caseInsensitive` an identifier matching
+    `this`. The mark is static, a property of the AST, as the funnel's marks are (§ 3.3). Every
+    member read, call, tag, assignment and update goes through `evaluateMember`, so one mark covers
+    each. M15's prototype did exactly this.
+  - `this-expression.ts`: a marked `this` pushes the context, as today. Any other `this` throws.
+  - `identifier.ts`: the same, in both visitors, for an identifier that matches `this` under
+    `caseInsensitive`.
+
+  Three details are fixed at the confirmation gate: where the mark and the refusal live
+  (`dangerous-values.ts` beside the funnel's marks, or a module of their own), the refusal's
+  message, and whether `typeof this` is exempt. No existing case evaluates `typeof this`.
+- **New**: a spec, which holds:
+  - the route cases P1, P2 and G1, through `EvalService`;
+  - the receiver cases, criterion 4;
+  - cases for `this` refused outside a member's object, under both case modes.
+
+  Its name and its count are fixed at the gate. The route cases commit only in this commit (§ 2).
+- **Edit**: `modules/eval-core/CHANGELOG.md`'s `[Unreleased]`, with the breaking change and the
+  three assertions it changes. Its wording is fixed at the gate. Its prose about the route stays at
+  § 2's limit.
+- **Test-only edits downstream** (Revision 10):
+  - `modules/eval-forms/reactive/src/lib/field-schema.spec.ts`;
+  - `modules/eval-forms/signals/src/lib/rules.spec.ts`.
+
+  Their three D5 context-composition pins evaluate `this` outside a member's object, to obtain the
+  `EvalContext` (M15). They obtain it another way instead, through a bare call's receiver, which `eval-signals`'
+  `signal-context.spec.ts` pins. They keep every assertion they make about the context's `lookups`.
+  No library file under `modules/eval-signals/` or `modules/eval-forms/` changes. If criterion 4
+  changes a bare call's receiver, the capture is reopened at that replan.
+- **Breaking.** The three pins are the only existing assertions that change (M15). Each was green
+  against 0.12.1, and each is listed as breaking.
+- **Scope.** The rest of `internal/visitors/` and `EvalContext` are outside the step. A change to
+  either is a stop-and-replan.
+- **Exit criteria**:
+  1. **The gate is green.** `eval-signals` stays at 438 and `eval-forms` at 375. `eval-core`'s count is
+     fixed at the gate. `performance.spec.ts` is green and untouched.
+  2. **The route closes.** P1, P2 and G1 are each refused where `this` escapes. Each is red against
+     this step's parent commit. Probe (i): remove the refusal, and each reaches. Read case by case.
+  3. **`this` as a member's object is unchanged.** Every existing case in the three projects holds
+     except the three pins: `this.k`, `this["k"]`, `this.fn()`, and `This.k` under `caseInsensitive`.
+     Probe (ii): drop the mark. M15's not-kept column predicts failures in all three projects. Read
+     which ones fail.
+  4. **The receivers, a hard gate.** Three receivers must not reach a listed function:
+     - a bare call's receiver;
+     - a bare tag's receiver;
+     - `this.fn()`'s receiver for a key a lookup resolves.
+
+     Each is checked through the real service, `EvalService`, on the real fix, not through the
+     low-level `evaluate` entry. M15 did not measure them. **A reach is a stop-and-replan, not a
+     patch in place.**
+  5. **The surface.** The built `.d.ts` is byte-identical to 0.12.1's tarball. The change is in
+     internal visitors only.
+  6. **Disclosure.** The probe-pattern grep is clean over every added line outside the route cases.
+     Each added `this` in code is a member's object or the prose limit.
 - **Disclosure** (Revision 7, § 2). This is the step that ends the embargo on the route's detail.
   - **The spec cases that hold the probe expressions commit only with the fix, in this one commit.**
     They do not land on the default branch before step 7's code does, so no public commit reproduces
@@ -1420,8 +1487,46 @@ A36 and A39.
 3. **Is 0.12.1 a patch, and how is the change worded?** *Decided* (§ 2): a patch. The funnel exempts
    `typeof`'s operand, so `typeof eval === "function"` still holds, and the Security entry lists
    exactly what now throws (§ 3.5).
-4. **What should `this` evaluate to?** ([A39](../backlog.md#a39), step 7.) *Open, added by
-   Revision 6.* **Measure first, then decide.**
+4. **What should `this` evaluate to?** ([A39](../backlog.md#a39), step 7.) *Decided* (Revision 10),
+   from M15: **by position, with a refusal**. `this` keeps resolving against the context as the
+   object of a member read: `this.k`, `this["k"]`, `this.fn()`, and `This.k` under `caseInsensitive`.
+   Wherever else it is evaluated, it throws.
+   - **Who relies on it.** Three cases evaluate `this` outside a member's object, all in
+     `eval-forms`: the D5 context-composition pins in `reactive/src/lib/field-schema.spec.ts` and
+     `signals/src/lib/rules.spec.ts`, the second once per `caseInsensitive` arm. Each uses `this`
+     only to obtain the `EvalContext` and inspect its `lookups`.
+     - Every other use in the three projects is a member's object, in about fifteen spec files.
+     - No README or `docs/` example evaluates `this` alone, and no public text states what it
+       evaluates to.
+   - **What breaks.** Each cell gives the failures in `eval-core` / `eval-signals` / `eval-forms`.
+     The baseline had none, at 2509 / 438 / 375.
+
+     | `this` outside a member's object | `this.k` kept by position | `this.k` reads the new value | Withholds the context's functions |
+     | :--- | :--- | :--- | :--- |
+     | the host's original object | 0 / 0 / 3 | 121 / 6 / 6 | no |
+     | a frozen shallow view of it | 0 / 0 / 3 | 14 / 6 / 6 | no |
+     | `undefined` | 0 / 0 / 3 | 272 / 56 / 6 | yes |
+     | a refusal | 0 / 0 / 3 | 402 / 82 / 7 | yes |
+     | an opaque frozen object | 0 / 0 / 3 | 142 / 30 / 6 | yes |
+
+     - **With `this.k` kept by position**, every value fails the same three pins, and nothing else.
+     - **Letting `this.k` read the new value** breaks the documented resolution
+       ([B6](../backlog-retired.md#b6)) in all three projects, `eval-signals`'
+       `signal-context.spec.ts` and `eval-forms`' `model-source.spec.ts` among them. So `this.k`
+       stays.
+     - **The two values that do not withhold** confirm this question's expectation, measured
+       rather than assumed: neither closes the route on its own.
+   - **Why a refusal**, among the three values that withhold: it fails where `this` escapes, with a
+     message, as the funnel's refusals do. `undefined` and an opaque object fail the same three pins,
+     but they change a host's result silently.
+   - **The route.** A39's probes P1, P2 and G1 each reach a listed function on 0.12.1's bundle, so
+     the probes are valid. Each is refused on the prototype's bundle, where `this` escapes (M15). The
+     probes are held in the draft advisory (§ 2).
+   - **Not measured**: three receivers through which a function receives the `EvalContext` without
+     the expression evaluating `this`. They are a bare call's, a bare tag's, and `this.fn()`'s for a
+     key a lookup resolves. M15's bundles say nothing about them. Step 7's criterion 4 gates them.
+
+   *Until Revision 10 this question read as follows.* **Measure first, then decide.**
 
    The measurement answers two questions:
    - **Who relies on it today.** Find every expression in the three projects' specs, and in the
@@ -1480,5 +1585,6 @@ A36 and A39.
    **Until step 7 lands**, also not provided: protection for the route through `this`
    ([A39](../backlog.md#a39)), by which native code reaches a listed function the context holds. Its
    detail is held in the draft advisory under § 2's disclosure rule.
-6. **Once step 7 lands**, `this` no longer lets native code reach the context that way. What it
-   evaluates to is § 8 q4's decision.
+6. **Once step 7 lands**, `this` no longer lets native code reach the context that way. `this`
+   evaluates only as the object of a member read, as in `this.k`, `this["k"]` and `this.fn()`. Anywhere
+   else it is refused (§ 8 q4, Revision 10).

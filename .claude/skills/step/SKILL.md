@@ -38,8 +38,14 @@ The A35 plan closes the call sandbox's gaps in `eval-core`, at named steps and n
   and does not retire A35.
 - **Step 6 is the 0.12.1 release**: `modules/eval-core/package.json` and its CHANGELOG, then
   CONTRIBUTING's Releasing steps. Publishing and tagging are the maintainer's (plan § 5).
-- **Step 7 is A39**: what `this` evaluates to, a breaking change for 0.13.0. It is specified once
-  the plan's § 8 q4 is decided from its measurement, and its scope is fixed at its gate.
+- **Step 7 is A39**: `this` allowed by position and refused anywhere else, a breaking change for
+  0.13.0. The plan's § 8 q4 decided it from M15 (Revision 10). It touches:
+  - `member-expression.ts`'s mark, `this-expression.ts` and `identifier.ts`;
+  - a new spec, holding the route cases;
+  - `modules/eval-core/CHANGELOG.md`;
+  - two `eval-forms` spec files, as test-only edits.
+
+  Its count and the details its § 4 entry names are fixed at its gate.
 - **Step 8 is documents**: `SECURITY.md`'s `this` limit becomes a protection, and A39 and A35 are
   retired.
 - **Step 9 is the 0.13.0 release.** Each downstream package widens its peer range in a release of its
@@ -48,16 +54,24 @@ The A35 plan closes the call sandbox's gaps in `eval-core`, at named steps and n
 Stop-and-replans in every step:
 
 - **A file under `modules/eval-signals/` or `modules/eval-forms/`**, through step 8. Their code does
-  not change, and their suites run as the downstream witnesses, with their counts unchanged. Step 9's
-  downstream releases are planned with step 7.
+  not change, and their suites run as the downstream witnesses, with their counts unchanged.
+  - **The one exception is step 7's two `eval-forms` spec files**,
+    `reactive/src/lib/field-schema.spec.ts` and `signals/src/lib/rules.spec.ts`. Each is a test-only
+    edit: three pins change how they obtain the `EvalContext`, and nothing they assert. `eval-forms`
+    stays at 375 (plan Revision 10).
+  - Step 9's downstream releases are planned with step 7.
 - **A non-spec `.ts` change outside `modules/eval-core/src/lib/internal/visitors/`** in steps 1–4, and
-  any non-spec `.ts` change in steps 5, 6 and 8. Step 7's scope is fixed at its gate.
+  any non-spec `.ts` change in steps 5, 6 and 8. In step 7, a non-spec `.ts` change outside
+  `member-expression.ts`, `this-expression.ts`, `identifier.ts` and the mark's home fixed at its gate.
+- **A receiver that reaches a listed function, in step 7** (plan § 4, step 7, criterion 4): a bare
+  call's, a bare tag's, or `this.fn()`'s for a key a lookup resolves. It is a stop-and-replan, not a
+  patch in place.
 - **A change to a published barrel, or anything else that alters the built `.d.ts`.**
   - The published barrels are `modules/eval-core/src/public-api.ts` and the barrels it re-exports.
   - The internal visitors barrel, `internal/visitors/public-api.ts`, is not one of them:
     `src/public-api.ts` does not re-export it, and `export-list.spec.ts` pins that.
-  - Every change in steps 1–4 is internal (plan § 4, step 6, criterion 2). Step 7's surface change
-    is fixed at its gate.
+  - Every change in steps 1–4 is internal (plan § 4, step 6, criterion 2). So is step 7's: its
+    built `.d.ts` is byte-identical to 0.12.1's (its criterion 5).
 - **A `package.json` change outside the release steps, 6 and 9.**
 - **Public text about the route through `this` beyond `SECURITY.md`'s prose limit**, until 0.13.0
   ships (plan § 2). That covers an expression or a mechanism in the CHANGELOG, `SECURITY.md`, a
@@ -68,7 +82,8 @@ Stop-and-replans in every step:
   draft advisory, off the default branch.
 - **An existing assertion that would have to change, in steps 1–4.** Option (a) keeps every one (plan
   § 2). If one fails, the design is wrong, not the assertion. Step 7 changes what `this` evaluates
-  to, and its gate names the assertions it changes.
+  to. M15 found three assertions it changes: the `eval-forms` D5 context-composition pins, listed as
+  breaking. Any other that fails in step 7 is a stop-and-replan.
 
 **The steps fall into three categories:**
 - **A change on a published path**: steps 1–4, in the first release. Steps 1, 2 and 4 each add an
