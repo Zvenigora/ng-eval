@@ -53,19 +53,23 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-**The A35 plan is in flight**: [`docs/a35/plan.md`](a35/plan.md), at Revision 8, where steps 1 to 5
-are done and step 6, the 0.12.1 release, is next.
-- Step 1 fixed [A36](backlog-retired.md#a36), unreleased, and its review opened [A38](#a38).
-- Step 2 refuses a dangerous function by its value at the call, `new` and tag sites, unreleased.
-  That is [A35](#a35) at the callee.
-- Step 3 fixed [A37](backlog-retired.md#a37), unreleased: a sequence leaves one value on the stack.
-- Step 4, the funnel, refuses a dangerous function at every read the walk makes, unreleased. Its
-  review found a route the funnel cannot see, through `this`, opened as [A39](#a39). It also opened
-  [A40](#a40).
+**The A35 plan is in flight**: [`docs/a35/plan.md`](a35/plan.md), at Revision 9, where steps 1 to 6
+are done and `eval-core` 0.12.1 is published. Step 7 is next: its § 8 q4 is measured and decided
+first, in a plan revision of its own.
+- Step 1 fixed [A36](backlog-retired.md#a36), released in 0.12.1, and its review opened [A38](#a38).
+- Step 2 refuses a dangerous function by its value at the call, `new` and tag sites, released in
+  0.12.1. That is [A35](#a35) at the callee.
+- Step 3 fixed [A37](backlog-retired.md#a37), released in 0.12.1: a sequence leaves one value on the
+  stack.
+- Step 4, the funnel, refuses a dangerous function at every read the walk makes, released in 0.12.1.
+  Its review found a route the funnel cannot see, through `this`, opened as [A39](#a39). It also
+  opened [A40](#a40).
 - Step 5 rewrote `SECURITY.md` for 0.12.1. It leads with the mitigations, Node's flag among them as
   measured. The refusals are protections, stated as defense in depth, and the route through `this`
   and a host container are limits beside them. A35 stays open. The step opened [A41](#a41).
-- **Shape (i) is chosen.** 0.12.1 ships steps 1–4 as partial hardening, with A39 as a stated limit
+- Step 6 released `eval-core` 0.12.1, tagged at 7cc8d30 and published 2026-10-17. No advisory is
+  published for it.
+- **Shape (i) is chosen.** 0.12.1 shipped steps 1–4 as partial hardening, with A39 as a stated limit
   (steps 5 and 6). 0.13.0 then closes `this` (steps 7–9). One advisory follows 0.13.0.
 
 **Phase 10, the documentation restructure, is paused** after its step 2, until the A35 plan runs to
@@ -111,6 +115,7 @@ release, not a free change. Each package's release notes are in its own
 
 | Package | Version | Notes |
 | ------- | ------- | ----- |
+| `@zvenigora/ng-eval-core` | 0.12.1 | The [A35 plan](a35/plan.md)'s first release: partial hardening that does not close every route, with `SECURITY.md` leading with the mitigations. [A36](backlog-retired.md#a36) fix: a tagged template's tag goes through the call sandbox and the write policy, and a member tag's `this` is its object. [A35](#a35), which stays open: a dangerous function value is refused by its value at the call, `new` and tag sites, and at every other read the walk makes but `typeof`'s operand. Two routes past the walk's own values stay open, a container the host provides and a route through `this` ([A39](#a39)), which 0.13.0 closes. [A37](backlog-retired.md#a37) fix: a sequence leaves one value on the stack and shows one node to hooks. Every published version to 0.12.0 is affected. A patch although a read of a dangerous function now throws: the `.d.ts` is byte-identical to 0.12.0's. Peer ranges unchanged; `eval-signals` 0.5.1 (`>=0.11.0 <0.13.0`) and `eval-forms` 0.5.0 (`>=0.12.0 <0.13.0`) admit it. No advisory is published for it: one follows 0.13.0. Tagged `eval-core@0.12.1` at 7cc8d30, published 2026-10-17 (npm: 13:49 UTC) |
 | `@zvenigora/ng-eval-core` | 0.12.0 | Phase 9 ([plan](colon-identifiers/phase-9-plan.md)): `ParserOptions.colonIdentifiers` and `provideColonIdentifiers()`, opt-in — a colon-joined name such as `Q1:1:3` parses as one `Identifier` whose `name` is the key; with the option off, the default, a parse is acorn's own. `CompilerService` keys a compiled string on the options its parse uses. [A26](backlog-retired.md#a26) fix: `ParserService` serves a cached AST only to a parse whose parse-relevant options match the one that cached it, and a parse carrying an acorn callback or `program` bypasses the cache; every published version to 0.11.1 is affected. A minor: no exported symbol changes shape, and the `.d.ts` differs from 0.11.1 by the two additions, their `EnvironmentProviders` import, documentation comments and a private member each on `ParserService` and `CompilerService`. Peer ranges unchanged, `acorn ^8.11.2` included, tested at 8.11.2 (the plan's § 8 q3). `eval-signals` 0.5.1 and `eval-forms` 0.5.0 admit it; `eval-signals` 0.4.0–0.5.0 and `eval-forms` 0.4.x declare `>=0.11.0 <0.12.0` and do not. Tagged `eval-core@0.12.0` at 3466c80, published 2026-10-14 (npm: 01:06 UTC) |
 | `@zvenigora/ng-eval-signals` | 0.5.1 | Phase 9 ([plan](colon-identifiers/phase-9-plan.md)): `createEvalSignalAsync`'s `abortSignalKey` refusal says the key must be a plain identifier, and that a colon-joined name is refused even under `eval-core`'s `colonIdentifiers`; what is refused is unchanged. A patch: the `.d.ts` differs from 0.5.0 in the `abortSignalKey` documentation comment only. Peer range on `eval-core` widened to `>=0.11.0 <0.13.0`, which admits 0.12.0; the floor is unchanged, since nothing here needs 0.12. Tagged `eval-signals@0.5.1` at 3466c80, published 2026-10-14 (npm: 01:09 UTC) |
 | `@zvenigora/ng-eval-forms` | 0.5.0 | Phase 9 ([plan](colon-identifiers/phase-9-plan.md)): `/signals`' `ExpressionRuleOptions.colonIdentifiers`, and `/reactive` follows `eval-core`'s `provideColonIdentifiers()`, its bind-time check parsing a rule as its compile does. [D13](#d13) narrowed: a rule that parses as a top-level label, which rendered blank, is refused at registration at both entry points. A breaking minor: the three `.d.ts` files differ from 0.4.1's by `ExpressionRuleOptions.colonIdentifiers` and documentation comments. Peer ranges raised: `eval-core` to `>=0.12.0 <0.13.0`, which adds the option `/signals` passes it, and `eval-signals` to `>=0.5.1 <0.6.0`, since every earlier `eval-signals` requires `eval-core` below 0.12.0. Tagged `eval-forms@0.5.0` at 3466c80, published 2026-10-14 (npm: 01:13 UTC) |
@@ -155,7 +160,7 @@ the two commits only that spec and two backlog files changed, so neither package
 0c3299e, so it carries B6's fix and none of 0.11.0's other changes. Master has the fix as 1a6ebdc,
 and 776885a copied the [0.10.1] CHANGELOG section from d77fa16.
 
-**Every published version now carries a tag** — the thirty-four above (three at 3466c80, one at 7ee65fc, two at 577c4f0, three at 776885a, one at d77fa16, one at 3d56994, three at 0c3299e, three at eb403c0, three at c56f987, three at 724d831, two at 587ebf1, three at f26f987,
+**Every published version now carries a tag** — the thirty-five above (one at 7cc8d30, three at 3466c80, one at 7ee65fc, two at 577c4f0, three at 776885a, one at d77fa16, one at 3d56994, three at 0c3299e, three at eb403c0, three at c56f987, three at 724d831, two at 587ebf1, three at f26f987,
 three at `016a313`, three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions,
 all on the remote.
 
@@ -179,7 +184,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-signals` 0.5.0, `eval-forms` 0.4.1 | `577c4f0` | 2026-10-10 | 9 | 9: A24–A28, C6, C7, F17, F18 | 1: C6 | 17 |
 | `eval-core` 0.11.1 | `7ee65fc` | 2026-10-10 | 17 | 6: A29–A32, D13, F19 | 5: A28, C7, F18, A29, A31 | 18 |
 | `eval-core` 0.12.0, `eval-signals` 0.5.1, `eval-forms` 0.5.0 | `3466c80` | 2026-10-14 | 18 | 2: A33, A34 | 1: A26 | 19 |
-| **Since the register opened** | | | **42** | **42** | **65** | **19** |
+| `eval-core` 0.12.1 | `7cc8d30` | 2026-10-17 | 19 | 8: A35–A41, F20 | 2: A36, A37 | 25 |
+| **Since the register opened** | | | **42** | **50** | **67** | **25** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -233,9 +239,9 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A32](#a32) | The disabled visitor result cache keys a node without its operands — `a + b` and `c + d` share an entry | core | decision | Open — opened 2026-10-10 by A29's fix; latent, nothing calls it |
 | [A33](#a33) | The case-insensitive property cache keeps a miss while the own-key count is unchanged — a key added as another is deleted reads `undefined` by a case variant | core | fix | Open — opened 2026-10-10, after the `eval-core` 0.11.1 tag; a limit [A31](backlog-retired.md#a31)'s fix documents in a code comment. No refusal is skipped |
 | [A34](#a34) | The parse fingerprint's memo does not see options written in place — a write into `parserOptions`, a reused per-call object or `defaultParserOptions` keeps the old fingerprint | core | fix | Open — opened 2026-10-10 by [A26](backlog-retired.md#a26)'s fix, Phase 9 step 1; no worse than the text-only key it replaced |
-| [A35](#a35) | A dangerous function value reachable from the context is callable past the name-based call sandbox — by an alias, through `call` / `apply` / `bind`, and as a native callback (`map`, `Reflect.apply`, `then`); `eval("1+1")` is refused, `["1+1"].map(eval)` is `[2]` | core | decision, security | Open — opened 2026-10-14 by Phase 10 step 2's review; `SECURITY.md` lists it as a limit, with the host's mitigation; **planned** in [`docs/a35/plan.md`](a35/plan.md): steps 2 and 4 refuse it at the callee and at every read the walk makes, and the route through `this` is [A39](#a39). Shape (i): 0.12.1 as partial hardening, then 0.13.0 closes `this` |
-| [A36](backlog-retired.md#a36) | A tagged template's tag is called with no sandbox check — `` Function`return 7`() `` gives 7 with `Function` under its own name | core | fix, security | **Retired — fixed 2026-10-15**, as step 1 of the [A35 plan](a35/plan.md); not yet released, ships as `eval-core` 0.12.1. A tag is called as a callee is, through the call sandbox and the write policy; a member tag shares the member call's path, so its `this` is its object. Affected every published `eval-core` to 0.12.0 |
-| [A37](backlog-retired.md#a37) | `SequenceExpression` has no visitor: `(0, 1)` leaves a value on the stack | core | fix | **Retired — fixed 2026-10-15**, as step 3 of the [A35 plan](a35/plan.md); not yet released, ships as `eval-core` 0.12.1. A sequence leaves one value on the stack, and raises one `before` and one `after` event and one trace entry; no evaluated value changes. Affected every published `eval-core` to 0.12.0 |
+| [A35](#a35) | A dangerous function value reachable from the context is callable past the name-based call sandbox — by an alias, through `call` / `apply` / `bind`, and as a native callback (`map`, `Reflect.apply`, `then`); `eval("1+1")` is refused, `["1+1"].map(eval)` is `[2]` | core | decision, security | Open — opened 2026-10-14 by Phase 10 step 2's review; `SECURITY.md` lists it as a limit, with the host's mitigation; **planned** in [`docs/a35/plan.md`](a35/plan.md): steps 2 and 4 refuse it at the callee and at every read the walk makes, released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30, as partial hardening; the route through `this` is [A39](#a39), which 0.13.0 closes |
+| [A36](backlog-retired.md#a36) | A tagged template's tag is called with no sandbox check — `` Function`return 7`() `` gives 7 with `Function` under its own name | core | fix, security | **Retired — fixed 2026-10-15**, as step 1 of the [A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30. A tag is called as a callee is, through the call sandbox and the write policy; a member tag shares the member call's path, so its `this` is its object. Affected every published `eval-core` to 0.12.0 |
+| [A37](backlog-retired.md#a37) | `SequenceExpression` has no visitor: `(0, 1)` leaves a value on the stack | core | fix | **Retired — fixed 2026-10-15**, as step 3 of the [A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30. A sequence leaves one value on the stack, and raises one `before` and one `after` event and one trace entry; no evaluated value changes. Affected every published `eval-core` to 0.12.0 |
 | [A38](#a38) | A tag's strings array is not JavaScript's: not frozen, no `raw` — so `` String.raw`a\nb` `` throws — a new array per evaluation, and not recorded as created | core | fix | Open — opened 2026-10-15 by the code review of the A35 plan's step 1. Fidelity, not security; not in 0.12.1 |
 | [A39](#a39) | Evaluating `this` lets native code reach a dangerous function the host placed in the context, past the funnel; mechanism and probes held in the draft advisory | core | fix, security | Open — opened 2026-10-16 by the code review of the A35 plan's step 4. A fix changes what `this` returns, so it ships as `eval-core` 0.13.0; the target is the [plan](a35/plan.md)'s § 8 q4 |
 | [A40](#a40) | A postfix update of a listed function writes, then the funnel refuses the old value — the failed evaluation leaves its write behind | core | fix | Open — opened 2026-10-16 by the code review of the A35 plan's step 4. Not a security route; the fix checks the operand before writing |
@@ -932,7 +938,8 @@ never reaches a call, an argument or a callback, and every route above closes at
   behaviour change.
 
 **The release is shape (i)**, chosen 2026-10-16 (the [A35 plan](a35/plan.md)'s § 2):
-- **0.12.1 first, as partial hardening.** Both downstream peer ranges admit it: `eval-signals`'
+- **0.12.1 first, as partial hardening**, released 2026-10-17, tagged 7cc8d30. Both downstream
+  peer ranges admit it: `eval-signals`'
   `>=0.11.0 <0.13.0` and `eval-forms`' `>=0.12.0 <0.13.0`. The route through `this` ([A39](#a39))
   and a host container are stated limits.
 - **Then 0.13.0 closes `this`.** One advisory follows it.

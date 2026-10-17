@@ -1,6 +1,13 @@
 # A35 — dangerous function values past the call sandbox (`@zvenigora/ng-eval-core`)
 
 **Date**: October 14, 2026
+**Revision**: 9 — step 6, in its post-publish commit. `eval-core` 0.12.1 is published, tagged at
+7cc8d30. The step changed two things:
+- **The CHANGELOG section opens with a summary paragraph**, settled at the confirmation gate. Its
+  first sentence states partial hardening that does not close every route, and points to
+  `SECURITY.md`'s mitigations.
+- **Step 6 lists the post-publish commit's files**, which its text did not name.
+
 **Revision**: 8 — step 5, in its own commit. Its confirmation gate changed three things:
 - **The protections are framed as defense in depth.** K1 and the funnel narrow the routes and are
   not a boundary, and each links to the limits. The route through `this` and a host container also
@@ -709,7 +716,7 @@ either shape. *Revision 7 chose shape (i)*, so every step runs.
 | 3 | A37: a `SequenceExpression` visitor | new `sequence-expression.ts` and its spec; `recursive-visitors.ts`; the visitors barrel; the root `README.md`'s node list | **+6** / 0 / 0 | both | the first release | done |
 | 4 | The funnel: every read through the walk's own stack | `visitor-result.ts`, `dangerous-values.ts`, the marks in `call-expression.ts`, `new-expression.ts`, `tagged-template-expression.ts` and `unary-expression.ts`; the spec; `.claude/skills/step/SKILL.md` | **+21** / 0 / 0 | both | the first release | done |
 | 5 | `SECURITY.md` for 0.12.1: the funnel as a protection, the route through `this` and a host container as limits, the mitigations first | `SECURITY.md`, `public-api.spec.ts`'s allowlist if it needs entries | 0 / 0 / 0 | (i) only | no package | done |
-| 6 | Release `eval-core` 0.12.1 | `modules/eval-core/package.json`, `CHANGELOG.md` | 0 / 0 / 0 | (i) only | `eval-core` 0.12.1 | |
+| 6 | Release `eval-core` 0.12.1 | `modules/eval-core/package.json`, `CHANGELOG.md`; the post-publish commit's register, `CLAUDE.md` and this document | 0 / 0 / 0 | (i) only | `eval-core` 0.12.1 | done |
 | 7 | A39: what `this` evaluates to | specified once § 8 q4 is decided | set at its gate | both | `eval-core` 0.13.0 | |
 | 8 | `SECURITY.md`'s `this` limit becomes a protection; A39 and A35 retired | `SECURITY.md`, the register; under shape (ii), step 5's text too | 0 / 0 / 0 | both | no package | |
 | 9 | Release `eval-core` 0.13.0; each downstream package then widens its peer range | `modules/eval-core/package.json`, `CHANGELOG.md`; the downstream releases are planned with step 7 | 0 / 0 / 0 | both | `eval-core` 0.13.0 | |
@@ -1240,6 +1247,17 @@ From 2451, `eval-core` is at 2509 once step 4 commits. Step 7 sets its own count
 - **The release commit**: bump `modules/eval-core/package.json` to 0.12.1, and move
   `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` items under `## [0.12.1] - <date>`. The full gate
   runs.
+  - *Changed at the confirmation gate* (Revision 9): the section opens with a summary paragraph, as
+    every released section does. Its first sentence states partial hardening that does not close
+    every route, and points to `SECURITY.md`'s mitigations. Its prose about `this` stays at § 2's
+    limit.
+- **The post-publish commit** (*Revision 9*; CONTRIBUTING's Releasing step 6):
+  - `docs/backlog.md`: the Publication status row, the tag count under it, the Register history
+    row, "Work in flight", and the release in A35's, A36's and A37's rows and in A35's entry;
+  - `docs/backlog-retired.md`: the release in A36's and A37's status lines;
+  - `CLAUDE.md`: `eval-core`'s published version;
+  - `modules/eval-core/CHANGELOG.md`: the heading's date, only if npm's differs;
+  - this document: the outcome.
 - **Exit criteria**:
   1. The gate is green. Both downstream `lint` targets stay green with their ranges unchanged, since
      each range already admits 0.12.1.
@@ -1252,6 +1270,33 @@ From 2451, `eval-core` is at 2509 once step 4 commits. Step 7 sets its own count
      Publication status row and a Register history row, and `tools/release-tags.mjs` is green on it.
      Publishing and tagging are the maintainer's actions (§ 5).
 - **Category**: the release, a patch.
+- **Outcome** — done 2026-10-17. The release commit is 7cc8d30, tagged `eval-core@0.12.1` there and
+  published 2026-10-17 (npm: 13:49 UTC).
+  - **Criterion 1: met.** The gate ran uncached and was green on all four projects. `eval-core` has
+    2509 cases, `eval-signals` 438 and `eval-forms` 375, all unchanged. doc-links found 0 dangling
+    links. Both downstream `lint` targets are green with their ranges unchanged.
+  - **Criterion 2: met.** The built `types/zvenigora-ng-eval-core.d.ts` is byte-identical to the one
+    in npm's 0.12.0 tarball, unpacked outside the repository: 111787 bytes, with the same SHA-256.
+  - **Criterion 3: met.** The Security entry moved unchanged. It has three items, one per § 3.5 item,
+    and the third states the two routes it does not cover. The Fixed entry lists A37.
+  - **Criterion 4: met.**
+    - The maintainer published from the `dist/` the gate built at 7cc8d30. Every file of the
+      published tarball, the `.d.ts` and `CHANGELOG.md` among them, is identical to it.
+    - The tag is annotated and pushed.
+    - The post-publish commit adds the Publication status row and the Register history row: 19 live
+      before, 8 opened (A35–A41, F20), 2 closed (A36, A37), 25 live after. They were counted against
+      the index at 3466c80, by a script that reproduces 0.12.0's row.
+    - `tools/release-tags.mjs` is green on it.
+    - The CHANGELOG heading, 2026-10-17, is npm's date.
+  - **The code review** found no Critical issue, and both its other findings were corrected before
+    the release commit.
+    - *Important*: the summary's "two routes stay open" read as the whole list. It now names the two
+      routes past the walk's own values, says the host container stays a limit after 0.13.0, and
+      points to `SECURITY.md`'s documented limits for the rest.
+    - *Minor*: the summary says why a patch can make a read throw, as [0.10.1]'s does.
+  - **No advisory** is published for 0.12.1. U3 follows 0.13.0 (§ 5).
+  - **Plan correction**: the post-publish commit's files, which this step's text did not list. Its
+    precedents, the 0.11.1 and 0.12.0 post-publish commits, touched the same files.
 
 ### Step 7 — A39: what `this` evaluates to
 

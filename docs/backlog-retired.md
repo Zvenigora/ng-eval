@@ -1834,7 +1834,7 @@ refusal rows on A29's commit, with another, deleted the same day.
 ## A36 — A tagged template's tag is called with no sandbox check
 
 **Package** core · **Kind** fix, security · **Status** **Retired — fixed 2026-10-15**, as step 1 of
-the [A35 plan](a35/plan.md); not yet released, and ships in `eval-core` 0.12.1. Was Open
+the [A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30. Was Open
 
 *Fixed* 2026-10-15. The tag is called as a callee is.
 - **A member tag** goes through `callMember`, which the call visitor's member branch became
@@ -1902,7 +1902,7 @@ name. Planned as step 1 of [`docs/a35/plan.md`](a35/plan.md), fixed alone, and r
 ## A37 — `SequenceExpression` has no visitor, and leaves values on the stack
 
 **Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-15**, as step 3 of the
-[A35 plan](a35/plan.md); not yet released, and ships in `eval-core` 0.12.1. Was Open
+[A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30. Was Open
 
 *Fixed* 2026-10-15. `sequence-expression.ts` is registered for the node. It evaluates each expression
 in order, pops each value as it arrives, and pushes the last, so a sequence leaves exactly one value
