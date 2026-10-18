@@ -8,6 +8,7 @@ import { AbstractControl, FormArray, FormControl, FormGroup } from '@angular/for
 import { EvalContext, provideColonIdentifiers } from '@zvenigora/ng-eval-core';
 import { SignalContextWriteError } from '@zvenigora/ng-eval-signals';
 import { Subject } from 'rxjs';
+import * as fieldContext from '../../../src/lib/field-context';
 // Through the entry point's barrel rather than `./field-schema`, which is what
 // "driven through the public subpath import" reduces to from *this* folder.
 // Step 1 measured all four combinations: a spec under `reactive/src/lib/`
@@ -413,40 +414,45 @@ describe('bindFieldProperties', () => {
     });
 
     it('should give each field a context whose only lookup is the form resolver', () => {
-      // `this` evaluates to the context the walk runs against, so `keep(this)`
-      // hands the field's own context to a control's function. Every lookup
-      // is then asked for a key the form holds, so one that cannot answer
-      // shows up as an `undefined`. Up to 0.3.0 this read `[undefined, 'CA']`:
-      // `createFieldContext`'s field half pushed a resolver over the `{}` this
-      // binding passes it, and `get` ran it ahead of the form's on every
-      // identifier (`docs/backlog-retired.md` D5).
+      // The field's context is taken where it is built, from the
+      // `createFieldContext` call this binding makes, and the field's rule
+      // then shows it resolving a form key. Every lookup is asked for a key
+      // the form holds, so one that cannot answer shows up as an `undefined`.
+      // Up to 0.3.0 this read `[undefined, 'CA']`: `createFieldContext`'s
+      // field half pushed a resolver over the `{}` this binding passes it, and
+      // `get` ran it ahead of the form's on every identifier
+      // (`docs/backlog-retired.md` D5).
+      //
+      // Spied on its defining module, not the barrel, whose re-export cannot
+      // be redefined; the binding's call through the barrel reads the spy.
+      // Up to `eval-core` 0.12.1 the rule reached the context itself, as
+      // `keep(this)`. `eval-core` 0.13.0 refuses `this` outside a member
+      // access, so no expression can.
       //
       // There is no `caseInsensitive` arm here, unlike `/signals`' pair:
       // `bindFieldProperties` takes no evaluation options, so the form
       // resolver is always built without it.
-      let captured: EvalContext | undefined;
+      const built = jest.spyOn(fieldContext, 'createFieldContext');
 
-      const binding = bindFieldProperties(
-        [{ name: 'country', visible: 'keep(this)' }],
-        group({
-          country: new FormControl('CA'),
-          keep: new FormControl((context: EvalContext) => {
-            captured = context;
-            return true;
-          }),
-        }),
-        { injector }
-      );
+      try {
+        const binding = bindFieldProperties(
+          [{ name: 'country', visible: 'country === "CA"' }],
+          group({ country: new FormControl('CA') }),
+          { injector }
+        );
 
-      expect(binding.fields['country'].visible?.()).toBe(true);
-      expect(captured).toBeInstanceOf(EvalContext);
+        expect(binding.fields['country'].visible?.()).toBe(true);
+        expect(built).toHaveBeenCalledTimes(1);
 
-      const context = captured as EvalContext;
+        const context = built.mock.results[0].value as EvalContext;
 
-      expect(context.lookups.map((lookup) => lookup('country', context, context.options)))
-        .toEqual(['CA']);
+        expect(context.lookups.map((lookup) => lookup('country', context, context.options)))
+          .toEqual(['CA']);
 
-      binding.destroy();
+        binding.destroy();
+      } finally {
+        built.mockRestore();
+      }
     });
   });
 

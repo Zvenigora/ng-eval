@@ -45,8 +45,8 @@ The A35 plan closes the call sandbox's gaps in `eval-core`, at named steps and n
   - `member-expression.ts`'s mark, `this-expression.ts` and `identifier.ts`;
   - a new spec, holding the route cases P1/P2/G1;
   - `modules/eval-core/CHANGELOG.md`;
-  - two `eval-forms` spec files, as test-only edits (the D5 pins rewritten to assert the resolver
-    behaviourally, not to capture the context — Revision 11).
+  - two `eval-forms` spec files, as test-only edits (the D5 pins take the context where it is built,
+    not from an expression — Revision 12).
 
   Its count and the details its § 4 entry names are fixed at its gate.
 - **Step 8 is A39's receiver guard** (added by Revision 11): a bare call, a bare tag and `this.fn()`
@@ -75,9 +75,9 @@ Stop-and-replans in every step:
 - **A file under `modules/eval-signals/` or `modules/eval-forms/`**, through step 9. Their code does
   not change, and their suites run as the downstream witnesses, with their counts unchanged (438 / 375).
   - **Step 7's two `eval-forms` spec files**, `reactive/src/lib/field-schema.spec.ts` and
-    `signals/src/lib/rules.spec.ts`: test-only. The three D5 pins stop capturing the `EvalContext`
-    (it is no longer reachable from an expression) and assert the resolver behaviourally instead
-    (Revision 11).
+    `signals/src/lib/rules.spec.ts`: test-only. The three D5 pins stop reaching the `EvalContext`
+    through the rule (it is no longer reachable from an expression). They take it where it is built,
+    with a spy on its defining module, and keep their `lookups` assertion (Revision 12).
   - **Step 8's two `eval-signals` spec files**, the `signal-context.spec.ts` pins: test-only. The two
     function-`this` pins assert the guard contract, not the context's identity (Revision 11).
   - The downstream version bumps are step 10's single release commit, and the `eval-signals`

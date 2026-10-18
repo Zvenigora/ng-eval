@@ -1,6 +1,44 @@
 # A35 — dangerous function values past the call sandbox (`@zvenigora/ng-eval-core`)
 
 **Date**: October 14, 2026
+**Revision**: 12 — step 7, in its own commit. Its confirmation gate corrected one claim and fixed
+five details:
+- **The D5 rewrite.** Revision 11 said the structural "only lookup" assertion already lived at the
+  `createFieldContext` level, in `modules/eval-forms/src/lib/field-context.spec.ts`. It does not,
+  and it cannot. `createFieldContext` keeps two lookups by design. The single lookup is made by the
+  trim in `bindFieldProperties` (`/reactive`) and in `createRuleContext` (`/signals`).
+  - D5 was a performance fix, and its dead lookups never answered. So no behavioural assertion can
+    see them come back. At `/reactive` the pin was the only case that did.
+  - So the three pins keep their `lookups` assertion and take the context where it is built, by a
+    spy on its defining module confined to the case. Each rule's expression becomes a plain
+    comparison.
+  - The spy is not a `jest.mock`, which hoists to file scope.
+    `field-schema.teardown-throw.spec.ts` records why that stays out of `field-schema.spec.ts`.
+- **The message**: `Access to "this" outside a member access is blocked for security reasons`.
+- **`typeof this` is refused**, and pinned. Exempting it needs a mark in `unary-expression.ts` or an
+  export from `dangerous-values.ts`, and neither is on the step's list.
+- **An identifier named `this`.** acorn parses `this` as a `ThisExpression`, so only a host-built
+  AST reaches the case-sensitive identifier visitor's `this`. It is refused there too, and pinned.
+- **The spec** is `eval.service.this-position.spec.ts`, with 16 cases: P1, P2, G1, E1–E8, H1 and
+  O1–O4. `eval-core` goes from 2509 to 2525. *Raised to 19 at a second gate*, after the code
+  review: E9, O5 and H2 (below), and `eval-core` goes to 2528.
+- **The CHANGELOG's Breaking line** states the rule, with `typeof this` among the refusals, and the
+  three `eval-forms` assertions it changes.
+
+The step's code review found nothing Critical. It corrected two things before the commit:
+- **The mark under `caseInsensitive`** takes every identifier object, with no name test (step 7's
+  file list, *Corrected by Revision 12*). A name test cost a locale comparison per member access.
+- **The `/signals` pins** also assert that the rule's walk runs against the context they inspect.
+
+A second gate decided the review's other two findings, and raised the count from 16 to 19:
+- **Under `preserveParens`**, the mark strips the object's parentheses first, as the write
+  visitors strip a target's ([A2](../backlog-retired.md#a2)). So `(this).k` is kept (O5), and a
+  parenthesised sequence ending in `this` is still refused as a member's object (E9).
+- **H2**: a host-built member whose object is an identifier named `this` resolves. It pins the
+  case-sensitive arm of the mark, which no case reached.
+
+`.claude/skills/step/SKILL.md` follows the D5 correction.
+
 **Revision**: 11 — decision A, in its own commit, before step 7 is built. **A39 is closed
 completely in 0.13.0 — the value route *and* the receiver — not left as a limit.** Revision 10's
 step 7 carried a hard receiver gate (§ 4, step 7, criterion 4); it was measured through the real
@@ -789,15 +827,15 @@ the receiver guard (8), made the old documents/retire step 9 and the release ste
 | 4 | The funnel: every read through the walk's own stack | `visitor-result.ts`, `dangerous-values.ts`, the marks in `call-expression.ts`, `new-expression.ts`, `tagged-template-expression.ts` and `unary-expression.ts`; the spec; `.claude/skills/step/SKILL.md` | **+21** / 0 / 0 | both | the first release | done |
 | 5 | `SECURITY.md` for 0.12.1: the funnel as a protection, the route through `this` and a host container as limits, the mitigations first | `SECURITY.md`, `public-api.spec.ts`'s allowlist if it needs entries | 0 / 0 / 0 | (i) only | no package | done |
 | 6 | Release `eval-core` 0.12.1 | `modules/eval-core/package.json`, `CHANGELOG.md`; the post-publish commit's register, `CLAUDE.md` and this document | 0 / 0 / 0 | (i) only | `eval-core` 0.12.1 | done |
-| 7 | A39 value route: `this` by position, refused anywhere else | new `this-position.ts`; `member-expression.ts`'s mark, `this-expression.ts`, `identifier.ts`; a new spec (P1/P2/G1); `CHANGELOG.md`; two `eval-forms` specs, test-only (Revision 10) | set at its gate / 0 / 0 | both | `eval-core` 0.13.0 | |
+| 7 | A39 value route: `this` by position, refused anywhere else | new `this-position.ts`; `member-expression.ts`'s mark, `this-expression.ts`, `identifier.ts`; a new spec (P1/P2/G1); `CHANGELOG.md`; two `eval-forms` specs, test-only (Revision 10) | **+19** / 0 / 0 | both | `eval-core` 0.13.0 | done |
 | 8 | A39 receiver guard: a guarded view, not the context, as `this` | new `context-receiver.ts`; the receiver at `call-expression.ts`, `tagged-template-expression.ts`, `callMember`; **delete** dead `evaluateCall`; a new spec (R1/R2/R3, B1/B2/B3); rewrite `scope-this` (e) and tag T6; `CHANGELOG.md`; two `eval-signals` `signal-context` pins, test-only (Revision 11) | set at its gate / 0 / 0 | both | `eval-core` 0.13.0 | |
 | 9 | `SECURITY.md`'s `this` and receiver limits become protections; A39 and A35 retired | `SECURITY.md`, the register | 0 / 0 / 0 | both | no package | |
 | 10 | Release commit: `eval-core` 0.13.0, `eval-signals` 0.6.0, `eval-forms` 0.6.0, all peers consistent in one commit | all three `package.json`, each `CHANGELOG.md`, each README's peer block; `eval-signals`' `### Breaking` entry and its guarded-receiver README bullet | 0 / 0 / 0 | both | the three releases | |
 | 11 | Post-publish commit, after the maintainer publishes and tags (ordered: core → signals → forms) | `docs/backlog.md`, `docs/backlog-retired.md`, `CLAUDE.md`, CHANGELOG dates, this document | 0 / 0 / 0 | both | — | |
 
-From 2451, `eval-core` is at 2509 once step 4 commits. Steps 7 and 8 each set their own count at
-their gate; `eval-signals` and `eval-forms` stay at 438 / 375 (the rewritten pins are 1:1
-replacements, not additions).
+From 2451, `eval-core` is at 2509 once step 4 commits, and at 2528 once step 7 does. Steps 7 and 8
+each set their own count at their gate; `eval-signals` and `eval-forms` stay at 438 / 375 (the
+rewritten pins are 1:1 replacements, not additions).
 
 ### Step 1 — A36: the tag call through the sandbox
 
@@ -1386,6 +1424,12 @@ guard by Revision 11, which found the step-7 receiver gate reached (now step 8).
     `this`. The mark is static, a property of the AST, as the funnel's marks are (§ 3.3). Every
     member read, call, tag, assignment and update goes through `evaluateMember`, so one mark covers
     each. M15's prototype did exactly this.
+
+    *Corrected by Revision 12*, from the step's code review. Under `caseInsensitive` the mark takes
+    every identifier object, with no name test. The identifier visitor decides which is `this`, and
+    a mark is read only for a node it has decided is one. A name test there ran `equalIgnoreCase`,
+    a locale comparison, on every member access whose object is an identifier. That measured the
+    `caseInsensitive` path at 1.7–1.9× 0.12.1's (the outcome).
   - `this-expression.ts`: a marked `this` pushes the context, as today. Any other `this` throws.
   - `identifier.ts`: the same, in both visitors, for an identifier that matches `this` under
     `caseInsensitive`.
@@ -1393,6 +1437,14 @@ guard by Revision 11, which found the step-7 receiver gate reached (now step 8).
   Two details are fixed at the confirmation gate: the refusal's message, and whether `typeof this`
   is exempt. No existing case evaluates `typeof this`. The mark and refusal live in
   `this-position.ts` (Revision 11).
+
+  *Fixed at the confirmation gate* (Revision 12):
+  - **The message** is `Access to "this" outside a member access is blocked for security reasons`.
+  - **`typeof this` is not exempt.** An exemption needs a mark in `unary-expression.ts` or an export
+    from `dangerous-values.ts`, and neither is on this list.
+  - **"Both visitors"**: the case-sensitive identifier visitor's `this` is reached only by a
+    host-built AST, since acorn parses `this` as a `ThisExpression`. It is refused there too, and a
+    case pins it.
 - **New**: a spec, which holds:
   - the route cases P1, P2 and G1, through `EvalService`;
   - cases for `this` refused outside a member's object (as a value, an argument, an operand), under
@@ -1401,8 +1453,22 @@ guard by Revision 11, which found the step-7 receiver gate reached (now step 8).
     `caseInsensitive`.
 
   Its name and its count are fixed at the gate. The route cases commit only in this commit (§ 2).
+  *Fixed at the gate* (Revision 12): `modules/eval-core/src/lib/actual/services/`
+  `eval.service.this-position.spec.ts`, 16 cases, raised to 19 at a second gate after the code
+  review:
+  - P1, P2 and G1;
+  - E1–E8: `this` as a value, an argument, an operand and `typeof`'s operand, each as `this` and as
+    `This` under `caseInsensitive`;
+  - E9: a parenthesised sequence ending in `this`, as a member's object under `preserveParens`,
+    refused (second gate);
+  - H1: the host-built identifier named `this`;
+  - O1–O4: the four kept positions;
+  - O5: `(this).k` under `preserveParens`, kept (second gate);
+  - H2: a host-built member whose object is an identifier named `this`, kept (second gate).
 - **Edit**: `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Breaking, with the value-route change
   and the assertions it changes. Its wording is fixed at the gate. Its prose stays at § 2's limit.
+  *Fixed at the gate* (Revision 12): the rule, with `typeof this` among the refusals, and the three
+  `eval-forms` assertions.
 - **Test-only edits downstream** (Revision 10, corrected by Revision 11):
   - `modules/eval-forms/reactive/src/lib/field-schema.spec.ts`;
   - `modules/eval-forms/signals/src/lib/rules.spec.ts`.
@@ -1411,13 +1477,26 @@ guard by Revision 11, which found the step-7 receiver gate reached (now step 8).
   as a call argument — then inspect its `lookups` (M15). The value route refuses `this` as an
   argument, and step 8's guard makes the call receiver a view, so **the context is no longer
   capturable from inside an expression — by design**. Revision 10's planned rewrite (capture through
-  a bare call's receiver) is therefore superseded. The pins instead assert the resolver
-  **behaviourally** — a bound field / registered rule resolves a form key to its value through the
-  pushed resolver — which needs no captured context and holds through step 8. The structural
-  "only lookup is the form / memo resolver" assertion already lives at the `createFieldContext`
-  level in `modules/eval-forms/src/lib/field-context.spec.ts`. The exact rewrite is fixed at step 7's
-  gate and must stay green through step 8. No library file under `modules/eval-signals/` or
-  `modules/eval-forms/` changes; `eval-forms` stays at 375.
+  a bare call's receiver) is therefore superseded.
+
+  *Corrected by Revision 12.* Revision 11 had the pins assert the resolver behaviourally, on the
+  ground that the structural assertion already lived at the `createFieldContext` level in
+  `modules/eval-forms/src/lib/field-context.spec.ts`. That spec makes no assertion on `lookups`, and
+  cannot make this one: `createFieldContext` keeps two lookups by design. D5's dead lookups never
+  answered, so no behavioural assertion sees them return. D5's own probe turned only the
+  `/reactive` pin red when `/reactive`'s lookup was put back.
+  - **So each pin takes the context where it is built**, which no `this` and no receiver is
+    involved in, so it holds through step 8. The spy is on its defining module, confined to the
+    case:
+    - `createFieldContext` at `/reactive`;
+    - `createModelSource` and the source's `createRuleContext` at `/signals`.
+  - **The `lookups` assertion is kept as it was.** The rule's expression becomes a plain comparison
+    of a form key, which shows the rule resolving it.
+  - **Not a `jest.mock`**, which hoists to file scope. `field-schema.teardown-throw.spec.ts` records
+    why that stays out of `field-schema.spec.ts`.
+
+  No library file under `modules/eval-signals/` or `modules/eval-forms/` changes; `eval-forms` stays
+  at 375.
 - **Breaking.** These three pins are the only existing assertions step 7 changes (M15). Each was
   green against 0.12.1, and each is listed as breaking.
 - **Scope.** The rest of `internal/visitors/`, the receiver, and `EvalContext` are outside this step.
@@ -1443,6 +1522,72 @@ guard by Revision 11, which found the step-7 receiver gate reached (now step 8).
   - **0.13.0 is published promptly after step 11 commits**, and the advisory (§ 5, U3) follows that
     publish. Steps 7–11 run consecutively, ahead of Phase 10, to keep the window short.
 - **Category**: a breaking change on a published path, released in step 10 as 0.13.0.
+- **Outcome** — done 2026-10-17.
+  - **Criterion 1: met.** The gate ran uncached and was green on all four projects. `eval-core` has
+    2528 cases (2509 + 19), `eval-signals` 438 and `eval-forms` 375. doc-links found 0 dangling
+    links, and release-tags 0 failing rows. `performance.spec.ts` is 16 of 16, and untouched since
+    0718796.
+  - **Criterion 2: met.** P1, P2 and G1 are each red against the parent commit. None threw, and a
+    throwaway run on the parent tree gave each listed function's result: `[2]`, 7 and `[2]`. Under
+    the fix each throws the refusal.
+    - **Probe (i)**, the refusal removed: 13 red in `eval-core`, which are P1, P2, G1, E1–E9 and H1.
+    - The throwaway's three runs reached again, in the run before E9 existed.
+    - `eval-signals` and `eval-forms` stayed green.
+  - **Criterion 3: met.** Every existing case holds except the three D5 pins. `HEAD`'s two spec
+    files, run against the fix, fail exactly those three, and 372 of 375 pass. O1–O5 and H2 are
+    green.
+    - **Probe (ii)**, the mark removed:
+      - `eval-core`: 402 existing cases red, plus O1–O5 and H2;
+      - `eval-signals`: 82, all in `signal-context.spec.ts`;
+      - `eval-forms`: 4, all in `model-source.spec.ts`.
+
+      That is M15's not-kept column, 402 / 82 / 7, less the three D5 pins, which no longer evaluate
+      `this`.
+    - `eval-core`'s 402 break down as:
+      - 389 in `identifier-guard`;
+      - 3 each in `read-hooks` and `sync.core`;
+      - 2 each in `scope-this` and `get-key`;
+      - 1 each in `sync.extended`, `dangerous-values` (C4) and `case-insensitive`.
+  - **Criterion 4: met.** The built `types/zvenigora-ng-eval-core.d.ts` is byte-identical to the one in
+    npm's 0.12.1 tarball, unpacked outside the repository: 111787 bytes, with the same SHA-256.
+    `this-position.ts` is in no barrel.
+  - **Criterion 5: met.** The probe-pattern grep finds nothing in any added line outside the spec's
+    P1, P2 and G1 cases. Its pattern is built from those cases' fragments and from the field and
+    getter names f64e779 removed. Every other added `this` in code is a member's object, the name
+    test, the message, or prose at the limit.
+  - **The D5 rewrite, failed first.** It is green on the parent. These match D5's own probes:
+    - `/reactive`'s trim removed turns 1 case red, its pin;
+    - `/signals`' trim removed turns 4 red: its two pins and `model-source.spec.ts`'s two rows.
+
+    A registrar that walks a delegating copy of the minted context turns exactly the two `/signals`
+    pins red.
+  - **The code review** found nothing Critical. Before the commit it corrected:
+    - **Important — the mark under `caseInsensitive`.** The name test cost a locale comparison per
+      member access with an identifier object. Measured on `order.a.b + order.c`, in µs per
+      evaluation over three rotations:
+
+      | Bundle | case-sensitive | `caseInsensitive` |
+      | :--- | :--- | :--- |
+      | 0.12.1 | 2.63–2.78 | 6.75–6.81 |
+      | as first written | 2.56–2.65 | 11.69–12.12 |
+      | as corrected | 2.63–2.73 | 6.73–6.91 |
+
+      Probes (i) and (ii) were run again on the corrected mark, with the same cases red, and again
+      after the second gate, with the counts above.
+    - **Minor — the `/signals` pins' comment** said the registrar uses the context and no other,
+      which a context taken at construction does not show. The pins now spy on `evaluateRule` too.
+      Their `createRuleContext` spy is restored in the case's `finally`, as the other two are.
+  - **A second gate decided the review's other two findings** (Revision 12), and raised the count to
+    19:
+    - **Important — `(this).k` under `preserveParens`** threw, since the mark landed on the
+      parenthesis. The mark now strips the object's parentheses first, as [A2](../backlog-retired.md#a2)'s
+      write visitors do. O5 pins the kept read, and E9 pins a parenthesised sequence ending in
+      `this` as still refused.
+    - **Minor — the mark's case-sensitive arm** had no case. H2 pins it.
+    - **Their probes**, each run against `eval-core` alone and reverted:
+      - the unwrap removed: O5 alone red;
+      - the unwrap widened through a sequence's last expression: E9 alone red;
+      - the case-sensitive arm removed: H2 alone red.
 
 ### Step 8 — A39 receiver guard: a guarded view, not the context, as `this`
 

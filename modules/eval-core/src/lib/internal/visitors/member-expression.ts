@@ -7,6 +7,7 @@ import { afterVisitor } from './after-visitor';
 import { safeGetProperty, isDangerousProperty, isDangerousPrimitiveProperty } from './prototype-pollution-guard';
 import { equalIgnoreCase } from './utils';
 import { getCachedCaseInsensitiveProperty } from './property-lookup-cache';
+import { markThisPositional } from './this-position';
 // import { getCachedVisitorResult, setCachedVisitorResult } from './visitor-result-cache';
 
 /**
@@ -68,7 +69,9 @@ export const memberExpressionVisitor = (node: MemberExpression, st: EvalState, c
 
 export const evaluateMember = (node: MemberExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
 
-  // Get the object
+  // Get the object. A `this` is evaluated only here, as a member's object, so
+  // it is marked before it is visited (`this-position.ts`).
+  markThisPositional(node.object, !!st.options?.caseInsensitive);
   callback(node.object, st);
   const obj = popVisitorResult(node, st) as object;
   const object = (node.optional ? (obj || {}) : obj);

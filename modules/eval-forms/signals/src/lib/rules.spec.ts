@@ -7,6 +7,8 @@ import { EvalContext } from '@zvenigora/ng-eval-core';
 // `/signals` cannot grow its own - but asserting that an assigning expression
 // escapes `onError` cannot be done without naming it.
 import { SignalContextWriteError } from '@zvenigora/ng-eval-signals';
+import * as ruleWalk from './evaluate-rule';
+import * as modelSource from './model-source';
 import { ExpressionRules, createExpressionRules } from './rules';
 import { TEXT } from './text-key';
 
@@ -722,46 +724,59 @@ describe('createExpressionRules', () => {
     interface Probe {
       city: string;
       country: string;
-      keep: (context: EvalContext) => boolean;
     }
 
-    // The context a registrar builds, reached through the rule itself rather
-    // than through `createRuleContext`: `this` evaluates to the context the
-    // walk runs against, so `keep(this)` hands it to a model function.
-    // `model-source.spec.ts` asserts the same of the source; this is what says
-    // the registrar uses that context and no other.
+    // The context a registrar builds, taken where it is built: the factory's
+    // one model source is spied on its defining module, and that source's
+    // `createRuleContext` before the schema body registers the rule. The
+    // rule's walk is spied too, on `evaluateRule`'s module, and runs against
+    // that same context. `model-source.spec.ts` asserts the same of the
+    // source; this is what says the registrar uses that context and no other.
+    // Up to `eval-core` 0.12.1 the rule reached the context itself, as
+    // `keep(this)`. `eval-core` 0.13.0 refuses `this` outside a member
+    // access, so no expression can.
     it.each([false, true])(
       'should give a registered rule a context whose only lookup is the memo resolver (caseInsensitive %s)',
       (caseInsensitive) => {
-        let captured: EvalContext | undefined;
+        const built = jest.spyOn(modelSource, 'createModelSource');
+        const walked = jest.spyOn(ruleWalk, 'evaluateRule');
+        let minted: jest.SpyInstance | undefined;
 
-        const model = signal<Probe>({
-          city: 'Boston',
-          country: 'US',
-          keep: (context) => {
-            captured = context;
-            return true;
-          },
-        });
-        const rules = createExpressionRules(model, { eval: { caseInsensitive } });
+        try {
+          const model = signal<Probe>({ city: 'Boston', country: 'US' });
+          const rules = createExpressionRules(model, { eval: { caseInsensitive } });
 
-        const f = TestBed.runInInjectionContext(() =>
-          form(
-            model,
-            schema<Probe>((p) => {
-              rules.evalVisible(p.city, 'keep(this)');
-            })
-          )
-        );
+          expect(built).toHaveBeenCalledTimes(1);
 
-        expect(f.city().hidden()).toBe(false);
-        expect(captured).toBeInstanceOf(EvalContext);
+          minted = jest.spyOn(built.mock.results[0].value, 'createRuleContext');
+          const key = caseInsensitive ? 'COUNTRY' : 'country';
 
-        const context = captured as EvalContext;
-        const key = caseInsensitive ? 'COUNTRY' : 'country';
+          const f = TestBed.runInInjectionContext(() =>
+            form(
+              model,
+              schema<Probe>((p) => {
+                rules.evalVisible(p.city, `${key} === "US"`);
+              })
+            )
+          );
 
-        expect(context.lookups.map((lookup) => lookup(key, context, context.options)))
-          .toEqual(['US']);
+          expect(f.city().hidden()).toBe(false);
+          expect(minted).toHaveBeenCalledTimes(1);
+
+          const context = minted.mock.results[0].value as EvalContext;
+
+          expect(walked).toHaveBeenCalled();
+          for (const [, walkedContext] of walked.mock.calls) {
+            expect(walkedContext).toBe(context);
+          }
+
+          expect(context.lookups.map((lookup) => lookup(key, context, context.options)))
+            .toEqual(['US']);
+        } finally {
+          minted?.mockRestore();
+          walked.mockRestore();
+          built.mockRestore();
+        }
       }
     );
   });

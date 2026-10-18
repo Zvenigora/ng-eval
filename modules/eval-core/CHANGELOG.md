@@ -12,6 +12,18 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Breaking
+- **`this` evaluates only as the object of a member access** — `this.k`, `this["k"]`, `this.fn()`,
+  and any spelling of `this` in that place under `caseInsensitive` — which resolves against the
+  context as before. Anywhere else it now throws
+  `Access to "this" outside a member access is blocked for security reasons`: as a value, an
+  argument or an operand, `typeof this` included. Up to 0.12.1 it evaluated to the `EvalContext`
+  the walk ran against. This is part of the fix for the route through `this` that 0.12.1's Security
+  entry states as open ([A39](../../docs/backlog.md#a39)), which 0.13.0 closes.
+- **The assertions it changes**: three, all in `eval-forms`' suite, none in `eval-core`'s or
+  `eval-signals`'. Each evaluated `this` outside a member access to reach a rule's context and read
+  its lookups ([D5](../../docs/backlog-retired.md#d5)). They now take the context where it is built.
+
 ---
 
 ## [0.12.1] - 2026-10-17

@@ -6,6 +6,7 @@ import { afterVisitor } from './after-visitor';
 import { Registry } from '../public-api';
 import { equalIgnoreCase } from './utils';
 import { isDangerousProperty, mayMatchDangerousProperty } from './prototype-pollution-guard';
+import { refuseThisValue } from './this-position';
 
 const literals: Registry<string, unknown>= Registry.fromObject({
   'undefined': undefined,
@@ -117,6 +118,13 @@ export const identifierVisitor = (node: Identifier, st: EvalState) => {
 
   const isThis = node.name === 'this';
 
+  // `this` written as a name, which only a host-built AST holds here, is
+  // refused outside a member's object, as the `this` visitor refuses it
+  // (`this-position.ts`).
+  if (isThis) {
+    refuseThisValue(node);
+  }
+
   const value = isThis
     ? st.context
     : context?.get(node.name);
@@ -143,7 +151,11 @@ const identifierVisitorCaseInsensitive = (node: Identifier, st: EvalState) => {
 
   const isThis = !!equalIgnoreCase(node.name, 'this');
 
-  if (!isThis) {
+  // `This` is refused outside a member's object, as `this` is
+  // (`this-position.ts`).
+  if (isThis) {
+    refuseThisValue(node);
+  } else {
     refuseDangerousMatch(node, st);
   }
 
