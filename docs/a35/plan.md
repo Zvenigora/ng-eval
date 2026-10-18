@@ -1,6 +1,31 @@
 # A35 — dangerous function values past the call sandbox (`@zvenigora/ng-eval-core`)
 
 **Date**: October 14, 2026
+**Revision**: 14 — **§ 8 q7 decided (a), and step 8 completed under it**, in step 8's own commit.
+The receiver's origin is carried out of `evaluateMember` in its fourth slot, so the guard covers
+all four receivers and not the three an identity test at the call could see. M17 is the
+measurement the decision rests on, taken before it.
+
+Six things this revision settles, each measured rather than argued:
+- **(a) is chosen.** Its cost is two functional assertions, both in one file, both about the
+  semantics the change is about: a method held directly on the context, called as `this.fn()`,
+  reaching its siblings through its own `this`. They are rewritten to name the refusal, and the
+  documented migration — a named scope with an explicit `thisArg` — is pinned beside them.
+- **A non-allowlisted read throws a named error**, rather than answering undefined. Measured
+  across all three suites: no pre-existing case anywhere turned red, so the louder failure costs
+  nothing the quiet one would have saved. **W4 resolves with it**: a write throws too, from the
+  frozen target, and the CHANGELOG states both.
+- **Step 8's file list gains** `member-expression.ts` (the origin carry) and
+  `eval.service.sync.core.spec.ts` (the two functional cases and the migration).
+- **W1, W2 and W3 are fixed.** Each receiver has a structural pin that fails when the context is
+  reached rather than when a later read of nothing throws (B1–B3 and S2–S4); no case reads an own
+  field by position, so none can go green on a field reordering; and N4 pins the cache's identity
+  contract. The R cases now fail with the view's own named refusal, which is why their green side
+  is no longer uninformative.
+- **The counts**: `eval-core` 2528 → **2546**, `eval-signals` 438 and `eval-forms` 375 unchanged.
+  (2544 at the first gate; the second code review added S5 and `scope-this` (f).)
+- **The closure claims stay narrowed.** Step 9 restores them, after this gate passes — not here.
+
 **Revision**: 13 — **step 8 stopped at R4**, in its own commit. Nothing is built by this revision;
 step 8's code is held uncommitted in the working tree, and the step did not close.
 
@@ -548,6 +573,7 @@ reverted before Revision 10's commit, and the bundles and scripts were deleted.
 | M12 | M3 and M7 on the tree after step 3 | Step 4's confirmation gate: a funnel prototype; M3's routes against step 3's bundle and the prototype's; `nx run-many -t test` with the prototype on; each exemption widened and narrowed against the V cases | K1 already refuses `(0, eval)()`, `(c ? eval : f)()` and `(eval)()` under `preserveParens` with `Function call blocked for security reasons: anonymous`. The prototype refuses each at the read of `eval`. `run?.()` is K1's; `Reflect.apply(...pair)` gives 2 under both; `(0, 1)` leaves no entry; `typeof eval` is `"function"`. M7 holds: 2488 / 438 / 375, all green |
 | M13 | Timing, previewed | Step 4's confirmation gate: M6's parameters with six recorded expressions (step 4's outcome); step 3's bundle against the prototype's; six rotations | Slower in all five valid rotations, by +1.1% to +8.5% on the median. The minimums moved from −22% to +5%. One rotation was void, from interference. Step 3's medians spread 5.7% over rotations 1–3, which sets step 4's line at 10.7% |
 | M14 | `this` handed to native code | Step 4's code review, on that step's bundle; the probes measured again with a throwaway script against step 3's bundle and step 4's | The route reaches a listed function past the funnel on both bundles, where each control without `this` is refused on step 4's. The probes and the mechanism are held in the draft advisory ([A39](../backlog.md#a39)), under § 2's disclosure rule |
+| M17 | Option (a), and whether a refused read over-triggers (§ 8 q7) | Revision 14, in step 8. The origin carry prototyped in `evaluateMember`, then all three suites under it; then the same with a non-allowlisted read throwing a named error, all three suites again; every `this.fn()` expression in the three projects read for what it asserts | **(a) refuses R1–R4 and every structural way out, with no new reach.** Six assertions change: two functional, both in `eval.service.sync.core.spec.ts` section 13 (`this.increment()`, `this.getcounter()` — a method reaching its siblings), and the four identity pins already listed. `eval-forms` 375 green throughout. **The throw does not over-trigger**: beyond those six, the only case that moved was step 8's own, which pinned the undefined it replaces. `this.fn()` with a prior scope's `thisArg` is unaffected, which the root README documents |
 | M16 | The four receivers under step 8's guard (§ 8 q7) | Revision 13, in step 8. The guard built and run through the real `EvalService` on step 8's working tree and on step 7's commit, as this document's steps are gated: the four receiver cases and the three ways out, each read case by case; three probes, each applied alone and reverted; the built `.d.ts` against 0.12.1's npm tarball by SHA-256 | R1, R2 and R3 refused, and the three ways out each yield nothing. **R4 reaches on both commits**, so it is pre-existing and the guard does not cover it: the receiver is the host's own object, which `getThis` answers with. Probe (i), the guard removed: 9 red, and the two identity pins green. Probe (ii), the allowlist emptied: `eval-signals`' two scope-depth-restore cases red. Probe (iii), the real context as the proxy target: the three ways out red. `.d.ts` identical, 111787 bytes. W4 measured: a write through the view throws where it used to land on the context |
 | M15 | What `this` should evaluate to (§ 8 q4) | Revision 10, at 0.12.1. (1) Every expression in the three projects' specs, the READMEs and `docs/` that evaluates `this`, read for what it asserts. (2) A throwaway prototype giving `this`, outside a member's object, one of five values: the host's original object, a frozen shallow view of it, `undefined`, a refusal, an opaque frozen object. Each ran with `this.k` kept by position and not kept, and all three suites ran under each. (3) For each value, whether it withholds the context's functions (§ 8 q4's expectation). (4) The positional refusal's production bundle and 0.12.1's, outside the repository, with A39's probes P1, P2 and G1 run by the maintainer | § 8 q4. P1, P2 and G1 each reach a listed function on 0.12.1 and are refused on the prototype, where `this` escapes. Three receivers were not measured, and step 7's criterion 4 gates them |
 
@@ -904,7 +930,7 @@ the receiver guard (8), made the old documents/retire step 9 and the release ste
 | 5 | `SECURITY.md` for 0.12.1: the funnel as a protection, the route through `this` and a host container as limits, the mitigations first | `SECURITY.md`, `public-api.spec.ts`'s allowlist if it needs entries | 0 / 0 / 0 | (i) only | no package | done |
 | 6 | Release `eval-core` 0.12.1 | `modules/eval-core/package.json`, `CHANGELOG.md`; the post-publish commit's register, `CLAUDE.md` and this document | 0 / 0 / 0 | (i) only | `eval-core` 0.12.1 | done |
 | 7 | A39 value route: `this` by position, refused anywhere else | new `this-position.ts`; `member-expression.ts`'s mark, `this-expression.ts`, `identifier.ts`; a new spec (P1/P2/G1); `CHANGELOG.md`; two `eval-forms` specs, test-only (Revision 10) | **+19** / 0 / 0 | both | `eval-core` 0.13.0 | done |
-| 8 | A39 receiver guard: a guarded view, not the context, as `this` | new `context-receiver.ts`; the receiver at `call-expression.ts`, `tagged-template-expression.ts`, `callMember`; **delete** dead `evaluateCall`; a new spec (R1/R2/R3, B1/B2/B3); rewrite `scope-this` (e) and tag T6; `CHANGELOG.md`; two `eval-signals` `signal-context` pins, test-only (Revision 11) | set at its gate / 0 / 0 | both | `eval-core` 0.13.0 | **stopped at R4** (Revision 13); code held uncommitted, § 8 q7 open |
+| 8 | A39 receiver guard: a guarded view, not the context, as `this` | new `context-receiver.ts`; the origin carry in `member-expression.ts`; the receiver at `call-expression.ts`, `tagged-template-expression.ts`, `callMember`; **delete** dead `evaluateCall`; a new spec (R1–R4, B1–B3, S2–S5, N1–N4); rewrite `scope-this` (e) and add (f), tag T6, `sync.core`'s two method rows, two `eval-signals` `signal-context` pins and a comment in `eval-signal-async.spec.ts`; `CHANGELOG.md` (Revision 11; extended by Revision 14) | **+18** / 0 / 0 | both | `eval-core` 0.13.0 | done (Revision 14, under q7's (a)) |
 | 9 | `SECURITY.md`'s `this` limit becomes a protection; the receiver only as far as § 8 q7 closes it; A39 and A35 retired only if it closes | `SECURITY.md`, the register | 0 / 0 / 0 | both | no package | blocked on q7 |
 | 10 | Release commit: `eval-core` 0.13.0, `eval-signals` 0.6.0, `eval-forms` 0.6.0, all peers consistent in one commit | all three `package.json`, each `CHANGELOG.md`, each README's peer block; `eval-signals`' `### Breaking` entry and its guarded-receiver README bullet | 0 / 0 / 0 | both | the three releases | |
 | 11 | Post-publish commit, after the maintainer publishes and tags (ordered: core → signals → forms) | `docs/backlog.md`, `docs/backlog-retired.md`, `CLAUDE.md`, CHANGELOG dates, this document | 0 / 0 / 0 | both | — | |
@@ -1672,17 +1698,35 @@ on all three receivers, measured through the real service, so positional `this` 
 A39: the context is also handed to native code as a call's, a tag's and `this.fn()`'s `this`, with no
 `this` expression at all.*
 - **New**: `internal/visitors/context-receiver.ts`, the guarded receiver. `guardedReceiver(context)`
-  returns a `Proxy` over the real `EvalContext`, cached per context in a `WeakMap`: it forwards an
-  allowlist of scope-stack methods (`push`, `pop`) bound to the real context, returns undefined for
-  every other property, reports no own keys (`ownKeys` → `[]`, `getOwnPropertyDescriptor` →
-  undefined), and a null prototype (`getPrototypeOf` → null). So nothing else of the context is
+  returns a `Proxy` cached per context in a `WeakMap`: it forwards an
+  allowlist of scope-stack methods (`push`, `pop`) bound to the real context, reports no own keys
+  (`ownKeys` → `[]`, `getOwnPropertyDescriptor` → undefined), and a null prototype
+  (`getPrototypeOf` → null). So nothing else of the context is
   reachable — no internal field, no accessor, no prototype path — while a source function's
   documented `this.push(...)` / `this.pop(...)` still work (`eval-signals`' README; finding below).
-  The allowlist and whether `has`/`set` are trapped are fixed at the gate.
+
+  *Corrected by Revision 14*, from the step's second code review. This bullet said the proxy was
+  "over the real `EvalContext`" and "returns undefined for every other property". Both were
+  superseded before the step closed and the sentence was missed:
+  - **The target is a frozen, null-prototype stand-in, not the context.** Probe (iii) measured the
+    difference: over the real context, with only `get` trapped, all three structural ways out
+    reach it.
+  - **A non-allowlisted read throws**, and § 8 q7 records the measurement behind that.
+  - **The gate's open question is settled**: `has` is trapped and answers from the allowlist;
+    `set` is not trapped, and a write is refused by the frozen target — in strict mode as a
+    `TypeError`, in sloppy mode silently.
+*Extended by Revision 14, under § 8 q7's option (a): the file list gains `member-expression.ts`
+and `eval.service.sync.core.spec.ts`, and the guard covers four receivers rather than three.*
 - **Edit**, all in `internal/visitors/`:
+  - `member-expression.ts` (*Revision 14*): `evaluateMember` returns the receiver's **origin** in
+    a fourth slot — true when the evaluator chose the receiver out of the context's own resolution
+    chain. Identity at the call cannot say it, since `getThis` answers a key the original holds
+    with an ordinary host object, which is why R4 survived the first design.
   - `call-expression.ts`: the **bare** call passes `guardedReceiver(st.context)` to `safeCall`;
-    `callMember` passes it when the resolved receiver is `st.context` (a member call on `this` for a
-    lookup-resolved key), and the real receiver otherwise (`obj.fn()`, `ns.fn()` unchanged).
+    `callMember` passes it when the fourth slot is set and the resolved receiver is `st.context`
+    or its `original` (a member call on `this` for a lookup-resolved key, or for a key the
+    original holds), and the real receiver otherwise (`obj.fn()`, `ns.fn()`, and a prior scope's
+    declared `thisArg`, all unchanged).
   - `tagged-template-expression.ts`: the **bare** tag passes `guardedReceiver(st.context)` to
     `safeCall`.
   - **The write policy keeps the real context.** `consultMethodWrite` is still called with
@@ -1702,7 +1746,9 @@ A39: the context is also handed to native code as a call's, a tag's and `this.fn
   asserting the receiver *is* `st.context` by identity and assert the guard contract positively:
   the receiver resolves `push`/`pop`, exposes nothing else of the context, and has a null prototype.
   Each is listed as breaking.
-- **Test-only edits downstream** (Revision 11): the two `eval-signals` `signal-context.spec.ts` pins
+- **Test-only edits downstream**, also `eval-signal-async.spec.ts`'s comment, which cited the
+  bare call's receiver by a line this step moves (*added by Revision 14*, from the second code
+  review: the file list was understated by one). (Revision 11): the two `eval-signals` `signal-context.spec.ts` pins
   ("the `this` argument of a context function": a bare call; a lookup-resolved `this.fn()`) are
   rewritten the same way — the function's `this` is the guarded view, resolving `push`/`pop` and
   hiding the rest. They keep every other assertion; `eval-signals` stays at 438. They ship in
@@ -1729,9 +1775,48 @@ A39: the context is also handed to native code as a call's, a tag's and `this.fn
   5. **Disclosure.** The probe-pattern grep is clean over every added line outside the new spec's
      cases.
 - **Category**: a breaking change on a published path, released in step 10 as 0.13.0.
-- **Outcome** — **stopped 2026-10-18, at criterion 2** (*Revision 13*). The gate added R4 and fixed
-  the rule before the work began: reaches, and the step stops rather than filing it as a limit.
-  R4 reaches (M16), so the step did not close and nothing was committed.
+- **Outcome** — **done 2026-10-18, under § 8 q7's option (a)** (*Revision 14*). The step stopped
+  once at R4 (below), the scope question was decided from M17, and the step then completed with
+  the origin carry folded in.
+  - **Criterion 1: met.** The gate ran uncached and was green on all four projects. `eval-core`
+    has 2546 cases, `eval-signals` 438 and `eval-forms` 375. `performance.spec.ts` is green and
+    untouched.
+  - **Criterion 2: met, for four receivers rather than three.** R1, R2, R3 and **R4** are each
+    refused, each with the view's own named message; B1–B3 and S2–S4 each yield nothing of the
+    context. 13 of the spec's 15 cases are red against the parent commit — the two that pass
+    there, N1 and N4, hold trivially when the receiver is the context. **Probe (i)**, the guard
+    removed at the three call sites: the same 13 red, so removing it restores the parent exactly.
+  - **Criterion 3: met.** `eval-signals` is 438 green, the scope-depth-restore case included. T9
+    and `member-write-policy.methods.spec.ts` are unchanged and green: the write policy still
+    receives the real context.
+  - **Criterion 4: met.** The built `.d.ts` is byte-identical to 0.12.1's tarball, 111787 bytes
+    with the same SHA-256 — the origin carry is a fourth slot on an internal tuple, and
+    `evaluateMember` is exported only from the internal visitors barrel.
+  - **Criterion 5: met.** No route expression outside the spec's own cases.
+  - **The six assertions rewritten**, each a deliberate contract change and none loosened:
+    `eval.service.scope-this.spec.ts` (e); `tagged-template-expression.spec.ts` T6;
+    `eval.service.sync.core.spec.ts`'s two section-13 method rows, which become the refusal pair
+    plus the migration; and `eval-signals`' two `signal-context.spec.ts` pins.
+  - **The second code review found nothing Critical**, and no route by which the view yields the
+    context or the original. It traced all three `evaluateMember` exits, every `safeCall` site and
+    every consumer of the tuple. Four things were corrected before the step closed:
+    - **The origin carry was unpinned**, which is the finding that mattered: dropping
+      `contextResolved` from the guard's condition left all three suites green, so the headline of
+      this revision was vacuous in the suite. **Probe (iv)** confirmed it — 2544 of 2544 green with
+      the origin half removed. **S5** now pins it: a context holding a reference to itself, called
+      as `self.fn()`, keeps the real object, and that case is red the moment the flag is dropped.
+    - **Two more receiver forms are guarded than the CHANGELOG listed** — `this.fn()` where a prior
+      scope answers without declaring a `thisArg`, and where a pushed scope binds the key. Both
+      measured. The entry now states the rule rather than enumerating forms, and `scope-this` gains
+      **(f)**, the pair to (c): a declared `thisArg` is honoured, the evaluator's fallback is not.
+    - **This bullet list's own stale sentences** (above), and the step-7 CHANGELOG paragraph, which
+      said what closes A39 was undecided while the entry fifteen lines below said this closes it.
+    - **The write throw is strict-mode only**, which the entry now says.
+  - **The earlier stop, kept as the record.** *Revision 13*: the gate added R4 and fixed the rule
+    before the work began — reaches, and the step stops rather than filing it as a limit. R4
+    reached (M16), so the step did not close on its first run and nothing was committed. The guard
+    as first designed discriminated on `receiver === st.context`, which no identity test at the
+    call could extend to the original; (a) carries the fact out of `evaluateMember` instead.
   - **Criterion 1: not reached.** The tree is red by design at the stop — R4, plus the four
     identity pins the step lists as breaking and did not rewrite, since rewriting them would assert
     a contract the step is not shipping. `eval-core` 2538 with 3 red, `eval-signals` 438 with 2 red,
@@ -2029,8 +2114,21 @@ A36 and A39.
    - **Answered for three receivers, not four.** The guard closes R1, R2 and R3 and does not reach
      R4, which q7 now carries.
 7. **R4: what scope closes the receiver route, now that the guard does not?** *Added by Revision 13,
-   from the measurement step 8's gate required (M16). Open — the maintainer picks the scope, and
-   nothing is built until then.*
+   from the measurement step 8's gate required (M16).* **Decided 2026-10-18: (a)**, from the
+   measurement q7's own text asked for (M17). The origin carry folds into step 8, which completes
+   under it.
+   - **What M17 measured**, before the decision: the prototype refuses R1–R4 and every structural
+     way out, with no new reach; six assertions change, of which **two are functional** — a method
+     held directly on the context, called as `this.fn()`, reaching its siblings through its own
+     `this` — and four are the identity pins already listed as breaking. `eval-forms` is untouched.
+   - **Why (a) despite the two.** They are the semantics the change is about, they are the only
+     two in three suites, and the behaviour has a migration that this release does not touch: give
+     the object a named scope with an explicit `thisArg`. Step 8's spec pins that migration beside
+     the refusals.
+   - **The read answers with a refusal, not undefined** (condition 1, measured): throwing turned no
+     pre-existing case red in any of the three projects, so it costs nothing a silent undefined
+     would have saved, and it names the cause at the read. **W4 resolves with it** — the write
+     throws too, from the frozen target — and the CHANGELOG states both.
 
    The measurement is in M16 and the stop is in Revision 13. Three options were weighed.
 

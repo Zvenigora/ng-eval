@@ -8,6 +8,7 @@ import { callMember, safeCall } from './call-expression';
 import { evaluateMember } from './member-expression';
 import { consultMethodWrite } from './member-write-policy';
 import { exemptFromFunnel } from './dangerous-values';
+import { guardedReceiver } from './context-receiver';
 
 /**
  * The tag's arguments: the template's cooked strings, then the value of each
@@ -36,8 +37,9 @@ const templateArguments = (node: TaggedTemplateExpression, st: EvalState,
  *   `MemberExpression` is evaluated by `evaluateMember`, not visited, so it
  *   raises no `before` or `after` node-hook events and leaves no trace entry,
  *   as a member callee does. Its read event still fires.
- * - Any other tag is called with the context as `this`, as a bare call is,
- *   and checked under its identifier's name, or none.
+ * - Any other tag is called with a guarded view of the context as `this`, as
+ *   a bare call is (`context-receiver.ts`), and checked under its
+ *   identifier's name, or none. Up to 0.12.1 that was the context itself.
  *
  * The tag is evaluated before the template's expressions, as in JavaScript;
  * a call evaluates its arguments first.
@@ -67,7 +69,9 @@ export const taggedTemplateExpressionVisitor = (node: TaggedTemplateExpression, 
     if (created) {
       consultMethodWrite(st, created, tag, st.context, args);
     }
-    const value = safeCall(tag, st.context, args, false, tagName);
+    // A bare tag's `this` is a guarded view, as a bare call's is
+    // (`context-receiver.ts`); the write policy above keeps the real context.
+    const value = safeCall(tag, guardedReceiver(st.context), args, false, tagName);
     pushVisitorResult(node, st, value);
   }
 

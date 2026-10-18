@@ -141,7 +141,14 @@ describe('createSignalContext', () => {
 
   describe('the `this` argument of a context function', () => {
 
-    it('should pass the EvalContext to a bare call, not the resolver', () => {
+    it('should pass a guarded view of the EvalContext to a bare call, not the context and not the resolver', () => {
+      // **Deliberate contract change**, `eval-core` 0.13.0, forwarded here
+      // (`docs/a35/plan.md` § 8 q7, `docs/backlog.md` A39). Up to
+      // `eval-core` 0.12.1 this asserted the receiver *was* `context`.
+      // A function the context holds now receives a guarded view of it:
+      // `push` and `pop` still reach the real context - which is what this
+      // library's README documents and its async signal relies on - and
+      // nothing else of it is reachable.
       const seen: unknown[] = [];
       const source = {
         probe: function (this: unknown) { seen.push(this); return 1; },
@@ -151,15 +158,26 @@ describe('createSignalContext', () => {
       service.simpleEval('probe()', context);
 
       expect(seen).toHaveLength(1);
-      expect(seen[0]).toBe(context);
+      const receiver = seen[0] as object;
+      expect(receiver).not.toBe(context);
+      expect(Reflect.ownKeys(receiver)).toEqual([]);
+      expect(Object.getPrototypeOf(receiver)).toBeNull();
+      expect(typeof (receiver as { push: unknown }).push).toBe('function');
+      expect(typeof (receiver as { pop: unknown }).pop).toBe('function');
     });
 
-    it('should report no receiver for a lookup-resolved key, so this.fn() gets the context', () => {
+    it('should report no receiver for a lookup-resolved key, so this.fn() gets a guarded view', () => {
       // Up to eval-core 0.6.x `getThis` answered a lookup-resolved key with the
       // lookup function itself, so `this.fn()` ran with the resolver as `this`;
       // this case pinned that. Since 0.7.0 a lookup is not an object that holds
       // the key and answers nothing, and the member visitor falls back to the
       // context (`docs/backlog-retired.md` A7).
+      //
+      // **Deliberate contract change**, `eval-core` 0.13.0, forwarded here
+      // (`docs/a35/plan.md` § 8 q7): that fallback receiver is now a guarded
+      // view rather than the context itself. Both earlier claims are kept -
+      // not the resolver, and the key really is lookup-resolved - and what
+      // the receiver now is, is pinned rather than left open.
       const seen: unknown[] = [];
       const probe = function (this: unknown) { seen.push(this); return 1; };
       const context = createSignalContext({ one: signal(1), probe: signal(probe) });
@@ -174,8 +192,12 @@ describe('createSignalContext', () => {
       service.simpleEval('this.probe()', context);
 
       expect(seen).toHaveLength(1);
-      expect(seen[0]).toBe(context);
-      expect(seen[0]).not.toBe(context.lookups[0]);
+      const receiver = seen[0] as object;
+      expect(receiver).not.toBe(context.lookups[0]);
+      expect(receiver).not.toBe(context);
+      expect(Reflect.ownKeys(receiver)).toEqual([]);
+      expect(Object.getPrototypeOf(receiver)).toBeNull();
+      expect(typeof (receiver as { push: unknown }).push).toBe('function');
     });
 
   });

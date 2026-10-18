@@ -98,20 +98,55 @@ describe('EvalService - a prior scope\'s thisArg', () => {
       expect(service.simpleEval('this.fn()', context)).toBe(foreign);
     });
 
-    it('(e) should not receive the lookup function for a lookup-resolved key', () => {
-      // What an unresolved receiver gets: `getThis` answers nothing, and the
-      // member visitor falls back to the object it was evaluating - the
-      // context itself, which is what `this` evaluates to.
+    it('(f) should receive a guarded view when a prior scope supplies fn and declares no thisArg', () => {
+      // **Deliberate contract change**, `eval-core` 0.13.0 (`docs/a35/plan.md`
+      // § 8 q7). (c) above is the *declared* `thisArg`, which is unchanged.
+      // With none declared, `getThis` answers undefined and the member
+      // visitor falls back to the context - so this form is guarded, where
+      // (c) is not. The pair is what makes the boundary visible: the host's
+      // own choice of receiver is honoured, and the evaluator's fallback to
+      // the context is not.
+      const seen: unknown[] = [];
+      const context = new EvalContext({}, {});
+      context.priorScopes.push(EvalScope.fromObject(
+        { fn: function (this: unknown) { seen.push(this); return 1; } },
+        { global: true }
+      ));
+
+      service.simpleEval('this.fn()', context);
+
+      expect(seen).toHaveLength(1);
+      const receiver = seen[0] as object;
+      expect(receiver).not.toBe(context);
+      expect(Reflect.ownKeys(receiver)).toEqual([]);
+      expect(typeof (receiver as { push: unknown }).push).toBe('function');
+    });
+
+    it('(e) should receive a guarded view for a lookup-resolved key, not the lookup and not the context', () => {
+      // **Deliberate contract change**, `eval-core` 0.13.0
+      // (`docs/a35/plan.md` § 8 q7, `docs/backlog.md` A39). Up to 0.12.1 this
+      // asserted the receiver *was* `state.context`: `getThis` answers
+      // nothing for a lookup-resolved key, and the member visitor fell back
+      // to the object it was evaluating.
+      //
+      // A function reached through the context's own resolution chain now
+      // receives a guarded view instead (`context-receiver.ts`). The
+      // assertion is strengthened, not dropped: still not the lookup, which
+      // is what `docs/backlog-retired.md` A7 fixed, and now not the context
+      // either - and what it *is* is pinned, rather than left open.
       const fn = function (this: unknown) { return this; };
       const lookup = (key: unknown) => key === 'fn' ? fn : undefined;
       const context = new EvalContext({}, {});
       context.lookups.push(lookup);
       const state = service.createState(context);
 
-      const receiver = service.eval('this.fn()', state);
+      const receiver = service.eval('this.fn()', state) as object;
 
       expect(receiver).not.toBe(lookup);
-      expect(receiver).toBe(state.context);
+      expect(receiver).not.toBe(state.context);
+      expect(Reflect.ownKeys(receiver)).toEqual([]);
+      expect(Object.getPrototypeOf(receiver)).toBeNull();
+      expect(typeof (receiver as { push: unknown }).push).toBe('function');
     });
   });
 });

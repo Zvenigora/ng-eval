@@ -18,15 +18,40 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   context as before. Anywhere else it now throws
   `Access to "this" outside a member access is blocked for security reasons`: as a value, an
   argument or an operand, `typeof this` included. Up to 0.12.1 it evaluated to the `EvalContext`
-  the walk ran against. This narrows the route through `this` that 0.12.1's Security entry states
-  as open ([A39](../../docs/backlog.md#a39)). It does not close that entry on its own: a function
-  the context holds can still be called with an object the context resolved as its `this`, and what
-  closes that is not yet decided. Until it is, treat A39 as open and keep 0.12.1's mitigations —
-  place no listed function in the context, and serve a Content Security Policy without
-  `'unsafe-eval'`.
+  the walk ran against. This is half of the fix for the route through `this` that 0.12.1's Security
+  entry states as open ([A39](../../docs/backlog.md#a39)); the receiver entry below is the other
+  half. Keep 0.12.1's mitigations in place regardless — place no listed function in the context,
+  and serve a Content Security Policy without `'unsafe-eval'` — since a container the host itself
+  provides remains a documented limit.
 - **The assertions it changes**: three, all in `eval-forms`' suite, none in `eval-core`'s or
   `eval-signals`'. Each evaluated `this` outside a member access to reach a rule's context and read
   its lookups ([D5](../../docs/backlog-retired.md#d5)). They now take the context where it is built.
+- **A function the context holds is called with a guarded view of the `EvalContext`**, not the
+  context and not the object behind it. **The rule**: every receiver the evaluator resolved out of
+  the context's own chain is now that view. In practice that is a bare call, `fn()`; a bare tagged
+  template, `` fn`x` ``; and `this.fn()` for any key the context resolves — one held directly on
+  it, one a lookup answers, one a prior scope answers without declaring a `thisArg`, and one bound
+  by a scope the expression or a source function pushed.
+  **What is unchanged**: `obj.fn()` and `ns.fn()`, a prior scope's **declared** `thisArg`, and a
+  call on an object the context merely holds — including one that refers back to the context
+  itself. Those receivers are the host's own, not the evaluator's choice.
+  On the view, `push` and `pop` still act on the real context, so a function that pushes or pops a
+  scope is unaffected. **Every other read throws**
+  `Access to "<key>" on the evaluation context is blocked for security reasons`, and **a write
+  throws** a `TypeError` in strict mode, which compiled module code is, or is silently dropped in
+  sloppy mode; up to 0.12.1 a read answered from the context and a write landed on it.
+  - **What this breaks**: a method held directly on the context and called as `this.fn()` can no
+    longer reach its sibling keys through its own `this`.
+  - **The migration**: give that object its own named scope with an explicit `thisArg`, which this
+    release does not change. `ns.fn()` and `obj.fn()` are unchanged too — only a receiver the
+    evaluator resolved out of the context's own chain is narrowed.
+  - Together with the entry above this closes the receiver half of
+    [A39](../../docs/backlog.md#a39). The member-write policy still receives the real context as
+    its write target, so a context implementing `checkMemberWrite` sees what it always did.
+- **The assertions it changes**: six — two in `eval-core`'s suite pinning a receiver's identity,
+  two pinning a context method's reach into its siblings, and two in `eval-signals`'. Each is
+  rewritten to assert the new contract, none is dropped. Together with the three in `eval-forms`
+  named above, nine in all across the three suites.
 
 ---
 

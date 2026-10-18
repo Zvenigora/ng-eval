@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { EvalService } from './eval.service';
+import { EvalContext, EvalScope } from '../../internal/classes/eval';
 
 const context = {
   string: 'string',
@@ -221,8 +222,6 @@ describe('EvalService Core', () => {
   // 13. 'this' context
   it.each([
     ['this.three',        3],
-    ['this.increment()',  1],
-    ['this.getcounter()', 0]
   ])("13. `this` context: when the input is '%s', value is %p", (expr: string, expected: unknown) => {
     const context = {
       three: 3,
@@ -232,6 +231,69 @@ describe('EvalService Core', () => {
     }
     const actual = service.simpleEval(expr, context);
     expect(actual).toEqual(expected);
+  });
+
+  /**
+   * **Deliberate contract change**, `eval-core` 0.13.0 (`docs/a35/plan.md`
+   * § 8 q7, `docs/backlog.md` A39).
+   *
+   * Up to 0.12.1 this table also held `['this.increment()', 1]` and
+   * `['this.getcounter()', 0]`: a method held directly on the context,
+   * called as `this.fn()`, received the context's own object as its `this`
+   * and reached its siblings through it. That is the same receiver by which
+   * native code reached a dangerous function the host had placed in the
+   * context, so it is now a guarded view - a sibling read throws, and a
+   * sibling write is refused by the frozen view.
+   *
+   * The two cases are kept, not deleted, and each names what now happens
+   * instead of what used to. `this.three` above is unchanged: a member read
+   * of the context resolves as it always has, and only the *receiver of a
+   * call* is narrowed.
+   *
+   * The migration is the last case: give the object its own named scope with
+   * an explicit `thisArg`, which this release does not change.
+   */
+  describe("13. `this` context: a method held on the context, called as this.fn()", () => {
+
+    const contextObject = () => ({
+      three: 3,
+      counter: 0,
+      increment: function() {return ++this.counter;},
+      getcounter: function() {return this.counter;}
+    });
+
+    it('should refuse a sibling read, where it used to answer 0', () => {
+      expect(() => service.simpleEval('this.getcounter()', contextObject()))
+        .toThrow(new Error(
+          'Access to "counter" on the evaluation context is blocked for security reasons'));
+    });
+
+    it('should refuse a sibling increment, where it used to answer 1', () => {
+      // `++this.counter` reads before it writes, so the read's refusal is
+      // what surfaces and the write is never attempted. A plain write through
+      // the view is refused too, by the frozen target rather than by this
+      // message; `eval.service.context-receiver.spec.ts` N2b pins that.
+      const context = contextObject();
+
+      expect(() => service.simpleEval('this.increment()', context))
+        .toThrow(new Error(
+          'Access to "counter" on the evaluation context is blocked for security reasons'));
+      // And nothing was written on the way to the refusal.
+      expect(context.counter).toEqual(0);
+    });
+
+    it('should keep both working when the object is a named scope with a thisArg', () => {
+      // The documented migration. A prior scope's `thisArg` is the host's own
+      // choice of receiver, so it is handed over unchanged.
+      const object = contextObject();
+      const context = new EvalContext({}, {});
+      context.priorScopes.push(EvalScope.fromObject(object, {
+        global: true, caseInsensitive: false, thisArg: object
+      }));
+
+      expect(service.simpleEval('this.increment()', context)).toEqual(1);
+      expect(service.simpleEval('this.getcounter()', context)).toEqual(1);
+    });
   });
 
 });

@@ -625,8 +625,12 @@ describe('createEvalSignalAsync', () => {
 
     /**
      * The leak is driven through the published `push` (Phase 5 S 3.5): a bare call's
-     * `this` is the shared context (`call-expression.ts:203`), so a source
-     * function can strand scopes on it with no visitor involved. The
+     * `this` resolves `push` and `pop` against the shared context
+     * (`context-receiver.ts`), so a source function can strand scopes on it
+     * with no visitor involved. Since `eval-core` 0.13.0 that `this` is a
+     * guarded view rather than the context itself, and those two methods are
+     * exactly what it still forwards - so this fixture reaches the same
+     * scope stack it always did. The
      * expression reads `x` before the call, so what a run read is in its
      * value.
      *

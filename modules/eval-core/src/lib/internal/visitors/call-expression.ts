@@ -8,6 +8,7 @@ import { evaluateMember } from './member-expression';
 import { evaluateArray } from './array-expression';
 import { consultMethodWrite } from './member-write-policy';
 import { exemptFromFunnel, isDangerousValue } from './dangerous-values';
+import { guardedReceiver } from './context-receiver';
 
 /**
  * Security: List of dangerous functions that should not be callable
@@ -188,16 +189,30 @@ const scopeReceiver = (st: EvalState, object: unknown): unknown => {
  * order: a call's arguments before its callee, a tag before its template's
  * expressions.
  */
-export const callMember = (st: EvalState, [object, propertyName, fn]: readonly unknown[],
+export const callMember = (st: EvalState, [object, propertyName, fn, contextResolved]: readonly unknown[],
   args: unknown[], optional: boolean): unknown => {
 
   const functionName = typeof propertyName === 'string' ? propertyName : undefined;
   const receiver = scopeReceiver(st, object);
   const created = st.createdObjects;
   if (created) {
+    // The write policy is asked about the real write target, never the view:
+    // a policy decides about the object that is written.
     consultMethodWrite(st, created, fn, receiver, args);
   }
-  return safeCall(fn, receiver, args, optional, functionName);
+  // A receiver the evaluator resolved out of the context's own chain is
+  // guarded (`context-receiver.ts`): the context itself, for a key only a
+  // lookup resolves, and the original, for a key the original holds. Both
+  // reach `this.fn()`, and guarding only the first left the second open -
+  // the same route one token shorter (`docs/a35/plan.md` § 8 q7, R4).
+  //
+  // A prior scope's declared `thisArg`, and a plain object's own receiver,
+  // are untouched: the host chose those, and `obj.fn()` and `ns.fn()` call
+  // what they always did.
+  const fromContextChain = contextResolved === true
+    && (receiver === st.context || receiver === st.context?.original);
+  const thisArg = fromContextChain ? guardedReceiver(st.context) : receiver;
+  return safeCall(fn, thisArg, args, optional, functionName);
 };
 
 /**
@@ -205,9 +220,14 @@ export const callMember = (st: EvalState, [object, propertyName, fn]: readonly u
  *
  * A context with a member-write policy is asked, before the call, about a
  * built-in that writes into its receiver or its first argument - see
- * `consultMethodWrite`. The receiver asked about is the one the call is made
- * with: the member's object, a prior scope's `thisArg`, or the context itself
- * for a bare call. A context without a policy pays one field read per call.
+ * `consultMethodWrite`. The receiver asked about is the write target: the
+ * member's object, a prior scope's `thisArg`, or the context itself for a
+ * bare call. A context without a policy pays one field read per call.
+ *
+ * That is no longer the same object the call is made with. A bare call's
+ * `this` is a guarded view of the context (`context-receiver.ts`), while the
+ * policy keeps the real one - a policy decides about the object that is
+ * written, and the view is not it.
  */
 export const callExpressionVisitor = (node: CallExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
 
@@ -235,29 +255,11 @@ export const callExpressionVisitor = (node: CallExpression, st: EvalState, callb
     if (created) {
       consultMethodWrite(st, created, caller, st.context, args);
     }
-    const value = safeCall(caller, st.context, args, node.optional, functionName);
+    // A bare call's `this` is a guarded view, not the context itself
+    // (`context-receiver.ts`).
+    const value = safeCall(caller, guardedReceiver(st.context), args, node.optional, functionName);
     pushVisitorResult(node, st, value);
   }
 
   afterVisitor(node, st);
-}
-
-export const evaluateCall = (node: CallExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
-  callback(node.callee, st);
-  const caller = popVisitorResult(node, st);
-
-  const args = node.arguments.map((argument) => {
-    callback(argument, st);
-    const value = popVisitorResult(node, st);
-    return value;
-  });
-
-  // Get function name for security checks
-  let functionName: string | undefined;
-  if (node.callee.type === 'Identifier') {
-    functionName = node.callee.name;
-  }
-
-  const value = safeCall(caller, st.context, args, false, functionName);
-  return value;
 }

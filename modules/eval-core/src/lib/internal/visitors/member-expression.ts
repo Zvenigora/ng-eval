@@ -124,7 +124,14 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
       });
     }
 
-    return [thisValue ?? object, contextKey, value];
+    // The fourth slot is the receiver's *origin*, not its identity: true means
+    // the evaluator chose this receiver out of the context's own resolution
+    // chain, which is what `callMember` guards (`context-receiver.ts`). The
+    // identity alone cannot say it - `getThis` answers a key the original
+    // holds with the original, which is an ordinary host object - so the fact
+    // is carried from here, where it is known, rather than re-derived at the
+    // call, where it is not (`docs/a35/plan.md` § 8 q7).
+    return [thisValue ?? object, contextKey, value, true];
   } else if (object instanceof EvalScope) {
     // A global scope reads its object as the context does, with a bare
     // property access, so a blocklisted key is refused here as it is above.
@@ -148,7 +155,10 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
       });
     }
 
-    return [thisValue ?? object, key, value];
+    // A namespaced or global prior scope is not the context's own chain: its
+    // object, or the `thisArg` its host declared, is the receiver it has
+    // always been.
+    return [thisValue ?? object, key, value, false];
   } else {
     // For regular objects, we need both case-insensitive lookup AND prototype pollution protection
     let value: unknown;
@@ -254,6 +264,6 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
       });
     }
 
-    return [object, key, value];
+    return [object, key, value, false];
   }
 }

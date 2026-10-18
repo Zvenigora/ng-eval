@@ -66,7 +66,12 @@ describe('tagged template visitor - the tag through the call sandbox', () => {
     expect(obj.fetch).not.toHaveBeenCalled();
   });
 
-  it('T6: should call a benign tag with the cooked strings and the values, and the context as this', () => {
+  it('T6: should call a benign tag with the cooked strings and the values, and a guarded view as this', () => {
+    // **Deliberate contract change**, `eval-core` 0.13.0
+    // (`docs/a35/plan.md` § 8 q7, `docs/backlog.md` A39). Up to 0.12.1 this
+    // asserted `self` *was* `state.context`. A bare tag now receives a
+    // guarded view of it (`context-receiver.ts`), as a bare call does, so the
+    // assertion names what the view is rather than dropping the claim.
     const calls: { self: unknown; args: unknown[] }[] = [];
     const tag = function (this: unknown, ...args: unknown[]) {
       calls.push({ self: this, args });
@@ -78,7 +83,12 @@ describe('tagged template visitor - the tag through the call sandbox', () => {
 
     expect(calls.length).toBe(1);
     expect(calls[0].args).toEqual([['a', 'b', 'c'], 1, 2]);
-    expect(calls[0].self).toBe(state.context);
+
+    const self = calls[0].self as object;
+    expect(self).not.toBe(state.context);
+    expect(Reflect.ownKeys(self)).toEqual([]);
+    expect(Object.getPrototypeOf(self)).toBeNull();
+    expect(typeof (self as { push: unknown }).push).toBe('function');
   });
 
   it('T7: should refuse a computed member tag by its key, as a computed member call is', () => {
