@@ -1,6 +1,45 @@
 # A35 — dangerous function values past the call sandbox (`@zvenigora/ng-eval-core`)
 
 **Date**: October 14, 2026
+**Revision**: 11 — decision A, in its own commit, before step 7 is built. **A39 is closed
+completely in 0.13.0 — the value route *and* the receiver — not left as a limit.** Revision 10's
+step 7 carried a hard receiver gate (§ 4, step 7, criterion 4); it was measured through the real
+service and **all three receivers reached** (R1, R2, R3), so positional `this` alone does not close
+A39. The receiver a bare call, a bare tag and `this.fn()` (for a lookup-resolved key) passes is
+`st.context` itself, and a native `this`-using method reached off a literal returns it as data, past
+both the funnel and the value-route refusal. Measured by ID, three prototypes:
+- **inert receiver** (frozen null-proto object): P1/P2/G1/R1/R2/R3 all refuse, but it breaks
+  `eval-signals` *functionally* — a source function's `this.push(...)` (the async stranding fixture)
+  throws, so the signal stops reading its source.
+- **guarded receiver** (a view that forwards `push`/`pop` to the real context and exposes nothing
+  else of it — no field, no accessor, no prototype path back to it): P1/P2/G1/R1/R2/R3 and three
+  proto/`Reflect` bypasses all refuse, zero residual, and `eval-signals`' functional behaviour is
+  **preserved** — the only failures left are identity pins. So A is clean and is chosen.
+
+Seven things change:
+- **The receiver `this` is consumer-observable**, with evidence: `eval-signals`' README (the
+  "resolution" bullet on `EvalContext.push`/`pop`) documents to consumers that a source function can
+  push a scope onto the context through its `this`. Narrowing that `this` is a breaking change, so
+  **`eval-signals` ships 0.6.0**, and **`eval-forms` 0.6.0** (it must raise its `eval-signals` floor
+  to the first version that admits `eval-core` 0.13.0, as 0.5.0 did).
+- **Step 7 splits in two, both in 0.13.0**: step 7 is the value route (positional `this`, probes
+  P1/P2/G1), step 8 is the receiver guard (probes R1/R2/R3 and the bypasses B1/B2/B3).
+- **The guarded receiver is a real module**, `context-receiver.ts`, with its own probes. The
+  positional-`this` mark and refusal are `this-position.ts` (step 7).
+- **The write policy keeps the real context** as its write target; only the function's `this`
+  becomes the view. Confirmed: tag T9 and `member-write-policy.methods.spec.ts` pass unchanged; the
+  four function-`this` identity pins (`eval-core` `scope-this` (e) and tag T6; `eval-signals`
+  `signal-context` ×2) are rewritten to assert the guard contract positively — strengthened, not
+  weakened.
+- **The release folds into one commit** (step 10): `@nx/dependency-checks` fails `lint` the moment
+  `eval-core` reads 0.13.0 while a downstream peer still says `<0.13.0`, so all three bumps and every
+  peer change land together (as 3466c80 did). Step 11 is the post-publish commit.
+- **The dead `evaluateCall` is deleted** in step 8 (no caller, no spec reference, not in the
+  published surface), removing a latent receiver site.
+- **U3 covers the receiver route**, patched 0.13.0, and its CVSS impact is corrected to code
+  execution (§ 5). **§ 8 q6** records this decision, § 9 item 6 covers both routes, Phase 10 resumes
+  after step 11, and `.claude/skills/step/SKILL.md` is retargeted to steps 7–11.
+
 **Revision**: 10 — § 8 q4 decided, in its own commit, before step 7. **`this` is allowed by
 position, and refused anywhere else**: as the object of a member read it keeps resolving against the
 context, and wherever else it is evaluated it throws. M15 measured every candidate first. Four
@@ -214,18 +253,22 @@ gains `.claude/skills/step/SKILL.md`, whose per-step counts the gate changed.
 
 Both downstream peer ranges admit 0.12.1: `eval-signals`' `>=0.11.0 <0.13.0` and `eval-forms`'
 `>=0.12.0 <0.13.0`. Neither admits 0.13.0.
-**Also touches**: no downstream code through step 8. `eval-signals` and `eval-forms` run as the
-downstream witnesses, with their counts unchanged. For 0.13.0 to reach them, each widens its peer
-range in a release of its own (step 9).
+**Also touches**: no downstream code through step 9. `eval-signals` and `eval-forms` run as the
+downstream witnesses. Their suites change only by the four function-`this` identity pins step 8
+rewrites (two in `eval-signals`, test-only; none in `eval-forms`) and the three value-route D5 pins
+step 7 rewrites in `eval-forms` (test-only); their counts are unchanged. For 0.13.0 to reach them,
+**`eval-signals` ships 0.6.0 and `eval-forms` 0.6.0** — a breaking receiver contract in the first,
+a forced floor raise in the second (Revision 11) — folded into step 10's single release commit.
 **Fixes**:
 - [A36](../backlog-retired.md#a36) in step 1;
-- [A35](../backlog.md#a35) in steps 2 and 4, and its route through `this`, [A39](../backlog.md#a39),
-  in step 7;
+- [A35](../backlog.md#a35) in steps 2 and 4, and its route through `this` and the receiver,
+  [A39](../backlog.md#a39), in steps 7 (value route) and 8 (receiver guard);
 - [A37](../backlog-retired.md#a37) in step 3.
 
 **Pauses**: Phase 10 after its step 2 ([plan](../documentation/phase-10-plan.md)). This plan runs to
-its end before Phase 10 resumes at its step 3: steps 7–9 run consecutively after step 6, so 0.13.0
-closes the route through `this` without Phase 10 in between (Revision 7, § 2).
+its end before Phase 10 resumes at its step 3: steps 7–11 run consecutively after step 6, so 0.13.0
+closes A39 — the value route and the receiver — without Phase 10 in between (Revision 7, Revision 11,
+§ 2). Phase 10 resumes at its step 3 after step 11.
 **Source**: the requests of 2026-10-14. Phase 10 step 2's review found the class, which was then
 measured route by route. The decisions in § 2 were fixed before this plan was committed.
 **Objective**: an expression cannot call a dangerous function value that the context holds or that
@@ -233,9 +276,12 @@ is reachable from it, whatever name it uses. Nor can it hand one to native code 
 own values: an argument, a receiver, an element, a branch or a result. *Narrowed by Revision 6*:
 - **Two routes reach native code without passing through the walk's values**, and are stated
   limits: a container the host provides (finding 3), and `this` (finding 8).
-- **Step 7 closes the route through `this`.**
-- **Through step 4, every existing assertion holds.** Step 7 changes what `this` evaluates to, so
-  its own gate decides which assertions it changes (§ 8 q4).
+- **Steps 7 and 8 close A39** (*Revision 11*): step 7 the value route (positional `this`), step 8
+  the receiver — a bare call, a bare tag and `this.fn()` for a lookup-resolved key hand native code
+  a **guarded view** of the context, not the context itself. A host container (finding 3) stays a
+  limit.
+- **Through step 4, every existing assertion holds.** Steps 7 and 8 change what `this` evaluates to
+  and what receiver a call passes, so their gates decide which assertions change (§ 8 q4, q6).
 
 **Conclusion, stated first so the rest reads as its argument**:
 - Fix A36 first and alone: the tag call goes through the sandbox.
@@ -257,8 +303,11 @@ own values: an argument, a receiver, an element, a branch or a result. *Narrowed
   `this` lets native code reach a listed function the context holds, past the funnel (finding 8).
   - That route and a host container are stated limits.
   - Closing `this` is a breaking change: step 7, for 0.13.0.
+  - **The receiver is a second half of the same route** (*Revision 11*): the context is also handed
+    to native code as a call's, a tag's and `this.fn()`'s `this`, with no `this` expression at all.
+    Step 8 replaces it with a guarded view. A host container (finding 3) stays a limit.
 - Then `SECURITY.md` states the protections and the limits. The release shape decides whether
-  0.12.1 ships before 0.13.0 (§ 2). A35 retires with A39, once `this` is closed.
+  0.12.1 ships before 0.13.0 (§ 2). A35 retires with A39, once `this` and the receiver are closed.
 
 ---
 
@@ -724,11 +773,13 @@ Each step is one commit, leaves all three projects and the workspace root green,
 session. "Wrong" in a criterion names the change the executor makes to show the criterion goes red.
 The report gives the failure count for each and reads which cases failed, case by case. Steps 1–4 add
 `[Unreleased]` lines to `modules/eval-core/CHANGELOG.md` with their change: › Security for steps 1, 2
-and 4, and › Fixed for step 3. No version moves until the first release step: step 6 under shape (i),
-step 9 under shape (ii) (§ 2).
+and 4, and › Fixed for step 3. No version moves until a release step: step 6 (0.12.1) and step 10
+(0.13.0, with `eval-signals` 0.6.0 and `eval-forms` 0.6.0) (§ 2).
 
-*Revised by Revision 6.* Steps 5 and 6 run under shape (i) only. Steps 7–9 are new, and run under
-either shape. *Revision 7 chose shape (i)*, so every step runs.
+*Revised by Revision 6.* Steps 5 and 6 run under shape (i) only. Steps 7–11 close A39, and run under
+shape (i), which *Revision 7 chose*. *Revision 11* split the old step 7 into the value route (7) and
+the receiver guard (8), made the old documents/retire step 9 and the release steps 10 (commit) and 11
+(post-publish).
 
 | Step | Subject | Files (main) | Tests: `eval-core` / `eval-signals` / `eval-forms` | Shape | Ships in | State |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -738,11 +789,15 @@ either shape. *Revision 7 chose shape (i)*, so every step runs.
 | 4 | The funnel: every read through the walk's own stack | `visitor-result.ts`, `dangerous-values.ts`, the marks in `call-expression.ts`, `new-expression.ts`, `tagged-template-expression.ts` and `unary-expression.ts`; the spec; `.claude/skills/step/SKILL.md` | **+21** / 0 / 0 | both | the first release | done |
 | 5 | `SECURITY.md` for 0.12.1: the funnel as a protection, the route through `this` and a host container as limits, the mitigations first | `SECURITY.md`, `public-api.spec.ts`'s allowlist if it needs entries | 0 / 0 / 0 | (i) only | no package | done |
 | 6 | Release `eval-core` 0.12.1 | `modules/eval-core/package.json`, `CHANGELOG.md`; the post-publish commit's register, `CLAUDE.md` and this document | 0 / 0 / 0 | (i) only | `eval-core` 0.12.1 | done |
-| 7 | A39: `this` by position, refused anywhere else | `member-expression.ts`'s mark, `this-expression.ts`, `identifier.ts`; a new spec; `CHANGELOG.md`; two `eval-forms` specs, test-only (Revision 10) | set at its gate / 0 / 0 | both | `eval-core` 0.13.0 | |
-| 8 | `SECURITY.md`'s `this` limit becomes a protection; A39 and A35 retired | `SECURITY.md`, the register; under shape (ii), step 5's text too | 0 / 0 / 0 | both | no package | |
-| 9 | Release `eval-core` 0.13.0; each downstream package then widens its peer range | `modules/eval-core/package.json`, `CHANGELOG.md`; the downstream releases are planned with step 7 | 0 / 0 / 0 | both | `eval-core` 0.13.0 | |
+| 7 | A39 value route: `this` by position, refused anywhere else | new `this-position.ts`; `member-expression.ts`'s mark, `this-expression.ts`, `identifier.ts`; a new spec (P1/P2/G1); `CHANGELOG.md`; two `eval-forms` specs, test-only (Revision 10) | set at its gate / 0 / 0 | both | `eval-core` 0.13.0 | |
+| 8 | A39 receiver guard: a guarded view, not the context, as `this` | new `context-receiver.ts`; the receiver at `call-expression.ts`, `tagged-template-expression.ts`, `callMember`; **delete** dead `evaluateCall`; a new spec (R1/R2/R3, B1/B2/B3); rewrite `scope-this` (e) and tag T6; `CHANGELOG.md`; two `eval-signals` `signal-context` pins, test-only (Revision 11) | set at its gate / 0 / 0 | both | `eval-core` 0.13.0 | |
+| 9 | `SECURITY.md`'s `this` and receiver limits become protections; A39 and A35 retired | `SECURITY.md`, the register | 0 / 0 / 0 | both | no package | |
+| 10 | Release commit: `eval-core` 0.13.0, `eval-signals` 0.6.0, `eval-forms` 0.6.0, all peers consistent in one commit | all three `package.json`, each `CHANGELOG.md`, each README's peer block; `eval-signals`' `### Breaking` entry and its guarded-receiver README bullet | 0 / 0 / 0 | both | the three releases | |
+| 11 | Post-publish commit, after the maintainer publishes and tags (ordered: core → signals → forms) | `docs/backlog.md`, `docs/backlog-retired.md`, `CLAUDE.md`, CHANGELOG dates, this document | 0 / 0 / 0 | both | — | |
 
-From 2451, `eval-core` is at 2509 once step 4 commits. Step 7 sets its own count at its gate.
+From 2451, `eval-core` is at 2509 once step 4 commits. Steps 7 and 8 each set their own count at
+their gate; `eval-signals` and `eval-forms` stay at 438 / 375 (the rewritten pins are 1:1
+replacements, not additions).
 
 ### Step 1 — A36: the tag call through the sandbox
 
@@ -1319,9 +1374,12 @@ From 2451, `eval-core` is at 2509 once step 4 commits. Step 7 sets its own count
   - **Plan correction**: the post-publish commit's files, which this step's text did not list. Its
     precedents, the 0.11.1 and 0.12.0 post-publish commits, touched the same files.
 
-### Step 7 — A39: `this` by position, refused anywhere else
+### Step 7 — A39 value route: `this` by position, refused anywhere else
 
-*Added by Revision 6. Specified by Revision 10, from § 8 q4's decision.*
+*Added by Revision 6. Specified by Revision 10, from § 8 q4's decision. Split from the receiver
+guard by Revision 11, which found the step-7 receiver gate reached (now step 8).*
+- **New**: `internal/visitors/this-position.ts`, the positional mark and the refusal. `markThisPositional`
+  / `isThisPositional` over a `WeakSet<AnyNode>`, as the funnel's `exemptNodes` is, and `refuseThisValue`.
 - **Edit**, all in `internal/visitors/`:
   - `member-expression.ts`: `evaluateMember` marks its object node before visiting it, when that
     node is a `this`. That means a `ThisExpression`, or under `caseInsensitive` an identifier matching
@@ -1332,87 +1390,194 @@ From 2451, `eval-core` is at 2509 once step 4 commits. Step 7 sets its own count
   - `identifier.ts`: the same, in both visitors, for an identifier that matches `this` under
     `caseInsensitive`.
 
-  Three details are fixed at the confirmation gate: where the mark and the refusal live
-  (`dangerous-values.ts` beside the funnel's marks, or a module of their own), the refusal's
-  message, and whether `typeof this` is exempt. No existing case evaluates `typeof this`.
+  Two details are fixed at the confirmation gate: the refusal's message, and whether `typeof this`
+  is exempt. No existing case evaluates `typeof this`. The mark and refusal live in
+  `this-position.ts` (Revision 11).
 - **New**: a spec, which holds:
   - the route cases P1, P2 and G1, through `EvalService`;
-  - the receiver cases, criterion 4;
-  - cases for `this` refused outside a member's object, under both case modes.
+  - cases for `this` refused outside a member's object (as a value, an argument, an operand), under
+    both case modes;
+  - the kept positional cases: `this.k`, `this["k"]`, `this.fn()`, and `This.k` under
+    `caseInsensitive`.
 
   Its name and its count are fixed at the gate. The route cases commit only in this commit (§ 2).
-- **Edit**: `modules/eval-core/CHANGELOG.md`'s `[Unreleased]`, with the breaking change and the
-  three assertions it changes. Its wording is fixed at the gate. Its prose about the route stays at
-  § 2's limit.
-- **Test-only edits downstream** (Revision 10):
+- **Edit**: `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Breaking, with the value-route change
+  and the assertions it changes. Its wording is fixed at the gate. Its prose stays at § 2's limit.
+- **Test-only edits downstream** (Revision 10, corrected by Revision 11):
   - `modules/eval-forms/reactive/src/lib/field-schema.spec.ts`;
   - `modules/eval-forms/signals/src/lib/rules.spec.ts`.
 
-  Their three D5 context-composition pins evaluate `this` outside a member's object, to obtain the
-  `EvalContext` (M15). They obtain it another way instead, through a bare call's receiver, which `eval-signals`'
-  `signal-context.spec.ts` pins. They keep every assertion they make about the context's `lookups`.
-  No library file under `modules/eval-signals/` or `modules/eval-forms/` changes. If criterion 4
-  changes a bare call's receiver, the capture is reopened at that replan.
-- **Breaking.** The three pins are the only existing assertions that change (M15). Each was green
-  against 0.12.1, and each is listed as breaking.
-- **Scope.** The rest of `internal/visitors/` and `EvalContext` are outside the step. A change to
-  either is a stop-and-replan.
+  Their three D5 context-composition pins capture the `EvalContext` with `keep(this)` — `this` passed
+  as a call argument — then inspect its `lookups` (M15). The value route refuses `this` as an
+  argument, and step 8's guard makes the call receiver a view, so **the context is no longer
+  capturable from inside an expression — by design**. Revision 10's planned rewrite (capture through
+  a bare call's receiver) is therefore superseded. The pins instead assert the resolver
+  **behaviourally** — a bound field / registered rule resolves a form key to its value through the
+  pushed resolver — which needs no captured context and holds through step 8. The structural
+  "only lookup is the form / memo resolver" assertion already lives at the `createFieldContext`
+  level in `modules/eval-forms/src/lib/field-context.spec.ts`. The exact rewrite is fixed at step 7's
+  gate and must stay green through step 8. No library file under `modules/eval-signals/` or
+  `modules/eval-forms/` changes; `eval-forms` stays at 375.
+- **Breaking.** These three pins are the only existing assertions step 7 changes (M15). Each was
+  green against 0.12.1, and each is listed as breaking.
+- **Scope.** The rest of `internal/visitors/`, the receiver, and `EvalContext` are outside this step.
+  The receiver is step 8. A change to `EvalContext` is a stop-and-replan.
 - **Exit criteria**:
   1. **The gate is green.** `eval-signals` stays at 438 and `eval-forms` at 375. `eval-core`'s count is
      fixed at the gate. `performance.spec.ts` is green and untouched.
-  2. **The route closes.** P1, P2 and G1 are each refused where `this` escapes. Each is red against
-     this step's parent commit. Probe (i): remove the refusal, and each reaches. Read case by case.
+  2. **The value route closes.** P1, P2 and G1 are each refused where `this` escapes as a value. Each
+     is red against this step's parent commit. Probe (i): remove the refusal, and each reaches. Read
+     case by case.
   3. **`this` as a member's object is unchanged.** Every existing case in the three projects holds
-     except the three pins: `this.k`, `this["k"]`, `this.fn()`, and `This.k` under `caseInsensitive`.
-     Probe (ii): drop the mark. M15's not-kept column predicts failures in all three projects. Read
-     which ones fail.
-  4. **The receivers, a hard gate.** Three receivers must not reach a listed function:
-     - a bare call's receiver;
-     - a bare tag's receiver;
-     - `this.fn()`'s receiver for a key a lookup resolves.
-
-     Each is checked through the real service, `EvalService`, on the real fix, not through the
-     low-level `evaluate` entry. M15 did not measure them. **A reach is a stop-and-replan, not a
-     patch in place.**
-  5. **The surface.** The built `.d.ts` is byte-identical to 0.12.1's tarball. The change is in
+     except the three D5 pins: `this.k`, `this["k"]`, `this.fn()`, and `This.k` under
+     `caseInsensitive`. Probe (ii): drop the mark. M15's not-kept column predicts failures in all
+     three projects. Read which ones fail.
+  4. **The surface.** The built `.d.ts` is byte-identical to 0.12.1's tarball. The change is in
      internal visitors only.
-  6. **Disclosure.** The probe-pattern grep is clean over every added line outside the route cases.
-     Each added `this` in code is a member's object or the prose limit.
-- **Disclosure** (Revision 7, § 2). This is the step that ends the embargo on the route's detail.
+  5. **Disclosure.** The probe-pattern grep is clean over every added line outside the new spec's
+     cases. Each added `this` in code is a member's object or the prose limit.
+- **Disclosure** (Revision 7, § 2). Step 7 begins to end the embargo on the route's detail; step 8
+  completes it.
   - **The spec cases that hold the probe expressions commit only with the fix, in this one commit.**
-    They do not land on the default branch before step 7's code does, so no public commit reproduces
-    the route while a release is still vulnerable to it.
-  - **0.13.0 is published promptly after step 9 commits** (step 6's 0.12.1 carries the open route
-    until then), and the advisory (§ 5, U3) follows that publish. Steps 7–9 run consecutively, ahead
-    of Phase 10, to keep that window short.
-- **Category**: a breaking change on a published path, released in step 9 as 0.13.0.
+    They do not land on the default branch before step 7's code does.
+  - **0.13.0 is published promptly after step 11 commits**, and the advisory (§ 5, U3) follows that
+    publish. Steps 7–11 run consecutively, ahead of Phase 10, to keep the window short.
+- **Category**: a breaking change on a published path, released in step 10 as 0.13.0.
 
-### Step 8 — `SECURITY.md`'s `this` limit becomes a protection; A39 and A35 retired
+### Step 8 — A39 receiver guard: a guarded view, not the context, as `this`
 
-*Added by Revision 6.*
+*Added by Revision 11, from decision A. The step-7 receiver gate (Revision 10, criterion 4) reached
+on all three receivers, measured through the real service, so positional `this` alone does not close
+A39: the context is also handed to native code as a call's, a tag's and `this.fn()`'s `this`, with no
+`this` expression at all.*
+- **New**: `internal/visitors/context-receiver.ts`, the guarded receiver. `guardedReceiver(context)`
+  returns a `Proxy` over the real `EvalContext`, cached per context in a `WeakMap`: it forwards an
+  allowlist of scope-stack methods (`push`, `pop`) bound to the real context, returns undefined for
+  every other property, reports no own keys (`ownKeys` → `[]`, `getOwnPropertyDescriptor` →
+  undefined), and a null prototype (`getPrototypeOf` → null). So nothing else of the context is
+  reachable — no internal field, no accessor, no prototype path — while a source function's
+  documented `this.push(...)` / `this.pop(...)` still work (`eval-signals`' README; finding below).
+  The allowlist and whether `has`/`set` are trapped are fixed at the gate.
+- **Edit**, all in `internal/visitors/`:
+  - `call-expression.ts`: the **bare** call passes `guardedReceiver(st.context)` to `safeCall`;
+    `callMember` passes it when the resolved receiver is `st.context` (a member call on `this` for a
+    lookup-resolved key), and the real receiver otherwise (`obj.fn()`, `ns.fn()` unchanged).
+  - `tagged-template-expression.ts`: the **bare** tag passes `guardedReceiver(st.context)` to
+    `safeCall`.
+  - **The write policy keeps the real context.** `consultMethodWrite` is still called with
+    `st.context`, not the view, at every site, so the member-write policy sees the real write target.
+    Only the function's `this` becomes the view. Confirmed at the prototype: tag T9 and
+    `member-write-policy.methods.spec.ts` pass unchanged.
+- **Delete**: `call-expression.ts`'s `evaluateCall`. It is dead — no caller anywhere in the repo, no
+  `*.spec.ts` reference (grep-confirmed before deleting, Revision 11) — and not in the published
+  surface (`src/public-api.ts` does not re-export `internal/visitors`, `export-list.spec.ts` pins
+  that). So removing it changes no `.d.ts` and eliminates a latent fourth receiver site that carried
+  `st.context` as its `this`.
+- **New**: a spec, which holds the receiver route cases R1, R2 and R3 through `EvalService`, and the
+  proto/`Reflect` bypass cases B1, B2 and B3. Its name and count are fixed at the gate. The cases
+  commit only in this commit (§ 2).
+- **Rewrite** (strengthened, not weakened): the two `eval-core` function-`this` identity pins —
+  `eval.service.scope-this.spec.ts` (e), and T6 in `tagged-template-expression.spec.ts` — stop
+  asserting the receiver *is* `st.context` by identity and assert the guard contract positively:
+  the receiver resolves `push`/`pop`, exposes nothing else of the context, and has a null prototype.
+  Each is listed as breaking.
+- **Test-only edits downstream** (Revision 11): the two `eval-signals` `signal-context.spec.ts` pins
+  ("the `this` argument of a context function": a bare call; a lookup-resolved `this.fn()`) are
+  rewritten the same way — the function's `this` is the guarded view, resolving `push`/`pop` and
+  hiding the rest. They keep every other assertion; `eval-signals` stays at 438. They ship in
+  `eval-signals` 0.6.0 (step 10).
+- **Edit**: `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Breaking, with the receiver change.
+  Prose stays at § 2's limit.
+- **Breaking.** The two `eval-core` pins and the two `eval-signals` pins are the only existing
+  assertions step 8 changes. Each was green against step 7's commit, and each is listed as breaking.
+- **Scope.** `EvalContext` is outside the step — the guard wraps it, and does not change it. A change
+  to `EvalContext` is a stop-and-replan.
+- **Exit criteria**:
+  1. **The gate is green.** `eval-signals` stays at 438 and `eval-forms` at 375. `eval-core`'s count is
+     fixed at the gate. `performance.spec.ts` is green and untouched.
+  2. **The receiver route closes, with no residual and no bypass.** R1, R2 and R3 are each refused;
+     B1, B2 and B3 (proto, `ownKeys`, `getOwnPropertyDescriptor`) are each refused. Each R case is red
+     against this step's parent commit. Probe (i): remove the guard, and each R case reaches. Read
+     case by case.
+  3. **The documented `this.push` / `this.pop` survive.** `eval-signals`' async-signal suite is green,
+     including the scope-depth-restore (criterion 10) case whose source calls `this.push(...)`. Probe
+     (ii): drop `push`/`pop` from the allowlist, and that case goes red. The write policy still sees
+     the real context: T9 and `member-write-policy.methods.spec.ts` are unchanged.
+  4. **The surface.** The built `.d.ts` is byte-identical to 0.12.1's tarball — `context-receiver.ts`
+     is internal and `evaluateCall`'s deletion is not in the published surface.
+  5. **Disclosure.** The probe-pattern grep is clean over every added line outside the new spec's
+     cases.
+- **Category**: a breaking change on a published path, released in step 10 as 0.13.0.
+
+### Step 9 — `SECURITY.md`'s `this` and receiver limits become protections; A39 and A35 retired
+
+*Added by Revision 6. The receiver added by Revision 11.*
 - **Edit**:
-  - `SECURITY.md`: the route through `this` moves from the limits to the protections. Under shape
-    (ii), this step also carries step 5's text.
+  - `SECURITY.md`: the route through `this` **and** the receiver both move from the limits to the
+    protections. A host container (finding 3) stays a limit.
   - `docs/backlog.md` and `docs/backlog-retired.md`: A39 and A35 retired as fixed and not yet
     released, with their index rows re-pointed and the links the gate lists re-pointed. "Work in
     flight" is updated.
   - This document: the outcome.
-- **Exit criteria**: step 5's, with every route in findings 1 and 8 accounted for.
+- **Exit criteria**: step 5's, with every route in findings 1 and 8 accounted for, the receiver
+  included.
 - **Category**: documents. Ships in no package.
 
-### Step 9 — Release `eval-core` 0.13.0
+### Step 10 — Release commit: `eval-core` 0.13.0, `eval-signals` 0.6.0, `eval-forms` 0.6.0
 
-*Added by Revision 6.*
-- **The release commit**: bump `modules/eval-core/package.json` to 0.13.0, and move the
-  `[Unreleased]` items under `## [0.13.0] - <date>`, with step 7's breaking change stated first.
-- **Downstream.** Neither peer range admits 0.13.0: `eval-signals`' is `>=0.11.0 <0.13.0` and
-  `eval-forms`' is `>=0.12.0 <0.13.0`. Step 6's criterion 1 reads both downstream `lint` targets as
-  checking their range against `eval-core`'s version. So the bump cannot land alone: each range
-  widens in a release of its own. That is planned with step 7, where this plan's "no downstream
-  code" rule changes.
-- **Exit criteria**: set when step 7 is specified. They include the `.d.ts` against the previous
-  release's tarball, differing only as step 7 states.
-- **Category**: the release, a minor carrying a breaking change.
+*Added by Revision 6 (as a single `eval-core` release). Rewritten by Revision 11 into one combined
+commit, since the three must move together.*
+- **Why one commit.** `@nx/dependency-checks` fails `lint` the moment the repo's `eval-core` reads
+  0.13.0 while a downstream peer range still says `<0.13.0`, and again the moment `eval-signals`
+  reads 0.6.0 while `eval-forms`' peer says `<0.6.0`. So all three bumps and every peer change land
+  in one commit, as the Phase 9 release (3466c80) did for the same reason. The gate is green on this
+  commit because every peer is consistent within it.
+- **`eval-core` 0.13.0.** Bump `modules/eval-core/package.json`; move the `[Unreleased]` items under
+  `## [0.13.0] - <date>`, with the two breaking changes (the value route, then the receiver) stated
+  first.
+- **`eval-signals` 0.6.0.** Bump `modules/eval-signals/package.json`; widen its `eval-core` peer
+  `>=0.11.0 <0.13.0` → `>=0.11.0 <0.14.0`. Its `CHANGELOG.md` gains a **`### Breaking`** entry: a
+  context function's `this` is now a guarded view of the `EvalContext`, not the context itself —
+  `push`/`pop` still work and nothing else of the context is reachable — and the two `signal-context`
+  pins step 8 rewrote are the assertions that change. Its README's resolution bullet (the one on
+  `EvalContext.push`/`pop`, lines 559–561 at this revision) is updated to describe the guarded
+  receiver: a source function's `this` resolves `push`/`pop` against the context but exposes nothing
+  else. The README peer block shows the new range. (0.13.0 has shipped by this commit, so the entry
+  may be concrete; it still prints no route expression.)
+- **`eval-forms` 0.6.0.** Bump `modules/eval-forms/package.json`; widen its `eval-core` peer
+  `>=0.12.0 <0.13.0` → `>=0.12.0 <0.14.0`, and raise its `eval-signals` floor `>=0.5.1 <0.6.0` →
+  `>=0.6.0 <0.7.0` (the first `eval-signals` that admits `eval-core` 0.13.0, as 0.5.0 raised the floor
+  to the first that admitted 0.12.0). Its `CHANGELOG.md` records the floor raise and the forwarded
+  behavioural change, and names the three D5 test-only edits step 7 made. The README peer block shows
+  the new ranges.
+- **Exit criteria**:
+  1. The gate is green on the combined commit. Counts unchanged from step 8.
+  2. Each built `.d.ts` differs from its previous release's tarball only as steps 7–8 state:
+     `eval-core` byte-identical to 0.12.1 (the change is internal); `eval-signals` and `eval-forms`
+     by documentation comments and peer metadata only.
+  3. Each `CHANGELOG`'s `[Unreleased]` is moved under the new version, `eval-core`'s breaking
+     entries first.
+  4. Then CONTRIBUTING's Releasing steps 3–6 by the maintainer: publish in order
+     **`eval-core` → `eval-signals` → `eval-forms`**, confirm each with `npm view`, and tag
+     `eval-core@0.13.0`, `eval-signals@0.6.0`, `eval-forms@0.6.0` at this commit. Publishing and
+     tagging are the maintainer's actions (§ 5).
+- **Category**: the release — `eval-core` a minor carrying a breaking change, `eval-signals` a
+  breaking minor, `eval-forms` a breaking minor (floor raise).
+
+### Step 11 — Post-publish commit
+
+*Added by Revision 11 (the post-publish half of Revision 6's release step).*
+- **After the maintainer publishes and tags** all three (CONTRIBUTING's Releasing step 6):
+  - `docs/backlog.md`: the Publication status rows for the three, the tag count, the Register history
+    row, "Work in flight", and the release in A35's and A39's rows and entries;
+  - `docs/backlog-retired.md`: the release in A35's and A39's status lines;
+  - `CLAUDE.md`: the three published versions;
+  - each `CHANGELOG.md`: the heading's date, only where npm's differs;
+  - this document: the outcome.
+- **Exit criteria**: the gate is green; `tools/release-tags.mjs` is green on this commit, with every
+  Publication status row's tag present at the commit it names.
+- **Category**: the release's docs-only post-publish commit. Then U3 (§ 5), the advisory, after the
+  publish.
 
 ---
 
@@ -1422,17 +1587,31 @@ From 2451, `eval-core` is at 2509 once step 4 commits. Step 7 sets its own count
 | :--- | :--- | :--- |
 | U1 | Enable private vulnerability reporting on the repository | Before U3, and before step 5 if `SECURITY.md`'s Reporting section is to point at the form in that commit |
 | U2 | Publish each release and push its tag, per CONTRIBUTING steps 3–5: `eval-core` 0.12.1, then 0.13.0 | After step 6's release commit, and after step 9's |
-| U3 | **One** GHSA advisory for `@zvenigora/ng-eval-core`, published **after 0.13.0**. Rated `CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:L/I:L/A:N`, **4.7 Medium**; affected `<= 0.12.1`, **patched 0.13.0**. It covers dangerous function values callable past the name-based call sandbox (A35, A39), and the unsandboxed tag call (A36). It describes 0.12.1 as partial hardening: it refuses those values at the callee and at every read through the walk, and leaves one route open that 0.13.0 closes. It names `new setTimeout("…")` under zone.js, and recommends a Content Security Policy without `'unsafe-eval'` as the mitigation that holds in every version. It prints no expression for the route through `this` (§ 2). *Revised by Revision 7*: it was patched 0.12.1, then one advisory per shape | After 0.13.0's U2 |
+| U3 | **One** GHSA advisory for `@zvenigora/ng-eval-core`, published **after 0.13.0**; affected `<= 0.12.1`, **patched 0.13.0**. It covers dangerous function values callable past the name-based call sandbox (A35, A39) — including the routes through `this` and through the call/tag/`this.fn()` **receiver** — and the unsandboxed tag call (A36). It describes 0.12.1 as partial hardening: it refuses those values at the callee and at every read through the walk, and leaves the `this`/receiver routes open, which 0.13.0 closes. It names `new setTimeout("…")` under zone.js, recommends a Content Security Policy without `'unsafe-eval'` as the mitigation that holds in every version, and names the patched downstream releases **`eval-signals` 0.6.0** and **`eval-forms` 0.6.0** (their floors are unchanged, so a consumer who reaches `eval-core` through them takes the fix by installing `eval-core` 0.13.0). It prints no route expression (§ 2). *Revised by Revision 7* (patched 0.12.1 → one advisory per shape); *by Revision 11* (the receiver route; the corrected CVSS below; the downstream names) | After 0.13.0's U2 |
 
-U3's rating, in two lines (Revision 3; it was "low"):
-- **AC:H**: the attack needs the host to have placed a listed function in the context, a condition
-  the expression's author does not control. AV:N, PR:N and UI:R read the expression as arriving from
-  elsewhere and evaluated in a victim's page.
-- **S:C, C:L, I:L**: the impact is code execution in the consumer's origin, through `eval` or a
-  string timer, beyond the evaluator's sandbox. That is scored as FIRST scores cross-site scripting.
+U3's rating — **code execution is the impact, so it is not `C:L/I:L`** (Revision 11; it was "low" in
+Revision 1, `C:L/I:L` in Revision 3). The **corrected provisional** vector is
+`CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:N` (High–Critical). The **final vector and numeric score
+are set in GitHub's advisory calculator at publish**; this is the provisional the entry commits to,
+and `C:L/I:L` is not shipped.
+- **C:H / I:H**: a successful attack runs arbitrary code in the consumer's origin, through `eval`,
+  the `Function` constructor or a string timer — full read and write of whatever that origin can
+  reach, beyond the evaluator's sandbox. Scored as FIRST scores a stored/DOM XSS that reaches script
+  execution, not as an information leak.
+- **S:C**: the impact crosses out of the evaluator's sandbox into the hosting origin.
+- **A:N provisionally**, set to **A:H at publish if a reachable availability impact is confirmed**
+  (arbitrary code can also hang or crash the page).
+- **AC:H**: the attack needs the host to have placed a listed function in the context — and, for the
+  `this`/receiver routes, ordinary built-ins too — a condition the expression's author does not
+  control.
+- **PR:N / UI:N**: reconsidered by the real trust model (Revision 11). The expression author is the
+  attacker and is untrusted (PR:N), and the expression is evaluated when the victim's page processes
+  it, with no interaction required (UI:N, where Revision 3 read UI:R). AV:N: the expression arrives
+  from elsewhere.
 
-U3's AC:H holds for the route through `this` as well: it needs the host to have placed a listed
-function, and ordinary built-ins, in the context, which the expression's author does not control.
+These precondition and impact lines hold for the `this` and receiver routes as for the others: each
+needs the host to have placed a listed function, and ordinary built-ins, in the context, which the
+expression's author does not control.
 
 After U3 comes a docs-only commit. It adds the advisory to `SECURITY.md`'s "Advisories for ng-eval"
 table, a section otherwise unchanged since Phase 10 step 2, and its ID to the retired entries of A35,
@@ -1445,12 +1624,12 @@ A36 and A39.
 | Gate | Command | Expected |
 | :--- | :--- | :--- |
 | Everything | `npx nx run-many -t lint test build --skip-nx-cache --output-style=static` | Green, every step |
-| `eval-core` tests | (in the above) | +10, +21, +6 and +21 in steps 1–4; step 7's is set at its gate; 0 in steps 5, 6, 8 and 9 |
-| `eval-signals` / `eval-forms` tests | (in the above) | Unchanged in every step |
+| `eval-core` tests | (in the above) | +10, +21, +6 and +21 in steps 1–4; steps 7 and 8 each set theirs at their gate; 0 in steps 5, 6, 9, 10 and 11 |
+| `eval-signals` / `eval-forms` tests | (in the above) | Unchanged in every step (438 / 375); steps 7 and 8 rewrite pins 1:1, not additions |
 | Perf | `internal/performance.spec.ts` | Green and untouched in every step; the gate |
 | Timing | Step 4's harness against step 3's bundle | Step 4 only: green on its line, fixed at that step's confirmation gate (step 4, criterion 4). A red stops the step |
-| Scope | `git diff --name-status` | The step's file list. No `R`. In steps 1–4 a non-spec `.ts` change outside `modules/eval-core/src/lib/internal/visitors/` is a stop-and-replan |
-| Surface | The built `.d.ts` against the previous release's tarball | Step 6: byte-identical to 0.12.0's. Step 9: differs only as step 7 states |
+| Scope | `git diff --name-status` | The step's file list. No `R`. In steps 1–4 a non-spec `.ts` change outside `modules/eval-core/src/lib/internal/visitors/` is a stop-and-replan; in steps 7–8, outside the `internal/visitors/` files each step names |
+| Surface | The built `.d.ts` against the previous release's tarball | Step 6: byte-identical to 0.12.0's. Step 10: `eval-core` byte-identical to 0.12.1's; `eval-signals` and `eval-forms` differ by documentation comments and peer metadata only |
 
 ---
 
@@ -1466,7 +1645,7 @@ A36 and A39.
 | The bound-name rule refuses a host's harmless wrapper | Low | Documented as a heuristic (§ 3.4) |
 | Async constructors not captured in a downlevelled realm | Certain in the test realm (finding 5) | Recorded by the helper (S1, S3); a limit in `SECURITY.md` (§ 3.4) |
 | A host container reaches native code | Certain (finding 3) | § 8 q2; `SECURITY.md`'s limit |
-| `this` hands native code a container the library supplies | Certain with `Object` in the context (finding 8) | [A39](../backlog.md#a39), step 7, in 0.13.0. Until then, a limit in `SECURITY.md` and the Security entry, with the mitigations first |
+| `this`, or a call/tag/`this.fn()` receiver, hands native code the context the library supplies | Certain with `Object` in the context (finding 8; Revision 11, R1–R3) | [A39](../backlog.md#a39), steps 7 (value route) and 8 (receiver guard), in 0.13.0. Until then, a limit in `SECURITY.md` and the Security entry, with the mitigations first |
 | A consumer feature-tests or compares a listed function: `obj.fetch != null`, `x instanceof Function` | Low | § 3.5 item 3 names these reads; the exemptions are not widened (§ 2) |
 
 ---
@@ -1522,9 +1701,11 @@ A36 and A39.
    - **The route.** A39's probes P1, P2 and G1 each reach a listed function on 0.12.1's bundle, so
      the probes are valid. Each is refused on the prototype's bundle, where `this` escapes (M15). The
      probes are held in the draft advisory (§ 2).
-   - **Not measured**: three receivers through which a function receives the `EvalContext` without
-     the expression evaluating `this`. They are a bare call's, a bare tag's, and `this.fn()`'s for a
-     key a lookup resolves. M15's bundles say nothing about them. Step 7's criterion 4 gates them.
+   - **Not measured by M15**: three receivers through which a function receives the `EvalContext`
+     without the expression evaluating `this`. They are a bare call's, a bare tag's, and `this.fn()`'s
+     for a key a lookup resolves. Revision 10 gated them at step 7's criterion 4; **Revision 11
+     measured them through the real service and all three reached** (R1, R2, R3), so positional `this`
+     alone does not close A39. The receiver is now § 8 q6, and step 8 closes it with a guarded view.
 
    *Until Revision 10 this question read as follows.* **Measure first, then decide.**
 
@@ -1556,15 +1737,43 @@ A36 and A39.
 
    The target is decided from the measurement, as a plan revision before step 7 is specified.
 5. **The release shape: (i) 0.12.1 then 0.13.0, or (ii) 0.13.0 alone?** Added by Revision 6.
-   *Decided 2026-10-16* (Revision 7): **(i)** (§ 2). Steps 7–9 run consecutively after step 6, ahead
+   *Decided 2026-10-16* (Revision 7): **(i)** (§ 2). Steps 7–11 run consecutively after step 6, ahead
    of Phase 10's step 3, so the window in which a public version carries the open route is as short
    as the work allows.
+6. **The receiver: how is A39 closed when `this` alone does not?** *Added and decided by Revision 11
+   (decision A), from a measurement taken first — the pattern § 8 q4 set.* The question arose because
+   step 7's receiver gate (q4's "not measured") reached on all three receivers.
+   - **What was measured, by ID / counts, through the real `EvalService`** (prototypes reverted, tree
+     clean; the route expressions are held in step 8's spec, not here, under § 2):
+     - **the open route**: R1 (a bare call's receiver), R2 (a bare tag's), R3 (`this.fn()` for a
+       lookup-resolved key) each reached a listed function on 0.12.1, past the funnel and past
+       positional `this`.
+     - **an inert receiver** (a frozen null-proto object): P1/P2/G1/R1/R2/R3 all refuse, but
+       `eval-signals` breaks *functionally* — a source function's documented `this.push(...)`
+       throws, so the async signal stops reading its source (0 / 2 functional failures in
+       `eval-signals`, plus identity pins).
+     - **a guarded receiver** (forwards `push`/`pop` to the real context; exposes nothing else of it;
+       `ownKeys` → `[]`; null prototype): P1/P2/G1/R1/R2/R3 and three
+       proto/`Reflect` bypasses (B1/B2/B3) all refuse, **zero residual**, and `eval-signals`'
+       functional behaviour is **preserved**. The only failures are identity pins: `eval-core`
+       `scope-this` (e) and tag T6, and `eval-signals` `signal-context` ×2 — four in all, which
+       step 8 rewrites to assert the guard contract positively. The write policy keeps the real
+       context, so tag T9 and `member-write-policy.methods.spec.ts` pass unchanged.
+   - **Decided: the guarded receiver** (step 8). It closes the receiver route with no residual and no
+     bypass, and preserves the one documented consumer use of the receiver `this` — a source function
+     calling `this.push`/`this.pop` (`eval-signals`' README).
+   - **Consumer-observable, so a breaking downstream release.** That the receiver `this` is the
+     `EvalContext` is documented to `eval-signals` consumers (the README resolution bullet on
+     `EvalContext.push`/`pop`), so narrowing it is breaking: **`eval-signals` 0.6.0**, and
+     **`eval-forms` 0.6.0** (a forced `eval-signals` floor raise). Both fold into step 10's single
+     release commit.
 
 ---
 
 ## 9. Contract after this lands
 
-*Revised by Revision 6.* Items 1–4 hold once step 4 lands. Item 6 holds once step 7 lands.
+*Revised by Revision 6.* Items 1–4 hold once step 4 lands. Item 6 holds once steps 7 and 8 land
+(*Revision 11*: the value route and the receiver).
 
 1. A call, `new` or tag whose callee value is in the identity set, or is a bound function of a
    listed name, is refused, whatever name it is reached by. The refusal uses today's message, or
@@ -1582,9 +1791,16 @@ A36 and A39.
    - protection for a listed global other than `setTimeout`, replaced on its own after the capture;
    - protection for a host function that forwards to a listed one (§ 3.4).
 
-   **Until step 7 lands**, also not provided: protection for the route through `this`
-   ([A39](../backlog.md#a39)), by which native code reaches a listed function the context holds. Its
-   detail is held in the draft advisory under § 2's disclosure rule.
-6. **Once step 7 lands**, `this` no longer lets native code reach the context that way. `this`
-   evaluates only as the object of a member read, as in `this.k`, `this["k"]` and `this.fn()`. Anywhere
-   else it is refused (§ 8 q4, Revision 10).
+   **Until steps 7 and 8 land**, also not provided: protection for A39 ([A39](../backlog.md#a39)),
+   by which native code reaches a listed function the context holds — through `this` as a value and
+   through the call/tag/`this.fn()` receiver. Its detail is held in the draft advisory under § 2's
+   disclosure rule.
+6. **Once steps 7 and 8 land**, native code can no longer reach the context either way (*Revision 11*).
+   - **The value route** (step 7): `this` evaluates only as the object of a member read, as in
+     `this.k`, `this["k"]` and `this.fn()`. Anywhere else it is refused (§ 8 q4, Revision 10).
+   - **The receiver** (step 8): a bare call, a bare tag and `this.fn()` for a lookup-resolved key
+     receive a **guarded view** of the context, not the context itself — `push`/`pop` resolve against
+     the real context, and nothing else of it is reachable: no field, no accessor, no prototype path
+     (§ 8 q6). The member-write policy still receives the real context as its write target.
+   A host container (finding 3) stays a limit. The receiver `this` is consumer-observable, so this
+   ships as a breaking release — `eval-core` 0.13.0, `eval-signals` 0.6.0, `eval-forms` 0.6.0.
