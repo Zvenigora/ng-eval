@@ -205,8 +205,9 @@ Two routes reach a listed function without passing through the walk's own values
 partial hardening, not a fix for the whole class. The [first mitigation](#mitigations) stops both.
 Each is listed again, with the other limits, under [Documented limits](#documented-limits).
 - **A route through `this`.** In 0.12.1 an expression can still reach a listed function the context
-  holds through `this`. 0.13.0 closes the route ([A39](docs/backlog.md#a39)). Until then, a host
-  stops it by placing no listed function in the context.
+  holds through `this` ([A39](docs/backlog.md#a39)). A host stops it by placing no listed function
+  in the context. A later release narrows it; **which release closes it entirely is not yet
+  settled**, so treat it as open and rely on the mitigation, not on a version.
 - **A container the host provides.** An array the host built, holding a listed function and spread
   by the expression into a native call, hands the function to native code without it being pushed.
 
@@ -244,11 +245,14 @@ evaluation's trace can take. Implemented in
 
 - **It is not a sandbox.** An expression runs in the host's realm, against the host's context, and
   the checks above are a guard on that path, not an isolation boundary.
-- **A route through `this`, open in 0.12.1** ([A39](docs/backlog.md#a39)). It exists, 0.13.0 closes
-  it, and a host stops it by placing no listed function in the context. The code review of the A35
-  plan's step 4 found it, and the plan's M14 measured it again
-  ([§ 1.3](docs/a35/plan.md#13-measurements-run-for-this-plan)). The measurement and its probes are
-  held in the repository's draft security advisory until 0.13.0 ships.
+- **A route through `this`, open in 0.12.1** ([A39](docs/backlog.md#a39)). It exists, and a host
+  stops it by placing no listed function in the context. **No version closes it today**: work to
+  narrow it is under way, part of it is measured and not shipped, and what closes the rest is an
+  open question in the A35 plan ([§ 8 q7](docs/a35/plan.md#8-open-questions)). Treat the route as
+  open until this entry says otherwise, and rely on the mitigation rather than on a release. The
+  code review of the A35 plan's step 4 found it, and the plan's M14 and M16 measured it
+  ([§ 1.3](docs/a35/plan.md#13-measurements-run-for-this-plan)). The measurements and their probes
+  are held in the repository's draft security advisory.
 - **A container the host provides**, spread by the expression into a native call: its elements
   reach native code without the walk pushing them, so neither check sees them. Measured as the A35
   plan's [finding 3](docs/a35/plan.md#12-findings-that-shape-the-plan). It is not checked, by
