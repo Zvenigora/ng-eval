@@ -6,6 +6,7 @@ import { afterVisitor } from './after-visitor';
 import { pushVisitorResult } from './visitor-result';
 import { evaluate } from '../functions';
 import { evaluatePatterns } from '.';
+import { contextPop, contextPush } from './context-method';
 
 export const arrowFunctionExpressionVisitor = (node: ArrowFunctionExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
 
@@ -20,15 +21,22 @@ export const arrowFunctionExpressionVisitor = (node: ArrowFunctionExpression, st
     // evaluation on the same context. The body is re-entrant `evaluate`, which
     // rethrows, so the pop needs `finally`.
     //
-    // The `try` opens *after* the push, never around it. `push` is optionally
-    // chained: bringing it inside would pair a `finally` pop with a push that
-    // the same optional chain had skipped, and would swallow a throw from
-    // evaluatePatterns into a pop as well.
-    st.context?.push(newContext);
+    // The `try` opens *after* the push, never around it. `contextPush` skips
+    // an absent context, as the optional chain it replaced did: bringing it
+    // inside would pair a `finally` pop with a push that never happened, and
+    // would swallow a throw from evaluatePatterns into a pop as well.
+    //
+    // Both take the method from the context's class (`context-method.ts`).
+    // This site is the one an expression could reach twice over: a planted
+    // own `push` would be invoked here with the real context as its `this`,
+    // and - since this closure's body is a re-entrant `evaluate` that pushes
+    // again - a plant that evaluates anything recurses until the stack is
+    // gone, leaving a reused context unusable (`docs/backlog.md` A42).
+    contextPush(st.context, newContext);
     try {
       return evaluate(node.body, st);
     } finally {
-      st.context?.pop();
+      contextPop(st.context);
     }
   }
 

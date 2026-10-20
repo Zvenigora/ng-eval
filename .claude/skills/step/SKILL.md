@@ -209,6 +209,15 @@ After I confirm:
   assert the new contract. Any other case that fails means the design is wrong: stop and report.
 - Each fix is probed by removing it, one at a time, as the step's criteria list. Read which cases
   fail, and revert each probe.
+- **Every refusal carries a message that names its layer**, and no two guards share one. Two did
+  in step 9, so every case caught whichever had fired, and the removal matrix that was meant to
+  show which layer was load-bearing recorded the wrong answer for three reviews. A refusal that
+  cannot be attributed from its message can only be probed by reading a stack trace.
+- **Every supported option gets a leg in the case matrix**, not only the default. `caseInsensitive`
+  changes which nodes `markThisPositional` marks, and therefore the width of a security exemption;
+  no case in step 9 ran with it on, so four documents asserted the opposite of the code. The same
+  applies to `preserveParens` and to any option a step's code reads.
+  Both rules are recorded in `docs/a35/plan.md` § 1.2.
 
 ### 4. Verify
 

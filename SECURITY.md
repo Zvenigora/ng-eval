@@ -125,12 +125,12 @@ the call, `new` and tag visitors and from `pushVisitorResult` in
 [visitor-result.ts](modules/eval-core/src/lib/internal/visitors/visitor-result.ts); pinned by
 [eval.service.dangerous-values.spec.ts](modules/eval-core/src/lib/actual/services/eval.service.dangerous-values.spec.ts),
 whose cases S1–S3 cover the capture, C1–C15t the callee and V1–V21 every other read. Up to 0.12.0
-the call checks read a name, not a value ([A35](docs/backlog.md#a35)).
+the call checks read a name, not a value ([A35](docs/backlog-retired.md#a35)).
 
 **Defense in depth, not a boundary.** These checks narrow the routes by which an expression reaches
-a listed function the context holds. They do not make it safe to place one there: two routes stay
-open in 0.12.1, listed [below](#what-these-checks-do-not-cover), and only the
-[mitigations](#mitigations) cover every route.
+a listed function the context holds. They do not make it safe to place one there: routes they cannot
+see stay open in every version — a container the host provides, and the others under
+[Documented limits](#documented-limits) — and only the [mitigations](#mitigations) cover every one.
 
 **The listed values**, matched by identity, not by name:
 - the global value of each name the call sandbox lists, where the realm has one, and zone.js's
@@ -199,17 +199,81 @@ in `typeof f(eval)` the argument is read, and refused.
 The funnel sees only the walk's own values; see
 [what it does not cover](#what-these-checks-do-not-cover).
 
+#### `this`, and the receiver of a call
+
+**From 0.13.0.** Up to 0.12.1 `this` evaluated to the `EvalContext` the walk ran against, and a
+function the context holds was called with that same object as its `this`. A route through it
+reached a listed function the context holds, past the checks above
+([A39](docs/backlog-retired.md#a39)). 0.13.0 closes both halves:
+
+- **`this` evaluates only as the object of a member access**: `this.k`, `this["k"]` and `this.fn()`
+  resolve against the context as before. Anywhere else — a value, an argument, an operand,
+  `typeof this` — it throws
+  `'Access to "this" outside a member access is blocked for security reasons'`. Implemented in
+  [this-position.ts](modules/eval-core/src/lib/internal/visitors/this-position.ts); pinned by
+  [eval.service.this-position.spec.ts](modules/eval-core/src/lib/actual/services/eval.service.this-position.spec.ts),
+  whose cases P1, P2 and G1 are the route and E1–E9 the refused positions.
+- **A function the context holds is called with a guarded view of the context**, not the context
+  and not the object behind it. That covers every receiver the evaluator resolves from the context:
+  a bare call's, a bare tag's, and that of `this.fn()` for any key the context resolves. On the view,
+  `push` and `pop` act on the real context; every other read throws
+  `'Access to "<key>" on the evaluation context is blocked for security reasons'`, and a write is
+  refused. The view exposes no own key, no descriptor and no prototype. A call on an object the
+  context merely holds, and a prior scope's declared `thisArg`, keep their own receiver, and the
+  member-write policy still sees the real context. A new view is built for every call and retained
+  by nothing, so do not key anything on a function's `this`. Implemented in
+  [context-receiver.ts](modules/eval-core/src/lib/internal/visitors/context-receiver.ts); pinned by
+  [eval.service.context-receiver.spec.ts](modules/eval-core/src/lib/actual/services/eval.service.context-receiver.spec.ts),
+  whose cases R1–R4 are the route through each receiver and B1–B3 and S2–S5 the ways out of the
+  view.
+- **The context itself is not writable, and one reached as data is inert.** Up to 0.12.1
+  `this.k = v`, for a key the context does not resolve, added an own property to the `EvalContext` —
+  invisible to every expression, since the context resolves keys through its scopes, its original,
+  its prior scopes and its lookups and never off the instance, but able to shadow a method of the
+  class and to replace the field holding the caller's own object
+  ([A42](docs/backlog-retired.md#a42)). From 0.13.0 that write throws
+  `'Write to the evaluation context is blocked for security reasons'`, by class, so it covers a
+  signal context and a context other than the walk's own. The same refusal answers a native writer
+  handed a context — `Object.assign`, `Object.defineProperty`, `Object.setPrototypeOf`,
+  `Object.freeze`, `Reflect.set` and their kin, including through `call`, `apply` and `bind`. A
+  write to a key the context **does** resolve is unchanged: it lands on the caller's own object, as
+  before, through the policy a context may override. **And the context is not a value an expression
+  can hold**: every value the walk pushes is refused if it is an `EvalContext`, so a bare
+  identifier, a member read, an object spread, a destructuring, `Object.values` and
+  `JSON.stringify` alike throw
+  `'Access to the evaluation context is blocked for security reasons'`. The one exemption is the
+  walk's **own** context as a member's object, which the member visitor consumes and never hands
+  on — matched by identity as well as by position, so a *different* context in that position is
+  refused like any other.
+  **Two routes are deliberately outside it, and a host can still take them**: the check reads the
+  value pushed and does not look inside it, and it does not run on `evaluateAsync`'s promise unwrap,
+  which happens after the walk. So a host that places its own context inside a value an expression
+  can read — nested in an object, in an array, or behind a promise — gets it back as a result.
+  Reading it back one hop later is refused, and no expression can construct either route, since
+  both begin by holding a context. Implemented in
+  [prototype-pollution-guard.ts](modules/eval-core/src/lib/internal/visitors/prototype-pollution-guard.ts),
+  [member-write-policy.ts](modules/eval-core/src/lib/internal/visitors/member-write-policy.ts) and
+  [visitor-result.ts](modules/eval-core/src/lib/internal/visitors/visitor-result.ts); pinned
+  by [eval.service.context-write.spec.ts](modules/eval-core/src/lib/actual/services/eval.service.context-write.spec.ts),
+  whose cases W1–W12 are the write forms and L1–L9 the funnel and the two layers behind it.
+
+On 0.12.1 none of these holds, and the [first mitigation](#mitigations) is what stops the route.
+
 #### What these checks do not cover
 
-Two routes reach a listed function without passing through the walk's own values, so 0.12.1 is
-partial hardening, not a fix for the whole class. The [first mitigation](#mitigations) stops both.
-Each is listed again, with the other limits, under [Documented limits](#documented-limits).
-- **A route through `this`.** In 0.12.1 an expression can still reach a listed function the context
-  holds through `this` ([A39](docs/backlog.md#a39)). A host stops it by placing no listed function
-  in the context. A later release narrows it; **which release closes it entirely is not yet
-  settled**, so treat it as open and rely on the mitigation, not on a version.
+**A route the checks cannot see stays open in every version, 0.13.0 included**, because it reaches a
+listed function without passing through the walk's own values. Closing the route through `this` does
+not close it. The [first mitigation](#mitigations) stops it.
 - **A container the host provides.** An array the host built, holding a listed function and spread
   by the expression into a native call, hands the function to native code without it being pushed.
+  The difference from the route through `this` is who built the container: there the library
+  supplied it, and 0.13.0 stops supplying it; here the host did, and no check of the walk's values
+  can see inside it.
+
+**Nor are these checks the only limit.** A host function that forwards to a listed one, a function
+from another realm, and a listed global replaced on its own after the capture each reach past them
+too, for reasons of their own. All of them, with this one, are under
+[Documented limits](#documented-limits).
 
 ### The iteration budget
 
@@ -245,19 +309,29 @@ evaluation's trace can take. Implemented in
 
 - **It is not a sandbox.** An expression runs in the host's realm, against the host's context, and
   the checks above are a guard on that path, not an isolation boundary.
-- **A route through `this`, open in 0.12.1** ([A39](docs/backlog.md#a39)). It exists, and a host
-  stops it by placing no listed function in the context. **No version closes it today**: work to
-  narrow it is under way, part of it is measured and not shipped, and what closes the rest is an
-  open question in the A35 plan ([§ 8 q7](docs/a35/plan.md#8-open-questions)). Treat the route as
-  open until this entry says otherwise, and rely on the mitigation rather than on a release. The
-  code review of the A35 plan's step 4 found it, and the plan's M14 and M16 measured it
-  ([§ 1.3](docs/a35/plan.md#13-measurements-run-for-this-plan)). The measurements and their probes
-  are held in the repository's draft security advisory.
 - **A container the host provides**, spread by the expression into a native call: its elements
   reach native code without the walk pushing them, so neither check sees them. Measured as the A35
   plan's [finding 3](docs/a35/plan.md#12-findings-that-shape-the-plan). It is not checked, by
   decision: a partial check of containers has no boundary a host could rely on, since each level it
-  checked would leave the next one open.
+  checked would leave the next one open. **It is open in every version**, 0.13.0 included: closing
+  the route through `this` ([above](#this-and-the-receiver-of-a-call)) closed the container the
+  library supplied, not one the host builds.
+- **A host that places its own `EvalContext` inside the evaluation data** gets it back as a result,
+  and gets no protection from native writers reaching it. The refusal of a context as a value reads
+  the value a node pushes, so a context nested in an object or an array — `{ wrap: { c: ctx } }` —
+  is returned as part of a value, though reading it back one hop later is refused. Measured, and
+  the same kind of limit as a host-provided container: the library did not hand the context out,
+  the host did.
+- **`evaluateAsync` resolves promises after the walk**, in `awaitAllPromises`, which is outside that
+  refusal. A host function returning a promise of its own context therefore hands it back. Measured.
+- **`EvalResult.trace` holds the walk's own context** when the expression evaluated `this.k`, since
+  the positional `this` is the one value the refusal exempts. It reaches only the host, which holds
+  that context already.
+- **A host-built AST that uses one `this` node in two places** — as a member's object, visited
+  first, and anywhere else — carries the context to the second place: into a call's arguments, or
+  nested in the result. No parser produces such a tree, and the other visit order is refused; a
+  native **writer** reached that way is refused too. Pinned as case L11 of
+  [eval.service.context-write.spec.ts](modules/eval-core/src/lib/actual/services/eval.service.context-write.spec.ts).
 - **A function from another realm**, such as an iframe's `eval`, has another identity, so it is not a
   listed value. Measured 2026-10-16 in Node: an `eval` taken from a new context of Node's vm module
   ran when called.

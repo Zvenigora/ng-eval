@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { EvalService } from './eval.service';
 import { EvalContext } from '../../internal/classes/eval';
+import { guardedReceiver } from '../../internal/visitors/context-receiver';
 
 /**
  * A function the context holds is called with a **guarded view** of the
@@ -32,8 +33,9 @@ import { EvalContext } from '../../internal/classes/eval';
  * - **No case depends on the context's field order.** The first draft indexed
  *   an own field by position, so a reordering would have turned the case green
  *   with the route open. The structural pins read no field at all.
- * - **The view's identity is pinned** (N4), because the cache that provides it
- *   is a stated contract.
+ * - **The view's identity is pinned** (N4): every call gets its own view, and
+ *   nothing retains one. It first pinned the opposite, a cached view per
+ *   context, until the cache was measured as the cost on the one-shot path.
  *
  * `valueOf` is the subject because it is native, benign and returns its
  * `this`: the sandbox has no reason to refuse it, which is what leaves the
@@ -254,20 +256,100 @@ describe('EvalService - the guarded receiver (A39)', () => {
       expect(seen).toEqual([true, true, false, false]);
     });
 
-    it('N4: should give one context the same view every time', () => {
-      // The cache is a stated contract - a function's `this` is stable across
-      // calls and across walks on one context - and without this case nothing
-      // would fail if the view were rebuilt per call.
+    it('N5: should forward the class\'s push, not one the expression planted on the context', () => {
+      // `this.k = v` writes onto the `EvalContext` itself, and a plain context
+      // consults no policy about it (`docs/backlog.md` A42). An own property
+      // shadows a prototype method, so a view that read `context.push` would
+      // forward whatever was planted, bound to the real context - and a host
+      // function that returns what its `this.push(...)` returns would hand
+      // the context straight back into the walk. The view resolves both
+      // methods from the context's class instead (`context-receiver.ts`).
+      //
+      // The returned value is what matters: it must hold nothing of the
+      // context. `seen` records what the host function actually received.
       const seen: unknown[] = [];
+      const context = EvalContext.fromContext({
+        hand: function (this: { push: (x: unknown) => unknown }) {
+          const returned = this.push('x');
+          seen.push(returned);
+          return returned;
+        },
+      }, {});
+
+      // A planted `push` that returns its receiver, in place of the real one.
+      //
+      // **Set here rather than written by the expression**, since Revision 16:
+      // `(this.push = give, hand())` is how this case used to plant, and that
+      // write is now refused outright - `eval.service.context-write.spec.ts`
+      // W1 is what pins the refusal. Were the plant still written from the
+      // expression, this case would assert the write refusal a second time
+      // and the view's resolution not at all, which is the layer it is about.
+      (context as unknown as Record<string, unknown>)['push'] =
+        function (this: unknown) { return this; };
+
+      const planted = service.simpleEval('hand()', context as never);
+
+      expect(seen).toHaveLength(1);
+      // The real `push` returns undefined, and that is what came back.
+      expect(planted).toBeUndefined();
+      expect(seen[0]).toBeUndefined();
+    });
+
+    it('N6: should refuse push when the context\'s class does not provide one', () => {
+      // Resolution is from the class, so a context whose class has no such
+      // method leaves the key refused as any other is - not throwing from a
+      // bind, and never falling back to an instance property.
+      const bare = Object.create(null) as EvalContext;
+      expect(() => (guardedReceiver(bare) as { push: unknown }).push)
+        .toThrow(blocked('push'));
+      expect('push' in (guardedReceiver(bare) as object)).toBe(false);
+    });
+
+    it('N4: should give every call its own view, each honouring the whole contract', () => {
+      // **Deliberate contract change**, made before release (`docs/a35/plan.md`
+      // N-d). This case first pinned the opposite - one view per context,
+      // cached in a `WeakMap`, so `this` was the same object across calls and
+      // walks. Measured on the one-shot path, where each evaluation builds a
+      // fresh context, that cache never hit and retaining its entries made a
+      // bare call ~45% slower than before the guard; an uncached view came in
+      // within step 7's own spread. So nothing retains a view any more, and
+      // this case pins the no-retention decision: a function must not key
+      // anything on its `this`.
+      //
+      // Distinct objects alone would pass against a view rebuilt with half
+      // its contract missing, so each one is held to all of it.
+      const seen: object[] = [];
       const context = new EvalContext(
-        { probe: function (this: unknown) { seen.push(this); return 1; } }, {});
+        { probe: function (this: object) { seen.push(this); return 1; } }, {});
 
       service.simpleEval('[probe(), probe()]', context);
       service.simpleEval('probe()', context);
 
       expect(seen).toHaveLength(3);
-      expect(seen[1]).toBe(seen[0]);
-      expect(seen[2]).toBe(seen[0]);
+      // Different within one walk, and across walks on one context.
+      expect(seen[1]).not.toBe(seen[0]);
+      expect(seen[2]).not.toBe(seen[0]);
+      expect(seen[2]).not.toBe(seen[1]);
+
+      for (const view of seen) {
+        expect(view).not.toBe(context);
+        expect(Reflect.ownKeys(view)).toEqual([]);
+        expect(Object.getPrototypeOf(view)).toBeNull();
+        expect(Object.getOwnPropertyDescriptor(view, '_original')).toBeUndefined();
+        expect(typeof (view as { push: unknown }).push).toBe('function');
+        expect(typeof (view as { pop: unknown }).pop).toBe('function');
+        expect(() => (view as { original: unknown }).original).toThrow(blocked('original'));
+
+        // Each view's `push` is the real one: it acts on this context's scope
+        // stack. `typeof` alone would pass against any function at all,
+        // planted or forwarded from somewhere else.
+        const before = context.scopes.length;
+        (view as { push: (c: object) => void }).push({ probe: 1 });
+        expect(context.scopes.length).toBe(before + 1);
+        expect(context.get('probe')).toBe(1);
+        (view as { pop: () => void }).pop();
+        expect(context.scopes.length).toBe(before);
+      }
     });
   });
 });

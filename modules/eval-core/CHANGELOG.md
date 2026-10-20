@@ -18,11 +18,11 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   context as before. Anywhere else it now throws
   `Access to "this" outside a member access is blocked for security reasons`: as a value, an
   argument or an operand, `typeof this` included. Up to 0.12.1 it evaluated to the `EvalContext`
-  the walk ran against. This is half of the fix for the route through `this` that 0.12.1's Security
-  entry states as open ([A39](../../docs/backlog.md#a39)); the receiver entry below is the other
-  half. Keep 0.12.1's mitigations in place regardless — place no listed function in the context,
-  and serve a Content Security Policy without `'unsafe-eval'` — since a container the host itself
-  provides remains a documented limit.
+  the walk ran against. Together with the receiver entry below, this **closes the route through
+  `this`** that 0.12.1's Security entry states as open ([A39](../../docs/backlog-retired.md#a39)).
+  Keep 0.12.1's mitigations in place regardless — place no listed function in the context, and
+  serve a Content Security Policy without `'unsafe-eval'` — since a container the host itself
+  provides remains a documented limit, which this release does not close.
 - **The assertions it changes**: three, all in `eval-forms`' suite, none in `eval-core`'s or
   `eval-signals`'. Each evaluated `this` outside a member access to reach a rule's context and read
   its lookups ([D5](../../docs/backlog-retired.md#d5)). They now take the context where it is built.
@@ -45,13 +45,89 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   - **The migration**: give that object its own named scope with an explicit `thisArg`, which this
     release does not change. `ns.fn()` and `obj.fn()` are unchanged too — only a receiver the
     evaluator resolved out of the context's own chain is narrowed.
-  - Together with the entry above this closes the receiver half of
-    [A39](../../docs/backlog.md#a39). The member-write policy still receives the real context as
-    its write target, so a context implementing `checkMemberWrite` sees what it always did.
+  - **The view's identity is not stable**: every call receives a new one, even two calls in one
+    evaluation on one context. Do not key anything on a function's `this` — not a `WeakMap`, not a
+    `Set`, not an identity comparison. Nothing retains a view, which is what keeps the guard's cost
+    off the ordinary one-shot evaluation.
+  - **`push` and `pop` are the ones the context's class defines**, found on its prototype chain, so
+    a subclass override is used and a property set on the instance is not. A context whose class
+    defines neither has them refused like any other key.
+  - Together with the entry above this closes [A39](../../docs/backlog-retired.md#a39), the
+    receiver half of it. The member-write policy still receives the real context as its write
+    target, so a context implementing `checkMemberWrite` sees what it always did.
 - **The assertions it changes**: six — two in `eval-core`'s suite pinning a receiver's identity,
   two pinning a context method's reach into its siblings, and two in `eval-signals`'. Each is
   rewritten to assert the new contract, none is dropped. Together with the three in `eval-forms`
   named above, nine in all across the three suites.
+- **A write whose target is the evaluation context now throws**
+  `Write to the evaluation context is blocked for security reasons`, where up to 0.12.1 it
+  succeeded ([A42](../../docs/backlog-retired.md#a42)).
+  - **What this is.** `this.k = v` is a member write, and for a key the context does **not**
+    resolve the target is the `EvalContext` itself — so the write added an own property to the
+    evaluator's own object. It applies to every form the evaluator offers: dotted and computed
+    member writes, compound writes and the update expressions. It is matched **by class**, so it
+    also covers a signal context and a context reached under some other name.
+  - **What is unchanged**: a write to a key the context **does** resolve. `this.n = 7`, `n = 7`
+    and `this.n++`, for a key the caller's object holds, land on that object exactly as before,
+    through `EvalContext.set` and the write policy a subclass may override. That is the write path
+    consumers use, and it is untouched.
+  - **What this breaks**: an expression that wrote to the context under a key nothing resolves now
+    throws where it used to succeed. Nothing could read the result back — `EvalContext.get`
+    resolves through the scopes, the original, the prior scopes and the lookups, and never off the
+    instance — so an expression that depended on reading it back cannot exist; one that made the
+    write and ignored it will now fail.
+  - **Native writers are refused the same way**: `Object.assign`, `Object.defineProperty`,
+    `Object.defineProperties`, `Object.setPrototypeOf`, `Object.freeze`, `Object.seal`,
+    `Object.preventExtensions`, `Reflect.set`, `Reflect.defineProperty`, `Reflect.deleteProperty`,
+    `Reflect.setPrototypeOf` and `Reflect.preventExtensions`, including when reached through
+    `call`, `apply` or `bind`. A context that implements `checkMemberWrite` is still asked first,
+    so its own refusal is still the error a consumer sees.
+  - **The context is also not a value an expression can hold.** Every value the walk pushes is
+    refused if it is an `EvalContext`, so a bare identifier naming one, a member read of one, an
+    object spread or destructuring of one, and `Object.values` or `JSON.stringify` of one all throw
+    `Access to the evaluation context is blocked for security reasons`. The one exemption is the
+    walk's **own** context as a member's object, matched by identity as well as position, so
+    `this.k` is unaffected — it resolves through the context's chain and reads nothing off the
+    instance. **Two routes are outside this by construction**: the check reads the value pushed and
+    does not look inside it, and it does not run on `evaluateAsync`'s promise unwrap, which happens
+    after the walk — so a host that places its own context inside a value an expression can read,
+    nested in an object or an array or behind a promise, still gets it back as a result. Reading it
+    back one hop later is refused.
+  - **A `checkMemberWrite` held as an instance property now throws.** The policy and the opt-in
+    that turns object recording on are both resolved from the context's **prototype chain**, so a
+    policy on the instance would be inert. Rather than fail open in silence, building an
+    `EvalState` around such a context throws, naming the condition and the remedy.
+    **Declare it as a *method*** — `class C extends EvalContext { override checkMemberWrite(write) { … } }`,
+    which is what `@zvenigora/ng-eval-signals` does. **A class field will not do**:
+    `class C extends EvalContext { checkMemberWrite = (write) => … }` is an instance property, as
+    is an assignment in a constructor or `context.checkMemberWrite = fn` after the fact, and all
+    three now throw. This is the same rule as for `push` and `pop` above, and for the same reason:
+    an expression must not be able to supply one — and the only party who can still hold one on an
+    instance is a host that meant it, which deserves to be told exactly what to change.
+  - **A context whose class defines `push` but no `pop` is refused at the first scope push**,
+    with the same named refusal. The pop runs in a `finally`, where a throw would replace the
+    error the body was propagating, so it is tolerant; refusing the pair at the push is what
+    keeps them symmetric. No context `EvalContext.fromContext` produces has this shape.
+  - **Why it is in this release rather than later.** The own property shadowed a method of the
+    class, and the evaluator calls `push` on the context at four sites, so a planted function was
+    invoked with the real context as its `this` — the capture that made a cross-context disclosure
+    possible. It is also an **availability** defect: a plant over `push` that evaluates anything
+    recurses until the stack is gone and persists on the context, so every later evaluation on a
+    reused context throws. `@zvenigora/ng-eval-signals` and `@zvenigora/ng-eval-forms` both reuse
+    one context by design; neither is exposed, because a signal context refuses the planting write
+    through `checkMemberWrite`, and `eval-forms` evaluates through `eval-signals`.
+  - **Methods the evaluator calls on a context are taken from its class**, not from the instance,
+    at the scope pushes and pops, the write path and the policy — so an own property arriving by
+    any other route is not what the evaluator invokes.
+
+### Performance
+- **These checks cost about 10% on the member-write path, and less elsewhere.** Measured against
+  0.12.1's evaluator in plain Node, production bundles, twelve paired rotations per path, medians:
+  a member write **+10.0%**, a bare call **+7.6%**, a member read **+1.85%**. The member write is
+  positive in all twelve rotations, so it is a consistent cost rather than one that disappears
+  into run-to-run variation, and it is stated here as such: an expression that assigns to object
+  properties in a loop is the shape that pays most. The member read is indistinguishable from the
+  baseline. No evaluation result changes.
 
 ---
 
@@ -61,7 +137,7 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 [`SECURITY.md`'s mitigations](../../SECURITY.md#mitigations) in place whatever the version.** A
 tagged template's tag goes through the call sandbox ([A36](../../docs/backlog-retired.md#a36)), and
 a dangerous function value is refused at the call, `new` and tag sites and at every other read the
-walk makes but `typeof`'s operand ([A35](../../docs/backlog.md#a35)). A sequence leaves one value on
+walk makes but `typeof`'s operand ([A35](../../docs/backlog-retired.md#a35)). A sequence leaves one value on
 the stack ([A37](../../docs/backlog-retired.md#a37)). Two routes past the walk's own values stay
 open: a container the host provides, which stays a limit, and a route through `this`, which 0.13.0
 closes. The Security entry below states both, and `SECURITY.md`'s
@@ -110,7 +186,7 @@ ranges are `>=0.11.0 <0.13.0` and `>=0.12.0 <0.13.0`.
   - **A tag that is not a function** throws the call's error, `Cannot call undefined or null
     function` or `Value is not a function: <type>`. It threw a `TypeError` from `apply`.
 - **A call, `new` or tagged template whose callee is a dangerous function is refused by its value,
-  under any name — [A35](../../docs/backlog.md#a35).** The sandboxes read the callee's written name,
+  under any name — [A35](../../docs/backlog-retired.md#a35).** The sandboxes read the callee's written name,
   so with `eval` in the context as `run`, `run("1+1")` gave 2. `new`'s list of names never held the
   timers either. In a browser application with zone.js, `new setTimeout("<code>", 0)` constructed
   under the timer's own name, and zone.js handed the string to the browser's timer, which runs it
@@ -130,7 +206,7 @@ ranges are `>=0.11.0 <0.13.0` and `>=0.12.0 <0.13.0`.
     before the call. Such a callee is a sequence, a conditional, a logical, an assignment, or a
     parenthesised or optional-chain expression.
 - **Every read of a dangerous function the walk makes is refused, except as a callee, a tag or
-  `typeof`'s operand — [A35](../../docs/backlog.md#a35).** The call sandbox checked only the
+  `typeof`'s operand — [A35](../../docs/backlog-retired.md#a35).** The call sandbox checked only the
   callee, so a listed value handed on as anything else reached the native code that calls it. With
   `eval` in the context, `["1+1"].map(eval)` gave `[2]` and `eval.call(null, "1+1")` gave 2. With
   `Function`, `Function.call(null, "return 7")()` gave 7. Every published version up to 0.12.0 is

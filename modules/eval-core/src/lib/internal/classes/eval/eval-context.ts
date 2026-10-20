@@ -4,6 +4,12 @@ import { EvalLookup } from './eval-lookup';
 import { EvalMemberWrite } from './eval-member-write';
 import { EvalOptions } from './eval-options';
 import { EvalScope, matchesNamespace } from './eval-scope';
+// Direct, not through the visitors barrel - see `eval-state.ts` for why the
+// edge is one-way. Only the write path resolves off the class here: the
+// read path reads the instance, because the plant it would defend against
+// can no longer be created (`prototype-pollution-guard.ts`'s
+// `refuseContextWrite`), and routing it cost ~20% (`docs/a35/plan.md` M19).
+import { contextScopeHolding } from '../../visitors/context-method';
 
 /**
  * Whether a context holds a key at all, regardless of the value bound to it.
@@ -455,7 +461,7 @@ export class EvalContext {
    */
   public setInScope(key: unknown, value: unknown): boolean {
 
-    const scope = this.scopeHolding(key);
+    const scope = contextScopeHolding(this, key);
     if (!scope) {
       return false;
     }

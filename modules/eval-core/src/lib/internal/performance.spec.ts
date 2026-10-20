@@ -9,6 +9,8 @@ import { clearPropertyLookupCache, getPropertyLookupCacheStats } from './visitor
 import { EvalContext, EvalHooks, EvalState } from './classes/eval';
 import { evaluate, parse } from './functions';
 import { ColonIdentifiersParser } from './functions/colon-identifiers';
+import * as receiver from './visitors/context-receiver';
+import * as contextMethod from './visitors/context-method';
 import { AnyNode } from 'acorn';
 import * as acorn from 'acorn';
 
@@ -334,6 +336,125 @@ describe('Performance Optimizations', () => {
       } finally {
         acornParse.mockRestore();
         colonParse.mockRestore();
+      }
+    });
+  });
+
+  /**
+   * The gate on the guarded receiver's cost (`docs/a35/plan.md` N-d).
+   *
+   * Measured in a production bundle, the first form of the guard cached one
+   * view per context in a `WeakMap`. On the ordinary one-shot path -
+   * `simpleEval(expr, plainObject)`, which builds a fresh context every time -
+   * the cache never hit, and retaining its entries made a bare call ~45%
+   * slower than before the guard. An uncached view, built per call and held by
+   * nothing, came in within the baseline's own spread. The member-read path,
+   * measured in its own run, did not move.
+   *
+   * Structural rather than timed, for the reason the Parser Selection case
+   * gives and the plan's finding 7 measured: timing inside Jest varied
+   * sixfold, so a threshold loose enough not to flake would let a 45%
+   * regression through. What these pin is the mechanism the measurement
+   * found, which is what a regression would have to reintroduce.
+   *
+   * Both spy on `guardedReceiver` through its module namespace, which works
+   * because this project's transform emits CommonJS and the call sites read
+   * the export at call time. Were a call site ever to capture the function at
+   * load instead, the second case could go vacuous - but the first, in the
+   * same pair, goes red at the same moment, so the two check each other. The
+   * `WeakMap.prototype.set` spy sees retention through a `WeakMap` and not
+   * through a `WeakSet`, a `FinalizationRegistry` or a strong `Map`; any
+   * cache that *reuses* a view also fails N4 in
+   * `eval.service.context-receiver.spec.ts`.
+   */
+  describe('Guarded Receiver Cost', () => {
+
+    const nodeOfExpression = (source: string): AnyNode =>
+      parse(source, { ecmaVersion: 2020, extractExpressions: true }) as AnyNode;
+
+    it('should build a bare call\'s view per call and retain none of it, on a fresh context', () => {
+      // Retention was the whole cost: a view per context, kept in a `WeakMap`
+      // keyed by a context that lived for one evaluation. So a bare call must
+      // insert nothing into any `WeakMap` - and must still build its view,
+      // once per call, or the guard is not running at all.
+      //
+      // Parsed outside the window on purpose: the parser service's cache
+      // fingerprints its options in a `WeakMap` of its own on a first parse,
+      // which is not the walk and not this cost. Only the walk is spied on,
+      // with a fresh context, which is the path that regressed.
+      const f = function (x: number) { return x; };
+      const ast = nodeOfExpression('f(1) + f(2) + f(3)');
+      const weakMapSet = jest.spyOn(WeakMap.prototype, 'set');
+      const build = jest.spyOn(receiver, 'guardedReceiver');
+      try {
+        expect(evaluate(ast, EvalState.fromContext({ f }))).toBe(6);
+
+        expect(build).toHaveBeenCalledTimes(3);
+        expect(weakMapSet).not.toHaveBeenCalled();
+      } finally {
+        weakMapSet.mockRestore();
+        build.mockRestore();
+      }
+    });
+
+    it('should keep the member-write path free of the context\'s own machinery', () => {
+      // The write path pays two new checks since Revision 16: the by-class
+      // refusal in `safeSetProperty`, and - on every call - the lookup that
+      // asks whether a native built-in is about to write into a context
+      // (`docs/a35/plan.md` M19, which measured both at +0.3% to +3.9%).
+      //
+      // Structural, like its neighbours: a write to an ordinary object must
+      // build no view, retain nothing, and ask a context with no policy
+      // nothing. What this would catch is the refusal growing a per-write
+      // allocation, or the native-writer check waking the policy path up for
+      // a context that opted out of it.
+      // The policy is asked through `contextCheckMemberWrite` rather than off
+      // the instance, so that is what a spy can see: `checkMemberWrite` is
+      // declared on the class and defined by no one, which is the opt-out
+      // (`member-write-policy.spec.ts` pins that it stays undefined), so
+      // there is nothing on the prototype to spy on.
+      // Parsed as a whole `Program`, and outside the window: the program's
+      // own scope push is the positive control for these spies - without it
+      // "the policy was not asked" would hold just as well if the spy saw
+      // nothing at all - and the parser service's fingerprint cache inserts
+      // into a `WeakMap` of its own on a first parse, which is not the walk.
+      // The case next to this one was caught by the same thing.
+      const ast = parse('(o.k = o.k + 1, arr.push(2), o.k)', { ecmaVersion: 2020 }) as AnyNode;
+      const build = jest.spyOn(receiver, 'guardedReceiver');
+      const weakMapSet = jest.spyOn(WeakMap.prototype, 'set');
+      const policy = jest.spyOn(contextMethod, 'contextCheckMemberWrite');
+      const push = jest.spyOn(contextMethod, 'contextPush');
+      try {
+        expect(evaluate(ast, EvalState.fromContext({ o: { k: 1 }, arr: [1] }))).toBe(2);
+
+        expect(build).not.toHaveBeenCalled();
+        expect(weakMapSet).not.toHaveBeenCalled();
+        expect(policy).not.toHaveBeenCalled();
+        // Once, for the program's own scope: the write path and the call ask
+        // the context's class for nothing of their own.
+        expect(push).toHaveBeenCalledTimes(1);
+      } finally {
+        build.mockRestore();
+        weakMapSet.mockRestore();
+        policy.mockRestore();
+        push.mockRestore();
+      }
+    });
+
+    it('should build no view at all on the member-read path', () => {
+      // The path the benchmark above exercises, and the one the measured
+      // fourth slot of `evaluateMember` sits on. A member read, and a call on
+      // an object the context merely holds, keep their own receiver, so the
+      // guard has nothing to build there - and must not start to.
+      const build = jest.spyOn(receiver, 'guardedReceiver');
+      try {
+        const context = { a: { b: { c: 1 }, d: 2 }, o: { m: (x: number) => x } };
+
+        expect(service.simpleEval('a.b.c + a.d + o.m(3)', context)).toBe(6);
+
+        expect(build).not.toHaveBeenCalled();
+      } finally {
+        build.mockRestore();
       }
     });
   });

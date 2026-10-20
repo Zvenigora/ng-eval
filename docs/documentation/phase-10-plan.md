@@ -502,7 +502,7 @@ it, as relative links, which the doc-links gate checks.
      call does not name it: under an alias; through `call`, `apply` or `bind`; or as a callback a
      native function makes, such as `map`, `Reflect.apply` or `then`. The expression's author chooses
      the route, not only the host. The section states the host's mitigation
-     ([A35](../backlog.md#a35)).
+     ([A35](../backlog-retired.md#a35)).
    - **The iteration budget**: `maxIterations`, 100,000 per evaluation by default, shared by every
      `for` loop in the expression.
    - **The write policies**, one sentence each: `EvalContext.checkMemberWrite`; `eval-signals`'
@@ -694,7 +694,7 @@ From the gate's 2448 at this plan's commit, `eval-core` ends at 2454 if every st
   - *Added in the step* (Revision 3): `docs/backlog.md` gains [F20](../backlog.md#f20), with its index
     row. `CODE_OF_CONDUCT.md`'s enforcement contact is an address of the upstream `jse-eval` author.
     It was found looking for a reporting channel, and left unedited by instruction, since its fix is a
-    contact the maintainer chooses. It also gains [A35](../backlog.md#a35), with its index row:
+    contact the maintainer chooses. It also gains [A35](../backlog-retired.md#a35), with its index row:
     dangerous function values callable past the name-based call sandbox, by an alias, `call` /
     `apply` / `bind`, or a native callback. It was found by the step's review, measured route by route,
     and listed in `SECURITY.md` as a limit with the host's mitigation. A candidate direction is

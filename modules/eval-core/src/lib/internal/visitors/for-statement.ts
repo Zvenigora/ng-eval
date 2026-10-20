@@ -5,6 +5,7 @@ import { afterVisitor } from './after-visitor';
 import { pushVisitorResult, popVisitorResult } from './visitor-result';
 import { dispatchStatement } from './dispatch-statement';
 import { EMPTY_COMPLETION, EvalState } from '../classes/eval';
+import { contextPop, contextPush } from './context-method';
 
 /**
  * Evaluates a classic three-part `for` statement.
@@ -65,9 +66,11 @@ import { EMPTY_COMPLETION, EvalState } from '../classes/eval';
  * precondition argument - a `for` body throwing on iteration 3 - so every exit
  * path matters: `init`, `test`, `body` and `update` can each throw, the
  * dispatcher can reject the body, and the budget can end the loop from inside
- * the `try`. The `try` opens *after* the push, never around it - `push` is
- * optionally chained, so bringing it inside would pair a `finally` pop with a
- * push the same optional chain had skipped.
+ * the `try`. The `try` opens *after* the push, never around it - `contextPush`
+ * skips an absent context, as the optional chain it replaced did, so bringing
+ * it inside would pair a `finally` pop with a push that never happened. Both
+ * take the method from the context's class rather than from the instance
+ * (`context-method.ts`).
  */
 export const forStatementVisitor = (node: ForStatement, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
 
@@ -75,7 +78,7 @@ export const forStatementVisitor = (node: ForStatement, st: EvalState, callback:
 
   let completion: unknown = EMPTY_COMPLETION;
 
-  st.context?.push({}, st.options);
+  contextPush(st.context, {}, st.options);
   try {
 
     if (node.init) {
@@ -113,7 +116,7 @@ export const forStatementVisitor = (node: ForStatement, st: EvalState, callback:
     }
 
   } finally {
-    st.context?.pop();
+    contextPop(st.context);
   }
 
   pushVisitorResult(node, st, completion);

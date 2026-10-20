@@ -383,6 +383,7 @@ type SecurityAllowReason =
 const SECURITY_ALLOWLIST: Readonly<Record<string, SecurityAllowReason>> = {
   Error: 'js-global',
   EvalError: 'js-global',
+  JSON: 'js-global',
   Object: 'js-global',
   Promise: 'js-global',
   Proxy: 'js-global',
@@ -394,8 +395,13 @@ const SECURITY_ALLOWLIST: Readonly<Record<string, SecurityAllowReason>> = {
   undefined: 'js-global',
 
   apply: 'js-member',
+  assign: 'js-member',
   bind: 'js-member',
+  defineProperty: 'js-member',
+  freeze: 'js-member',
   map: 'js-member',
+  setPrototypeOf: 'js-member',
+  stringify: 'js-member',
   then: 'js-member',
   toUpperCase: 'js-member',
 
@@ -410,8 +416,10 @@ const SECURITY_ALLOWLIST: Readonly<Record<string, SecurityAllowReason>> = {
   mainModule: 'attack-input',
 
   c: 'example-binding',
+  ctx: 'example-binding',
   e: 'example-binding',
   f: 'example-binding',
+  fn: 'example-binding',
   getEval: 'example-binding',
   host: 'example-binding',
   k: 'example-binding',
@@ -421,6 +429,8 @@ const SECURITY_ALLOWLIST: Readonly<Record<string, SecurityAllowReason>> = {
   run: 'example-binding',
   s: 'example-binding',
   tools: 'example-binding',
+  v: 'example-binding',
+  wrap: 'example-binding',
   x: 'example-binding',
 };
 

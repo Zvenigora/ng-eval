@@ -5,6 +5,7 @@ import { afterVisitor } from './after-visitor';
 import { pushVisitorResult } from './visitor-result';
 import { dispatchStatement } from './dispatch-statement';
 import { EMPTY_COMPLETION, EvalState } from '../classes/eval';
+import { contextPop, contextPush } from './context-method';
 
 /**
  * Evaluates a block statement: a scope, a statement list, and one completion
@@ -39,9 +40,10 @@ import { EMPTY_COMPLETION, EvalState } from '../classes/eval';
  * on the per-walk `EvalState`, and one context can back any number of
  * evaluations: a scope this visitor failed to pop would outlive the walk and be
  * read first by every later evaluation on that context. The `try` opens *after*
- * the push, never around it - `push` is optionally chained, so bringing it
- * inside would pair a `finally` pop with a push the same optional chain had
- * skipped.
+ * the push, never around it - `contextPush` skips an absent context, as the
+ * optional chain it replaced did, so bringing it inside would pair a `finally`
+ * pop with a push that never happened. Both take the method from the context's
+ * class rather than from the instance (`context-method.ts`).
  */
 export const blockStatementVisitor = (node: BlockStatement, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
 
@@ -49,7 +51,7 @@ export const blockStatementVisitor = (node: BlockStatement, st: EvalState, callb
 
   let completion: unknown = EMPTY_COMPLETION;
 
-  st.context?.push({}, st.options);
+  contextPush(st.context, {}, st.options);
   try {
     for (const statement of node.body) {
       const value = dispatchStatement(statement, st, callback);
@@ -58,7 +60,7 @@ export const blockStatementVisitor = (node: BlockStatement, st: EvalState, callb
       }
     }
   } finally {
-    st.context?.pop();
+    contextPop(st.context);
   }
 
   pushVisitorResult(node, st, completion);

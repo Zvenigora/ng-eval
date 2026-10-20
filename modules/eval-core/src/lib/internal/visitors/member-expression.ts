@@ -45,6 +45,22 @@ const readPath = (node: MemberExpression): string | undefined => {
   return parts.join('.');
 }
 
+/*
+ * **There is no by-class refusal of a context in this visitor, and its
+ * removal is deliberate** (`docs/a35/plan.md` M20). One stood here, on the
+ * member's object and on the value it read, and the value funnel
+ * (`visitor-result.ts`) now covers both: a context is refused as it is
+ * pushed, whatever node pushed it, so it cannot reach a member read at all -
+ * the funnel's one exemption is the walk's own context in an object
+ * position, which the branch below handles by identity.
+ *
+ * It was removed rather than kept as depth because it was measured on both
+ * counts: removing it turned no case red (probe D of the § 9 matrix), and it
+ * cost ~2.5% of the member-read path, which runs for every `a.b`. A check
+ * that covers nothing and is not free is not depth, it is overhead that
+ * reads like protection.
+ */
+
 export const memberExpressionVisitor = (node: MemberExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>) => {
 
   beforeVisitor(node, st);
@@ -160,6 +176,10 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
     // always been.
     return [thisValue ?? object, key, value, false];
   } else {
+    // Not the walk's own context, and not a scope. A context cannot reach
+    // here at all: the value funnel refuses one as it is pushed, and the one
+    // it exempts is the walk's own, which the first branch took.
+    //
     // For regular objects, we need both case-insensitive lookup AND prototype pollution protection
     let value: unknown;
 

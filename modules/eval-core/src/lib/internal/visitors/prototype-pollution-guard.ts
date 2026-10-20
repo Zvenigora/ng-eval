@@ -5,6 +5,13 @@
  * by controlling access to dangerous property names and ensuring safe
  * object operations.
  */
+// Direct, not through the `classes/eval` barrel. `instanceof` needs the class
+// itself and not its type, and this module is imported by most visitors, so
+// the narrowest edge is the right one. Nothing here reads the binding at
+// module scope - only inside {@link safeSetProperty} - so the import cycle
+// the barrels already carry (`eval-scope.ts` imports the visitors barrel) is
+// not deepened into an initialisation order.
+import { EvalContext } from '../classes/eval/eval-context';
 
 /**
  * Set of property names that are dangerous for prototype pollution attacks
@@ -133,6 +140,80 @@ export const isDangerousConstructor = (obj: unknown): boolean => {
 };
 
 /**
+ * Security: refuses a member write whose target is an evaluation context -
+ * **by class** (`docs/a35/plan.md` Revision 16, and `docs/backlog.md` A42).
+ *
+ * `this.k = v` is a member write whose target is the `EvalContext` itself: the
+ * member visitor resolves `this.k` through the context's chain, and for a key
+ * nothing in that chain holds, `getThis` answers undefined and the receiver
+ * falls back to the context object. Up to 0.12.1 the write then landed on the
+ * instance as an own property. Three things followed, and the third is why
+ * this refusal is the fix rather than one of the routes being closed:
+ *
+ * - **Capture.** An own property shadows the prototype's method, so a planted
+ *   function under a method's name was invoked by the evaluator itself - with
+ *   the real context as its `this`. `context-method.ts` closes that at the
+ *   sites that remain; closing it here closes it at the source.
+ * - **Denial of service.** A plant over `push` that evaluates anything
+ *   recurses through `arrow-function-expression.ts` until the stack is gone,
+ *   and it persists on the instance - so every later evaluation on a reused
+ *   context throws. `@zvenigora/ng-eval-signals` and
+ *   `@zvenigora/ng-eval-forms` both reuse one context by design.
+ * - **Integrity.** `_original`, `_scopes`, `_priorScopes`, `_lookups` and
+ *   `_options` are own properties, so a write could replace the caller's own
+ *   object or the scope stack outright. No amount of method resolution
+ *   reaches that; refusing the write does.
+ *
+ * **Nothing legitimate is lost.** The property it used to create was not
+ * readable by any expression: `EvalContext.get` resolves through the scopes,
+ * the original, the prior scopes and the lookups, and never off the instance.
+ * So the write was invisible from the inside and reachable only as the three
+ * defects above. A write to a context *key* is `k = v`, which goes through
+ * `EvalContext.set` and the write policy a subclass may override.
+ *
+ * By class rather than by identity, so it covers a subclass - a signal
+ * context - and a context other than the walk's own, which is the shape the
+ * cross-context disclosure took.
+ */
+export const refuseContextWrite = (target: unknown): void => {
+  if (target instanceof EvalContext) {
+    throw new Error(`Write to the evaluation context is blocked for security reasons`);
+  }
+};
+
+/**
+ * Security: refuses an evaluation context **as a value**, by class.
+ *
+ * The companion to {@link refuseContextWrite}, and the load-bearing one: the
+ * context cannot be written to, and it cannot be obtained either. It is
+ * raised from the value funnel in `visitor-result.ts`, so it covers every
+ * value the walk pushes, whatever node pushed it.
+ *
+ * **It is at the funnel because a member read was not enough.** The first
+ * version refused a context only as a member read's object and value, and
+ * the step's second code review measured four ways round it, two of them
+ * pure language and needing nothing from the host: object spread
+ * (`({...c})._original`) and destructuring both copy the context's own
+ * enumerable fields into a plain object, from which the caller's object is an
+ * ordinary read; `Object.values` and `JSON.stringify` do the same with a
+ * host-supplied native; and a bare identifier simply returned the context to
+ * the consumer. The spread copy also handed out the **live** scope `Stack` by
+ * reference, so pushing onto its array poisoned every later evaluation on
+ * that context - the third stack invariant broken from outside any visitor.
+ *
+ * Refusing the value closes all of those at once, because each of them has to
+ * get the context onto the walk's stack first.
+ *
+ * The one value that may be a context is the positional `this`, which the
+ * member visitor consumes as its object and never returns; the funnel
+ * exempts exactly that node, and `this` anywhere else is already refused by
+ * `this-position.ts`.
+ */
+export const refuseContextRead = (): never => {
+  throw new Error(`Access to the evaluation context is blocked for security reasons`);
+};
+
+/**
  * Safely sets a property on an object with prototype pollution protection.
  * Refuses a dangerous target or key, then assigns - so a setter runs, and a
  * write the object refuses throws, prefixed "Failed to set property".
@@ -146,6 +227,8 @@ export const safeSetProperty = (target: unknown, key: unknown, value: unknown): 
   if (!target || (typeof target !== 'object' && typeof target !== 'function')) {
     throw new Error(`Cannot set property on non-object: ${typeof target}`);
   }
+
+  refuseContextWrite(target);
 
   if (isDangerousProperty(key)) {
     throw new Error(`Access to dangerous property "${String(key)}" is blocked for security reasons`);

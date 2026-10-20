@@ -1830,6 +1830,121 @@ Opened 2026-10-10 by A29's fix.
 *Verified*: measured 2026-10-10 at d839072 with a throwaway spec, deleted before A29's commit; the
 refusal rows on A29's commit, with another, deleted the same day.
 
+<a id="a35"></a>
+## A35 — A dangerous function value reachable from the context is callable past the name-based call sandbox
+
+**Package** core · **Kind** decision, security · **Status** **Retired — fixed 2026-10-18**, as steps
+2, 4, 7 and 8 of the [A35 plan](a35/plan.md). Steps 2 and 4 released 2026-10-17 in `eval-core`
+0.12.1, tagged 7cc8d30, as partial hardening; steps 7 and 8 not yet released, and ship in
+`eval-core` 0.13.0. Was Open
+
+*Fixed* 2026-10-18, when its last open route, [A39](#a39), closed. Four steps, each its own commit:
+- **Step 2 (0.12.1)**: the call, `new` and tag sites refuse a dangerous function by its **value**,
+  against an identity set of the realm's own dangerous functions, whatever name it was reached by. A
+  bound function whose name, stripped of its `bound ` prefixes, is a listed name is refused too.
+- **Step 4 (0.12.1)**: one funnel at `pushVisitorResult` refuses such a value at every read the walk
+  makes, outside the callee and `typeof`'s operand. So it cannot be handed to native code as an
+  argument, a receiver, an element, a branch or a result.
+- **Step 7 (0.13.0)**: `this` evaluates only as the object of a member access, and is refused
+  anywhere else.
+- **Step 8 (0.13.0)**: a function the context holds is called with a guarded view of the context,
+  never the context or the object behind it. That closes the routes that reached native code with no
+  value on the walk's stack at all.
+
+**What stays open is a limit, not this entry**: a container the host itself provides, spread by the
+expression into a native call, hands its elements to native code without the walk pushing them. The
+plan's § 8 q2 decided against a shallow check on it, and `SECURITY.md` states it as a limit. The
+host's mitigation holds in every version: place no listed function in the context, nor an object
+from which one is reachable.
+
+*Verified*: test-first in every step, each fix probed by removing it, the failures read case by
+case. The plan's § 4 records each step's cases, probes and counts. In brief:
+- **step 2**: `eval.service.dangerous-values.spec.ts`, the C cases and S1;
+- **step 4**: the V cases, with each exemption probed widened and narrowed;
+- **step 7**: `eval.service.this-position.spec.ts`, P1, P2, G1, E1–E9, H1–H2 and O1–O5;
+- **step 8**: `eval.service.context-receiver.spec.ts`, R1–R4, B1–B3, S2–S5 and N1–N4, with every R
+  case red against step 7's commit and against the guard removed.
+
+**The entry as it stood:**
+
+**The class.** The call sandbox (`call-expression.ts`) refuses a call in three ways:
+- by the callee's **name** as the expression writes it, against fourteen names;
+- by **identity** only for `Function`, and only when `Function` is the callee;
+- by the **source text** of a callee that is not native.
+
+So a dangerous function *value* — `eval`, `Function`, a timer, any other function the list names —
+that the context holds, or that is reachable from it, is callable whenever the call does not name
+it. The expression's author chooses how, not only the host.
+
+Measured 2026-10-14 against the built `eval-core`. `eval` was in the context under its own name, and
+`eval("1+1")` is refused:
+
+| Route | Expression | Result |
+| :--- | :--- | :--- |
+| Alias | `run("1+1")`, with `eval` bound as `run` | 2 |
+| `call` | `eval.call(null, "1+1")` | 2 |
+| `apply` | `eval.apply(null, ["1+1"])` | 2 |
+| `bind` | `eval.bind(null)("1+1")` | 2 |
+| `Function` through `call` | `Function.call(null, "return 7")()`, with `Function` bound | 7, where `Function("return 7")()` is refused |
+| A native callback | `["1+1"].map(eval)` | `[2]` |
+| `Reflect.apply` | `Reflect.apply(eval, null, ["1+1"])`, with `Reflect` bound | 2 |
+| A promise callback | `Promise.resolve("1+1").then(eval)`, with `Promise` bound | resolves to 2 |
+| A host function the source test refuses | `host.call(null)` | runs, where `host()` is refused |
+
+In each route, the function the sandbox checks is a native method, `call`, `apply`, `bind`, `map`,
+`Reflect.apply` or `then`, or a value under a name not on the list. The dangerous function is an
+argument or a receiver, which no check reads. The write policy already follows `call`, `apply` and
+`bind` to their target ([C5](#c5)); the call checks do not.
+
+**The reach** is bounded by the context: the target must be something the context holds, or
+something reachable from it. **The host's mitigation**, stated in `SECURITY.md`: never place `eval`,
+`Function`, the timers or any other member of the call sandbox's list in the context, under any
+name, nor an object from which one is reachable.
+
+**A candidate direction, not a decision**: refuse at value resolution, not at the call, by identity
+against the real globals. When an identifier, a member read or a scope resolves to the realm's own
+`eval`, `Function`, a timer or another listed global, refuse there, whatever the name. The value then
+never reaches a call, an argument or a callback, and every route above closes at once. What it leaves:
+- **`bind`'s loss of identity.** `eval.bind(null)` is a new function, and nothing in the language
+  recovers its target. Within an expression, reading `eval` to bind it is already refused. But a
+  bound dangerous function the host places in the context matches nothing, and needs a decision of
+  its own: refuse `bind` on a listed value, or accept that a host-made bound function is the host's.
+- **Which realm.** The real globals are this realm's, read once. A function from another realm, such
+  as an iframe's `eval`, has another identity.
+- **What a host loses.** A host that today exposes `setTimeout` on purpose loses it. That is a
+  behaviour change.
+
+**The release is shape (i)**, chosen 2026-10-16 (the [A35 plan](a35/plan.md)'s § 2):
+- **0.12.1 first, as partial hardening**, released 2026-10-17, tagged 7cc8d30. Both downstream
+  peer ranges admit it: `eval-signals`'
+  `>=0.11.0 <0.13.0` and `eval-forms`' `>=0.12.0 <0.13.0`. The route through `this` ([A39](#a39))
+  and a host container are stated limits.
+- **Then 0.13.0 closes `this`.** One advisory follows it.
+
+*Recorded*: this entry; `SECURITY.md`, "Dangerous function values", which since the A35 plan's step 5
+states the refusals as protections and the routes still open as limits. Until then it recorded this
+entry under "Documented limits".
+*Verified*: found by the code review of Phase 10 step 2. Measured on 2026-10-14 against
+`dist/modules/eval-core` built at 3f00e3c plus that step's uncommitted spec, with no library change.
+The measurement used throwaway scripts outside the repository that called `evaluate(parse(…),
+EvalState.fromContext(…))` and awaited the result. The cause is at `call-expression.ts:181-196`: a
+member call passes the property name as the checked name, and `safeCall` checks only the function it
+is handed.
+
+**Planned**: [`docs/a35/plan.md`](a35/plan.md), steps 2 and 4. [A36](#a36) was
+its step 1 and [A37](#a37) its step 3, both fixed 2026-10-15. The plan measures
+more routes than this entry's table: a member, a call result, destructuring, `this`, a scope
+namespace, `(0, eval)`, `(c ? eval : f)`, a parenthesised callee, a host container, and a case
+variant under `caseInsensitive`.
+
+Step 4's code review found two things, each now its own entry:
+- **[A39](#a39)**: a route the funnel cannot see, through `this`, by which native code reaches a
+  listed function the context holds. Its detail is held in the draft advisory (§ 2's disclosure
+  rule).
+- **[A40](backlog.md#a40)**: under the funnel, a postfix update of a listed function writes, then throws.
+
+So A35 stays open until the route through `this` is closed. It retires with A39, in the plan's step 8.
+
 <a id="a36"></a>
 ## A36 — A tagged template's tag is called with no sandbox check
 
@@ -1972,6 +2087,216 @@ as a Fixed entry.
 
 *Recorded*: this entry; the A35 plan, § 1.2 finding 4. Opened 2026-10-14 by the A35 plan.
 *Verified*: the A35 plan's M3, a throwaway script against `dist/modules/eval-core` built from efe2803.
+
+<a id="a39"></a>
+## A39 — a route through `this` reaches a dangerous function past the funnel
+
+**Package** core · **Kind** fix, security · **Status** **Retired — fixed 2026-10-18**, as steps 7
+and 8 of the [A35 plan](a35/plan.md); not yet released, and ships in `eval-core` 0.13.0. Was Open
+
+*Fixed* 2026-10-18, in two halves, each a breaking change released together:
+- **The value route (step 7).** `this` evaluates only as the object of a member access — `this.k`,
+  `this["k"]`, `this.fn()` — which resolves against the context as before. Anywhere else it throws
+  `Access to "this" outside a member access is blocked for security reasons`, `typeof this`
+  included. The position is a mark on the AST node, made by the member visitor before it visits its
+  object.
+- **The receiver (step 8).** Every receiver the evaluator resolves out of the context's own chain —
+  a bare call's, a bare tag's, and `this.fn()`'s for any key the context resolves — is now a guarded
+  view of the context: `push` and `pop` act on the real context, every other read throws a named
+  refusal, and a write is refused by the view's frozen target. Which receivers those are is carried
+  out of `evaluateMember` as the receiver's origin, since an identity test at the call could see the
+  context but not the object behind it. `obj.fn()`, `ns.fn()` and a prior scope's declared `thisArg`
+  are unchanged, and the member-write policy still receives the real context.
+- **Nothing retains a view.** Each call gets its own. The first form cached one per context, and
+  measured in a production bundle that cache made a bare call ~45% slower on the ordinary one-shot
+  path; uncached, it came in within the baseline's own spread (the plan's N-d).
+
+**What it does not close**: a container the host itself provides. That is the plan's § 8 q2, a
+documented limit, and distinct from this entry because here the library supplied the container.
+
+*Verified*: test-first, through `EvalService`, each fix probed by removing it and the failures read
+case by case. The plan's § 4 steps 7 and 8 record every case and count:
+- **step 7**: P1, P2 and G1 red against the parent commit, and red again with the refusal removed;
+  the positional mark removed turns 402 existing `eval-core` cases red, and the downstream suites'
+  `this.k` reads with them;
+- **step 8**: R1–R4, one per receiver, each red against step 7's commit; B1–B3 and S2–S5, a
+  structural pin per receiver; probe (i), the guard removed, turns the same 13 red. **R4** — `this.fn()`
+  for a key the original holds — stopped the step's first run (the plan's Revision 13) and is why
+  the origin is carried rather than inferred. **S5**, a context that holds a reference to itself, is
+  the case that makes that carry load-bearing: without it the guard's condition can drop the origin
+  and every other case in three projects stays green.
+
+The route's mechanism and its probes stay in the repository's draft security advisory until 0.13.0 is
+published, under the plan's § 2 disclosure rule; the cases named above hold them on the default
+branch only beside the fix.
+
+**The entry as it stood:**
+
+**The route.** When an expression evaluates `this`, a value escapes from which native code can reach
+a dangerous function the host placed in the context, past the funnel ([A35](#a35) step 4). The
+funnel sees only what passes through the walk's own stack, and this route does not. It needs no
+container from the host — the library supplies one — which is what makes it distinct from the
+host-container limit, the plan's § 8 q2.
+
+**Held off the default branch until the fix ships.** The route's mechanism and the probes that
+reproduce it are in the repository's draft security advisory, not here, under the disclosure rule the
+[A35 plan](a35/plan.md) § 2 sets (Revision 7). This entry says only that the route exists, that
+0.13.0 closes it, and how a host stops it.
+
+**The mitigations**, which hold whatever the route: a host places no listed function in the context,
+under any name, nor an object from which one is reachable. In a browser, a Content Security Policy
+without `'unsafe-eval'` stops `eval`, `Function` and a string timer.
+
+**The fix changes what `this` evaluates to**, which is published behaviour. So it is a breaking
+change, released as `eval-core` **0.13.0**, not 0.12.1. Neither downstream peer range admits 0.13.0:
+`eval-signals` declares `>=0.11.0 <0.13.0` and `eval-forms` declares `>=0.12.0 <0.13.0`. So each
+needs a release of its own to take the fix.
+
+What `this` should return instead is the A35 plan's § 8 q4, which is decided from a measurement
+first.
+
+*Recorded*: this entry; the [A35 plan](a35/plan.md)'s finding 8, § 3.4, § 8 q4 and § 9;
+`SECURITY.md`, "What these checks do not cover" and "Documented limits", at the plan's § 2 prose
+limit, since its step 5. The probes that reproduce the route are held in the repository's draft
+security advisory, not on the default branch, under the plan's § 2 disclosure rule.
+*Verified*: found by the code review of the A35 plan's step 4, and reproduced on 2026-10-16 with
+throwaway scripts outside the repository, against the built bundles at step 3's commit (eea3555) and
+step 4's. The measurements are recorded in the draft advisory.
+
+---
+
+<a id="a42"></a>
+## A42 — A member write on `this` lands on the `EvalContext` instance
+
+**Package** core · **Kind** fix, security · **Status** **Retired — fixed 2026-10-19**, in the
+[A35 plan](a35/plan.md)'s step 9 under its Revision 16; not yet released, and ships in `eval-core`
+0.13.0. Was Open — opened 2026-10-18 by the code review of that step
+
+A member write whose object is the context — `this.k = v` — was written straight into the target
+the member visitor returns, which for a key nothing in the context's chain resolves is the
+`EvalContext` instance itself. So an expression could add an own property to the evaluator's own
+object, or overwrite one of its fields.
+
+**What it was measured to be, 2026-10-19, through `EvalService`.** The first version of this entry
+said it was "not a route to a dangerous value **or to the context itself**". The second half of
+that was **wrong**, and the correction came from the code review of step 9 together with a probe
+run to check it:
+
+- **A key the context resolves** is unaffected, then and now: the write lands on the caller's own
+  object, as `EvalContext.set` has always done. Documented behaviour.
+- **A key it does not resolve** landed on the instance, where nothing read it back — `get`
+  resolves through the scopes, the original, the prior scopes and the lookups, and consults no own
+  property of the instance.
+- **But an own property shadows a method of the class, and the evaluator calls those methods
+  itself.** `program.ts`, `block-statement.ts`, `for-statement.ts` and
+  `arrow-function-expression.ts` each call `st.context.push(...)`, and the resolution and write
+  paths call `get`, `getKey`, `scopeHolding`, `set`, `setInScope` and `checkMemberWrite`. A planted
+  **function** under one of those names was therefore invoked **by the evaluator**, with the real
+  `EvalContext` as its `this`. Measured: two invocations for one arrow call, every one receiving
+  the real context.
+- **A context so captured disclosed the caller's object across contexts.** Within the context it
+  was captured from it stayed contained — the member visitor's identity branch resolves `this.k`
+  through the chain and reads nothing off the instance — but read under a **second** context the
+  identity test fails, the generic branch applies, and `_original` is an ordinary property. A
+  planted secret was retrieved that way.
+- **No listed dangerous value could be planted**, which is why [A39](#a39)'s retirement was sound
+  throughout: `eval`, `Function` and a call's result are each refused at the read by the step-4
+  funnel, over `push` and over `pop` alike.
+- **Availability.** An arrow written in the expression and planted over `push` recursed through the
+  re-entrant `evaluate` in `arrow-function-expression.ts` until the stack was gone, and the own
+  property persisted, so **every later evaluation on that context threw**
+  `Maximum call stack size exceeded`. A fresh context was unaffected. On the construct-once pattern
+  that is a lasting failure of one signal or one field.
+- **Integrity.** `_original`, `_scopes`, `_priorScopes`, `_lookups` and `_options` are own
+  properties too, so a write could replace the caller's object or the scope stack outright. No
+  amount of method resolution reaches that.
+
+*Fixed* 2026-10-19, as three layers. The shape below is the **second** one: the first put the
+read refusal on the member visitor alone, and the step's second code review measured four ways
+round it — object spread and destructuring, which need nothing from the host, and `Object.values`
+and `JSON.stringify`, which need a native the host supplied. Each disclosed `_original` in full,
+and the spread copy also handed out the live scope `Stack` by reference, which poisoned every
+later evaluation on a reused context. The refusal therefore sits at the **value funnel**:
+
+- **An `EvalContext` is not a value an expression may hold** — `refuseContextRead`, raised from
+  `pushVisitorResult` in
+  [`visitor-result.ts`](../modules/eval-core/src/lib/internal/visitors/visitor-result.ts), so it
+  covers every value the walk pushes whatever node pushed it: an identifier, a member read, a
+  spread or destructuring source, a call's result, an arrow's body. The one exemption is the
+  walk's **own** context as a member's object, matched by identity as well as by position — keyed
+  on position alone it was as wide as `markThisPositional`, which under `caseInsensitive` marks
+  every identifier before a `.`, so a host-supplied foreign context passed it there. That was the
+  step's third code review. This is the layer the rest is now claimed on.
+- **The write is refused, by class** — `refuseContextWrite` in
+  [`prototype-pollution-guard.ts`](../modules/eval-core/src/lib/internal/visitors/prototype-pollution-guard.ts),
+  reached from `safeSetProperty`, so it covers every write form the evaluator offers: dotted and
+  computed member writes, compound writes, and the update expressions. The same refusal is applied
+  to a **native** writer handed a context — `Object.assign`, `Object.defineProperty`,
+  `Object.setPrototypeOf`, `Object.freeze`, `Reflect.set` and their kin, including through `call`,
+  `apply` and `bind` — from
+  [`member-write-policy.ts`](../modules/eval-core/src/lib/internal/visitors/member-write-policy.ts),
+  after a context's own policy has been asked, so a policy's refusal is still the one that
+  surfaces. Nothing is lost: the property the write used to create was unreadable by any
+  expression.
+- **The methods the evaluator invokes are taken from the context's class** —
+  [`context-method.ts`](../modules/eval-core/src/lib/internal/visitors/context-method.ts) — at the
+  scope pushes and pops, the write path and the policy, so an own property arriving by any other
+  route is not what the evaluator calls. Kept where it is free; it was measured at every
+  resolution too and cost ~15% on the bare-call path and ~22% on the member-read path, which is
+  the plan's M19.
+
+**The native-writer refusal is coverage, and hop-following is a second line.** `Object.assign`,
+`Reflect.set`, `Object.setPrototypeOf`, `Object.freeze` and their kin are refused when handed a
+context, through `call`, `apply`, `bind`, `Reflect.apply` and `Reflect.construct`. That is
+reachable rather than theoretical: the L11 residual below hands the real context into a call's
+arguments, and each of those writers was measured arriving there and being refused. What cannot
+be complete is the hop-following itself — any native function that calls another with arguments
+of its own (`map`, `sort`, `then`, `Array.from`, an accessor, a `Proxy` trap) is a hop, and the
+list grows with the language — so it is a second line, not a boundary. A by-class refusal that
+also sat on the member read **was removed** in the final pass: it turned no case red and cost
+~2.5% of every member read, which is overhead that reads like protection rather than depth.
+
+**What is not covered, measured rather than implied.** The funnel reads the value a node pushes.
+It does not look inside one, and it does not run on `evaluateAsync`'s promise unwrap, which
+happens after the walk. So a host that places its own context inside a value an expression can
+read — nested in an object, in an array, or behind a promise — gets it back as a result; no host
+*function* is needed, which an earlier wording implied. Reading it back one hop later is refused.
+The trace is a third destination of the same kind: the exempt positional `this` reaches
+`EvalResult.trace`, as every `this` did before step 7. A fourth needs no host-held context at
+all, only an AST shape: a **host-built** tree reusing one `this` node, the member use visited
+first, carries the positional mark to the second use, and the context reaches a host function or
+leaves nested in the result. No source produces it — a parser never shares a node — and the other
+visit order is refused. It is pinned as a tripwire (L11) rather than closed; closing it means
+consuming the mark at the pop, which is per-node state on the hot path. None of these is
+constructible by an expression.
+
+**Code execution is not reachable from a captured context, and that was measured rather than
+argued.** Eighteen routes from a captured context, plus five across two contexts and one through a
+planted `get`: every listed function was refused, at the read by the step-4 funnel or at the call
+by the sandbox, and every `constructor` and `__proto__` route by the pollution guard. What a
+capture yielded was disclosure of the host's own object, and the integrity and availability
+damage above — not execution.
+
+**Breaking**, and listed as such in the [CHANGELOG](../modules/eval-core/CHANGELOG.md): a write
+that used to succeed now throws a named refusal.
+
+**Downstream.** Neither `@zvenigora/ng-eval-signals` nor `@zvenigora/ng-eval-forms` was exposed,
+and both are named because both reuse one context by design, which is what made the availability
+half durable rather than per-walk. A signal context implements `checkMemberWrite` and refuses a
+write to a target the walk did not create, so the planting write never landed; `eval-forms`
+evaluates through `eval-signals` and is covered by the same refusal. A plain `eval-core` context
+was exposed, and is what this fixes.
+
+**For the advisory.** The availability half is new information for
+[A39](#a39)'s calculator pass: a reused context can be bricked by an expression, which reads as
+A:L rather than A:N. Step 11 re-runs the vector with this entry in hand.
+
+*Recorded*: this entry; the [A35 plan](a35/plan.md)'s Revision 16, § 9 and M19;
+`SECURITY.md`, "`this`, and the receiver of a call".
+*Verified*: `eval.service.context-write.spec.ts`, whose W1–W12 pin the write refusal and L1–L6 the
+other two layers; each layer removed in turn, and the cases that went red recorded in the plan's
+§ 9. The enumeration of the write forms, and of the sites where the evaluator invokes a method on
+a context, is in the plan's § 9.
 
 ---
 

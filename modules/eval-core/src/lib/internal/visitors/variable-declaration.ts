@@ -10,6 +10,7 @@ import { Context } from '../classes/common';
 // Direct, not through the `common` barrel, which does not re-export it -
 // `eval-context.ts` reaches for the same helper the same way.
 import { setContextValue } from '../classes/common/context';
+import { contextScopeHolding, contextSet, contextSetInScope } from './context-method';
 
 /**
  * The scope a declaration binds into: the innermost one on the stack.
@@ -191,10 +192,10 @@ export const assignToBinding = (st: EvalState, key: unknown, value: unknown, nam
     throw new Error(`Context is not set.`);
   }
 
-  const scope = st.context.scopeHolding(key);
+  const scope = contextScopeHolding(st.context, key);
 
   if (!scope) {
-    st.context.set(key, value);
+    contextSet(st.context, key, value);
     return;
   }
 
@@ -202,5 +203,5 @@ export const assignToBinding = (st: EvalState, key: unknown, value: unknown, nam
     throw new Error(`Assignment to constant variable "${name}".`);
   }
 
-  st.context.setInScope(key, value);
+  contextSetInScope(st.context, key, value);
 }

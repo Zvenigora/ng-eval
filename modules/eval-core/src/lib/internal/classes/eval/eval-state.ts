@@ -6,6 +6,11 @@ import type { AnyNodeTypes } from '../../interfaces';
 import type { EvalHookBookkeeping, EvalHookError, EvalNodeTiming } from './eval-hooks';
 import { createTimingHook } from './hooks/timing-hook';
 import { Context } from '../common';
+// Direct, not through the visitors barrel: the module it reaches for imports
+// nothing from here at runtime (its context types are `import type`), so this
+// stays a one-way edge - `eval-scope.ts` reaches into the same folder.
+import { hasMemberWritePolicy, refuseInstanceMemberWritePolicy, refuseUnbalancedScopeMethods }
+  from '../../visitors/context-method';
 
 /**
  * Reads a caller-supplied hook registry out of the evaluation options.
@@ -450,7 +455,15 @@ export class EvalState {
     this._options = options;
     this._isAsync = isAsync;
     this._hooks = adoptHooks(options);
-    this._createdObjects = typeof context?.checkMemberWrite === 'function'
+    // Asked of the context's class, not of the instance: an expression can
+    // plant an own `checkMemberWrite` (`docs/backlog-retired.md` A42), and the
+    // opt-in has to agree with what `member-write-policy.ts` will actually
+    // call - which is the class's policy or none (`context-method.ts`). A
+    // policy a *host* assigned to the instance would therefore be inert, so
+    // it is refused here rather than ignored.
+    refuseInstanceMemberWritePolicy(context);
+    refuseUnbalancedScopeMethods(context);
+    this._createdObjects = hasMemberWritePolicy(context)
       ? new WeakSet<object>()
       : undefined;
 

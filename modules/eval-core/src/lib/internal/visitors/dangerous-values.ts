@@ -7,7 +7,7 @@ import { DANGEROUS_FUNCTIONS } from './call-expression';
  *
  * The call list's names are checked as written by the call sandbox; that
  * check does not see `eval` bound as `run`, read as `tools.run`, returned by
- * a call or spelt `EVAL` under `caseInsensitive` (`docs/backlog.md` A35). The
+ * a call or spelt `EVAL` under `caseInsensitive` (`docs/backlog-retired.md` A35). The
  * set below holds the values themselves, so a callee is refused whatever it
  * is called, and the funnel at the end of this module refuses one read
  * anywhere else.
@@ -252,11 +252,13 @@ const readName = (node: AnyNode, fn: { name?: unknown }): string => {
  *
  * It sees only what passes through the walk's own stack. A value that reaches
  * native code without being pushed is not seen: the elements of an array the
- * host built, spread into a call, and the route `docs/backlog.md` A39
- * records, which 0.13.0 closes.
+ * host built, spread into a call, which stays a documented limit. The other
+ * such route, through `this` and the receiver of a call
+ * (`docs/backlog-retired.md` A39), is closed in 0.13.0 elsewhere - by
+ * `this-position.ts` and `context-receiver.ts` - not by this check.
  *
  * Up to 0.12.0 nothing refused such a read: `["1+1"].map(eval)` gave `[2]`
- * (`docs/backlog.md` A35).
+ * (`docs/backlog-retired.md` A35).
  */
 export const refuseDangerousRead = (node: AnyNode, value: unknown): void => {
   if (exemptNodes.has(node) || !isDangerousValue(value)) {

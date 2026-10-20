@@ -6,7 +6,7 @@ import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 import { evaluateMember } from './member-expression';
 import { evaluateArray } from './array-expression';
-import { consultMethodWrite } from './member-write-policy';
+import { consultMethodWrite, refuseContextMethodWrite } from './member-write-policy';
 import { exemptFromFunnel, isDangerousValue } from './dangerous-values';
 import { guardedReceiver } from './context-receiver';
 
@@ -200,6 +200,14 @@ export const callMember = (st: EvalState, [object, propertyName, fn, contextReso
     // a policy decides about the object that is written.
     consultMethodWrite(st, created, fn, receiver, args);
   }
+  // Then, whether or not the context polices writes: a native built-in
+  // writing into an evaluation context is refused, because the context is
+  // not the caller's to write (`member-write-policy.ts`). After the
+  // consultation and not before, so a policy still sees the write it would
+  // have seen and its own refusal is still the one that surfaces - the same
+  // order the member-write path has, where `safeSetProperty` refuses after
+  // `consultMemberWrite` has been asked.
+  refuseContextMethodWrite(fn, receiver, args);
   // A receiver the evaluator resolved out of the context's own chain is
   // guarded (`context-receiver.ts`): the context itself, for a key only a
   // lookup resolves, and the original, for a key the original holds. Both
@@ -251,13 +259,27 @@ export const callExpressionVisitor = (node: CallExpression, st: EvalState, callb
       functionName = node.callee.name;
     }
 
+    // A bare call's `this` is a guarded view, not the context itself
+    // (`context-receiver.ts`). Built once, and asked about with the same
+    // object the call will use.
+    const thisArg = guardedReceiver(st.context);
+
     const created = st.createdObjects;
     if (created) {
+      // The policy is asked about the **real** context, which is its
+      // published contract: a policy decides about the object that would be
+      // written, and `member-write-policy.methods.spec.ts` pins that target.
       consultMethodWrite(st, created, caller, st.context, args);
     }
-    // A bare call's `this` is a guarded view, not the context itself
-    // (`context-receiver.ts`).
-    const value = safeCall(caller, guardedReceiver(st.context), args, node.optional, functionName);
+    // The refusal is asked about `thisArg`, which is what the call will
+    // actually receive. Passing the real context here instead would refuse a
+    // write that was never going to reach it - a receiver-writing built-in
+    // bare-called gets the view, whose frozen target refuses the write as
+    // step 8 documents - and would report it under the context's name. An
+    // argument that *is* a context is still caught, since a first-argument
+    // writer is matched on `args` whatever its receiver.
+    refuseContextMethodWrite(caller, thisArg, args);
+    const value = safeCall(caller, thisArg, args, node.optional, functionName);
     pushVisitorResult(node, st, value);
   }
 
