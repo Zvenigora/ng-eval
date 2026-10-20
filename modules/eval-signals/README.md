@@ -17,9 +17,11 @@ signals library.
 npm install @zvenigora/ng-eval-signals @zvenigora/ng-eval-core
 ```
 
-Peer dependencies: `@angular/core >=19` and `@zvenigora/ng-eval-core >=0.11.0 <0.13.0`. The floor
-is the write guard, which needs `eval-core` 0.11.0 to ask about a built-in method's write as well
-as a member write — see [Writes are not supported](#writes-are-not-supported).
+Peer dependencies: `@angular/core >=19` and `@zvenigora/ng-eval-core >=0.13.0 <0.14.0`. The floor
+is 0.13.0 since 0.6.0: this version documents the guarded receiver a source function's `this` is,
+and that contract exists only in `eval-core` 0.13.0 and later. It also carries the write guard,
+which needs `eval-core` 0.11.0 to ask about a built-in method's write as well as a member write —
+see [Writes are not supported](#writes-are-not-supported).
 
 ## Quick start
 
@@ -556,13 +558,23 @@ Four things that decide whether this library fits, rather than surprises you lat
   context after this one, that lookup answers instead. With a context this library built and
   nothing added to it there is nothing further to reach, so the read simply resolves to
   `undefined`.
-- **The scope guard covers `createEvalSignal`, not a raw context.** `EvalContext.push` and
-  `pop` are public, so a function in your source can push a scope onto the context and never
-  pop it, and every later read of that name finds the scope first. `createEvalSignal` unwinds
-  the context to the depth it started at after every recompute; a context you drive directly
-  through `EvalService` gets no such unwind. Up to 0.2.x this bullet described an `eval-core`
-  defect that leaked an arrow function's parameter scope; `eval-core` fixed it in 0.4.0, and
-  0.3.0's peer floor of 0.10.0 excludes the versions that had it.
+- **A source function's `this` is a guarded view of the context: `push` and `pop`, and nothing
+  else.** Since 0.6.0, on `eval-core` 0.13.0, a function your source holds is called with a view
+  rather than with the `EvalContext`. `push` and `pop` on it act on the real context, so a
+  function that pushes a scope still pushes it; **every other read throws**
+  `Access to "<key>" on the evaluation context is blocked for security reasons`, and a write
+  throws a `TypeError` in strict mode, which compiled module code is. So a source function cannot
+  read the context's other keys through its own `this` — pass
+  it what it needs, or give it a scope with an explicit `thisArg`. The view's identity is not
+  stable either: every call gets a new one, so do not key a `WeakMap` or an identity comparison on
+  a function's `this`. Up to 0.5.1 that `this` was the context itself.
+- **The scope guard covers `createEvalSignal`, not a raw context.** Because `push` and `pop` are
+  the two the view still answers, a function in your source can push a scope onto the context and
+  never pop it, and every later read of that name finds the scope first. `createEvalSignal`
+  unwinds the context to the depth it started at after every recompute; a context you drive
+  directly through `EvalService` gets no such unwind. Up to 0.2.x this bullet described an
+  `eval-core` defect that leaked an arrow function's parameter scope; `eval-core` fixed it in
+  0.4.0, and 0.3.0's peer floor of 0.10.0 excludes the versions that had it.
 
 ## Using the adapter directly
 

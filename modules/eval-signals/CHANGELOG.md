@@ -10,6 +10,57 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.6.0] - 2026-10-20
+
+**A source function's `this` is now a guarded view of the `EvalContext`, `this` evaluates only as
+the object of a member access, and the `eval-core` range moves to 0.13.** A breaking minor: no
+symbol of this package changes shape, and **no shipped code of it changes** — only the specs named
+below — so the `.d.ts` is byte-identical to 0.5.1's. What changes is the behaviour it forwards from
+`@zvenigora/ng-eval-core` 0.13.0, which closes a route that reached a dangerous function through
+the context ([A39](../../docs/backlog-retired.md#a39),
+[A42](../../docs/backlog-retired.md#a42)). That release does not close every route; `SECURITY.md`'s
+[documented limits](../../SECURITY.md#documented-limits) state the ones that stay open in every
+version.
+
+### Breaking
+- **`this` evaluates only as the object of a member access.** `this.k`, `this["k"]` and
+  `this.fn()` resolve against the context as before. Anywhere else — as a value, an argument or an
+  operand, `typeof this` included — `eval-core` 0.13.0 throws
+  `Access to "this" outside a member access is blocked for security reasons`, where up to 0.12.1
+  it evaluated to the `EvalContext` the walk ran against. Raising this release's floor to 0.13.0 is
+  what hands that refusal to every consumer, so it is stated here as well as in `eval-core`'s own
+  changelog. No expression shape this package documents uses `this` that way.
+- **A function your source holds is called with a guarded view of the `EvalContext`, not the
+  context itself.** `push` and `pop` on that view still act on the real context, so a function
+  that pushes or pops a scope is unaffected and `createEvalSignal`'s depth unwind is unchanged.
+  **Every other read of the view throws**
+  `Access to "<key>" on the evaluation context is blocked for security reasons`, and a write
+  throws a `TypeError` in strict mode. Up to 0.5.1 such a function received the context, could
+  read every key it resolved and could write onto it.
+  - **What this breaks**: a function held in your source and called bare — `fn()` — or as
+    `this.fn()` can no longer reach the context's other keys through its own `this`. Give it the
+    values it needs as arguments, or a scope of its own with an explicit `thisArg`, which
+    `eval-core` 0.13.0 does not change.
+  - **The view's identity is not stable**: every call receives a new one, even two calls in one
+    recompute. Do not key a `WeakMap`, a `Set` or an identity comparison on a function's `this`.
+  - **The assertions it changes**: the two `signal-context` pins that asserted the receiver's
+    identity. Each is rewritten to assert the guard's contract — that `push` and `pop` reach the
+    real context and nothing else does — and neither is dropped. No other assertion of this
+    package changes; its suite stays at 438 cases, with one comment in
+    `eval-signal-async.spec.ts` corrected to describe the view.
+  - A signal context's own write policy is unaffected: `eval-core` still hands
+    `checkMemberWrite` the real context as its write target, so `SignalContextWriteError` is
+    raised exactly where it was.
+
+### Changed
+- **Peer range moved to 0.13.** `@zvenigora/ng-eval-core`: `>=0.11.0 <0.13.0` →
+  `>=0.13.0 <0.14.0`. **The floor rises rather than only the ceiling**: the entry above describes
+  behaviour that exists only with `eval-core` 0.13.0, and an install that resolved an earlier
+  `eval-core` would take this release's documented contract against an evaluator that does not
+  implement it — and that evaluator is one the advisory for A39 lists as affected.
+
+---
+
 ## [0.5.1] - 2026-10-14
 
 **`abortSignalKey`'s refusal reworded, and the `eval-core` peer range widened to admit 0.12.0.** A

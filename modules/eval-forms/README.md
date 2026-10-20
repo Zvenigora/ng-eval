@@ -67,8 +67,8 @@ set of ranges covering both adapters:
   "@angular/forms": ">=19.0.0",
   "rxjs": "^7.8.0",
   "acorn-walk": "^8.3.0",
-  "@zvenigora/ng-eval-core": ">=0.12.0 <0.13.0",
-  "@zvenigora/ng-eval-signals": ">=0.5.1 <0.6.0"
+  "@zvenigora/ng-eval-core": ">=0.13.0 <0.14.0",
+  "@zvenigora/ng-eval-signals": ">=0.6.0 <0.7.0"
 }
 ```
 
@@ -79,10 +79,14 @@ diagnostic for an entry point they do not import. An older consumer importing `/
 `Cannot find module '@angular/forms/signals'` from Angular's own `exports` map rather than
 anything this library declares.
 
-**The `eval-core` floor is 0.12.0, since 0.5.0.** `/signals`' `colonIdentifiers` option hands
-`eval-core`'s parser an option that 0.11 would ignore, and an option that does nothing should not
-be installable. The `eval-signals` floor is 0.5.1 for the same release: every earlier
-`eval-signals` requires `eval-core` below 0.12.0, so none can be installed beside it.
+**The `eval-core` floor is 0.13.0, since 0.6.0.** That release closes a route by which a rule
+reached its evaluation context through `this`, and this version's documented behaviour — `this`
+only as the object of a member access, and a guarded view as a context function's receiver —
+exists only there; a fresh install must not resolve an evaluator the route is open in. The
+`eval-signals` floor is 0.6.0 for the same release, and that reason is transitive: every earlier
+`eval-signals` requires `eval-core` below 0.13.0, so none can be installed beside it. Before 0.6.0
+the floors were 0.12.0 and 0.5.1 — the first set directly by `/signals`' `colonIdentifiers`
+option, which 0.11 would have ignored, and the second transitively, as now.
 
 **`acorn-walk` is new in 0.2.0 and imposes no new install.** Both adapters walk the parsed
 expression with it, through the shared `guardIdentifiers` — `/signals` since 0.2.0, `/reactive`

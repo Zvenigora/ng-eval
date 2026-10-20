@@ -544,8 +544,12 @@ gains `.claude/skills/step/SKILL.md`, whose per-step counts the gate changed.
 **Target package**: `@zvenigora/ng-eval-core`, in **shape (i)**, chosen in Revision 7 (§ 2, § 8 q5):
 **0.12.1**, a patch, then **0.13.0**. Shape (ii), 0.13.0 alone, was the alternative.
 
-Both downstream peer ranges admit 0.12.1: `eval-signals`' `>=0.11.0 <0.13.0` and `eval-forms`'
-`>=0.12.0 <0.13.0`. Neither admits 0.13.0.
+As of 0.12.1 both downstream peer ranges admitted it: `eval-signals`' `>=0.11.0 <0.13.0` and
+`eval-forms`' `>=0.12.0 <0.13.0`, neither of which admits 0.13.0 — which is what forced the
+combined release. **Step 10 moves both to the 0.13 line** (`>=0.13.0 <0.14.0` in each, and
+`eval-forms`' `eval-signals` peer to `>=0.6.0 <0.7.0`), so after it no downstream range admits a
+pre-0.13 `eval-core` at all: the floors rose rather than only the ceilings (step 10's entry, the
+reversal).
 **Also touches**: no downstream code through step 9. `eval-signals` and `eval-forms` run as the
 downstream witnesses. Their suites change only by the four function-`this` identity pins step 8
 rewrites (two in `eval-signals`, test-only; none in `eval-forms`) and the three value-route D5 pins
@@ -2334,29 +2338,55 @@ commit, since the three must move together.*
   reads 0.6.0 while `eval-forms`' peer says `<0.6.0`. So all three bumps and every peer change land
   in one commit, as the Phase 9 release (3466c80) did for the same reason. The gate is green on this
   commit because every peer is consistent within it.
+  - **With the floors raised** (the reversal below), the windows are tighter and the chain is
+    shorter, but the reason for one commit is unchanged and the argument is the same shape run the
+    other way. `@nx/dependency-checks` compares each declared range against the **workspace's own**
+    version of the dependency, so `eval-signals`' `>=0.13.0 <0.14.0` and `eval-forms`'
+    `>=0.13.0 <0.14.0` are unsatisfiable until `modules/eval-core/package.json` reads 0.13.0, and
+    `eval-forms`' `>=0.6.0 <0.7.0` until `modules/eval-signals/package.json` reads 0.6.0. A raised
+    floor therefore fails the gate **before** the bump it names, where a widened ceiling failed it
+    after — so the commit cannot be split in either direction, and each range is satisfied by
+    exactly one version in the tree. Nothing in the chain now admits a pre-0.13 `eval-core`: both
+    downstream ranges pin the 0.13 line directly, and `eval-forms`' `eval-signals` range admits
+    only the release whose own range does the same.
 - **`eval-core` 0.13.0.** Bump `modules/eval-core/package.json`; move the `[Unreleased]` items under
   `## [0.13.0] - <date>`, with the two breaking changes (the value route, then the receiver) stated
   first.
-- **`eval-signals` 0.6.0.** Bump `modules/eval-signals/package.json`; widen its `eval-core` peer
-  `>=0.11.0 <0.13.0` → `>=0.11.0 <0.14.0`. Its `CHANGELOG.md` gains a **`### Breaking`** entry: a
+- **`eval-signals` 0.6.0.** Bump `modules/eval-signals/package.json`; move its `eval-core` peer
+  `>=0.11.0 <0.13.0` → `>=0.13.0 <0.14.0` — **the floor rises, not only the ceiling**
+  (*the reversal, fixed at step 10's gate*): the `### Breaking` entry below describes behaviour
+  that exists only with `eval-core` 0.13.0, so an install resolving an earlier `eval-core` would
+  take this release's documented contract against an evaluator that does not implement it, and
+  that evaluator is one U3 lists as affected. Its `CHANGELOG.md` gains a **`### Breaking`** entry: a
   context function's `this` is now a guarded view of the `EvalContext`, not the context itself —
   `push`/`pop` still work and nothing else of the context is reachable — and the two `signal-context`
   pins step 8 rewrote are the assertions that change. Its README's resolution bullet (the one on
   `EvalContext.push`/`pop`, lines 559–561 at this revision) is updated to describe the guarded
   receiver: a source function's `this` resolves `push`/`pop` against the context but exposes nothing
-  else. The README peer block shows the new range. (0.13.0 has shipped by this commit, so the entry
-  may be concrete; it still prints no route expression.)
-- **`eval-forms` 0.6.0.** Bump `modules/eval-forms/package.json`; widen its `eval-core` peer
-  `>=0.12.0 <0.13.0` → `>=0.12.0 <0.14.0`, and raise its `eval-signals` floor `>=0.5.1 <0.6.0` →
-  `>=0.6.0 <0.7.0` (the first `eval-signals` that admits `eval-core` 0.13.0, as 0.5.0 raised the floor
-  to the first that admitted 0.12.0). Its `CHANGELOG.md` records the floor raise and the forwarded
-  behavioural change, and names the three D5 test-only edits step 7 made. The README peer block shows
-  the new ranges.
+  else. The README peer block, and the prose that states the floor and its reason, show the new
+  range. (The entry may be concrete: § 2's disclosure limit runs until 0.13.0 ships, and this is
+  the commit it ships from — step 9's `SECURITY.md` already states both halves with their case
+  names. It still prints no route expression.)
+- **`eval-forms` 0.6.0.** Bump `modules/eval-forms/package.json`; move its `eval-core` peer
+  `>=0.12.0 <0.13.0` → `>=0.13.0 <0.14.0` — **the floor rises here too** (*the reversal, fixed at
+  step 10's gate*), for the same reason and one more: a fresh install of `eval-forms` 0.6.0 must
+  not be able to resolve an `eval-core` U3 lists as affected. Raise its `eval-signals` floor
+  `>=0.5.1 <0.6.0` → `>=0.6.0 <0.7.0` (the first `eval-signals` that admits `eval-core` 0.13.0, as
+  0.5.0 raised the floor to the first that admitted 0.12.0). Its `CHANGELOG.md` records both floor
+  raises and the forwarded behavioural change, and names the three D5 test-only edits step 7 made.
+  The README peer block, and the prose that states each floor and its reason, show the new ranges.
 - **Exit criteria**:
-  1. The gate is green on the combined commit. Counts unchanged from step 8.
-  2. Each built `.d.ts` differs from its previous release's tarball only as steps 7–8 state:
-     `eval-core` byte-identical to 0.12.1 (the change is internal); `eval-signals` and `eval-forms`
-     by documentation comments and peer metadata only.
+  1. The gate is green on the combined commit. **Counts unchanged from 55341d1 — 2596 / 438 / 375,
+     exactly. Any movement is a stop condition.** (*Fixed at step 10's gate*, correcting
+     "unchanged from step 8": step 8 ended at 2546 and step 9 and its Revision 16 took `eval-core`
+     to 2596, so the count the criterion named no longer exists.)
+  2. **All three built `.d.ts` are byte-identical to their published tarballs'** — `eval-core` to
+     0.12.1's, `eval-signals` to 0.5.1's, `eval-forms` to 0.5.0's — **and `package.json` is
+     reported separately. Not byte-identical anywhere is a stop-and-report.** (*Fixed at step 10's
+     gate*, strengthening "differs … by documentation comments and peer metadata only": no
+     non-spec source file changed in either downstream package since its last release, so nothing
+     in any of the three `.d.ts` may move; and peer metadata lives in `package.json`, not in a
+     `.d.ts`, so the two artifacts are checked and reported apart.)
   3. Each `CHANGELOG`'s `[Unreleased]` is moved under the new version, `eval-core`'s breaking
      entries first.
   4. Then CONTRIBUTING's Releasing steps 3–6 by the maintainer: publish in order
@@ -2364,7 +2394,74 @@ commit, since the three must move together.*
      `eval-core@0.13.0`, `eval-signals@0.6.0`, `eval-forms@0.6.0` at this commit. Publishing and
      tagging are the maintainer's actions (§ 5).
 - **Category**: the release — `eval-core` a minor carrying a breaking change, `eval-signals` a
-  breaking minor, `eval-forms` a breaking minor (floor raise).
+  breaking minor (forwarded behaviour and a floor raise), `eval-forms` a breaking minor (the same,
+  and two floor raises).
+- **Outcome** — committed 2026-10-20, published and tagged by the maintainer afterwards (§ 5 U2).
+  - **The gate is green.** Uncached, all four projects: `eval-core` **2596**, `eval-signals`
+    **438**, `eval-forms` **375** — the counts at 55341d1, unmoved; doc-links 346 files, 1,537
+    links, 0 dangling; release-tags 35 rows, 45 tags, 0 failing. Nine files changed, every one on
+    this step's list, no rename and no `.ts` — which is what keeps criterion 2 reachable at all.
+  - **Criterion 1: met.** 2596 / 438 / 375 exactly. No step-10 file is compiled or tested, so a
+    moved count could only have come from a scope breach.
+  - **Criterion 2: met.** Every built `.d.ts` is byte-identical to its published tarball's, by
+    SHA-256. "All three" is three packages and **five files**, since `eval-forms` publishes one per
+    entry point — the enumeration, not a change to the criterion:
+
+    | File | Published | Bytes | SHA-256 (first 16) |
+    | :--- | :--- | ---: | :--- |
+    | `zvenigora-ng-eval-core.d.ts` | `eval-core` 0.12.1 | 111,787 | `4f11d36f2e4b8824` |
+    | `zvenigora-ng-eval-signals.d.ts` | `eval-signals` 0.5.1 | 26,838 | `743ce48469d8a97e` |
+    | `zvenigora-ng-eval-forms.d.ts` | `eval-forms` 0.5.0 | 16,734 | `9cdb2816f74b28b2` |
+    | `zvenigora-ng-eval-forms-reactive.d.ts` | `eval-forms` 0.5.0 | 12,507 | `f2570daaae3b2a65` |
+    | `zvenigora-ng-eval-forms-signals.d.ts` | `eval-forms` 0.5.0 | 7,981 | `3a9cf281451537ac` |
+
+    **`package.json`, reported separately** as the criterion requires: `eval-core` 0.12.1 → 0.13.0,
+    its own peers untouched; `eval-signals` 0.5.1 → 0.6.0 with `eval-core` `>=0.11.0 <0.13.0` →
+    `>=0.13.0 <0.14.0`; `eval-forms` 0.5.0 → 0.6.0 with `eval-core` `>=0.12.0 <0.13.0` →
+    `>=0.13.0 <0.14.0` and `eval-signals` `>=0.5.1 <0.6.0` → `>=0.6.0 <0.7.0`. The built manifests
+    in `dist/` carry exactly those values.
+  - **Criterion 3: met.** Each changelog keeps an empty `[Unreleased]` above the new heading;
+    `eval-core`'s `### Breaking` items moved intact and come first, the value route before the
+    receiver, with `### Performance` after them.
+  - **Criterion 4: the maintainer's**, and outstanding at this commit. Publish `eval-core` →
+    `eval-signals` → `eval-forms`, confirm each with `npm view`, tag all three here.
+  - **The reversal, measured rather than assumed.** `@nx/dependency-checks` is green on the
+    combined commit with the floors raised: it resolves each declared range against the
+    workspace's own version, and `eval-core` 0.13.0, `eval-signals` 0.6.0 satisfy every one. The
+    intersection of the three manifests is `eval-core` 0.13.x, so the graph is satisfiable and
+    admits no pre-0.13 `eval-core` anywhere — which the widened-ceiling form would have allowed
+    while the same releases' changelogs described behaviour only 0.13.0 has.
+  - **The code review found no Critical and five Warnings, every one in text this commit
+    authors, and all five are fixed in it** — the manifests, the version kinds, the ranges, the
+    assertion accounting, the guarded-receiver contract and both downstream containment sites were
+    sound as written:
+    1. `eval-core`'s 0.13.0 summary named no downstream release, where every prior entry in that
+       file does. With the floors raised that is an install failure, not a note: a consumer who
+       bumps `eval-core` alone gets a peer graph nothing satisfies. The summary now names
+       `eval-signals` 0.6.0 and `eval-forms` 0.6.0 and quotes the ranges that exclude it.
+    2. `eval-signals`' `### Breaking` documented the receiver half of A39 and not the value half,
+       although its raised floor hands consumers both. `eval-forms`' sibling entry stated it, so
+       two packages described one evaluator change differently. A bullet mirroring `eval-forms`'
+       was added.
+    3. "No code of it changes at all" was false in both downstream entries — each then enumerated
+       the specs that changed. Both now claim the stronger true thing: no *shipped* code changed,
+       which is why the `.d.ts` cannot move. `eval-signals`' "suite otherwise unchanged" also
+       overlooked a comment-only edit in `eval-signal-async.spec.ts`, now named.
+    4. This document's header block still said both downstream ranges admit 0.12.1 and neither
+       admits 0.13.0 — present tense that this commit falsifies, and outside the step entries the
+       reversal edited. Scoped to the release it describes.
+    5. **The headline absolute.** "The evaluation context is neither writable nor obtainable" is
+       stronger than what 0.13.0 does: `SECURITY.md` keeps a host-nested context, `evaluateAsync`'s
+       promise unwrap, the trace after `this.k` and L11 as limits open in every version. The clause
+       is narrowed to "not writable by an expression, nor obtainable as a value the walk produces",
+       and a paragraph now names those four and links the documented limits — which 0.12.1's own
+       entry did and this one had not.
+
+    Four notes were taken as well: `eval-forms`' "the `.d.ts`" made plural for a three-entry-point
+    package; its floor prose given back the transitive reason for the `eval-signals` floor, which
+    the rewrite had collapsed into `colonIdentifiers`; `eval-signals`' README write refusal
+    qualified as the `TypeError` in strict mode that `eval-core` states; and criterion 2's "all
+    three" enumerated above as five files rather than amended, since it was fixed at the gate.
 
 ### Step 11 — Post-publish commit
 
@@ -2389,7 +2486,7 @@ commit, since the three must move together.*
 | :--- | :--- | :--- |
 | U1 | Enable private vulnerability reporting on the repository | Before U3, and before step 5 if `SECURITY.md`'s Reporting section is to point at the form in that commit |
 | U2 | Publish each release and push its tag, per CONTRIBUTING steps 3–5: `eval-core` 0.12.1, then 0.13.0 | After step 6's release commit, and after step 9's |
-| U3 | **One** GHSA advisory for `@zvenigora/ng-eval-core`, published **after 0.13.0**; affected `<= 0.12.1`, **patched 0.13.0**. It covers dangerous function values callable past the name-based call sandbox (A35, A39) — including the routes through `this` and through the call/tag/`this.fn()` **receiver** — and the unsandboxed tag call (A36). It describes 0.12.1 as partial hardening: it refuses those values at the callee and at every read through the walk, and leaves the `this`/receiver routes open, which 0.13.0 closes. It names `new setTimeout("…")` under zone.js, recommends a Content Security Policy without `'unsafe-eval'` as the mitigation that holds in every version, and names the patched downstream releases **`eval-signals` 0.6.0** and **`eval-forms` 0.6.0** (their floors are unchanged, so a consumer who reaches `eval-core` through them takes the fix by installing `eval-core` 0.13.0). It prints no route expression (§ 2). *Revised by Revision 7* (patched 0.12.1 → one advisory per shape); *by Revision 11* (the receiver route; the corrected CVSS below; the downstream names) | After 0.13.0's U2 |
+| U3 | **One** GHSA advisory for `@zvenigora/ng-eval-core`, published **after 0.13.0**; affected `<= 0.12.1`, **patched 0.13.0**. It covers dangerous function values callable past the name-based call sandbox (A35, A39) — including the routes through `this` and through the call/tag/`this.fn()` **receiver** — and the unsandboxed tag call (A36). It describes 0.12.1 as partial hardening: it refuses those values at the callee and at every read through the walk, and leaves the `this`/receiver routes open, which 0.13.0 closes. It names `new setTimeout("…")` under zone.js, recommends a Content Security Policy without `'unsafe-eval'` as the mitigation that holds in every version, and names the patched downstream releases **`eval-signals` 0.6.0** and **`eval-forms` 0.6.0** (*the reversal, fixed at step 10's gate*: **both floors rise to the 0.13 line** — `eval-signals`' `eval-core` peer to `>=0.13.0 <0.14.0`, `eval-forms`' to the same and its `eval-signals` peer to `>=0.6.0 <0.7.0` — so installing either patched release *is* taking the fix, rather than merely admitting it. The earlier plan widened the ceilings and left the floors, which would have let a fresh install of `eval-forms` 0.6.0 resolve an `eval-core` this advisory lists as affected, while that release's own CHANGELOG described behaviour only 0.13.0 has). It prints no route expression (§ 2). *Revised by Revision 7* (patched 0.12.1 → one advisory per shape); *by Revision 11* (the receiver route; the corrected CVSS below; the downstream names) | After 0.13.0's U2 |
 
 **U3 is released from Revision 13's hold** (*Revision 15*). Revision 13 held it while R4 reached
 past the guard as first designed. § 8 q7 chose (a), step 8 closed all four receiver forms, and

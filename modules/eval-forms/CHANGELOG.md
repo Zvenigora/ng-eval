@@ -10,6 +10,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.6.0] - 2026-10-20
+
+**Both `@zvenigora` floors rise, and a rule's `this` no longer reaches the evaluation context.** A
+breaking minor: no symbol of this package changes shape, and **no shipped code of it changes** —
+only the specs named below — so all three `.d.ts` files are byte-identical to 0.5.0's. What changes
+is the behaviour it forwards from `@zvenigora/ng-eval-core` 0.13.0, which closes a route that
+reached a dangerous function through the context ([A39](../../docs/backlog-retired.md#a39),
+[A42](../../docs/backlog-retired.md#a42)). That release does not close every route; `SECURITY.md`'s
+[documented limits](../../SECURITY.md#documented-limits) state the ones that stay open in every
+version.
+
+### Breaking
+- **A rule cannot reach its evaluation context through `this`.** `eval-core` 0.13.0 evaluates
+  `this` only as the object of a member access — `this.k`, `this["k"]`, `this.fn()`, which resolve
+  against the context as before — and throws anywhere else, so a rule using `this` as a value, an
+  argument or an operand now fails where it used to yield the context. A function the context
+  holds is also called with a guarded view of the context rather than the context itself. Both
+  apply at **both** entry points, `/reactive` and `/signals`, since both evaluate through
+  `eval-core`. No rule shape this package documents uses either route.
+- **The assertions it changes**: three, all test-only, made in `eval-core` 0.13.0's own work and
+  carried here — one in `reactive/src/lib/field-schema.spec.ts` and two in
+  `signals/src/lib/rules.spec.ts`, one `it.each` over `caseInsensitive`. Each reached a rule's
+  `EvalContext` by evaluating `this`
+  outside a member access, to read the lookups composed onto it
+  ([D5](../../docs/backlog-retired.md#d5)). Each now takes that context where it is built, with a
+  spy on its defining module, and keeps its `lookups` assertion. This package's suite is
+  otherwise unchanged, 375 cases.
+
+### Changed
+- **Both `@zvenigora` floors raised.** `@zvenigora/ng-eval-core`: `>=0.12.0 <0.13.0` →
+  `>=0.13.0 <0.14.0`. `@zvenigora/ng-eval-signals`: `>=0.5.1 <0.6.0` → `>=0.6.0 <0.7.0`.
+  **The floors rise rather than only the ceilings** for two reasons: the entry above describes
+  behaviour that exists only with `eval-core` 0.13.0, and a fresh install of this release must not
+  be able to resolve an `eval-core` the advisory for A39 lists as affected. `eval-signals` below
+  0.6.0 requires `eval-core` below 0.13.0, so it cannot sit beside this release either.
+
+---
+
 ## [0.5.0] - 2026-10-14
 
 **Colon-joined names at both entry points, and a rule that parses as a label refused — Phase 9

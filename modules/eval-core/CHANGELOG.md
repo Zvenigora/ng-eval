@@ -12,6 +12,30 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+---
+
+## [0.13.0] - 2026-10-20
+
+**The route through `this` is closed, in both halves — the value and the receiver — and the
+evaluation context is no longer writable by an expression, nor obtainable as a value the walk
+produces.** A minor carrying breaking changes
+([A39](../../docs/backlog-retired.md#a39), [A42](../../docs/backlog-retired.md#a42); the
+[A35 plan](../../docs/a35/plan.md)). Every change is internal: the `.d.ts` is byte-identical to
+0.12.1's.
+
+**It does not close every route.** A container the host itself provides, a context the host nests
+in the evaluation data or hands back behind a promise, the context `EvalResult.trace` holds after
+an expression evaluated `this.k`, and a host-built AST that uses one `this` node in two places all
+remain documented limits in every version, 0.13.0 included —
+`SECURITY.md`'s [documented limits](../../SECURITY.md#documented-limits) state each one. So
+0.12.1's [mitigations](../../SECURITY.md#mitigations) still apply unchanged: place no listed
+function in the context, and in a browser serve a Content Security Policy without `'unsafe-eval'`.
+
+**`eval-signals` 0.6.0 and `eval-forms` 0.6.0 are the releases that admit it.** Every earlier one
+excludes it by its own peer range — `eval-signals` 0.5.1 declares `>=0.11.0 <0.13.0` and
+`eval-forms` 0.5.0 `>=0.12.0 <0.13.0` — so all three move together, and bumping `eval-core` alone
+leaves a peer graph nothing can satisfy.
+
 ### Breaking
 - **`this` evaluates only as the object of a member access** — `this.k`, `this["k"]`, `this.fn()`,
   and any spelling of `this` in that place under `caseInsensitive` — which resolves against the
