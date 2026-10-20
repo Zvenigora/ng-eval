@@ -2477,6 +2477,30 @@ commit, since the three must move together.*
   Publication status row's tag present at the commit it names.
 - **Category**: the release's docs-only post-publish commit. Then U3 (§ 5), the advisory, after the
   publish.
+- **Outcome** — committed 2026-10-20, after the maintainer's publish and tags (§ 5 U2), each
+  checked rather than assumed: `npm view` lists `eval-core` 0.13.0 (20:52 UTC), `eval-signals`
+  0.6.0 (20:55) and `eval-forms` 0.6.0 (20:57), in the order step 10 requires, and all three tags
+  are on the remote at f7f27f7.
+  - **The tags were first pushed lightweight**, where every earlier release tag is annotated and
+    CONTRIBUTING's step 5 writes `git tag -a`. `release-tags.mjs` could not tell the difference —
+    it resolves a tag with `git rev-list -n 1`, which accepts either kind — so the gate would have
+    passed on them. Before this commit they were recreated annotated at the same commit, in the
+    existing `<project> <version>` message form, and force-pushed. No tag moved commit.
+  - **The gate is green** and the release-tags check with it: every Publication status row's tag
+    exists, at the commit the row names — the three new rows at f7f27f7. Counts unmoved, as § 6
+    has it for this step.
+  - **The register**: three Publication status rows; the tag sentence at thirty-eight; a Register
+    history row, 25 live before, opened 1 (A42), closed 3 (A35, A39, A42), 23 after. The totals line
+    reads 42 + 51 − 70 = 23, and 23 is also the count of live rows in the index at this commit,
+    counted from the index itself rather than taken from the delta. "Work in flight" says the
+    steps are done, U3 remains, and Phase 10 resumes at its step 3.
+  - **A plan correction: A42 is recorded as released with A35 and A39.** This step's list predates
+    Revision 16, which added A42 to step 9; it ships in 0.13.0 like the other two, and its index
+    row and retired status line said "not yet released". Both files were on the list already.
+  - **The CHANGELOG headings stand**: each reads 2026-10-20, npm's UTC publish date for all three.
+  - `CLAUDE.md` carries the three versions only. Its prose naming this plan as the active one and
+    Phase 10 as paused is left for Phase 10's resumption, which retargets it with the `step`
+    skill.
 
 ---
 

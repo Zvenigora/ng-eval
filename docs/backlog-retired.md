@@ -1835,8 +1835,8 @@ refusal rows on A29's commit, with another, deleted the same day.
 
 **Package** core · **Kind** decision, security · **Status** **Retired — fixed 2026-10-18**, as steps
 2, 4, 7 and 8 of the [A35 plan](a35/plan.md). Steps 2 and 4 released 2026-10-17 in `eval-core`
-0.12.1, tagged 7cc8d30, as partial hardening; steps 7 and 8 not yet released, and ship in
-`eval-core` 0.13.0. Was Open
+0.12.1, tagged 7cc8d30, as partial hardening; steps 7 and 8 released 2026-10-20 in `eval-core`
+0.13.0, tagged f7f27f7. Was Open
 
 *Fixed* 2026-10-18, when its last open route, [A39](#a39), closed. Four steps, each its own commit:
 - **Step 2 (0.12.1)**: the call, `new` and tag sites refuse a dangerous function by its **value**,
@@ -2092,7 +2092,8 @@ as a Fixed entry.
 ## A39 — a route through `this` reaches a dangerous function past the funnel
 
 **Package** core · **Kind** fix, security · **Status** **Retired — fixed 2026-10-18**, as steps 7
-and 8 of the [A35 plan](a35/plan.md); not yet released, and ships in `eval-core` 0.13.0. Was Open
+and 8 of the [A35 plan](a35/plan.md); released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7.
+Was Open
 
 *Fixed* 2026-10-18, in two halves, each a breaking change released together:
 - **The value route (step 7).** `this` evaluates only as the object of a member access — `this.k`,
@@ -2169,8 +2170,8 @@ step 4's. The measurements are recorded in the draft advisory.
 ## A42 — A member write on `this` lands on the `EvalContext` instance
 
 **Package** core · **Kind** fix, security · **Status** **Retired — fixed 2026-10-19**, in the
-[A35 plan](a35/plan.md)'s step 9 under its Revision 16; not yet released, and ships in `eval-core`
-0.13.0. Was Open — opened 2026-10-18 by the code review of that step
+[A35 plan](a35/plan.md)'s step 9 under its Revision 16; released 2026-10-20 in `eval-core` 0.13.0,
+tagged f7f27f7. Was Open — opened 2026-10-18 by the code review of that step
 
 A member write whose object is the context — `this.k = v` — was written straight into the target
 the member visitor returns, which for a key nothing in the context's chain resolves is the
