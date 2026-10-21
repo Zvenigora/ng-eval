@@ -371,9 +371,38 @@ evaluation's trace can take. Implemented in
 
 Advisories published against the packages in this repository.
 
-| Advisory | Package | Affected | Patched |
-|----------|---------|----------|---------|
-| [GHSA-jh43-xc7j-93c2](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-jh43-xc7j-93c2) | `@zvenigora/ng-eval-core` | < 0.10.1 | 0.10.1, 0.11.0 |
+| Advisory | CVE | Package | Affected | Patched |
+|----------|-----|---------|----------|---------|
+| [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx) | Requested | `@zvenigora/ng-eval-core` | <= 0.12.1 | 0.13.0 |
+| [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx) | Requested | `@zvenigora/ng-eval-signals` | < 0.6.0 | 0.6.0 |
+| [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx) | Requested | `@zvenigora/ng-eval-forms` | < 0.6.0 | 0.6.0 |
+| [GHSA-jh43-xc7j-93c2](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-jh43-xc7j-93c2) | — | `@zvenigora/ng-eval-core` | < 0.10.1 | 0.10.1, 0.11.0 |
+
+#### GHSA-qrqj-3445-3rjx — dangerous functions and the evaluation context past the call sandbox
+
+Severity high, published 2026-10-21. The call sandbox refused a dangerous function by the name it
+was called under, so a listed function the host had placed in the context could still be reached:
+by an alias, through `call`, `apply` or `bind`, handed to native code as a callback, or as a tagged
+template's tag, which was called with no sandbox check at all. Through `this`, an expression could
+also obtain the evaluation context itself, and a function it called received the context as its
+`this` — so native code could reach a listed function past every check, and the context could be
+written onto. Every published `@zvenigora/ng-eval-core` up to 0.12.1 is affected, and
+`@zvenigora/ng-eval-signals` and `@zvenigora/ng-eval-forms` below 0.6.0 with it.
+
+Since 0.13.0 a listed function is refused by its value, at the call and at every read the walk
+makes ([Dangerous function values](#dangerous-function-values)); `this` evaluates only as the object
+of a member access, and a function the context holds receives a guarded view of it
+([`this`, and the receiver of a call](#this-and-the-receiver-of-a-call)). 0.12.1 was partial
+hardening, and left the routes through `this` open.
+
+**Upgrading.** Take `@zvenigora/ng-eval-core` 0.13.0, `@zvenigora/ng-eval-signals` 0.6.0 and
+`@zvenigora/ng-eval-forms` 0.6.0 together: each downstream release requires the 0.13 line, and no
+earlier one admits it. 0.13.0 is a breaking minor for the `this` change; its changelog gives the
+migration. The fix does not close every route, so keep the [mitigations](#mitigations) in place
+regardless: place no listed function in the context, and in a browser serve a Content Security
+Policy without `'unsafe-eval'`. What stays open in every version is under
+[Documented limits](#documented-limits). The fixes and their probes are in
+[`docs/backlog-retired.md`](docs/backlog-retired.md#a35), A35, A36, A39 and A42.
 
 #### GHSA-jh43-xc7j-93c2 — prototype pollution through identifier resolution
 

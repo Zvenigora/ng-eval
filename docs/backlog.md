@@ -53,11 +53,14 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-**The A35 plan's steps are done**: [`docs/a35/plan.md`](a35/plan.md), at Revision 16, steps 1 to 11.
-`eval-core` 0.12.1 and 0.13.0 are published, with `eval-signals` 0.6.0 and `eval-forms` 0.6.0;
+**The A35 plan is complete**: [`docs/a35/plan.md`](a35/plan.md), at Revision 16, steps 1 to 11 and
+U3. `eval-core` 0.12.1 and 0.13.0 are published, with `eval-signals` 0.6.0 and `eval-forms` 0.6.0;
 [A35](backlog-retired.md#a35), [A39](backlog-retired.md#a39) and [A42](backlog-retired.md#a42) are
-fixed, retired and released. What remains is the maintainer's: U3, the one advisory (the plan's
-§ 5), and after it a docs-only commit that adds its ID to `SECURITY.md` and to the retired entries.
+fixed, retired and released. U3, the one advisory, is published as
+[GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx),
+a repository advisory, and listed in `SECURITY.md`. It is not yet in GitHub's global Advisory
+Database, pending GitHub's review, so no Dependabot alert fires from it yet; a CVE is requested, and
+its ID lands in `SECURITY.md`'s CVE column when assigned.
 - Step 1 fixed [A36](backlog-retired.md#a36), released in 0.12.1, and its review opened [A38](#a38).
 - Step 2 refuses a dangerous function by its value at the call, `new` and tag sites, released in
   0.12.1. That is [A35](backlog-retired.md#a35) at the callee.
@@ -90,6 +93,9 @@ fixed, retired and released. What remains is the maintainer's: U3, the one advis
   every downstream floor raised to the 0.13 line. Tagged at f7f27f7 and published 2026-10-20.
 - Step 11 recorded the release. The three tags were first pushed lightweight and were recreated
   annotated at the same commit, as CONTRIBUTING's step 5 has them.
+- U3 published the advisory, 2026-10-21 (UTC), covering `eval-core` `<= 0.12.1` and both downstream
+  packages `< 0.6.0`. Its follow-up commit recorded it here, on the retired entries and in
+  `SECURITY.md`, and opened [F21](#f21).
 
 **Phase 10, the documentation restructure, resumes at its step 3.** It was paused after its step 2
 while the A35 plan ran to its end, so that 0.13.0, which closes the route through `this`, shipped
@@ -262,14 +268,14 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A32](#a32) | The disabled visitor result cache keys a node without its operands — `a + b` and `c + d` share an entry | core | decision | Open — opened 2026-10-10 by A29's fix; latent, nothing calls it |
 | [A33](#a33) | The case-insensitive property cache keeps a miss while the own-key count is unchanged — a key added as another is deleted reads `undefined` by a case variant | core | fix | Open — opened 2026-10-10, after the `eval-core` 0.11.1 tag; a limit [A31](backlog-retired.md#a31)'s fix documents in a code comment. No refusal is skipped |
 | [A34](#a34) | The parse fingerprint's memo does not see options written in place — a write into `parserOptions`, a reused per-call object or `defaultParserOptions` keeps the old fingerprint | core | fix | Open — opened 2026-10-10 by [A26](backlog-retired.md#a26)'s fix, Phase 9 step 1; no worse than the text-only key it replaced |
-| [A35](backlog-retired.md#a35) | A dangerous function value reachable from the context is callable past the name-based call sandbox — by an alias, through `call` / `apply` / `bind`, and as a native callback (`map`, `Reflect.apply`, `then`); `eval("1+1")` is refused, `["1+1"].map(eval)` is `[2]` | core | decision, security | **Retired — fixed 2026-10-18**, as steps 2, 4, 7 and 8 of the [A35 plan](a35/plan.md). Steps 2 and 4 released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30, as partial hardening; steps 7 and 8, which close its last route, [A39](backlog-retired.md#a39), released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7. A host container stays a documented limit |
-| [A36](backlog-retired.md#a36) | A tagged template's tag is called with no sandbox check — `` Function`return 7`() `` gives 7 with `Function` under its own name | core | fix, security | **Retired — fixed 2026-10-15**, as step 1 of the [A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30. A tag is called as a callee is, through the call sandbox and the write policy; a member tag shares the member call's path, so its `this` is its object. Affected every published `eval-core` to 0.12.0 |
+| [A35](backlog-retired.md#a35) | A dangerous function value reachable from the context is callable past the name-based call sandbox — by an alias, through `call` / `apply` / `bind`, and as a native callback (`map`, `Reflect.apply`, `then`); `eval("1+1")` is refused, `["1+1"].map(eval)` is `[2]` | core | decision, security | **Retired — fixed 2026-10-18**, as steps 2, 4, 7 and 8 of the [A35 plan](a35/plan.md). Steps 2 and 4 released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30, as partial hardening; steps 7 and 8, which close its last route, [A39](backlog-retired.md#a39), released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7; advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx). A host container stays a documented limit |
+| [A36](backlog-retired.md#a36) | A tagged template's tag is called with no sandbox check — `` Function`return 7`() `` gives 7 with `Function` under its own name | core | fix, security | **Retired — fixed 2026-10-15**, as step 1 of the [A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30; advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx). A tag is called as a callee is, through the call sandbox and the write policy; a member tag shares the member call's path, so its `this` is its object. Affected every published `eval-core` to 0.12.0 |
 | [A37](backlog-retired.md#a37) | `SequenceExpression` has no visitor: `(0, 1)` leaves a value on the stack | core | fix | **Retired — fixed 2026-10-15**, as step 3 of the [A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30. A sequence leaves one value on the stack, and raises one `before` and one `after` event and one trace entry; no evaluated value changes. Affected every published `eval-core` to 0.12.0 |
 | [A38](#a38) | A tag's strings array is not JavaScript's: not frozen, no `raw` — so `` String.raw`a\nb` `` throws — a new array per evaluation, and not recorded as created | core | fix | Open — opened 2026-10-15 by the code review of the A35 plan's step 1. Fidelity, not security; not in 0.12.1 |
-| [A39](backlog-retired.md#a39) | Evaluating `this` lets native code reach a dangerous function the host placed in the context, past the funnel; mechanism and probes held in the draft advisory | core | fix, security | **Retired — fixed 2026-10-18**, as steps 7 and 8 of the [A35 plan](a35/plan.md): `this` only as a member's object, and a guarded view as every receiver the evaluator resolves from the context. Released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7 |
+| [A39](backlog-retired.md#a39) | Evaluating `this` lets native code reach a dangerous function the host placed in the context, past the funnel; mechanism and probes in the advisory | core | fix, security | **Retired — fixed 2026-10-18**, as steps 7 and 8 of the [A35 plan](a35/plan.md): `this` only as a member's object, and a guarded view as every receiver the evaluator resolves from the context. Released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7; advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx) |
 | [A40](#a40) | A postfix update of a listed function writes, then the funnel refuses the old value — the failed evaluation leaves its write behind | core | fix | Open — opened 2026-10-16 by the code review of the A35 plan's step 4. Not a security route; the fix checks the operand before writing |
 | [A41](#a41) | An update does not convert its operand to a number: `x++` on `"5"` writes `"51"`, on `{}` writes `"[object Object]1"`, and a postfix update gives the operand as read | core | fix | Open — opened 2026-10-16 in the A35 plan's step 5. Fidelity, not security; not in 0.12.1. Distinct from [A40](#a40), the order of a write and a refusal |
-| [A42](backlog-retired.md#a42) | `this.k = v` lands on the `EvalContext` instance, where nothing reads it back — but it shadows the class's own members, so the evaluator invoked what an expression planted, and it persists on a reused context | core | fix, security | **Retired — fixed 2026-10-19**, in the [A35 plan](a35/plan.md)'s step 9 under its Revision 16. The write is refused by class, the methods the evaluator calls are taken from the class, and a context reached as data is refused. Released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7. Its first characterisation — "not a route to the context itself" — was measured wrong and corrected |
+| [A42](backlog-retired.md#a42) | `this.k = v` lands on the `EvalContext` instance, where nothing reads it back — but it shadows the class's own members, so the evaluator invoked what an expression planted, and it persists on a reused context | core | fix, security | **Retired — fixed 2026-10-19**, in the [A35 plan](a35/plan.md)'s step 9 under its Revision 16. The write is refused by class, the methods the evaluator calls are taken from the class, and a context reached as data is refused. Released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7; referenced in advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx) as additionally fixed, not its subject. Its first characterisation — "not a route to the context itself" — was measured wrong and corrected |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -317,11 +323,12 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [F13](backlog-retired.md#f13) | Nothing gates the README block count `readme-examples.spec.ts` claims | core, signals, forms | test gap | **Retired — fixed 2026-09-27**, test only; all four specs gated. The gate's first run found `eval-core`'s count wrong a third time |
 | [F14](backlog-retired.md#f14) | Six sites cite the retired `^0.3.0` range, two of them in published READMEs | signals, forms | fix (comments, docs) | **Retired — fixed, Phase 2 step 8**; filed as four sites, was six |
 | [F15](backlog-retired.md#f15) | The downstream peer ranges exclude `eval-core` 0.6.0 — **latent until the bump, then both downstream `lint` targets fail** | signals, forms | fix (release coordination) | **Retired — fixed and released 2026-09-26**; both ranges widened to `>=0.3.0 <0.7.0`, and both packages released: `eval-signals` 0.1.3 and `eval-forms` 0.2.3, tagged f26f987 |
-| [F16](#f16) | Workspace dependency advisories — 9 moderate on the workspace's Angular 22.0.8, and a **temporary `smol-toml` override under `nx`**; beside the `nx` overrides, the **`qs` override**, whose `^6.14.1` floor does not exclude GHSA-w7fw-mjwx-w883 (fixed 6.14.2) | repo | fix | Open — **part 1 retired 2026-09-27**: `nx` 23.2.1, Angular 22.1.8 / 22.1.9, `npm audit` 0 at every severity. Part 2, the override, is live until a stable `nx` depends on `smol-toml >= 1.7.1`. **Re-audited 2026-09-30: 22 (14 high, 8 moderate)**, none reaching a published package; **fixed the same day**: Angular 22.2.1 / 22.2.0, two more `overrides.nx` entries, `verdaccio` removed, `npm audit` 0. **`qs` recorded 2026-10-14**: the override was added for GHSA-6rw7-vpxm-498p, not prototype pollution; raising its floor is held here |
+| [F16](#f16) | Workspace dependency advisories — 9 moderate on the workspace's Angular 22.0.8, and a **temporary `smol-toml` override under `nx`**; beside the `nx` overrides, the **`qs` override**, whose `^6.14.1` floor does not exclude GHSA-w7fw-mjwx-w883 (fixed 6.14.2) | repo | fix | Open — **part 1 retired 2026-09-27**: `nx` 23.2.1, Angular 22.1.8 / 22.1.9, `npm audit` 0 at every severity. Part 2, the override, is live until a stable `nx` depends on `smol-toml >= 1.7.1`. **Re-audited 2026-09-30: 22 (14 high, 8 moderate)**, none reaching a published package; **fixed the same day**: Angular 22.2.1 / 22.2.0, two more `overrides.nx` entries, `verdaccio` removed, `npm audit` 0. **`qs` recorded 2026-10-14**: the override was added for GHSA-6rw7-vpxm-498p, not prototype pollution; raising its floor is held here. **Re-audited 2026-10-20 at 7741395**: `qs` resolves 6.16.0, past both advisories, and audit reports nothing for it |
 | [F17](#f17) | An unhandled rejection reaches no channel a spec would normally watch — only zone.js's `unhandledPromiseRejectionHandler` hook sees it | repo | test gap | Open — opened 2026-10-08 by Phase 5 step 2 |
 | [F18](backlog-retired.md#f18) | `eval-signal.ts` line citations in `eval-forms` comments and completed plans are stale | forms, repo | docs | **Retired — fixed 2026-10-10** in live source; completed records kept as written, per `CLAUDE.md`. The three `eval-forms` comments cite symbols; `applyErrorPolicy`'s ships in the core `.d.ts` |
 | [F19](#f19) | `CLAUDE.md` cites the resolved-key re-check as `member-expression.ts:188`; it is at `:211` | repo | docs | Open — opened 2026-10-10 by the Phase 9 plan |
 | [F20](#f20) | `CODE_OF_CONDUCT.md`'s enforcement contact is an address of the upstream `jse-eval` author, not this repository's maintainer | repo | docs | Open — opened 2026-10-14 by Phase 10 step 2; the fix needs a contact the maintainer chooses |
+| [F21](#f21) | Build-tooling advisories: 32 findings (11 high, 21 moderate) from `@modelcontextprotocol/server` via `@angular/cli`, `follow-redirects` via `nx`, and `sprintf-js` via the jest chain — none in a published package | repo | fix | Open — opened 2026-10-20 by the A35 plan's U3 follow-up; **scheduled after Phase 10**. A toolchain bump, **not `npm audit fix --force`**, which proposes `ts-jest` 27.0.3, a downgrade |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -1443,6 +1450,13 @@ parsing, also a denial of service, affecting `>=6.7.0 <=6.14.1`, fixed in 6.14.2
 On 2026-10-14, `npm audit` (npm 12.0.1, Node 26.4.0) reported 25 moderate, part 3's `sprintf-js`
 chain, and nothing for `qs`. Raising the floor is outside Phase 10, and this entry holds it.
 
+**`qs` re-audited 2026-10-20, at 7741395**, the line this paragraph has owed since Phase 10 step 1:
+the lockfile resolves `node_modules/qs` to **6.16.0**, past GHSA-6rw7-vpxm-498p / CVE-2025-15284
+(fixed 6.14.1) and GHSA-w7fw-mjwx-w883 / CVE-2026-2391 (fixed 6.14.2) both, and
+`npm audit --package-lock-only` reports nothing for `qs`. The floor still admits 6.14.1, so raising it
+stays held here; the installed tree is clear of both. The 32 findings that audit did report are
+[F21](#f21).
+
 *Recorded*: this entry; `package.json` `overrides.nx` and `overrides.qs`.
 *Verified*: `npm audit --package-lock-only`, 2026-09-26. Before the override: 12 high, 9 moderate.
 After: 0 high, 0 critical, 9 moderate, as listed above. Again 2026-09-27, after part 1: 0 at every
@@ -1458,7 +1472,9 @@ Node 26.4.0, before part 4: 26 (1 critical, 25 moderate); after it: 25 moderate.
 2023 / 421 / 343, and the three alerts read with `gh api`. The `qs` paragraph, 2026-10-14: both
 advisories read with `gh api advisories/<id>` for their CVE, range and fix, the chain with `npm ls qs`,
 the lockfile's `node_modules/qs` and `node_modules/union` entries read, and 2b655a7's diff of
-`package.json`.
+`package.json`. Again for `qs`, 2026-10-20 at 7741395, npm 12.0.1 on Node 26.4.0: the lockfile's
+`node_modules/qs` entry read, 6.16.0, and `npm audit --package-lock-only --json` checked for a `qs`
+finding, none.
 
 <a id="f17"></a>
 ## F17 — An unhandled rejection reaches no channel a spec would normally watch
@@ -1536,3 +1552,57 @@ that this address was the only one in the repository. `SECURITY.md` does not use
 --follow` gives 2c42d3d as the file's only commit; `README.md:30` and `:418` link `jse-eval` to
 `github.com/6utt3rfly`; and `gh api repos/Zvenigora/ng-eval/private-vulnerability-reporting`
 answers `{"enabled":false}`.
+
+<a id="f21"></a>
+## F21 — Build-tooling advisories: 32 findings, none reaching a consumer
+
+**Package** repo · **Kind** fix · **Status** Open — scheduled after Phase 10. Opened 2026-10-20 by
+the A35 plan's U3 follow-up
+
+**A dated snapshot, not a standing count.** `npm audit --package-lock-only` at 7741395 on
+2026-10-20 reports **32 findings: 11 high, 21 moderate**, none low or critical. Three packages carry
+the six advisories; the other 29 findings are packages audit flags only for depending on one of
+them:
+
+| Package (resolved) | Advisories | Root dependency | Findings |
+| ------------------ | ---------- | --------------- | -------: |
+| `@modelcontextprotocol/server` 2.0.0 | GHSA-jm63-cq47-j5jp (high), GHSA-46jr-4wx8-v453 (high), GHSA-rvq5-wwqv-78pq (moderate); all `>=2.0.0 <2.3.0` | `@angular/cli` 22.2.0 | 2, high: itself and `@angular/cli` |
+| `follow-redirects` 1.16.0 | GHSA-q3jh-wrc6-jgq8 (high), GHSA-8r9p-f939-6h3c (high); both `>=1.16.0 <1.16.1` | `nx` 23.2.1, directly and through `axios` 1.20.0; and `@nx/angular` → `@nx/web` → `http-server` → `http-proxy` | 9, high: itself, `nx`, and seven `@nx/*` |
+| `sprintf-js` 1.0.3 | GHSA-hp3w-g68c-fv3c (moderate), `<=1.1.3`, no patched version | `jest`, `ts-jest`, `jest-preset-angular`, through `babel-plugin-istanbul` → `@istanbuljs/load-nyc-config` → `js-yaml` 3 → `argparse` 1 | 21, moderate: itself and twenty in the jest chain |
+
+Four `@nx/*` packages (`@nx/angular`, `@nx/eslint`, `@nx/jest`, `@nx/web`) reach both
+`follow-redirects` and `sprintf-js`; audit counts each once, at the higher severity, in the
+`follow-redirects` row. `sprintf-js` is the chain [F16](#f16) part 3 recorded on 2026-10-06, at 25
+findings then; its root cause is unchanged.
+
+**None of this reaches a consumer.** The three packages' source manifests declare no `dependencies`
+— `eval-core` an empty object, the other two none at all — and each published manifest
+(`eval-core` 0.13.0, `eval-signals` 0.6.0, `eval-forms` 0.6.0) carries only `tslib ^2.3.0`, which
+ng-packagr adds and audit does not flag. Every finding above is a root workspace dependency: the
+CLI, `nx` and the test runner.
+
+**Do not run `npm audit fix --force`.** It proposes, for these three:
+- `@angular/cli` 22.2.3, which audit itself reports as "outside the stated dependency range": the
+  root `package.json` pins the Angular set exactly, and part 1 of [F16](#f16) records why it moves
+  as one set or not at all;
+- `@nx/eslint-plugin` 23.3.0, also "outside the stated dependency range", for `follow-redirects`;
+  `nx` and every `@nx/*` move together through `nx migrate`, not one package at a time;
+- **`ts-jest` 27.0.3, a major downgrade** from the 29 line, for `sprintf-js`, which has no patched
+  version to move to.
+
+**The fix is a deliberate toolchain bump, not an audit fix**: an Angular CLI patch moved with the
+rest of the Angular set, and an `nx migrate` to a release that resolves `follow-redirects` 1.16.1 or
+later, each gated as F16's earlier rounds were — a clean `npm ci` that leaves the lockfile
+byte-identical, and the full gate at unchanged counts. `sprintf-js` waits on a release past 1.1.3, or
+on the istanbul chain dropping `js-yaml` 3.
+
+**Scheduled after Phase 10.** Nothing here is published, so it is not a release, and it is not
+Phase 10's documentation work.
+
+*Recorded*: this entry.
+*Verified*: 2026-10-20 at 7741395, npm 12.0.1 on Node 26.4.0. `npm audit --package-lock-only
+--json`: `metadata.vulnerabilities` gives 11 high and 21 moderate, 32 in all; each finding traced
+through its `via` chain to the three packages that carry an advisory. The plain-text report read
+for each `--force` remedy and its wording. The chains read with
+`npm ls @modelcontextprotocol/server follow-redirects --package-lock-only --all`. The source manifests
+read for `dependencies`, and the published ones with `npm view <package>@<version> dependencies`.

@@ -1,6 +1,9 @@
 # A35 — dangerous function values past the call sandbox (`@zvenigora/ng-eval-core`)
 
 **Date**: October 14, 2026
+**Status**: **complete** — steps 1–11 and U3; the advisory is
+[GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx)
+(§ 5). A design record from here on.
 **Revision**: 16 — **step 9 re-scoped**, in the same commit as the rest of step 9. The step closes
 [A42](../backlog-retired.md#a42) rather than recording it, because A39's closure claim turned out to
 depend on it.
@@ -2546,6 +2549,39 @@ expression's author does not control.
 After U3 comes a docs-only commit. It adds the advisory to `SECURITY.md`'s "Advisories for ng-eval"
 table, a section otherwise unchanged since Phase 10 step 2, and its ID to the retired entries of A35,
 A36 and A39.
+
+**U3's outcome — published 2026-10-21 (UTC) as
+[GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx)**,
+a public repository advisory, read back with `gh api` rather than assumed:
+- **Severity high, CVSS 8.7, `CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:N`** — the provisional
+  vector above, unchanged at publish; `A:N` stands.
+- **Affected and patched, three packages**: `@zvenigora/ng-eval-core` `<= 0.12.1`, patched 0.13.0;
+  `@zvenigora/ng-eval-signals` and `@zvenigora/ng-eval-forms` `< 0.6.0`, patched 0.6.0. U3 named the
+  downstream releases; the advisory lists them as affected packages in their own right, and
+  `SECURITY.md`'s table carries a row for each.
+- **Not yet in GitHub's global Advisory Database.** `gh api advisories/GHSA-qrqj-3445-3rjx` answers
+  404, pending GitHub's review and ingest, so no Dependabot alert fires from it yet.
+- **A CVE is requested**, and the advisory carries none yet. `SECURITY.md`'s table gains a CVE column
+  for it, reading "Requested", so the ID lands there in a one-line edit when assigned.
+  GHSA-jh43-xc7j-93c2's row reads "—": it has no CVE either.
+- **The follow-up docs commit**: `SECURITY.md`'s table, and a section for the advisory in
+  GHSA-jh43's form that points at the documented limits rather than restating them; the advisory on
+  the retired status lines of A35, A36 and A39, and on the A35, A36, A39 and A42 index rows; "Work in
+  flight" with the plan complete and Phase 10 resuming at its step 3. **The retired A39 entry's
+  "held in the draft advisory" was false in both halves** once the advisory published — it is no
+  longer a draft, and the probes are on the default branch — so the entry now names the advisory
+  and the five specs that hold the probes; the A39 bullet in A35's entry points there. The quoted
+  "entry as it stood" is kept verbatim, as the register keeps every quoted record, with a line saying
+  where its claims now land. `CLAUDE.md` says this plan is complete and Phase 10 resumes at its
+  step 3; the `step` skill is retargeted by Phase 10. It also carried two register items the release surfaced:
+  [F16](../backlog.md#f16)'s `qs` audit line, and [F21](../backlog.md#f21), the build-tooling
+  findings, scheduled after Phase 10.
+- **A plan correction: A42 is recorded as well.** The list above names A35, A36 and A39, written
+  before Revision 16 added A42. The advisory names A42's defect — writing onto the context, and the
+  context as a value — as additionally fixed in 0.13.0, so A42's status line and index row record
+  the advisory with that qualifier: referenced in it, not its subject.
+
+**This plan is complete**: steps 1–11 and U3.
 
 ---
 

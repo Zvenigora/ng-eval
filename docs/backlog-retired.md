@@ -1836,7 +1836,9 @@ refusal rows on A29's commit, with another, deleted the same day.
 **Package** core · **Kind** decision, security · **Status** **Retired — fixed 2026-10-18**, as steps
 2, 4, 7 and 8 of the [A35 plan](a35/plan.md). Steps 2 and 4 released 2026-10-17 in `eval-core`
 0.12.1, tagged 7cc8d30, as partial hardening; steps 7 and 8 released 2026-10-20 in `eval-core`
-0.13.0, tagged f7f27f7. Was Open
+0.13.0, tagged f7f27f7; advisory
+[GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx).
+Was Open
 
 *Fixed* 2026-10-18, when its last open route, [A39](#a39), closed. Four steps, each its own commit:
 - **Step 2 (0.12.1)**: the call, `new` and tag sites refuse a dangerous function by its **value**,
@@ -1939,8 +1941,9 @@ variant under `caseInsensitive`.
 
 Step 4's code review found two things, each now its own entry:
 - **[A39](#a39)**: a route the funnel cannot see, through `this`, by which native code reaches a
-  listed function the context holds. Its detail is held in the draft advisory (§ 2's disclosure
-  rule).
+  listed function the context holds. Its detail is in advisory
+  [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx),
+  and its probes are regression cases in five `eval-core` specs, listed in [A39](#a39).
 - **[A40](backlog.md#a40)**: under the funnel, a postfix update of a listed function writes, then throws.
 
 So A35 stays open until the route through `this` is closed. It retires with A39, in the plan's step 8.
@@ -1949,7 +1952,9 @@ So A35 stays open until the route through `this` is closed. It retires with A39,
 ## A36 — A tagged template's tag is called with no sandbox check
 
 **Package** core · **Kind** fix, security · **Status** **Retired — fixed 2026-10-15**, as step 1 of
-the [A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30. Was Open
+the [A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30; advisory
+[GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx).
+Was Open
 
 *Fixed* 2026-10-15. The tag is called as a callee is.
 - **A member tag** goes through `callMember`, which the call visitor's member branch became
@@ -2092,7 +2097,9 @@ as a Fixed entry.
 ## A39 — a route through `this` reaches a dangerous function past the funnel
 
 **Package** core · **Kind** fix, security · **Status** **Retired — fixed 2026-10-18**, as steps 7
-and 8 of the [A35 plan](a35/plan.md); released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7.
+and 8 of the [A35 plan](a35/plan.md); released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7;
+advisory
+[GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx).
 Was Open
 
 *Fixed* 2026-10-18, in two halves, each a breaking change released together:
@@ -2127,9 +2134,24 @@ case by case. The plan's § 4 steps 7 and 8 record every case and count:
   the case that makes that carry load-bearing: without it the guard's condition can drop the origin
   and every other case in three projects stays green.
 
-The route's mechanism and its probes stay in the repository's draft security advisory until 0.13.0 is
-published, under the plan's § 2 disclosure rule; the cases named above hold them on the default
-branch only beside the fix.
+The route's mechanism is in advisory
+[GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx),
+published 2026-10-21 after 0.13.0, which ended the plan's § 2 disclosure rule for it. Its probes are
+regression cases on the default branch, in five `eval-core` specs that the advisory names, each at
+tag `eval-core@0.13.0`:
+- `src/lib/actual/services/eval.service.this-position.spec.ts` — the value route, P1, P2 and G1;
+- `src/lib/actual/services/eval.service.context-receiver.spec.ts` — the receivers, R1–R4, B1–B3,
+  S2–S5 and N1–N6;
+- `src/lib/actual/services/eval.service.context-write.spec.ts` — writes onto the context and the
+  context as a value, W1–W11 and L1–L11 ([A42](#a42));
+- `src/lib/actual/services/eval.service.dangerous-values.spec.ts` — a dangerous value by another
+  path, C1–C15 and V1–V21 ([A35](#a35));
+- `src/lib/internal/visitors/tagged-template-expression.spec.ts` — the unsandboxed tag call, T1–T12
+  ([A36](#a36)).
+
+The entry below is quoted as it stood before the fix. Where it says the mechanism and probes are held
+in the draft advisory and not on the default branch, both halves have since changed: the advisory is
+published, and the probes are the specs above.
 
 **The entry as it stood:**
 
@@ -2171,7 +2193,9 @@ step 4's. The measurements are recorded in the draft advisory.
 
 **Package** core · **Kind** fix, security · **Status** **Retired — fixed 2026-10-19**, in the
 [A35 plan](a35/plan.md)'s step 9 under its Revision 16; released 2026-10-20 in `eval-core` 0.13.0,
-tagged f7f27f7. Was Open — opened 2026-10-18 by the code review of that step
+tagged f7f27f7; referenced in advisory
+[GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx)
+as additionally fixed in 0.13.0, not its subject. Was Open — opened 2026-10-18 by the code review of that step
 
 A member write whose object is the context — `this.k = v` — was written straight into the target
 the member visitor returns, which for a key nothing in the context's chain resolves is the
