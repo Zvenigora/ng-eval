@@ -22,9 +22,9 @@
  * The reader resolves the export list with the TypeScript compiler API rather
  * than `Object.keys` over a namespace import, because a runtime export list is
  * blind to `export interface` and `export type` and the READMEs document those
- * — `modules/eval-forms/README.md:555` names `ExpressionRules`, which is an
- * `export interface` (§ 1.1). It reads the file each specifier resolves to in
- * `tsconfig.base.json`.
+ * — `modules/eval-forms/README.md`'s table under `## How it fits together`
+ * names `ExpressionRules`, which is an `export interface` (§ 1.1). It reads
+ * the file each specifier resolves to in `tsconfig.base.json`.
  *
  * The scanner reads the whole markdown file rather than only fenced blocks:
  * a superset of F3's wording, which cannot miss an import a fence parser would.
@@ -356,7 +356,8 @@ describe('export-list reader (eval-forms copy)', () => {
 
   it('returns a type-only export, which a runtime export list cannot see', () => {
     // `ExpressionRules` is `export interface` (signals/src/lib/rules.ts:60) and
-    // is documented at `modules/eval-forms/README.md:555`. This is the case the
+    // is documented in `modules/eval-forms/README.md`'s table under
+    // `## How it fits together`. This is the case the
     // naive `Object.keys(namespace)` implementation false-fails on day one.
     expect([...forSignals()]).toContain('ExpressionRules');
   });

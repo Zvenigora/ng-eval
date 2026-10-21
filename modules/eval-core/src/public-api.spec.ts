@@ -37,6 +37,10 @@
  * until Phase 10 step 2. Its helpers live in this file rather than in
  * `export-list.spec.ts`, since nothing imports this file and nothing they add
  * therefore runs twice. See the section below the README cases.
+ *
+ * **So are the peer ranges the package README quotes** (the Phase 10 plan's
+ * § 3.5): each must equal the manifest's, and `## Install` must quote every
+ * peer with its range. See the last section.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -509,5 +513,100 @@ describe('SECURITY.md names only what the code has (Phase 10, § 3.10)', () => {
     expect(sandboxRefuses('fetch', { fetch: 1 })).toBe(false); // "Value is not a function"
     expect(sandboxRefuses('benignStandIn')).toBe(false); // called, and returned 1
     expect(sandboxRefuses('constructor')).toBe(false); // the guard's refusal, not the sandbox's
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Quoted peer ranges (the Phase 10 plan, § 3.5)
+// ---------------------------------------------------------------------------
+
+const MANIFEST = 'modules/eval-core/package.json';
+
+/** A peer range as the README quotes it. */
+interface QuotedRange {
+  readonly peer: string;
+  readonly range: string;
+  readonly line: number;
+  /** The `##` section it sits in. */
+  readonly section: string;
+  /** A code span in prose, or a `"<peer>": "<range>"` line in a fenced block. */
+  readonly form: 'span' | 'fenced';
+}
+
+/**
+ * Every peer range `markdown` quotes, in one of two forms: a code span
+ * `` `<peer> <range>` `` outside a fence, or a `"<peer>": "<range>"` line
+ * inside one. `<peer>` must be exactly a key of `peers`, and in a span it is
+ * the text before the first space — so `` `acorn-walk ^8.3.0` `` is never
+ * read as `acorn`, which is this package's peer as well. A span may wrap a
+ * line, and its whitespace is collapsed; as in CommonMark, it ends at a blank
+ * line, so a stray backtick cannot pair across paragraphs and hide every span
+ * after it. A fence opens on three or more backticks or tildes, and closes on
+ * the same character, at least as many.
+ *
+ * Not seen, by design: a range in prose without its peer as the span's first
+ * word, a span with no space after its peer (`` `acorn@^8.11.2` ``), and a
+ * range in a fenced line of any other shape.
+ */
+const quotedRanges = (markdown: string, peers: ReadonlySet<string>): QuotedRange[] => {
+  const found: QuotedRange[] = [];
+  const lines = markdown.split(/\r?\n/);
+  const sectionAt: string[] = [];
+  let section = '';
+  let fence = '';
+  const prose = lines.map((text, index) => {
+    const marker = /^\s*(`{3,}|~{3,})/.exec(text);
+    if (marker && (!fence || (marker[1][0] === fence[0] && marker[1].length >= fence.length))) {
+      fence = fence ? '' : marker[1];
+      sectionAt.push(section);
+      return '';
+    }
+    if (fence) {
+      const pair = /^\s*"([^"]+)"\s*:\s*"([^"]*)"/.exec(text);
+      if (pair && peers.has(pair[1])) {
+        found.push({ peer: pair[1], range: pair[2], line: index + 1, section, form: 'fenced' });
+      }
+      sectionAt.push(section);
+      return '';
+    }
+    const heading = /^## (.+)$/.exec(text);
+    if (heading) section = heading[1].trim();
+    sectionAt.push(section);
+    return text;
+  });
+  const text = prose.join('\n');
+  const spanPattern = /`((?:[^`\n]|\n(?!\s*\n))+)`/g;
+  for (let match = spanPattern.exec(text); match; match = spanPattern.exec(text)) {
+    const span = match[1].trim().replace(/\s+/g, ' ');
+    const space = span.indexOf(' ');
+    if (space < 0 || !peers.has(span.slice(0, space))) continue;
+    const line = text.slice(0, match.index).split('\n').length;
+    found.push({
+      peer: span.slice(0, space),
+      range: span.slice(space + 1),
+      line,
+      section: sectionAt[line - 1],
+      form: 'span',
+    });
+  }
+  return found;
+};
+
+describe('README peer ranges equal the @zvenigora/ng-eval-core manifest', () => {
+  it('quotes every peer in ## Install, and every quoted range as the manifest declares it', () => {
+    const declared: Readonly<Record<string, string>> =
+      JSON.parse(fs.readFileSync(path.join(workspaceRoot, MANIFEST), 'utf8')).peerDependencies;
+    const quoted = quotedRanges(
+      fs.readFileSync(path.join(workspaceRoot, PACKAGE_README), 'utf8'),
+      new Set(Object.keys(declared))
+    );
+    const mismatched = quoted
+      .filter((q) => q.range !== declared[q.peer])
+      .map((q) => `${q.peer} at :${q.line} quotes "${q.range}"; the manifest declares "${declared[q.peer]}"`);
+    const installed = new Set(
+      quoted.filter((q) => q.section === 'Install' && q.form === 'span').map((q) => q.peer)
+    );
+    const missingFromInstall = Object.keys(declared).filter((peer) => !installed.has(peer));
+    expect({ mismatched, missingFromInstall }).toEqual({ mismatched: [], missingFromInstall: [] });
   });
 });

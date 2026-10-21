@@ -11,12 +11,41 @@ That rule is a string. It can be fetched from an API, typed into a form-builder 
 administrator, or stored in a database and versioned separately from your application —
 because nothing about it is compiled in.
 
-The sources for this package are in the main [@zvenigora/ng-eval](https://github.com/zvenigora/ng-eval)
-repo. Expression syntax, security and the evaluator's own options are documented in the
-[repository README](https://github.com/zvenigora/ng-eval#readme); reactivity and the
-`EvalSignal` type are documented in
-[`@zvenigora/ng-eval-signals`](https://github.com/zvenigora/ng-eval/tree/master/modules/eval-signals#readme).
-This file documents the forms library.
+## Install
+
+```sh
+npm install @zvenigora/ng-eval-forms @zvenigora/ng-eval-signals @zvenigora/ng-eval-core
+```
+
+Peer dependencies: `@angular/core >=19.0.0`, `@angular/forms >=19.0.0`, `rxjs ^7.8.0`,
+`acorn-walk ^8.3.0`, `@zvenigora/ng-eval-core >=0.13.0 <0.14.0` and
+`@zvenigora/ng-eval-signals >=0.6.0 <0.7.0`. [Versions](#versions) gives the manifest, the reasons
+for its Angular, `eval-core`, `eval-signals` and `acorn-walk` entries, and why it cannot say that
+`/signals` requires Angular 22.
+
+## Sibling packages
+
+- [`@zvenigora/ng-eval-core`](https://github.com/zvenigora/ng-eval/tree/master/modules/eval-core#readme)
+  — the expression evaluator. Expression syntax and the evaluator's own options are documented in
+  its README.
+- [`@zvenigora/ng-eval-signals`](https://github.com/zvenigora/ng-eval/tree/master/modules/eval-signals#readme)
+  — an expression over a context of signals as an Angular `Signal`. Reactivity and the
+  `EvalSignal` type are documented in its README.
+
+The sources for all three are in the [@zvenigora/ng-eval](https://github.com/zvenigora/ng-eval)
+repository. This file documents the forms library.
+
+## Security
+
+**ng-eval is not a sandbox.** A rule reaches whatever its evaluation context holds, and every
+function in that context runs with the host's privileges — which matters most here, where the rule
+is a string that may come from an API, a database or an administrator.
+[`SECURITY.md`](https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md) covers the threat
+model, the protections the code has, and their
+[documented limits](https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md#documented-limits)
+— read it before registering a rule you did not write. It also records
+[reviewed external advisories](https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md#reviewed-external-advisories)
+— advisories raised against related projects and whether this library shares the defect.
 
 ## When *not* to use this library
 
@@ -33,15 +62,9 @@ What this library adds is the one thing a closure cannot be: **a condition that 
 string, resolved at runtime.** That covers form definitions served by an API, rules
 authored by an end user, and rules versioned independently of the application release.
 Against the obvious alternative for those cases — `new Function(…)` — it brings what
-`@zvenigora/ng-eval-core` already is: a sandboxed evaluator with no `eval`, safe under a
-strict CSP, with prototype-pollution blocking, dependency introspection and
-case-insensitive resolution.
-
-## Install
-
-```sh
-npm install @zvenigora/ng-eval-forms @zvenigora/ng-eval-signals @zvenigora/ng-eval-core
-```
+`@zvenigora/ng-eval-core` already is: an evaluator with no `eval`, so it runs under a strict
+CSP, with prototype-pollution blocking, dependency introspection and case-insensitive
+resolution. It is not a sandbox: see [Security](#security).
 
 ## Entry points
 
@@ -91,8 +114,8 @@ option, which 0.11 would have ignored, and the second transitively, as now.
 **`acorn-walk` is new in 0.2.0 and imposes no new install.** Both adapters walk the parsed
 expression with it, through the shared `guardIdentifiers` — `/signals` since 0.2.0, `/reactive`
 since 0.3.0. A consumer of this package already peer-depends on
-`@zvenigora/ng-eval-core`, whose own peers include `acorn-walk ^8.3.0`, so npm 7+ has already
-placed it; it is declared here because importing it undeclared resolves today by accident of
+`@zvenigora/ng-eval-core`, whose own manifest declares `acorn-walk` as a peer as well, so npm 7+
+has already placed it; it is declared here because importing it undeclared resolves today by accident of
 hoisting and would not resolve at all under pnpm's isolated layout. `acorn` itself is
 deliberately **not** declared — this package imports no `acorn` symbol, and `acorn-walk`
 depends on it directly.

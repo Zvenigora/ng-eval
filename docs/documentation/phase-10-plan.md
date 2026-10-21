@@ -1,6 +1,37 @@
 # Phase 10 Plan — documentation restructure
 
 **Date**: October 14, 2026
+**Revision**: 5 — step 4, in its own commit. Corrected in place, each a citation that had moved
+since the plan's commit:
+- finding 5: the five `eval-signals` comment lines, now four lower, and where the `eval-forms`
+  README documents `ExpressionRules`;
+- § 3.2's absolute links, and § 3.5's and § 8 q2's anchor citations, measured now against the
+  READMEs as published in `eval-signals` 0.6.0 and `eval-forms` 0.6.0, at f7f27f7;
+- § 3.5's quoted `eval-forms` floor sentence, which 0.6.0 rewrote to 0.13.0;
+- § 8 q3, pinned to the published READMEs it is about. Its `eval-core` lines, `:5`, `:9`, `:11` and
+  `:15`, are right for 0.13.0 and stay; step 3 rewrote the repository's copy, which is not
+  published yet. Its `eval-signals` `:397` is `:399`, its `eval-forms` `:844` is `:848`, and 0.6.0
+  prints the `#a24` link as well.
+
+The confirmation gate strengthened criterion 2 and fixed three readings:
+- `## Install` must quote every peer with its range, and a span's peer is the exact text before
+  its first space. "Names every key" by substring was satisfied by `acorn-walk` for `acorn`, and by
+  a span with no range. Each case's probes are fixed in the criterion;
+- the `eval-forms` README's `acorn-walk ^8.3.0` in `## Versions` is `eval-core`'s range, which the
+  case read as `eval-forms`' own. The sentence is reworded to name `eval-core`'s manifest. *Before
+  the commit*, § 6.1 was applied to it: no case checked the range against `eval-core`'s manifest, so
+  the sentence states no range;
+- `eval-forms`' "a sandboxed evaluator" is reworded, against its new `## Security`. A sweep of the
+  tracked documents for the same language opened [F23](../backlog.md#f23). *Before the commit*, a
+  second sweep for totality words widened F23 to every claim of a guarantee. Its root README lines
+  are scheduled into step 5. One line of `eval-core`'s README is not scheduled: it says an
+  expression over an empty context cannot use JavaScript's built-ins, when a value's own methods
+  stay callable.
+
+Also before the commit: § 6.1 gains the rule that every new check has a probe proving it can fail,
+with its three instances. And `.claude/skills/step/SKILL.md` marks step 4 done, outside the step's
+file list as step 3's commit did.
+
 **Revision**: 4 — step 3, in its own commit, run after the pause for the A35 plan (`eval-core` 0.12.1
 and 0.13.0). The plan was written before that pause. Corrected in place:
 - the totals in § 4 and § 6: the gate stood at 2596 / 438 / 375 when the phase resumed (4f99112),
@@ -78,7 +109,8 @@ SHA; and step 1 gets an outcome line.
 **Also touches**: no library code. No exported symbol, no `.d.ts` and no version changes, unless § 8
 q1 adds a release step.
 **Retires**: [BL-F19](../backlog.md#f19), in step 6; [BL-F22](../backlog.md#f22), opened by step 3's
-review, in step 5.
+review, in step 5; [BL-F23](../backlog.md#f23), opened by step 4's sweeps, in step 5 if its
+`eval-core` README line has been fixed by then, and otherwise narrowed there to that line.
 **Source**: the request of 2026-10-14, which fixed decisions D1–D6 and proposed the step shape that § 4
 adjusts. A second request the same day, before any step had run, added D7 and amended D1 (§ 3.1).
 **Objective**: two entry pages, a consumer landing page and a maintainer index, over documents that are
@@ -170,6 +202,9 @@ citations.
    [F18](../backlog-retired.md#f18) and F19. Step 4 re-points the eight in `eval-signals` and
    `eval-forms` by heading, as F18 did by symbol, since it edits the READMEs they cite. The ninth goes
    with the case that carries it, in step 5.
+   *Corrected in step 4* (Revision 5): at 938111c the five `eval-signals` lines are `:1255`, `:1274`,
+   `:1304`, `:1350` and `:1383`, four lower. `ExpressionRules` is documented at `:176`, in the table
+   under `## How it fits together`, and `### Constructed, not computed` is at `:557`.
 6. **The F10 allowlist's docblock count is stale** (M4). `export-list.spec.ts:535-536` says the package
    README "names twelve of the fifty-nine" exports. Measured, it names 14 of 60: `ASYNC_HOOK_MESSAGE`,
    `CompilerService`, `DiscoveryService`, `EMPTY_COMPLETION`, `EvalContext`, `EvalHooks`, `EvalScope`,
@@ -310,7 +345,7 @@ mention is a `docs/<tracked path>` outside any markdown link, which the gate doe
 | Checked links into `docs/` | **1081**, to 41 distinct files | 900 from 43 files under `docs/`; 61 from 3 root `.md` files; 100 from the three package CHANGELOGs (`eval-core` 56, `eval-forms` 29, `eval-signals` 15), all three of which ship in their tarballs; 20 from `.ts` comment lines in 13 files |
 | Plain-text path mentions | **405** | 198 in `.ts` comment lines in 77 files; 135 under `docs/` in 33 files; 31 in 4 root `.md` files; 10 in the package READMEs and CHANGELOGs; 24 in 4 other tracked files (`.claude/`, `tools/`, `jest.preset.js`); 7 in `.ts` code lines in 6 files, all of them test titles |
 | Paths read at runtime | **3** | `eval-forms/reactive/src/lib/readme-examples.spec.ts:715` reads `docs/forms/worked-example.md`, `eval-forms/signals/src/lib/readme-examples.spec.ts:719` reads `docs/forms/worked-example-signals.md`, and `tools/release-tags.mjs:20` reads `docs/backlog.md` |
-| Absolute links from shipped READMEs | **7**, to 5 files | `modules/eval-forms/README.md:57` (`forms/phase-6-plan.md`), `:155` and `:858` (`forms/worked-example.md`), `:616` and `:860` (`forms/worked-example-signals.md`); `modules/eval-signals/README.md:355` (`signals/phase-5-plan.md`) and `:397` (`backlog.md#a24`) |
+| Absolute links from shipped READMEs | **7**, to 5 files | `modules/eval-forms/README.md:57` (`forms/phase-6-plan.md`), `:159` and `:862` (`forms/worked-example.md`), `:620` and `:864` (`forms/worked-example-signals.md`); `modules/eval-signals/README.md:357` (`signals/phase-5-plan.md`) and `:399` (`backlog.md#a24`). *Corrected in step 4* (Revision 5): lines as published in 0.6.0, at f7f27f7; they were `:155`, `:858`, `:616`, `:860`, `:355` and `:397` |
 
 A move would cost three things that a step cannot buy back:
 
@@ -392,7 +427,10 @@ and the block does not print is added to the spec's numbered substitution list. 
 
 Every package README opens the same way, and each line of the opening is the package's own:
 
-1. `# @zvenigora/<package>`, then what the package is, in one paragraph with no heading.
+1. `# @zvenigora/<package>`, then what the package is, with no heading before `## Install`.
+   *Corrected in step 4* (Revision 5): this said "in one paragraph". `eval-signals` opens with two
+   paragraphs and `eval-forms` with a paragraph, an example block and a paragraph. The step keeps
+   both openings, since the plan names no content to delete.
 2. `## Install`: one `sh` install line, then a sentence naming **every** peer in the package's manifest
    with its range verbatim. For `eval-core` today these are `@angular/core >=19.0.0`, `acorn ^8.11.2`,
    `acorn-walk ^8.3.0` and `js-sha256 ^0.10.1 || ^0.11.0 || ^0.12.0 || ^1.0.0`.
@@ -416,18 +454,26 @@ the package README and the package's `package.json`, and asserts two things:
 - every code span of the form `` `<peer> <range>` ``, and every `"<peer>": "<range>"` line in a fenced
   block, anywhere in the README, where `<peer>` is a key of `peerDependencies`, carries exactly the
   manifest's range;
-- the `## Install` section names every key of `peerDependencies`.
+- the `## Install` section names every key of `peerDependencies`. *Strengthened at step 4's gate*
+  (Revision 5): it quotes a `` `<peer> <range>` `` span for every key, and a span's peer is the exact
+  text before its first space, so `acorn-walk` does not stand in for `acorn`, nor a bare
+  `` `@angular/core` `` for its range.
 
 `eval-signals`' `:20` abbreviates `>=19.0.0` to `>=19` (finding 9), so the case is red against it until
 step 4 writes the range verbatim. What the case does not see: a range written in prose without its
-package name, such as `eval-forms`' "The `eval-core` floor is 0.12.0". Its docblock says so.
+package name, such as `eval-forms`' "The `eval-core` floor is 0.13.0, since 0.6.0" (*corrected in
+step 4*: it read 0.12.0 at this plan's commit). Its docblock says so. So a package README states
+no sibling's range (step 4): quoted as a span it is checked against the wrong manifest, and quoted
+any other way it is not checked at all. `eval-forms`' `## Versions` says that `eval-core` declares
+`acorn-walk` as a peer, without its range.
 
 **Headings that must not change**, because a count case finds its blocks by them:
 ``## Quick start — Reactive Forms (`/reactive`)``, ``## Signal Forms — `/signals` `` and
 `Expressions are validated too`. The published anchors into these READMEs that other files use stay
-as well: `eval-signals`' `#async-expressions` (`eval-forms` README `:844`, `ROADMAP.md:267`), and
+as well: `eval-signals`' `#async-expressions` (`eval-forms` README `:848`, `ROADMAP.md:267`), and
 `eval-forms`' `#caseinsensitive-per-registration` (`docs/forms/worked-example-signals.md:240`) and
-`#two-things-that-are-not-available-here` (`docs/backlog-retired.md:3182`).
+`#two-things-that-are-not-available-here` (`docs/backlog-retired.md:3675`). *Corrected in step 4*
+(Revision 5): `:848` as published in 0.6.0, and `:3675` at 938111c; they were `:844` and `:3182`.
 
 ### 3.6 The landing page (D1 as amended, D5)
 
@@ -933,12 +979,14 @@ Step 3 ends at 2603, step 4 at 2604 / 439 / 376, and step 5, and so the phase, a
   - `modules/eval-signals/CHANGELOG.md` and `modules/eval-forms/CHANGELOG.md`: § 3.9's `[Unreleased]`
     lines.
   - Finding 5's line citations into these two READMEs, re-pointed by heading, in comment lines only:
-    `modules/eval-signals/src/lib/eval-signal-async.spec.ts` (`:1251`, `:1270`, `:1300`, `:1346`,
-    `:1379`), `modules/eval-forms/src/export-list.spec.ts` (`:25`, `:359`) and
+    `modules/eval-signals/src/lib/eval-signal-async.spec.ts` (`:1255`, `:1274`, `:1304`, `:1350`,
+    `:1383`; *corrected in step 4*, from `:1251`, `:1270`, `:1300`, `:1346`, `:1379`),
+    `modules/eval-forms/src/export-list.spec.ts` (`:25`, `:359`) and
     `modules/eval-forms/signals/src/public-api.spec.ts` (`:8`).
   - A `readme-examples.spec.ts` count only if the opening moves a block in or out of a counted scope.
     The report says which, and why; § 3.5 is written so that none does.
-  - `docs/backlog.md`: "Work in flight". This document: the outcome.
+  - `docs/backlog.md`: "Work in flight", and [F23](../backlog.md#f23), opened by the step's sweep
+    (*added at the gate*). This document: the outcome.
 - **Exit criteria**:
   1. **One shape.** A one-off command prints each package README's `##` headings in order, and the
      first three are `Install`, `Sibling packages` and `Security` in all three READMEs. *Wrong*: swap
@@ -947,6 +995,21 @@ Step 3 ends at 2603, step 4 at 2604 / 439 / 376, and step 5, and so the phase, a
      package, each reverted: edit one range in the README, and that package's case fails, naming the
      peer and both ranges. Then edit the same range in `package.json` instead, and the case fails
      again. Against `eval-signals`' current `:20`, before the step rewrites it, the case is red.
+     *Strengthened at the gate* (Revision 5): `## Install` quotes a `` `<peer> <range>` `` span for
+     every key, the peer matched exactly before the span's first space, and each package's probes
+     are fixed, each reverted, each failing that package's case alone:
+     - `eval-core`: `js-sha256`'s `^0.12.0` edited inside the README span, a range with spaces; the
+       same edit in `package.json`; `acorn ^8.11.2` removed from the Install sentence, which a
+       substring reader passes on `acorn-walk`.
+     - `eval-signals`: red against today's `:20`; `@zvenigora/ng-eval-core`'s range edited in the
+       README; the same edit in `package.json`; one peer removed from Install.
+     - `eval-forms`: red before the step, by the Install assertion; `"rxjs": "^7.8.0"` edited in
+       `## Versions`' block, the fenced reading; a range edited in the Install sentence, the span
+       reading; the same edit in `package.json`; one peer removed from Install.
+     - `eval-forms`' `## Versions` quotes `eval-core`'s `acorn-walk` range. *The pair*: that range
+       edited leaves the case green, and `eval-forms`' own edited turns it red. *Superseded before
+       the commit*: the sentence states no range (§ 3.5), so its probe is a range put back.
+     The `package.json` probes are temporary, and the diff carries no manifest.
   3. **No pointer to the repository README.** `grep -c "repository README" modules/*/README.md` gives
      0 in each, where it was 0, 1 and 1 after step 3.
   4. **No line citation into these READMEs from a live comment.**
@@ -959,6 +1022,85 @@ Step 3 ends at 2603, step 4 at 2604 / 439 / 376, and step 5, and so the phase, a
     once. The gate is green. `git diff --name-only` lists the files above and this document.
 - **Category**: documentation, specs, and comments in specs. It ships in `eval-signals`' and
   `eval-forms`' next releases, through their READMEs and CHANGELOGs. No `.d.ts` changes.
+- **Outcome** — done 2026-10-20, under Revision 5. The gate is green at 2604 / 439 / 376, from
+  2603 / 438 / 375.
+  - **Criterion 1**: the first three `##` headings are `Install`, `Sibling packages` and `Security`
+    in all three READMEs. *Wrong*, `eval-signals`' second and third swapped: the listing shows
+    `Install|Security|Sibling packages` for that README alone.
+  - **Criterion 2**: the three cases are green. Each probe below was run against its project's whole
+    suite and reverted. Every one failed exactly one case, its package's peer-range case, which
+    named the peer and both ranges, or the missing key:
+    - `eval-core`, 1 of 2604 each: `js-sha256`'s span edited in the README; the same edit in
+      `package.json`; `acorn ^8.11.2` removed from Install, reported as `acorn` missing.
+    - `eval-signals`, 1 of 439 each: `:20`'s `>=19` restored; `@zvenigora/ng-eval-core`'s range
+      edited in the README; the same edit in `package.json`; that peer removed from Install.
+    - `eval-forms`, 1 of 376 each: `"rxjs"` edited in `## Versions`' block; `rxjs` edited in the
+      Install span; the same edit in `package.json`, which the case reported at both lines; and
+      `acorn-walk` removed from Install. Before the step's README edits, the case was red on the
+      Install assertion alone, with all six peers missing. That run was of the spec file only.
+    - *The pair*: `eval-core`'s `acorn-walk` range edited in `## Versions`' reworded sentence
+      leaves all 376 green. `eval-forms`' own, edited in Install, fails the case. The same edit in
+      the sentence's original wording, `` `acorn-walk ^8.4.0` `` as one span, fails it too. The
+      rewording is what discriminates.
+    - *Then the range removed* (§ 6.1). The reworded sentence still stated `eval-core`'s range,
+      `` `acorn-walk` at `^8.3.0` ``, and nothing checked it against `eval-core`'s manifest. It now
+      says `eval-core` "declares `acorn-walk` as a peer as well". Two probes, each reverted:
+      - **R1**, `` `acorn-walk ^8.4.0` `` put back as a span: 1 failure of 376, the case;
+      - **R2**, put back as `` `acorn-walk` at `^8.4.0` ``: all 376 green. That is the form the
+        docblock lists as unseen, so this case cannot keep a range out of prose.
+
+      As a one-off check, `grep -n "acorn-walk" modules/eval-forms/README.md` shows a range only at
+      `:21` and `:92`, in the Install span and the `## Versions` block. Both are checked.
+  - **Criterion 3**: `grep -c "repository README"` gives 0 in each of the three.
+  - **Criterion 4**: the grep lists nothing. *Wrong*, `README.md:555` restored in
+    `src/export-list.spec.ts`'s `:359` comment: it lists that line.
+  - **Criterion 5**: no `readme-examples.spec.ts` is in the diff, and its seven constants are green.
+    The three counted headings and the three published anchors are present.
+  - **The sweeps** for guarantee-implying language, at the gate's instruction and then before the
+    commit. F23 records their commands, their counts and the classes they were read into.
+    - **Fixed in this step**: `eval-forms`' "a sandboxed evaluator, safe under a strict CSP".
+    - **Live, outside this step's files**:
+      - twelve root README lines: `:3`, `:10`, `:11`, `:17`, `:24`, `:129`, `:428`, `:431-433`,
+        `:435` and `:447`;
+      - `eval-core`'s README `:81`. Measured against the built package, it overclaims: `Math` and
+        `parseInt` are out of reach, but `'abc'.toUpperCase()` and `[3, 1, 2].map(…)` run.
+
+      These are [F23](../backlog.md#f23). Its root README part is scheduled into step 5, and its
+      `eval-core` line is not scheduled.
+    - **Kept as written**: design records, and one published `eval-core` CHANGELOG entry (F23
+      names them).
+    - **Not claims**: every other hit.
+  - **doc-links**: 346 files and 1578 links, 10 more than 1568:
+    - 2 to `#f23` in the register;
+    - 5 to F23 in this document: the Revision 5 header, the Retires line, step 4's file list,
+      step 5's, and this outcome;
+    - 1 to the A35 plan, in § 6.1's new rule;
+    - `#security` and `#versions` in the `eval-forms` README.
+
+    The READMEs' other new links are absolute and leave the count unchanged.
+  - **§ 3.5 item 1** is corrected to "no heading before `## Install`", as the gate read it. Each
+    README keeps its opening text, and `eval-forms` keeps its example block, which no count reads.
+  - **The review** found no Critical. It raised one warning, fixed in the step: the reader's span
+    pattern crossed blank lines. One stray backtick then inverted the pairing for the rest of the
+    file, and hid every later span.
+    - The pattern now ends a span at a blank line, as CommonMark does, in all three copies.
+    - The probe was a stray backtick in `eval-signals`' Sibling packages paragraph, with
+      `` `@angular/core >=18.0.0` `` in the next one. Under the old pattern all 439 stayed green;
+      under the new one the case failed, 1 of 439, naming the span.
+    - From the notes: fences now open on three or more backticks or tildes and close on the same
+      character. *Probe*: `## Versions`' block fenced with `~~~` and `rxjs` edited inside it fails
+      the case, 1 of 376.
+    - The docblocks list a span with no space after its peer as unseen.
+    - The `eval-forms` Install sentence no longer says `## Versions` gives a reason for every
+      floor: `rxjs` has none.
+    - This section's "one paragraph" is corrected, two comments lose literal backslashes, and three
+      reflows are tidied.
+    - **The sibling range in `## Versions`** is removed from the README, not checked across
+      manifests (above).
+    - **`.claude/skills/step/SKILL.md`** marks step 4 done. That is outside this step's file list,
+      as step 3's retarget was, at the maintainer's instruction, and the commit body names it.
+  - **§ 6.1** gains the rule that every new check needs a probe proving it can fail, with three
+    instances.
 
 ### Step 5 — The root README becomes a landing page (D1 as amended, D5)
 
@@ -980,6 +1122,10 @@ Step 3 ends at 2603, step 4 at 2604 / 439 / 376, and step 5, and so the phase, a
       the case option moves `eval-core` by +2 and the step's net from −5 to −3.
   - `docs/backlog.md` and `docs/backlog-retired.md`: F22 retired and moved, and its index row
     re-pointed.
+  - [F23](../backlog.md#f23)'s root README part (*scheduled here in step 4*, Revision 5): the step
+    re-runs F23's two sweeps over the landing page and reports what they list. The lines F23 names
+    are in rows § 3.4 already drops. F23 retires only if its `eval-core` README line has been fixed
+    as well. Otherwise the step narrows it to that line.
   - `modules/eval-core/src/lib/readme-examples.spec.ts`: the docblock's root-README paragraphs
     (`:25-35`, `:108-109`), put in the past tense. Comments only.
   - `modules/eval-signals/src/public-api.spec.ts`: the docblock's `:7-10`, comments only.
@@ -1102,7 +1248,23 @@ non-spec `.ts` file is out of scope (§ 2).
   - **W5**: the state block's options were the defaults, so it sets `caseInsensitive: true`.
 
   The same rule covers a count a document or docblock states: it is pinned by a case, as step 3
-  pinned the `sh` and `json` counts, or it loses its figure ([F22](../backlog.md#f22), step 5).
+  pinned the `sh` and `json` counts, or it loses its figure ([F22](../backlog.md#f22), step 5). It
+  covers any figure the case does not read, such as a sibling package's range (step 4, § 3.5).
+- **Standing rule: every new check needs a probe that proves it can fail.** A check that cannot
+  fail reports coverage it does not have, and it can fail to fail for a reason unrelated to its
+  claim. The probe breaks what the check claims to catch, and the report reads which cases went
+  red. *Added in step 4* (Revision 5), from three instances:
+  - **The `caseInsensitive` fixture on a `TypeError`** ([A35 plan](../a35/plan.md), § 1.2,
+    "Standing rules, from Revision 16"). Under `caseInsensitive`, `fromContext` copies the data into
+    a `Registry`, so the fixture's assignment onto `original` inserted nothing. Seven
+    native-writer cases had been passing on a `TypeError` from `Object.assign(undefined, …)`, not on
+    any refusal. A bare `toThrow()` could not tell the two apart.
+  - **W2, W4 and W5** (step 3, criterion 3, and the rule above): three README examples that passed
+    under the wrong implementation of their own claim.
+  - **The span pattern crossing blank lines** (step 4's review). The peer-range reader's
+    `` /`([^`]+)`/g `` let one stray backtick invert span pairing for the rest of a README, so
+    every later range went unchecked. A stray backtick with a wrong range after it left all 439
+    `eval-signals` cases green; the pattern that ends a span at a blank line fails the case.
 - **A README case mirrors its block by hand**, and only the block count is read from the file. So the
   probe for a case is a wrong *library* implementation, which shows that the case tests the claim. A
   wrong README cannot show it, since nothing but the count reads the file. (Step 3, criterion 3.)
@@ -1153,8 +1315,9 @@ Each question is stated here and decided elsewhere.
 2. **`eval-forms`' README, at 864 lines.** Splitting it into files per entry point, or reordering it,
    is out of this phase: D6 rules out guide files, and step 4 changes only its opening. *Constraints*,
    whatever the answer: the two adapters' count cases find their blocks by three headings (§ 3.5); its
-   anchors are linked from `docs/forms/worked-example-signals.md:240`, `docs/backlog-retired.md:3182` and
-   `ROADMAP.md:267` (the last through `eval-signals`); two of its absolute links point at the worked
+   anchors are linked from `docs/forms/worked-example-signals.md:240`, `docs/backlog-retired.md:3675`
+   (`:3182` at this plan's commit, *corrected in step 4*) and `ROADMAP.md:267` (the last through
+   `eval-signals`); two of its absolute links point at the worked
    examples under `docs/` (§ 3.2); and step 4's peer-range case reads its `## Install` and its
    `## Versions` block.
 3. **Do the published absolute links bind those files' paths, and their anchors, permanently?** Every
@@ -1167,11 +1330,17 @@ Each question is stated here and decided elsewhere.
      `:9`, `eval-forms` `:14`).
    - Into the package folders: `modules/eval-core#readme` (`eval-signals` `:3`),
      `modules/eval-signals#readme` (`eval-forms` `:18`), `modules/eval-signals#async-expressions`
-     (`eval-forms` `:844`).
+     (`eval-forms` `:848`).
 
-   *The case that forces the question*: `modules/eval-signals/README.md:397` links
-   `docs/backlog.md#a24`. Retiring A24 moves its entry to `backlog-retired.md`, which is the register's
-   own convention, and that anchor stops existing on `master` while 0.5.0 and 0.5.1 still print it.
+   *Corrected in step 4* (Revision 5): these lines are the READMEs as published, in `eval-core`
+   0.13.0, `eval-signals` 0.6.0 and `eval-forms` 0.6.0, all at f7f27f7. The `eval-core` lines are
+   right for 0.13.0. Step 3 has since rewritten the repository's copy, which drops both `#readme`
+   links and is not yet published. `eval-forms` `:848` was `:844` at this plan's commit.
+
+   *The case that forces the question*: `modules/eval-signals/README.md:399` (`:397` at this plan's
+   commit) links `docs/backlog.md#a24`. Retiring A24 moves its entry to `backlog-retired.md`, which is
+   the register's own convention, and that anchor stops existing on `master` while 0.5.0, 0.5.1 and
+   0.6.0 still print it.
    Steps 2–5 keep every one of these working (§ 3.5, § 3.10). The question is whether they must do so
    permanently. The package CHANGELOGs' 100 relative links (§ 3.2) ship as well but resolve nowhere
    inside a tarball, so they bind only inside the repository, through the gate.

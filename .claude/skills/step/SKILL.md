@@ -12,7 +12,7 @@ Plan document: `docs/documentation/phase-10-plan.md`
 Target: the repository's documents — no library code
 Requested step: $ARGUMENTS
 
-**Phase 10 resumed at its step 3, and steps 1–3 are done.** The phase was paused after step 2 while
+**Phase 10 resumed at its step 3, and steps 1–4 are done.** The phase was paused after step 2 while
 the A35 plan (`docs/a35/plan.md`, complete) ran to its end, so that `eval-core` 0.13.0 shipped first.
 The plan was written before that pause, so the restatement checks its counts and line citations
 against the tree and reports each one that has moved.
@@ -30,7 +30,7 @@ CHANGELOGs, specs and comment lines, at named steps and nowhere else:
   *Done.*
 - **Step 4 is all three packages' READMEs** — the `eval-signals` and `eval-forms` openings, their
   CHANGELOGs' `[Unreleased]`, one peer-range case in each project's `src/public-api.spec.ts`, and spec
-  **comment** lines.
+  **comment** lines. *Done.*
 - **Step 5 is the root README** — the landing page; `eval-core`'s `public-api.spec.ts` and
   `export-list.spec.ts` lose their root-README cases and gain the D5 case (plan § 4, step 5, which
   lists and flags those removals); comment lines in `eval-core` and `eval-signals` specs. It also
@@ -160,7 +160,8 @@ exactly as the plan's § 4 table says: `eval-core` +3 at step 2, +7 at step 3, +
 step 5 (−3 if its gate gives F22's count a case); `eval-signals` and `eval-forms` +1 each at step 4; every other row unchanged in every step. A
 row that moves anywhere else is a regression or a scope breach, not a count to correct. The plan's
 absolute totals were measured before the A35 plan; at its resumption (4f99112) the gate stood at
-2596 / 438 / 375, and the deltas apply from there: 2603 after step 3 (plan Revision 4). The root project's `test` target is the doc-links
+2596 / 438 / 375, and the deltas apply from there: 2603 after step 3 (plan Revision 4), and
+2604 / 439 / 376 after step 4 (plan Revision 5). The root project's `test` target is the doc-links
 gate: its file and link counts move as the same table says, and the report gives both figures.
 
 `build` is in this list because a green `test` run is not a type-check: Jest compiles per

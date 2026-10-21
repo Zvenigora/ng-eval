@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- **The README opens with Install, Sibling packages and Security**, as `eval-core`'s does, and
+  quotes each peer range verbatim, where it abbreviated `@angular/core`'s. A case checks every
+  quoted range against the manifest. Expression syntax and the evaluator's options are documented
+  in `eval-core`'s README, which this one now points to in place of the repository README. No code
+  change.
+
 ---
 
 ## [0.6.0] - 2026-10-20

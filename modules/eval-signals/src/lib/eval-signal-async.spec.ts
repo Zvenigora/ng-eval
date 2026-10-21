@@ -1243,16 +1243,18 @@ describe('createEvalSignalAsync', () => {
   /**
    * The README's prose claims that no executed block shows (Phase 5 step 4;
    * Phase 3 S 3.7: a public claim needs a spec that discriminates). One case
-   * per claim, each naming the `modules/eval-signals/README.md` lines it
-   * pins. Three are `eval-core`'s resolution, pinned here observationally:
-   * no code in this package decides them, so no probe of it applies.
+   * per claim, each naming the `modules/eval-signals/README.md` section and
+   * paragraph it pins — by heading, not by line, since the lines move. Three
+   * are `eval-core`'s resolution, pinned here observationally: no code in
+   * this package decides them, so no probe of it applies.
    */
   describe('README: Async expressions', () => {
 
     describe('What is resolved', () => {
 
       it('should hand back a promise\'s resolved value as it is, and rebuild an object the walk reads', async () => {
-        // README.md:400-401. `eval-core`'s `awaitAllPromises`: it does not
+        // README, `### What is resolved`, its "Every plain object and array the
+        // walk produces is rebuilt". `eval-core`'s `awaitAllPromises`: it does not
         // walk a resolved value, and copies every plain object it walks.
         const shared = { name: 'Ada' };
         const held = { name: 'Ada' };
@@ -1271,7 +1273,8 @@ describe('createEvalSignalAsync', () => {
       });
 
       it('should resolve promises in arrays and plain objects at any depth, and none inside a resolved value, a Map, a class instance or a null-prototype object', async () => {
-        // README.md:395-398. `eval-core`'s `awaitAllPromises`, as above.
+        // README, `### What is resolved`, its first paragraph. `eval-core`'s
+        // `awaitAllPromises`, as above.
         class Box {
           constructor(readonly inner: Promise<number>) {}
         }
@@ -1301,8 +1304,9 @@ describe('createEvalSignalAsync', () => {
       });
 
       it('should keep the last value under a structural equal only when nothing read it while the run was pending', async () => {
-        // README.md:402-407. This package's: `equal` is forwarded to the
-        // value's `computed`, and a pending run reads `undefined`.
+        // README, `### What is resolved`, the end of its second paragraph,
+        // from "`equal` is forwarded". This package's: `equal` is forwarded to
+        // the value's `computed`, and a pending run reads `undefined`.
         const equal = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
         const id = signal(1);
         const load = (): Promise<string> => Promise.resolve('Ada');
@@ -1347,8 +1351,10 @@ describe('createEvalSignalAsync', () => {
     describe('Two signals instead of `await`', () => {
 
       it('should not track a read inside a .then the expression set up, and should track the walk\'s own', async () => {
-        // README.md:381-383. This package's: the walk runs inside `run`,
-        // and the arrow runs after it, outside any reactive context.
+        // README, "Two signals instead of `await`", its "This is also the
+        // tracked way to use a resolved value". This package's: the walk runs
+        // inside `run`, and the arrow runs after it, outside any reactive
+        // context.
         const id = signal(1);
         const role = signal('admin');
         const loadUser = (key: number): Promise<{ name: string }> =>
@@ -1380,8 +1386,10 @@ describe('createEvalSignalAsync', () => {
       });
 
       it('should read a member off the promise in operand position, inside an async arrow too', async () => {
-        // README.md:357-358 and :389. `eval-core`'s: a member read off a
-        // promise, and an `await` that passes the promise through (BL-A24).
+        // README, "Two signals instead of `await`": its opening paragraph,
+        // and its "An `async` arrow's `await` is a pass-through". `eval-core`'s:
+        // a member read off a promise, and an `await` that passes the promise
+        // through (BL-A24).
         const id = signal(1);
         const loadUser = (): Promise<{ name: string }> => Promise.resolve({ name: 'Ada' });
 

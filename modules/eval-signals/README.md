@@ -6,22 +6,40 @@ expressions.
 Evaluate a JavaScript expression over a context of signals and get back a `Signal` that
 recomputes **exactly** when a key the expression actually read has changed.
 
-The sources for this package are in the main [@zvenigora/ng-eval](https://github.com/zvenigora/ng-eval)
-repo. Expression syntax, security, and the evaluator's own options are documented in the
-[repository README](https://github.com/zvenigora/ng-eval#readme); this file documents the
-signals library.
-
 ## Install
 
 ```sh
 npm install @zvenigora/ng-eval-signals @zvenigora/ng-eval-core
 ```
 
-Peer dependencies: `@angular/core >=19` and `@zvenigora/ng-eval-core >=0.13.0 <0.14.0`. The floor
+Peer dependencies: `@angular/core >=19.0.0` and `@zvenigora/ng-eval-core >=0.13.0 <0.14.0`. The floor
 is 0.13.0 since 0.6.0: this version documents the guarded receiver a source function's `this` is,
 and that contract exists only in `eval-core` 0.13.0 and later. It also carries the write guard,
 which needs `eval-core` 0.11.0 to ask about a built-in method's write as well as a member write —
 see [Writes are not supported](#writes-are-not-supported).
+
+## Sibling packages
+
+- [`@zvenigora/ng-eval-core`](https://github.com/zvenigora/ng-eval/tree/master/modules/eval-core#readme)
+  — the expression evaluator this package is built on. Expression syntax and the evaluator's own
+  options are documented in its README; this file documents the signals library.
+- [`@zvenigora/ng-eval-forms`](https://github.com/zvenigora/ng-eval/tree/master/modules/eval-forms#readme)
+  — Angular form field properties driven by expressions that arrive as strings at runtime, for
+  Reactive Forms and Signal Forms, built on this package.
+
+The sources for all three are in the [@zvenigora/ng-eval](https://github.com/zvenigora/ng-eval)
+repository.
+
+## Security
+
+**ng-eval is not a sandbox.** An expression reaches whatever its context holds, and every function
+in the context runs with the host's privileges; a context of signals is no different.
+[`SECURITY.md`](https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md) covers the threat
+model, the protections the code has, and their
+[documented limits](https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md#documented-limits)
+— read it before evaluating an expression you did not write. It also records
+[reviewed external advisories](https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md#reviewed-external-advisories)
+— advisories raised against related projects and whether this library shares the defect.
 
 ## Quick start
 

@@ -5,9 +5,10 @@
  * step 2.
  *
  * The `/signals` entry point is where the type-only case bites: the README
- * documents `ExpressionRules` at `:555`, which is an `export interface` and has
- * no runtime presence, so a gate built on `Object.keys` over a namespace import
- * would report a false failure against correct code (§ 1.1). The reader used
+ * documents `ExpressionRules` in its table under `## How it fits together`,
+ * which is an `export interface` and has no runtime presence, so a gate built
+ * on `Object.keys` over a namespace import would report a false failure
+ * against correct code (§ 1.1). The reader used
  * here resolves types and values alike; the case that proves it is in
  * `../../src/export-list.spec.ts`.
  *
