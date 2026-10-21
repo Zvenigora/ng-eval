@@ -1,6 +1,37 @@
 # Phase 10 Plan — documentation restructure
 
 **Date**: October 14, 2026
+**Revision**: 4 — step 3, in its own commit, run after the pause for the A35 plan (`eval-core` 0.12.1
+and 0.13.0). The plan was written before that pause. Corrected in place:
+- the totals in § 4 and § 6: the gate stood at 2596 / 438 / 375 when the phase resumed (4f99112),
+  not 2448, so step 3 ends at 2603 and the phase at 2599;
+- the root README's line ranges in § 3.4 from `:213` on, one lower since A37 added
+  `SequenceExpression` to its node list;
+- step 3's `CLAUDE.md:427-428`, cited by its heading instead, since the line had moved twice;
+- the release candidates in § 3.9 and § 8 q1: 0.12.1 is the published A35 partial-hardening release,
+  so the candidates are now 0.13.1 / 0.6.1 / 0.6.1, inside the ranges 0.13.0 / 0.6.0 / 0.6.0 declare.
+
+The confirmation gate added four things:
+- a restriction note on `ThisExpression` in the moved node list, since 0.13.0 allows `this` only as
+  the object of a member access;
+- GHSA-qrqj-3445-3rjx in `eval-core`'s `## Security` paragraph, with a link to `SECURITY.md`'s
+  documented limits rather than a restatement of them;
+- the `sh` and `json` block counts in the F13 count case, so the spec docblock's account of the
+  blocks that are not `javascript` is pinned;
+- `docs/a35/plan.md` in `CLAUDE.md`'s list of completed plans.
+
+Three of criterion 3's probes could not fail against the root blocks as printed, so those blocks
+changed their examples, never their claims (§ 3.4's rule):
+- W2: an identifier resolves through the context's own options, so the case-insensitive block
+  gains a member read;
+- W4: `await` flattens a promise at the top of the result, so each async block gains a nested one;
+- W5: the state block's options were the defaults, so it sets `caseInsensitive: true`.
+
+Each was measured; the step's outcome gives the counts. They are the instance § 6.1's new standing
+rule cites: an example that survives its probe is strengthened, not excused. The step's review opened
+[F22](../backlog.md#f22), widened before the commit to the F10 docblock's count, and scheduled into
+step 5, which already edits `export-list.spec.ts`.
+
 **Revision**: 3 — step 2, in its own commit. § 3.10's rule is corrected in four places, each because
 `SECURITY.md`'s advisory sections, which criterion 4 keeps byte-identical, name what the first rule
 could not resolve:
@@ -46,7 +77,8 @@ SHA; and step 1 gets an outcome line.
 (steps 2, 3, 4 and 5) and in `eval-signals` and `eval-forms` (step 4).
 **Also touches**: no library code. No exported symbol, no `.d.ts` and no version changes, unless § 8
 q1 adds a release step.
-**Retires**: [BL-F19](../backlog.md#f19), in step 6.
+**Retires**: [BL-F19](../backlog.md#f19), in step 6; [BL-F22](../backlog.md#f22), opened by step 3's
+review, in step 5.
 **Source**: the request of 2026-10-14, which fixed decisions D1–D6 and proposed the step shape that § 4
 adjusts. A second request the same day, before any step had run, added D7 and amended D1 (§ 3.1).
 **Objective**: two entry pages, a consumer landing page and a maintainer index, over documents that are
@@ -329,16 +361,22 @@ design record, and 1 published CHANGELOG line. No live document mentions any of 
 | Compilation (`:149-160`) | New `### Compilation — CompilerService` | **+1** |
 | Async evaluation and compilation (`:163-200`) | New `### Async evaluation and compilation` | **+2** |
 | Discovery (`:202-211`) | `### Discovery` (exists) | 0 |
-| ESTree nodes supported, destructuring, statements, "How statements differ from JavaScript" (`:213-296`) | New `## Supported syntax`, as prose, with `### ESTree nodes supported` and `### How statements differ from JavaScript` under it. Its two CHANGELOG anchors become absolute (finding 11) | 0 |
-| Options › Case-insensitive evaluation (`:298-315`) | New `### Case-insensitive evaluation` under `## Options` | **+1** |
-| Per-node timing, Evaluation hooks, Iteration budget (`:317-327`) | Already in the package README. These are the pointers to it | 0 |
-| Evaluation with state (`:329-354`) | New `### Evaluation with state` under `## Options`. `console.table(...)` becomes a read of `state.result.trace` with its value printed | **+1** |
-| Evaluation with scope (`:356-392`) | `### Scopes` (exists) | 0 |
-| Packages in This Repo (`:394-412`) | The landing page, and each package README's `## Sibling packages` (§ 3.5) | — |
-| Related Packages (`:414-423`) | The landing page | — |
-| Security (`:425-454`) | The landing page links the rewritten `SECURITY.md` (step 2) and its reviewed external advisories. The "2025 Update" bullets are dropped: "complete prototype pollution prevention" is false (B6, GHSA-jh43-xc7j-93c2) | — |
-| Documentation Structure (`:456-465`) | Dropped. Step 1 removes its two rows that would dangle, and the landing page's own links replace it | — |
-| Contributing, Code of Conduct, License (`:467-480`); the Copilot footer (`:484`) | The landing page; the footer is dropped | — |
+| ESTree nodes supported, destructuring, statements, "How statements differ from JavaScript" (`:213-298`) | New `## Supported syntax`, as prose, with `### ESTree nodes supported` and `### How statements differ from JavaScript` under it. Its two CHANGELOG anchors become absolute (finding 11) | 0 |
+| Options › Case-insensitive evaluation (`:299-317`) | New `### Case-insensitive evaluation` under `## Options` | **+1** |
+| Per-node timing, Evaluation hooks, Iteration budget (`:318-329`) | Already in the package README. These are the pointers to it | 0 |
+| Evaluation with state (`:330-356`) | New `### Evaluation with state` under `## Options`. `console.table(...)` becomes a read of `state.result.trace` with its value printed | **+1** |
+| Evaluation with scope (`:357-394`) | `### Scopes` (exists) | 0 |
+| Packages in This Repo (`:395-414`) | The landing page, and each package README's `## Sibling packages` (§ 3.5) | — |
+| Related Packages (`:415-425`) | The landing page | — |
+| Security (`:426-456`) | The landing page links the rewritten `SECURITY.md` (step 2) and its reviewed external advisories. The "2025 Update" bullets are dropped: "complete prototype pollution prevention" is false (B6, GHSA-jh43-xc7j-93c2) | — |
+| Documentation Structure (`:457-465`) | Dropped. Step 1 removes its two rows that would dangle, and the landing page's own links replace it | — |
+| Contributing, Code of Conduct, License (`:466-480`); the Copilot footer (`:483`) | The landing page; the footer is dropped | — |
+
+*Corrected in step 3* (Revision 4): the ranges from `:213` on are measured at 4f99112, and each now
+runs to the line before the next row's heading, its trailing blank included. Every heading from
+`:236` on sits one line further down than at this plan's commit, because A37 added
+`SequenceExpression` to the node list. Every heading after the Documentation Structure table sits two
+lines further up as well, for the two rows step 1 removed from it. `:1-211` are unchanged.
 
 **`README_JAVASCRIPT_BLOCKS`: 18 → 25.** The seven new blocks get seven new cases, by the spec's existing
 rule that a block which re-declares its bindings starts a new case. If the step merges two blocks that
@@ -472,8 +510,10 @@ It links every tracked file under `docs/` except itself. Step 6 checks that once
 
 **No version changes in steps 1–6.** No `package.json` is edited, and no `.d.ts` changes. Whether the
 three README changes are released as docs-only patches is § 8 q1. If they are, the manifests show
-that no peer range needs to move. `eval-core` 0.12.1 is inside `eval-signals`' `>=0.11.0 <0.13.0` and
-`eval-forms`' `>=0.12.0 <0.13.0`, and `eval-signals` 0.5.2 is inside `eval-forms`' `>=0.5.1 <0.6.0`.
+that no peer range needs to move. `eval-core` 0.13.1 is inside `eval-signals`' and `eval-forms`'
+`>=0.13.0 <0.14.0`, and `eval-signals` 0.6.1 is inside `eval-forms`' `>=0.6.0 <0.7.0`. *Corrected in
+step 3* (Revision 4): this named 0.12.1 and 0.5.2 against the ranges of 0.5.1 and 0.5.0. 0.12.1 is
+now the published A35 partial-hardening release, and the manifests moved with 0.13.0.
 
 ### 3.10 `SECURITY.md` (D7) — what it says, and how its identifiers are checked
 
@@ -611,12 +651,16 @@ Running the alignment first costs nothing, because it depends only on step 3.
 | 2 | `SECURITY.md`, rewritten and gated | D7 | no package | **+3** / 0 / 0 | 0 files; `SECURITY.md`'s source and spec links added, reported |
 | 3 | `eval-core`'s README absorbs the root's API sections | D4 | `eval-core` | **+7** / 0 / 0 | 0 files; links change only by same-file anchors |
 | 4 | One opening for the package READMEs, and their ranges gated | D1 | `eval-signals`, `eval-forms` | **+1** / **+1** / **+1** | 0 files; reported |
-| 5 | The root README becomes a landing page | D1, D5 | no package | **−5**, measured (M8) / 0 / 0 | 0 files; the root README's links reported |
+| 5 | The root README becomes a landing page; F22 | D1, D5 | no package | **−5**, measured (M8), or −3 if F22's count gets a case / 0 / 0 | 0 files; the root README's links reported |
 | 6 | Maintainer index, ROADMAP condensed, F19 | D1, D6 | no package | 0 / 0 / 0 | +1 file (+2 with the retrospect); reported |
 | 7 | *Held on § 8 q1*: docs-only patch releases | — | per q1 | 0 | — |
 
 From the gate's 2448 at this plan's commit, `eval-core` ends at 2454 if every step lands as planned:
 +3, +7, +1, then −5.
+
+*Corrected in step 3* (Revision 4): the A35 plan ran between steps 2 and 3 and added its own cases, so
+the gate stood at **2596 / 438 / 375** when the phase resumed at 4f99112. The deltas are unchanged.
+Step 3 ends at 2603, step 4 at 2604 / 439 / 376, and step 5, and so the phase, at 2599.
 
 ### Step 1 — Retire the stale documents
 
@@ -764,8 +808,11 @@ From the gate's 2448 at this plan's commit, `eval-core` ends at 2454 if every st
   - `modules/eval-core/src/export-list.spec.ts`: the F10 docblock's count sentence (`:534-537`, finding
     6), measured again after the rewrite; comments only.
   - `modules/eval-core/CHANGELOG.md`: § 3.9's `[Unreleased]` line.
-  - `CLAUDE.md:427-428` and `.claude/agents/code-reviewer.md:218`: "the README's 'ESTree Nodes Supported'
-    list" names `modules/eval-core/README.md`.
+  - `CLAUDE.md`, the Conventions bullet on what new evaluator features need, and
+    `.claude/agents/code-reviewer.md:218`: "the README's 'ESTree Nodes Supported' list" names
+    `modules/eval-core/README.md`. *Corrected in step 3* (Revision 4): the bullet was cited as
+    `:427-428`, and had moved to `:430-431` by the time the phase resumed. *Added at the gate*: the
+    same edit gives `CLAUDE.md`'s list of completed plans a row for `docs/a35/plan.md`.
   - `docs/backlog.md`: "Work in flight". This document: the outcome.
 - **Not edited**: the root `README.md`, which keeps its sections until step 5, so that the two copies
   overlap for two commits rather than leaving a gap.
@@ -799,6 +846,81 @@ From the gate's 2448 at this plan's commit, `eval-core` ends at 2454 if every st
     lists the files above and this document.
 - **Category**: documentation and specs. It ships in `eval-core`'s next release, through its README
   and CHANGELOG. The `.d.ts` is unchanged.
+- **Outcome** — done 2026-10-20, under Revision 4.
+  - **Criterion 1**, the root's 11 blocks, each to the package block and case that carry it:
+    - `:75`, the bare import: not carried (§ 3.4: each section imports what it uses);
+    - `:84`, Parsing: `### Parsing`, the Parsing case;
+    - `:119` and `:131`, Evaluation and the built-ins: `### Evaluation — EvalService`, the
+      Evaluation and built-ins cases;
+    - `:151`, Compilation: `### Compilation — CompilerService`, the Compilation case;
+    - `:167` and `:181`: `### Async evaluation and compilation`, the two async cases;
+    - `:205`, Discovery: `### Discovery`, the Discovery case;
+    - `:306`, Case-insensitive: `### Case-insensitive evaluation`, its case;
+    - `:333`, Evaluation with state: `### Evaluation with state`, its case;
+    - `:360`, Evaluation with scope: `### Scopes`, the Scopes case.
+
+    The root's `json` block is under `### Parsing`, asserted whole by the Parsing case, and its
+    unlabelled install fence is `## Install`'s `sh` block.
+    - The prose rows: the node list, destructuring, statements and divergences are under
+      `## Supported syntax`; the not-a-sandbox note is under `## Security`; the Options sentence
+      opens `## Options`; the three pointer rows already had their sections.
+    - The rows § 3.4 sends to the landing page are step 5's.
+  - **Criterion 2**: `README_JAVASCRIPT_BLOCKS` is 25. *Wrong*, left at 18: the count case alone
+    fails, receiving 25 lines. The gate added `sh` and `json`, 1 each, to the same case, with a
+    check that no fence of another language exists:
+    - relabelling `sh` as `bash` fails it at the `sh` count;
+    - a stray `ts` fence fails it at the other-language check, naming `README.md:11 (ts)`.
+  - **Criterion 3**, each probe reverted, read case by case against the whole file:
+    - **W1** (`simpleEval` over `{}`): 6 failures. They are the three named (Evaluation, built-ins,
+      case-insensitive), plus three existing cases that also pass `simpleEval` a context (Scopes,
+      the empty-completion sentinel, colon-joined names).
+    - **W2** (the walk's options without `caseInsensitive`, the context's kept): 1 failure, the
+      case-insensitive case. The state case, whose only case-insensitive read is an identifier,
+      stays green, which shows the added member read is the load-bearing line.
+    - **W3** (`simpleCall` without its context): 1 failure, the Compilation case.
+    - **W4** (`evaluateAsync` without `awaitAllPromises`): 2 failures, both async cases. Each
+      failed at its nested line. The top-level `toBe(3)` passed under W4, since `await` flattens
+      a promise at the top of the result.
+    - **W5** (`createState` dropping its options): 5 failures. They are the state case, the
+      case-insensitive case (which goes through `createState`), and three existing cases: timing,
+      the iteration budget, and an owned registry's policy. With the state case put back to the
+      root's `{ caseInsensitive: false }` and `a`, it stayed green under W5, measured.
+    - The Parsing sentence's `Program` legs, added after the review: `CompilerService` with
+      `extractExpressions` on fails the Parsing case alone, and so does `DiscoveryService`.
+  - **Criterion 4**: green. *Wrong*, `CompilerServise` imported by the Compilation block: 3
+    failures in the two files that run them, F11's case once in each and "imports no identifier
+    the package does not export".
+  - **Criterion 5**: F10 is green. The README names 21 of the 60 exports in code spans, where it
+    named 14, measured through a temporary case since removed. Eight of the 21 are still
+    allowlisted, which leaves the free-functions sentence ungated; the review found it, and it is
+    [F22](../backlog.md#f22).
+  - **Criterion 6**: `grep -c "repository README"` gives 0. The `##` headings run `Install`,
+    `Sibling packages`, `Security`, `Exported entry points`, `Supported syntax`, `Options`. The
+    four peer ranges match the manifest byte for byte, by a one-off script.
+  - **Criterion 7**: the `ParserOptions` sentence is under `### Parsing` and asserted by the
+    Parsing case; the eight free functions are named in code spans under `## Exported entry points`.
+  - **doc-links**: 346 files and 1568 links, 7 more than the 1561 at 4f99112. All seven are links to
+    F22, which the review opened: its index row and its "Work in flight" mention, and five in this
+    document — the Revision 4 header, the Retires line, § 6.1's standing rule, step 5's file list,
+    and this outcome.
+    The README's links are absolute, and change no count; no same-file anchor moved the count.
+  - **The review** found no Critical. Its five warnings, each fixed in the step:
+    - this outcome, which was missing;
+    - a sentence in `### Evaluation with state` that said hooks and the trace bound need the
+      state-first style, against the same README;
+    - the retarget of `.claude/skills/step/SKILL.md` and `CLAUDE.md` in this diff (see below);
+    - § 3.9 and § 8 q1's release candidates;
+    - the F10 entries, recorded as F22.
+
+    Its notes were also taken: the opening's "reads only what that context holds", the
+    `eval-signals` line's qualifier, the AST-node argument of `compile` and `extract`, the
+    Parsing case's other two services, two unlisted substitutions, the spec docblock's account
+    of the examples this step changed, and § 3.4's line-shift note.
+  - **Outside the file list**: `.claude/skills/step/SKILL.md` and `CLAUDE.md`'s two active-plan
+    sentences, retargeted to this plan before the step at the maintainer's instruction. They are
+    a `chore`, and are committed separately or named in this step's commit body.
+
+  The gate is green at 2603 / 438 / 375.
 
 ### Step 4 — One opening for the package READMEs, and their quoted ranges gated
 
@@ -848,6 +970,16 @@ From the gate's 2448 at this plan's commit, `eval-core` ends at 2454 if every st
   - `modules/eval-core/src/export-list.spec.ts`: the F11 `it.each` loses `'README.md'`. The comments at
     `:186-188` and `:473-475`, which describe the root README's multi-line imports, are re-pointed: the
     fixture case at `:472` is now the multi-line reader's only witness.
+  - The same file, for [F22](../backlog.md#f22) (*scheduled here in step 3*, Revision 4, since this is
+    the later step that edits it):
+    - the eight F10 allowlist entries the package README now names come out (`EvalState`, `call`,
+      `callAsync`, `compile`, `compileAsync`, `evaluate`, `extract` and `parse`);
+    - the F10 docblock's "twenty-one of the sixty" either gets a permanent case or loses its figure.
+      § 6.1's standing rule applies, as it did to step 3's `sh` / `json` pin. Which one is fixed at
+      this step's confirmation gate. A case added to `export-list.spec.ts` runs twice (finding 3), so
+      the case option moves `eval-core` by +2 and the step's net from −5 to −3.
+  - `docs/backlog.md` and `docs/backlog-retired.md`: F22 retired and moved, and its index row
+    re-pointed.
   - `modules/eval-core/src/lib/readme-examples.spec.ts`: the docblock's root-README paragraphs
     (`:25-35`, `:108-109`), put in the past tense. Comments only.
   - `modules/eval-signals/src/public-api.spec.ts`: the docblock's `:7-10`, comments only.
@@ -885,7 +1017,12 @@ From the gate's 2448 at this plan's commit, `eval-core` ends at 2454 if every st
   5. **No live comment calls the root README a documentation source.**
      `git grep -n -i -E "root .?README" -- 'modules/*.ts'` lists only the past-tense lines the step
      names. It lists 8 lines today, in four files.
-  - `eval-core` −5; `eval-signals` and `eval-forms` unchanged. doc-links: the root README goes from 36
+  6. **F22 is fixed.** F10 is green with the eight entries removed. *Wrong*: delete the package
+     README's free-functions sentence, and F10's documented-or-allowlisted case fails, naming the
+     functions it held. The docblock's count is either pinned by a case, which fails when the figure
+     is edited, or carries no figure. *Added in step 3* (Revision 4), before this step's gate.
+  - `eval-core` −5, or −3 if F22's count gets a case; `eval-signals` and `eval-forms` unchanged.
+    doc-links: the root README goes from 36
     checked links (after step 1) to the number the step reports. The gate is green.
     `git diff --name-only` lists the files above and this document.
 - **Category**: documents, and specs. Ships in no package.
@@ -944,7 +1081,7 @@ non-spec `.ts` file is out of scope (§ 2).
 | Gate | Command | Expected |
 | :--- | :--- | :--- |
 | Everything | `npx nx run-many -t lint test build --skip-nx-cache --output-style=static` | Green, every step |
-| `eval-core` tests | (in the above) | Baseline, then +3 at step 2, +7 at step 3, +1 at step 4 and −5 at step 5; no other change |
+| `eval-core` tests | (in the above) | Baseline, then +3 at step 2, +7 at step 3, +1 at step 4 and −5 at step 5; no other change. The baseline was 2448 at this plan's commit, and 2596 when the phase resumed at 4f99112 (Revision 4): 2596 → 2603 at step 3 |
 | `eval-signals` / `eval-forms` tests | (in the above) | +1 each at step 4; unchanged in every other step |
 | Docs | the root `test` target (`tools/doc-links.mjs`, `tools/release-tags.mjs`) | Green. doc-links' file and link counts move as § 4's table says |
 | Scope | `git diff --name-status` | Exactly the step's file list. No `R`. A `D` only in step 1, and only for D3's ten |
@@ -953,6 +1090,19 @@ non-spec `.ts` file is out of scope (§ 2).
 
 ### 6.1 The spec discipline for documentation
 
+- **Standing rule: a documented example is strong enough that the wrong implementation of its claim
+  fails its case.** An example that survives the probe is strengthened, not excused: it gains the
+  line, the value or the option that lets the wrong implementation show. The criterion is never
+  narrowed to match. *Added in step 3* (Revision 4), from three instances in that step's criterion 3.
+  Each was measured as surviving its probe as the root README printed it:
+  - **W2**: an identifier resolves through the context's own options, so the case-insensitive block
+    gained a member read;
+  - **W4**: `await` flattens a promise at the top of the result, so each async block gained a nested
+    one;
+  - **W5**: the state block's options were the defaults, so it sets `caseInsensitive: true`.
+
+  The same rule covers a count a document or docblock states: it is pinned by a case, as step 3
+  pinned the `sh` and `json` counts, or it loses its figure ([F22](../backlog.md#f22), step 5).
 - **A README case mirrors its block by hand**, and only the block count is read from the file. So the
   probe for a case is a wrong *library* implementation, which shows that the case tests the claim. A
   wrong README cannot show it, since nothing but the count reads the file. (Step 3, criterion 3.)
@@ -989,10 +1139,12 @@ Each question is stated here and decided elsewhere.
 
 1. **Docs-only patch releases at the end.** Steps 3 and 4 change files that ship:
    `modules/eval-core/README.md` and its CHANGELOG, and the `eval-signals` and `eval-forms` READMEs and
-   CHANGELOGs. The candidates are `eval-core` 0.12.1, `eval-signals` 0.5.2 and `eval-forms` 0.5.1, each
+   CHANGELOGs. The candidates are `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms` 0.6.1, each
    with a `.d.ts` byte-identical to the version before it, and § 3.9 shows that no peer range needs to
-   move. **Until they are published**, the npm pages show the READMEs of `eval-core` 0.12.0,
-   `eval-signals` 0.5.1 and `eval-forms` 0.5.0. Each of those says the full documentation, or the
+   move. **Until they are published**, the npm pages show the READMEs of `eval-core` 0.13.0,
+   `eval-signals` 0.6.0 and `eval-forms` 0.6.0. *Corrected in step 3* (Revision 4): this named
+   0.12.1 / 0.5.2 / 0.5.1 and the READMEs of 0.12.0 / 0.5.1 / 0.5.0, all from before the A35 plan
+   released 0.12.1 and 0.13.0 / 0.6.0 / 0.6.0. Each of those says the full documentation, or the
    expression syntax and security, is in the repository README, and links its `#readme`. After step 5
    that link lands on the landing page, which links each package README on GitHub. That is one hop more
    than the npm page promises, and the page describes documentation its target no longer holds. *To

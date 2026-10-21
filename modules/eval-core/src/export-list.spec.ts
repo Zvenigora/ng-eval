@@ -532,10 +532,19 @@ describe('every @zvenigora import resolves against its own specifier (F11, eval-
 
 /**
  * The exports `modules/eval-core/README.md` names in no code span, each with
- * its reason (`docs/backlog.md` F10). The package README names twelve of the
- * fifty-nine and defers the rest to the repository README, which ships
- * nowhere; a name documented only there is undocumented for whoever installed
- * the package, which is the split F3 found.
+ * its reason (`docs/backlog.md` F10). The package README names twenty-one of
+ * the sixty, measured when Phase 10 step 3 made it the package's whole
+ * documentation; before that it named fourteen and deferred the rest to the
+ * repository README, which ships nowhere, and a name documented only there is
+ * undocumented for whoever installed the package, which is the split F3 found.
+ * Eight entries below are among the twenty-one - `EvalState`, `call`,
+ * `callAsync`, `compile`, `compileAsync`, `evaluate` and `extract`, which that
+ * step named, and `parse`, which the README named before it - and so excuse
+ * nothing today. They are not free: while they stand, the
+ * README's free-functions sentence can be deleted and this case stays green,
+ * which is an allowlist masking a regression (`docs/backlog.md` F22). Nothing
+ * checks for an allowlisted name the README documents; `staleAllowlistEntries`
+ * checks only that each entry is still exported.
  *
  * No entry is `unused` any more. The seventeen that were went in `eval-core`
  * 0.11.0 (`docs/backlog.md` B5).

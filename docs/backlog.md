@@ -97,16 +97,20 @@ its ID lands in `SECURITY.md`'s CVE column when assigned.
   packages `< 0.6.0`. Its follow-up commit recorded it here, on the retired entries and in
   `SECURITY.md`, and opened [F21](#f21).
 
-**Phase 10, the documentation restructure, resumes at its step 3.** It was paused after its step 2
+**Phase 10, the documentation restructure, is in flight again.** It was paused after its step 2
 while the A35 plan ran to its end, so that 0.13.0, which closes the route through `this`, shipped
-first; it has. Its [plan](documentation/phase-10-plan.md) is at Revision 3.
+first; it has. Its [plan](documentation/phase-10-plan.md) is at Revision 4.
 - Step 1 is done: the ten stale documents are deleted, and the `qs` override's reason is in F16.
 - Step 2 is done: `SECURITY.md` is rewritten to what the code does, and a case in `eval-core`'s
   `public-api.spec.ts` resolves every identifier it names. That step opened A35, from its review,
   and F20.
+- Step 3 is done: `eval-core`'s README is the package's whole documentation, with the root
+  README's API sections moved into it and every `javascript` block executed. The root README keeps
+  its copy until step 5. It ships at `eval-core`'s next release. Its review opened [F22](#f22),
+  scheduled into step 5.
 
-Step 3 is next when it resumes. The plan retires [F19](#f19) in its step 6, and its § 8 q4 records
-what it found and left undecided.
+Step 4 is next. The plan retires [F19](#f19) in its step 6, and its § 8 q4 records what it found and
+left undecided.
 
 Phase 9, colon-joined identifiers, is complete: its
 [plan](colon-identifiers/phase-9-plan.md), at Revision 9, and its retrospect,
@@ -329,6 +333,7 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [F19](#f19) | `CLAUDE.md` cites the resolved-key re-check as `member-expression.ts:188`; it is at `:211` | repo | docs | Open — opened 2026-10-10 by the Phase 9 plan |
 | [F20](#f20) | `CODE_OF_CONDUCT.md`'s enforcement contact is an address of the upstream `jse-eval` author, not this repository's maintainer | repo | docs | Open — opened 2026-10-14 by Phase 10 step 2; the fix needs a contact the maintainer chooses |
 | [F21](#f21) | Build-tooling advisories: 32 findings (11 high, 21 moderate) from `@modelcontextprotocol/server` via `@angular/cli`, `follow-redirects` via `nx`, and `sprintf-js` via the jest chain — none in a published package | repo | fix | Open — opened 2026-10-20 by the A35 plan's U3 follow-up; **scheduled after Phase 10**. A toolchain bump, **not `npm audit fix --force`**, which proposes `ts-jest` 27.0.3, a downgrade |
+| [F22](#f22) | `eval-core`'s F10 block, ungated in two places: eight allowlist entries its README now documents, so the free-functions sentence can be deleted with F10 green; and the docblock's "twenty-one of the sixty", which no case checks | core | fix (test) | Open — opened 2026-10-20 by Phase 10 step 3's review; **scheduled into Phase 10 step 5**, which already edits `export-list.spec.ts`. The count gets a case or loses its figure |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -1606,3 +1611,51 @@ through its `via` chain to the three packages that carry an advisory. The plain-
 for each `--force` remedy and its wording. The chains read with
 `npm ls @modelcontextprotocol/server follow-redirects --package-lock-only --all`. The source manifests
 read for `dependencies`, and the published ones with `npm view <package>@<version> dependencies`.
+
+<a id="f22"></a>
+## F22 — The F10 allowlist and docblock count in `eval-core`, ungated
+
+**Package** core · **Kind** fix (test) · **Status** Open — opened 2026-10-20 by Phase 10 step 3's
+review; **scheduled into Phase 10 step 5**, which already edits `export-list.spec.ts`
+
+Two parts, both in `modules/eval-core/src/export-list.spec.ts`'s F10 block, and one rule: a figure or
+an excuse the suite does not check is one it cannot keep true.
+
+**Part 1, the eight entries.**
+
+Phase 10 step 3 made `modules/eval-core/README.md` the package's whole documentation, and it now
+names 21 of the 60 exports in code spans, where it named 14. Eight of the 21 are still in the F10
+allowlist in `modules/eval-core/src/export-list.spec.ts` (`UNDOCUMENTED`): the seven the step
+named — `EvalState` as `signature-type`, and `call`, `callAsync`, `compile`, `compileAsync`,
+`evaluate` and `extract` as `function-form` — and `parse`, also `function-form`, which the README
+already named in `### Colon-joined names` before the step.
+
+**What that costs.** An entry excuses a name from the "named in a code span, or allowlisted" case.
+While these eight stand, the README's free-functions sentence under `## Exported entry points` can
+be deleted and F10 stays green, so the allowlist masks the regression F10 exists to catch. Nothing
+checks for an allowlisted name the README documents: `staleAllowlistEntries` checks only that each
+entry is still exported.
+
+**Part 2, the docblock's count.** The F10 docblock says the package README names "twenty-one of the
+sixty". Nothing checks it. It is the sentence that had been wrong since it was written, "twelve of
+the fifty-nine" against a measured 14 of 60 (Phase 10 plan, finding 6), and it reads true today only
+because step 3 measured it again. The Phase 10 plan's standing rule (§ 6.1) applies, as it did to step
+3's `sh` / `json` counts: **the sentence gets a permanent case, or it loses its figure.**
+
+**Why neither was fixed in the step.** Step 3's edit to `export-list.spec.ts` is comments only, by
+the plan's file list (§ 4, step 3), and removing an entry is a change to the case's data.
+
+**The fix, in Phase 10 step 5** (plan § 4, step 5, and its criterion 6):
+- remove the eight entries. *Wrong*: delete the README's free-functions sentence, and F10 fails,
+  naming the functions it held;
+- give the count a case, so that editing the figure fails it, or drop the figure from the docblock.
+  The step's confirmation gate chooses. A case here runs twice (plan finding 3), +2 to `eval-core`;
+- optionally, add the other direction as a case, an allowlisted name the README names, so the list
+  cannot go stale this way again.
+
+*Recorded*: this entry, and the F10 docblock's count sentence, which cites it. *Widened* before step
+3's commit, at the maintainer's instruction, to the count (part 2), and scheduled into step 5.
+*Verified*: 2026-10-20, against the working tree of Phase 10 step 3: `exportedNames` and
+`documentedNames` read through a temporary case in `export-list.spec.ts`, since removed, gave 60
+exports and 21 named, and the eight above as both named and allowlisted. The review recounted them
+against the built `.d.ts`: 47 allowlisted − 8 = 39 = 60 − 21.

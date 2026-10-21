@@ -215,7 +215,8 @@ Work through these in order. They are ranked by how badly they fail and how quie
 
     **A new node type is four things**: the visitor, its registration in
     `recursive-visitors.ts`, a co-located spec in the neighbouring visitors' style, and a row
-    in the README's "ESTree Nodes Supported" list. Registration enforces itself — an
+    in the "ESTree nodes supported" list of `modules/eval-core/README.md`, the package README.
+    Registration enforces itself — an
     unregistered visitor fails its own spec — so the two that go missing quietly are the README
     row and the traversal-order assumption. `callExpressionVisitor` evaluates arguments before
     the callee; a statement visitor sets its own order, and a spec written on the assumption of

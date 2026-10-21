@@ -1,20 +1,31 @@
 # @zvenigora/ng-eval-core
 
-An expression evaluator for Angular. 
+An expression evaluator for Angular: JavaScript expression parsing and evaluation, built on [acorn](https://github.com/acornjs/acorn) and exposed as injectable services. An expression is evaluated against a context the host supplies, and resolves names only against that context. This file is the package's whole documentation.
 
-The sources for this package are in the main [@zvenigora/ng-eval](https://github.com/zvenigora/ng-eval) repo. 
+## Install
 
-This library was generated with [Nx](https://nx.dev).
+```sh
+npm install --save @zvenigora/ng-eval-core
+```
 
-Full documentation — parsing, evaluation, compilation, async evaluation, discovery, and the `caseInsensitive` / state / scope options — is in the [repository README](https://github.com/zvenigora/ng-eval#readme). This file names the exported entry points, then documents the options that need more than a snippet.
+Peer dependencies: `@angular/core >=19.0.0`, `acorn ^8.11.2`, `acorn-walk ^8.3.0` and `js-sha256 ^0.10.1 || ^0.11.0 || ^0.12.0 || ^1.0.0`.
 
-**Security.** [`SECURITY.md`](https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md) covers the threat model, the prototype-pollution and call-sandboxing protections, and their documented limits. It also records [reviewed external advisories](https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md#reviewed-external-advisories) — advisories raised against related projects and whether this library shares the defect. [GHSA-pj3p-xpg7-h7gw](https://github.com/Zvenigora/jse-eval/security/advisories/GHSA-pj3p-xpg7-h7gw), the case-insensitive guard bypass reported against the separate `@zvenigora/jse-eval` package, **does not apply to `@zvenigora/ng-eval-core`**: this library does not depend on `jse-eval`, and the advisory's proof-of-concept was run against this evaluator and is blocked. Note that ng-eval does not attempt to be a complete sandbox — see the threat model before evaluating untrusted expressions.
+## Sibling packages
+
+- [`@zvenigora/ng-eval-signals`](https://github.com/zvenigora/ng-eval/tree/master/modules/eval-signals#readme) — an expression over a context of signals as an Angular `Signal`, which recomputes exactly when a key the expression read has changed.
+- [`@zvenigora/ng-eval-forms`](https://github.com/zvenigora/ng-eval/tree/master/modules/eval-forms#readme) — Angular form field properties driven by expressions that arrive as strings at runtime, for Reactive Forms and Signal Forms.
+
+The sources for all three are in the [@zvenigora/ng-eval](https://github.com/zvenigora/ng-eval) repository.
+
+## Security
+
+**ng-eval is not a sandbox.** An expression reaches whatever its context holds, and every function in the context runs with the host's privileges. [`SECURITY.md`](https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md) covers the threat model, the protections the code has, and their [documented limits](https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md#documented-limits) — read it before evaluating an expression you did not write. [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx), dangerous functions and the evaluation context reachable past the call sandbox, affects `@zvenigora/ng-eval-core` up to 0.12.1 and is fixed in 0.13.0. `SECURITY.md` also records [reviewed external advisories](https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md#reviewed-external-advisories) — advisories raised against related projects and whether this library shares the defect. [GHSA-pj3p-xpg7-h7gw](https://github.com/Zvenigora/jse-eval/security/advisories/GHSA-pj3p-xpg7-h7gw), the case-insensitive guard bypass reported against the separate `@zvenigora/jse-eval` package, **does not apply to `@zvenigora/ng-eval-core`**: this library does not depend on `jse-eval`, and the advisory's proof-of-concept was run against this evaluator and is blocked.
 
 ## Exported entry points
 
-The [repository README](https://github.com/zvenigora/ng-eval#readme) walks through each of these in full. They are named here because they are what installing this package gives you: a symbol documented only in the repository README is one the consumer who installed the package cannot read about.
+Each service below is documented in its own section. `EvalService` (evaluation) and `CompilerService` (compile once, call repeatedly) are used throughout.
 
-`EvalService` (evaluation) and `CompilerService` (compile once, call repeatedly) are used throughout the sections below.
+Each service also has a form that needs no injector. The free functions `parse`, `extract`, `evaluate`, `evaluateAsync`, `compile`, `call`, `compileAsync` and `callAsync` are what the services call. `parse` takes the expression text; `extract`, `compile` and `compileAsync` take the AST node `parse` returns, not a string; and `evaluate`, `evaluateAsync`, `call` and `callAsync` take an `EvalState`, which `EvalState.fromContext(context, options)` builds.
 
 ### Parsing — `ParserService`
 
@@ -25,6 +36,124 @@ const service = inject(ParserService);   // Angular's inject(), or constructor i
 
 const ast = service.parse('1 + foo');    // an ESTree AST
 ast.type;                                // 'BinaryExpression'
+```
+
+The result of the parse is an AST (abstract syntax tree):
+
+```json
+{
+  "type": "BinaryExpression",
+  "start": 0,
+  "end": 7,
+  "left": {
+    "type": "Literal",
+    "start": 0,
+    "end": 1,
+    "value": 1,
+    "raw": "1"
+  },
+  "operator": "+",
+  "right": {
+    "type": "Identifier",
+    "start": 4,
+    "end": 7,
+    "name": "foo"
+  }
+}
+```
+
+`ParserService` parses with `ecmaVersion: 2020`, keeps a cache of 100 parses, and sets `extractExpressions`, so `parse` returns the expression itself — the `BinaryExpression` above — rather than the `Program` around it. `EvalService`, `CompilerService` and `DiscoveryService` parse with `extractExpressions` off, into a `Program`, which is what lets an expression be a statement list.
+
+### Evaluation — `EvalService`
+
+`simpleEval(expression, context)` evaluates an expression against the given context. Without a context, the context is empty.
+
+```javascript
+import { EvalService } from '@zvenigora/ng-eval-core';
+
+const service = inject(EvalService);
+
+const expression = '2 + 3 * a';
+const context = { a: 10 };
+const result = service.simpleEval(expression, context); // 32
+```
+
+Since the default context is empty, an expression cannot use JavaScript's built-in functions. To allow them, add them to the context passed to `simpleEval`:
+
+```javascript
+const context = {
+  Date,
+  Array,
+  Object,
+  encodeURI,
+  decodeURI,
+  isFinite,
+  isNaN,
+  JSON,
+  Math,
+  parseFloat,
+  parseInt,
+  RegExp,
+  // ...myCustomPropertiesAndFunctions,
+};
+service.simpleEval('Math.max(1, 2) + parseInt("40")', context); // 42
+```
+
+### Compilation — `CompilerService`
+
+```javascript
+import { CompilerService } from '@zvenigora/ng-eval-core';
+
+const service = inject(CompilerService);
+
+const fn = service.compile('x + y');
+const context = { x: 1, y: 2 };
+const options = { caseInsensitive: false };
+const value = service.simpleCall(fn, context, options); // 3
+```
+
+### Async evaluation and compilation
+
+Asynchronous evaluation is limited, and based on promises. The walk itself is synchronous, and a promise is awaited once it has finished, wherever it sits in the result: the result itself, or an element or property of an array or object the expression builds.
+
+```javascript
+import { EvalService } from '@zvenigora/ng-eval-core';
+
+const service = inject(EvalService);
+
+const context = {
+  one: 1,
+  two: 2,
+  asyncFunc: async (a: number, b: number) => { return await (a+b); }
+};
+const expr = 'asyncFunc(one, two)';
+const value = await service.simpleEvalAsync(expr, context); // 3
+
+await service.simpleEvalAsync('[asyncFunc(one, two), two]', context); // [3, 2]
+```
+
+```javascript
+import { CompilerService } from '@zvenigora/ng-eval-core';
+
+const service = inject(CompilerService);
+
+const context = {
+  one: 1,
+  two: 2,
+  promiseFunc: (a: number, b: number) => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        return resolve(a + b);
+      }, 10);
+    });
+  }
+};
+const expr = 'promiseFunc(one, two)';
+const fn = service.compileAsync(expr);
+const result = await service.simpleCallAsync(fn, context); // 3
+
+const nested = service.compileAsync('({ sum: promiseFunc(one, two) })');
+await service.simpleCallAsync(nested, context); // { sum: 3 }
 ```
 
 ### Discovery — `DiscoveryService`
@@ -123,7 +252,141 @@ service.simpleEval('({a:1}).a');                 // throws SyntaxError - write (
 
 **Read events and dependencies stay dotted.** A colon-joined name is one segment of a `path`: reading `obj.Q2:3` reports the `key` `Q2:3` and the `path` `obj.Q2:3`, and `createDependencyTracker()` records `obj.Q2:3`. Split a path on `.`, never on `:`.
 
+## Supported syntax
+
+### ESTree nodes supported
+
+The project has been tested with the following node types:
+ - `BinaryExpression`
+ - `Identifier`
+ - `Literal`
+ - `CallExpression` *potentially unsafe*
+ - `AwaitExpression`
+ - `ConditionalExpression`
+ - `MemberExpression`
+ - `ArrayExpression`
+ - `UnaryExpression`
+ - `LogicalExpression`
+ - `ThisExpression` — only as the object of a member access, `this.k`, `this['k']` or `this.fn()`;
+   anywhere else it throws, since `@zvenigora/ng-eval-core` 0.13.0. Up to 0.12.1 it evaluated to the
+   evaluation context
+ - `NewExpression`
+ - `TemplateLiteral`
+ - `TaggedTemplateExpression`
+ - `ObjectExpression`
+ - `AssignmentExpression` — to an identifier or a member, parenthesised or not. Destructuring
+   assignment, `[a, b] = arr` or `({ m } = o)`, throws `Unsupported assignment target`;
+   before `@zvenigora/ng-eval-core` 0.7.0 it silently did nothing
+ - `UpdateExpression` — to an identifier or a member, parenthesised or not
+ - `ArrowFunctionExpression` *potentially unsafe* (AssignmentPattern is not implemented, so a
+   destructuring default — `({ a = 1 }) => a` — is rejected rather than defaulted)
+ - `SequenceExpression` — each expression in order, the value the last one's
+
+Object and array destructuring bind the names JavaScript binds, in parameter lists and in
+`let` / `const` declarations alike: shorthand, renaming, nesting, literal and computed keys,
+and rest elements. **Before `@zvenigora/ng-eval-core` 0.5.0 the renaming forms bound the wrong
+names** — see the 0.5.0 entry in the
+[CHANGELOG](https://github.com/zvenigora/ng-eval/blob/master/modules/eval-core/CHANGELOG.md#050---2026-09-17).
+
+Statements, since `@zvenigora/ng-eval-core` 0.4.0:
+
+ - `Program`
+ - `ExpressionStatement`
+ - `EmptyStatement`
+ - `BlockStatement`
+ - `VariableDeclaration` — `let` and `const` only; `var` is rejected
+ - `IfStatement`
+ - `ForStatement` — the classic three-part form only
+
+**Every other statement type is rejected with `Unsupported statement type: <type>`.**
+That is a change of kind, not only of coverage: before 0.4.0 an unsupported statement was
+handed to `acorn-walk`'s base walker, which walked the subtree as an expression and left
+whatever it pushed on the value stack — so `throw 1` evaluated to `1` and threw nothing, and
+`switch (1) { case 1: 2 }` evaluated to `2`. See the
+[CHANGELOG](https://github.com/zvenigora/ng-eval/blob/master/modules/eval-core/CHANGELOG.md#040---2026-09-15) for the full before/after table.
+
+`WhileStatement`, `DoWhileStatement`, `ForInStatement`, `ForOfStatement`, `SwitchStatement`,
+`TryStatement`, `ThrowStatement`, `LabeledStatement`, `BreakStatement`, `ContinueStatement`,
+`FunctionDeclaration` and `ClassDeclaration` are among the rejected types. The three that
+imply **abrupt completion** and are reachable — `break`, `continue`, `throw` — are out by
+design rather than by schedule: the evaluator has no completion record to carry them, and
+adding one is a redesign of the walker rather than another visitor. `return` never reaches
+the evaluator at all: an expression is parsed outside any function, so `return 1` is a parse
+error (`'return' outside of function`) both before and after 0.4.0.
+
+### How statements differ from JavaScript
+
+Seven deliberate divergences, each a documented rule rather than an accident:
+
+1. **An arrow function with a block body returns the block's completion value**, where
+   JavaScript returns `undefined` without a `return`. `x => { 1 }` yields `1` here. With
+   `return` unsupported, the completion value is the only answer available that is not an
+   error.
+2. **`const` reassignment throws at the write, not at parse time.**
+3. **An unsupported statement type throws**, where before 0.4.0 it returned a value.
+4. **No hoisting.** A `let` binds when its declaration is reached; reading it earlier reads
+   the enclosing context rather than raising a temporal-dead-zone error.
+5. **Closures do not capture their lexical scope.** An arrow resolves its free variables
+   against the context *as it is when it is called*, not as it was where it was written — so
+   `for (let i = 0; i < 3; i++) { fns.push(() => i) }` leaves three functions that all read
+   whatever `i` resolves to at call time. This is pre-existing behaviour that statements
+   neither cause nor worsen.
+6. **A pattern form the binder does not implement throws** rather than binding nothing.
+7. **A binding name on the prototype-pollution blocklist is rejected — including as an arrow
+   function parameter.** `(toString => toString)(1)` returned `1` before 0.4.0 and now
+   throws; so do `constructor`, `prototype`, `valueOf`, `hasOwnProperty`, `isPrototypeOf`,
+   `propertyIsEnumerable`, `toLocaleString` and the four `__define`/`__lookup` accessors.
+   Binding writes share the blocklist with every other write site, which is wider than the
+   threat — only `__proto__` is an actual write vector — and is kept wide so that "is this
+   name blocked?" does not depend on which visitor reached it. From 0.4.0 to 0.6.x a throw
+   from inside a called arrow function was re-wrapped, so this one arrived as
+   `Function call error: Access to dangerous property "toString" is blocked…`; since 0.7.0
+   it arrives as thrown, without the prefix.
+
 ## Options
+
+To change the evaluator's default behaviour, pass `options`: the last argument of `simpleEval`, `simpleCall` and `createState`.
+
+### Case-insensitive evaluation
+
+While JavaScript is a case-sensitive language, some may find it hard to use. To provide case-insensitive evaluation, set `caseInsensitive` to `true`. It applies to identifiers and to member names alike.
+
+```javascript
+import { EvalService } from '@zvenigora/ng-eval-core';
+
+const service = inject(EvalService);
+
+const options = { caseInsensitive: true };
+
+const expression = '2 + 3 * A';
+const context = { a: 10 };
+const result = service.simpleEval(expression, context, options); // 32
+
+service.simpleEval('User.NAME', { user: { name: 'Ann' } }, options); // 'Ann'
+```
+
+### Evaluation with state
+
+`eval(expression, state)` evaluates against a state rather than a context. The state holds the context, the result and the options; the visitors read it as they walk, so it can extend the evaluator — for example with the execution history, or the time each node type took. `simpleEval` builds a state internally and never hands it back, so reading back what the walk recorded — `nodeTimings`, the trace, collected hook errors — needs this style.
+
+```javascript
+import { EvalService } from '@zvenigora/ng-eval-core';
+
+const service = inject(EvalService);
+
+const expression = '2 + 3 * A';
+const context = { a: 10 };
+const options = { caseInsensitive: true };
+const state = service.createState(context, options);
+// update the state if required - register hooks on state.hooks, for example
+
+const result = service.eval(expression, state); // 32
+
+// read the state: the execution history, one entry per value the walk pushed
+state.result.trace.map((item) => `${item.expression} = ${item.value}`);
+// ['2 = 2', '3 = 3', 'A = 10', '3 * A = 30', '2 + 3 * A = 32', '2 + 3 * A = 32', '2 + 3 * A = 32']
+state.result.traceTruncated;   // false - did it stop short? see `maxTraceItems`
+```
 
 ### Per-node timing
 

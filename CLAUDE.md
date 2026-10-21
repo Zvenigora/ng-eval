@@ -31,7 +31,8 @@ than active work. Phase 2 shipped as `eval-core` 0.4.0, and its plan is
 and its plan is `docs/signals/phase-5-plan.md`. Phase 9, colon-joined identifiers, shipped as
 `eval-core` 0.12.0, `eval-signals` 0.5.1 and `eval-forms` 0.5.0, and its plan is
 `docs/colon-identifiers/phase-9-plan.md`. Phase 10, the documentation restructure
-(`docs/documentation/phase-10-plan.md`), resumes at its step 3 now that the A35 plan is complete. Beyond
+(`docs/documentation/phase-10-plan.md`), is the active plan, resumed at its step 3 now that the A35
+plan is complete. Beyond
 it, what `ROADMAP.md` has left is Phases 7 and 8, which it reserves without specifying them.
 
 **Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left
@@ -99,8 +100,8 @@ build before believing a type is sound.
   live in the prompt, as the A3/B4/D6/F6, D9/F13 and F2 batches did. The A35 plan,
   `docs/a35/plan.md` — dangerous function values past the call sandbox, with A36 and A37 — is
   complete: it shipped as `eval-core` 0.12.1 and 0.13.0, and its advisory is GHSA-qrqj-3445-3rjx.
-  Phase 10's plan resumes at its step 3. `.claude/skills/step/SKILL.md` targets the active plan, and
-  is retargeted with each new plan; it still names the A35 plan until Phase 10 retargets it.
+  Phase 10's plan is the active plan, from its step 3. `.claude/skills/step/SKILL.md` targets the
+  active plan, and is retargeted with each new plan; it names Phase 10's.
 - **One retrospect per track; no per-step summaries.**
 - **Anything left for later work goes in `docs/backlog.md`; a commit body never carries it
   forward.**
@@ -122,6 +123,11 @@ build before believing a type is sound.
     contract. Its § 8 q1, q2 and q4 are open, waiting on real expressions arriving as corpus
     data, and say so; q5 is decided — not provided in Phase 9 — and reopens only on the condition
     the plan states.
+  - `docs/a35/plan.md` — the A35 track, dangerous function values past the call sandbox, with
+    A36, A37, A39 and A42, shipped as `eval-core` 0.12.1 and 0.13.0; its § 3.1 is the identity
+    set, § 3.3 the funnel, § 3.4 what stays open, and § 9 the contract after it landed. It
+    numbers two § 1.2s: the second, "Standing rules, from Revision 16", holds the two probe rules
+    `.claude/skills/step/SKILL.md` repeats.
 
   Their open questions are settled unless the document says otherwise. Two of them number
   a § 9 and a § 9.1 on unrelated subjects, so name the document when citing one. Their line
@@ -426,8 +432,8 @@ These apply to all three libraries.
   (`eval-signals`' `nested-signal-check.ts:88`, guarded at `:79`). Anything reachable in
   production, or that a consumer could have caught another way, does not qualify.
 - New evaluator features generally need: the visitor, its registration in
-  `recursive-visitors.ts`, a co-located spec, and an entry in the README's
-  "ESTree Nodes Supported" list.
+  `recursive-visitors.ts`, a co-located spec, and an entry in the "ESTree nodes supported" list
+  of `modules/eval-core/README.md`, the package README.
 - Modify files with the Edit and Write tools only. Do not edit files via shell
   commands (`sed -i`, `>` redirection, `Set-Content`, etc.) — those bypass
   formatting and lint automation.

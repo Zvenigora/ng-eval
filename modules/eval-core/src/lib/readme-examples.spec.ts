@@ -17,7 +17,13 @@ import {
 } from '../public-api';
 
 /** The ` ```javascript ` fences in `modules/eval-core/README.md`, indented ones included. */
-const README_JAVASCRIPT_BLOCKS = 18;
+const README_JAVASCRIPT_BLOCKS = 25;
+
+/** The ` ```sh ` fences: `## Install`'s. */
+const README_SH_BLOCKS = 1;
+
+/** The ` ```json ` fences: `### Parsing`'s AST. */
+const README_JSON_BLOCKS = 1;
 
 /**
  * Executes the snippets in `modules/eval-core/README.md`.
@@ -55,15 +61,24 @@ const README_JAVASCRIPT_BLOCKS = 18;
  * now. **Phase 9 step 3 added one**, `### Colon-joined names`, covered in a
  * `describe` of its own because it declares its own root providers, and
  * **step 7 a second**, the section's writing rules, which continues the
- * first's `service` and so is the same case. Sections
+ * first's `service` and so is the same case. **Phase 10 step 3 added seven**,
+ * the root README's API sections moved here, each covered by a case of its
+ * own. Sections
  * whose later blocks continue an earlier one are a single case, split only
  * where the document declares a fresh start by re-declaring its own bindings.
  *
  * | Case | Blocks |
  * | --- | --- |
- * | Parsing | `### Parsing` |
+ * | Parsing | `### Parsing` **+** the AST `json` block under it — **Phase 10 step 3** |
+ * | Evaluation | `### Evaluation`'s first block — **Phase 10 step 3** |
+ * | Built-ins | the built-ins block, which re-declares `context` — **Phase 10 step 3** |
+ * | Compilation | `### Compilation` — **Phase 10 step 3** |
+ * | Async evaluation | the `simpleEvalAsync` block — **Phase 10 step 3** |
+ * | Async compilation | the `simpleCallAsync` block, which re-declares `service` — **Phase 10 step 3** |
  * | Discovery | `### Discovery` |
  * | Scopes | `### Scopes` |
+ * | Case-insensitive evaluation | `### Case-insensitive evaluation` — **Phase 10 step 3** |
+ * | Evaluation with state | `### Evaluation with state` — **Phase 10 step 3** |
  * | Colon-joined names | `### Colon-joined names` — **Phase 9 step 3** **+** the section's second block, the consequent and the quoted key — **step 7** |
  * | Per-node timing | `### Per-node timing` |
  * | An adopted registry | the `createTimingHook` block — its own state, because its sentence is about a registry the caller built |
@@ -83,10 +98,14 @@ const README_JAVASCRIPT_BLOCKS = 18;
  * three times. What is gated is the count. Which case covers which block, the
  * table above, is still kept in step by hand.
  *
- * Nothing is uncovered. There are no `sh` or `json` blocks in this file, and no
- * ` ```ts ` fence — this document and the root are `javascript` throughout,
- * which is what makes a `ts`-scanning spec find zero blocks here and read that
- * as ungateability.
+ * Nothing is uncovered. Besides the `javascript` blocks there are
+ * `README_SH_BLOCKS` `sh` block, `## Install`'s command, which a case has
+ * nothing to run against, and `README_JSON_BLOCKS` `json` block, the AST under
+ * `### Parsing`, which the Parsing case asserts whole. The count case holds both
+ * numbers and fails on a fence in any other language, an unlabelled one
+ * included. There is no ` ```ts ` fence — this document and the root are
+ * `javascript` throughout, which is what makes a `ts`-scanning spec find zero
+ * blocks here and read that as ungateability.
  *
  * ## What this step changed in the README, and how far it went
  *
@@ -107,6 +126,15 @@ const README_JAVASCRIPT_BLOCKS = 18;
  * injected-service opening survives as `inject(…)` rather than being dropped.
  * What it left: the root README, whose identical opening is the reason that file
  * was dropped rather than converted.
+ *
+ * **Phase 10 step 3 converted it**, by moving its API sections here under the
+ * same rule, and went further than the step above in one respect: three moved
+ * examples changed, because a wrong implementation the plan names could not
+ * fail against them as printed. The case-insensitive block gained a member
+ * read, each async block a nested promise, and the state block options that
+ * are not the defaults. The promise example's `setTimeout` waits 10 ms, not
+ * 1000, and the built-ins block gained the line that uses them. Each claim is
+ * the root's. `docs/documentation/phase-10-plan.md`, Revision 4, records why.
  *
  * ## Substitutions — everything this file supplies that the README does not
  * print
@@ -158,8 +186,27 @@ const README_JAVASCRIPT_BLOCKS = 18;
  *    object to `TestBed.configureTestingModule`, whose injector is the root its
  *    services resolve from, as the application's would be.
  *
- * Items 3 to 8 are the same class — a value, a precondition or a narrowing the
- * block does not print — and are listed separately because the enumeration is
+ * 10. **The `### Parsing` prose, asserted alongside its blocks.** The `json`
+ *    block is compared with `toEqual`, which does not check that acorn's nodes
+ *    are instances of its `Node` class. The sentence after it names
+ *    `ParserService`'s defaults, read from `parserOptions`, and the `Program`
+ *    the other three services parse into, which no block prints. The case
+ *    supplies the expression `1 + foo`, the context `{ foo: 2 }` and the value
+ *    `3` it evaluates to, reads the `Program` through an `after` hook of its own
+ *    for `EvalService` and `CompilerService`, and for `DiscoveryService` extracts
+ *    it.
+ *
+ *    The Compilation and async-compilation cases name `CompilerService`
+ *    `compiler` where its blocks name it `service`, since `service` is this
+ *    file's `EvalService`; the bindings are otherwise the blocks'.
+ *
+ * 11. **The built-ins block's first half.** The block prints only the call
+ *    the added built-ins make possible. The sentence above it says the default
+ *    context holds none, so the case also evaluates the same expression with no
+ *    context and asserts the call sandbox's refusal of an undefined callee.
+ *
+ * Items 3 to 8, 10 and 11 are the same class — a value, a precondition or a
+ * narrowing the block does not print — and are listed separately because the enumeration is
  * the only thing standing against an unlisted one (plan § 7, risk 3, accepted
  * rather than gated).
  */
@@ -178,6 +225,112 @@ describe('documented examples', () => {
     const ast = parser.parse('1 + foo');
 
     expect(ast?.type).toBe('BinaryExpression');
+
+    // The `json` block under it, whole (substitution 10).
+    expect(ast).toEqual({
+      type: 'BinaryExpression',
+      start: 0,
+      end: 7,
+      left: { type: 'Literal', start: 0, end: 1, value: 1, raw: '1' },
+      operator: '+',
+      right: { type: 'Identifier', start: 4, end: 7, name: 'foo' },
+    });
+
+    // The sentence after it: the parser's defaults, and the `Program` the
+    // other services parse into, seen as the walk's outermost node.
+    expect(parser.parserOptions).toEqual(
+      expect.objectContaining({ ecmaVersion: 2020, cacheSize: 100, extractExpressions: true })
+    );
+    const state = service.createState({ foo: 2 });
+    const outermost: string[] = [];
+    state.hooks.on('after', 'Program', (event) => { outermost.push(event.node.type); });
+    expect(service.eval('1 + foo', state)).toBe(3);
+    expect(outermost).toEqual(['Program']);
+
+    const compiler = TestBed.inject(CompilerService);
+    expect(compiler.call(compiler.compile('1 + foo'), state)).toBe(3);
+    expect(outermost).toEqual(['Program', 'Program']);
+
+    const discovery = TestBed.inject(DiscoveryService);
+    expect(discovery.extract('1 + foo', 'Program')?.length).toBe(1);
+  });
+
+  it('should evaluate an expression against the given context', () => {
+    // `### Evaluation — EvalService`'s first block.
+    const expression = '2 + 3 * a';
+    const context = { a: 10 };
+
+    expect(service.simpleEval(expression, context)).toBe(32);
+  });
+
+  it('should reach the built-ins the context holds and no others', () => {
+    // The built-ins block, and both halves of the sentence above it: the
+    // default context holds none, and the ones added are callable
+    // (substitution 11).
+    const context = {
+      Date,
+      Array,
+      Object,
+      encodeURI,
+      decodeURI,
+      isFinite,
+      isNaN,
+      JSON,
+      Math,
+      parseFloat,
+      parseInt,
+      RegExp,
+    };
+
+    expect(service.simpleEval('Math.max(1, 2) + parseInt("40")', context)).toBe(42);
+    expect(() => service.simpleEval('Math.max(1, 2) + parseInt("40")'))
+      .toThrow('Cannot call undefined or null function');
+  });
+
+  it('should compile once and call against a context', () => {
+    // `### Compilation — CompilerService`.
+    const compiler = TestBed.inject(CompilerService);
+
+    const fn = compiler.compile('x + y');
+    const context = { x: 1, y: 2 };
+    const options = { caseInsensitive: false };
+
+    expect(compiler.simpleCall(fn, context, options)).toBe(3);
+  });
+
+  it('should await a promise the result holds, at the top or nested', async () => {
+    // The first `### Async evaluation and compilation` block.
+    const context = {
+      one: 1,
+      two: 2,
+      asyncFunc: async (a: number, b: number) => { return await (a + b); }
+    };
+
+    expect(await service.simpleEvalAsync('asyncFunc(one, two)', context)).toBe(3);
+    expect(await service.simpleEvalAsync('[asyncFunc(one, two), two]', context)).toEqual([3, 2]);
+  });
+
+  it('should await a compiled expression\'s promise, at the top or nested', async () => {
+    // The second block. Its `setTimeout` waits 10 ms, where the root README's
+    // waited 1000 (plan § 3.4).
+    const compiler = TestBed.inject(CompilerService);
+    const context = {
+      one: 1,
+      two: 2,
+      promiseFunc: (a: number, b: number) => {
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            return resolve(a + b);
+          }, 10);
+        });
+      }
+    };
+
+    const fn = compiler.compileAsync('promiseFunc(one, two)');
+    expect(await compiler.simpleCallAsync(fn, context)).toBe(3);
+
+    const nested = compiler.compileAsync('({ sum: promiseFunc(one, two) })');
+    expect(await compiler.simpleCallAsync(nested, context)).toEqual({ sum: 3 });
   });
 
   it('should extract every node of a given type', () => {
@@ -213,6 +366,27 @@ describe('documented examples', () => {
     // with `thisArg: cat`, as up to 0.6.x, the case passed whether or not it
     // was applied (`docs/backlog-retired.md` A7).
     expect(result).toBe('Mister Whiskers says meow 3 times');
+  });
+
+  it('should resolve identifiers and member names case-insensitively', () => {
+    // `### Case-insensitive evaluation`. The member read is what the walk's
+    // own options decide; an identifier is resolved by the context's.
+    const options = { caseInsensitive: true };
+
+    expect(service.simpleEval('2 + 3 * A', { a: 10 }, options)).toBe(32);
+    expect(service.simpleEval('User.NAME', { user: { name: 'Ann' } }, options)).toBe('Ann');
+  });
+
+  it('should evaluate against a state and keep its execution history', () => {
+    // `### Evaluation with state`. Its options are not the defaults, so a
+    // state that dropped them would read `A` as nothing.
+    const state = service.createState({ a: 10 }, { caseInsensitive: true });
+
+    expect(service.eval('2 + 3 * A', state)).toBe(32);
+    expect(state.result.trace.map((item) => `${item.expression} = ${item.value}`)).toEqual([
+      '2 = 2', '3 = 3', 'A = 10', '3 * A = 30', '2 + 3 * A = 32', '2 + 3 * A = 32', '2 + 3 * A = 32',
+    ]);
+    expect(state.result.traceTruncated).toBe(false);
   });
 
   it('should accumulate per-node-type timings for a state that owns its registry', () => {
@@ -531,14 +705,22 @@ const fencedBlocks = (markdown: string): readonly FencedBlock[] => {
 
 describe('README block count (docs/backlog.md F13)', () => {
 
-  it('should hold README_JAVASCRIPT_BLOCKS javascript blocks', () => {
+  it('should hold README_JAVASCRIPT_BLOCKS javascript blocks, and only sh and json besides', () => {
     const readme = fs.readFileSync(path.join(__dirname, '../../README.md'), 'utf8');
 
     // Lines, not a bare number, so a failure names the blocks it counted.
-    const javascript = fencedBlocks(readme)
-      .filter((block) => block.language === 'javascript')
+    const linesIn = (language: string) => fencedBlocks(readme)
+      .filter((block) => block.language === language)
       .map((block) => `README.md:${block.line}`);
 
-    expect(javascript).toHaveLength(README_JAVASCRIPT_BLOCKS);
+    expect(linesIn('javascript')).toHaveLength(README_JAVASCRIPT_BLOCKS);
+    expect(linesIn('sh')).toHaveLength(README_SH_BLOCKS);
+    expect(linesIn('json')).toHaveLength(README_JSON_BLOCKS);
+
+    // Any other fence, unlabelled included, is a block no case covers.
+    const other = fencedBlocks(readme)
+      .filter((block) => !['javascript', 'sh', 'json'].includes(block.language))
+      .map((block) => `README.md:${block.line} (${block.language || 'unlabelled'})`);
+    expect(other).toEqual([]);
   });
 });

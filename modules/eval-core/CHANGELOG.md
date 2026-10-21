@@ -12,6 +12,14 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Changed
+- **The package README is the package's whole documentation**, and every `javascript` block in it
+  is executed by a case. It gains the sections the repository README held — evaluation,
+  compilation, async evaluation and compilation, the supported syntax, case-insensitive evaluation
+  and evaluation with state — and opens with Install, Sibling packages and Security, quoting each
+  peer range verbatim. The repository README no longer has to be read for the API. No code
+  change.
+
 ---
 
 ## [0.13.0] - 2026-10-20

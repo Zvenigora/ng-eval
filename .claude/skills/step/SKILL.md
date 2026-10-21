@@ -8,129 +8,65 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: `docs/a35/plan.md`
-Target library: `@zvenigora/ng-eval-core` (`modules/eval-core`), in shape (i), chosen in the plan's
-Revision 7 (§ 2): 0.12.1 as partial hardening, then 0.13.0.
+Plan document: `docs/documentation/phase-10-plan.md`
+Target: the repository's documents — no library code
 Requested step: $ARGUMENTS
 
-**Phase 10 (`docs/documentation/phase-10-plan.md`) is paused after its step 2.** This skill runs the
-A35 plan to its end, steps 1–11: 0.12.1 (step 6), then steps 7–11 consecutively, so 0.13.0 closes
-A39 — the value route and the receiver — before Phase 10 resumes at its step 3 after step 11
-(plan Revision 11).
+**Phase 10 resumed at its step 3, and steps 1–3 are done.** The phase was paused after step 2 while
+the A35 plan (`docs/a35/plan.md`, complete) ran to its end, so that `eval-core` 0.13.0 shipped first.
+The plan was written before that pause, so the restatement checks its counts and line citations
+against the tree and reports each one that has moved.
 
 **Each step's file list in the plan's § 4 is its scope, and it is not the same list every step.**
-The A35 plan closes the call sandbox's gaps in `eval-core`, at named steps and nowhere else:
+Phase 10 restructures the documentation. It reaches the three projects only through READMEs,
+CHANGELOGs, specs and comment lines, at named steps and nowhere else:
 
-- **Step 1 is A36**: the tag call through the call's own path. It touches
-  `tagged-template-expression.ts`, `call-expression.ts` (the member branch as the internal
-  `callMember`, and `safeCall` exported, which stays internal), and a new spec.
-- **Step 2 is K1 and the identity set**. It touches:
-  - the new internal `dangerous-values.ts`;
-  - `isFunctionSafe` and `isConstructorSafe`;
-  - a new `eval.service.dangerous-values.spec.ts`;
-  - T11 and T12 in `tagged-template-expression.spec.ts`;
-  - `member-write-policy.ts`'s stale comment.
-- **Step 3 is A37**: a `SequenceExpression` visitor, its registration and spec, and the root
-  README's node list.
-- **Step 4 is the funnel**: `pushVisitorResult`, the callee and `typeof` marks, and the spec's value
-  routes. Its objective is narrowed to the walk's own values (plan Revision 6).
-- **Step 5 is documents**: `SECURITY.md` for 0.12.1, with the mitigations first. The funnel is a
-  protection; the route through `this` and a host container are limits. It touches no library file,
-  and does not retire A35.
-- **Step 6 is the 0.12.1 release**: `modules/eval-core/package.json` and its CHANGELOG, then
-  CONTRIBUTING's Releasing steps. Publishing and tagging are the maintainer's (plan § 5).
-- **Step 7 is A39's value route**: `this` allowed by position and refused anywhere else, a breaking
-  change for 0.13.0. The plan's § 8 q4 decided it from M15 (Revision 10). It touches:
-  - the new `this-position.ts` (the mark and the refusal);
-  - `member-expression.ts`'s mark, `this-expression.ts` and `identifier.ts`;
-  - a new spec, holding the route cases P1/P2/G1;
-  - `modules/eval-core/CHANGELOG.md`;
-  - two `eval-forms` spec files, as test-only edits (the D5 pins take the context where it is built,
-    not from an expression — Revision 12).
+- **Step 1 is documents only** — the ten stale files of D3 deleted, the three links into them
+  re-pointed, the `qs` reason moved to F16. No file under `modules/`. *Done.*
+- **Step 2 is `SECURITY.md`** — rewritten to what the code does (D7), and three cases in
+  `modules/eval-core/src/public-api.spec.ts` that resolve every identifier it names. *Done.*
+- **Step 3 is `eval-core`** — its README absorbs the root README's API sections; seven
+  `readme-examples.spec.ts` cases; `export-list.spec.ts` comments; its CHANGELOG's `[Unreleased]`.
+  *Done.*
+- **Step 4 is all three packages' READMEs** — the `eval-signals` and `eval-forms` openings, their
+  CHANGELOGs' `[Unreleased]`, one peer-range case in each project's `src/public-api.spec.ts`, and spec
+  **comment** lines.
+- **Step 5 is the root README** — the landing page; `eval-core`'s `public-api.spec.ts` and
+  `export-list.spec.ts` lose their root-README cases and gain the D5 case (plan § 4, step 5, which
+  lists and flags those removals); comment lines in `eval-core` and `eval-signals` specs. It also
+  fixes F22 (plan Revision 4): eight F10 allowlist entries out of `export-list.spec.ts`, and the
+  F10 docblock's count pinned by a case or stripped of its figure, chosen at the step's gate.
+- **Step 6 is documents only** — `docs/README.md`, `CONTRIBUTING.md`, `ROADMAP.md`, `CLAUDE.md`, the
+  register (F19). No file under `modules/`.
+- **Step 7 is held on the plan's § 8 q1** and is not a step until the plan writes it.
 
-  Its count and the details its § 4 entry names are fixed at its gate.
-- **Step 8 is A39's receiver guard** (added by Revision 11): a bare call, a bare tag and `this.fn()`
-  for a lookup-resolved key receive a guarded view, not the context. It touches:
-  - the new `context-receiver.ts` (the guarded receiver);
-  - the receiver at `call-expression.ts`, `tagged-template-expression.ts` and `callMember` — the
-    write policy keeps the real context;
-  - the deletion of the dead `evaluateCall` (grep-confirmed first);
-  - a new spec, holding R1/R2/R3 and the bypasses B1/B2/B3;
-  - the rewrite of two `eval-core` pins (`scope-this` (e), tag T6) and `modules/eval-core/CHANGELOG.md`;
-  - two `eval-signals` `signal-context` pins, as test-only edits.
+A file under `modules/` outside steps 2–5, or under a project a step does not name, is a
+stop-and-replan (plan § 2), not a wider step. Three more are stop-and-replans in every step:
 
-  Its count and the details its § 4 entry names are fixed at its gate.
-- **Step 9 is documents**: `SECURITY.md`'s `this` and receiver limits become protections, and A39
-  and A35 are retired.
-- **Step 10 is the release commit**: `eval-core` 0.13.0, `eval-signals` 0.6.0 and `eval-forms` 0.6.0
-  in one commit (they must move together — `@nx/dependency-checks`), each `package.json`, each
-  CHANGELOG, each README's peer block, plus `eval-signals`' `### Breaking` entry and its
-  guarded-receiver README bullet. Publishing and tagging are the maintainer's (plan § 5).
-- **Step 11 is the post-publish commit**: the register, `CLAUDE.md`'s three versions, CHANGELOG
-  dates, and this document, after the maintainer publishes (ordered: core → signals → forms) and
-  tags. Then U3, the advisory.
+- **A non-spec `.ts` file with a change outside its comment lines.** This phase changes no library
+  code (plan § 5).
+- **A rename (`R`) anywhere, or a delete (`D`) outside step 1's ten.** Nothing under `docs/` moves
+  (plan § 3.2, D2).
+- **A `package.json` in the diff.** No version moves in steps 1–6 (plan § 3.9). A spec may read one;
+  none may edit one.
 
-Stop-and-replans in every step:
+**All three packages are published**, and a README or CHANGELOG under `modules/<name>/` ships in that
+package's tarball — so a change is in one of two categories:
 
-- **A file under `modules/eval-signals/` or `modules/eval-forms/`**, through step 9. Their code does
-  not change, and their suites run as the downstream witnesses, with their counts unchanged (438 / 375).
-  - **Step 7's two `eval-forms` spec files**, `reactive/src/lib/field-schema.spec.ts` and
-    `signals/src/lib/rules.spec.ts`: test-only. The three D5 pins stop reaching the `EvalContext`
-    through the rule (it is no longer reachable from an expression). They take it where it is built,
-    with a spy on its defining module, and keep their `lookups` assertion (Revision 12).
-  - **Step 8's two `eval-signals` spec files**, the `signal-context.spec.ts` pins: test-only. The two
-    function-`this` pins assert the guard contract, not the context's identity (Revision 11).
-  - The downstream version bumps are step 10's single release commit, and the `eval-signals`
-    `### Breaking`/README edits live there.
-- **A non-spec `.ts` change outside `modules/eval-core/src/lib/internal/visitors/`** in steps 1–4, and
-  any non-spec `.ts` change in steps 5, 6, 9 and 11. In step 7, a non-spec `.ts` change outside the new
-  `this-position.ts`, `member-expression.ts`, `this-expression.ts` and `identifier.ts`. In step 8,
-  outside the new `context-receiver.ts`, `call-expression.ts` and `tagged-template-expression.ts`.
-- **A receiver that still reaches a listed function in step 8** — a bare call's, a bare tag's, or
-  `this.fn()`'s for a lookup-resolved key, or a proto/`Reflect` bypass of the guard: a stop-and-replan,
-  not a patch in place (plan § 4, step 8, criteria 2 and the bypass cases). The receiver is no longer a
-  step-7 concern: Revision 11 measured it and step 8 closes it.
-- **A change to a published barrel, or anything else that alters the built `.d.ts`.**
-  - The published barrels are `modules/eval-core/src/public-api.ts` and the barrels it re-exports.
-  - The internal visitors barrel, `internal/visitors/public-api.ts`, is not one of them:
-    `src/public-api.ts` does not re-export it, and `export-list.spec.ts` pins that.
-  - Every change in steps 1–4 is internal (plan § 4, step 6, criterion 2). So are steps 7's and 8's:
-    the new `this-position.ts` and `context-receiver.ts` are internal, and `evaluateCall`'s deletion
-    is not in the published surface, so the built `.d.ts` stays byte-identical to 0.12.1's (step 7
-    criterion 4, step 8 criterion 4).
-- **A `package.json` change outside the release steps, 6 and 10.**
-- **Public text about A39's route beyond `SECURITY.md`'s prose limit**, until 0.13.0 ships (plan § 2).
-  That covers an expression or a mechanism in the CHANGELOG, `SECURITY.md`, a commit message, a doc or
-  a spec on the default branch, or the advisory. The limit says only that the route exists, that
-  0.13.0 closes it, and how a host stops it. The exceptions are **steps 7 and 8**: each step's spec
-  cases hold its probe expressions (P1/P2/G1 in step 7; R1/R2/R3 and B1/B2/B3 in step 8) and commit in
-  the same commit as the fix, never before it, and 0.13.0 is published promptly after. Through step 6
-  those expressions live only in the draft advisory, off the default branch.
-- **An existing assertion that would have to change, in steps 1–4.** Option (a) keeps every one (plan
-  § 2). If one fails, the design is wrong, not the assertion. **Steps 7 and 8 are the exceptions** —
-  each changes a named, listed-as-breaking set and nothing else (plan Revision 11):
-  - step 7 changes the three `eval-forms` D5 context-composition pins;
-  - step 8 changes four function-`this` identity pins (`eval-core` `scope-this` (e) and tag T6, and
-    two `eval-signals` `signal-context` pins), rewritten to assert the guard contract — strengthened,
-    not weakened.
+- **Ships in no package** — steps 1, 2, 5 and 6. Their CHANGELOG line, if any, is the root
+  `CHANGELOG.md`'s Workspace section (plan § 3.9). `SECURITY.md` is in no tarball.
+- **Ships in a package's next release, with no code change** — step 3 (`eval-core`) and step 4
+  (`eval-signals`, `eval-forms`): a README rewrite, with an `[Unreleased]` line in that package's own
+  `modules/<name>/CHANGELOG.md` in the same commit. No bump; whether these are released is the plan's
+  § 8 q1. A change to an exported symbol's shape or to a shipped path's behaviour is not in this
+  phase at all: finding one is a stop-and-replan.
 
-  Any other assertion that fails in step 7 or 8 is a stop-and-replan. The write policy keeps the real
-  context, so step 8 leaves tag T9 and `member-write-policy.methods.spec.ts` unchanged.
+**Every step says which of those two it is, in its § 2 restatement.**
 
-**The steps fall into three categories:**
-- **A change on a published path**: steps 1–4 in the first release, and steps 7–8 in 0.13.0. Steps 1,
-  2 and 4 each add an `[Unreleased]` › Security line to `modules/eval-core/CHANGELOG.md`, and step 3 a
-  › Fixed line; steps 7 and 8 each add a › Breaking line.
-- **Documents**: steps 5 and 9, which ship in no package.
-- **A release**: steps 6 (0.12.1), 10 (the combined 0.13.0 / 0.6.0 / 0.6.0 commit) and 11 (its
-  post-publish commit). A version moves only in a release step.
-
-**Every step says which of these it is, in its § 2 restatement.**
-
-The lint and test targets below cover project boundaries. They do **not** cover a refusal that
-fires for the wrong reason, which only the plan's probes do (each fix removed, read case by case),
-or a change in timing. `performance.spec.ts` is the timing gate in every step, and step 4 adds its
-own timing line against step 3's bundle (plan § 4, step 4, criterion 4).
+The lint and test targets below cover project boundaries: a step that edits another project moves
+its row. They do **not** cover a stale sentence or a mention the doc-links gate cannot see — a
+plain-text path, a line citation in a comment. Reading the diff, and running the step's one-off
+checks, is what covers that.
 
 ## Current state
 
@@ -186,8 +122,8 @@ editing anything:
 
 - The step's objective in one sentence.
 - Every file it says to create, edit or delete, marked **new**, **edit** or **delete**.
-- **Which category the step is in**: a change on a published path (steps 1–4, 7 and 8, each with its
-  `[Unreleased]` line), documents (steps 5 and 9), or a release (steps 6, 10 and 11).
+- **Which category the step is in** — ships in no package, or ships in a package's next release —
+  and, if the second, the `[Unreleased]` line the plan gives it (plan § 3.9).
 - Its stated exit criteria, verbatim.
 - Anything in the step you find ambiguous, or that disagrees with what the code
   actually looks like now.
@@ -201,23 +137,17 @@ After I confirm:
 
 - Touch only the files identified in step 2. If the work genuinely requires a file
   not on that list, stop and ask first.
-- Follow the testing rules in CLAUDE.md. New behaviour is written test-first: the route cases
-  before the fix, each red for the reason it names.
-- Never weaken or delete an existing assertion to make something pass. Steps 1–6 change none
-  (option (a)); steps 7 and 8 rewrite only the named, listed-as-breaking pins above (the three
-  `eval-forms` D5 pins in step 7, the four function-`this` pins in step 8), each strengthened to
-  assert the new contract. Any other case that fails means the design is wrong: stop and report.
-- Each fix is probed by removing it, one at a time, as the step's criteria list. Read which cases
-  fail, and revert each probe.
-- **Every refusal carries a message that names its layer**, and no two guards share one. Two did
-  in step 9, so every case caught whichever had fired, and the removal matrix that was meant to
-  show which layer was load-bearing recorded the wrong answer for three reviews. A refusal that
-  cannot be attributed from its message can only be probed by reading a stack trace.
-- **Every supported option gets a leg in the case matrix**, not only the default. `caseInsensitive`
-  changes which nodes `markThisPositional` marks, and therefore the width of a security exemption;
-  no case in step 9 ran with it on, so four documents asserted the opposite of the code. The same
-  applies to `preserveParens` and to any option a step's code reads.
-  Both rules are recorded in `docs/a35/plan.md` § 1.2.
+- Follow the testing rules in CLAUDE.md. A README case mirrors its block by hand, so its probe
+  is a wrong *library* implementation, reverted after the run (plan § 6.1).
+- Never weaken or delete an existing assertion to make something pass. Step 5's removals of the
+  root-README cases are the one exception: the plan lists each, with its reason and its measured
+  count, and confirming that step approves them. Nothing else is removed.
+- A case that reads a document is probed by breaking the document (plan § 6.1): `SECURITY.md`'s
+  identifiers, a quoted range, the root README's D5. Each probe is reverted.
+- The A35 plan's two probe rules (`docs/a35/plan.md`, "§ 1.2 Standing rules, from Revision 16" —
+  the plan numbers two § 1.2s) hold for any case a step adds: a
+  refusal it asserts is matched by the message that names its layer, and every option the case's
+  code path reads, `caseInsensitive` included, gets a leg, not only the default.
 
 ### 4. Verify
 
@@ -226,14 +156,12 @@ npx nx run-many -t lint test build --skip-nx-cache --output-style=static
 ```
 
 All must be clean, with the same exception § 1 allows and on the same terms. The test rows move
-exactly as the plan's § 4 table says. `eval-core` moves +10 at step 1, +21 at step 2, +6 at step 3 and
-+21 at step 4. Steps 7 and 8 each set their count at their gate. `eval-signals` and `eval-forms` are
-unchanged in every step (438 / 375; steps 7 and 8 rewrite pins 1:1, not additions). A row that moves
-anywhere else is
-a regression or a scope breach, not a count to correct. `performance.spec.ts` stays green and
-untouched; it is the gate. Step 4 also runs the plan's timing harness on its own bundle against step
-3's, and its line, fixed at that step's confirmation gate, is a stop: a red ends the step
-(plan § 4, step 4, criterion 4).
+exactly as the plan's § 4 table says: `eval-core` +3 at step 2, +7 at step 3, +1 at step 4 and −5 at
+step 5 (−3 if its gate gives F22's count a case); `eval-signals` and `eval-forms` +1 each at step 4; every other row unchanged in every step. A
+row that moves anywhere else is a regression or a scope breach, not a count to correct. The plan's
+absolute totals were measured before the A35 plan; at its resumption (4f99112) the gate stood at
+2596 / 438 / 375, and the deltas apply from there: 2603 after step 3 (plan Revision 4). The root project's `test` target is the doc-links
+gate: its file and link counts move as the same table says, and the report gives both figures.
 
 `build` is in this list because a green `test` run is not a type-check: Jest compiles per
 file through `tsconfig.spec` and `build:production` through `tsconfig.lib.prod`, and three
@@ -247,25 +175,27 @@ before reporting it as a regression.
 Then the check a green build cannot make, which for this phase is the scope gate itself.
 
 **Nothing moved outside the step's file list.** A green suite is weak evidence for this: an edit
-to another project that keeps that project's own suite green moves no row at all.
+to a document or a comment moves no test row at all, and that is most of what this phase edits.
 
 ```sh
 git diff --name-status HEAD
 ```
 
 Every path must be on the step's own file list in the plan's § 4, or be the plan document itself.
-Anything else is a **stop-and-replan**, not a judgement call — and so is anything the list at the
-top names. Report it and stop.
+Anything else is a **stop-and-replan**, not a judgement call — and so is any `R` line, a `D` line
+outside step 1's ten, a `package.json`, or a non-spec `.ts` file changed outside its comment lines.
+Report it and stop.
 
-Then the step's **probes**, the fixes its criteria name, each removed alone and reverted. The
-report gives each probe's failure count and names the cases that failed.
+Then the step's **one-off checks**, the commands its criteria name — the mention grep, the heading
+listing, step 3's peer-sentence comparison (a case from step 4 on), the index completeness check.
+They are not in the gate, so the report gives each command and its output.
 
 If a pre-existing spec now fails, that is a regression in this step, not a stale test.
 Report it; do not edit the spec to match the new behaviour.
 
 ### 5. Report
 
-Before writing your report, for steps 1–4, 6, 7, 8 and 10, invoke the `code-reviewer` subagent on this step's changes. Include its findings in your report. If it raises anything Critical, stop and surface it rather than closing out the step. Steps 5 and 9 change no file under `modules/` except, possibly, `public-api.spec.ts`'s allowlist, and step 11 is docs-only. Their reports give those steps' checks instead, and say whether the reviewer was run and why.
+Before writing your report, for steps 2–5, invoke the `code-reviewer` subagent on this step's changes. Include its findings in your report. If it raises anything Critical, stop and surface it rather than closing out the step. Steps 1 and 6 change no file under `modules/`, so none of its checklists applies; their report gives the step's one-off checks instead, and says that the reviewer was not run and why.
 
 **Expect a permission prompt for that invocation, and approve it.** The `allowed-tools` above
 deliberately does not name the subagent tool: its token is not the same in every build — `Task`
