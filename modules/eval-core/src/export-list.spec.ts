@@ -10,8 +10,9 @@
  * "the README is wrong" from being read as one failure — they now fail in
  * different files.
  *
- * **Why it is triplicated.** `eval-signals` and `eval-forms` carry byte-similar
- * copies. This is deliberate, not an oversight: `@nx/enforce-module-boundaries`
+ * **Why it is triplicated.** `eval-signals` and `eval-forms` carry near-identical
+ * copies; this one alone has `documentedAllowlistEntries` and its case, added
+ * for `docs/backlog-retired.md` F22. This is deliberate, not an oversight: `@nx/enforce-module-boundaries`
  * runs with `allow: []` (root `eslint.config.mjs`), so no spec may import a
  * helper out of another project — by alias or relatively — and § 6 gate 4
  * forbids loosening that rule to serve a spec. What retires the triplication is
@@ -184,8 +185,10 @@ const IMPORT_PATTERN =
 
 /**
  * Every `@zvenigora/…` import statement in markdown text, including statements
- * that span lines — the two in the root `README.md` carry all five symbols the
- * published/unpublished check exists for.
+ * that span lines. The package README has two, but no case over it fails if a
+ * reader drops them, since what they import is checked only for being exported;
+ * the fixture case "scans an import statement that spans two lines" is what
+ * holds the reader to them.
  */
 export const readmeImportsFromText = (text: string): readonly ReadmeImport[] => {
   const found: ReadmeImport[] = [];
@@ -363,7 +366,7 @@ export const undocumentedExports = (
 /**
  * Each allowlist entry the package no longer exports, so the list cannot
  * outlive what it excuses. The other direction - an allowlisted name the
- * README has since documented - is harmless and not checked.
+ * README has since documented - is `documentedAllowlistEntries`, below.
  */
 export const staleAllowlistEntries = (
   exported: ReadonlySet<string>,
@@ -373,6 +376,22 @@ export const staleAllowlistEntries = (
     .filter((name) => !exported.has(name))
     .sort()
     .map((name) => `${name}: allowlisted, and not exported`);
+
+/**
+ * Each allowlist entry the README names in a code span. Such an entry excuses
+ * nothing, and it is not harmless: while it stands, the README's mention can be
+ * deleted and the documented-or-allowlisted case stays green, so the list
+ * masks the regression F10 exists to catch (`docs/backlog-retired.md` F22).
+ */
+export const documentedAllowlistEntries = (
+  documented: ReadonlySet<string>,
+  allowlist: Readonly<Record<string, UndocumentedReason>>,
+  readme: string
+): readonly string[] =>
+  Object.keys(allowlist)
+    .filter((name) => documented.has(name))
+    .sort()
+    .map((name) => `${name}: allowlisted, and named in a code span of ${readme}`);
 
 describe('export-list reader (eval-core copy)', () => {
   const core = () => exportedNames(SPECIFIER_ENTRY['@zvenigora/ng-eval-core']);
@@ -470,9 +489,10 @@ describe('README import scanner (eval-core copy)', () => {
   });
 
   it('scans an import statement that spans two lines', () => {
-    // The arm a first-line-only reader fails. Both of the root README's
-    // multi-line statements have this shape, and between them they carry every
-    // symbol the published/unpublished check is about.
+    // The arm a first-line-only reader fails, and the multi-line reader's only
+    // witness since Phase 10 step 5 removed the cases that read the root
+    // README's. The package README's two such statements import only names that
+    // are exported, so a reader that dropped them would leave its cases green.
     const found = readmeImportsFromText(
       "import { EvalContext, EvalScope, EvalScopeOptions,\n  EvalService } from '@zvenigora/ng-eval-core';\n"
     );
@@ -502,8 +522,8 @@ describe('README import scanner (eval-core copy)', () => {
 });
 
 describe('every @zvenigora import resolves against its own specifier (F11, eval-core copy)', () => {
-  // The READMEs this project's gates own.
-  it.each(['README.md', 'modules/eval-core/README.md'])('%s', (readme) => {
+  // The README this project's gates own.
+  it.each(['modules/eval-core/README.md'])('%s', (readme) => {
     expect(unresolvedAcrossSpecifiers(readmeImports(readme), readme)).toEqual([]);
   });
 
@@ -532,19 +552,13 @@ describe('every @zvenigora import resolves against its own specifier (F11, eval-
 
 /**
  * The exports `modules/eval-core/README.md` names in no code span, each with
- * its reason (`docs/backlog.md` F10). The package README names twenty-one of
- * the sixty, measured when Phase 10 step 3 made it the package's whole
- * documentation; before that it named fourteen and deferred the rest to the
- * repository README, which ships nowhere, and a name documented only there is
- * undocumented for whoever installed the package, which is the split F3 found.
- * Eight entries below are among the twenty-one - `EvalState`, `call`,
- * `callAsync`, `compile`, `compileAsync`, `evaluate` and `extract`, which that
- * step named, and `parse`, which the README named before it - and so excuse
- * nothing today. They are not free: while they stand, the
- * README's free-functions sentence can be deleted and this case stays green,
- * which is an allowlist masking a regression (`docs/backlog.md` F22). Nothing
- * checks for an allowlisted name the README documents; `staleAllowlistEntries`
- * checks only that each entry is still exported.
+ * its reason (`docs/backlog.md` F10). The list is exactly the exports the
+ * README does not name, and three cases hold it there: every export is named
+ * or allowlisted, each entry is still exported, and none is named in a code
+ * span of the README. A name the README documents comes off the list, so
+ * deleting its mention turns the documented-or-allowlisted case red. The list states no count of its own:
+ * one figure here was wrong from when it was written until Phase 10 step 3
+ * measured it, and the next was ungated (`docs/backlog-retired.md` F22).
  *
  * No entry is `unused` any more. The seventeen that were went in `eval-core`
  * 0.11.0 (`docs/backlog.md` B5).
@@ -571,7 +585,6 @@ const UNDOCUMENTED: Readonly<Record<string, UndocumentedReason>> = {
   EvalReadHook: 'signature-type',
   EvalReadKind: 'signature-type',
   EvalResult: 'signature-type',
-  EvalState: 'signature-type',
   EvalTimingHook: 'signature-type',
   EvalTrace: 'signature-type',
   EvalTraceItem: 'signature-type',
@@ -581,16 +594,10 @@ const UNDOCUMENTED: Readonly<Record<string, UndocumentedReason>> = {
   Unsubscribe: 'signature-type',
 
   // What `CompilerService`, `EvalService`, `ParserService` and
-  // `DiscoveryService` call.
-  call: 'function-form',
-  callAsync: 'function-form',
-  compile: 'function-form',
-  compileAsync: 'function-form',
+  // `DiscoveryService` call. The free functions the README names under
+  // `## Exported entry points` are not here.
   defaultParserOptions: 'function-form',
-  evaluate: 'function-form',
-  extract: 'function-form',
   extractExpression: 'function-form',
-  parse: 'function-form',
 
   // `### Per-node timing`'s second block imports and calls it.
   createTimingHook: 'example-only',
@@ -622,6 +629,10 @@ describe('every export is documented or allowlisted (F10, eval-core copy)', () =
     expect(staleAllowlistEntries(exported(), UNDOCUMENTED)).toEqual([]);
   });
 
+  it('allowlists no name the package README names', () => {
+    expect(documentedAllowlistEntries(documented(), UNDOCUMENTED, README)).toEqual([]);
+  });
+
   it('reads code spans, not fenced blocks, and not a member access', () => {
     const names = documentedNames(
       'Use `EvalService`, ``a `quoted` span``, and\n`service.parse(expr)`.\n\n' +
@@ -637,6 +648,9 @@ describe('every export is documented or allowlisted (F10, eval-core copy)', () =
     ]);
     expect(staleAllowlistEntries(fixture, { B: 'unused', D: 'unused' })).toEqual([
       'D: allowlisted, and not exported',
+    ]);
+    expect(documentedAllowlistEntries(new Set(['A']), { A: 'unused', B: 'unused' }, 'fixture.md')).toEqual([
+      'A: allowlisted, and named in a code span of fixture.md',
     ]);
   });
 });

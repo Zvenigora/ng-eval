@@ -72,6 +72,17 @@ Workspace tooling: nothing here reaches a consumer, so nothing here is versioned
   the warning once to 19.3 s with none, on 20 cores.
 
 ### Changed
+- **The repository README is a landing page**, 2026-10-21, with no `javascript` block and no quoted
+  peer range. It says what ng-eval is and that it is not a sandbox, then links the three package
+  READMEs and CHANGELOGs, install, the two worked examples, `SECURITY.md` and its advisories, this
+  file, credits, related packages, contributing, the code of conduct and the license. The API
+  documentation it held is in `modules/eval-core/README.md` since Phase 10 step 3, and each
+  package's peer ranges are in its own README, checked against its manifest. Gone with the old
+  page: the "Recent Major Improvements (2025)" banner and the "2025 Update" security list, whose
+  claims of complete and comprehensive protection the code does not make good. A case in
+  `modules/eval-core/src/public-api.spec.ts` fails on any fence in the README but `sh`, a fence in
+  a blockquote or a list item included, and on a static or dynamic import or a `require` of
+  `@zvenigora/`. Phase 10 step 5.
 - **`SECURITY.md` rewritten to what the code does**, 2026-10-14. It covers the threat model; the
   protections that exist, each with its source and the spec that pins it (the prototype-pollution
   guard with its resolved-key re-check and primitive carve-out, call sandboxing, the iteration

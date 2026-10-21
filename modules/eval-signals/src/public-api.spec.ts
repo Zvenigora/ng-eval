@@ -5,10 +5,11 @@
  * step 2.
  *
  * One README documents this package, and it is the published one, so there is
- * no published/unpublished relation to check here — that check exists only for
- * `eval-core`, whose symbols are also documented in the root `README.md`
- * (§ 1.4). What remains is the rename-drift half: every identifier the README
- * imports from the specifier must be exported by it.
+ * no published/unpublished relation to check here — that check existed only for
+ * `eval-core`, whose symbols the root `README.md` also documented (§ 1.4) until
+ * Phase 10 step 5 made it a landing page. What remains is the rename-drift
+ * half: every identifier the README imports from the specifier must be
+ * exported by it.
  *
  * The reader and the scanner live in `export-list.spec.ts` beside this file,
  * with their own probes; importing it re-registers those probes here, which is

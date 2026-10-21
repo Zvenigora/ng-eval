@@ -1,6 +1,31 @@
 # Phase 10 Plan — documentation restructure
 
 **Date**: October 14, 2026
+**Revision**: 6 — step 5, in its own commit. Corrected in place:
+- step 5's `readme-examples.spec.ts` citations, `:25-35` and `:108-109`, which step 3's docblock edits
+  had moved to `:31-40` and `:127-128`;
+- criterion 5's "8 lines today", 10 at 059bcd0: step 3 added two, both already past tense;
+- step 5's "only witness" for the multi-line reader, which holds, though the package README has two
+  multi-line imports. Its cases do not discriminate them, as criterion 2's probe measured;
+- the ten links to F22 and F23, re-pointed to `backlog-retired.md` as both retired.
+
+The confirmation gate added F23's `eval-core` README line to the step, with its `[Unreleased]`
+line, so that F23 retires rather than narrowing: the step ships that one correction in `eval-core`'s
+next release, and nothing else in any package (§ 3.9, § 4's table, step 5's file list and category).
+It also fixed three readings:
+- F22's count loses its figure, and F22's optional reverse case is added, so the net is −3;
+- the D5 case requires every fence to be `sh`, not only no `javascript` fence, and finds an
+  `@zvenigora/` import or require, fenced or not, in the forms its docblock lists (widened by the
+  step's review);
+- `.claude/skills/step/SKILL.md` marks step 5 done, outside the file list as steps 3 and 4 did.
+
+A second instruction, before the commit, added three things:
+- a leg in `readme-examples.spec.ts`' built-ins case pinning the new sentence's second half, so that
+  F23 retires with no recorded gap. That file's edit is no longer comments only;
+- [F24](../backlog.md#f24), the downstream copies' missing reverse case, queued after the phase;
+- § 6.1's rule on a claim that is false now against a gap that is only latent, with F23 and F24 as
+  its two sides.
+
 **Revision**: 5 — step 4, in its own commit. Corrected in place, each a citation that had moved
 since the plan's commit:
 - finding 5: the five `eval-signals` comment lines, now four lower, and where the `eval-forms`
@@ -22,7 +47,7 @@ The confirmation gate strengthened criterion 2 and fixed three readings:
   the commit*, § 6.1 was applied to it: no case checked the range against `eval-core`'s manifest, so
   the sentence states no range;
 - `eval-forms`' "a sandboxed evaluator" is reworded, against its new `## Security`. A sweep of the
-  tracked documents for the same language opened [F23](../backlog.md#f23). *Before the commit*, a
+  tracked documents for the same language opened [F23](../backlog-retired.md#f23). *Before the commit*, a
   second sweep for totality words widened F23 to every claim of a guarantee. Its root README lines
   are scheduled into step 5. One line of `eval-core`'s README is not scheduled: it says an
   expression over an empty context cannot use JavaScript's built-ins, when a value's own methods
@@ -60,7 +85,7 @@ changed their examples, never their claims (§ 3.4's rule):
 
 Each was measured; the step's outcome gives the counts. They are the instance § 6.1's new standing
 rule cites: an example that survives its probe is strengthened, not excused. The step's review opened
-[F22](../backlog.md#f22), widened before the commit to the F10 docblock's count, and scheduled into
+[F22](../backlog-retired.md#f22), widened before the commit to the F10 docblock's count, and scheduled into
 step 5, which already edits `export-list.spec.ts`.
 
 **Revision**: 3 — step 2, in its own commit. § 3.10's rule is corrected in four places, each because
@@ -102,14 +127,15 @@ things: the new lines carry no link, so criterion 2's count is exact; the permal
 SHA; and step 1 gets an outcome line.
 
 **Revision**: 1 — initial plan.
-**Target**: the repository's documents. Shipped files touched: `modules/eval-core/README.md` (step 3),
+**Target**: the repository's documents. Shipped files touched: `modules/eval-core/README.md` (step 3,
+and one sentence in step 5),
 `modules/eval-signals/README.md` and `modules/eval-forms/README.md` (step 4), and each package's
 `CHANGELOG.md` with them. Specs touched: comment lines in all three projects; test cases in `eval-core`
 (steps 2, 3, 4 and 5) and in `eval-signals` and `eval-forms` (step 4).
 **Also touches**: no library code. No exported symbol, no `.d.ts` and no version changes, unless § 8
 q1 adds a release step.
-**Retires**: [BL-F19](../backlog.md#f19), in step 6; [BL-F22](../backlog.md#f22), opened by step 3's
-review, in step 5; [BL-F23](../backlog.md#f23), opened by step 4's sweeps, in step 5 if its
+**Retires**: [BL-F19](../backlog.md#f19), in step 6; [BL-F22](../backlog-retired.md#f22), opened by step 3's
+review, in step 5; [BL-F23](../backlog-retired.md#f23), opened by step 4's sweeps, in step 5 if its
 `eval-core` README line has been fixed by then, and otherwise narrowed there to that line.
 **Source**: the request of 2026-10-14, which fixed decisions D1–D6 and proposed the step shape that § 4
 adjusts. A second request the same day, before any step had run, added D7 and amended D1 (§ 3.1).
@@ -551,7 +577,7 @@ It links every tracked file under `docs/` except itself. Step 6 checks that once
 | 2 | no package | Root `CHANGELOG.md`, Workspace › Changed: `SECURITY.md` rewritten to what the code does, its fictional API and completeness claims removed, and its identifiers gated by a case |
 | 3 | `eval-core`, at its next release | `modules/eval-core/CHANGELOG.md` `[Unreleased]` › Changed: the package README is the whole documentation, every `javascript` block executed; the repository README no longer documents the API; no code change |
 | 4 | `eval-signals` and `eval-forms`, at their next release | Each package's `[Unreleased]` › Changed: the README opens with Install, Sibling packages and Security, and its peer ranges are quoted verbatim; expression syntax is documented in `eval-core`'s README; no code change. `eval-core`'s opening is step 3's, so its `[Unreleased]` line already covers it |
-| 5 | no package | Root `CHANGELOG.md`, Workspace › Changed: the repository README is a landing page, with no `javascript` block and no quoted peer range |
+| 5 | no package; `eval-core` for F23's line (*added at step 5's gate*) | Root `CHANGELOG.md`, Workspace › Changed: the repository README is a landing page, with no `javascript` block and no quoted peer range. And `modules/eval-core/CHANGELOG.md` `[Unreleased]` › Changed: the README no longer says an expression over an empty context cannot use JavaScript's built-ins; no code change |
 | 6 | no package | Root `CHANGELOG.md`, Workspace › Added: `docs/README.md`; › Changed: `ROADMAP.md` condensed |
 
 **No version changes in steps 1–6.** No `package.json` is edited, and no `.d.ts` changes. Whether the
@@ -697,7 +723,7 @@ Running the alignment first costs nothing, because it depends only on step 3.
 | 2 | `SECURITY.md`, rewritten and gated | D7 | no package | **+3** / 0 / 0 | 0 files; `SECURITY.md`'s source and spec links added, reported |
 | 3 | `eval-core`'s README absorbs the root's API sections | D4 | `eval-core` | **+7** / 0 / 0 | 0 files; links change only by same-file anchors |
 | 4 | One opening for the package READMEs, and their ranges gated | D1 | `eval-signals`, `eval-forms` | **+1** / **+1** / **+1** | 0 files; reported |
-| 5 | The root README becomes a landing page; F22 | D1, D5 | no package | **−5**, measured (M8), or −3 if F22's count gets a case / 0 / 0 | 0 files; the root README's links reported |
+| 5 | The root README becomes a landing page; F22, F23 | D1, D5 | no package; `eval-core` for F23's line | **−5**, measured (M8), or −3 if F22's count gets a case; **−3** as run, with F22's reverse case instead (Revision 6) / 0 / 0 | 0 files; the root README's links reported |
 | 6 | Maintainer index, ROADMAP condensed, F19 | D1, D6 | no package | 0 / 0 / 0 | +1 file (+2 with the retrospect); reported |
 | 7 | *Held on § 8 q1*: docs-only patch releases | — | per q1 | 0 | — |
 
@@ -939,7 +965,7 @@ Step 3 ends at 2603, step 4 at 2604 / 439 / 376, and step 5, and so the phase, a
   - **Criterion 5**: F10 is green. The README names 21 of the 60 exports in code spans, where it
     named 14, measured through a temporary case since removed. Eight of the 21 are still
     allowlisted, which leaves the free-functions sentence ungated; the review found it, and it is
-    [F22](../backlog.md#f22).
+    [F22](../backlog-retired.md#f22).
   - **Criterion 6**: `grep -c "repository README"` gives 0. The `##` headings run `Install`,
     `Sibling packages`, `Security`, `Exported entry points`, `Supported syntax`, `Options`. The
     four peer ranges match the manifest byte for byte, by a one-off script.
@@ -985,7 +1011,7 @@ Step 3 ends at 2603, step 4 at 2604 / 439 / 376, and step 5, and so the phase, a
     `modules/eval-forms/signals/src/public-api.spec.ts` (`:8`).
   - A `readme-examples.spec.ts` count only if the opening moves a block in or out of a counted scope.
     The report says which, and why; § 3.5 is written so that none does.
-  - `docs/backlog.md`: "Work in flight", and [F23](../backlog.md#f23), opened by the step's sweep
+  - `docs/backlog.md`: "Work in flight", and [F23](../backlog-retired.md#f23), opened by the step's sweep
     (*added at the gate*). This document: the outcome.
 - **Exit criteria**:
   1. **One shape.** A one-off command prints each package README's `##` headings in order, and the
@@ -1065,7 +1091,7 @@ Step 3 ends at 2603, step 4 at 2604 / 439 / 376, and step 5, and so the phase, a
       - `eval-core`'s README `:81`. Measured against the built package, it overclaims: `Math` and
         `parseInt` are out of reach, but `'abc'.toUpperCase()` and `[3, 1, 2].map(…)` run.
 
-      These are [F23](../backlog.md#f23). Its root README part is scheduled into step 5, and its
+      These are [F23](../backlog-retired.md#f23). Its root README part is scheduled into step 5, and its
       `eval-core` line is not scheduled.
     - **Kept as written**: design records, and one published `eval-core` CHANGELOG entry (F23
       names them).
@@ -1111,8 +1137,11 @@ Step 3 ends at 2603, step 4 at 2604 / 439 / 376, and step 5, and so the phase, a
     docblock rewritten to say what the file checks now.
   - `modules/eval-core/src/export-list.spec.ts`: the F11 `it.each` loses `'README.md'`. The comments at
     `:186-188` and `:473-475`, which describe the root README's multi-line imports, are re-pointed: the
-    fixture case at `:472` is now the multi-line reader's only witness.
-  - The same file, for [F22](../backlog.md#f22) (*scheduled here in step 3*, Revision 4, since this is
+    fixture case at `:472` is now the multi-line reader's only witness. *Corrected in step 5*
+    (Revision 6): the package README holds two multi-line imports as well (`:179`, `:219`), but its
+    cases check only that what they import is exported, so a reader that drops them leaves those
+    cases green. "Only witness" holds in that sense, and criterion 2's probe measured it.
+  - The same file, for [F22](../backlog-retired.md#f22) (*scheduled here in step 3*, Revision 4, since this is
     the later step that edits it):
     - the eight F10 allowlist entries the package README now names come out (`EvalState`, `call`,
       `callAsync`, `compile`, `compileAsync`, `evaluate`, `extract` and `parse`);
@@ -1122,12 +1151,19 @@ Step 3 ends at 2603, step 4 at 2604 / 439 / 376, and step 5, and so the phase, a
       the case option moves `eval-core` by +2 and the step's net from −5 to −3.
   - `docs/backlog.md` and `docs/backlog-retired.md`: F22 retired and moved, and its index row
     re-pointed.
-  - [F23](../backlog.md#f23)'s root README part (*scheduled here in step 4*, Revision 5): the step
+  - [F23](../backlog-retired.md#f23)'s root README part (*scheduled here in step 4*, Revision 5): the step
     re-runs F23's two sweeps over the landing page and reports what they list. The lines F23 names
     are in rows § 3.4 already drops. F23 retires only if its `eval-core` README line has been fixed
     as well. Otherwise the step narrows it to that line.
+  - *Added at this step's gate* (Revision 6): F23's `eval-core` README line, so that F23 retires
+    rather than narrowing. `modules/eval-core/README.md`, the sentence under
+    `### Evaluation — EvalService` (`:81`), names the globals and says a value's own methods stay
+    callable; `modules/eval-core/CHANGELOG.md` gains its `[Unreleased]` line. *Added before the
+    commit*, at a second instruction: the built-ins case in `readme-examples.spec.ts` gains a leg for
+    the sentence's second half, and `docs/backlog.md` gains [F24](../backlog.md#f24).
   - `modules/eval-core/src/lib/readme-examples.spec.ts`: the docblock's root-README paragraphs
-    (`:25-35`, `:108-109`), put in the past tense. Comments only.
+    (`:31-40`, `:127-128`; *corrected in step 5*: they were cited as `:25-35` and `:108-109`, and
+    step 3's docblock edits moved them), put in the past tense. Comments only.
   - `modules/eval-signals/src/public-api.spec.ts`: the docblock's `:7-10`, comments only.
   - `docs/backlog-retired.md`: F3's retired entry records that the published/unpublished case was
     removed, and why.
@@ -1162,7 +1198,9 @@ Step 3 ends at 2603, step 4 at 2604 / 439 / 376, and step 5, and so the phase, a
      4), or dropped for § 3.4's stated reason.
   5. **No live comment calls the root README a documentation source.**
      `git grep -n -i -E "root .?README" -- 'modules/*.ts'` lists only the past-tense lines the step
-     names. It lists 8 lines today, in four files.
+     names. It lists 8 lines today, in four files. *Corrected in step 5* (Revision 6): it listed 10
+     at 059bcd0, in the same four files; step 3 added `readme-examples.spec.ts`' `:65` and `:314`,
+     both already past tense.
   6. **F22 is fixed.** F10 is green with the eight entries removed. *Wrong*: delete the package
      README's free-functions sentence, and F10's documented-or-allowlisted case fails, naming the
      functions it held. The docblock's count is either pinned by a case, which fails when the figure
@@ -1171,7 +1209,87 @@ Step 3 ends at 2603, step 4 at 2604 / 439 / 376, and step 5, and so the phase, a
     doc-links: the root README goes from 36
     checked links (after step 1) to the number the step reports. The gate is green.
     `git diff --name-only` lists the files above and this document.
-- **Category**: documents, and specs. Ships in no package.
+- **Category**: documents, and specs. Ships in no package. *Amended at the gate* (Revision 6): it
+  ships in `eval-core`'s next release for F23's one README correction, with its `[Unreleased]` line,
+  and in no package otherwise.
+- **Outcome** — done 2026-10-21, under Revision 6. The gate is green at 2601 / 439 / 376, from
+  2604 / 439 / 376. Per file, `public-api.spec.ts` runs 27 cases, from 30, and `export-list.spec.ts`
+  20, from 20: F11's root row out, the reverse case in. Every probe below was run against
+  `eval-core`'s whole suite and reverted.
+  - **Criterion 1**: the D5 case is green. Three probes, one per leg:
+    - a `javascript` block in the root README fails it alone, 1 of 2601;
+    - the same block labelled `ts` fails it alone, naming `README.md:40 (ts)`;
+    - an `import { EvalService } from '@zvenigora/ng-eval-core'` line in prose, outside any fence,
+      fails it alone, naming `README.md:40`.
+  - **Criterion 2**: `IMPORT_PATTERN`'s `[^}]*` made `[^}\n]*` fails 2 of 2601, the two-line fixture
+    case once in each file that runs it, and nothing else. The package README's two multi-line
+    imports were dropped by that reader with every case over them green.
+  - **Criterion 3**: the landing page links the three package READMEs and CHANGELOGs, `SECURITY.md`
+    with `#advisories-for-ng-eval`, `#reviewed-external-advisories` and `#reporting-a-vulnerability`,
+    all relative, the root `CHANGELOG.md`, both worked examples, `CONTRIBUTING.md`,
+    `CODE_OF_CONDUCT.md` and `LICENSE`. The range grep lists nothing. *Wrong*: `` `acorn ^8.11.2` ``
+    quoted in the packages paragraph, and the grep lists `README.md:28`.
+  - **Criterion 4**: each § 3.4 row is placed:
+    - on the landing page: the credits, "Why ng-eval?", the not-a-sandbox note, the packages, the
+      related packages, security as links, contributing, the code of conduct and the license;
+    - in `eval-core`'s README since step 3: install, every API section, the supported syntax and
+      the options;
+    - in each package README's `## Sibling packages` since steps 3 and 4: the packages;
+    - dropped for § 3.4's reasons: the banner, the table of contents, the bare import block, the
+      "2025 Update" security bullets with their best practices, the documentation-structure table
+      and the Copilot footer.
+  - **Criterion 5**: the grep lists 9 lines in four files, read one by one:
+    - past tense: `readme-examples.spec.ts` `:31`, `:67`, `:129` and `:316` (`:67` and `:316` are
+      step 3's two, unchanged); `public-api.spec.ts` `:11`; `eval-signals`' `public-api.spec.ts`
+      `:9`;
+    - present tense, naming the root README as the landing page and not as a documentation source:
+      `public-api.spec.ts` `:14` and `:45`, which describe the D5 case, and `:638`, the D5 case's
+      `describe` title, a code line.
+  - **Criterion 6**: F10 is green with the eight entries out. *Wrong*: the free-functions sentence
+    deleted fails 2 of 2601, F10's documented-or-allowlisted case in each file, naming `EvalState`,
+    `callAsync`, `compile`, `compileAsync`, `evaluate` and `extract`; `call` and `parse` are named
+    elsewhere in the README. The docblock carries no figure. *The reverse case*: `parse` put back on
+    the allowlist fails 2 of 2601, the new case in each file, naming `parse`.
+  - **F23**: retired whole. Both sweeps over the finished landing page list one line each, `:7`, the
+    not-a-sandbox note: "sandbox" is its disclaimer, and "every" is in "every function in the
+    context runs with the host's privileges", which says what the host exposes. The `eval-core`
+    README sentence was measured against the built package; the retired entry gives the results.
+    Both its halves are pinned in the built-ins case. *Wrong*: `callMember` refusing a member call
+    whose receiver is a string or an array fails 85 of 2601 across 15 files. In
+    `readme-examples.spec.ts` it fails the built-ins case at its new `'abc'.toUpperCase()` line, and
+    the hooks case at its own `list.map`. Against the case before the leg, the built-ins case stays
+    green under the same probe.
+  - **F24** is opened and queued after the phase, with F21. It is the latent side of § 6.1's new
+    rule, as F23's sentence is the false-now side.
+  - **doc-links**: 346 files and 1571 links, 7 fewer than 1578, with 22 in `.ts` comments, from 21:
+    - the root README, 36 to 17 (−19);
+    - `backlog-retired.md` +2, the links to this plan from F3's note and from F22's entry;
+    - `eval-core`'s CHANGELOG +1, to F23;
+    - `public-api.spec.ts` +1, to F3, in its docblock;
+    - `docs/backlog.md` +4, for F24: its index row, "Work in flight", and its entry's links to F21
+      and F22;
+    - this document +4: F24 in Revision 6 and in step 5's file list, and § 6.1's citations of F23
+      and F24.
+
+    The fourteen links to F22 and F23, ten here and four in the register, were re-pointed and leave
+    the count unchanged.
+  - **The review** found no Critical. Its three warnings, each fixed in the step:
+    - the D5 case read imports a line at a time, with `'` and `"` only and no `(` after `import`, so
+      it missed a dynamic `import(…)`, a backtick-quoted `require`, and a `from` whose specifier
+      starts the next line. It now reads the whole text. *Probes*: a dynamic import in prose, and a
+      static import split after `from`, each fail the case alone, 1 of 2601, naming its line;
+    - the D5 case read a fence only at up to three spaces in, so a fence in a blockquote or a nested
+      list item went unseen. It now admits any indentation and any `>` prefix, and reports a false
+      fence rather than miss a real one. *Probe*: `> ```js` in a blockquote fails the case alone,
+      1 of 2601, naming `README.md:40 (js)`;
+    - "Work in flight" still named Revision 5.
+
+    From its notes: the −3 conditional in `.claude/skills/step/SKILL.md`, § 4's table and § 6's gate
+    table now say the reverse case gave it; the F10 docblock says three cases hold the list, not
+    two; `export-list.spec.ts`' header no longer calls the three copies byte-similar, since only
+    this one has the reverse case; and "Why ng-eval?" is an `##` heading. The downstream copies'
+    allowlists were measured against their READMEs by the review: `eval-signals` has one entry and
+    `eval-forms` none, and neither is named, so nothing is masked there today.
 
 ### Step 6 — The maintainer index, the condensed ROADMAP, and F19
 
@@ -1227,7 +1345,7 @@ non-spec `.ts` file is out of scope (§ 2).
 | Gate | Command | Expected |
 | :--- | :--- | :--- |
 | Everything | `npx nx run-many -t lint test build --skip-nx-cache --output-style=static` | Green, every step |
-| `eval-core` tests | (in the above) | Baseline, then +3 at step 2, +7 at step 3, +1 at step 4 and −5 at step 5; no other change. The baseline was 2448 at this plan's commit, and 2596 when the phase resumed at 4f99112 (Revision 4): 2596 → 2603 at step 3 |
+| `eval-core` tests | (in the above) | Baseline, then +3 at step 2, +7 at step 3, +1 at step 4 and −5 at step 5 (−3 as run, Revision 6); no other change. The baseline was 2448 at this plan's commit, and 2596 when the phase resumed at 4f99112 (Revision 4): 2596 → 2603 at step 3 |
 | `eval-signals` / `eval-forms` tests | (in the above) | +1 each at step 4; unchanged in every other step |
 | Docs | the root `test` target (`tools/doc-links.mjs`, `tools/release-tags.mjs`) | Green. doc-links' file and link counts move as § 4's table says |
 | Scope | `git diff --name-status` | Exactly the step's file list. No `R`. A `D` only in step 1, and only for D3's ten |
@@ -1248,7 +1366,7 @@ non-spec `.ts` file is out of scope (§ 2).
   - **W5**: the state block's options were the defaults, so it sets `caseInsensitive: true`.
 
   The same rule covers a count a document or docblock states: it is pinned by a case, as step 3
-  pinned the `sh` and `json` counts, or it loses its figure ([F22](../backlog.md#f22), step 5). It
+  pinned the `sh` and `json` counts, or it loses its figure ([F22](../backlog-retired.md#f22), step 5). It
   covers any figure the case does not read, such as a sibling package's range (step 4, § 3.5).
 - **Standing rule: every new check needs a probe that proves it can fail.** A check that cannot
   fail reports coverage it does not have, and it can fail to fail for a reason unrelated to its
@@ -1265,6 +1383,20 @@ non-spec `.ts` file is out of scope (§ 2).
     `` /`([^`]+)`/g `` let one stray backtick invert span pairing for the rest of a README, so
     every later range went unchecked. A stray backtick with a wrong range after it left all 439
     `eval-signals` cases green; the pattern that ends a span at a blank line fails the case.
+- **Standing rule: a claim that is false now is fixed in the step that is open; a gap that is only
+  latent gets a register entry and a schedule.** A false claim misleads every reader until it is
+  fixed, so the open step fixes it, even where that widens the step at its gate. A latent gap misleads
+  no one yet, so it is recorded with its measurements and scheduled into a step that already edits its
+  files, or queued after the phase when none does. *Added in step 5* (Revision 6), from its two
+  sides:
+  - **False now**: `modules/eval-core/README.md:81`, under `### Evaluation — EvalService`
+    ([F23](../backlog-retired.md#f23)), said an expression over an empty context cannot use
+    JavaScript's built-ins, while a value's own methods stay callable. Step 5 fixed it, and pinned
+    both halves of the new sentence in the built-ins case, by two additions at its gate.
+  - **Latent**: `eval-signals`' and `eval-forms`' copies of `export-list.spec.ts` lack F22's reverse
+    case ([F24](../backlog.md#f24)). `eval-signals`' one allowlist entry is not in its README, and
+    `eval-forms`' allowlist is empty, so nothing is masked today. No later step edits either project,
+    so it is queued after the phase.
 - **A README case mirrors its block by hand**, and only the block count is read from the file. So the
   probe for a case is a wrong *library* implementation, which shows that the case tests the claim. A
   wrong README cannot show it, since nothing but the count reads the file. (Step 3, criterion 3.)

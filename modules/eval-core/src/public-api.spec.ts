@@ -3,28 +3,27 @@
  * [`docs/backlog.md`](../../../docs/backlog.md) F3, built by
  * [`docs/gates/plan.md`](../../../docs/gates/plan.md) § 4 step 2.
  *
- * Two READMEs name this package's symbols: the root `README.md`, which ships
- * nowhere, and `modules/eval-core/README.md`, which is the only documentation a
- * consumer installing the package can read. This file checks three things:
+ * `modules/eval-core/README.md` is the package's whole documentation, and the
+ * only copy a consumer installing the package can read. This file checks two
+ * things about it: every identifier it imports from the specifier is exported,
+ * and the scan is not silently empty — a floor, not a block count.
  *
- * 1. every identifier either README imports from the specifier is exported;
- * 2. the scan is not silently empty — a floor per file, not a block count;
- * 3. the published/unpublished relation (§ 3.2): a symbol that **is exported**,
- *    is documented in the root README, and is **absent** from the package
- *    README. It is a three-way relation, not a set difference — a set
- *    difference is unsatisfiable today on eight symbols and would need the
- *    exception list § 1.1 rejects.
+ * Until Phase 10 step 5 the root `README.md` documented this package's API as
+ * well, and this file checked it the same way, with a third case for the
+ * published/unpublished relation: a symbol exported, documented in the root
+ * README, and absent from the package README. The root README is a landing
+ * page now, with no code to import from (D5, the last section below), so
+ * those cases were removed rather than kept green over an empty import set
+ * ([`docs/backlog-retired.md`](../../../docs/backlog-retired.md#f3), F3).
  *
  * **What this gate cannot see, stated because F3 was retired on it.** Only
  * identifiers inside an `import { … } from '@zvenigora/…'` statement are
  * checked. F3's own motivating example, `trackTime`, is an `EvalOptions` key
  * rather than an exported symbol and appears in no import statement in any
- * README — so this gate would have stayed green through the divergence that
- * motivated it. What it catches is the same *shape* (documented in the
- * unpublished README, absent from the published one) for the subset that is
- * imported by name. Option keys, method names and prose-documented API —
- * `createControlSource`, `FieldSchema` and `FormBinding` are exported from
- * `/reactive` and imported by no README — are outside it.
+ * README — so the published/unpublished case would have stayed green through
+ * the divergence that motivated it. Option keys, method names and
+ * prose-documented API are outside this gate; F10, in `export-list.spec.ts`,
+ * is the one that reads the package README's code spans for every export.
  *
  * The reader and the scanner live in `export-list.spec.ts` beside this file,
  * with their own probes; importing it re-registers those probes here, which is
@@ -40,7 +39,12 @@
  *
  * **So are the peer ranges the package README quotes** (the Phase 10 plan's
  * § 3.5): each must equal the manifest's, and `## Install` must quote every
- * peer with its range. See the last section.
+ * peer with its range. See the section below the `SECURITY.md` cases.
+ *
+ * **And the landing page holds no code** (the Phase 10 plan's D5): every fence
+ * in the root `README.md`, in a blockquote or a list item as well, is an `sh`
+ * block, and nothing in it imports or requires `@zvenigora/`, in the forms the
+ * last section lists.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -68,42 +72,18 @@ describe('README symbols resolve against the @zvenigora/ng-eval-core export list
   const exported = (): ReadonlySet<string> =>
     exportedNames(SPECIFIER_ENTRY[SPECIFIER]);
 
-  describe.each([ROOT_README, PACKAGE_README])('%s', (readme) => {
+  describe(PACKAGE_README, () => {
     it('scans a non-empty identifier set containing EvalService', () => {
       // The floor (§ 1.5): a named symbol known to be there, not an expected
       // count — a later step adding an import must not turn this red.
-      const scanned = namesFor(readmeImports(readme), SPECIFIER);
+      const scanned = namesFor(readmeImports(PACKAGE_README), SPECIFIER);
       expect(scanned.size).toBeGreaterThan(0);
       expect([...scanned]).toContain('EvalService');
     });
 
     it('imports no identifier the package does not export', () => {
-      expect(unresolvedImports(readme, SPECIFIER, exported())).toEqual([]);
+      expect(unresolvedImports(PACKAGE_README, SPECIFIER, exported())).toEqual([]);
     });
-  });
-
-  it('scans the identifiers carried by the root README two-line imports', () => {
-    // `README.md:291-292` is one statement spanning two lines, and these three
-    // symbols appear in no single-line import anywhere in that file. A reader
-    // that matched an import a line at a time would drop the whole statement
-    // and still satisfy the EvalService floor above, which single-line imports
-    // supply on their own.
-    const scanned = namesFor(readmeImports(ROOT_README), SPECIFIER);
-    expect([...scanned]).toEqual(
-      expect.arrayContaining(['EvalContext', 'EvalScope', 'EvalScopeOptions'])
-    );
-  });
-
-  it('documents every exported root-README symbol in the package README too', () => {
-    // F3's motivating case: exported, documented in the unpublished README, and
-    // missing from the one that ships. Not a symmetric difference.
-    const rootNames = namesFor(readmeImports(ROOT_README), SPECIFIER);
-    const packageNames = namesFor(readmeImports(PACKAGE_README), SPECIFIER);
-    const list = exported();
-    const publishedNowhere = [...rootNames]
-      .filter((name) => list.has(name) && !packageNames.has(name))
-      .sort();
-    expect(publishedNowhere).toEqual([]);
   });
 });
 
@@ -608,5 +588,62 @@ describe('README peer ranges equal the @zvenigora/ng-eval-core manifest', () => 
     );
     const missingFromInstall = Object.keys(declared).filter((peer) => !installed.has(peer));
     expect({ mismatched, missingFromInstall }).toEqual({ mismatched: [], missingFromInstall: [] });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The landing page holds no code (the Phase 10 plan, D5)
+// ---------------------------------------------------------------------------
+
+/**
+ * Every fenced block `markdown` opens, as `<line> (<info string>)`, the info
+ * string's first word or `none`. A fence opens on three or more backticks or
+ * tildes, and closes on the same character, at least as many, with no info
+ * string.
+ *
+ * Looser than `codeIdentifiers` on purpose: any indentation and any `>`
+ * prefix may precede the fence, so a fence in a blockquote or a nested list
+ * item, which GitHub renders as a code block, is read too. A line that only
+ * looks like a fence is reported rather than missed, which for a check that
+ * fails on every fence but `sh` is the safe direction.
+ */
+const fencesOf = (markdown: string): readonly { readonly line: number; readonly label: string }[] => {
+  const found: { line: number; label: string }[] = [];
+  let fence: { readonly ch: string; readonly length: number } | undefined;
+  markdown.split(/\r?\n/).forEach((text, index) => {
+    const run = /^[\s>]*(`{3,}|~{3,})\s*(\S*)/.exec(text);
+    if (!run) {
+      return;
+    }
+    if (!fence) {
+      fence = { ch: run[1][0], length: run[1].length };
+      found.push({ line: index + 1, label: run[2] || 'none' });
+    } else if (run[1][0] === fence.ch && run[1].length >= fence.length && !run[2]) {
+      fence = undefined;
+    }
+  });
+  return found;
+};
+
+/**
+ * An `@zvenigora/` specifier after `from`, `import` or `require`, anywhere in
+ * the text, fenced or not, and read over the whole text rather than a line at a
+ * time: a static import, its `from` on its own line or not, a side-effect
+ * import, a dynamic `import(…)` and a `require(…)`, with any of the three
+ * quotes. Not seen: a specifier with nothing but a comment between it and its
+ * keyword.
+ */
+const ZVENIGORA_IMPORT = /(?:\bfrom|\bimport|\brequire)\s*\(?\s*['"`]@zvenigora\//g;
+
+describe('the root README is a landing page (Phase 10, D5)', () => {
+  it('holds no fence but sh, and imports nothing from @zvenigora/', () => {
+    const markdown = fs.readFileSync(path.join(workspaceRoot, ROOT_README), 'utf8');
+    const fences = fencesOf(markdown)
+      .filter((fence) => fence.label !== 'sh')
+      .map((fence) => `${ROOT_README}:${fence.line} (${fence.label})`);
+    const imports = [...markdown.matchAll(ZVENIGORA_IMPORT)].map(
+      (match) => `${ROOT_README}:${markdown.slice(0, match.index).split('\n').length}`
+    );
+    expect({ fences, imports }).toEqual({ fences: [], imports: [] });
   });
 });

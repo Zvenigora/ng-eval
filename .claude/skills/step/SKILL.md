@@ -35,7 +35,9 @@ CHANGELOGs, specs and comment lines, at named steps and nowhere else:
   `export-list.spec.ts` lose their root-README cases and gain the D5 case (plan § 4, step 5, which
   lists and flags those removals); comment lines in `eval-core` and `eval-signals` specs. It also
   fixes F22 (plan Revision 4): eight F10 allowlist entries out of `export-list.spec.ts`, and the
-  F10 docblock's count pinned by a case or stripped of its figure, chosen at the step's gate.
+  F10 docblock's count pinned by a case or stripped of its figure, chosen at the step's gate. Its
+  gate stripped the figure, added F22's reverse case, and added F23's `eval-core` README line with
+  its `[Unreleased]` line (plan Revision 6). *Done.*
 - **Step 6 is documents only** — `docs/README.md`, `CONTRIBUTING.md`, `ROADMAP.md`, `CLAUDE.md`, the
   register (F19). No file under `modules/`.
 - **Step 7 is held on the plan's § 8 q1** and is not a step until the plan writes it.
@@ -157,11 +159,12 @@ npx nx run-many -t lint test build --skip-nx-cache --output-style=static
 
 All must be clean, with the same exception § 1 allows and on the same terms. The test rows move
 exactly as the plan's § 4 table says: `eval-core` +3 at step 2, +7 at step 3, +1 at step 4 and −5 at
-step 5 (−3 if its gate gives F22's count a case); `eval-signals` and `eval-forms` +1 each at step 4; every other row unchanged in every step. A
+step 5 (−3 with F22's reverse case, as its gate chose; plan Revision 6); `eval-signals` and `eval-forms` +1 each at step 4; every other row unchanged in every step. A
 row that moves anywhere else is a regression or a scope breach, not a count to correct. The plan's
 absolute totals were measured before the A35 plan; at its resumption (4f99112) the gate stood at
-2596 / 438 / 375, and the deltas apply from there: 2603 after step 3 (plan Revision 4), and
-2604 / 439 / 376 after step 4 (plan Revision 5). The root project's `test` target is the doc-links
+2596 / 438 / 375, and the deltas apply from there: 2603 after step 3 (plan Revision 4),
+2604 / 439 / 376 after step 4 (plan Revision 5), and 2601 / 439 / 376 after step 5 (plan
+Revision 6). The root project's `test` target is the doc-links
 gate: its file and link counts move as the same table says, and the report gives both figures.
 
 `build` is in this list because a green `test` run is not a type-check: Jest compiles per

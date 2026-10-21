@@ -4285,6 +4285,17 @@ and probed**, [`docs/gates/plan.md`](gates/plan.md) step 2, 2026-09-07
 > `modules/eval-core/README.md`. All five are now documented in the package README — no
 > exception list exists anywhere in the gate.
 >
+> **The published/unpublished check was removed on 2026-10-21, by Phase 10 step 5**, with the
+> root README's other cases in `modules/eval-core/src/public-api.spec.ts`: the two root rows of
+> the floor and resolution cases, and the case for its two-line imports. That step made the root
+> `README.md` a landing page with no code (the
+> [Phase 10 plan](documentation/phase-10-plan.md)'s D5), so each case would either have gone red
+> or asserted over an empty import set. The relation it held, that nothing is documented only in the
+> README that ships nowhere, was discharged by Phase 10 step 3, which made the package README
+> `eval-core`'s whole documentation. The rename-drift half stays, over the package README. A D5
+> case in the same file keeps the root README free of code, and the multi-line reader keeps its
+> fixture case in `export-list.spec.ts`.
+>
 > **Three limits, all deliberate, and the first is the one to read before relying on this
 > entry being closed.**
 >
@@ -5577,6 +5588,197 @@ The Phase 5 plan's own five citations were remapped by that step (its Revision 3
 *Verified*: raised 2026-10-08 by Phase 5 step 2's code review; counted the same day with
 `git grep -n "eval-signal\.ts:[0-9]"` over `modules/eval-forms` and `docs/`, the Phase 5 plan
 excluded. Not checked citation by citation.
+
+<a id="f22"></a>
+## F22 — The F10 allowlist and docblock count in `eval-core`, ungated — **Retired, fixed**
+
+**Package** core · **Kind** fix (test) · **Status** **Retired — fixed 2026-10-21** by Phase 10
+step 5. Was Open — opened 2026-10-20 by Phase 10 step 3's review
+
+*Fixed* 2026-10-21, in `modules/eval-core/src/export-list.spec.ts`, as the
+[Phase 10 plan](documentation/phase-10-plan.md)'s step 5 and its criterion 6 set out:
+- **Part 1**: the eight entries are off the F10 allowlist: `EvalState`, `call`, `callAsync`,
+  `compile`, `compileAsync`, `evaluate`, `extract` and `parse`.
+- **Part 2**: the docblock states no count. The step's confirmation gate chose that over a case
+  pinning the figure, which would turn red on every new export with no defect behind it.
+- **The other direction**, which this entry offered as optional, is a case: "allowlists no name the
+  package README names", over a new helper, `documentedAllowlistEntries`. With it the allowlist is
+  exactly the exports the README does not name, checked from both sides, so an entry cannot again
+  outlive its excuse this way. The case runs twice (the plan's finding 3), +2 to `eval-core`, which
+  with the step's −5 makes its net −3.
+
+*Verified*: the gate at 2601 / 439 / 376. Two probes, each run against `eval-core`'s whole suite and
+reverted:
+- the README's free-functions sentence deleted: 2 failures of 2601, F10's documented-or-allowlisted
+  case in each of the two files that run it, naming `EvalState`, `callAsync`, `compile`,
+  `compileAsync`, `evaluate` and `extract`. `call` and `parse` are named elsewhere in the README, so
+  the sentence alone carries six of the eight;
+- `parse: 'function-form'` put back on the allowlist: 2 failures of 2601, the new case in each file,
+  naming `parse`.
+
+**The entry as it stood:**
+
+Two parts, both in `modules/eval-core/src/export-list.spec.ts`'s F10 block, and one rule: a figure or
+an excuse the suite does not check is one it cannot keep true.
+
+**Part 1, the eight entries.**
+
+Phase 10 step 3 made `modules/eval-core/README.md` the package's whole documentation, and it now
+names 21 of the 60 exports in code spans, where it named 14. Eight of the 21 are still in the F10
+allowlist in `modules/eval-core/src/export-list.spec.ts` (`UNDOCUMENTED`): the seven the step
+named — `EvalState` as `signature-type`, and `call`, `callAsync`, `compile`, `compileAsync`,
+`evaluate` and `extract` as `function-form` — and `parse`, also `function-form`, which the README
+already named in `### Colon-joined names` before the step.
+
+**What that costs.** An entry excuses a name from the "named in a code span, or allowlisted" case.
+While these eight stand, the README's free-functions sentence under `## Exported entry points` can
+be deleted and F10 stays green, so the allowlist masks the regression F10 exists to catch. Nothing
+checks for an allowlisted name the README documents: `staleAllowlistEntries` checks only that each
+entry is still exported.
+
+**Part 2, the docblock's count.** The F10 docblock says the package README names "twenty-one of the
+sixty". Nothing checks it. It is the sentence that had been wrong since it was written, "twelve of
+the fifty-nine" against a measured 14 of 60 (Phase 10 plan, finding 6), and it reads true today only
+because step 3 measured it again. The Phase 10 plan's standing rule (§ 6.1) applies, as it did to step
+3's `sh` / `json` counts: **the sentence gets a permanent case, or it loses its figure.**
+
+**Why neither was fixed in the step.** Step 3's edit to `export-list.spec.ts` is comments only, by
+the plan's file list (§ 4, step 3), and removing an entry is a change to the case's data.
+
+**The fix, in Phase 10 step 5** (plan § 4, step 5, and its criterion 6):
+- remove the eight entries. *Wrong*: delete the README's free-functions sentence, and F10 fails,
+  naming the functions it held;
+- give the count a case, so that editing the figure fails it, or drop the figure from the docblock.
+  The step's confirmation gate chooses. A case here runs twice (plan finding 3), +2 to `eval-core`;
+- optionally, add the other direction as a case, an allowlisted name the README names, so the list
+  cannot go stale this way again.
+
+*Recorded*: this entry, and the F10 docblock's count sentence, which cites it. *Widened* before step
+3's commit, at the maintainer's instruction, to the count (part 2), and scheduled into step 5.
+*Verified*: 2026-10-20, against the working tree of Phase 10 step 3: `exportedNames` and
+`documentedNames` read through a temporary case in `export-list.spec.ts`, since removed, gave 60
+exports and 21 named, and the eight above as both named and allowlisted. The review recounted them
+against the built `.d.ts`: 47 allowlisted − 8 = 39 = 60 − 21.
+
+<a id="f23"></a>
+## F23 — Live documents claim guarantees the library does not give — **Retired, fixed**
+
+**Package** repo, core · **Kind** docs · **Status** **Retired — fixed 2026-10-21** by Phase 10
+step 5, both parts. Was Open — opened 2026-10-20 by Phase 10 step 4's sweeps
+
+*Fixed* 2026-10-21:
+- **The root README.** The landing page Phase 10 step 5 wrote keeps none of the twelve lines. Both
+  sweeps, re-run over it, list one line each, the same one: `:7`, the landing page's not-a-sandbox
+  note. "Sandbox" is in "ng-eval is not a sandbox", a disclaimer. "Every" is in "every function in
+  the context runs with the host's privileges", which says what the host exposes, not what the
+  library protects.
+- **The `eval-core` README.** `### Evaluation — EvalService` now says that over an empty context an
+  expression cannot reach JavaScript's global built-ins, such as `Math`, `parseInt` or `Date`, and
+  that the methods of the values it holds stay callable, `'abc'.toUpperCase()` and
+  `[3, 1, 2].map(x => x * 2)` among them. The README ships, so `eval-core`'s CHANGELOG has an
+  `[Unreleased]` line. This part was added to step 5 at its confirmation gate, so that the entry
+  retires whole; the step otherwise ships in no package. A second instruction, before the commit,
+  added the case leg that pins the sentence's second half, so the entry retires with no gap
+  recorded.
+
+*Verified*: both sweeps, with the commands below, over the finished `README.md`: one hit each, `:7`.
+The new `eval-core` sentence, measured against the package built by the step's gate, through
+`evaluate` over `EvalState.fromContext({})`: `Math.max(1, 2)`, `parseInt("7")` and `Date.now()`
+each throw "Cannot call undefined or null function"; `'abc'.toUpperCase()` gives `"ABC"` and
+`[3, 1, 2].map(x => x * 2)` gives `[6, 2, 4]`. The README's built-ins case,
+`readme-examples.spec.ts`' "should reach the built-ins the context holds and no others", asserts
+both halves: the refusal, since step 3, and the two value-method examples over the empty context,
+added in step 5 at a second gate instruction. *Probe*: `callMember` refusing a member call whose
+receiver is a string or an array fails 85 of 2601 across 15 files, since much of the suite calls
+such methods. In `readme-examples.spec.ts` it fails the built-ins case at its new
+`'abc'.toUpperCase()` line, and the hooks case at its own `list.map`. Against the case as it stood
+before step 5, the same probe leaves the built-ins case green.
+
+**The entry as it stood:**
+
+`SECURITY.md` says what the protections do and what they leave open, and all three package READMEs
+say that ng-eval is not a sandbox. These lines claim more.
+
+**The root README**, in sections Phase 10 § 3.4 already drops (`:1-26`, the tagline and the
+"Recent Major Improvements (2025)" banner; the Evaluation section, moved to the package README; and
+the Security section's "2025 Update" block):
+- `:3`, "A secure and performant expression evaluator";
+- `:10`, "Complete prototype pollution prevention with comprehensive protection mechanisms". The
+  guard is a blocklist, and B6 (GHSA-jh43-xc7j-93c2) was a bypass of it;
+- `:11`, "Enhanced call expression security with function sandboxing and validation";
+- `:17`, "Memory leak prevention with comprehensive resource management";
+- `:24`, "Comprehensive error boundaries for production stability";
+- `:129`, "Since the default context is empty, it prevents using built-in JS functions", which is
+  the same overclaim as the package README's line below;
+- `:428`, "ng-eval now includes comprehensive security hardening";
+- `:431`, "Complete prototype pollution prevention - All prototype modification attempts are
+  blocked";
+- `:432`, "Function call sandboxing - Dangerous function calls are validated and restricted". The
+  call sandbox refuses by name and by value, and `SECURITY.md`'s documented limits say what it
+  does not refuse;
+- `:433`, "Comprehensive type checking prevents injection attacks";
+- `:435`, "Memory safety - Prevents memory-based attacks and resource exhaustion". The iteration
+  budget bounds `for` loops only;
+- `:447`, "now includes comprehensive security hardening against prototype pollution and injection
+  attacks", in the paragraph that goes on to disclaim "complete isolation".
+
+**The `eval-core` package README**, which ships: `modules/eval-core/README.md:81`, under
+`### Evaluation — EvalService`, says "Since the default context is empty, an expression cannot use
+JavaScript's built-in functions". Over an empty context the global built-ins are out of reach, and
+the methods of the values an expression holds are not. Measured against the built package:
+`Math.max(1, 2)` and `parseInt('7')` throw "Cannot call undefined or null function", while
+`'abc'.toUpperCase()` gives `"ABC"`, `[3, 1, 2].map(x => x * 2)` gives `[6, 2, 4]` and
+`'a,b'.split(',')` gives `["a", "b"]`. The sentence came in with Phase 10 step 3, carried from the
+root README's `:129`. Its fix names the globals, and says that a value's own methods stay callable
+(`SECURITY.md`'s primitive carve-out).
+
+**Why neither was fixed in step 4**: step 4's file list is the `eval-signals` and `eval-forms`
+READMEs, their CHANGELOGs and the specs. The root README is step 5's, and `eval-core`'s README was
+step 3's.
+
+**The fix.**
+- *The root README, in Phase 10 step 5*: none beyond the step's plan, since § 3.4 drops every line
+  above. The step re-runs both sweeps over the landing page and lists what they find.
+- *The `eval-core` README*: one sentence, with an `[Unreleased]` line in `eval-core`'s CHANGELOG,
+  since the README ships. Step 5 ships in no package, so the line needs a step or a commit of its
+  own. Placing it is the maintainer's decision.
+
+The entry retires when both are done.
+
+**Kept as written, by convention.** The sweeps also found claims of the same kind in design records,
+which `CLAUDE.md` keeps as written:
+- `docs/forms/phase-4-plan.md:49`, "the sandbox", which is where the `eval-forms` README's
+  "sandboxed evaluator" came from;
+- "the evaluator's sandbox" in `docs/a35/plan.md`'s severity reasoning;
+- "not a sandbox escape" in the Phase 2 and Phase 3 plans.
+
+They also found one in a published CHANGELOG entry, which § 3.8 of the Phase 10 plan keeps as
+written: `modules/eval-core/CHANGELOG.md:1153`, "Comprehensive prototype pollution prevention".
+
+**Read and not claims.**
+- **The sandbox sweep:** every other hit names the call sandbox as `SECURITY.md` defines it,
+  disclaims a sandbox, or is not about security.
+- **The totality sweep:** every other hit uses the word in its ordinary sense ("every case", "the
+  plan is complete"), or states a mechanism's scope inside `SECURITY.md`'s documented limits, as
+  "every value the walk pushes is checked" does.
+
+*Recorded*: this entry. *Verified*: 2026-10-20 and 2026-10-21, by two sweeps over `*.md` and
+`*.txt`, each hit classified:
+- **The sandbox sweep**, at 938111c before Phase 10 step 4's edits:
+  `git grep -n -i -E "sandbox|safely|\bsecure|protected"`. It gave 104 lines in 20 files, all of
+  them read.
+- **The totality sweep**, on step 4's working tree:
+  `git grep -n -i -E "\b(complete|comprehensive|guarantee[sd]?|fully|every|all attacks|prevents?)\b"`.
+  It gave 1545 lines in 76 files: 1128 in 42 design records, 106 in published package CHANGELOGs,
+  12 in the root README and 299 elsewhere. Every root README hit was read, and so was every hit
+  elsewhere that also names security, protection, safety, a guard, a refusal or an attack.
+  Every hit outside the design records for "complete", "comprehensive", "guarantee", "fully" or
+  "prevent" was read as well. The remaining "every" hits were classed by that filter, not
+  read one by one.
+
+The root README's `:463`, "Comprehensive usage guide", describes a document, not the library, and
+§ 3.4 drops it with its table. Step 4 fixed the `eval-forms` README's "a sandboxed evaluator, safe
+under a strict CSP".
 
 ---
 

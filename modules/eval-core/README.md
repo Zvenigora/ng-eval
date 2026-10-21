@@ -78,7 +78,7 @@ const context = { a: 10 };
 const result = service.simpleEval(expression, context); // 32
 ```
 
-Since the default context is empty, an expression cannot use JavaScript's built-in functions. To allow them, add them to the context passed to `simpleEval`:
+Since the default context is empty, an expression cannot reach JavaScript's global built-ins, such as `Math`, `parseInt` or `Date`. The methods of the values it holds stay callable: `'abc'.toUpperCase()` and `[3, 1, 2].map(x => x * 2)` run over an empty context. To allow the globals, add them to the context passed to `simpleEval`:
 
 ```javascript
 const context = {

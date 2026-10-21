@@ -19,6 +19,10 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   and evaluation with state — and opens with Install, Sibling packages and Security, quoting each
   peer range verbatim. The repository README no longer has to be read for the API. No code
   change.
+- **The README no longer says an expression over an empty context cannot use JavaScript's
+  built-ins.** The global built-ins are out of its reach, but the methods of the values it holds
+  stay callable, as `'abc'.toUpperCase()` does. No code change
+  ([F23](../../docs/backlog-retired.md#f23)).
 
 ---
 

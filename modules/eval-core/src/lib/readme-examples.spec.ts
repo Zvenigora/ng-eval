@@ -29,13 +29,15 @@ const README_JSON_BLOCKS = 1;
  * Executes the snippets in `modules/eval-core/README.md`.
  *
  * **Not** the root `README.md`, which `docs/gates/plan.md` step 4 assessed and
- * **dropped**. The two files fail differently and the verdict is per file: 0 of
- * the root's 11 `javascript` blocks are runnable as printed and 9 do not parse
- * at all — a bare `...` line and `private service: EvalService;` outside a class
- * body. Gating it would mean rewriting the opening style of 9 of those 11
- * blocks — a whole-file documentation rewrite plan § 8.3 holds open as its own
- * question — or else putting the entire program into every case's substitution
- * list, which is F3's "considered and rejected" shape. This file needed a style
+ * **dropped**, and which has held no `javascript` block since Phase 10 step 5
+ * made it a landing page. The two files failed differently and the verdict was
+ * per file: 0 of the root's 11 `javascript` blocks were runnable as printed and
+ * 9 did not parse at all — a bare `...` line and `private service: EvalService;`
+ * outside a class body. Gating it would have meant rewriting the opening style
+ * of 9 of those 11 blocks — a whole-file documentation rewrite that plan § 8.3
+ * held open as its own question — or else putting the entire program into every
+ * case's substitution list, which is F3's "considered and rejected" shape.
+ * Phase 10 step 3 took the first road, here. This file needed a style
  * rewrite in **4** of its 12 blocks, three of them introduced by step 2 itself,
  * and bindings the document already implied in five more. See
  * `docs/gates/step-4-summary.md` § 1 and § 3 for the inventory and the ground.
@@ -124,8 +126,8 @@ const README_JSON_BLOCKS = 1;
  * than free.** It went exactly as far as making each block a program and no
  * further: no prose was rewritten, no example was replaced, and the
  * injected-service opening survives as `inject(…)` rather than being dropped.
- * What it left: the root README, whose identical opening is the reason that file
- * was dropped rather than converted.
+ * What it left: the root README, whose identical opening was the reason that
+ * file was dropped rather than converted.
  *
  * **Phase 10 step 3 converted it**, by moving its API sections here under the
  * same rule, and went further than the step above in one respect: three moved
@@ -200,10 +202,13 @@ const README_JSON_BLOCKS = 1;
  *    `compiler` where its blocks name it `service`, since `service` is this
  *    file's `EvalService`; the bindings are otherwise the blocks'.
  *
- * 11. **The built-ins block's first half.** The block prints only the call
+ * 11. **The built-ins block's sentence.** The block prints only the call
  *    the added built-ins make possible. The sentence above it says the default
- *    context holds none, so the case also evaluates the same expression with no
- *    context and asserts the call sandbox's refusal of an undefined callee.
+ *    context holds none of the globals, so the case also evaluates the same
+ *    expression with no context and asserts the call sandbox's refusal of an
+ *    undefined callee. It also says the methods of the values an expression
+ *    holds stay callable, so the case evaluates its two examples over the empty
+ *    context too (Phase 10 step 5, `docs/backlog-retired.md` F23).
  *
  * Items 3 to 8, 10 and 11 are the same class — a value, a precondition or a
  * narrowing the block does not print — and are listed separately because the enumeration is
@@ -264,8 +269,8 @@ describe('documented examples', () => {
   });
 
   it('should reach the built-ins the context holds and no others', () => {
-    // The built-ins block, and both halves of the sentence above it: the
-    // default context holds none, and the ones added are callable
+    // The built-ins block, and the sentence above it: the default context
+    // holds none of the globals, and the ones added are callable
     // (substitution 11).
     const context = {
       Date,
@@ -285,6 +290,11 @@ describe('documented examples', () => {
     expect(service.simpleEval('Math.max(1, 2) + parseInt("40")', context)).toBe(42);
     expect(() => service.simpleEval('Math.max(1, 2) + parseInt("40")'))
       .toThrow('Cannot call undefined or null function');
+
+    // The sentence's second half: over the same empty context, the methods of
+    // the values an expression holds stay callable - its two examples.
+    expect(service.simpleEval("'abc'.toUpperCase()")).toBe('ABC');
+    expect(service.simpleEval('[3, 1, 2].map(x => x * 2)')).toEqual([6, 2, 4]);
   });
 
   it('should compile once and call against a context', () => {
