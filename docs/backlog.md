@@ -99,7 +99,7 @@ its ID lands in `SECURITY.md`'s CVE column when assigned.
 
 **Phase 10, the documentation restructure, is in flight again.** It was paused after its step 2
 while the A35 plan ran to its end, so that 0.13.0, which closes the route through `this`, shipped
-first; it has. Its [plan](documentation/phase-10-plan.md) is at Revision 6.
+first; it has. Its [plan](documentation/phase-10-plan.md) is at Revision 7.
 - Step 1 is done: the ten stale documents are deleted, and the `qs` override's reason is in F16.
 - Step 2 is done: `SECURITY.md` is rewritten to what the code does, and a case in `eval-core`'s
   `public-api.spec.ts` resolves every identifier it names. That step opened A35, from its review,
@@ -120,9 +120,16 @@ first; it has. Its [plan](documentation/phase-10-plan.md) is at Revision 6.
   queued after the phase. F23's `eval-core` README line was
   added to the step at its gate, so the step ships that one correction at `eval-core`'s next
   release, and nothing else.
+- Step 6 is done: [`docs/README.md`](README.md) is the maintainers' index, reached from
+  `CONTRIBUTING.md`, and `ROADMAP.md` is condensed to one table of the phases. It retired
+  [F19](backlog-retired.md#f19), and opened [F25](#f25) from the plan's § 8 q4, queued after the
+  phase with F21 and F24.
 
-Step 6 is next. The plan retires [F19](#f19) in it, and its § 8 q4 records what it found and left
-undecided.
+**The plan's § 8 q1 is answered: the three READMEs are released.** Step 7 is next, the release
+commit for `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms` 0.6.1, docs-only patches with
+no peer range moved. Step 8 records the publish and writes the phase's retrospect. Until they are
+published, each package's npm page still sends its reader to the repository README for
+documentation the landing page no longer holds.
 
 Phase 9, colon-joined identifiers, is complete: its
 [plan](colon-identifiers/phase-9-plan.md), at Revision 9, and its retrospect,
@@ -342,12 +349,13 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [F16](#f16) | Workspace dependency advisories — 9 moderate on the workspace's Angular 22.0.8, and a **temporary `smol-toml` override under `nx`**; beside the `nx` overrides, the **`qs` override**, whose `^6.14.1` floor does not exclude GHSA-w7fw-mjwx-w883 (fixed 6.14.2) | repo | fix | Open — **part 1 retired 2026-09-27**: `nx` 23.2.1, Angular 22.1.8 / 22.1.9, `npm audit` 0 at every severity. Part 2, the override, is live until a stable `nx` depends on `smol-toml >= 1.7.1`. **Re-audited 2026-09-30: 22 (14 high, 8 moderate)**, none reaching a published package; **fixed the same day**: Angular 22.2.1 / 22.2.0, two more `overrides.nx` entries, `verdaccio` removed, `npm audit` 0. **`qs` recorded 2026-10-14**: the override was added for GHSA-6rw7-vpxm-498p, not prototype pollution; raising its floor is held here. **Re-audited 2026-10-20 at 7741395**: `qs` resolves 6.16.0, past both advisories, and audit reports nothing for it |
 | [F17](#f17) | An unhandled rejection reaches no channel a spec would normally watch — only zone.js's `unhandledPromiseRejectionHandler` hook sees it | repo | test gap | Open — opened 2026-10-08 by Phase 5 step 2 |
 | [F18](backlog-retired.md#f18) | `eval-signal.ts` line citations in `eval-forms` comments and completed plans are stale | forms, repo | docs | **Retired — fixed 2026-10-10** in live source; completed records kept as written, per `CLAUDE.md`. The three `eval-forms` comments cite symbols; `applyErrorPolicy`'s ships in the core `.d.ts` |
-| [F19](#f19) | `CLAUDE.md` cites the resolved-key re-check as `member-expression.ts:188`; it is at `:211` | repo | docs | Open — opened 2026-10-10 by the Phase 9 plan |
+| [F19](backlog-retired.md#f19) | `CLAUDE.md` cites the resolved-key re-check as `member-expression.ts:188`; it was at `:211`, and is at `:244` | repo | docs | **Retired — fixed 2026-10-21** by Phase 10 step 6: `CLAUDE.md` cites `isDangerousProperty(foundKey)` in `member-expression.ts` by symbol, as the entry's fix recorded |
 | [F20](#f20) | `CODE_OF_CONDUCT.md`'s enforcement contact is an address of the upstream `jse-eval` author, not this repository's maintainer | repo | docs | Open — opened 2026-10-14 by Phase 10 step 2; the fix needs a contact the maintainer chooses |
 | [F21](#f21) | Build-tooling advisories: 32 findings (11 high, 21 moderate) from `@modelcontextprotocol/server` via `@angular/cli`, `follow-redirects` via `nx`, and `sprintf-js` via the jest chain — none in a published package | repo | fix | Open — opened 2026-10-20 by the A35 plan's U3 follow-up; **scheduled after Phase 10**. A toolchain bump, **not `npm audit fix --force`**, which proposes `ts-jest` 27.0.3, a downgrade |
 | [F22](backlog-retired.md#f22) | `eval-core`'s F10 block, ungated in two places: eight allowlist entries its README now documents, so the free-functions sentence can be deleted with F10 green; and the docblock's "twenty-one of the sixty", which no case checks | core | fix (test) | **Retired — fixed 2026-10-21** by Phase 10 step 5: the eight entries removed, the figure dropped, and a case that fails on an allowlisted name the README names |
 | [F23](backlog-retired.md#f23) | Live documents claim guarantees the library does not give: twelve root README lines ("secure", "complete prototype pollution prevention", "function sandboxing", "prevents injection attacks"), and `eval-core`'s README saying an expression over an empty context "cannot use JavaScript's built-in functions", when a value's own methods stay callable | repo, core | docs | **Retired — fixed 2026-10-21** by Phase 10 step 5: the landing page keeps none of the twelve lines, and the `eval-core` README names the globals and says a value's own methods stay callable, with an `[Unreleased]` line |
 | [F24](#f24) | The `eval-signals` and `eval-forms` copies of `export-list.spec.ts` have no reverse case, so an allowlist entry the README documents would mask its mention's deletion, as F22 found in `eval-core` | signals, forms | test gap | Open — opened 2026-10-21 by Phase 10 step 5's review; **queued after Phase 10**, with F21. Latent: `eval-signals`' one entry is not in its README, and `eval-forms`' allowlist is empty |
+| [F25](#f25) | Three documentation checks Phase 10 left undecided: no gate fails when `docs/README.md` stops linking a tracked `docs/` file; two links into `eval-core`'s CHANGELOG headings left the doc-links gate when they became absolute; and doc-links silently skips an untracked `.md` | repo | decision | Open — opened 2026-10-21 by Phase 10 step 6, from its plan's § 8 q4 and its own run; **queued after Phase 10**, with F21 and F24. Latent: the index is complete, both anchors resolve, and `SKILL.md` requires `git add -N` for a new document |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -1170,10 +1178,11 @@ collapsing all state into one `signal({...})`, which destroys the per-key tracki
 rests on. The two candidates are a namespaced flat key per state per field (`email$touched`) or the
 single signal; neither is costed.
 
-**Recorded three times, reserved nowhere.** Phase 4 § 3.5.6 and § 8 q2, Phase 6 § 8.2 and its § 2
-out-of-scope list all defer it and Phase 6 names it "a Phase 7 candidate covering both adapters
+**Recorded three times before it was reserved.** Phase 4 § 3.5.6 and § 8 q2, Phase 6 § 8.2 and its
+§ 2 out-of-scope list all defer it and Phase 6 names it "a Phase 7 candidate covering both adapters
 together" — while stating that registering Phase 7 in `ROADMAP.md` was "a separate docs change, not
-this phase's". Nobody made it. This entry is the reservation until someone does.
+this phase's". No phase made it. `ROADMAP.md` now reserves the number, in its "Phase 7 and Phase 8"
+section, and points here: this entry holds the brief.
 
 *Recorded*: [`forms/phase-4-plan.md` § 3.5.6](forms/phase-4-plan.md) and § 8 q2;
 [`forms/phase-6-plan.md` § 8.2](forms/phase-6-plan.md).
@@ -1525,27 +1534,6 @@ a plain `new Promise` rejected with no handler reached none of the three channel
 called with it. Then by criterion 5's own cases: a wrong implementation that left superseded runs'
 rejections unhandled turned both red through the hook, with the control green.
 
-<a id="f19"></a>
-## F19 — `CLAUDE.md` cites the resolved-key re-check by a line that moved
-
-**Package** repo · **Kind** docs · **Status** Open. Opened 2026-10-10 by the Phase 9 plan
-
-`CLAUDE.md`'s "Security-relevant code" names "the *resolved-key* re-check at `member-expression.ts:188`
-— `isDangerousProperty(foundKey)`". The line was right when b684317 wrote it, 2026-08-22; the check is
-now at `:211`, and `:188` is inside the lookup block above it. A reader sent to the security check by
-the file that tells them to read it first lands on the wrong line.
-
-**Fix**: cite the symbol rather than the line — `isDangerousProperty(foundKey)` in
-`member-expression.ts` — as [F18](backlog-retired.md#f18) did for `eval-signal.ts`, so the citation
-does not move again with the next edit above it.
-
-**Why not the Phase 9 plan's commit**, which edits `CLAUDE.md`: it was outside that plan's scope, and the
-request that commissioned it sent such findings here.
-
-*Recorded*: this entry.
-*Verified*: read 2026-10-10 at af81e24 — `grep -n "isDangerousProperty(foundKey)"` gives
-`member-expression.ts:211`; `git log -S` gives b684317 as the commit that wrote `:188`.
-
 <a id="f20"></a>
 ## F20 — `CODE_OF_CONDUCT.md` names the upstream `jse-eval` author as its enforcement contact
 
@@ -1658,3 +1646,61 @@ Each project's case count rises by 1, or by 2 where a `public-api.spec.ts` impor
 *Recorded*: this entry. *Verified*: 2026-10-21. The two allowlists read from the copies; `grep -n
 SignalContextSource modules/eval-signals/README.md` finds nothing. Step 5's review measured the same
 against each README's code spans.
+
+<a id="f25"></a>
+## F25 — Three documentation checks Phase 10 left undecided
+
+**Package** repo · **Kind** decision · **Status** Open — opened 2026-10-21 by Phase 10 step 6, from
+its plan's § 8 q4 and the step's own run; **queued after Phase 10**, with [F21](#f21) and [F24](#f24)
+
+The [Phase 10 plan](documentation/phase-10-plan.md)'s § 8 q4 recorded two things its decisions did
+not cover, Parts 1 and 2. Step 6 found a third, Part 3. None misleads a reader today, so all three
+are on the latent side of the plan's § 6.1 rule: a register entry, not a fix in the step.
+
+**Part 1 — the index's completeness.** [`docs/README.md`](README.md) is the maintainers' index, and it
+links every tracked file under `docs/` except itself. Nothing keeps it that way: a document added
+later and never linked from the index leaves every gate green. Step 6 checked it once, with a script
+outside the repository that applies these rules:
+- the files are `git ls-files docs`, minus `docs/README.md`;
+- a link is any relative markdown link in `docs/README.md` outside fenced blocks and inline code,
+  resolved against `docs/`, with its `#anchor` dropped, so `./a8/plan.md` and `a8/plan.md#x` count;
+- the check lists every file no link resolves to, and fails if it lists any.
+
+*To decide*: whether `tools/doc-links.mjs`, or a check beside it in the root `test` target, applies
+those rules on every run. *Wrong*, for whoever builds it: the `trace2/` row dropped from the index,
+and it lists the three `trace2/` files; and a file linked as `./a8/plan.md#…`, and it does not list
+`a8/plan.md`.
+
+**Part 2 — two CHANGELOG anchors outside the gate.** Phase 10 step 3 moved two links into
+`eval-core`'s CHANGELOG headings, `#050---2026-09-17` and `#040---2026-09-15`, from the root README
+into `modules/eval-core/README.md`. The package README links other files by absolute URL only, so
+both became absolute, and `tools/doc-links.mjs` skips a link with a scheme. One relative link to
+`#040---2026-09-15` was left, in `ROADMAP.md`'s Phase 2 section, and step 6's condensing removed it.
+Since then no relative link names either anchor, so renaming either heading breaks a link on the
+package's npm page with every gate green.
+
+*To decide*: accept that, or allow a relative link in the package README, which resolves on GitHub
+but not necessarily on npm. A third option is a check that reads the absolute links into this
+repository's own files and resolves them against the tree.
+
+**Part 3 — a new document is not checked until git knows it.** `tools/doc-links.mjs` takes its files
+from `git ls-files '*.md' '*.ts'`, which lists no untracked file. A document added in the working
+tree is therefore skipped silently, with every gate green: its links go unchecked, and the file
+count does not move. Step 6 met this with `docs/README.md` itself. Its first doc-links run reported
+346 files, the count before the index existed, and checked none of its links. After
+`git add -N docs/README.md` it reported 347 and resolved them all. An intent-to-add file is listed,
+and so checked, and nothing is staged. `.claude/skills/step/SKILL.md` now requires that mark before
+the gate, as the guard until this is fixed.
+
+*The fix*: doc-links reports an untracked `.md`, from `git ls-files --others --exclude-standard`,
+rather than skipping it, either by failing or by checking it and naming it as untracked. *Wrong*,
+for whoever builds it: a new linked `.md`, left unmarked, with one dangling link, and the gate stays
+green today, where it must not.
+
+*Recorded*: this entry. *Verified*: 2026-10-21 at b1a9863, with step 6's edits in the working tree.
+The index check lists none of the 49 tracked files; with the `trace2/` row removed it lists exactly
+those three, and with `a8/plan.md` linked as `./a8/plan.md#a8` it still lists none. `grep -n -E
+"^## \[0\.(5|4)\.0\]" modules/eval-core/CHANGELOG.md` gives `:839` and `:907`, whose slugs are the two
+anchors, and both links are at `modules/eval-core/README.md:289` and `:306`. `git show
+b1a9863:ROADMAP.md` has the relative `#040` link at `:94`; `git grep` finds no relative link to
+either anchor after step 6.

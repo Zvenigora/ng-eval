@@ -1,6 +1,30 @@
 # Phase 10 Plan — documentation restructure
 
 **Date**: October 14, 2026
+**Revision**: 7 — step 6, in its own commit. Corrected in place:
+- § 1.1's `docs/` figures. `docs/` held 49 tracked files when step 6 began, not 48: `docs/a35/plan.md`
+  arrived with the A35 plan during the pause. So it holds 50 with `docs/README.md`, and 51 with the
+  retrospect;
+- § 3.7's completed tracks gain `a35/`. Without that row, criterion 1 could not be met;
+- finding 13's measurements, dated as the plan commit's, beside step 6's: the check at `:244`,
+  `CLAUDE.md:322`, three links to `#f19`, and its index row at `:345`;
+- the Retires line's link to F19, re-pointed to `backlog-retired.md` as F19 retired.
+
+The confirmation gate answered § 8 q1 and fixed four more things:
+- **q1**: step 7 exists. It is the release commit for `eval-core` 0.13.1, `eval-signals` 0.6.1 and
+  `eval-forms` 0.6.1, docs-only patches. Step 8 is the post-publish record, the phase's retrospect
+  and its close. The two mirror the A35 plan's steps 10 and 11. Step 6 therefore writes no summary,
+  and Phase 10 stays active. Step 7's scope is what M9 measured in the published tarballs' READMEs;
+- **the step widens** to two `eval-forms` `readme-examples.spec.ts` files, comment lines only. Five
+  of finding 12's live lines described `ROADMAP.md` passages that ef5ac2b had moved to the register
+  on 2026-09-07, so they were false before the condensing. Criterion 6's remedy, re-pointing, needed
+  those files. `.claude/skills/step/SKILL.md`'s "no file under `modules/`" is a default for planned
+  scope, not a bar on a deliberate widening at a gate (§ 2);
+- **§ 6.1 applied to the new text**: `docs/README.md` links each document without counting them, and
+  `ROADMAP.md`'s shipped column names the packages and links the register's Publication status
+  table, which `tools/release-tags.mjs` checks, rather than restating versions;
+- **§ 8 q4 is [F25](../backlog.md#f25)**, queued after the phase with F21 and F24.
+
 **Revision**: 6 — step 5, in its own commit. Corrected in place:
 - step 5's `readme-examples.spec.ts` citations, `:25-35` and `:108-109`, which step 3's docblock edits
   had moved to `:31-40` and `:127-128`;
@@ -132,9 +156,9 @@ and one sentence in step 5),
 `modules/eval-signals/README.md` and `modules/eval-forms/README.md` (step 4), and each package's
 `CHANGELOG.md` with them. Specs touched: comment lines in all three projects; test cases in `eval-core`
 (steps 2, 3, 4 and 5) and in `eval-signals` and `eval-forms` (step 4).
-**Also touches**: no library code. No exported symbol, no `.d.ts` and no version changes, unless § 8
-q1 adds a release step.
-**Retires**: [BL-F19](../backlog.md#f19), in step 6; [BL-F22](../backlog-retired.md#f22), opened by step 3's
+**Also touches**: no library code. No exported symbol and no `.d.ts` changes. No version changes in
+steps 1–6; step 7 bumps the three versions as docs-only patches (§ 8 q1, answered in Revision 7).
+**Retires**: [BL-F19](../backlog-retired.md#f19), in step 6; [BL-F22](../backlog-retired.md#f22), opened by step 3's
 review, in step 5; [BL-F23](../backlog-retired.md#f23), opened by step 4's sweeps, in step 5 if its
 `eval-core` README line has been fixed by then, and otherwise narrowed there to that line.
 **Source**: the request of 2026-10-14, which fixed decisions D1–D6 and proposed the step shape that § 4
@@ -171,7 +195,7 @@ Measured at 6c5488c, the commit before this plan.
 | `ROADMAP.md` | 508 | One section per phase, a "Suggested order" and a "Deferred work" pointer. 63 checked links | Gains a Phase 10 entry with this plan; condensed (step 6) |
 | `CONTRIBUTING.md` | 200 | Setup, code style, the release procedure | Gains the pointer to `docs/README.md` (step 6) |
 | `CHANGELOG.md` | 80 | Lists the three package changelogs, and holds workspace changes that ship in no package | One line per step that ships in no package |
-| `docs/` | — | 55 tracked files (54 `.md` and one `.txt`): design records, the register, two worked examples, and eight of D3's ten files | 48 after step 1 (counting this plan), 49 with `docs/README.md`, 50 with the retrospect |
+| `docs/` | — | 55 tracked files (54 `.md` and one `.txt`): design records, the register, two worked examples, and eight of D3's ten files | 48 after step 1 (counting this plan), 49 with `docs/README.md`, 50 with the retrospect. *Corrected in step 6* (Revision 7): 49 when step 6 began, since the A35 plan added `docs/a35/plan.md`; 50 with `docs/README.md`, 51 with the retrospect |
 
 The suites that read these documents:
 
@@ -275,6 +299,10 @@ citations.
     `member-expression.ts:211`, and `CLAUDE.md:314` cites `:188`. The entry's recorded fix is to cite the
     symbol, not the new line, "so the citation does not move again with the next edit above it". One
     link points at `#f19`: its index row, `docs/backlog.md:260`.
+    *Measured again in step 6* (Revision 7), at b1a9863: the check is at `:244`, having moved again while
+    F19 was open; `CLAUDE.md:322` still cites `:188`; and three links point at `#f19`, the index row
+    (now `docs/backlog.md:345`), "Work in flight" and this document's Retires line, as criterion 5
+    says. The figures above are the plan commit's.
 14. **Step 5's test count, measured: −5** (M8). Four root-README cases leave `public-api.spec.ts`, and
     one leaves `export-list.spec.ts`, which runs twice. The D5 case is added to `public-api.spec.ts`,
     which nothing imports, so it runs once. § 4, step 5 lists each case.
@@ -295,6 +323,7 @@ them is committed.
 | M6 | Citations and mentions | `git grep` for each D3 name, for `README.md:<n>`, for `ROADMAP.md#`, for `SECURITY.md#` and for "the README's" | § 3.3 and findings 5, 10 and 12 |
 | M7 | Claims checked against code and manifests | `git grep` over `modules/**/*.ts` for each named symbol; the four `package.json`s; `call-expression.ts`, `prototype-pollution-guard.ts` and `eval-options.ts` read | Findings 7–9; § 3.3; § 3.10 |
 | M8 | Step 5's count | Step 5's edits to `public-api.spec.ts` and `export-list.spec.ts` applied, then `nx test eval-core --skip-nx-cache`: once against the current root README, then once against a root README with no `javascript` block; then the per-file counts | 2448 → 2443. Against the current root README, 1 failure, the D5 case alone. Against the stub, all green: `public-api.spec.ts` 22, `export-list.spec.ts` 19 |
+| M9 | What the npm pages say (*added at step 6's gate*, Revision 7) | `npm pack` of `eval-core` 0.13.0, `eval-signals` 0.6.0 and `eval-forms` 0.6.0 into an empty scratch directory outside the repository, extracted, and each `package/README.md` read and grepped | Step 7's "What the release fixes" |
 
 ---
 
@@ -303,6 +332,8 @@ them is committed.
 ### In scope
 
 - D1–D7 (§ 3.1), as steps 1–6.
+- The docs-only patch releases of the three packages, and their post-publish record, as steps 7 and
+  8 (§ 8 q1, answered in Revision 7).
 - The two facts the D3 audit keeps (§ 3.3), at the destinations it names.
 - The stale line citations of finding 5, in the step that edits each README they cite, or removes the
   case that carries one.
@@ -317,10 +348,18 @@ them is committed.
 - **Moving or renaming anything under `docs/`.** D2 decides this, and § 3.2 records why.
 - **Restructuring `eval-forms`' README** beyond its opening. § 8 q2.
 - **Guide files** (D6).
-- **Releases.** § 8 q1. Step 7 is held on it.
+- **Releases**, other than step 7's three docs-only patches. § 8 q1, answered at step 6's gate
+  (Revision 7).
 - **A gate on `docs/README.md`'s completeness.** § 8 q4. Step 6 runs the check once and reports it.
+  The decision is [F25](../backlog.md#f25), queued after the phase.
 - **Library code.** A change to any non-spec `.ts` file other than in a comment line is a
   stop-and-replan. That includes exporting anything new from an internal module for a spec to read.
+
+**A file under `modules/` outside a step's planned list** is a stop-and-replan by default, and
+`.claude/skills/step/SKILL.md` says so for steps 1 and 6. That default bounds planned scope. It does
+not bar a deliberate widening at a step's confirmation gate, recorded there with its reason, within
+the limits above: comment lines or specs, and no library code. Step 6's two `eval-forms` comment
+files are the instance (Revision 7).
 
 ---
 
@@ -496,7 +535,9 @@ any other way it is not checked at all. `eval-forms`' `## Versions` says that `e
 **Headings that must not change**, because a count case finds its blocks by them:
 ``## Quick start — Reactive Forms (`/reactive`)``, ``## Signal Forms — `/signals` `` and
 `Expressions are validated too`. The published anchors into these READMEs that other files use stay
-as well: `eval-signals`' `#async-expressions` (`eval-forms` README `:848`, `ROADMAP.md:267`), and
+as well: `eval-signals`' `#async-expressions` (`eval-forms` README `:848`, `ROADMAP.md:267`; *corrected
+in step 6*: the condensing removed the ROADMAP link, and the anchor stays gated by the same README's
+own `:547`), and
 `eval-forms`' `#caseinsensitive-per-registration` (`docs/forms/worked-example-signals.md:240`) and
 `#two-things-that-are-not-available-here` (`docs/backlog-retired.md:3675`). *Corrected in step 4*
 (Revision 5): `:848` as published in 0.6.0, and `:3675` at 938111c; they were `:844` and `:3182`.
@@ -528,7 +569,8 @@ checks it.
    3's § 9 as the downstream contract and § 3.2.2 as the construct-once finding).
 5. **Completed tracks** that were not phases: `a8/` (plan, step 2 plan, step 2 decision), `a20/`,
    `a21/`, `gates/` (plan, four step summaries, retrospect), `trace-surface/`, and `trace2/` (A12's
-   trace bound and reset, as step records without a plan).
+   trace bound and reset, as step records without a plan). *Corrected in step 6* (Revision 7): and
+   `a35/`, the A35 plan, which completed during the pause.
 6. **Gates**: the gate command, and what each gate checks: `tools/doc-links.mjs`,
    `tools/release-tags.mjs`, the four `readme-examples.spec.ts`, the export-list and public-api specs
    (F3, F10, F11, F13, and this phase's `SECURITY.md`, peer-range and D5 cases), and
@@ -539,6 +581,8 @@ checks it.
    them; `git show <commit>:<file>` reads that code.
 
 It links every tracked file under `docs/` except itself. Step 6 checks that once (§ 8 q4).
+*Fixed at step 6's gate* (Revision 7), by § 6.1: the index links without counting, so it states none
+of the counts this list uses to describe it.
 
 **`ROADMAP.md`, condensed:**
 
@@ -549,6 +593,9 @@ It links every tracked file under `docs/` except itself. Step 6 checks that once
   `signals/step-4-summary.md`, Phase 4 `forms/step-6-summary.md`, Phase 6
   `forms/phase-6-step-7-summary.md`). Rows run in the order the phases ran: 1, 3, 4, 6, 2, 5, 9, 10.
   Phase 10's row replaces the entry this plan's commit added.
+  *Fixed at step 6's gate* (Revision 7), by § 6.1: "what shipped" names the packages, and the
+  table links the register's Publication status table for the versions. Its tags are checked by
+  `tools/release-tags.mjs`, and a version restated here would be checked by nothing.
 - `### Phase 7 and Phase 8 — reserved, not yet specified` and `## Deferred work` stay as they are.
 - "Suggested order" is dropped: every item in it is done, and the table's order replaces it. Its
   closing paragraph on the error-identity group is history recorded in A4–A7 and C3.
@@ -579,10 +626,13 @@ It links every tracked file under `docs/` except itself. Step 6 checks that once
 | 4 | `eval-signals` and `eval-forms`, at their next release | Each package's `[Unreleased]` › Changed: the README opens with Install, Sibling packages and Security, and its peer ranges are quoted verbatim; expression syntax is documented in `eval-core`'s README; no code change. `eval-core`'s opening is step 3's, so its `[Unreleased]` line already covers it |
 | 5 | no package; `eval-core` for F23's line (*added at step 5's gate*) | Root `CHANGELOG.md`, Workspace › Changed: the repository README is a landing page, with no `javascript` block and no quoted peer range. And `modules/eval-core/CHANGELOG.md` `[Unreleased]` › Changed: the README no longer says an expression over an empty context cannot use JavaScript's built-ins; no code change |
 | 6 | no package | Root `CHANGELOG.md`, Workspace › Added: `docs/README.md`; › Changed: `ROADMAP.md` condensed |
+| 7 | `eval-core` 0.13.1, `eval-signals` 0.6.1, `eval-forms` 0.6.1 (*added in Revision 7*) | Each package's `[Unreleased]` moved under its new heading; `eval-core`'s F23 bullet reworded against what 0.13.0's README said (step 7) |
+| 8 | no package | None: the post-publish commit corrects a heading's date only where npm's differs |
 
 **No version changes in steps 1–6.** No `package.json` is edited, and no `.d.ts` changes. Whether the
 three README changes are released as docs-only patches is § 8 q1. If they are, the manifests show
-that no peer range needs to move. `eval-core` 0.13.1 is inside `eval-signals`' and `eval-forms`'
+that no peer range needs to move. *Answered at step 6's gate* (Revision 7): they are, at step 7,
+with no peer range moved. `eval-core` 0.13.1 is inside `eval-signals`' and `eval-forms`'
 `>=0.13.0 <0.14.0`, and `eval-signals` 0.6.1 is inside `eval-forms`' `>=0.6.0 <0.7.0`. *Corrected in
 step 3* (Revision 4): this named 0.12.1 and 0.5.2 against the ranges of 0.5.1 and 0.5.0. 0.12.1 is
 now the published A35 partial-hardening release, and the manifests moved with 0.13.0.
@@ -724,8 +774,9 @@ Running the alignment first costs nothing, because it depends only on step 3.
 | 3 | `eval-core`'s README absorbs the root's API sections | D4 | `eval-core` | **+7** / 0 / 0 | 0 files; links change only by same-file anchors |
 | 4 | One opening for the package READMEs, and their ranges gated | D1 | `eval-signals`, `eval-forms` | **+1** / **+1** / **+1** | 0 files; reported |
 | 5 | The root README becomes a landing page; F22, F23 | D1, D5 | no package; `eval-core` for F23's line | **−5**, measured (M8), or −3 if F22's count gets a case; **−3** as run, with F22's reverse case instead (Revision 6) / 0 / 0 | 0 files; the root README's links reported |
-| 6 | Maintainer index, ROADMAP condensed, F19 | D1, D6 | no package | 0 / 0 / 0 | +1 file (+2 with the retrospect); reported |
-| 7 | *Held on § 8 q1*: docs-only patch releases | — | per q1 | 0 | — |
+| 6 | Maintainer index, ROADMAP condensed, F19 | D1, D6 | no package | 0 / 0 / 0 | +1 file; reported. The retrospect moved to step 8 (Revision 7) |
+| 7 | Release commit: `eval-core` 0.13.1, `eval-signals` 0.6.1, `eval-forms` 0.6.1 (*written in Revision 7*) | § 8 q1 | all three, docs-only patches | 0 / 0 / 0 | 0 files; reported |
+| 8 | Post-publish record, the retrospect, and the phase closed (*written in Revision 7*) | § 8 q1 | no package | 0 / 0 / 0 | +1 file, the retrospect; reported |
 
 From the gate's 2448 at this plan's commit, `eval-core` ends at 2454 if every step lands as planned:
 +3, +7, +1, then −5.
@@ -733,6 +784,8 @@ From the gate's 2448 at this plan's commit, `eval-core` ends at 2454 if every st
 *Corrected in step 3* (Revision 4): the A35 plan ran between steps 2 and 3 and added its own cases, so
 the gate stood at **2596 / 438 / 375** when the phase resumed at 4f99112. The deltas are unchanged.
 Step 3 ends at 2603, step 4 at 2604 / 439 / 376, and step 5, and so the phase, at 2599.
+*Measured at step 5* (Revision 6): 2601 / 439 / 376, since F22's reverse case made step 5's delta −3.
+Steps 6, 7 and 8 move no row, so the phase ends there.
 
 ### Step 1 — Retire the stale documents
 
@@ -1294,7 +1347,8 @@ Step 3 ends at 2603, step 4 at 2604 / 439 / 376, and step 5, and so the phase, a
 ### Step 6 — The maintainer index, the condensed ROADMAP, and F19
 
 - **New**: `docs/README.md` (§ 3.7). `docs/documentation/phase-10-summary.md`, the phase's one
-  retrospect, unless § 8 q1 has added step 7, which then writes it.
+  retrospect, unless § 8 q1 has added step 7, which then writes it. *Fixed at the gate* (Revision 7):
+  q1 added steps 7 and 8, and step 8 writes it, so this step writes no summary.
 - **Edit**:
   - `CONTRIBUTING.md`: a pointer to `docs/README.md` before `## Prerequisites`.
   - `ROADMAP.md`: § 3.7.
@@ -1304,6 +1358,17 @@ Step 3 ends at 2603, step 4 at 2604 / 439 / 376, and step 5, and so the phase, a
     re-pointed; "Work in flight".
   - `CHANGELOG.md` (root): § 3.9's lines.
   - This document: the outcome, including any links to `#f19` that the gate lists once F19 has moved.
+- **Added at the gate** (Revision 7):
+  - `modules/eval-forms/reactive/src/lib/readme-examples.spec.ts` (`:41`, `:48`, `:109`) and
+    `modules/eval-forms/signals/src/lib/readme-examples.spec.ts` (`:56`, `:61`), comment lines only,
+    re-pointed to F3 in `docs/backlog-retired.md`. *Why*: they are five of finding 12's 15 live lines,
+    and they quote three `ROADMAP.md` passages, "review practice rather than a gate", the "deferred
+    documented-symbol drift gate" and the rejection of transcribed snippets. ef5ac2b moved all three
+    to the register on 2026-09-07, and the drift gate is F3, built and retired. So the five were false
+    before this step, criterion 6 offers re-pointing as the remedy, and § 6.1 fixes a false claim in the
+    open step. Specs ship in no tarball, so the category is unchanged (§ 2's note on planned scope).
+  - `docs/backlog.md`: [F25](../backlog.md#f25), from § 8 q4, with its index row.
+  - This document: § 8 q1 answered, and steps 7 and 8 written.
 - **Exit criteria**:
   1. **The index is complete.** A one-off check lists every tracked file under `docs/` that
      `docs/README.md` does not link, apart from itself, and the list is empty. *Wrong*: drop the
@@ -1323,20 +1388,226 @@ Step 3 ends at 2603, step 4 at 2604 / 439 / 376, and step 5, and so the phase, a
      condensed file, or the step re-points it and the report says so.
   - Tests unchanged in all three projects. The gate is green. `git diff --name-only` lists the files
     above and this document.
-- **Category**: documents. Ships in no package.
+- **Category**: documents. Ships in no package. *At the gate* (Revision 7): and comment lines in two
+  `eval-forms` specs, which ship in no package either.
+- **Probes fixed at the gate**, by § 6.1, one per new check, each reverted:
+  - **P1a**: the `trace2/` row dropped from `docs/README.md`, and criterion 1's check lists its three
+    files;
+  - **P1b**, the other direction: `a8/plan.md` linked as `./a8/plan.md#a8`, and the check still lists
+    nothing, so it does not over-report a link written another way;
+  - **P2**: the `CONTRIBUTING.md` pointer moved below `## Prerequisites`, and criterion 2's line-order
+    check reports it;
+  - **P3a**: one retrospect path in `ROADMAP.md`'s table misspelled, and doc-links lists that line;
+  - **P3b**: one word edited in the Phase 7 and Phase 8 section or in "Deferred work", and the one-off
+    diff of those sections against b1a9863 is not empty;
+  - **P4**: `CLAUDE.md` citing `:244`, the current line and so the realistic wrong fix, and also
+    `:211`; the grep lists each;
+  - **P5**: F19 moved before any link is re-pointed, and doc-links lists exactly the three links.
+- **Outcome** — done 2026-10-21, under Revision 7. The gate is green at 2601 / 439 / 376, unchanged
+  from step 5. release-tags: 38 rows, 48 tags, 0 failing. Every probe below was run and reverted.
+  - **Criterion 1**: the check lists none of the 49 tracked files besides the index.
+    - **P1a**: it lists exactly `trace2/step-1.md`, `step-2.md` and `step-3.md`.
+    - **P1b**: it lists nothing.
+    
+    The check's rules are in [F25](../backlog.md#f25).
+  - **Criterion 2**: `CONTRIBUTING.md` links `docs/README.md` at `:3`, and its first `##` is at `:7`.
+    - **P2**: the link at `:5` and the first `##` at `:3`, and the check fails.
+    - `docs/README.md`'s "Consumer documents kept here" marks the two worked examples.
+  - **Criterion 3**: the table has one row per completed phase, seven, plus Phase 10's in flight.
+    Every plan and retrospect link is resolved by the gate.
+    - **P3a**: `statements/summary.md` misspelled, and doc-links lists `ROADMAP.md:62` alone.
+    - The header with "Modules vs. new repositories", the Phase 7 and Phase 8 section and "Deferred
+      work" are unchanged against b1a9863: 46, 16 and 14 lines.
+    - **P3b**: one word in "Deferred work", and the check reports that section changed.
 
-### Step 7 — *held on § 8 q1*: docs-only patch releases
+    Facts that were only in a removed section, and where each went:
+    - Phase 9's ordering, "numbered after the two reserved phases, and run ahead of them: it was
+      the one with a consumer waiting": the paragraph under the table.
+    - The last relative link to `eval-core`'s `#040---2026-09-15`, in the Phase 2 section, and
+      `#async-expressions`' link at `ROADMAP.md:267`. The first is recorded in F25's Part 2; the
+      second anchor stays gated by `eval-signals`' README `:547` (§ 3.5).
+    - Each phase's original framing: superseded proposals that its plan answered. They are in the
+      file at b1a9863, which the paragraph names.
 
-Not planned until q1 is answered. If it is answered yes, this section is written then: the packages,
-their bumps, their CHANGELOG headings, the `.d.ts` comparison against the published tarballs, and the
-post-publish Publication status rows, following CONTRIBUTING's Releasing procedure.
+    Every other removed claim was found in its plan, its summary, a package README or the
+    register. That covers the Phase 1 contract and its hooks' synchronous dispatch, Phase 2's
+    completion record and its exclusions, Phase 3's tracking finding, Phase 4's three narrowings,
+    Phase 5's shape and `await` correction, Phase 6's narrowings and its Angular 22 floor, the gates
+    track's place ahead of Phase 2 (`gates/plan.md:7`), and the error-identity group.
+
+    *From the review*: the Publication status table starts at Phase 2's releases, so the versions of
+    Phases 1, 3, 4 and 6 are not in it. `ROADMAP.md`, `docs/README.md` and the root CHANGELOG now say
+    so, and point to each package CHANGELOG's "Phase N of the roadmap" entry.
+  - **Criterion 4**: `git grep -n "member-expression.ts:[0-9]" CLAUDE.md` lists nothing.
+    - **P4**: with `:244` cited it lists `CLAUDE.md:323`, and with `:211` the same line.
+  - **Criterion 5**: F19's entry is in `backlog-retired.md` between F18 and F22, and its index row
+    points there.
+    - **P5**: with F19 moved and nothing re-pointed, doc-links lists exactly three:
+      `docs/backlog.md:125` ("Work in flight"), `:352` (the index row) and this document's `:137`
+      (the Retires line, before Revision 7's header moved it).
+    - All three are re-pointed, and the gate is green.
+  - **Criterion 6**, the 15 lines, re-read against the condensed file:
+    - `CLAUDE.md`'s two are true. They say what `ROADMAP.md` has left, Phases 7 and 8, and that
+      deferred work is not in it.
+    - `docs/backlog.md`'s eight: six are history or still true. The two in E1 are also kept, but the
+      sentences after them said no one had reserved Phase 7, which has been false since `ROADMAP.md`
+      reserved it. Those sentences are corrected (the review's W5).
+    - The five in `eval-forms`' specs were false before the step, and are re-pointed to F3 by the
+      gate's widening.
+  - **doc-links**: 347 files, one more, and 1622 links, 51 more than 1571, with 0 dangling and 22 in
+    `.ts` comments. `.claude/skills/step/SKILL.md` adds one, its link to F25 Part 3; the rest:
+    - `docs/README.md` +69;
+    - `ROADMAP.md` −35: the phase sections' links out, the table's and the package CHANGELOGs' in;
+    - `CONTRIBUTING.md` +1;
+    - `docs/backlog.md` +6: F25's index row, its entry's four links, and two in "Work in flight",
+      less the one in F19's moved entry;
+    - `backlog-retired.md` +2: F19's entry;
+    - this document +7, all to F25: in Revision 7, § 2, step 6's additions, this outcome, step 8,
+      § 8 q4 and § 9. The Retires line's link to F19 was re-pointed and changes no count.
+  - **M9**, reproduced by the review in its own scratch directory: 393 / 605 / 868 lines, and 2 / 1 / 1
+    "repository README" lines.
+  - **The review** found no Critical and five warnings, each fixed in the step:
+    - **W1**: the Publication status table's coverage, above;
+    - **W2**: this outcome, which was missing, and `SKILL.md`'s place outside the list, below;
+    - **W3**: three stale lines in `.claude/skills/step/SKILL.md`. "Steps 1–4 are done"; the
+      `modules/` rule, which would have stopped step 8's CHANGELOG dates; and a "two categories" list
+      with no place for the release;
+    - **W4**: step 8 now records the release in F23's index row and status line;
+    - **W5**: E1, above.
+
+    Its notes were taken as well:
+    - F25's Part 2 now says the last relative `#040` link went with this step;
+    - § 3.5 and § 8 q2's `ROADMAP.md:267` are marked removed;
+    - ef5ac2b is dated 2026-09-07, as git and the register have it;
+    - "Suggested order" was done *or reserved*;
+    - § 2 and § 3.9 no longer read q1 as open;
+    - step 7 says what it leaves stale for step 8;
+    - step 8 recounts the tag sentence from `git tag -l` (it counts 45 where release-tags reports
+      48, missing the three tags of 2026-08-22), names F25's rules, and says what "Active plan"
+      reads;
+    - `docs/README.md` gives § 3.8's permalink rule.
+
+    One note was not taken: citing F4 alone in `reactive/…/readme-examples.spec.ts`' first comment,
+    since the gate fixed the re-pointing to F3. The comment names both: the practice F3 left in
+    place, which F4 records.
+  - **Outside the file list**: `.claude/skills/step/SKILL.md`, marking step 6 done, writing steps 7
+    and 8 into its outline, and W3's corrections. Steps 3–5 edited it outside their lists the same
+    way, and the commit body names it. `docs/README.md` was marked intent-to-add (`git add -N`),
+    since doc-links reads `git ls-files`, and an untracked index would have gone unchecked.
+  - *Added before the commit*, at the maintainer's instruction: `SKILL.md` requires that mark on a
+    new document before the gate, and F25 gains it as Part 3, that doc-links should report an
+    untracked `.md` rather than skip it.
+
+### Step 7 — Release commit: `eval-core` 0.13.1, `eval-signals` 0.6.1, `eval-forms` 0.6.1
+
+*Written by Revision 7, at step 6's gate, which answered § 8 q1. It mirrors the A35 plan's step 10,
+less the peer-range changes this release does not have.*
+- **What the release fixes, measured (M9).** The npm pages show the READMEs of `eval-core` 0.13.0,
+  `eval-signals` 0.6.0 and `eval-forms` 0.6.0. Each was extracted from its tarball and read:
+  - `eval-core` 0.13.0, 393 lines. `:9` says the full documentation "is in the
+    [repository README](https://github.com/zvenigora/ng-eval#readme)", and `:15` that the repository
+    README "walks through each of these in full". Both have been false since step 5: the link lands
+    on the landing page, which documents no API. **It does not carry F23's overclaim.** That sentence
+    came into the package README with step 3's move, from the root README, so no `eval-core` tarball
+    has printed it. 0.13.0 has no `## Install` and no peer sentence.
+  - `eval-signals` 0.6.0, 605 lines. `:9-11` say "Expression syntax, security, and the evaluator's own
+    options are documented in the repository README", linking the same `#readme`. That has been false
+    since step 5. `:20` abbreviates `@angular/core >=19.0.0` to `>=19` (finding 9).
+  - `eval-forms` 0.6.0, 868 lines. `:14-16` carry the same sentence and link. `:36` calls `eval-core`
+    "a sandboxed evaluator with no `eval`, safe under a strict CSP", which is F23's class. Step 4 fixed
+    it in the repository.
+
+  The repository's three READMEs carry none of these, so the release ships them as they stand. No
+  README is edited in this step.
+- **Why one commit.** It is not forced, as the A35 plan's was. `@nx/dependency-checks` resolves each
+  declared range against the workspace's own version. `eval-core` 0.13.1 is inside both downstream
+  manifests' `>=0.13.0 <0.14.0`, and `eval-signals` 0.6.1 is inside `eval-forms`' `>=0.6.0 <0.7.0`.
+  It is one commit because the three are one docs-only release from one tree, so each Publication
+  status row names one commit, as Phase 9's and the A35 plan's releases do.
+- **No peer range moves.** Nothing in these releases needs 0.13.1 or 0.6.1, so no floor rises. Each
+  README's peer sentence, and the case that checks it (step 4), stay as they are.
+- **`eval-core` 0.13.1.** Bump `modules/eval-core/package.json`, and move `[Unreleased]` under
+  `## [0.13.1] - <date>`. The F23 bullet is reworded. M9 shows that 0.13.0's README never said an
+  expression over an empty context cannot use the built-ins, so "the README no longer says" describes
+  a change no reader of the published package saw. The entry says instead that the evaluation section
+  brought in from the repository README states the built-ins precisely, citing F23.
+- **`eval-signals` 0.6.1** and **`eval-forms` 0.6.1.** Bump each `package.json`, and move
+  `[Unreleased]` under the new heading. Their bullets already describe the change against 0.6.0's
+  READMEs, as M9 measured.
+- **Edit**: the three `modules/<name>/package.json` and the three `modules/<name>/CHANGELOG.md`;
+  `docs/backlog.md`, "Work in flight"; this document, the outcome. `.claude/skills/step/SKILL.md`
+  marks the step done, as steps 3–6 did. `CLAUDE.md`'s "at its step 7" and `docs/README.md`'s
+  "Steps 1–6 are done" are left for step 8, which closes the phase in both, as the A35 plan's step
+  10 left its own for step 11.
+- **Exit criteria**:
+  1. The gate is green on the release commit, with **counts unchanged from step 6, exactly:
+     2601 / 439 / 376**. Any movement is a stop condition, since no file this step edits is compiled
+     or tested.
+  2. **All five built `.d.ts` files are byte-identical to the published tarballs' of 0.13.0, 0.6.0
+     and 0.6.0, by SHA-256.** `package.json` is reported separately, and only its `version` differs
+     from the published manifest. A mismatch anywhere is a stop-and-report. *Wrong* (P7a): the same
+     comparison against `eval-core` 0.11.1's tarball, whose `.d.ts` lacks 0.12.0's two additions,
+     reports a mismatch. (0.12.0 and 0.12.1 are not probes: the register records 0.12.1's and
+     0.13.0's `.d.ts` as byte-identical to the version before.)
+  3. **Each built README is the repository's, and none carries what M9 found.** `cmp` of
+     `dist/modules/<name>/README.md` against `modules/<name>/README.md` is silent for all three.
+     `grep -c "repository README"` gives 0 in each built README. The built `eval-signals` README has
+     no `` `@angular/core >=19` `` span, and the built `eval-forms` README no "sandboxed evaluator".
+     *Wrong* (P7b): the same three greps over the published tarballs' READMEs give 2, 1 and 1 for
+     "repository README", and find the span and the sentence, as M9 measured.
+  4. Each CHANGELOG's `[Unreleased]` is moved under its new version, with an empty `[Unreleased]`
+     kept above it and `eval-core`'s F23 bullet reworded as above.
+  5. Then CONTRIBUTING's Releasing steps 3–5, by the maintainer: publish in the order `eval-core` →
+     `eval-signals` → `eval-forms`, confirm each with `npm view`, and tag `eval-core@0.13.1`,
+     `eval-signals@0.6.1` and `eval-forms@0.6.1` at this commit. The tags are **annotated**, with
+     `git tag -a` as step 5 writes it: the A35 plan's step 11 found its tags pushed lightweight first.
+  - Tests 0 / 0 / 0. doc-links: files unchanged, links reported.
+- **Category**: the release, three docs-only patches. No `.d.ts` changes and no peer range moves.
+
+### Step 8 — Post-publish record, the retrospect, and the phase closed
+
+*Written by Revision 7. It mirrors the A35 plan's step 11, and closes the phase.*
+- **After the maintainer publishes and tags** all three (CONTRIBUTING's Releasing step 6):
+  - **New**: `docs/documentation/phase-10-summary.md`, the phase's one retrospect.
+  - `docs/backlog.md`: three Publication status rows; the tag sentence, recounted from `git tag -l`
+    rather than raised by three, since it counts 45 where `tools/release-tags.mjs` reports 48 at
+    b1a9863; one Register history row counted as that section describes; and "Work in flight";
+  - `docs/backlog.md` and `docs/backlog-retired.md`: the release in F23's index row and status line,
+    `eval-core` 0.13.1, since its README line is the one register fix that ships in it, as the A35
+    plan's step 11 recorded its releases;
+  - `CLAUDE.md`: the three published versions; Phase 10 complete, with this plan in the list of
+    completed plans and what it is the reference for; the active-plan sentences;
+  - `.claude/skills/step/SKILL.md`: retargeted, since no plan is then active;
+  - `ROADMAP.md`: Phase 10's row is no longer in flight, and links its retrospect;
+  - `docs/README.md`: this plan moves from "Active plan" to the completed phases, with its summary,
+    and "Active plan" says that none is active and that the next one is listed there when written;
+  - each `CHANGELOG.md`: the heading's date, only where npm's differs;
+  - this document: the outcome.
+- **Exit criteria**:
+  1. The gate is green, with counts unchanged at 2601 / 439 / 376. `tools/release-tags.mjs` is green:
+     every Publication status row's tag exists at the commit it names, and the three new rows name
+     step 7's. *Wrong* (P8a): a new row naming another commit, and release-tags fails on that row.
+  2. **The tags are annotated.** `git cat-file -t` gives `tag` for each of the three. *Wrong* (P8b): a
+     lightweight scratch tag gives `commit`, and is deleted.
+  3. **The npm pages are fixed.** M9 run again on the three new versions: `grep -c "repository
+     README"` gives 0 in each extracted README. *Wrong* (P8c): M9's own counts for 0.13.0, 0.6.0 and
+     0.6.0, which are 2, 1 and 1.
+  4. **The index is still complete.** A check applying [F25](../backlog.md#f25)'s rules, the ones step
+     6's one-off check applied, lists nothing, with the summary linked. *Wrong*: the summary left
+     unlinked, and the check lists it.
+  5. **The phase is closed wherever it is named.** `CLAUDE.md`, `ROADMAP.md`, `docs/README.md`, "Work in
+     flight" and `.claude/skills/step/SKILL.md` each call Phase 10 complete. The report quotes the line
+     in each.
+  - Tests 0 / 0 / 0. doc-links: +1 file, the summary; links reported.
+- **Category**: the release's docs-only post-publish commit. Ships in no package.
 
 ---
 
 ## 5. Public API surface
 
 None. No exported symbol, no `.d.ts` and no `package.json` changes in steps 1–6. A diff that touches a
-non-spec `.ts` file is out of scope (§ 2).
+non-spec `.ts` file is out of scope (§ 2). Step 7 changes three manifests' `version` and nothing else
+in them, and its criterion 2 holds every `.d.ts` byte-identical to the published one (Revision 7).
 
 ---
 
@@ -1347,6 +1618,8 @@ non-spec `.ts` file is out of scope (§ 2).
 | Everything | `npx nx run-many -t lint test build --skip-nx-cache --output-style=static` | Green, every step |
 | `eval-core` tests | (in the above) | Baseline, then +3 at step 2, +7 at step 3, +1 at step 4 and −5 at step 5 (−3 as run, Revision 6); no other change. The baseline was 2448 at this plan's commit, and 2596 when the phase resumed at 4f99112 (Revision 4): 2596 → 2603 at step 3 |
 | `eval-signals` / `eval-forms` tests | (in the above) | +1 each at step 4; unchanged in every other step |
+| Steps 6–8 | (in the above) | 2601 / 439 / 376 in every one, exactly (Revision 7) |
+| The release (step 7) | SHA-256 of each built `.d.ts` against the published tarball's | Byte-identical, all five |
 | Docs | the root `test` target (`tools/doc-links.mjs`, `tools/release-tags.mjs`) | Green. doc-links' file and link counts move as § 4's table says |
 | Scope | `git diff --name-status` | Exactly the step's file list. No `R`. A `D` only in step 1, and only for D3's ten |
 | No library change | the diff's `.ts` files | Spec files, or comment lines only |
@@ -1422,7 +1695,7 @@ non-spec `.ts` file is out of scope (§ 2).
 | The rewrite loses the anchor the published `eval-core` README links | Medium | Step 2, criterion 3; step 5, criterion 3 keeps it gated |
 | A quoted peer range drifts from its manifest | **High** over time (finding 9) | Step 4's cases, from step 4 on; the landing page quotes none |
 | The `SECURITY.md` case's allowlist grows to excuse anything | Low | Its stale-entry case; a reason from a fixed set per entry |
-| npm pages lag the repository | **Certain** until q1 is answered | § 8 q1 |
+| npm pages lag the repository | **Certain** until step 7's releases are published; since step 5 they send readers to a page that no longer documents the API (M9) | Step 7, criterion 3; step 8, criterion 3 |
 | `docs/README.md` stops listing a new document | Medium after Phase 10 | Step 6, criterion 1, once; § 8 q4 |
 
 ---
@@ -1444,12 +1717,16 @@ Each question is stated here and decided elsewhere.
    than the npm page promises, and the page describes documentation its target no longer holds. *To
    decide*: which packages are released, when (after step 6, or after step 4 for the two downstream
    packages), and whether step 7 exists.
+   **Answered at step 6's gate** (Revision 7): all three, after step 6, as `eval-core` 0.13.1,
+   `eval-signals` 0.6.1 and `eval-forms` 0.6.1. Step 7 is the release commit, and step 8 the
+   post-publish record and the phase's close. M9 measured what the published READMEs say, and step
+   7's scope is fixed by it.
 2. **`eval-forms`' README, at 864 lines.** Splitting it into files per entry point, or reordering it,
    is out of this phase: D6 rules out guide files, and step 4 changes only its opening. *Constraints*,
    whatever the answer: the two adapters' count cases find their blocks by three headings (§ 3.5); its
    anchors are linked from `docs/forms/worked-example-signals.md:240`, `docs/backlog-retired.md:3675`
    (`:3182` at this plan's commit, *corrected in step 4*) and `ROADMAP.md:267` (the last through
-   `eval-signals`); two of its absolute links point at the worked
+   `eval-signals`; removed by step 6's condensing); two of its absolute links point at the worked
    examples under `docs/` (§ 3.2); and step 4's peer-range case reads its `## Install` and its
    `## Versions` block.
 3. **Do the published absolute links bind those files' paths, and their anchors, permanently?** Every
@@ -1484,6 +1761,10 @@ Each question is stated here and decided elsewhere.
      accept that, or allow relative links in the package README, which resolve on GitHub but not
      necessarily on npm.
 
+   **Moved to the register at step 6's gate** (Revision 7): both parts are
+   [F25](../backlog.md#f25), queued after the phase with F21 and F24. It records step 6's check, its
+   rules and its probes, for whoever builds the gate.
+
 ---
 
 ## 9. Downstream contract
@@ -1504,4 +1785,5 @@ What a reader can rely on once this plan has landed:
 6. **Design records read as written.** Their plain text is untouched. The one link that had to change
    is a permalink to the commit it described.
 7. **Not provided**: guide files; a restructured `eval-forms` README (§ 8 q2); a gate on the index
-   (§ 8 q4); releases (§ 8 q1).
+   (§ 8 q4, now [F25](../backlog.md#f25)). Releases are provided by step 7, as docs-only patches
+   (§ 8 q1, Revision 7).

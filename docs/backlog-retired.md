@@ -5589,6 +5589,39 @@ The Phase 5 plan's own five citations were remapped by that step (its Revision 3
 `git grep -n "eval-signal\.ts:[0-9]"` over `modules/eval-forms` and `docs/`, the Phase 5 plan
 excluded. Not checked citation by citation.
 
+<a id="f19"></a>
+## F19 — `CLAUDE.md` cites the resolved-key re-check by a line that moved — **Retired, fixed**
+
+**Package** repo · **Kind** docs · **Status** **Retired — fixed 2026-10-21** by Phase 10 step 6.
+Was Open — opened 2026-10-10 by the Phase 9 plan
+
+*Fixed* 2026-10-21, by the entry's own recorded fix: `CLAUDE.md`'s "Security-relevant code" now
+names "the *resolved-key* re-check, `isDangerousProperty(foundKey)` in `member-expression.ts`", with
+no line. The check had moved again while the entry was open, from `:211` to `:244`, so a corrected
+line number would already have been the second wrong one. `git grep -n "member-expression.ts:[0-9]"
+CLAUDE.md` lists nothing; with `:244` cited, it lists that line. The
+[Phase 10 plan](documentation/phase-10-plan.md)'s step 6 gives the probes.
+
+The entry as it stood:
+
+> `CLAUDE.md`'s "Security-relevant code" names "the *resolved-key* re-check at `member-expression.ts:188`
+> — `isDangerousProperty(foundKey)`". The line was right when b684317 wrote it, 2026-08-22; the check is
+> now at `:211`, and `:188` is inside the lookup block above it. A reader sent to the security check by
+> the file that tells them to read it first lands on the wrong line.
+>
+> **Fix**: cite the symbol rather than the line — `isDangerousProperty(foundKey)` in
+> `member-expression.ts` — as [F18](#f18) did for `eval-signal.ts`, so the citation
+> does not move again with the next edit above it.
+>
+> **Why not the Phase 9 plan's commit**, which edits `CLAUDE.md`: it was outside that plan's scope, and the
+> request that commissioned it sent such findings here.
+
+*Recorded*: Phase 9 plan, 2026-10-10.
+*Verified*: read 2026-10-10 at af81e24 — `grep -n "isDangerousProperty(foundKey)"` gave
+`member-expression.ts:211`; `git log -S` gives b684317 as the commit that wrote `:188`. Fixed and
+read again 2026-10-21 at b1a9863: the same grep gives `member-expression.ts:244`, and `CLAUDE.md`
+cites the symbol.
+
 <a id="f22"></a>
 ## F22 — The F10 allowlist and docblock count in `eval-core`, ungated — **Retired, fixed**
 

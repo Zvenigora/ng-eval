@@ -53,13 +53,13 @@ const WORKED_EXAMPLE_TS_BLOCKS = 10;
  * two sections and in the worked example, in the last cases below
  * (`docs/backlog.md` F13) - nothing
  * connects these cases to the blocks they transcribe except a human keeping
- * them in step, so it is strictly narrower than `ROADMAP.md`'s deferred
- * documented-symbol drift gate. It gates *whether what the README says runs*,
- * not *what it says*.
+ * them in step, so it is strictly narrower than the documented-symbol drift
+ * gate (`docs/backlog-retired.md` F3). It gates *whether what the README says
+ * runs*, not *what it says*.
  *
  * **What this file supplies that the document does not print**, listed in full
- * because `ROADMAP.md`'s rejection of transcribed snippets turns on exactly
- * this - "anyone turning those fragments into a runnable test declares the
+ * because F3's rejection of transcribed snippets turns on exactly this -
+ * "anyone turning those fragments into a runnable test declares the
  * missing bindings without noticing":
  *
  * 1. The injection context. The README's blocks call `form()` at top level;

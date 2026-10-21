@@ -31,8 +31,9 @@ than active work. Phase 2 shipped as `eval-core` 0.4.0, and its plan is
 and its plan is `docs/signals/phase-5-plan.md`. Phase 9, colon-joined identifiers, shipped as
 `eval-core` 0.12.0, `eval-signals` 0.5.1 and `eval-forms` 0.5.0, and its plan is
 `docs/colon-identifiers/phase-9-plan.md`. Phase 10, the documentation restructure
-(`docs/documentation/phase-10-plan.md`), is the active plan, resumed at its step 3 now that the A35
-plan is complete. Beyond
+(`docs/documentation/phase-10-plan.md`), is the active plan: steps 1–6 are done, step 7
+releases the three package READMEs as docs-only patches, and step 8 records the release and
+closes the phase. Beyond
 it, what `ROADMAP.md` has left is Phases 7 and 8, which it reserves without specifying them.
 
 **Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left
@@ -100,7 +101,7 @@ build before believing a type is sound.
   live in the prompt, as the A3/B4/D6/F6, D9/F13 and F2 batches did. The A35 plan,
   `docs/a35/plan.md` — dangerous function values past the call sandbox, with A36 and A37 — is
   complete: it shipped as `eval-core` 0.12.1 and 0.13.0, and its advisory is GHSA-qrqj-3445-3rjx.
-  Phase 10's plan is the active plan, from its step 3. `.claude/skills/step/SKILL.md` targets the
+  Phase 10's plan is the active plan, at its step 7. `.claude/skills/step/SKILL.md` targets the
   active plan, and is retargeted with each new plan; it names Phase 10's.
 - **One retrospect per track; no per-step summaries.**
 - **Anything left for later work goes in `docs/backlog.md`; a commit body never carries it
@@ -318,8 +319,8 @@ makes repeated property lookups O(1). `visitor-result-cache.ts` exists but is
 context-sensitivity bugs — don't re-enable it without solving cache-key-includes-context.
 
 Under `caseInsensitive`, what blocks the case-variant bypass (`x.CONSTRUCTOR`, the shape of
-GHSA-pj3p-xpg7-h7gw in the sibling `jse-eval`) is the *resolved-key* re-check at
-`member-expression.ts:188` — `isDangerousProperty(foundKey)`, testing the key the lookup
+GHSA-pj3p-xpg7-h7gw in the sibling `jse-eval`) is the *resolved-key* re-check,
+`isDangerousProperty(foundKey)` in `member-expression.ts`, testing the key the lookup
 matched rather than the key as written. It is now covered by
 `eval.service.case-variant-guard.spec.ts`; before that spec, the entire suite passed with
 it neutered. A string/number/boolean receiver is not checked against the full blocklist —

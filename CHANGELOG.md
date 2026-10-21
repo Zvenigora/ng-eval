@@ -19,6 +19,14 @@ which gained "(not published to npm)". This file now holds only changes that shi
 
 Workspace tooling: nothing here reaches a consumer, so nothing here is versioned.
 
+### Added
+- **`docs/README.md`, the maintainers' index**, 2026-10-21. It links every document under `docs/`:
+  the backlog register, the plan in flight, each completed phase's plan with its summaries and what
+  it is the reference for, the completed tracks, the gates and what each checks, and the two worked
+  examples, marked as consumer documents. `CONTRIBUTING.md` points to it before its first section.
+  Nothing under `docs/` moved. Whether a gate keeps the index complete is `docs/backlog.md` F25.
+  Phase 10 step 6.
+
 ### Removed
 - **Ten stale documents**, 2026-10-14: `IMPROVEMENTS.md`, `PERFORMANCE.md`,
   `docs/common-classes.md`, `docs/eval-classes.md`, `docs/eval-functions.md`,
@@ -72,6 +80,13 @@ Workspace tooling: nothing here reaches a consumer, so nothing here is versioned
   the warning once to 19.3 s with none, on 20 cores.
 
 ### Changed
+- **`ROADMAP.md` condensed**, 2026-10-21. The phases are one table, in the order they ran, each row
+  with its subject, the packages it shipped in, its plan and its retrospect. Versions from Phase 2's
+  release on are in the register's Publication status table, which the file links; the four earlier
+  phases' releases are each package CHANGELOG's "Phase N of the roadmap" entry. The "Suggested order"
+  list, every item of which was done or is reserved in the section kept below it, is dropped. The header, "Modules vs. new repositories", the reserved
+  Phases 7 and 8 and "Deferred work" are unchanged. Each phase's former section is in the file at
+  b1a9863. Phase 10 step 6.
 - **The repository README is a landing page**, 2026-10-21, with no `javascript` block and no quoted
   peer range. It says what ng-eval is and that it is not a sandbox, then links the three package
   READMEs and CHANGELOGs, install, the two worked examples, `SECURITY.md` and its advisories, this

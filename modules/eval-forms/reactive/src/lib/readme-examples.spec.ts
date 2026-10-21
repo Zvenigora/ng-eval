@@ -38,16 +38,18 @@ const WORKED_EXAMPLE_TS_BLOCKS = 11;
  *
  * **Why this exists.** Phase 1's step 5 found two documented snippets that did
  * not run as printed and Phase 3 found three more; all five had shipped because
- * nothing executed them. `ROADMAP.md`'s "review practice rather than a gate" is
- * the practice that missed them, five times, so this step promotes it to a
- * gate for this package.
+ * nothing executed them. Executing the examples by hand, the review practice
+ * `docs/backlog-retired.md` F3 left in place and F4 records, is the practice
+ * that missed them, five times, so this step promotes it to a gate for this
+ * package.
  *
  * **What it is not.** It reads the markdown only to count the blocks in its
  * two scopes, in the last case below (`docs/backlog.md` F13). Nothing connects
  * these cases to the blocks they name except a human keeping them in step, so
- * this is strictly **narrower** than `ROADMAP.md`'s deferred documented-symbol
- * drift gate, which scans the fenced blocks and would catch a symbol renamed
- * out from under a README. The two are not substitutes and neither supersedes
+ * this is strictly **narrower** than the documented-symbol drift gate
+ * (`docs/backlog-retired.md` F3), which reads the README's imports and would
+ * catch a symbol renamed out from under a README. The two are not substitutes
+ * and neither supersedes
  * the other: that one gates *what the README says*, this one gates *whether
  * what it says runs*.
  *
@@ -106,8 +108,8 @@ const WORKED_EXAMPLE_TS_BLOCKS = 11;
  * lists above, is still kept in step by hand.
  *
  * **What this file supplies that the documents do not print**, listed in full
- * because `ROADMAP.md`'s rejection of transcribed snippets turns on exactly
- * this - "anyone turning those fragments into a runnable test declares the
+ * because F3's rejection of transcribed snippets turns on exactly this -
+ * "anyone turning those fragments into a runnable test declares the
  * missing bindings without noticing":
  *
  * 1. `injector`. Every documented block that binds uses a free `injector`; the
