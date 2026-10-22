@@ -139,6 +139,14 @@ end, so that 0.13.0, which closes the route through `this`, shipped first.
 No plan is active. [F21](#f21), [F24](#f24) and [F25](#f25) were queued after Phase 10, and are
 next when a plan or a batch takes them.
 
+**The A40/A41 batch is released as `eval-core` 0.13.2, alone, a patch.** It carries
+[A40](backlog-retired.md#a40), [A41](backlog-retired.md#a41), [A43](backlog-retired.md#a43) and
+[A46](backlog-retired.md#a46), and opened [A44](#a44), [A45](#a45) and [A47](#a47). Its `.d.ts` is
+byte-identical to 0.13.1's, and no peer range moves, so neither downstream package releases.
+Publishing and tagging are the maintainer's. The post-publish commit then records the Publication
+status row, makes the register's *Unreleased* row 0.13.2's, and moves `CLAUDE.md`'s published
+version, as 26e7c60 did for 0.13.1.
+
 Phase 9, colon-joined identifiers, is complete: its
 [plan](colon-identifiers/phase-9-plan.md), at Revision 9, and its retrospect,
 [`colon-identifiers/phase-9-summary.md`](colon-identifiers/phase-9-summary.md), are design records,
@@ -252,7 +260,7 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.12.1 | `7cc8d30` | 2026-10-17 | 19 | 8: A35–A41, F20 | 2: A36, A37 | 25 |
 | `eval-core` 0.13.0, `eval-signals` 0.6.0, `eval-forms` 0.6.0 | `f7f27f7` | 2026-10-20 | 25 | 1: A42 | 3: A35, A39, A42 | 23 |
 | `eval-core` 0.13.1, `eval-signals` 0.6.1, `eval-forms` 0.6.1 | `5b9c859` | 2026-10-22 | 23 | 5: F21–F25 | 3: F19, F22, F23 | 25 |
-| Unreleased: `eval-core`'s next release. The A40/A41 batch retired three and opened four; A46 then retired before the release | — | — | 25 | 5: A43–A47 | 4: A40, A41, A43, A46 | 26 |
+| Unreleased: `eval-core` 0.13.2, pending publish. The A40/A41 batch retired three and opened four; A46 then retired before the release | — | — | 25 | 5: A43–A47 | 4: A40, A41, A43, A46 | 26 |
 | **Since the register opened** | | | **42** | **61** | **77** | **26** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
@@ -314,13 +322,13 @@ makes it that release's row, with its tag commit and date.
 | [A37](backlog-retired.md#a37) | `SequenceExpression` has no visitor: `(0, 1)` leaves a value on the stack | core | fix | **Retired — fixed 2026-10-15**, as step 3 of the [A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30. A sequence leaves one value on the stack, and raises one `before` and one `after` event and one trace entry; no evaluated value changes. Affected every published `eval-core` to 0.12.0 |
 | [A38](#a38) | A tag's strings array is not JavaScript's: not frozen, no `raw` — so `` String.raw`a\nb` `` throws — a new array per evaluation, and not recorded as created | core | fix | Open — opened 2026-10-15 by the code review of the A35 plan's step 1. Fidelity, not security; not in 0.12.1 |
 | [A39](backlog-retired.md#a39) | Evaluating `this` lets native code reach a dangerous function the host placed in the context, past the funnel; mechanism and probes in the advisory | core | fix, security | **Retired — fixed 2026-10-18**, as steps 7 and 8 of the [A35 plan](a35/plan.md): `this` only as a member's object, and a guarded view as every receiver the evaluator resolves from the context. Released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7; advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx) |
-| [A40](backlog-retired.md#a40) | A postfix update of a listed function writes, then the funnel refuses the old value — the failed evaluation leaves its write behind | core | fix | **Retired — fixed 2026-10-22**, as a consequence of [A41](backlog-retired.md#a41)'s fix; unreleased. The operand converts to `NaN` before the write, so `tools.eval++` gives `NaN` and writes `NaN`, as JavaScript does, and nothing throws |
-| [A41](backlog-retired.md#a41) | An update does not convert its operand to a number: `x++` on `"5"` writes `"51"`, on `{}` writes `"[object Object]1"`, and a postfix update gives the operand as read | core | fix | **Retired — fixed 2026-10-22**; unreleased. The operand is converted once, natively, before anything is written: `"5"++` gives `5` and writes `6`, and a BigInt updates |
+| [A40](backlog-retired.md#a40) | A postfix update of a listed function writes, then the funnel refuses the old value — the failed evaluation leaves its write behind | core | fix | **Retired — fixed 2026-10-22**, as a consequence of [A41](backlog-retired.md#a41)'s fix; released in `eval-core` 0.13.2, pending publish. The operand converts to `NaN` before the write, so `tools.eval++` gives `NaN` and writes `NaN`, as JavaScript does, and nothing throws |
+| [A41](backlog-retired.md#a41) | An update does not convert its operand to a number: `x++` on `"5"` writes `"51"`, on `{}` writes `"[object Object]1"`, and a postfix update gives the operand as read | core | fix | **Retired — fixed 2026-10-22**; released in `eval-core` 0.13.2, pending publish. The operand is converted once, natively, before anything is written: `"5"++` gives `5` and writes `6`, and a BigInt updates |
 | [A42](backlog-retired.md#a42) | `this.k = v` lands on the `EvalContext` instance, where nothing reads it back — but it shadows the class's own members, so the evaluator invoked what an expression planted, and it persists on a reused context | core | fix, security | **Retired — fixed 2026-10-19**, in the [A35 plan](a35/plan.md)'s step 9 under its Revision 16. The write is refused by class, the methods the evaluator calls are taken from the class, and a context reached as data is refused. Released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7; referenced in advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx) as additionally fixed, not its subject. Its first characterisation — "not a route to the context itself" — was measured wrong and corrected |
-| [A43](backlog-retired.md#a43) | Under `caseInsensitive`, an identifier write to a name the context resolves to nothing — absent, or bound to `undefined` — writes the key `undefined` | core | fix | **Retired — fixed 2026-10-22**, opened the same day by the [A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch; unreleased. Both write sites fall back to the name as written, as `identifier.ts` does; `getKey` is unchanged |
+| [A43](backlog-retired.md#a43) | Under `caseInsensitive`, an identifier write to a name the context resolves to nothing — absent, or bound to `undefined` — writes the key `undefined` | core | fix | **Retired — fixed 2026-10-22**, opened the same day by the [A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch; released in `eval-core` 0.13.2, pending publish. Both write sites fall back to the name as written, as `identifier.ts` does; `getKey` is unchanged |
 | [A44](#a44) | Under `caseInsensitive`, a member write to a case variant creates a new key: `OBJ.X = 2`, `OBJ.X += 1` and `OBJ.X++` on `{ x: 1 }` leave `{ x: 1, X: 2 }` | core | fix | Open — opened 2026-10-22 by the A40/A41 batch's `caseInsensitive` matrix; predates it. The update spec's `caseInsensitive` leg avoids case-variant spellings because of it, and its fix adds those rows |
 | [A45](#a45) | An assignment evaluates its target as an operand and its right side unconditionally — a short-circuited `\|\|=` still calls its right side and writes, a member target is evaluated twice, and `obj.fetch = 1` is refused at the read | core | fix | Open — opened 2026-10-22 by the A40/A41 batch. Fidelity; no refusal skipped, since every deviation adds one. Not scheduled |
-| [A46](backlog-retired.md#a46) | An expression can rebind `undefined` on a reused context — `undefined = 1`, then `x === undefined` is `false` — and under `caseInsensitive` a case variant of `undefined`, `null`, `true` or `false` | core | fix, decision | **Retired — fixed 2026-10-22**; unreleased. Such a write throws `Assignment to read-only name`, unless a scope binds the name or the context resolves it; a context class that overrides `set` decides these writes itself. `NaN` and `Infinity` are outside the set, since the evaluator resolves neither |
+| [A46](backlog-retired.md#a46) | An expression can rebind `undefined` on a reused context — `undefined = 1`, then `x === undefined` is `false` — and under `caseInsensitive` a case variant of `undefined`, `null`, `true` or `false` | core | fix, decision | **Retired — fixed 2026-10-22**; released in `eval-core` 0.13.2, pending publish. Such a write throws `Assignment to read-only name`, unless a scope binds the name or the context resolves it; a context class that overrides `set` decides these writes itself. `NaN` and `Infinity` are outside the set, since the evaluator resolves neither |
 | [A47](#a47) | An arrow's parameter scope is pushed without the walk's options, so under `caseInsensitive` `(x => X)(1)` is `undefined`, and `X = 5` in the body can land on the consumer's context | core | fix | Open — opened 2026-10-22 by the A40/A41 batch's code review; predates it. The other three scope pushers pass the options. Not scheduled |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
@@ -471,8 +479,8 @@ from an object's shape. [A33](#a33) is a limit A31's fix left, and documented in
 is one A26's fix left, documented the same way. [A44](#a44)–[A47](#a47) were found by the
 [A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch: A44 by its
 `caseInsensitive` matrix, A45 while correcting `SECURITY.md`'s account of an assignment, and
-[A46](backlog-retired.md#a46) and A47 by its code review. A46 is fixed and retired, ahead of
-`eval-core`'s next release.
+[A46](backlog-retired.md#a46) and A47 by its code review. A46 is fixed and retired, and ships with
+the batch in `eval-core` 0.13.2.
 
 **Identity-checked `exit`** (§ 3.8 of the Phase 1 plan) means the hook layer stays balanced in
 spite of [A1](backlog-retired.md#a1) and [A2](backlog-retired.md#a2), so neither was urgent — [A3](backlog-retired.md#a3)

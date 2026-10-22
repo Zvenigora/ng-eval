@@ -12,6 +12,10 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+---
+
+## [0.13.2] - 2026-10-22
+
 ### Changed
 - **The README states a limit of `caseInsensitive` on a context built with `new EvalContext`**: a
   plain object handed to the constructor matches no case variant, even with the option passed to
@@ -22,9 +26,9 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 - **An update converts its operand to a number once, as JavaScript does**, and uses that one
   conversion for the value it writes and for its result. `x++` on `"5"` gives `5` and writes `6`,
   where it gave `"5"` and wrote `"51"`; an object that does not convert to a number, or a
-  non-numeric string, gives `NaN` and writes `NaN`, where `++` concatenated and a postfix update gave the operand as read; and an update
-  of a BigInt updates it, where it threw. An operand that cannot convert, a Symbol or a throwing
-  `valueOf`, throws before anything is written
+  non-numeric string, gives `NaN` and writes `NaN`, where `++` concatenated and a postfix update
+  gave the operand as read; and an update of a BigInt updates it, where it threw. An operand that
+  cannot convert, a Symbol or a throwing `valueOf`, throws before anything is written
   ([A41](../../docs/backlog-retired.md#a41)).
 - **A postfix update of a listed function no longer throws after writing**: `tools.eval++` gives
   `NaN` and writes `NaN`, as JavaScript does, where the write landed and the funnel then refused the
@@ -35,18 +39,20 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   plain object, the value `undefined` in a `Registry`. That covers a name absent from the context
   and one bound to `undefined`, as `x = 1` on `{ x: undefined }`. A context that refuses writes, as
   `eval-signals`' signal context does, is now asked about the name as written, so its refusal names
-  it ([A43](../../docs/backlog-retired.md#a43)). For the name `undefined` itself, the fallback
-  wrote the key `undefined`, which the next line refuses ([A46](../../docs/backlog-retired.md#a46)).
+  it ([A43](../../docs/backlog-retired.md#a43)). The name `undefined` itself, and under
+  `caseInsensitive` a spelling of a literal, is refused instead: see the next entry.
 - **A write that would rebind `undefined` on the context throws
   `Assignment to read-only name "<name>".`**, as do, under `caseInsensitive`, a write to any
   spelling of `undefined`, `null`, `true` or `false`, such as `TRUE = 0` or `Undefined++`. Up to
-  0.13.1 such a write landed on the context, and every later evaluation on it read the written
-  value. A case variant of `undefined` is refused under a case-sensitive walk too, when the
-  context's store compares keys case-insensitively, as one built with `caseInsensitive` on the
-  context alone does. It is refused only when nothing else binds the name: a parameter may still
-  shadow it, and a key the context resolves to a value other than `undefined` stays writable. A
-  context class that overrides `set` decides these writes itself, so a signal context still throws
-  its own `SignalContextWriteError` ([A46](../../docs/backlog-retired.md#a46)).
+  0.13.1, `undefined = 1` landed on the context, and every later evaluation on it read the written
+  value; under `caseInsensitive` these writes went to the stray key the entry above describes. A
+  case variant of `undefined` is refused under a case-sensitive walk too, when the context's store
+  compares keys case-insensitively, as one built with `caseInsensitive` on the context alone does:
+  up to 0.13.1 such a write, `UNDEFINED = 1`, rebound `undefined` there. It is refused only when
+  nothing else binds the name: a parameter may still shadow it, and a key the context resolves to a
+  value other than `undefined` stays writable. A context class that overrides `set` decides these
+  writes itself, so a signal context still throws its own `SignalContextWriteError`
+  ([A46](../../docs/backlog-retired.md#a46)).
 
 ---
 

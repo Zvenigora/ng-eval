@@ -196,8 +196,8 @@ Reads that only inspect the value throw too, since the rule has no exception for
 **No write path refuses overwriting a listed function.** The refusal of `obj.fetch = 1` is the
 read's, and only an assignment reads its target as an operand. An update takes its operand without
 pushing it where the funnel looks, and converts it to a number, as JavaScript does: `++obj.fetch`
-has overwritten the function since before 0.13.0, with a string until A41's fix and `NaN` from it,
-and `obj.fetch++` does from A40's fix, with `NaN`. Neither fix is released yet. Either way the
+has overwritten the function since before 0.13.0, with a string up to 0.13.1 and `NaN` from 0.13.2,
+and `obj.fetch++` does from 0.13.2, with `NaN`, where it threw after writing. Either way the
 function is replaced, and no function value reaches anything
 ([A40](docs/backlog-retired.md#a40), [A41](docs/backlog-retired.md#a41),
 [A45](docs/backlog.md#a45)).

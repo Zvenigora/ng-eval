@@ -155,9 +155,11 @@ export const variableDeclarationVisitor = (node: VariableDeclaration, st: EvalSt
 /**
  * Refuses a write that would rebind a name the evaluator resolves to a
  * built-in value - `undefined`, and under `caseInsensitive` a case variant of
- * a literal - on the context (`docs/backlog-retired.md` A46). Up to 0.13.1 it
- * landed like any other key, and `identifier.ts` reads the context before its
- * literals, so every later evaluation on that context read the written value.
+ * a literal - on the context (`docs/backlog-retired.md` A46). Up to 0.13.1 a
+ * write to `undefined` landed like any other key, and `identifier.ts` reads
+ * the context before its literals, so every later evaluation on that context
+ * read the written value; A43's fallback would have done the same for a case
+ * variant of a literal.
  * A case variant of `undefined` is refused under a case-sensitive walk too,
  * when the store the write lands in - the context's original, which `set`
  * writes - compares keys case-insensitively, since its `get('undefined')`

@@ -8,10 +8,11 @@ import { evaluate, parse } from '../functions';
  * refused when nothing else binds it: `undefined` in both modes, and under
  * `caseInsensitive` any spelling of `undefined`, `null`, `true` or `false`.
  *
- * Up to 0.13.1 such a write landed on the context like any other key, and
- * `identifier.ts` reads the context before its literals, so every later
- * evaluation on that context read the written value
- * (`docs/backlog-retired.md` A46). It is refused only where all four hold: no
+ * Up to 0.13.1 a write to `undefined` landed on the context like any other
+ * key, and `identifier.ts` reads the context before its literals, so every
+ * later evaluation on that context read the written value
+ * (`docs/backlog-retired.md` A46); A43's fallback would have done the same for
+ * a case variant of a literal. It is refused only where all four hold: no
  * pushed scope binds the name, the context does not resolve it, the name is
  * one of those, and the context's `set` is `EvalContext`'s own - a class that
  * overrides `set` decides these writes itself. A key the context resolves to a
