@@ -99,7 +99,7 @@ its ID lands in `SECURITY.md`'s CVE column when assigned.
 
 **Phase 10, the documentation restructure, is in flight again.** It was paused after its step 2
 while the A35 plan ran to its end, so that 0.13.0, which closes the route through `this`, shipped
-first; it has. Its [plan](documentation/phase-10-plan.md) is at Revision 7.
+first; it has. Its [plan](documentation/phase-10-plan.md) is at Revision 8.
 - Step 1 is done: the ten stale documents are deleted, and the `qs` override's reason is in F16.
 - Step 2 is done: `SECURITY.md` is rewritten to what the code does, and a case in `eval-core`'s
   `public-api.spec.ts` resolves every identifier it names. That step opened A35, from its review,
@@ -124,12 +124,15 @@ first; it has. Its [plan](documentation/phase-10-plan.md) is at Revision 7.
   `CONTRIBUTING.md`, and `ROADMAP.md` is condensed to one table of the phases. It retired
   [F19](backlog-retired.md#f19), and opened [F25](#f25) from the plan's § 8 q4, queued after the
   phase with F21 and F24.
+- Step 7 is done: the release commit for `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms`
+  0.6.1, docs-only patches with no peer range moved. Every built `.d.ts` is byte-identical to the
+  published 0.13.0 / 0.6.0 / 0.6.0 tarball's, and every built README is the repository's.
 
-**The plan's § 8 q1 is answered: the three READMEs are released.** Step 7 is next, the release
-commit for `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms` 0.6.1, docs-only patches with
-no peer range moved. Step 8 records the publish and writes the phase's retrospect. Until they are
-published, each package's npm page still sends its reader to the repository README for
-documentation the landing page no longer holds.
+**The plan's § 8 q1 is answered: the three READMEs are released at step 7.** Publishing and tagging
+are the maintainer's, in the order `eval-core` → `eval-signals` → `eval-forms`. Step 8 is next: it
+records the publish and writes the phase's retrospect. Until they are published, each package's npm
+page still sends its reader to the repository README for documentation the landing page no longer
+holds.
 
 Phase 9, colon-joined identifiers, is complete: its
 [plan](colon-identifiers/phase-9-plan.md), at Revision 9, and its retrospect,

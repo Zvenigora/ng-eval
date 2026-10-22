@@ -1,6 +1,13 @@
 # Phase 10 Plan — documentation restructure
 
 **Date**: October 14, 2026
+**Revision**: 8 — step 7, in its own commit. Corrected in place: M9's `eval-forms` citation is
+`:36-37`, since "strict CSP" is on `:37`. The confirmation gate fixed:
+- the three CHANGELOG headings' date, 2026-10-22: UTC had turned over, and that is the date npm
+  records. Step 8 checks it against `npm view`;
+- one commit, for the reason "Why one commit" gives, which `@nx/dependency-checks` does not force;
+- `eval-core`'s F23 bullet, reworded, with "no behaviour change" explicit.
+
 **Revision**: 7 — step 6, in its own commit. Corrected in place:
 - § 1.1's `docs/` figures. `docs/` held 49 tracked files when step 6 began, not 48: `docs/a35/plan.md`
   arrived with the A35 plan during the pause. So it holds 50 with `docs/README.md`, and 51 with the
@@ -1513,7 +1520,7 @@ less the peer-range changes this release does not have.*
   - `eval-signals` 0.6.0, 605 lines. `:9-11` say "Expression syntax, security, and the evaluator's own
     options are documented in the repository README", linking the same `#readme`. That has been false
     since step 5. `:20` abbreviates `@angular/core >=19.0.0` to `>=19` (finding 9).
-  - `eval-forms` 0.6.0, 868 lines. `:14-16` carry the same sentence and link. `:36` calls `eval-core`
+  - `eval-forms` 0.6.0, 868 lines. `:14-16` carry the same sentence and link. `:36-37` call `eval-core`
     "a sandboxed evaluator with no `eval`, safe under a strict CSP", which is F23's class. Step 4 fixed
     it in the repository.
 
@@ -1563,6 +1570,29 @@ less the peer-range changes this release does not have.*
      `git tag -a` as step 5 writes it: the A35 plan's step 11 found its tags pushed lightweight first.
   - Tests 0 / 0 / 0. doc-links: files unchanged, links reported.
 - **Category**: the release, three docs-only patches. No `.d.ts` changes and no peer range moves.
+- **Outcome** — done 2026-10-21, under Revision 8. The gate is green at 2601 / 439 / 376, unchanged
+  from step 6. The three manifests move `version` and nothing else, and each CHANGELOG's
+  `[Unreleased]` moves under `## [<version>] - 2026-10-22`, with an empty one kept above it.
+  - **Criterion 2**: the five built `.d.ts` files match the published tarballs' by SHA-256: `eval-core`
+    `4f11d36f…`, `eval-signals` `743ce484…`, and `eval-forms` `9cdb2816…`, `/reactive` `f2570daa…`
+    and `/signals` `3a9cf281…`. Each built `package.json` differs from the published manifest in
+    `version` only.
+    - **P7a**: against `eval-core` 0.11.1's tarball, `c0ed0733…`, a mismatch.
+  - **Criterion 3**: `cmp` of each built README against the repository's is silent. "repository
+    README" counts 0 / 0 / 0, the `eval-signals` span 0, the `eval-forms` sentence 0.
+    - **P7b**: over the published tarballs' READMEs, 2 / 1 / 1, the span 1, the sentence 1.
+  - **Criterion 4**: the F23 bullet says the evaluation section brought in from the repository README
+    states the built-ins precisely, over the default, empty context, with no code change and no
+    behaviour change.
+  - **The review** found no Critical and two warnings, each fixed in the step:
+    - **W1**: the reworded bullet had dropped the empty-context condition the README states;
+    - **W2**: "Work in flight" still gave the plan as Revision 7.
+
+    Its two notes were taken: this outcome is dated by the local commit date, as earlier ones are,
+    and `SKILL.md`'s line carries the revision.
+  - **doc-links**: 347 files, unchanged, and 1622 links, unchanged, with 0 dangling. The F23 link
+    moves under 0.13.1 and nothing adds one.
+  - **Criterion 5** is the maintainer's, and outstanding at this commit.
 
 ### Step 8 — Post-publish record, the retrospect, and the phase closed
 

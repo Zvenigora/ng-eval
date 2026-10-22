@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+---
+
+## [0.6.1] - 2026-10-22
+
 ### Changed
 - **The README opens with Install, Sibling packages and Security**, as `eval-core`'s does, and
   quotes each peer range verbatim, where it abbreviated `@angular/core`'s. A case checks every

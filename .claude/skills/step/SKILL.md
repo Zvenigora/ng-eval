@@ -12,7 +12,7 @@ Plan document: `docs/documentation/phase-10-plan.md`
 Target: the repository's documents — no library code
 Requested step: $ARGUMENTS
 
-**Phase 10 resumed at its step 3, and steps 1–6 are done.** The phase was paused after step 2 while
+**Phase 10 resumed at its step 3, and steps 1–7 are done.** The phase was paused after step 2 while
 the A35 plan (`docs/a35/plan.md`, complete) ran to its end, so that `eval-core` 0.13.0 shipped first.
 The plan was written before that pause, so the restatement checks its counts and line citations
 against the tree and reports each one that has moved.
@@ -44,7 +44,7 @@ CHANGELOGs, specs and comment lines, at named steps and nowhere else:
   Revision 7). *Done.*
 - **Step 7 is the release commit** — `eval-core` 0.13.1, `eval-signals` 0.6.1, `eval-forms` 0.6.1, as
   docs-only patches: the three `package.json` versions and the three CHANGELOGs. No README, no peer
-  range and no `.d.ts` moves.
+  range and no `.d.ts` moves. *Done* (plan Revision 8).
 - **Step 8 is the post-publish record**, after the maintainer publishes and tags: the register, the
   phase's retrospect, and the phase closed in `CLAUDE.md`, `ROADMAP.md`, `docs/README.md` and this
   skill.

@@ -12,6 +12,10 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+---
+
+## [0.13.1] - 2026-10-22
+
 ### Changed
 - **The package README is the package's whole documentation**, and every `javascript` block in it
   is executed by a case. It gains the sections the repository README held — evaluation,
@@ -19,10 +23,10 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   and evaluation with state — and opens with Install, Sibling packages and Security, quoting each
   peer range verbatim. The repository README no longer has to be read for the API. No code
   change.
-- **The README no longer says an expression over an empty context cannot use JavaScript's
-  built-ins.** The global built-ins are out of its reach, but the methods of the values it holds
-  stay callable, as `'abc'.toUpperCase()` does. No code change
-  ([F23](../../docs/backlog-retired.md#f23)).
+- **The evaluation section brought in from the repository README states the built-ins
+  precisely**: over the default, empty context the global built-ins are out of an expression's
+  reach, but the methods of the values it holds stay callable, as `'abc'.toUpperCase()` does. No
+  code change and no behaviour change ([F23](../../docs/backlog-retired.md#f23)).
 
 ---
 
