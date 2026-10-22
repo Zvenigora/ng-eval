@@ -67,7 +67,9 @@ summary of every phase.
 | 2 | Statement support: `let`, `if`, `for` | `@zvenigora/ng-eval-core` | [`statements/phase-2-plan.md`](docs/statements/phase-2-plan.md) | [`statements/summary.md`](docs/statements/summary.md) |
 | 5 | Async expression signals | `@zvenigora/ng-eval-signals`, with `@zvenigora/ng-eval-forms` for its peer range | [`signals/phase-5-plan.md`](docs/signals/phase-5-plan.md) | [`signals/phase-5-summary.md`](docs/signals/phase-5-summary.md) |
 | 9 | Colon-joined identifiers | `@zvenigora/ng-eval-core`, with `@zvenigora/ng-eval-signals` and `@zvenigora/ng-eval-forms` | [`colon-identifiers/phase-9-plan.md`](docs/colon-identifiers/phase-9-plan.md) | [`colon-identifiers/phase-9-summary.md`](docs/colon-identifiers/phase-9-summary.md) |
-| 10 | Documentation restructure, repository-wide — **in flight** | All three, as docs-only patches at its step 7 | [`documentation/phase-10-plan.md`](docs/documentation/phase-10-plan.md) | Written at its step 8 |
+| 10 | Documentation restructure, repository-wide | All three, as docs-only patches | [`documentation/phase-10-plan.md`](docs/documentation/phase-10-plan.md) | [`documentation/phase-10-summary.md`](docs/documentation/phase-10-summary.md) |
+
+Every phase in the table is complete, Phase 10 the last of them, and none is in flight.
 
 Phase 9 is numbered after the two reserved phases below and ran ahead of them: it was the one with
 a consumer waiting. Until Phase 10 condensed this file, each phase had a section here with its

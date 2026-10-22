@@ -10,13 +10,13 @@ independently and **all three published to npm** under the `@zvenigora` scope, e
 
 - **`@zvenigora/ng-eval-core`** (`modules/eval-core`) — a JavaScript expression
   parser/evaluator built on `acorn` + `acorn-walk`, exposed as Angular DI services.
-  Published at **0.13.0**. This is where nearly all the code is.
+  Published at **0.13.1**. This is where nearly all the code is.
 - **`@zvenigora/ng-eval-signals`** (`modules/eval-signals`) — expression → Angular
-  `Signal`, built on the first library's published surface. Published at **0.6.0**;
+  `Signal`, built on the first library's published surface. Published at **0.6.1**;
   Phase 3 shipped 0.1.0.
 - **`@zvenigora/ng-eval-forms`** (`modules/eval-forms`) — Angular form field properties
   driven by expressions that arrive as strings at runtime, built on the other two.
-  Published at **0.6.0**; Phase 6 shipped 0.2.0. It ships **three entry points from one
+  Published at **0.6.1**; Phase 6 shipped 0.2.0. It ships **three entry points from one
   package**: the shared core at `@zvenigora/ng-eval-forms`, the Reactive Forms adapter at
   `@zvenigora/ng-eval-forms/reactive`, and the Signal Forms adapter at
   `@zvenigora/ng-eval-forms/signals`, which requires Angular 22.
@@ -25,16 +25,15 @@ independently and **all three published to npm** under the `@zvenigora` scope, e
 without a breaking release, in any of the three; "nothing has shipped yet" no longer
 applies to any of them.
 
-Phases 1, 2, 3, 4, 5, 6 and 9 are complete and their plan documents are design records rather
+Phases 1, 2, 3, 4, 5, 6, 9 and 10 are complete and their plan documents are design records rather
 than active work. Phase 2 shipped as `eval-core` 0.4.0, and its plan is
 `docs/statements/phase-2-plan.md`. Phase 5, the async signal, shipped as `eval-signals` 0.5.0,
 and its plan is `docs/signals/phase-5-plan.md`. Phase 9, colon-joined identifiers, shipped as
 `eval-core` 0.12.0, `eval-signals` 0.5.1 and `eval-forms` 0.5.0, and its plan is
-`docs/colon-identifiers/phase-9-plan.md`. Phase 10, the documentation restructure
-(`docs/documentation/phase-10-plan.md`), is the active plan: steps 1–6 are done, step 7
-releases the three package READMEs as docs-only patches, and step 8 records the release and
-closes the phase. Beyond
-it, what `ROADMAP.md` has left is Phases 7 and 8, which it reserves without specifying them.
+`docs/colon-identifiers/phase-9-plan.md`. Phase 10, the documentation restructure, is complete:
+it shipped as `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms` 0.6.1, docs-only patches,
+and its plan is `docs/documentation/phase-10-plan.md`. No plan is active. What `ROADMAP.md` has
+left is Phases 7 and 8, which it reserves without specifying them.
 
 **Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left
 unfixed, decisions logged rather than made, gaps in what the suite can catch — is in
@@ -101,8 +100,9 @@ build before believing a type is sound.
   live in the prompt, as the A3/B4/D6/F6, D9/F13 and F2 batches did. The A35 plan,
   `docs/a35/plan.md` — dangerous function values past the call sandbox, with A36 and A37 — is
   complete: it shipped as `eval-core` 0.12.1 and 0.13.0, and its advisory is GHSA-qrqj-3445-3rjx.
-  Phase 10's plan is the active plan, at its step 7. `.claude/skills/step/SKILL.md` targets the
-  active plan, and is retargeted with each new plan; it names Phase 10's.
+  Phase 10's plan is complete, and no plan is active. `.claude/skills/step/SKILL.md` targets the
+  active plan, and is retargeted with each new plan; until the next one is written it names none,
+  and stops if invoked.
 - **One retrospect per track; no per-step summaries.**
 - **Anything left for later work goes in `docs/backlog.md`; a commit body never carries it
   forward.**
@@ -129,6 +129,11 @@ build before believing a type is sound.
     set, § 3.3 the funnel, § 3.4 what stays open, and § 9 the contract after it landed. It
     numbers two § 1.2s: the second, "Standing rules, from Revision 16", holds the two probe rules
     `.claude/skills/step/SKILL.md` repeats.
+  - `docs/documentation/phase-10-plan.md` — Phase 10, the documentation restructure, shipped as
+    `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms` 0.6.1, docs-only; its § 3.2 is why
+    nothing under `docs/` moves, § 3.5 the package READMEs' one opening and their gated peer ranges,
+    § 3.10 `SECURITY.md`'s identifier check, § 6.1 the spec discipline for documentation, and § 9
+    the contract after it landed. Its § 8 q3 is undecided, and is `docs/backlog.md` F25 Part 4.
 
   Their open questions are settled unless the document says otherwise. Two of them number
   a § 9 and a § 9.1 on unrelated subjects, so name the document when citing one. Their line

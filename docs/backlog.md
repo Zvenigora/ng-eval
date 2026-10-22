@@ -97,29 +97,32 @@ its ID lands in `SECURITY.md`'s CVE column when assigned.
   packages `< 0.6.0`. Its follow-up commit recorded it here, on the retired entries and in
   `SECURITY.md`, and opened [F21](#f21).
 
-**Phase 10, the documentation restructure, is in flight again.** It was paused after its step 2
-while the A35 plan ran to its end, so that 0.13.0, which closes the route through `this`, shipped
-first; it has. Its [plan](documentation/phase-10-plan.md) is at Revision 8.
+**Phase 10, the documentation restructure, is complete**: its [plan](documentation/phase-10-plan.md),
+at Revision 8, and its retrospect,
+[`documentation/phase-10-summary.md`](documentation/phase-10-summary.md), are design records, and it
+shipped as `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms` 0.6.1, docs-only patches tagged
+at 5b9c859 and published 2026-10-22. It was paused after its step 2 while the A35 plan ran to its
+end, so that 0.13.0, which closes the route through `this`, shipped first.
 - Step 1 is done: the ten stale documents are deleted, and the `qs` override's reason is in F16.
 - Step 2 is done: `SECURITY.md` is rewritten to what the code does, and a case in `eval-core`'s
   `public-api.spec.ts` resolves every identifier it names. That step opened A35, from its review,
   and F20.
 - Step 3 is done: `eval-core`'s README is the package's whole documentation, with the root
   README's API sections moved into it and every `javascript` block executed. The root README keeps
-  its copy until step 5. It ships at `eval-core`'s next release. Its review opened
+  its copy until step 5. It shipped in `eval-core` 0.13.1. Its review opened
   [F22](backlog-retired.md#f22), scheduled into step 5.
 - Step 4 is done: the `eval-signals` and `eval-forms` READMEs open as `eval-core`'s does, with
   Install, Sibling packages and Security, and a case in each project's `public-api.spec.ts` checks
-  every peer range its README quotes against its manifest. It ships at those two packages' next
-  releases. Its sweeps for language that claims a guarantee opened
+  every peer range its README quotes against its manifest. It shipped in `eval-signals` 0.6.1 and
+  `eval-forms` 0.6.1. Its sweeps for language that claims a guarantee opened
   [F23](backlog-retired.md#f23): the root README's lines were scheduled into step 5, and one line
   of `eval-core`'s README was not scheduled.
 - Step 5 is done: the root README is a landing page, with no code and no quoted peer range, and a
   case in `eval-core`'s `public-api.spec.ts` keeps it that way. The root-README cases that a README
   with no code makes vacuous or red are removed. It retired F22 and F23, and opened [F24](#f24),
   queued after the phase. F23's `eval-core` README line was
-  added to the step at its gate, so the step ships that one correction at `eval-core`'s next
-  release, and nothing else.
+  added to the step at its gate, so the step shipped that one correction in `eval-core` 0.13.1, and
+  nothing else.
 - Step 6 is done: [`docs/README.md`](README.md) is the maintainers' index, reached from
   `CONTRIBUTING.md`, and `ROADMAP.md` is condensed to one table of the phases. It retired
   [F19](backlog-retired.md#f19), and opened [F25](#f25) from the plan's § 8 q4, queued after the
@@ -127,12 +130,13 @@ first; it has. Its [plan](documentation/phase-10-plan.md) is at Revision 8.
 - Step 7 is done: the release commit for `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms`
   0.6.1, docs-only patches with no peer range moved. Every built `.d.ts` is byte-identical to the
   published 0.13.0 / 0.6.0 / 0.6.0 tarball's, and every built README is the repository's.
+- Step 8 is done: the three are published, in the order `eval-core` → `eval-signals` → `eval-forms`,
+  and tagged annotated at 5b9c859. Each published README is the repository's, and none sends its
+  reader to the repository README. The step recorded the release, wrote the retrospect, and widened
+  [F25](#f25) with the plan's § 8 q3, which the phase left undecided.
 
-**The plan's § 8 q1 is answered: the three READMEs are released at step 7.** Publishing and tagging
-are the maintainer's, in the order `eval-core` → `eval-signals` → `eval-forms`. Step 8 is next: it
-records the publish and writes the phase's retrospect. Until they are published, each package's npm
-page still sends its reader to the repository README for documentation the landing page no longer
-holds.
+No plan is active. [F21](#f21), [F24](#f24) and [F25](#f25) were queued after Phase 10, and are
+next when a plan or a batch takes them.
 
 Phase 9, colon-joined identifiers, is complete: its
 [plan](colon-identifiers/phase-9-plan.md), at Revision 9, and its retrospect,
@@ -166,6 +170,9 @@ release, not a free change. Each package's release notes are in its own
 
 | Package | Version | Notes |
 | ------- | ------- | ----- |
+| `@zvenigora/ng-eval-core` | 0.13.1 | Phase 10 ([plan](documentation/phase-10-plan.md)): the package README is the package's whole documentation. The repository README's API sections are moved into it, every `javascript` block in it is executed by a case, it opens with Install, Sibling packages and Security, and every peer range it quotes is checked against the manifest. Its evaluation section states the built-ins precisely ([F23](backlog-retired.md#f23)). 0.13.0's README sent its reader to the repository README, which has documented no API since Phase 10's step 5. A docs-only patch: the `.d.ts` is byte-identical to 0.13.0's, and the manifest differs in `version` only. Peer ranges unchanged; `eval-signals` 0.6.x and `eval-forms` 0.6.x admit it with `>=0.13.0 <0.14.0`. Tagged `eval-core@0.13.1` at 5b9c859, published 2026-10-22 (npm: 00:36 UTC) |
+| `@zvenigora/ng-eval-signals` | 0.6.1 | Phase 10 ([plan](documentation/phase-10-plan.md)): the README opens as `eval-core`'s does, with Install, Sibling packages and Security, and quotes each peer range verbatim, where 0.6.0 abbreviated `@angular/core`'s; a case checks every quoted range against the manifest. It points to `eval-core`'s README for expression syntax and the evaluator's options, where 0.6.0 pointed to the repository README. A docs-only patch: the `.d.ts` is byte-identical to 0.6.0's, and the manifest differs in `version` only. Peer ranges unchanged; `eval-forms` 0.6.x admits it with `>=0.6.0 <0.7.0`. Tagged `eval-signals@0.6.1` at 5b9c859, published 2026-10-22 (npm: 00:40 UTC) |
+| `@zvenigora/ng-eval-forms` | 0.6.1 | Phase 10 ([plan](documentation/phase-10-plan.md)): the README opens as the other two do, Install quotes each peer range verbatim, and a case checks every quoted range against the manifest. It points to `eval-core`'s README in place of the repository README, and no longer calls the evaluator sandboxed, which is [F23](backlog-retired.md#f23)'s class. A docs-only patch: all three `.d.ts` files are byte-identical to 0.6.0's, and the manifest differs in `version` only. Peer ranges unchanged. Tagged `eval-forms@0.6.1` at 5b9c859, published 2026-10-22 (npm: 00:42 UTC) |
 | `@zvenigora/ng-eval-core` | 0.13.0 | The [A35 plan](a35/plan.md)'s second release, which closes the route through `this` in both halves. [A39](backlog-retired.md#a39) fix: `this` evaluates only as the object of a member access and throws anywhere else; every receiver the evaluator resolves from the context — a bare call's, a bare tag's, `this.fn()`'s for a key the context resolves — is a guarded view on which `push` and `pop` act on the real context and every other read throws. [A42](backlog-retired.md#a42) fix: a write whose target is an `EvalContext` is refused by class, the methods the evaluator calls are taken from the class, and a context reached as data is refused. With them [A35](backlog-retired.md#a35)'s last route is closed. A host container, a context the host nests in the data or returns behind a promise, the trace after `this.k` and a host-built AST reusing one `this` node stay documented limits in every version. A minor carrying breaking changes: the `.d.ts` is byte-identical to 0.12.1's. Peer ranges unchanged. Admitted only by `eval-signals` 0.6.0 and `eval-forms` 0.6.0; every earlier one excludes it by its own range. The advisory follows this release (the plan's § 5 U3). Tagged `eval-core@0.13.0` at f7f27f7, published 2026-10-20 (npm: 20:52 UTC) |
 | `@zvenigora/ng-eval-signals` | 0.6.0 | `eval-core` 0.13.0's [A39](backlog-retired.md#a39) fix, forwarded: a source function's `this` is a guarded view of the `EvalContext` rather than the context, so `push` and `pop` still reach it and nothing else does, and `this` evaluates only as a member's object. The two `signal-context` pins that asserted the receiver's identity are rewritten to the guard's contract; the suite stays at 438. A breaking minor with no shipped code changed: the `.d.ts` is byte-identical to 0.5.1's. Peer range on `eval-core` moved to `>=0.13.0 <0.14.0` — the floor rises, since the forwarded contract exists only in 0.13.0. Tagged `eval-signals@0.6.0` at f7f27f7, published 2026-10-20 (npm: 20:55 UTC) |
 | `@zvenigora/ng-eval-forms` | 0.6.0 | `eval-core` 0.13.0's [A39](backlog-retired.md#a39) fix, forwarded at both entry points: a rule cannot reach its evaluation context through `this`, and a function the context holds receives a guarded view. The three [D5](backlog-retired.md#d5) pins take the rule's context where it is built rather than through `this`; the suite stays at 375. A breaking minor with no shipped code changed: all three `.d.ts` files are byte-identical to 0.5.0's. Peer ranges raised: `eval-core` to `>=0.13.0 <0.14.0`, and `eval-signals` to `>=0.6.0 <0.7.0`, since every earlier `eval-signals` requires `eval-core` below 0.13.0. Tagged `eval-forms@0.6.0` at f7f27f7, published 2026-10-20 (npm: 20:57 UTC) |
@@ -214,9 +221,12 @@ the two commits only that spec and two backlog files changed, so neither package
 0c3299e, so it carries B6's fix and none of 0.11.0's other changes. Master has the fix as 1a6ebdc,
 and 776885a copied the [0.10.1] CHANGELOG section from d77fa16.
 
-**Every published version now carries a tag** — the thirty-eight above (three at f7f27f7, one at 7cc8d30, three at 3466c80, one at 7ee65fc, two at 577c4f0, three at 776885a, one at d77fa16, one at 3d56994, three at 0c3299e, three at eb403c0, three at c56f987, three at 724d831, two at 587ebf1, three at f26f987,
-three at `016a313`, three at `7935a78`) plus seven written retroactively for pre-Phase-2 versions,
-all on the remote.
+**Every published version now carries a tag** — the forty-one above (three at 5b9c859, three at f7f27f7, one at 7cc8d30, three at 3466c80, one at 7ee65fc, two at 577c4f0, three at 776885a, one at d77fa16, one at 3d56994, three at 0c3299e, three at eb403c0, three at c56f987, three at 724d831, two at 587ebf1, three at f26f987,
+three at `016a313`, three at `7935a78`) plus ten for versions before this table: seven written
+retroactively on 2026-09-16, and three at their own release on 2026-08-22 (`eval-core@0.3.0`,
+`eval-signals@0.1.0`, `eval-forms@0.1.0`). That is fifty-one, the count `tools/release-tags.mjs`
+reports, all annotated and all on the remote. `git tag -l` lists three more, `v0.1.0`, `v0.2.2`
+and `v0.2.3`: lightweight tags from before the `<project>@<version>` names.
 
 ### Register history
 
@@ -240,7 +250,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.12.0, `eval-signals` 0.5.1, `eval-forms` 0.5.0 | `3466c80` | 2026-10-14 | 18 | 2: A33, A34 | 1: A26 | 19 |
 | `eval-core` 0.12.1 | `7cc8d30` | 2026-10-17 | 19 | 8: A35–A41, F20 | 2: A36, A37 | 25 |
 | `eval-core` 0.13.0, `eval-signals` 0.6.0, `eval-forms` 0.6.0 | `f7f27f7` | 2026-10-20 | 25 | 1: A42 | 3: A35, A39, A42 | 23 |
-| **Since the register opened** | | | **42** | **51** | **70** | **23** |
+| `eval-core` 0.13.1, `eval-signals` 0.6.1, `eval-forms` 0.6.1 | `5b9c859` | 2026-10-22 | 23 | 5: F21–F25 | 3: F19, F22, F23 | 25 |
+| **Since the register opened** | | | **42** | **56** | **73** | **25** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -356,9 +367,9 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [F20](#f20) | `CODE_OF_CONDUCT.md`'s enforcement contact is an address of the upstream `jse-eval` author, not this repository's maintainer | repo | docs | Open — opened 2026-10-14 by Phase 10 step 2; the fix needs a contact the maintainer chooses |
 | [F21](#f21) | Build-tooling advisories: 32 findings (11 high, 21 moderate) from `@modelcontextprotocol/server` via `@angular/cli`, `follow-redirects` via `nx`, and `sprintf-js` via the jest chain — none in a published package | repo | fix | Open — opened 2026-10-20 by the A35 plan's U3 follow-up; **scheduled after Phase 10**. A toolchain bump, **not `npm audit fix --force`**, which proposes `ts-jest` 27.0.3, a downgrade |
 | [F22](backlog-retired.md#f22) | `eval-core`'s F10 block, ungated in two places: eight allowlist entries its README now documents, so the free-functions sentence can be deleted with F10 green; and the docblock's "twenty-one of the sixty", which no case checks | core | fix (test) | **Retired — fixed 2026-10-21** by Phase 10 step 5: the eight entries removed, the figure dropped, and a case that fails on an allowlisted name the README names |
-| [F23](backlog-retired.md#f23) | Live documents claim guarantees the library does not give: twelve root README lines ("secure", "complete prototype pollution prevention", "function sandboxing", "prevents injection attacks"), and `eval-core`'s README saying an expression over an empty context "cannot use JavaScript's built-in functions", when a value's own methods stay callable | repo, core | docs | **Retired — fixed 2026-10-21** by Phase 10 step 5: the landing page keeps none of the twelve lines, and the `eval-core` README names the globals and says a value's own methods stay callable, with an `[Unreleased]` line |
+| [F23](backlog-retired.md#f23) | Live documents claim guarantees the library does not give: twelve root README lines ("secure", "complete prototype pollution prevention", "function sandboxing", "prevents injection attacks"), and `eval-core`'s README saying an expression over an empty context "cannot use JavaScript's built-in functions", when a value's own methods stay callable | repo, core | docs | **Retired — fixed 2026-10-21** by Phase 10 step 5: the landing page keeps none of the twelve lines, and the `eval-core` README names the globals and says a value's own methods stay callable, with an `[Unreleased]` line. The README line released 2026-10-22 in `eval-core` 0.13.1, tagged 5b9c859; the root README part ships in no package |
 | [F24](#f24) | The `eval-signals` and `eval-forms` copies of `export-list.spec.ts` have no reverse case, so an allowlist entry the README documents would mask its mention's deletion, as F22 found in `eval-core` | signals, forms | test gap | Open — opened 2026-10-21 by Phase 10 step 5's review; **queued after Phase 10**, with F21. Latent: `eval-signals`' one entry is not in its README, and `eval-forms`' allowlist is empty |
-| [F25](#f25) | Three documentation checks Phase 10 left undecided: no gate fails when `docs/README.md` stops linking a tracked `docs/` file; two links into `eval-core`'s CHANGELOG headings left the doc-links gate when they became absolute; and doc-links silently skips an untracked `.md` | repo | decision | Open — opened 2026-10-21 by Phase 10 step 6, from its plan's § 8 q4 and its own run; **queued after Phase 10**, with F21 and F24. Latent: the index is complete, both anchors resolve, and `SKILL.md` requires `git add -N` for a new document |
+| [F25](#f25) | Four documentation checks Phase 10 left undecided: no gate fails when `docs/README.md` stops linking a tracked `docs/` file; two links into `eval-core`'s CHANGELOG headings left the doc-links gate when they became absolute; doc-links silently skips an untracked `.md`; and whether a published README's absolute link binds its target path and anchor for good | repo | decision | Open — opened 2026-10-21 by Phase 10 step 6, from its plan's § 8 q4 and its own run, and widened by step 8 with § 8 q3; **queued after Phase 10**, with F21 and F24. Latent: the index is complete, both anchors resolve, `SKILL.md` requires `git add -N` for a new document, and every published absolute link resolves today |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -1651,14 +1662,16 @@ SignalContextSource modules/eval-signals/README.md` finds nothing. Step 5's revi
 against each README's code spans.
 
 <a id="f25"></a>
-## F25 — Three documentation checks Phase 10 left undecided
+## F25 — Four documentation checks Phase 10 left undecided
 
 **Package** repo · **Kind** decision · **Status** Open — opened 2026-10-21 by Phase 10 step 6, from
-its plan's § 8 q4 and the step's own run; **queued after Phase 10**, with [F21](#f21) and [F24](#f24)
+its plan's § 8 q4 and the step's own run, and widened 2026-10-21 by step 8 with its § 8 q3, Part 4;
+**queued after Phase 10**, with [F21](#f21) and [F24](#f24)
 
 The [Phase 10 plan](documentation/phase-10-plan.md)'s § 8 q4 recorded two things its decisions did
-not cover, Parts 1 and 2. Step 6 found a third, Part 3. None misleads a reader today, so all three
-are on the latent side of the plan's § 6.1 rule: a register entry, not a fix in the step.
+not cover, Parts 1 and 2. Step 6 found a third, Part 3. The phase closed with its § 8 q3 still
+undecided, and step 8 recorded it as Part 4. None misleads a reader today, so all four are on the
+latent side of the plan's § 6.1 rule: a register entry, not a fix in a step.
 
 **Part 1 — the index's completeness.** [`docs/README.md`](README.md) is the maintainers' index, and it
 links every tracked file under `docs/` except itself. Nothing keeps it that way: a document added
@@ -1700,10 +1713,33 @@ rather than skipping it, either by failing or by checking it and naming it as un
 for whoever builds it: a new linked `.md`, left unmarked, with one dangling link, and the gate stays
 green today, where it must not.
 
-*Recorded*: this entry. *Verified*: 2026-10-21 at b1a9863, with step 6's edits in the working tree.
-The index check lists none of the 49 tracked files; with the `trace2/` row removed it lists exactly
+**Part 4 — whether a published absolute link binds its target for good.** This is the plan's § 8 q3,
+which the phase did not decide. A README in a tarball on npm links this repository by absolute URL at
+`master`, so each link resolves against whatever `master` holds, not against the version that
+printed it. The READMEs of `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms` 0.6.1 print 26
+such links into the repository's files:
+- 7 into `docs/`;
+- the rest to `SECURITY.md` and two of its anchors, to the package folders' READMEs and one of their
+  anchors, and to the two CHANGELOG headings of Part 2.
+
+Earlier versions print more, among them the repository's `#readme`. Phase 10 kept every one working
+(the plan's § 3.5 and § 3.10), and nothing keeps them working after it, since doc-links skips a link
+with a scheme. *The case that forces it*: `eval-signals`' README links `docs/backlog.md#a24`, and
+every version from 0.5.0 to 0.6.1 prints it. Retiring [A24](#a24) moves its entry to
+`backlog-retired.md`, which is this register's own convention, and the anchor then stops existing on
+`master` while those versions still print it.
+
+*To decide*: either a published link binds, so a retirement or a move leaves its target and anchor
+resolving; or it does not, so a README links a tagged commit rather than `master`. Part 2's third
+option, a check that resolves these links against the tree, would enforce the first answer. *Wrong*,
+for whoever builds that check: A24 moved to `backlog-retired.md`, and the check lists
+`eval-signals`' `#a24` link.
+
+*Recorded*: this entry; Part 4 by Phase 10 step 8. *Verified*, Parts 1–3: 2026-10-21 at b1a9863, with
+step 6's edits in the working tree. The index check lists none of the 49 tracked files; with the `trace2/` row removed it lists exactly
 those three, and with `a8/plan.md` linked as `./a8/plan.md#a8` it still lists none. `grep -n -E
 "^## \[0\.(5|4)\.0\]" modules/eval-core/CHANGELOG.md` gives `:839` and `:907`, whose slugs are the two
 anchors, and both links are at `modules/eval-core/README.md:289` and `:306`. `git show
 b1a9863:ROADMAP.md` has the relative `#040` link at `:94`; `git grep` finds no relative link to
-either anchor after step 6.
+either anchor after step 6. *Verified*, Part 4: 2026-10-21, from the three tarballs as published,
+each extracted and its README's `https://github.com/zvenigora/ng-eval` links listed.

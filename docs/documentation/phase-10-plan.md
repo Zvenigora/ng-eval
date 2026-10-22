@@ -1630,6 +1630,64 @@ less the peer-range changes this release does not have.*
      in each.
   - Tests 0 / 0 / 0. doc-links: +1 file, the summary; links reported.
 - **Category**: the release's docs-only post-publish commit. Ships in no package.
+- **Outcome** — done 2026-10-21, under Revision 8, after the maintainer's publish and tags, each
+  checked rather than assumed. `npm view` lists `eval-core` 0.13.1 (2026-10-22, 00:36 UTC),
+  `eval-signals` 0.6.1 (00:40) and `eval-forms` 0.6.1 (00:42), in step 7's order, and all three tags
+  are on the remote at 5b9c859. The gate is green at 2601 / 439 / 376, unchanged.
+  - **Criterion 1**: release-tags reports 41 rows, 51 tags, 0 failing, and the three new rows name
+    5b9c859.
+    - **P8a**: `eval-signals` 0.6.1's row naming 4b788fd. Release-tags then reports 1 failing,
+      exactly that row, `docs/backlog.md:174`.
+  - **Criterion 2**: `git cat-file -t` gives `tag` for each of the three.
+    - **P8b**: a lightweight `p8b-scratch` gives `commit`, and is deleted.
+  - **Criterion 3**: each extracted README has 0 lines saying "repository README", and each is
+    byte-identical to the repository's.
+    - **P8c**: 0.13.0, 0.6.0 and 0.6.0 give 2, 1 and 1, as M9 measured.
+  - **Criterion 4**: the check, rebuilt from F25 Part 1's rules, lists none of the 50 tracked files
+    besides the index.
+    - **Wrong**: the summary's link removed, and it lists exactly that file.
+    - Step 6's P1a and P1b, re-run because the check was rebuilt, give the same results as at step
+      6: the three `trace2/` files, and nothing.
+  - **Criterion 5**: each of the five files calls Phase 10 complete; the step's report quotes the
+    lines.
+  - **The register**:
+    - three Publication status rows;
+    - the tag sentence recounted from `git tag -l`: 41 rows, seven tags of 2026-09-16 and three of
+      2026-08-22 make release-tags' 51, beside three lightweight `v*` tags;
+    - a Register history row, 23 before, opened 5 (F21–F25), closed 3 (F19, F22, F23), 25 after,
+      counted by a script that reproduces the 0.13.0 row;
+    - F23's release in its index row and status line;
+    - "Work in flight".
+  - **The gate added Part 4 to F25**, for § 8 q3, which the phase left undecided; § 8 q3 now points
+    to it. It is a Part rather than an entry because an entry opened in this commit would leave the
+    new row's 25 one short of the index at this commit.
+  - **The CHANGELOG headings stand**: each reads 2026-10-22, npm's UTC date. No file under
+    `modules/` is in the diff.
+  - **`eval-forms` 0.6.1's tarball** has 13 files, where the build has 16. As for 0.6.0, npm publish
+    left out `.npmignore`, `reactive/package.json` and `signals/package.json`. The root manifest's
+    `exports` map serves `./reactive` and `./signals`.
+  - **`.claude/skills/step/SKILL.md`** names no plan, and stops at § 1 if invoked. Its generic rules
+    are made plan-neutral, and its standing rules are kept.
+  - **doc-links**: 348 files, one more, the summary, and 1653 links, 31 more than 1622, with 0
+    dangling and 22 in `.ts` comments:
+    - the summary +16;
+    - `docs/backlog.md` +11: five in the three rows, five in "Work in flight", and F25 Part 4's
+      link to A24;
+    - `docs/README.md` +2: the Phase 10 row's three, less the "Active plan" link;
+    - `ROADMAP.md` +1, the retrospect;
+    - this document +1, § 8 q3's link to F25.
+  - **The review** found no Critical and no warning. Four of its five notes were taken:
+    - F25's Part 4 evidence moved after the Parts 1–3 evidence it had split;
+    - three "Work in flight" bullets, from "ships at the next release" to the version each
+      shipped in;
+    - the retrospect's dates, with the step's local date and the publish's UTC date both given;
+    - its Revision 5 row, which now says the case misread `eval-core`'s range, not the README.
+
+    The fifth was decided before the commit. Under § 6.1 it is false now, not latent: the
+    sentence at `CONTRIBUTING.md:3-4` reads "the index of the design records, the backlog register,
+    the gates and the plan in flight", while the index this step wrote says none is active. So it is
+    fixed here, to "the active plan, when there is one". That widens the step to `CONTRIBUTING.md`,
+    a gate widening recorded with its reason, as step 6's was. The file ships in no package.
 
 ---
 
@@ -1783,6 +1841,7 @@ Each question is stated here and decided elsewhere.
    Steps 2–5 keep every one of these working (§ 3.5, § 3.10). The question is whether they must do so
    permanently. The package CHANGELOGs' 100 relative links (§ 3.2) ship as well but resolve nowhere
    inside a tarball, so they bind only inside the repository, through the gate.
+   **Moved to the register at step 8's gate**, undecided: [F25](../backlog.md#f25) Part 4.
 4. **What the decisions do not cover**, found while measuring:
    - **`docs/README.md`'s completeness.** Step 6 checks it once. *To decide*: whether
      `tools/doc-links.mjs` should fail on a tracked `docs/` file that the index does not link.

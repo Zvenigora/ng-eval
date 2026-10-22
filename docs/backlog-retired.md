@@ -5697,7 +5697,9 @@ against the built `.d.ts`: 47 allowlisted − 8 = 39 = 60 − 21.
 ## F23 — Live documents claim guarantees the library does not give — **Retired, fixed**
 
 **Package** repo, core · **Kind** docs · **Status** **Retired — fixed 2026-10-21** by Phase 10
-step 5, both parts. Was Open — opened 2026-10-20 by Phase 10 step 4's sweeps
+step 5, both parts; the `eval-core` README line released 2026-10-22 in `eval-core` 0.13.1, tagged
+5b9c859, and the root README part ships in no package. Was Open — opened 2026-10-20 by Phase 10
+step 4's sweeps
 
 *Fixed* 2026-10-21:
 - **The root README.** The landing page Phase 10 step 5 wrote keeps none of the twelve lines. Both

@@ -22,9 +22,8 @@ Cite an entry by its ID, `BL-A8` or A8, never by a line number. Retiring an entr
 
 ## Active plan
 
-- [`documentation/phase-10-plan.md`](documentation/phase-10-plan.md) — Phase 10, the documentation
-  restructure. Steps 1–6 are done. Step 7 releases the three package READMEs as docs-only patches, and
-  step 8 records the release and writes the phase's retrospect.
+None is active. Phase 10, the last, is complete and listed below. The next plan is listed here when
+it is written.
 
 ## Completed phases
 
@@ -40,6 +39,7 @@ summaries, refer to the code at the commit that wrote them.
 | 5, the async signal | [`signals/phase-5-plan.md`](signals/phase-5-plan.md) | [retrospect](signals/phase-5-summary.md) | Its § 3.4, the value and status contract, and § 9, the downstream one |
 | 6, `eval-forms`' `/signals` | [`forms/phase-6-plan.md`](forms/phase-6-plan.md) | [step 2](forms/phase-6-step-2-summary.md), [step 3](forms/phase-6-step-3-summary.md), [step 4](forms/phase-6-step-4-summary.md), [step 5](forms/phase-6-step-5-summary.md), [step 6](forms/phase-6-step-6-summary.md), [step 7](forms/phase-6-step-7-summary.md) | The Signal Forms adapter, and the choke point that discharges Phase 4's § 9.1 |
 | 9, colon-joined identifiers | [`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) | [retrospect](colon-identifiers/phase-9-summary.md) | Its § 3.4, the grammar, § 3.5, the acorn plugin and the internals it relies on, and § 9, the downstream contract. Its § 8 q1, q2 and q4 are open |
+| 10, the documentation restructure | [`documentation/phase-10-plan.md`](documentation/phase-10-plan.md) | [retrospect](documentation/phase-10-summary.md) | Its § 3.2, why nothing under `docs/` moves; § 3.5, the package READMEs' one opening and their gated peer ranges; § 3.10, `SECURITY.md`'s identifier check; § 6.1, the spec discipline for documentation; and § 9, the contract after it landed. Its § 8 q3 is undecided, and is [F25](backlog.md#f25) Part 4 |
 
 Phases 7 and 8 are reserved in [`ROADMAP.md`](../ROADMAP.md) and have no plan.
 

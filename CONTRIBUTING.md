@@ -1,7 +1,7 @@
 # Contributing Guide
 
 **Maintainers start at [`docs/README.md`](docs/README.md)**, the index of the design records, the
-backlog register, the gates and the plan in flight. This file covers setup, code style, commit
+backlog register, the gates and the active plan, when there is one. This file covers setup, code style, commit
 messages and releasing.
 
 ## Prerequisites
