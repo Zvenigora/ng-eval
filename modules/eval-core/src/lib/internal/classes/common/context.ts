@@ -61,3 +61,15 @@ export const setContextValue = (context: Context, key: unknown, value: unknown):
     object[key as string | number] = value;
   }
 }
+
+/**
+ * Whether `store` compares its keys case-insensitively: a `Registry` built
+ * with `caseInsensitive`. A case-sensitive `Registry` and a plain record are
+ * read by exact key, whatever the options of the context that holds them.
+ *
+ * The one copy of that test. `eval-context.ts`'s `spellingIn` asks it to find
+ * a key's stored spelling, and `variable-declaration.ts` asks it of the store
+ * a write lands in (`docs/backlog-retired.md` A46).
+ */
+export const isCaseInsensitiveStore = (store: unknown): store is Registry<unknown, unknown> =>
+  store instanceof Registry && store.options['caseInsensitive'] === true;

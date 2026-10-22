@@ -252,8 +252,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.12.1 | `7cc8d30` | 2026-10-17 | 19 | 8: A35–A41, F20 | 2: A36, A37 | 25 |
 | `eval-core` 0.13.0, `eval-signals` 0.6.0, `eval-forms` 0.6.0 | `f7f27f7` | 2026-10-20 | 25 | 1: A42 | 3: A35, A39, A42 | 23 |
 | `eval-core` 0.13.1, `eval-signals` 0.6.1, `eval-forms` 0.6.1 | `5b9c859` | 2026-10-22 | 23 | 5: F21–F25 | 3: F19, F22, F23 | 25 |
-| Unreleased: `eval-core`'s next release. The A40/A41 batch retired three and opened four, and A46 is due before the release | — | — | 25 | 5: A43–A47 | 3: A40, A41, A43 | 27 |
-| **Since the register opened** | | | **42** | **61** | **76** | **27** |
+| Unreleased: `eval-core`'s next release. The A40/A41 batch retired three and opened four; A46 then retired before the release | — | — | 25 | 5: A43–A47 | 4: A40, A41, A43, A46 | 26 |
+| **Since the register opened** | | | **42** | **61** | **77** | **26** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -320,7 +320,7 @@ makes it that release's row, with its tag commit and date.
 | [A43](backlog-retired.md#a43) | Under `caseInsensitive`, an identifier write to a name the context resolves to nothing — absent, or bound to `undefined` — writes the key `undefined` | core | fix | **Retired — fixed 2026-10-22**, opened the same day by the [A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch; unreleased. Both write sites fall back to the name as written, as `identifier.ts` does; `getKey` is unchanged |
 | [A44](#a44) | Under `caseInsensitive`, a member write to a case variant creates a new key: `OBJ.X = 2`, `OBJ.X += 1` and `OBJ.X++` on `{ x: 1 }` leave `{ x: 1, X: 2 }` | core | fix | Open — opened 2026-10-22 by the A40/A41 batch's `caseInsensitive` matrix; predates it. The update spec's `caseInsensitive` leg avoids case-variant spellings because of it, and its fix adds those rows |
 | [A45](#a45) | An assignment evaluates its target as an operand and its right side unconditionally — a short-circuited `\|\|=` still calls its right side and writes, a member target is evaluated twice, and `obj.fetch = 1` is refused at the read | core | fix | Open — opened 2026-10-22 by the A40/A41 batch. Fidelity; no refusal skipped, since every deviation adds one. Not scheduled |
-| [A46](#a46) | An expression can rebind `undefined` on a reused context — `undefined = 1`, then `x === undefined` is `false` — and under `caseInsensitive` a case variant of `undefined`, `null`, `true` or `false` | core | fix, decision | Open — **scheduled next, before `eval-core`'s next release**. Opened 2026-10-22 by the A40/A41 batch's code review. Case-sensitive `undefined` predates the batch; the `caseInsensitive` rows came with [A43](backlog-retired.md#a43)'s fallback. Fidelity: writing a context key is within an expression's reach. The fix decides throw or no-op, and which names |
+| [A46](backlog-retired.md#a46) | An expression can rebind `undefined` on a reused context — `undefined = 1`, then `x === undefined` is `false` — and under `caseInsensitive` a case variant of `undefined`, `null`, `true` or `false` | core | fix, decision | **Retired — fixed 2026-10-22**; unreleased. Such a write throws `Assignment to read-only name`, unless a scope binds the name or the context resolves it; a context class that overrides `set` decides these writes itself. `NaN` and `Infinity` are outside the set, since the evaluator resolves neither |
 | [A47](#a47) | An arrow's parameter scope is pushed without the walk's options, so under `caseInsensitive` `(x => X)(1)` is `undefined`, and `X = 5` in the body can land on the consumer's context | core | fix | Open — opened 2026-10-22 by the A40/A41 batch's code review; predates it. The other three scope pushers pass the options. Not scheduled |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
@@ -471,7 +471,8 @@ from an object's shape. [A33](#a33) is a limit A31's fix left, and documented in
 is one A26's fix left, documented the same way. [A44](#a44)–[A47](#a47) were found by the
 [A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch: A44 by its
 `caseInsensitive` matrix, A45 while correcting `SECURITY.md`'s account of an assignment, and
-[A46](#a46) and A47 by its code review. A46 is due before `eval-core`'s next release.
+[A46](backlog-retired.md#a46) and A47 by its code review. A46 is fixed and retired, ahead of
+`eval-core`'s next release.
 
 **Identity-checked `exit`** (§ 3.8 of the Phase 1 plan) means the hook layer stays balanced in
 spite of [A1](backlog-retired.md#a1) and [A2](backlog-retired.md#a2), so neither was urgent — [A3](backlog-retired.md#a3)
@@ -1109,76 +1110,6 @@ it, and which release can carry it is part of the fix.
 `obj.fetch = 1` throws. Measured 2026-10-22 with a throwaway script outside the repository, against
 the production bundle with the Angular compiler loaded, each row run natively beside it.
 
-<a id="a46"></a>
-## A46 — An expression can rebind `undefined`, and under `caseInsensitive` a case variant of `undefined`, `null`, `true` or `false`
-
-**Package** core · **Kind** fix, decision · **Status** Open — **scheduled next, before
-`eval-core`'s next release**. Opened 2026-10-22 by the code review of the
-[A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch (its W1)
-
-ESTree parses `undefined` as an `Identifier`, not a `Literal`, and under `caseInsensitive` so is a case
-variant of a literal name, `TRUE` or `NULL`, which reads as the literal. An identifier write to such
-a name lands on the context like any other key, and `identifier.ts` reads the context before it
-falls back to the literal, so every later evaluation on that context reads the written value.
-JavaScript's global `undefined` is not writable: in strict code `undefined = 1` throws a `TypeError`,
-and in sloppy code it writes nothing. `true`, `null` and `false` are literals, and assigning to one is
-a `SyntaxError`; JavaScript has no case variant of them.
-
-Measured 2026-10-22 against the production bundle, on `EvalContext.fromContext({})` and on
-`EvalContext.fromContext({}, { caseInsensitive: true })`, each write on a fresh context and then the
-reads on that same context. *Before* is the same bundle without [A43](backlog-retired.md#a43)'s
-fallback, which is the tree before this batch for these rows:
-
-| Mode | Write | Key written | Then reads | Before A43's fallback |
-| :--- | :--- | :--- | :--- | :--- |
-| case-sensitive | `undefined = 1` | `"undefined"` | `undefined` is `1`; `x === undefined` is `false` | the same |
-| case-sensitive | `undefined++` | `"undefined"` | `undefined` is `NaN`; `x === undefined` is `false` | the same |
-| case-sensitive | `UNDEFINED = 1`, `TRUE = 0`, `NULL = 1`, `FALSE = 1` | the name | that name reads the value; nothing else changes | the same |
-| `caseInsensitive` | `undefined = 1` | `"undefined"` | `undefined` and `UNDEFINED` are `1`; `x === undefined` is `false` | the value `undefined` written as a key; nothing rebound |
-| `caseInsensitive` | `undefined++` | `"undefined"` | `undefined` and `UNDEFINED` are `NaN`; `x === undefined` is `false` | the same as the row above |
-| `caseInsensitive` | `UNDEFINED = 1` | `"UNDEFINED"` | `undefined` and `UNDEFINED` are `1`; `x === undefined` is `false` | the same as the row above |
-| `caseInsensitive` | `TRUE = 0` | `"TRUE"` | `TRUE` is `0`; `true` is still `true` | the same as the row above; `TRUE` stays `true` |
-| `caseInsensitive` | `NULL = 1` | `"NULL"` | `NULL` is `1`; `null` is still `null` | the same; `NULL` stays `null` |
-| `caseInsensitive` | `FALSE = 1` | `"FALSE"` | `FALSE` is `1` | the same; `FALSE` stays `false` |
-| both | `(undefined => undefined)(1)` | none | gives `1`, as JavaScript does: a parameter may shadow `undefined` | the same |
-
-On a fresh context, before any write, `undefined`, `x === undefined`, `true` and `null` read as
-JavaScript's in both modes. Case-sensitively, `UNDEFINED`, `TRUE`, `NULL` and `FALSE` are ordinary
-names that read `undefined`; under `caseInsensitive` they read as the literals.
-
-**What predates the batch, and what it introduced.** The two case-sensitive `undefined` rows predate
-it, unchanged. The case-sensitive rows for `UNDEFINED`, `TRUE`, `NULL` and `FALSE` are not a defect:
-those are ordinary names in that mode, and rebinding one shadows nothing. Every `caseInsensitive` row
-was introduced by A43's fallback. Before it, each of those writes went to the value `undefined` as a
-key, which no read can match, so nothing was rebound. That was A43's own defect; the fallback fixed
-it and opened this one.
-
-**Fidelity, not security.** `SECURITY.md`'s threat model leaves writing a context key within an
-expression's reach: a write to a key the context resolves "lands on the caller's own object", and
-`eval-core`'s one write policy is the member-write check, while refusing key writes is what
-`eval-signals` adds. Rebinding `undefined` is such a write. Its harm is to later evaluations on the
-same context, which read the rebound value. `eval-signals` and `eval-forms` cannot reach it, since a
-signal context's `set` refuses every key write. A plain `EvalContext` reused across expressions from
-different authors can.
-
-**The decision the fix makes**:
-- **Throw or no-op.** Strict JavaScript throws a `TypeError`; sloppy JavaScript writes nothing. A
-  throw names the misuse, and a no-op matches the sloppy semantics expressions otherwise follow.
-- **Which names.** `undefined` in both modes, since JavaScript's is not writable. And under
-  `caseInsensitive`, every case variant of `undefined`, `null`, `true` and `false`, since that mode
-  reads each of them as the literal. `NaN` and `Infinity` are also non-writable globals; whether they
-  are in the set is part of the decision.
-- **A binding stays legal.** `(undefined => undefined)(1)` is JavaScript, so a parameter, or a `let`
-  where the grammar allows it, may still bind the name. The refusal is of a write that would reach
-  the context.
-
-*Recorded*: this entry; [A43](backlog-retired.md#a43)'s retired entry and the `[Unreleased]` A43
-line in `modules/eval-core/CHANGELOG.md` point here.
-*Verified*: found by the batch's code review, which measured the `undefined` rows against the
-built bundle. Re-measured 2026-10-22 with a throwaway script outside the repository, against the
-production bundle built from the batch's tree and against the same tree built without A43's
-fallback, the Angular compiler loaded.
-
 <a id="a47"></a>
 ## A47 — An arrow's parameter scope is pushed without the walk's options, so it is case-sensitive under `caseInsensitive`
 
@@ -1211,8 +1142,13 @@ contrast: a block scope, pushed with the options, matches the case variant. Ever
 scope stack empty.
 
 **Fidelity**: an arrow body reads and writes its own parameters case-sensitively in a mode that
-promises otherwise, and a write can land on the consumer's context instead of the parameter. No
-refusal is involved.
+promises otherwise, and a write can land on the consumer's context instead of the parameter.
+
+**Since [A46](backlog-retired.md#a46), a literal-named parameter is the exception.** A case-variant
+write to one, `(undefined => (UNDEFINED = 2))(1)` or `(TRUE => (True = 2))(1)`, throws
+`Assignment to read-only name` instead of rebinding the literal on the consumer's context, the third
+row's outcome before A46. `read-only-names.spec.ts` pins the throw. This entry's fix turns it into a
+parameter write, and moves that pinned row.
 
 *Recorded*: this entry.
 *Verified*: found by the batch's code review. Re-measured 2026-10-22 with a throwaway script outside

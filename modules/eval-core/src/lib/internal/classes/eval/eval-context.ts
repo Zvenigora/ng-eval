@@ -1,5 +1,5 @@
 import { Context, Registry, Stack, fromContext } from '../common';
-import { getContextValue, setContextValue } from '../common/context';
+import { getContextValue, isCaseInsensitiveStore, setContextValue } from '../common/context';
 import { EvalLookup } from './eval-lookup';
 import { EvalMemberWrite } from './eval-member-write';
 import { EvalOptions } from './eval-options';
@@ -104,9 +104,7 @@ const resolve = (context: EvalContext, key: unknown): Resolution | undefined => 
  */
 const spellingIn = (holder: Context, key: string | number | symbol): string | number | symbol => {
 
-  if (holder instanceof Registry
-    && holder.options['caseInsensitive'] === true
-    && typeof key === 'string') {
+  if (isCaseInsensitiveStore(holder) && typeof key === 'string') {
 
     const lowered = key.toLowerCase();
     for (const candidate of holder.keys) {

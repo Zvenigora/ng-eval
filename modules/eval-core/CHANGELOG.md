@@ -36,7 +36,17 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   and one bound to `undefined`, as `x = 1` on `{ x: undefined }`. A context that refuses writes, as
   `eval-signals`' signal context does, is now asked about the name as written, so its refusal names
   it ([A43](../../docs/backlog-retired.md#a43)). For the name `undefined` itself, the fallback
-  writes the key `undefined`, which [A46](../../docs/backlog.md#a46) records.
+  wrote the key `undefined`, which the next line refuses ([A46](../../docs/backlog-retired.md#a46)).
+- **A write that would rebind `undefined` on the context throws
+  `Assignment to read-only name "<name>".`**, as do, under `caseInsensitive`, a write to any
+  spelling of `undefined`, `null`, `true` or `false`, such as `TRUE = 0` or `Undefined++`. Up to
+  0.13.1 such a write landed on the context, and every later evaluation on it read the written
+  value. A case variant of `undefined` is refused under a case-sensitive walk too, when the
+  context's store compares keys case-insensitively, as one built with `caseInsensitive` on the
+  context alone does. It is refused only when nothing else binds the name: a parameter may still
+  shadow it, and a key the context resolves to a value other than `undefined` stays writable. A
+  context class that overrides `set` decides these writes itself, so a signal context still throws
+  its own `SignalContextWriteError` ([A46](../../docs/backlog-retired.md#a46)).
 
 ---
 

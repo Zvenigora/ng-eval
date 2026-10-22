@@ -5,12 +5,13 @@ import { afterVisitor } from './after-visitor';
 import { pushVisitorResult, popVisitorResult } from './visitor-result';
 import { evaluatePattern } from './pattern';
 import { isDangerousProperty } from './prototype-pollution-guard';
-import { EMPTY_COMPLETION, EvalState } from '../classes/eval';
+import { EMPTY_COMPLETION, EvalContext, EvalState } from '../classes/eval';
 import { Context } from '../classes/common';
 // Direct, not through the `common` barrel, which does not re-export it -
 // `eval-context.ts` reaches for the same helper the same way.
 import { setContextValue } from '../classes/common/context';
-import { contextScopeHolding, contextSet, contextSetInScope } from './context-method';
+import { contextScopeHolding, contextSet, contextSetInScope, prototypeMethod } from './context-method';
+import { isLiteralName } from './literal-names';
 
 /**
  * The scope a declaration binds into: the innermost one on the stack.
@@ -152,6 +153,39 @@ export const variableDeclarationVisitor = (node: VariableDeclaration, st: EvalSt
 }
 
 /**
+ * Refuses a write that would rebind a name the evaluator resolves to a
+ * built-in value - `undefined`, and under `caseInsensitive` a case variant of
+ * a literal - on the context (`docs/backlog-retired.md` A46). Up to 0.13.1 it
+ * landed like any other key, and `identifier.ts` reads the context before its
+ * literals, so every later evaluation on that context read the written value.
+ * A case variant of `undefined` is refused under a case-sensitive walk too,
+ * when the store the write lands in - the context's original, which `set`
+ * writes - compares keys case-insensitively, since its `get('undefined')`
+ * would then find the write.
+ *
+ * Called only when no pushed scope binds the name, so a parameter or a `let`
+ * may still shadow it, as in JavaScript. The cheap name test runs first, so
+ * any other name pays nothing more. A key the context resolves to a value
+ * other than `undefined` stays writable - one the host holds, or one a lookup
+ * answers; a key held as `undefined` resolves to nothing, as A43 counts it.
+ *
+ * **A context class that overrides `set` decides these writes itself.** `set`
+ * is resolved by class, as every method the evaluator calls on a context is
+ * (`context-method.ts`), so an own property planted on the instance cannot
+ * pass for an override. `eval-signals`' signal context overrides `set` to
+ * refuse every key write with `SignalContextWriteError`, which `eval-forms`
+ * rethrows by class past its error policy; refusing here first would have
+ * replaced that error with this one.
+ */
+const refuseReadOnlyName = (context: EvalContext, name: string, caseInsensitive: boolean): void => {
+  if (isLiteralName(name, caseInsensitive, context.original)
+    && context.getKey(name) === undefined
+    && prototypeMethod(context, 'set') === EvalContext.prototype.set) {
+    throw new Error(`Assignment to read-only name "${name}".`);
+  }
+}
+
+/**
  * Assigns to `key`, preferring a binding the evaluation itself created.
  *
  * The shared write path for `assignment-expression.ts` and
@@ -195,6 +229,7 @@ export const assignToBinding = (st: EvalState, key: unknown, value: unknown, nam
   const scope = contextScopeHolding(st.context, key);
 
   if (!scope) {
+    refuseReadOnlyName(st.context, name, !!st.options?.caseInsensitive);
     contextSet(st.context, key, value);
     return;
   }

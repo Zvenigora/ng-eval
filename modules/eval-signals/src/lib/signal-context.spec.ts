@@ -393,6 +393,19 @@ describe('createSignalContext', () => {
         .toThrow(/Cannot assign to 'count'/);
     });
 
+    // `eval-core` refuses a write that would rebind `undefined` on a plain
+    // context, but leaves it to a context class that overrides `set`
+    // (`docs/backlog-retired.md` A46), so this context's own refusal stands.
+    it.each([{}, { caseInsensitive: true }])(
+      'should reject a write to undefined with its own error, under %j', options => {
+        const context = createSignalContext({ count: signal(1) }, options);
+
+        expect(() => service.simpleEval('undefined = 1', context, options))
+          .toThrow(SignalContextWriteError);
+        expect(() => service.simpleEval('undefined = 1', context, options))
+          .toThrow(/Cannot assign to 'undefined'/);
+      });
+
     it('should raise a keyed error naming no expression when used standalone', () => {
       const context = createSignalContext({ count: signal(1) });
 

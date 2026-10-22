@@ -2522,7 +2522,7 @@ object held as it is resolves no case variant, for a read either, and wrote the 
 *Fixed* 2026-10-22: `st.context.getKey(target.name) ?? target.name` at both sites, the fallback
 `identifier.ts` takes. `getKey` does not change. Every row above now writes the intended key, and the
 signal context's refusal reads `Cannot assign to 'y'`, its `key` `"y"`. For the name `undefined`, the
-fallback writes the key `undefined`, which [A46](backlog.md#a46) records. A matched case variant
+fallback wrote the key `undefined`, which [A46](#a46) recorded and its fix refuses. A matched case variant
 still writes the matched spelling. A case-insensitive `Registry` keeps the spelling it was last
 written with (`spellingIn`'s doc comment, `eval-context.ts`), so `X = 1` over `{ x: undefined }`
 respells the key `X`; reads are unaffected. On a plain object held as it is, `foo = 2` now writes `foo` beside
@@ -2542,6 +2542,170 @@ turned 9, the assignment cases. Neither turned the other's red, and the case-var
 green under both.
 
 *Recorded*: this entry; `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Fixed.
+
+<a id="a46"></a>
+## A46 — An expression can rebind `undefined`, and under `caseInsensitive` a case variant of `undefined`, `null`, `true` or `false`
+
+**Package** core · **Kind** fix, decision · **Status** **Retired — fixed 2026-10-22**; unreleased, in
+`eval-core`'s next release, the one that carries [A43](#a43). Was Open, scheduled before that
+release. Opened 2026-10-22 by the code review of the [A40](#a40) and [A41](#a41) batch (its W1)
+
+*Fixed* 2026-10-22, as decided below. `assignToBinding` (`variable-declaration.ts`), the one write
+path of both its callers, the assignment visitor and the update visitor, refuses before
+`contextSet`, in its branch where no pushed scope binds the name, with
+`Assignment to read-only name "<name as written>".`. The name test, `isLiteralName`, sits beside
+the `literals` registry in a small internal module, `literal-names.ts`, which `identifier.ts` now
+imports the registry from; nothing on the published surface changed. The context's `set` is compared
+with `EvalContext.prototype.set` through `context-method.ts`'s `prototypeMethod`, the class-method
+lookup every other context call uses, so no second lookup was written and no import cycle appeared.
+
+**What it leaves**, pinned rather than refused: a context class that overrides `set` decides these
+writes itself, so one whose override only records and calls `super.set` lets `undefined` be rebound
+on it. A key the context resolves to a value other than `undefined` stays writable, one the host
+holds or one a lookup answers, and the write lands on the context's own store, which is read before
+the lookups, so a later read sees the written value. A key held as `undefined` resolves to nothing,
+as [A43](#a43) counts it, so `undefined = 1` over `{ undefined: undefined }` is refused.
+
+**Widened before release, from the fix's code review (its W1).** Under a case-sensitive walk the
+name test first matched `undefined` only as spelled, but a context built with `caseInsensitive` on
+the context alone, the split the README warns of, stores into a case-insensitive `Registry`. There
+`UNDEFINED = 1` landed, and the case-sensitive read of `undefined`, which asks that store for
+`undefined`, found it. Measured on `EvalContext.fromContext({}, { caseInsensitive: true })` with walk
+options `{}`: `UNDEFINED = 1` gave `1` and `undefined` then read `1`. A plain-object original under
+context-level `caseInsensitive`, as `new EvalContext({}, { caseInsensitive: true })` holds, is not
+such a store: there `undefined` still read `undefined`. So any spelling of `undefined` now also
+counts when the store the write lands in, the context's original, compares keys case-insensitively.
+`TRUE`, `NULL` and `FALSE` keep the walk's mode, since a case-sensitive walk never reads them as
+literals. The store test is `isCaseInsensitiveStore`, in `classes/common/context.ts`, the one copy of
+the predicate `eval-context.ts`'s `spellingIn` also calls. Six cases pin it and its neighbours:
+- `UNDEFINED = 1` and `Undefined++` over that store, walked case-sensitively, are refused, leave the
+  key list empty, and leave `undefined` reading `undefined`;
+- `TRUE = 0` over the same store and walk writes, as an ordinary name;
+- `undefined = 1` over `{ undefined: undefined }`, case-sensitively, is refused;
+- under `caseInsensitive`, `(undefined => (UNDEFINED = 2))(1)` and `(TRUE => (True = 2))(1)` are
+  refused with no scope left, since [A47](backlog.md#a47)'s parameter scope does not match the case
+  variant.
+
+The store test dropped, the two refusal rows over that store failed and nothing else did.
+
+**Condition (a) is implied by (b), for `EvalContext`'s own `getKey`.** `getKey` resolves through the
+pushed scopes first, by presence, so a name a scope binds is always resolved, and (b) alone keeps a
+parameter's shadowing legal. The two part only on a context class that overrides `getKey` and keeps
+`EvalContext`'s `set`, and a case with such a class is what proves (a) load-bearing. The fix's first
+probe, (a) dropped, stayed green against every other case, which is how this was found.
+
+*Verified*: test-first, in `read-only-names.spec.ts`, a new spec beside the visitor, 28 cases, and
+six more from the widening above, 34 in all.
+Against the visitor before the fix, the 14 refusal cases failed, each at "expected a throw", and the
+other 14 passed, since they pin what stays allowed. In both modes:
+- `undefined = 1`, `undefined++`, `--undefined` and `undefined += 1` throw the message with
+  `undefined`, which covers both `assignToBinding` callers and the compound path, and leave the
+  context's whole key list empty and no scope on the stack; afterwards `undefined` reads `undefined`
+  and `x === undefined` is `true`;
+- `(undefined => (undefined = 2, undefined))(1)` gives `2` and leaks nothing, on a plain context and
+  on one whose `getKey` resolves nothing;
+- a context class whose `set` throws an error of its own throws that error;
+- a context class whose `set` records and calls `super.set` is written, the limit above.
+
+Case-sensitively, `TRUE = 0`, `NULL = 1` and `UNDEFINED = 1` are allowed, as ordinary names. Under
+`caseInsensitive`, `UNDEFINED = 1`, `Undefined++`, `TRUE = 0`, `NULL = 1`, `FALSE = 1` and
+`False += 1` throw with the name as written and leave the key list empty, the literal still reading
+as itself. In the same mode, `(TRUE => (TRUE = 5, TRUE))(1)` gives `5`, `TRUE = 2` on `{ TRUE: 1 }`
+writes the host's key, and `undefined = 1` where a lookup answers `undefined` with `7` writes and reads
+back `1`. In `eval-signals`' `signal-context.spec.ts`, two cases, one per mode, assert that
+`undefined = 1` on a signal context still throws `SignalContextWriteError`. That spec ships in no
+package.
+
+Wrong implementations, each applied alone and run against all 28 cases:
+- **(a) dropped, the check made whether or not a scope binds the name**: 2 failed, the shadowing case
+  on the context whose `getKey` resolves nothing, in each mode. Against the 26 cases before that
+  case existed, nothing failed;
+- **(b) dropped**: 2 failed, the host-held `TRUE = 2` and the lookup case;
+- **(a) and (b) dropped together**, run against the 26: 5 failed, the three shadowing cases on a
+  plain context and the two above;
+- **(c) made case-sensitive in both modes**: 6 failed, the `caseInsensitive` rows for `UNDEFINED`,
+  `Undefined`, `TRUE`, `NULL`, `FALSE` and `False`;
+- **(d), the check's decision made before `contextSet` and thrown after it**: 14 failed, every
+  refusal row, each at its key list after its message passed;
+- **(e), the class comparison dropped**: 4 failed, the two overriding classes in each mode, and
+  `eval-signals`' two new cases with them.
+
+**The entry as it stood:**
+
+ESTree parses `undefined` as an `Identifier`, not a `Literal`, and under `caseInsensitive` so is a case
+variant of a literal name, `TRUE` or `NULL`, which reads as the literal. An identifier write to such
+a name lands on the context like any other key, and `identifier.ts` reads the context before it
+falls back to the literal, so every later evaluation on that context reads the written value.
+JavaScript's global `undefined` is not writable: in strict code `undefined = 1` throws a `TypeError`,
+and in sloppy code it writes nothing. `true`, `null` and `false` are literals, and assigning to one is
+a `SyntaxError`; JavaScript has no case variant of them.
+
+Measured 2026-10-22 against the production bundle, on `EvalContext.fromContext({})` and on
+`EvalContext.fromContext({}, { caseInsensitive: true })`, each write on a fresh context and then the
+reads on that same context. *Before* is the same bundle without [A43](#a43)'s fallback, which is the
+tree before the A40/A41 batch for these rows:
+
+| Mode | Write | Key written | Then reads | Before A43's fallback |
+| :--- | :--- | :--- | :--- | :--- |
+| case-sensitive | `undefined = 1` | `"undefined"` | `undefined` is `1`; `x === undefined` is `false` | the same |
+| case-sensitive | `undefined++` | `"undefined"` | `undefined` is `NaN`; `x === undefined` is `false` | the same |
+| case-sensitive | `UNDEFINED = 1`, `TRUE = 0`, `NULL = 1`, `FALSE = 1` | the name | that name reads the value; nothing else changes | the same |
+| `caseInsensitive` | `undefined = 1` | `"undefined"` | `undefined` and `UNDEFINED` are `1`; `x === undefined` is `false` | the value `undefined` written as a key; nothing rebound |
+| `caseInsensitive` | `undefined++` | `"undefined"` | `undefined` and `UNDEFINED` are `NaN`; `x === undefined` is `false` | the same as the row above |
+| `caseInsensitive` | `UNDEFINED = 1` | `"UNDEFINED"` | `undefined` and `UNDEFINED` are `1`; `x === undefined` is `false` | the same as the row above |
+| `caseInsensitive` | `TRUE = 0` | `"TRUE"` | `TRUE` is `0`; `true` is still `true` | the same as the row above; `TRUE` stays `true` |
+| `caseInsensitive` | `NULL = 1` | `"NULL"` | `NULL` is `1`; `null` is still `null` | the same; `NULL` stays `null` |
+| `caseInsensitive` | `FALSE = 1` | `"FALSE"` | `FALSE` is `1` | the same; `FALSE` stays `false` |
+| both | `(undefined => undefined)(1)` | none | gives `1`, as JavaScript does: a parameter may shadow `undefined` | the same |
+
+On a fresh context, before any write, `undefined`, `x === undefined`, `true` and `null` read as
+JavaScript's in both modes. Case-sensitively, `UNDEFINED`, `TRUE`, `NULL` and `FALSE` are ordinary
+names that read `undefined`; under `caseInsensitive` they read as the literals.
+
+**What predates the batch, and what it introduced.** The two case-sensitive `undefined` rows predate
+it, unchanged. The case-sensitive rows for `UNDEFINED`, `TRUE`, `NULL` and `FALSE` are not a defect:
+those are ordinary names in that mode, and rebinding one shadows nothing. Every `caseInsensitive` row
+was introduced by A43's fallback. Before it, each of those writes went to the value `undefined` as a
+key, which no read can match, so nothing was rebound. That was A43's own defect; the fallback fixed
+it and opened this one.
+
+**Fidelity, not security.** `SECURITY.md`'s threat model leaves writing a context key within an
+expression's reach: a write to a key the context resolves "lands on the caller's own object", and
+`eval-core`'s one write policy is the member-write check, while refusing key writes is what
+`eval-signals` adds. Rebinding `undefined` is such a write. Its harm is to later evaluations on the
+same context, which read the rebound value. `eval-signals` and `eval-forms` cannot reach it, since a
+signal context's `set` refuses every key write. A plain `EvalContext` reused across expressions from
+different authors can.
+
+**Decided 2026-10-22, before the fix**: refuse, by throwing
+`Assignment to read-only name "<name as written>".`, the shape of the `const` error, a binding write
+where all four hold:
+- **(a)** no pushed scope binds the name, so a parameter or a `let` may still shadow it, as
+  `(undefined => undefined)(1)` does in JavaScript;
+- **(b)** the context does not resolve the name, `getKey` giving `undefined`, so a host that holds
+  the key keeps it writable;
+- **(c)** the name is one the evaluator resolves to a built-in value: `undefined` in both modes, and
+  under `caseInsensitive` any spelling of a name in `identifier.ts`'s `literals` registry,
+  `undefined`, `null`, `true` and `false`. `NaN` and `Infinity` are not in the set: measured on an
+  empty context, the evaluator resolves neither, and `NaN`, `Infinity` and `INFINITY` each give
+  `undefined` in both modes;
+- **(d)**, decided at the fix's gate: the context's `set`, resolved by class as `context-method.ts`
+  resolves methods, is `EvalContext.prototype.set`. **A context class that overrides `set` decides
+  these writes itself.** Without (d) the refusal would pre-empt a signal context's
+  `SignalContextWriteError`, which `eval-forms` and `eval-signals` promise for every assignment and
+  which `eval-forms`' error policy rethrows by class, so a rule `undefined = 1` would have rendered a
+  silent blank under the default policy.
+
+A throw rather than a no-op: it names the misuse, where a no-op would leave `undefined = 1` giving
+`1` and the context unchanged, which reads as a write that happened. The check runs before
+`contextSet`, so a refused write leaves the context unchanged.
+
+*Recorded*: this entry; [A43](#a43)'s retired entry and the `[Unreleased]` A43 and A46 lines in
+`modules/eval-core/CHANGELOG.md`.
+*Verified*: found by the batch's code review, which measured the `undefined` rows against the
+built bundle. Re-measured 2026-10-22 with a throwaway script outside the repository, against the
+production bundle built from the batch's tree and against the same tree built without A43's
+fallback, the Angular compiler loaded.
 
 ---
 

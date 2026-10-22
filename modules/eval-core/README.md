@@ -276,7 +276,9 @@ The project has been tested with the following node types:
  - `ObjectExpression`
  - `AssignmentExpression` — to an identifier or a member, parenthesised or not. Destructuring
    assignment, `[a, b] = arr` or `({ m } = o)`, throws `Unsupported assignment target`;
-   before `@zvenigora/ng-eval-core` 0.7.0 it silently did nothing
+   before `@zvenigora/ng-eval-core` 0.7.0 it silently did nothing. An identifier write that
+   would shadow `undefined`, or under `caseInsensitive` a literal, throws
+   `Assignment to read-only name`, since 0.13.2
  - `UpdateExpression` — to an identifier or a member, parenthesised or not
  - `ArrowFunctionExpression` *potentially unsafe* (AssignmentPattern is not implemented, so a
    destructuring default — `({ a = 1 }) => a` — is rejected rather than defaulted)

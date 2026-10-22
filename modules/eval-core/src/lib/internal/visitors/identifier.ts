@@ -3,17 +3,10 @@ import { beforeVisitor } from './before-visitor';
 import { pushVisitorResult } from './visitor-result';
 import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
-import { Registry } from '../public-api';
 import { equalIgnoreCase } from './utils';
 import { isDangerousProperty, mayMatchDangerousProperty } from './prototype-pollution-guard';
 import { refuseThisValue } from './this-position';
-
-const literals: Registry<string, unknown>= Registry.fromObject({
-  'undefined': undefined,
-  'null': null,
-  'true': true,
-  'false': false,
-}, { caseInsensitive: true });
+import { literals } from './literal-names';
 
 /**
  * Reports a resolved identifier read to the hook layer.
