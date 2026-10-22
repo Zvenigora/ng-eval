@@ -2327,7 +2327,7 @@ a context, is in the plan's § 9.
 ## A40 — A postfix update of a listed function writes, then the funnel refuses it
 
 **Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-22**, as a consequence of
-[A41](#a41)'s fix; released in `eval-core` 0.13.2, pending publish. Was Open
+[A41](#a41)'s fix; released 2026-10-22 in `eval-core` 0.13.2, tagged dc4302d. Was Open
 
 *Fixed* 2026-10-22, by A41's fix rather than the one this entry proposed. An update converts its
 operand to a number before it writes, and its postfix result is that converted old value. A listed
@@ -2388,8 +2388,8 @@ throwaway script outside the repository, against step 3's bundle and step 4's.
 <a id="a41"></a>
 ## A41 — An update on a string or an object concatenates, and a postfix update gives the operand unconverted
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-22**; released in
-`eval-core` 0.13.2, pending publish. Was Open
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-22**; released 2026-10-22
+in `eval-core` 0.13.2, tagged dc4302d. Was Open
 
 *Fixed* 2026-10-22. `update-expression.ts` runs the update natively on a copy of the operand,
 `let updated = value; const old = node.operator === '++' ? updated++ : updated--`, inline in each
@@ -2490,8 +2490,8 @@ each update natively beside it. The two gave the same table.
 <a id="a43"></a>
 ## A43 — Under `caseInsensitive`, an identifier write to a name the context resolves to nothing writes the key `undefined`
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-22**; released in
-`eval-core` 0.13.2, pending publish. Opened and fixed the same day, in the [A40](#a40) and [A41](#a41) batch,
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-22**; released 2026-10-22
+in `eval-core` 0.13.2, tagged dc4302d. Opened and fixed the same day, in the [A40](#a40) and [A41](#a41) batch,
 whose case matrix found it under `caseInsensitive`
 
 Under `caseInsensitive`, `assignment-expression.ts` and `update-expression.ts` take an identifier's
@@ -2546,8 +2546,8 @@ green under both.
 <a id="a46"></a>
 ## A46 — An expression can rebind `undefined`, and under `caseInsensitive` a case variant of `undefined`, `null`, `true` or `false`
 
-**Package** core · **Kind** fix, decision · **Status** **Retired — fixed 2026-10-22**; released in
-`eval-core` 0.13.2, pending publish, with [A43](#a43). Was Open, scheduled before that release. Opened 2026-10-22 by the code review of the [A40](#a40) and [A41](#a41) batch (its W1)
+**Package** core · **Kind** fix, decision · **Status** **Retired — fixed 2026-10-22**; released
+2026-10-22 in `eval-core` 0.13.2, tagged dc4302d, with [A43](#a43). Was Open, scheduled before that release. Opened 2026-10-22 by the code review of the [A40](#a40) and [A41](#a41) batch (its W1)
 
 *Fixed* 2026-10-22, as decided below. `assignToBinding` (`variable-declaration.ts`), the one write
 path of both its callers, the assignment visitor and the update visitor, refuses before
