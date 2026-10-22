@@ -62,8 +62,12 @@ export const assignmentExpressionVisitor = (node: AssignmentExpression, st: Eval
   } else if (!st.context) {
     throw new Error(`Context is not set.`);
   } else if (target.type === 'Identifier') {
+    // `getKey` gives `undefined` when `get` finds nothing - an absent name, or
+    // one bound to `undefined` - and that key was written as it came
+    // (`docs/backlog-retired.md` A43). The name as written is the fallback
+    // `identifier.ts` already takes.
     const key = st.options?.caseInsensitive
-      ? st.context.getKey(target.name)
+      ? st.context.getKey(target.name) ?? target.name
       : target.name;
     const value = func(left, right);
     // Scope first, the caller's object second. Before Phase 2 this was

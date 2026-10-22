@@ -12,6 +12,32 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Changed
+- **The README states a limit of `caseInsensitive` on a context built with `new EvalContext`**: a
+  plain object handed to the constructor matches no case variant, even with the option passed to
+  the walk too, and `EvalContext.fromContext` is the way to build one that does. No code change
+  ([A44](../../docs/backlog.md#a44), where it was measured).
+
+### Fixed
+- **An update converts its operand to a number once, as JavaScript does**, and uses that one
+  conversion for the value it writes and for its result. `x++` on `"5"` gives `5` and writes `6`,
+  where it gave `"5"` and wrote `"51"`; an object that does not convert to a number, or a
+  non-numeric string, gives `NaN` and writes `NaN`, where `++` concatenated and a postfix update gave the operand as read; and an update
+  of a BigInt updates it, where it threw. An operand that cannot convert, a Symbol or a throwing
+  `valueOf`, throws before anything is written
+  ([A41](../../docs/backlog-retired.md#a41)).
+- **A postfix update of a listed function no longer throws after writing**: `tools.eval++` gives
+  `NaN` and writes `NaN`, as JavaScript does, where the write landed and the funnel then refused the
+  old value. The result is a number, so the funnel has nothing to refuse
+  ([A40](../../docs/backlog-retired.md#a40)).
+- **Under `caseInsensitive`, an identifier assignment or update to a name the context resolves to
+  nothing writes that name**, where it wrote the key `undefined`: the string `"undefined"` on a
+  plain object, the value `undefined` in a `Registry`. That covers a name absent from the context
+  and one bound to `undefined`, as `x = 1` on `{ x: undefined }`. A context that refuses writes, as
+  `eval-signals`' signal context does, is now asked about the name as written, so its refusal names
+  it ([A43](../../docs/backlog-retired.md#a43)). For the name `undefined` itself, the fallback
+  writes the key `undefined`, which [A46](../../docs/backlog.md#a46) records.
+
 ---
 
 ## [0.13.1] - 2026-10-22
@@ -266,7 +292,7 @@ ranges are `>=0.11.0 <0.13.0` and `>=0.12.0 <0.13.0`.
     - assigning over a listed function, `fetch = 1` or `obj.fetch = 1`, since an assignment reads
       its target before writing it;
     - updating one, `obj.fetch++`, which writes first and then throws, so the failed evaluation
-      leaves its write behind ([A40](../../docs/backlog.md#a40));
+      leaves its write behind ([A40](../../docs/backlog-retired.md#a40));
     - an operator's operand, `x instanceof Function` or `obj.fetch != null`;
     - a conditional's test, `obj.fetch ? 1 : 0`;
     - a template interpolation, `` `${eval}` ``, and a declaration's initializer;

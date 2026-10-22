@@ -205,7 +205,7 @@ const result = service.simpleEval('cat.action(args, cat.num, "times")', evalCont
 // 'Mister Whiskers says meow 3 times' - `this` is thisArg; cat.num still reads cat
 ```
 
-Note that an `EvalContext` may back any number of evaluations, and that `caseInsensitive` set on the context alone does not reach the walk — pass it in the evaluation options too.
+Note that an `EvalContext` may back any number of evaluations, and that `caseInsensitive` set on the context alone does not reach the walk — pass it in the evaluation options too. Even then, a plain object handed to `new EvalContext` matches no case variant: build the context with `EvalContext.fromContext(object, options)` instead, which copies the object into a case-insensitive store.
 
 ### Colon-joined names — `provideColonIdentifiers`
 

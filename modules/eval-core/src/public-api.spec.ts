@@ -368,6 +368,7 @@ const SECURITY_ALLOWLIST: Readonly<Record<string, SecurityAllowReason>> = {
   Error: 'js-global',
   EvalError: 'js-global',
   JSON: 'js-global',
+  NaN: 'js-global',
   Object: 'js-global',
   Promise: 'js-global',
   Proxy: 'js-global',

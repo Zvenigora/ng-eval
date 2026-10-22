@@ -186,11 +186,21 @@ refused at the read:
 - a host-bound function handed on, `["1+1"].map(e)`, and the expression's own result, `eval`.
 
 Reads that only inspect the value throw too, since the rule has no exception for them:
-- assigning over one, `fetch = 1` or `obj.fetch = 1`;
-- a postfix update, `obj.fetch++`, which writes before it throws ([A40](docs/backlog.md#a40));
+- an assignment's target, `fetch = 1` or `obj.fetch = 1`: an assignment evaluates its target as an
+  operand before it writes, even for `=`, so the funnel refuses that read
+  ([A45](docs/backlog.md#a45));
 - an operator's operand, `x instanceof Function` or `obj.fetch != null`;
 - a conditional's test, a template interpolation and a declaration's initializer;
 - `typeof (eval)` under preserveParens, whose operand is the parenthesis.
+
+**No write path refuses overwriting a listed function.** The refusal of `obj.fetch = 1` is the
+read's, and only an assignment reads its target as an operand. An update takes its operand without
+pushing it where the funnel looks, and converts it to a number, as JavaScript does: `++obj.fetch`
+has overwritten the function since before 0.13.0, with a string until A41's fix and `NaN` from it,
+and `obj.fetch++` does from A40's fix, with `NaN`. Neither fix is released yet. Either way the
+function is replaced, and no function value reaches anything
+([A40](docs/backlog-retired.md#a40), [A41](docs/backlog-retired.md#a41),
+[A45](docs/backlog.md#a45)).
 
 **Exempt**: a callee or tag node itself, which the check at the callee covers, and `typeof`'s
 operand, so `typeof eval` is still `"function"`. Only that node is exempt, never what is under it:
@@ -360,10 +370,9 @@ evaluation's trace can take. Implemented in
 - **Calls and arrow functions are marked potentially unsafe** in the list of supported syntax, for
   the reasons above.
 - **Open register entries that bear on this**:
-  [A25](docs/backlog.md#a25), each `await` starts a 30-second timer that is never cleared;
+  [A25](docs/backlog.md#a25), each `await` starts a 30-second timer that is never cleared; and
   [A33](docs/backlog.md#a33), under `caseInsensitive` a cached miss can hide a key added later — no
-  refusal is skipped; and [A40](docs/backlog.md#a40), a postfix update of a listed function writes
-  before the funnel refuses it.
+  refusal is skipped.
 
 ## Advisories
 

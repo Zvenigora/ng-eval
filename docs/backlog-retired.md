@@ -1944,7 +1944,7 @@ Step 4's code review found two things, each now its own entry:
   listed function the context holds. Its detail is in advisory
   [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx),
   and its probes are regression cases in five `eval-core` specs, listed in [A39](#a39).
-- **[A40](backlog.md#a40)**: under the funnel, a postfix update of a listed function writes, then throws.
+- **[A40](#a40)**: under the funnel, a postfix update of a listed function writes, then throws.
 
 So A35 stays open until the route through `this` is closed. It retires with A39, in the plan's step 8.
 
@@ -2322,6 +2322,226 @@ A:L rather than A:N. Step 11 re-runs the vector with this entry in hand.
 other two layers; each layer removed in turn, and the cases that went red recorded in the plan's
 § 9. The enumeration of the write forms, and of the sites where the evaluator invokes a method on
 a context, is in the plan's § 9.
+
+<a id="a40"></a>
+## A40 — A postfix update of a listed function writes, then the funnel refuses it
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-22**, as a consequence of
+[A41](#a41)'s fix; unreleased, in `eval-core`'s next release. Was Open
+
+*Fixed* 2026-10-22, by A41's fix rather than the one this entry proposed. An update converts its
+operand to a number before it writes, and its postfix result is that converted old value. A listed
+function converts to `NaN`, so the push the funnel guards never holds a function: `tools.eval++`
+and `e++` give `NaN` and write `NaN`, as JavaScript does, and nothing throws. No failed evaluation
+leaves a write behind, because the evaluation no longer fails.
+
+The entry's own fix, checking the operand before writing and refusing, was not taken. It would have
+made the update throw where JavaScript gives `NaN`, and left the postfix result unconverted for
+every other operand, which is A41.
+
+**What it leaves.** The update writes `NaN` over the listed function, where an assignment over it,
+`obj.e = 1`, `e = 1` or `obj.e += 1`, is refused. That refusal is the read's, not the write's: an
+assignment evaluates its target as an operand before it writes ([A45](backlog.md#a45)), and no
+write path refuses overwriting a listed function. Nor is the update's overwrite new: the prefix form
+already wrote over it, with a string, before this fix, as the table below shows. No function value
+is handed on. `SECURITY.md` states it.
+
+*Verified*: `update-expression.spec.ts`, "a listed function as the operand (A40)", in both modes:
+`tools.eval++` with `tools = { eval }` and `e++` with `e = eval` give `NaN`, as the same update run
+natively does, and leave `NaN`. Against the visitor before the fix, both cases threw
+`Access to dangerous function "eval" is blocked for security reasons`, in both modes. Two of A41's
+wrong implementations turn them red: `++` back to `value + 1`, which leaves
+`"function eval() { [native code] }1"`, and the postfix result unconverted, which the funnel refuses
+again. Measured 2026-10-22 through `EvalService`, `eval` in the context: `obj.e = 1`, `e = 1` and
+`obj.e += 1` throw the funnel's message, and `obj.e++`, `++obj.e` and `e++` give `NaN` and write it.
+
+**The entry as it stood:**
+
+For a postfix update, `update-expression.ts` does three things in order:
+1. reads its target;
+2. writes the new value;
+3. pushes the old value, which is the update's result.
+
+Under the funnel, step 4 of the [A35 plan](a35/plan.md), the push in step 3 throws when the old
+value is a listed function. By then the write has happened, so the failed evaluation leaves it
+behind. Measured 2026-10-16 with `eval` in the context:
+
+| Expression | Step 3's bundle | Step 4's bundle | Afterwards, on both |
+| :--- | :--- | :--- | :--- |
+| `tools.eval++`, `tools = { eval }` | gives `eval` itself | throws `Access to dangerous function "eval" is blocked for security reasons` | `tools.eval` is `"function eval() { [native code] }1"` |
+| `e++`, `e = eval` | gives `eval` itself | throws, the same | `e` is that string |
+| `++tools.eval` | gives the string | gives the string | the same |
+
+Step 3's column is an [A35](#a35) route that the funnel closes: the postfix result was the listed
+function itself. What it leaves is not a security route either. The write replaces the listed
+function with a string, and the old value reaches nothing. It is a failed evaluation with a side
+effect. The prefix form pushes the new value, so it never throws.
+
+**The fix**: check the operand before writing. A listed old value is then refused before the
+write, so the update throws having changed nothing.
+
+*Recorded*: this entry; `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Security entry, from
+step 4.
+*Verified*: the code review of the A35 plan's step 4 found it (its W1). Measured 2026-10-16 with a
+throwaway script outside the repository, against step 3's bundle and step 4's.
+
+<a id="a41"></a>
+## A41 — An update on a string or an object concatenates, and a postfix update gives the operand unconverted
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-22**; unreleased, in
+`eval-core`'s next release. Was Open
+
+*Fixed* 2026-10-22. `update-expression.ts` runs the update natively on a copy of the operand,
+`let updated = value; const old = node.operator === '++' ? updated++ : updated--`, inline in each
+branch. That is JavaScript's
+own conversion, made once, BigInt included, which `Number()` or a unary `+` is not. `old` is the
+postfix result, and `updated` the value written and the prefix result. Both branches, the identifier
+and the member, convert before `assignToBinding`, `consultMemberWrite` and `safeSetProperty`, so an
+operand that cannot convert, a Symbol or a throwing `valueOf`, throws with nothing written.
+`updateOperators` is removed.
+
+What a consumer sees change: `"5"++` gives `5` and writes `6`, not `"5"` and `"51"`; an object that
+does not convert to a number, or a non-numeric string, gives `NaN` and writes `NaN`; a postfix update of `null`, `undefined`, `true` or
+`[2]` gives its number, not the operand; and an update of a BigInt updates it, where it threw
+`Cannot mix BigInt and other types`. A number operand, and a prefix `--` on anything, evaluate as
+before. The fix closes [A40](#a40) as a consequence.
+
+*Verified*: test-first, in `update-expression.spec.ts`, a new spec beside the visitor. Its case
+matrix runs nine operands, `"a"`, `"5"`, `{}`, `[2]`, `null`, `undefined`, `true`, `5` and `5n`, in
+the four forms, on an identifier and on a member. Each case asserts the result and the operand
+afterwards against the same update run natively inside the spec, not against a typed table. The
+whole matrix runs again under `caseInsensitive`, the operand read back through the context. Beside
+the matrix, in both modes and on both targets:
+- a Symbol operand throws the native TypeError's message, and the target still holds the Symbol;
+- a `valueOf` that throws `boom` throws it, and the target still holds the operand;
+- under a context that records every write and member-write consultation, neither of those two
+  reaches one;
+- under a policy that refuses what the walk did not create, as `eval-signals`' does, `tools.x++` is
+  refused with the policy's message and `tools.x` is unchanged;
+- an operand whose `valueOf` counts its calls is converted exactly once in each of the four forms.
+
+Against the visitor before the fix, 100 of the two visitor specs' 181 cases failed: 22 matrix rows
+per target and mode, the three forms other than `--x` on `"a"`, `"5"`, `{}` and `[2]`, the two
+postfix forms on `null`, `undefined` and `true`, and all four `5n` forms; two more in the `caseInsensitive` identifier leg,
+which are [A43](#a43); both A40 cases in each mode; and A43's six update cases. The conversion count
+passed there too: `value + 1` also converts once, so the count is 1 in each form before the fix and
+after it. Wrong implementations, each applied alone and run against the two specs:
+- **`++` back to `value + 1`, the rest fixed**: 48 failed. The `++` rows on `"a"`, `"5"`, `{}` and
+  `[2]`, at the operand afterwards; the `++` rows on `5n`; the conversion count; and both A40 cases,
+  in both modes. The `--` rows, and the `++` rows on `null`, `undefined`, `true` and `5`, which
+  `+ 1` converts the same, stayed green.
+- **the postfix result unconverted**: 66 failed. Every postfix row whose operand is not a number or
+  a BigInt, both A40 cases in each mode, and A43's six update cases, whose postfix result is `NaN`.
+  The prefix rows stayed green.
+- **the conversion moved after a write of the operand as read**: 8 failed, the Symbol and
+  throwing-`valueOf` cases, at their write record. Their "the target still holds it" leg stayed
+  green, since that write put the same value back; the record is what catches it.
+- **`Number(value)` in place of the native update**: 16 failed, the `5n` rows in every form, target
+  and mode. The Symbol case stayed green: `Number` throws the same TypeError message.
+
+Before the fix, the batch searched every spec in the three projects for an update whose operand is
+not a number, and found none: no existing assertion's expected value changes.
+
+**The entry as it stood:**
+
+`update-expression.ts` computes the new value as `value + 1` or `value - 1` on the operand as it was
+read. JavaScript first converts the operand to a number, then adds or subtracts, and a postfix
+update gives that converted old value. So for an operand that is not a number, two things differ:
+- **`++` concatenates.** On a string, a numeric string or an object, `+` joins rather than adds, and
+  the update writes a string.
+- **A postfix update gives the operand as read**, not its number: the string, or the object itself.
+
+`-` converts, so `--` writes what JavaScript writes, and a prefix `--` matches it in full.
+
+Measured 2026-10-16 against this tree's production bundle, beside the same updates run natively.
+An identifier target and a member target gave the same results:
+
+| Operand | Form | JavaScript: result, then the operand | The evaluator: result, then the operand |
+| :--- | :--- | :--- | :--- |
+| `"a"` | `x++` | `NaN`, `NaN` | `"a"`, `"a1"` |
+| `"a"` | `x--` | `NaN`, `NaN` | `"a"`, `NaN` |
+| `"a"` | `++x` | `NaN`, `NaN` | `"a1"`, `"a1"` |
+| `"5"` | `x++` | `5`, `6` | `"5"`, `"51"` |
+| `"5"` | `x--` | `5`, `4` | `"5"`, `4` |
+| `"5"` | `++x` | `6`, `6` | `"51"`, `"51"` |
+| `{}` | `x++` | `NaN`, `NaN` | the object itself, `"[object Object]1"` |
+| `{}` | `x--` | `NaN`, `NaN` | the object itself, `NaN` |
+| `{}` | `++x` | `NaN`, `NaN` | `"[object Object]1"`, `"[object Object]1"` |
+
+`--x` matches JavaScript on all three, and a number operand matches it in all four forms.
+
+**Distinct from [A40](#a40).** A40 is the order of a write and the funnel's refusal, for a listed
+function. This entry is the arithmetic, for any operand that is not a number. A40's table shows it on
+a function: the string it writes ends in `}1`.
+
+**Fidelity, not security.** No check is skipped. **It is not in 0.12.1.**
+
+**A direction, not a decision**: convert the operand once, as JavaScript does, and use the converted
+value for the new value and for the postfix result. That changes what the updates above evaluate to,
+so which release can carry it is part of the fix.
+
+*Recorded*: this entry.
+*Verified*: noticed in the A35 plan's step 5, while measuring the routes `SECURITY.md` states, where
+a postfix update of `fetch` wrote its source text and `1`. Measured 2026-10-16 with a throwaway
+script outside the repository. It called `evaluate(parse(…), EvalState.fromContext(…))` against the
+production bundle built from step 5's tree, both as built and as the Angular linker links it, and ran
+each update natively beside it. The two gave the same table.
+
+<a id="a43"></a>
+## A43 — Under `caseInsensitive`, an identifier write to a name the context resolves to nothing writes the key `undefined`
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-22**; unreleased, in
+`eval-core`'s next release. Opened and fixed the same day, in the [A40](#a40) and [A41](#a41) batch,
+whose case matrix found it under `caseInsensitive`
+
+Under `caseInsensitive`, `assignment-expression.ts` and `update-expression.ts` take an identifier's
+key from `EvalContext.getKey`. `getKey` returns `undefined` exactly when `get` finds nothing, which
+is documented, public, and overridden by `eval-signals`' signal context, and both sites used the
+result unguarded, so the key written was `undefined`. `identifier.ts`, the read side, already fell
+back with `?? node.name`. `get` finds nothing for a name absent from the context, and for one bound
+to `undefined`.
+
+Measured 2026-10-22 through `EvalService.simpleEval` under `caseInsensitive`, on the tree with A41's
+fix and without this one. Every result was JavaScript's; the write was not:
+
+| Expression | Context | A plain object, copied into a `Registry` by `fromContext` | A case-insensitive `Registry` | A plain object the context holds as it is |
+| :--- | :--- | :--- | :--- | :--- |
+| `x = 1` | `{ x: undefined }` | `x` stays `undefined`; the key `undefined` holds `1` | the same | `x` stays `undefined`; the property `"undefined"` holds `1` |
+| `x += 1`, `x++` | `{ x: undefined }` | the same, holding `NaN` | the same | the same, holding `NaN` |
+| `y = 1`, `y++` | `{}` | no `y`; the key `undefined` holds the value | the same | no `y`; the property `"undefined"` holds the value |
+
+A plain object passed to `simpleEval` is copied into a `Registry` the caller never sees, so the first
+column is what such a write reaches. The last is an `EvalContext` constructed on the object. A case
+variant that resolves, `foo = 2` on `{ Foo: 1 }`, wrote `Foo` in both `Registry` columns; a plain
+object held as it is resolves no case variant, for a read either, and wrote the property
+`"undefined"` there too.
+
+`eval-signals`' signal context refuses every key write. Run against it, `y = 1` and `y++` reached its
+`set` with the same key, `undefined`, and its error read `Cannot assign to 'undefined'`.
+
+*Fixed* 2026-10-22: `st.context.getKey(target.name) ?? target.name` at both sites, the fallback
+`identifier.ts` takes. `getKey` does not change. Every row above now writes the intended key, and the
+signal context's refusal reads `Cannot assign to 'y'`, its `key` `"y"`. For the name `undefined`, the
+fallback writes the key `undefined`, which [A46](backlog.md#a46) records. A matched case variant
+still writes the matched spelling. A case-insensitive `Registry` keeps the spelling it was last
+written with (`spellingIn`'s doc comment, `eval-context.ts`), so `X = 1` over `{ x: undefined }`
+respells the key `X`; reads are unaffected. On a plain object held as it is, `foo = 2` now writes `foo` beside
+`Foo`: that context matches no case variant, and the fallback writes the name as spelled.
+
+*Verified*: the assignment rows are in `assignment-expression.spec.ts`, a new spec beside the visitor,
+and the update rows in `update-expression.spec.ts`, each in the three context shapes above. Each case
+asserts the result, the intended key's value, and the store's whole key list, which catches the
+stray key whether it is the string `"undefined"` or the value; a plain object also asserts it has no
+own `"undefined"`. `Registry.has('undefined')` could not stand in for the key list: a case-insensitive
+`Registry` lower-cases a string key and keeps any other as it is, so the stray key `undefined` is not
+the string, and the check is false on the defect too. A case-variant case, `foo = 2` and `foo++` on
+`{ Foo: 1 }`, runs in the two `Registry` shapes, and the update matrix's `caseInsensitive` leg covers
+an `undefined` operand. Each fallback removed alone: the update site's turned 10 cases red, the
+matrix's four `caseInsensitive` rows on `undefined` and the six update cases; the assignment site's
+turned 9, the assignment cases. Neither turned the other's red, and the case-variant cases stayed
+green under both.
+
+*Recorded*: this entry; `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Fixed.
 
 ---
 

@@ -417,7 +417,7 @@ The replan changes eight things:
   - `typeof (eval)` under `preserveParens`.
 
   The exemptions are not widened.
-- **The postfix update's write before the refusal** is [A40](../backlog.md#a40). This plan does not
+- **The postfix update's write before the refusal** is [A40](../backlog-retired.md#a40). This plan does not
   fix it.
 - **§ 8 q4 is what `this` should evaluate to.** It is decided from a measurement taken first.
 - **§ 8 q5 and § 2 set out the release shape, (i) or (ii), which is pending.** § 4 sets out the
@@ -973,7 +973,7 @@ step on a red (step 4, criterion 4).
   - **`update`**, which this list once put among those never producing one. A postfix update
     pushes its target's old value, which can be a listed function. Before step 4, `tools.eval++`
     gave `eval` itself (A40's table), so `["1+1"].map(tools.eval++)` handed it on. The sites shape
-    has no site there. The funnel refuses it, and its write is [A40](../backlog.md#a40).
+    has no site there. The funnel refuses it, and its write is [A40](../backlog-retired.md#a40).
   - **`this`**, which pushes `st.context`, an `EvalContext` object and never itself a function. But
     evaluating it lets native code reach a listed function the context holds, which neither shape
     sees (finding 8).
@@ -1078,7 +1078,7 @@ prefixes, is a listed name.
    - assigning over a listed function, `fetch = 1` or `obj.fetch = 1`, since an assignment reads
      its target before writing it;
    - a postfix update, `obj.fetch++`, which writes first and then throws
-     ([A40](../backlog.md#a40));
+     ([A40](../backlog-retired.md#a40));
    - an operator's operand, `x instanceof Function` or `obj.fetch != null`;
    - a conditional's test;
    - a template interpolation, and a declaration's initializer;
@@ -1546,7 +1546,7 @@ rewritten pins are 1:1 replacements, not additions).
   - **The code review** raised one Critical, which stopped the step and produced this replan:
     - **The Critical**: the route through `this` (finding 8, [A39](../backlog-retired.md#a39)).
     - **W1**: reads that only inspect a value throw too. They went into § 3.5 item 3, and the
-      postfix update's write became [A40](../backlog.md#a40).
+      postfix update's write became [A40](../backlog-retired.md#a40).
     - **W2**: the timing and this status. The timing had run before the review, but its brief
       omitted it.
     - **N1**: § 3.3's account of `update` and `await`, corrected.
@@ -1651,7 +1651,7 @@ rewritten pins are 1:1 replacements, not additions).
     documents step its own checks instead (above).
   - **Plan correction**: A35's and A39's *Recorded* lines in `docs/backlog.md`, as Revision 8
     states.
-  - **Opened [A41](../backlog.md#a41)**, fidelity and not in 0.12.1. An update does not convert its
+  - **Opened [A41](../backlog-retired.md#a41)**, fidelity and not in 0.12.1. An update does not convert its
     operand to a number, so `++` concatenates on a string or an object, and a postfix update gives
     the operand as read. Measured on a string, a numeric string and an object before the commit.
 

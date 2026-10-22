@@ -68,10 +68,11 @@ its ID lands in `SECURITY.md`'s CVE column when assigned.
   stack.
 - Step 4, the funnel, refuses a dangerous function at every read the walk makes, released in 0.12.1.
   Its review found a route the funnel cannot see, through `this`, opened as
-  [A39](backlog-retired.md#a39). It also opened [A40](#a40).
+  [A39](backlog-retired.md#a39). It also opened [A40](backlog-retired.md#a40).
 - Step 5 rewrote `SECURITY.md` for 0.12.1. It leads with the mitigations, Node's flag among them as
   measured. The refusals are protections, stated as defense in depth, and the route through `this`
-  and a host container are limits beside them. A35 stays open. The step opened [A41](#a41).
+  and a host container are limits beside them. A35 stays open. The step opened
+  [A41](backlog-retired.md#a41).
 - Step 6 released `eval-core` 0.12.1, tagged at 7cc8d30 and published 2026-10-17. No advisory is
   published for it.
 - **Shape (i) is chosen.** 0.12.1 shipped steps 1–4 as partial hardening, with A39 as a stated limit
@@ -251,7 +252,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.12.1 | `7cc8d30` | 2026-10-17 | 19 | 8: A35–A41, F20 | 2: A36, A37 | 25 |
 | `eval-core` 0.13.0, `eval-signals` 0.6.0, `eval-forms` 0.6.0 | `f7f27f7` | 2026-10-20 | 25 | 1: A42 | 3: A35, A39, A42 | 23 |
 | `eval-core` 0.13.1, `eval-signals` 0.6.1, `eval-forms` 0.6.1 | `5b9c859` | 2026-10-22 | 23 | 5: F21–F25 | 3: F19, F22, F23 | 25 |
-| **Since the register opened** | | | **42** | **56** | **73** | **25** |
+| Unreleased: `eval-core`'s next release. The A40/A41 batch retired three and opened four, and A46 is due before the release | — | — | 25 | 5: A43–A47 | 3: A40, A41, A43 | 27 |
+| **Since the register opened** | | | **42** | **61** | **76** | **27** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -264,7 +266,9 @@ always the release that shipped it: a test-only or documentation closure ships i
 
 **Adding a row.** Each release's post-publish commit adds its row, counted the same way
 ([`CONTRIBUTING.md`](../CONTRIBUTING.md), Releasing). The last row's *Live after* should equal the
-count of live rows in the index at that commit; if it does not, the row is wrong.
+count of live rows in the index at that commit; if it does not, the row is wrong. An *Unreleased*
+row counts what has moved since the last release's tag; the next release's post-publish commit
+makes it that release's row, with its tag commit and date.
 
 ---
 
@@ -310,9 +314,14 @@ count of live rows in the index at that commit; if it does not, the row is wrong
 | [A37](backlog-retired.md#a37) | `SequenceExpression` has no visitor: `(0, 1)` leaves a value on the stack | core | fix | **Retired — fixed 2026-10-15**, as step 3 of the [A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30. A sequence leaves one value on the stack, and raises one `before` and one `after` event and one trace entry; no evaluated value changes. Affected every published `eval-core` to 0.12.0 |
 | [A38](#a38) | A tag's strings array is not JavaScript's: not frozen, no `raw` — so `` String.raw`a\nb` `` throws — a new array per evaluation, and not recorded as created | core | fix | Open — opened 2026-10-15 by the code review of the A35 plan's step 1. Fidelity, not security; not in 0.12.1 |
 | [A39](backlog-retired.md#a39) | Evaluating `this` lets native code reach a dangerous function the host placed in the context, past the funnel; mechanism and probes in the advisory | core | fix, security | **Retired — fixed 2026-10-18**, as steps 7 and 8 of the [A35 plan](a35/plan.md): `this` only as a member's object, and a guarded view as every receiver the evaluator resolves from the context. Released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7; advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx) |
-| [A40](#a40) | A postfix update of a listed function writes, then the funnel refuses the old value — the failed evaluation leaves its write behind | core | fix | Open — opened 2026-10-16 by the code review of the A35 plan's step 4. Not a security route; the fix checks the operand before writing |
-| [A41](#a41) | An update does not convert its operand to a number: `x++` on `"5"` writes `"51"`, on `{}` writes `"[object Object]1"`, and a postfix update gives the operand as read | core | fix | Open — opened 2026-10-16 in the A35 plan's step 5. Fidelity, not security; not in 0.12.1. Distinct from [A40](#a40), the order of a write and a refusal |
+| [A40](backlog-retired.md#a40) | A postfix update of a listed function writes, then the funnel refuses the old value — the failed evaluation leaves its write behind | core | fix | **Retired — fixed 2026-10-22**, as a consequence of [A41](backlog-retired.md#a41)'s fix; unreleased. The operand converts to `NaN` before the write, so `tools.eval++` gives `NaN` and writes `NaN`, as JavaScript does, and nothing throws |
+| [A41](backlog-retired.md#a41) | An update does not convert its operand to a number: `x++` on `"5"` writes `"51"`, on `{}` writes `"[object Object]1"`, and a postfix update gives the operand as read | core | fix | **Retired — fixed 2026-10-22**; unreleased. The operand is converted once, natively, before anything is written: `"5"++` gives `5` and writes `6`, and a BigInt updates |
 | [A42](backlog-retired.md#a42) | `this.k = v` lands on the `EvalContext` instance, where nothing reads it back — but it shadows the class's own members, so the evaluator invoked what an expression planted, and it persists on a reused context | core | fix, security | **Retired — fixed 2026-10-19**, in the [A35 plan](a35/plan.md)'s step 9 under its Revision 16. The write is refused by class, the methods the evaluator calls are taken from the class, and a context reached as data is refused. Released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7; referenced in advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx) as additionally fixed, not its subject. Its first characterisation — "not a route to the context itself" — was measured wrong and corrected |
+| [A43](backlog-retired.md#a43) | Under `caseInsensitive`, an identifier write to a name the context resolves to nothing — absent, or bound to `undefined` — writes the key `undefined` | core | fix | **Retired — fixed 2026-10-22**, opened the same day by the [A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch; unreleased. Both write sites fall back to the name as written, as `identifier.ts` does; `getKey` is unchanged |
+| [A44](#a44) | Under `caseInsensitive`, a member write to a case variant creates a new key: `OBJ.X = 2`, `OBJ.X += 1` and `OBJ.X++` on `{ x: 1 }` leave `{ x: 1, X: 2 }` | core | fix | Open — opened 2026-10-22 by the A40/A41 batch's `caseInsensitive` matrix; predates it. The update spec's `caseInsensitive` leg avoids case-variant spellings because of it, and its fix adds those rows |
+| [A45](#a45) | An assignment evaluates its target as an operand and its right side unconditionally — a short-circuited `\|\|=` still calls its right side and writes, a member target is evaluated twice, and `obj.fetch = 1` is refused at the read | core | fix | Open — opened 2026-10-22 by the A40/A41 batch. Fidelity; no refusal skipped, since every deviation adds one. Not scheduled |
+| [A46](#a46) | An expression can rebind `undefined` on a reused context — `undefined = 1`, then `x === undefined` is `false` — and under `caseInsensitive` a case variant of `undefined`, `null`, `true` or `false` | core | fix, decision | Open — **scheduled next, before `eval-core`'s next release**. Opened 2026-10-22 by the A40/A41 batch's code review. Case-sensitive `undefined` predates the batch; the `caseInsensitive` rows came with [A43](backlog-retired.md#a43)'s fallback. Fidelity: writing a context key is within an expression's reach. The fix decides throw or no-op, and which names |
+| [A47](#a47) | An arrow's parameter scope is pushed without the walk's options, so under `caseInsensitive` `(x => X)(1)` is `undefined`, and `X = 5` in the body can land on the consumer's context | core | fix | Open — opened 2026-10-22 by the A40/A41 batch's code review; predates it. The other three scope pushers pass the options. Not scheduled |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -459,7 +468,10 @@ several of these visible at all. [A6](backlog-retired.md#a6) was surfaced by Pha
 ([`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.3), which needs neither.
 [A31](backlog-retired.md#a31) and [A32](#a32) were found by A29's fix, grepping for other keys built
 from an object's shape. [A33](#a33) is a limit A31's fix left, and documented in the code; [A34](#a34)
-is one A26's fix left, documented the same way.
+is one A26's fix left, documented the same way. [A44](#a44)–[A47](#a47) were found by the
+[A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch: A44 by its
+`caseInsensitive` matrix, A45 while correcting `SECURITY.md`'s account of an assignment, and
+[A46](#a46) and A47 by its code review. A46 is due before `eval-core`'s next release.
 
 **Identity-checked `exit`** (§ 3.8 of the Phase 1 plan) means the hook layer stays balanced in
 spite of [A1](backlog-retired.md#a1) and [A2](backlog-retired.md#a2), so neither was urgent — [A3](backlog-retired.md#a3)
@@ -999,88 +1011,212 @@ write policy ([A36](backlog-retired.md#a36)). **It is not in 0.12.1.**
 `EvalContext` whose `checkMemberWrite` refuses what the walk did not create, and ran the same tags
 natively beside it.
 
-<a id="a40"></a>
-## A40 — A postfix update of a listed function writes, then the funnel refuses it
+<a id="a44"></a>
+## A44 — Under `caseInsensitive`, a member write to a case variant creates a new key
 
-**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-16 by the code review of the A35
-plan's step 4
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-22 by the
+[A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch, whose `caseInsensitive` case
+matrix found it. It predates that batch
 
-For a postfix update, `update-expression.ts` does three things in order:
-1. reads its target;
-2. writes the new value;
-3. pushes the old value, which is the update's result.
+Under `caseInsensitive`, a member read matches a case variant of the property, and a member write
+does not. The write uses the property as the expression spells it, so a case variant creates a new
+key beside the one the read matched. Measured 2026-10-22 against the production bundle built from
+the batch's tree, under `caseInsensitive`, the context a plain object:
 
-Under the funnel, step 4 of the [A35 plan](a35/plan.md), the push in step 3 throws when the old
-value is a listed function. By then the write has happened, so the failed evaluation leaves it
-behind. Measured 2026-10-16 with `eval` in the context:
+| Expression | On `{ obj: { x: 1 } }` | `obj` afterwards |
+| :--- | :--- | :--- |
+| `OBJ.X = 2` | gives `2` | `{ x: 1, X: 2 }` |
+| `OBJ.X += 1` | gives `2`, from the matched `x` | `{ x: 1, X: 2 }` |
+| `OBJ.X++` | gives `1`, from the matched `x` | `{ x: 1, X: 2 }` |
+| `obj.X = 2` | gives `2` | `{ x: 1, X: 2 }` |
 
-| Expression | Step 3's bundle | Step 4's bundle | Afterwards, on both |
-| :--- | :--- | :--- | :--- |
-| `tools.eval++`, `tools = { eval }` | gives `eval` itself | throws `Access to dangerous function "eval" is blocked for security reasons` | `tools.eval` is `"function eval() { [native code] }1"` |
-| `e++`, `e = eval` | gives `eval` itself | throws, the same | `e` is that string |
-| `++tools.eval` | gives the string | gives the string | the same |
+The root identifier is not the cause, since `obj.X = 2` does the same; an identifier write corrects
+its key ([A43](backlog-retired.md#a43) is its case where nothing matches). The read and the write of
+one compound assignment or update therefore reach different keys.
 
-Step 3's column is an [A35](backlog-retired.md#a35) route that the funnel closes: the postfix result was the listed
-function itself. What it leaves is not a security route either. The write replaces the listed
-function with a string, and the old value reaches nothing. It is a failed evaluation with a side
-effect. The prefix form pushes the new value, so it never throws.
+**What it holds back.** `update-expression.spec.ts`'s `caseInsensitive` leg spells every source as
+the data spells it, `x` and `obj.x`, because a case-variant spelling of the member rows fails on this
+entry and not on the update. The fix adds those rows: the matrix again, with the property spelled as
+a case variant.
 
-**The fix**: check the operand before writing. A listed old value is then refused before the
-write, so the update throws having changed nothing.
-
-*Recorded*: this entry; `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Security entry, from
-step 4.
-*Verified*: the code review of the A35 plan's step 4 found it (its W1). Measured 2026-10-16 with a
-throwaway script outside the repository, against step 3's bundle and step 4's.
-
-<a id="a41"></a>
-## A41 — An update on a string or an object concatenates, and a postfix update gives the operand unconverted
-
-**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-16 in the A35 plan's step 5
-
-`update-expression.ts` computes the new value as `value + 1` or `value - 1` on the operand as it was
-read. JavaScript first converts the operand to a number, then adds or subtracts, and a postfix
-update gives that converted old value. So for an operand that is not a number, two things differ:
-- **`++` concatenates.** On a string, a numeric string or an object, `+` joins rather than adds, and
-  the update writes a string.
-- **A postfix update gives the operand as read**, not its number: the string, or the object itself.
-
-`-` converts, so `--` writes what JavaScript writes, and a prefix `--` matches it in full.
-
-Measured 2026-10-16 against this tree's production bundle, beside the same updates run natively.
-An identifier target and a member target gave the same results:
-
-| Operand | Form | JavaScript: result, then the operand | The evaluator: result, then the operand |
-| :--- | :--- | :--- | :--- |
-| `"a"` | `x++` | `NaN`, `NaN` | `"a"`, `"a1"` |
-| `"a"` | `x--` | `NaN`, `NaN` | `"a"`, `NaN` |
-| `"a"` | `++x` | `NaN`, `NaN` | `"a1"`, `"a1"` |
-| `"5"` | `x++` | `5`, `6` | `"5"`, `"51"` |
-| `"5"` | `x--` | `5`, `4` | `"5"`, `4` |
-| `"5"` | `++x` | `6`, `6` | `"51"`, `"51"` |
-| `{}` | `x++` | `NaN`, `NaN` | the object itself, `"[object Object]1"` |
-| `{}` | `x--` | `NaN`, `NaN` | the object itself, `NaN` |
-| `{}` | `++x` | `NaN`, `NaN` | `"[object Object]1"`, `"[object Object]1"` |
-
-`--x` matches JavaScript on all three, and a number operand matches it in all four forms.
-
-**Distinct from [A40](#a40).** A40 is the order of a write and the funnel's refusal, for a listed
-function. This entry is the arithmetic, for any operand that is not a number. A40's table shows it on
-a function: the string it writes ends in `}1`.
-
-**Fidelity, not security.** No check is skipped. **It is not in 0.12.1.**
-
-**A direction, not a decision**: convert the operand once, as JavaScript does, and use the converted
-value for the new value and for the postfix result. That changes what the updates above evaluate to,
-so which release can carry it is part of the fix.
+**Related, and documented rather than recorded.** A plain object handed to `new EvalContext`, with
+`caseInsensitive` on the context and on the walk, matches no case variant at all, for a read either:
+measured the same day, `2 + 3 * A` on `{ a: 10 }` gives `NaN`, where `EvalContext.fromContext`, a
+plain object handed to the walk and a case-insensitive `Registry` each give `32`. The `eval-core`
+README now says so.
 
 *Recorded*: this entry.
-*Verified*: noticed in the A35 plan's step 5, while measuring the routes `SECURITY.md` states, where
-a postfix update of `fetch` wrote its source text and `1`. Measured 2026-10-16 with a throwaway
-script outside the repository. It called `evaluate(parse(…), EvalState.fromContext(…))` against the
-production bundle built from step 5's tree, both as built and as the Angular linker links it, and ran
-each update natively beside it. The two gave the same table.
+*Verified*: found by the A40/A41 batch's matrix, and measured 2026-10-22 with a throwaway script
+outside the repository, against the production bundle: `OBJ.X = 2`, `OBJ.X += 1` and `OBJ.X++`
+through a temporary spec, and the table above through `evaluate(parse(…), EvalState.fromContext(…))`.
 
+<a id="a45"></a>
+## A45 — An assignment evaluates its target as an operand and its right side unconditionally
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-22 by the
+[A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch. Not scheduled
+
+`assignment-expression.ts` evaluates `node.left` as an operand and `node.right` after it, then applies
+the operator to the two values. For a member target it then evaluates the target a second time,
+through `evaluateMember`, to find the object and key it writes, and it writes in every case.
+JavaScript evaluates a member target's object and key once, reads the target's value only for a
+compound or logical operator, skips the right side when a logical assignment short-circuits, and then
+writes nothing.
+
+Measured 2026-10-22 against the production bundle built from the batch's tree, through
+`evaluate(parse(…), EvalState.fromContext(…))`, beside the same expressions run natively:
+
+| Expression | The evaluator | JavaScript |
+| :--- | :--- | :--- |
+| `a \|\|= f()`, `a` truthy | `f` called once | `f` not called |
+| `a &&= f()`, `a` falsy | `f` called once | `f` not called |
+| `a ??= f()`, `a` not nullish | `f` called once | `f` not called |
+| the same three on a member target, `o.a` | `f` called once each | `f` not called |
+| `o.g = 1`, `g` an accessor | getter 2, setter 1 | getter 0, setter 1 |
+| `o.g += 1` | getter 2, setter 1 | getter 1, setter 1 |
+| `o.g \|\|= 1`, the getter truthy | getter 2, setter 1 | getter 1, setter 0 |
+| `getObj().x = 1` | `getObj` called twice | once |
+| `o.a \|\|= 9`, `o.a &&= 9`, `o.a ??= 9`, each short-circuiting, under a policy that refuses what the walk did not create | refused, `o.a` unchanged | no write, so nothing to refuse |
+| `obj.fetch = 1` and `fetch = 1`, `fetch` the listed function | throws `Access to dangerous function "fetch" is blocked for security reasons`; the function stays | writes `1` |
+
+The value of every short-circuited row is JavaScript's: the evaluator computes the operator on the
+two values and writes back the value the target already held. So what differs is effects, in four
+kinds:
+- **a right side that should not run, runs**, and a function it calls is called;
+- **a member target is evaluated twice**: its getter and its object expression run twice, and the
+  write reaches whatever the second evaluation yields;
+- **a logical assignment always writes**, so a write policy refuses a short-circuited one that
+  JavaScript would not write;
+- **the funnel refuses an assignment over a listed function**, since the target is read as an
+  operand even for `=`. That refusal is the read's, not the write's. No write path refuses
+  overwriting a listed function: `++obj.fetch` has overwritten one since before 0.13.0, and
+  `obj.fetch++` does from [A40](backlog-retired.md#a40)'s fix, with `NaN`, and no function value
+  reaches anything. `SECURITY.md` states it.
+
+**Fidelity; no refusal skipped.** Every extra evaluation passes through the same visitors as the
+first, so each extra read and call is checked as the first is, and the table's deviations add
+refusals, the funnel's at an `=` target and the policy's at a short-circuited write, rather than skip
+any.
+
+**A direction, not a decision**: evaluate a member target's object and key once, read its value only
+for a compound or logical operator, and evaluate the right side, and write, only when a logical
+operator does not short-circuit. That changes what the table's rows do, and it removes the funnel's
+refusal of `obj.fetch = 1`, which would then write as an update does. So `SECURITY.md` changes with
+it, and which release can carry it is part of the fix.
+
+*Recorded*: this entry; `SECURITY.md`, "Reads that only inspect the value throw too".
+*Verified*: noticed in the A40/A41 batch, while correcting `SECURITY.md`'s account of why
+`obj.fetch = 1` throws. Measured 2026-10-22 with a throwaway script outside the repository, against
+the production bundle with the Angular compiler loaded, each row run natively beside it.
+
+<a id="a46"></a>
+## A46 — An expression can rebind `undefined`, and under `caseInsensitive` a case variant of `undefined`, `null`, `true` or `false`
+
+**Package** core · **Kind** fix, decision · **Status** Open — **scheduled next, before
+`eval-core`'s next release**. Opened 2026-10-22 by the code review of the
+[A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch (its W1)
+
+ESTree parses `undefined` as an `Identifier`, not a `Literal`, and under `caseInsensitive` so is a case
+variant of a literal name, `TRUE` or `NULL`, which reads as the literal. An identifier write to such
+a name lands on the context like any other key, and `identifier.ts` reads the context before it
+falls back to the literal, so every later evaluation on that context reads the written value.
+JavaScript's global `undefined` is not writable: in strict code `undefined = 1` throws a `TypeError`,
+and in sloppy code it writes nothing. `true`, `null` and `false` are literals, and assigning to one is
+a `SyntaxError`; JavaScript has no case variant of them.
+
+Measured 2026-10-22 against the production bundle, on `EvalContext.fromContext({})` and on
+`EvalContext.fromContext({}, { caseInsensitive: true })`, each write on a fresh context and then the
+reads on that same context. *Before* is the same bundle without [A43](backlog-retired.md#a43)'s
+fallback, which is the tree before this batch for these rows:
+
+| Mode | Write | Key written | Then reads | Before A43's fallback |
+| :--- | :--- | :--- | :--- | :--- |
+| case-sensitive | `undefined = 1` | `"undefined"` | `undefined` is `1`; `x === undefined` is `false` | the same |
+| case-sensitive | `undefined++` | `"undefined"` | `undefined` is `NaN`; `x === undefined` is `false` | the same |
+| case-sensitive | `UNDEFINED = 1`, `TRUE = 0`, `NULL = 1`, `FALSE = 1` | the name | that name reads the value; nothing else changes | the same |
+| `caseInsensitive` | `undefined = 1` | `"undefined"` | `undefined` and `UNDEFINED` are `1`; `x === undefined` is `false` | the value `undefined` written as a key; nothing rebound |
+| `caseInsensitive` | `undefined++` | `"undefined"` | `undefined` and `UNDEFINED` are `NaN`; `x === undefined` is `false` | the same as the row above |
+| `caseInsensitive` | `UNDEFINED = 1` | `"UNDEFINED"` | `undefined` and `UNDEFINED` are `1`; `x === undefined` is `false` | the same as the row above |
+| `caseInsensitive` | `TRUE = 0` | `"TRUE"` | `TRUE` is `0`; `true` is still `true` | the same as the row above; `TRUE` stays `true` |
+| `caseInsensitive` | `NULL = 1` | `"NULL"` | `NULL` is `1`; `null` is still `null` | the same; `NULL` stays `null` |
+| `caseInsensitive` | `FALSE = 1` | `"FALSE"` | `FALSE` is `1` | the same; `FALSE` stays `false` |
+| both | `(undefined => undefined)(1)` | none | gives `1`, as JavaScript does: a parameter may shadow `undefined` | the same |
+
+On a fresh context, before any write, `undefined`, `x === undefined`, `true` and `null` read as
+JavaScript's in both modes. Case-sensitively, `UNDEFINED`, `TRUE`, `NULL` and `FALSE` are ordinary
+names that read `undefined`; under `caseInsensitive` they read as the literals.
+
+**What predates the batch, and what it introduced.** The two case-sensitive `undefined` rows predate
+it, unchanged. The case-sensitive rows for `UNDEFINED`, `TRUE`, `NULL` and `FALSE` are not a defect:
+those are ordinary names in that mode, and rebinding one shadows nothing. Every `caseInsensitive` row
+was introduced by A43's fallback. Before it, each of those writes went to the value `undefined` as a
+key, which no read can match, so nothing was rebound. That was A43's own defect; the fallback fixed
+it and opened this one.
+
+**Fidelity, not security.** `SECURITY.md`'s threat model leaves writing a context key within an
+expression's reach: a write to a key the context resolves "lands on the caller's own object", and
+`eval-core`'s one write policy is the member-write check, while refusing key writes is what
+`eval-signals` adds. Rebinding `undefined` is such a write. Its harm is to later evaluations on the
+same context, which read the rebound value. `eval-signals` and `eval-forms` cannot reach it, since a
+signal context's `set` refuses every key write. A plain `EvalContext` reused across expressions from
+different authors can.
+
+**The decision the fix makes**:
+- **Throw or no-op.** Strict JavaScript throws a `TypeError`; sloppy JavaScript writes nothing. A
+  throw names the misuse, and a no-op matches the sloppy semantics expressions otherwise follow.
+- **Which names.** `undefined` in both modes, since JavaScript's is not writable. And under
+  `caseInsensitive`, every case variant of `undefined`, `null`, `true` and `false`, since that mode
+  reads each of them as the literal. `NaN` and `Infinity` are also non-writable globals; whether they
+  are in the set is part of the decision.
+- **A binding stays legal.** `(undefined => undefined)(1)` is JavaScript, so a parameter, or a `let`
+  where the grammar allows it, may still bind the name. The refusal is of a write that would reach
+  the context.
+
+*Recorded*: this entry; [A43](backlog-retired.md#a43)'s retired entry and the `[Unreleased]` A43
+line in `modules/eval-core/CHANGELOG.md` point here.
+*Verified*: found by the batch's code review, which measured the `undefined` rows against the
+built bundle. Re-measured 2026-10-22 with a throwaway script outside the repository, against the
+production bundle built from the batch's tree and against the same tree built without A43's
+fallback, the Angular compiler loaded.
+
+<a id="a47"></a>
+## A47 — An arrow's parameter scope is pushed without the walk's options, so it is case-sensitive under `caseInsensitive`
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-22 by the code review of the
+[A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch (its N1). It predates that
+batch. Not scheduled
+
+`arrow-function-expression.ts:35` pushes the parameter scope as `contextPush(st.context, newContext)`,
+without `st.options`. So under `caseInsensitive` the scope is a plain record, read by exact key, while
+the context and every other scope are case-insensitive. The other three scope pushers pass the
+options: `program.ts:50`, `block-statement.ts:54` and `for-statement.ts:81` each call
+`contextPush(st.context, {}, st.options)`, and `block-statement.ts`'s comment says why: `fromContext`
+copies a plain record into a `Registry` only when the option reaches it.
+
+Measured 2026-10-22 against the production bundle, under `caseInsensitive`, through
+`EvalContext.fromContext(…, { caseInsensitive: true })`:
+
+| Expression | Context | Result | Context afterwards | JavaScript, read case-insensitively |
+| :--- | :--- | :--- | :--- | :--- |
+| `(x => X)(1)` | `{}` | `undefined` | unchanged | `1` |
+| `(x => (X = 5, x))(1)` | `{ x: 10 }` | `5`: the parameter was written | `x` still `10` | `5` |
+| `(x => (X = 5, x))(1)` | `{}` | `1`: the parameter was not written | `X` holds `5` | `5`, and the context unchanged |
+| `{ let x = 1; X }` | `{}` | `1` | unchanged | `1` |
+
+The second row writes the parameter only by way of the context: `getKey` corrects `X` to `x` through
+the context, and `assignToBinding` then finds `x` in the parameter scope. With nothing to correct it
+against, the third row writes the consumer's context. Before
+[A43](backlog-retired.md#a43)'s fallback it wrote the key `undefined` there. The last row is the
+contrast: a block scope, pushed with the options, matches the case variant. Every row leaves the
+scope stack empty.
+
+**Fidelity**: an arrow body reads and writes its own parameters case-sensitively in a mode that
+promises otherwise, and a write can land on the consumer's context instead of the parameter. No
+refusal is involved.
+
+*Recorded*: this entry.
+*Verified*: found by the batch's code review. Re-measured 2026-10-22 with a throwaway script outside
+the repository, against the production bundle with the Angular compiler loaded.
 
 ---
 
