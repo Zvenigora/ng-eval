@@ -107,7 +107,8 @@ build before believing a type is sound.
 - **Anything left for later work goes in `docs/backlog.md`; a commit body never carries it
   forward.**
 - **The gate is `npx nx run-many -t lint test build --skip-nx-cache --output-style=static`** —
-  `static` because nx 23.2 hides successful tasks' output, and the gate is read for its test counts.
+  `static` because nx 23.3, like 23.2, hides successful tasks' output, and the gate is read for its
+  test counts.
 - The completed plans are design records, not work in progress, and each remains the
   reference for its library — they record findings about this codebase that are not
   obvious from reading files in isolation:

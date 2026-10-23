@@ -96,7 +96,7 @@ its ID lands in `SECURITY.md`'s CVE column when assigned.
   annotated at the same commit, as CONTRIBUTING's step 5 has them.
 - U3 published the advisory, 2026-10-21 (UTC), covering `eval-core` `<= 0.12.1` and both downstream
   packages `< 0.6.0`. Its follow-up commit recorded it here, on the retired entries and in
-  `SECURITY.md`, and opened [F21](#f21).
+  `SECURITY.md`, and opened [F21](backlog-retired.md#f21).
 
 **Phase 10, the documentation restructure, is complete**: its [plan](documentation/phase-10-plan.md),
 at Revision 8, and its retrospect,
@@ -136,10 +136,10 @@ end, so that 0.13.0, which closes the route through `this`, shipped first.
   reader to the repository README. The step recorded the release, wrote the retrospect, and widened
   [F25](#f25) with the plan's § 8 q3, which the phase left undecided.
 
-**Nothing is in flight, and no plan is active.** The queue is [F21](#f21), the build-tooling
-advisories, which is a toolchain bump and not `npm audit fix --force`; then [F25](#f25). [A45](#a45)'s
-part 2 waits on a plan. [F20](backlog-retired.md#f20) and [F24](backlog-retired.md#f24) are fixed,
-and ship in no package.
+**Nothing is in flight, and no plan is active.** The queue is [F25](#f25). [A45](#a45)'s part 2
+waits on a plan. [F20](backlog-retired.md#f20), [F21](backlog-retired.md#f21) and
+[F24](backlog-retired.md#f24) are fixed, and ship in no package; F21's toolchain bump left one
+`overrides.nx` entry, `undici`, which [F16](#f16) part 2 holds.
 
 `eval-core` 0.13.3 is released alone, a patch, tagged at 021d5e4 and published 2026-10-23. It
 carries A45 part 1 only. Its `.d.ts` is SHA-256-identical to 0.13.2's, and it is inside
@@ -268,7 +268,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.13.1, `eval-signals` 0.6.1, `eval-forms` 0.6.1 | `5b9c859` | 2026-10-22 | 23 | 5: F21–F25 | 3: F19, F22, F23 | 25 |
 | `eval-core` 0.13.2 | `dc4302d` | 2026-10-22 | 25 | 5: A43–A47 | 4: A40, A41, A43, A46 | 26 |
 | `eval-core` 0.13.3. A45 part 1 closed with it, a part, so A45 stays live; F20 and F24 ship in no package | `021d5e4` | 2026-10-23 | 26 | 0 | 2: F20, F24 | 24 |
-| **Since the register opened** | | | **42** | **61** | **79** | **24** |
+| *Unreleased*. F21 ships in no package | — | — | 24 | 0 | 1: F21 | 23 |
+| **Since the register opened** | | | **42** | **61** | **80** | **23** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -384,12 +385,12 @@ makes it that release's row, with its tag commit and date.
 | [F13](backlog-retired.md#f13) | Nothing gates the README block count `readme-examples.spec.ts` claims | core, signals, forms | test gap | **Retired — fixed 2026-09-27**, test only; all four specs gated. The gate's first run found `eval-core`'s count wrong a third time |
 | [F14](backlog-retired.md#f14) | Six sites cite the retired `^0.3.0` range, two of them in published READMEs | signals, forms | fix (comments, docs) | **Retired — fixed, Phase 2 step 8**; filed as four sites, was six |
 | [F15](backlog-retired.md#f15) | The downstream peer ranges exclude `eval-core` 0.6.0 — **latent until the bump, then both downstream `lint` targets fail** | signals, forms | fix (release coordination) | **Retired — fixed and released 2026-09-26**; both ranges widened to `>=0.3.0 <0.7.0`, and both packages released: `eval-signals` 0.1.3 and `eval-forms` 0.2.3, tagged f26f987 |
-| [F16](#f16) | Workspace dependency advisories — 9 moderate on the workspace's Angular 22.0.8, and a **temporary `smol-toml` override under `nx`**; beside the `nx` overrides, the **`qs` override**, whose `^6.14.1` floor does not exclude GHSA-w7fw-mjwx-w883 (fixed 6.14.2) | repo | fix | Open — **part 1 retired 2026-09-27**: `nx` 23.2.1, Angular 22.1.8 / 22.1.9, `npm audit` 0 at every severity. Part 2, the override, is live until a stable `nx` depends on `smol-toml >= 1.7.1`. **Re-audited 2026-09-30: 22 (14 high, 8 moderate)**, none reaching a published package; **fixed the same day**: Angular 22.2.1 / 22.2.0, two more `overrides.nx` entries, `verdaccio` removed, `npm audit` 0. **`qs` recorded 2026-10-14**: the override was added for GHSA-6rw7-vpxm-498p, not prototype pollution; raising its floor is held here. **Re-audited 2026-10-20 at 7741395**: `qs` resolves 6.16.0, past both advisories, and audit reports nothing for it |
+| [F16](#f16) | Workspace dependency advisories — 9 moderate on the workspace's Angular 22.0.8, and a **temporary override under `nx`**, now `undici`'s; beside it, the **`qs` override**, whose `^6.14.1` floor does not exclude GHSA-w7fw-mjwx-w883 (fixed 6.14.2) | repo | fix | Open — **part 2's `brace-expansion`, `smol-toml` and `axios` overrides retired 2026-10-23** with `nx` 23.3.0 ([F21](backlog-retired.md#f21)); part 2 now holds `overrides.nx.undici` only, until a stable `nx` stops pinning `undici` below 7.29.1. **Part 1 retired 2026-09-27**: `nx` 23.2.1, Angular 22.1.8 / 22.1.9, `npm audit` 0 at every severity. Part 2, the override, is live until a stable `nx` depends on `smol-toml >= 1.7.1`. **Re-audited 2026-09-30: 22 (14 high, 8 moderate)**, none reaching a published package; **fixed the same day**: Angular 22.2.1 / 22.2.0, two more `overrides.nx` entries, `verdaccio` removed, `npm audit` 0. **`qs` recorded 2026-10-14**: the override was added for GHSA-6rw7-vpxm-498p, not prototype pollution; raising its floor is held here. **Re-audited 2026-10-20 at 7741395**: `qs` resolves 6.16.0, past both advisories, and audit reports nothing for it |
 | [F17](#f17) | An unhandled rejection reaches no channel a spec would normally watch — only zone.js's `unhandledPromiseRejectionHandler` hook sees it | repo | test gap | Open — opened 2026-10-08 by Phase 5 step 2 |
 | [F18](backlog-retired.md#f18) | `eval-signal.ts` line citations in `eval-forms` comments and completed plans are stale | forms, repo | docs | **Retired — fixed 2026-10-10** in live source; completed records kept as written, per `CLAUDE.md`. The three `eval-forms` comments cite symbols; `applyErrorPolicy`'s ships in the core `.d.ts` |
 | [F19](backlog-retired.md#f19) | `CLAUDE.md` cites the resolved-key re-check as `member-expression.ts:188`; it was at `:211`, and is at `:244` | repo | docs | **Retired — fixed 2026-10-21** by Phase 10 step 6: `CLAUDE.md` cites `isDangerousProperty(foundKey)` in `member-expression.ts` by symbol, as the entry's fix recorded |
 | [F20](backlog-retired.md#f20) | `CODE_OF_CONDUCT.md`'s enforcement contact is an address of the upstream `jse-eval` author, not this repository's maintainer | repo | docs | **Retired — fixed 2026-10-22**, in no package: reports go to the maintainer's GitHub account, or privately through GitHub's abuse reporting; no address |
-| [F21](#f21) | Build-tooling advisories: 32 findings (11 high, 21 moderate) from `@modelcontextprotocol/server` via `@angular/cli`, `follow-redirects` via `nx`, and `sprintf-js` via the jest chain — none in a published package | repo | fix | Open — opened 2026-10-20 by the A35 plan's U3 follow-up; **scheduled after Phase 10**. A toolchain bump, **not `npm audit fix --force`**, which proposes `ts-jest` 27.0.3, a downgrade |
+| [F21](backlog-retired.md#f21) | Build-tooling advisories: 32 findings (11 high, 21 moderate) from `@modelcontextprotocol/server` via `@angular/cli`, `follow-redirects` via `nx`, and `sprintf-js` via the jest chain — none in a published package | repo | fix | **Retired — fixed 2026-10-23**, in no package: Angular 22.2.3 / 22.2.4 and `nx` 23.3.0, `npm audit` 11 high → 0. `nx` 23.3.0 pins `undici` 7.29.0, so a nested `overrides.nx.undici` replaces the old three ([F16](#f16) part 2); `sprintf-js` was no longer reported at the 4246308 baseline |
 | [F22](backlog-retired.md#f22) | `eval-core`'s F10 block, ungated in two places: eight allowlist entries its README now documents, so the free-functions sentence can be deleted with F10 green; and the docblock's "twenty-one of the sixty", which no case checks | core | fix (test) | **Retired — fixed 2026-10-21** by Phase 10 step 5: the eight entries removed, the figure dropped, and a case that fails on an allowlisted name the README names |
 | [F23](backlog-retired.md#f23) | Live documents claim guarantees the library does not give: twelve root README lines ("secure", "complete prototype pollution prevention", "function sandboxing", "prevents injection attacks"), and `eval-core`'s README saying an expression over an empty context "cannot use JavaScript's built-in functions", when a value's own methods stay callable | repo, core | docs | **Retired — fixed 2026-10-21** by Phase 10 step 5: the landing page keeps none of the twelve lines, and the `eval-core` README names the globals and says a value's own methods stay callable, with an `[Unreleased]` line. The README line released 2026-10-22 in `eval-core` 0.13.1, tagged 5b9c859; the root README part ships in no package |
 | [F24](backlog-retired.md#f24) | The `eval-signals` and `eval-forms` copies of `export-list.spec.ts` have no reverse case, so an allowlist entry the README documents would mask its mention's deletion, as F22 found in `eval-core` | signals, forms | test gap | **Retired — fixed 2026-10-22**, in no package: each copy has F22's helper and case, which fails in that project alone on an allowlisted name its README documents |
@@ -1429,8 +1430,9 @@ not lost in a tidying edit.
 <a id="f16"></a>
 ## F16 — Workspace dependency advisories
 
-**Package** repo · **Kind** fix · **Status** Open — **part 1 retired 2026-09-27**, part 2 open. A
-re-audit 2026-09-30 found 22 new findings, and they were fixed the same day (below).
+**Package** repo · **Kind** fix · **Status** Open — **part 1 retired 2026-09-27**, part 2 open,
+narrowed 2026-10-23 to the `undici` override, and the `qs` override held. A re-audit 2026-09-30 found
+22 new findings, and they were fixed the same day (below).
 Recorded 2026-09-26, by the commit that cleared the Dependabot high alert
 
 **None of this reaches a consumer.** Every package below is a root workspace dependency. No
@@ -1530,6 +1532,29 @@ lockfile, not an installed version. `node_modules/smol-toml` is the entry to che
 23.2.1. `nx` still declares `"smol-toml": "1.6.1"`, and `node_modules/smol-toml` resolves to 1.9.0
 under the override. Both overrides in `overrides.nx` stay.
 
+**The three overrides retired 2026-10-23; part 2 now holds `undici` alone.** `nx` 23.3.0 declares
+`smol-toml` 1.9.0 and `brace-expansion` 5.0.12 and has no `axios` dependency, so
+[F21](backlog-retired.md#f21)'s toolchain bump removed `brace-expansion`, `smol-toml` and `axios`
+from `overrides.nx`, and the tree resolves the same `smol-toml` 1.9.0 and `brace-expansion` 5.0.12
+without them. But 23.3.0 pins `undici` at exactly `7.29.0`, which carries two high advisories
+(GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3) among ten against `<7.29.1`, and 24.0.0 pins the same. So
+`overrides.nx` is now `{ "undici": "^7.29.1" }`, which resolves 7.30.1. It is **nested under `nx`**
+because the tree's other `undici` is `jsdom`'s 8.11.2, which a top-level override would force down a
+major. **Remove it** once a stable `nx` no longer pins `undici` below 7.29.1. As with `smol-toml`, the
+lockfile keeps `nx`'s declared `"undici": "7.29.0"` under `node_modules/nx`;
+`node_modules/nx/node_modules/undici` is the entry to check.
+
+**Moving the Angular set, and `nx`, without `--force`** — the method of 2026-10-23, which replaces
+the `npm install --force` the rounds before it used (part 1 and 2026-09-30's fix, below). The
+framework packages peer on each other at exact versions, so a plain `npm install` fails `ERESOLVE`
+against the locked set. Naming every package in one `npm install`, or uninstalling and reinstalling
+them, fails the same way, since they stay in the tree as `jest-preset-angular`'s peers. What works:
+delete the lockfile entries of the packages being moved that are still locked at the old version,
+reinstall at exact versions (`npm install --save-exact`, `-D` for the devDependencies), and prove
+the result with a clean `npm ci` and an unchanged lockfile. Pass a multi-package `npm install` from a
+POSIX shell: PowerShell's `npm` shim joins an array into one argument. And **rename `allowScripts`'
+`nx@<version>` key with `nx`**, or npm blocks the new version's postinstall.
+
 **Re-audited 2026-09-30: 22 findings, 14 high and 8 moderate, none critical.** The lockfile's
 only change since part 1's 0 is [F5](backlog-retired.md#f5)'s `js-sha256` 0.10.1 → 1.0.0, which
 is not flagged, so these are advisories published since. Nothing was fixed. Each row is
@@ -1585,10 +1610,10 @@ this next:
   and eval-forms 0.2.4. eval-signals differs from its 0.1.3 by one `ɵprov` line, the Angular 22.1
   change 0.6.1's CHANGELOG describes, which shipped in eval-signals 0.1.4, released 2026-10-01, tagged 724d831. The bundles differ only in
   Angular's `version` stamps.
-- **The Angular move still needed `npm install --force`**, for the same `ERESOLVE` as part 1: the
-  locked 22.1.8 peer set cannot move one package at a time. A clean `npm ci` from the result,
-  without `--force`, is the check that the lockfile installs normally. It did, on Node 24 with
-  npm 11.
+- **The Angular move hits the same `ERESOLVE` as part 1**: the locked peer set cannot move one
+  package at a time. This round used `npm install --force`; the method since 2026-10-23 is in part 2
+  above — delete the moved packages' lockfile entries, reinstall at exact versions, and prove it with
+  a clean `npm ci` and an unchanged lockfile. This round's `npm ci` passed on Node 24 with npm 11.
 - **Part 2 is unchanged.** `nx` is still 23.2.1 and still pins `smol-toml` 1.6.1, so its override
   stays, now beside two others with the same removal condition: drop each once a stable `nx` stops
   pinning a vulnerable version.
@@ -1666,7 +1691,7 @@ the lockfile resolves `node_modules/qs` to **6.16.0**, past GHSA-6rw7-vpxm-498p 
 (fixed 6.14.1) and GHSA-w7fw-mjwx-w883 / CVE-2026-2391 (fixed 6.14.2) both, and
 `npm audit --package-lock-only` reports nothing for `qs`. The floor still admits 6.14.1, so raising it
 stays held here; the installed tree is clear of both. The 32 findings that audit did report are
-[F21](#f21).
+[F21](backlog-retired.md#f21).
 
 *Recorded*: this entry; `package.json` `overrides.nx` and `overrides.qs`.
 *Verified*: `npm audit --package-lock-only`, 2026-09-26. Before the override: 12 high, 9 moderate.
@@ -1685,7 +1710,13 @@ advisories read with `gh api advisories/<id>` for their CVE, range and fix, the 
 the lockfile's `node_modules/qs` and `node_modules/union` entries read, and 2b655a7's diff of
 `package.json`. Again for `qs`, 2026-10-20 at 7741395, npm 12.0.1 on Node 26.4.0: the lockfile's
 `node_modules/qs` entry read, 6.16.0, and `npm audit --package-lock-only --json` checked for a `qs`
-finding, none.
+finding, none. Part 2 narrowed 2026-10-23, in [F21](backlog-retired.md#f21)'s commit, parent
+4246308, npm 12.0.1 on Node 26.4.0: `npm audit --package-lock-only --json` 0 at every severity;
+`npm ls smol-toml brace-expansion axios undici --package-lock-only --all` gives `smol-toml` 1.9.0 and
+`brace-expansion` 5.0.12 under `nx` with no override, no `axios`, and `undici` 7.30.1 under `nx` and
+8.11.2 under `jsdom`; the lockfile's `node_modules/nx` entry read for its declared `"undici":
+"7.29.0"`; `npm view nx@23.3.0 dependencies` and `nx@24.0.0`'s read for their pins; a clean `npm ci`
+left the lockfile unchanged, and the gate green at 2880 / 443 / 380. `qs` is unchanged.
 
 <a id="f17"></a>
 ## F17 — An unhandled rejection reaches no channel a spec would normally watch
@@ -1717,66 +1748,12 @@ a plain `new Promise` rejected with no handler reached none of the three channel
 called with it. Then by criterion 5's own cases: a wrong implementation that left superseded runs'
 rejections unhandled turned both red through the hook, with the control green.
 
-<a id="f21"></a>
-## F21 — Build-tooling advisories: 32 findings, none reaching a consumer
-
-**Package** repo · **Kind** fix · **Status** Open — scheduled after Phase 10. Opened 2026-10-20 by
-the A35 plan's U3 follow-up
-
-**A dated snapshot, not a standing count.** `npm audit --package-lock-only` at 7741395 on
-2026-10-20 reports **32 findings: 11 high, 21 moderate**, none low or critical. Three packages carry
-the six advisories; the other 29 findings are packages audit flags only for depending on one of
-them:
-
-| Package (resolved) | Advisories | Root dependency | Findings |
-| ------------------ | ---------- | --------------- | -------: |
-| `@modelcontextprotocol/server` 2.0.0 | GHSA-jm63-cq47-j5jp (high), GHSA-46jr-4wx8-v453 (high), GHSA-rvq5-wwqv-78pq (moderate); all `>=2.0.0 <2.3.0` | `@angular/cli` 22.2.0 | 2, high: itself and `@angular/cli` |
-| `follow-redirects` 1.16.0 | GHSA-q3jh-wrc6-jgq8 (high), GHSA-8r9p-f939-6h3c (high); both `>=1.16.0 <1.16.1` | `nx` 23.2.1, directly and through `axios` 1.20.0; and `@nx/angular` → `@nx/web` → `http-server` → `http-proxy` | 9, high: itself, `nx`, and seven `@nx/*` |
-| `sprintf-js` 1.0.3 | GHSA-hp3w-g68c-fv3c (moderate), `<=1.1.3`, no patched version | `jest`, `ts-jest`, `jest-preset-angular`, through `babel-plugin-istanbul` → `@istanbuljs/load-nyc-config` → `js-yaml` 3 → `argparse` 1 | 21, moderate: itself and twenty in the jest chain |
-
-Four `@nx/*` packages (`@nx/angular`, `@nx/eslint`, `@nx/jest`, `@nx/web`) reach both
-`follow-redirects` and `sprintf-js`; audit counts each once, at the higher severity, in the
-`follow-redirects` row. `sprintf-js` is the chain [F16](#f16) part 3 recorded on 2026-10-06, at 25
-findings then; its root cause is unchanged.
-
-**None of this reaches a consumer.** The three packages' source manifests declare no `dependencies`
-— `eval-core` an empty object, the other two none at all — and each published manifest
-(`eval-core` 0.13.0, `eval-signals` 0.6.0, `eval-forms` 0.6.0) carries only `tslib ^2.3.0`, which
-ng-packagr adds and audit does not flag. Every finding above is a root workspace dependency: the
-CLI, `nx` and the test runner.
-
-**Do not run `npm audit fix --force`.** It proposes, for these three:
-- `@angular/cli` 22.2.3, which audit itself reports as "outside the stated dependency range": the
-  root `package.json` pins the Angular set exactly, and part 1 of [F16](#f16) records why it moves
-  as one set or not at all;
-- `@nx/eslint-plugin` 23.3.0, also "outside the stated dependency range", for `follow-redirects`;
-  `nx` and every `@nx/*` move together through `nx migrate`, not one package at a time;
-- **`ts-jest` 27.0.3, a major downgrade** from the 29 line, for `sprintf-js`, which has no patched
-  version to move to.
-
-**The fix is a deliberate toolchain bump, not an audit fix**: an Angular CLI patch moved with the
-rest of the Angular set, and an `nx migrate` to a release that resolves `follow-redirects` 1.16.1 or
-later, each gated as F16's earlier rounds were — a clean `npm ci` that leaves the lockfile
-byte-identical, and the full gate at unchanged counts. `sprintf-js` waits on a release past 1.1.3, or
-on the istanbul chain dropping `js-yaml` 3.
-
-**Scheduled after Phase 10.** Nothing here is published, so it is not a release, and it is not
-Phase 10's documentation work.
-
-*Recorded*: this entry.
-*Verified*: 2026-10-20 at 7741395, npm 12.0.1 on Node 26.4.0. `npm audit --package-lock-only
---json`: `metadata.vulnerabilities` gives 11 high and 21 moderate, 32 in all; each finding traced
-through its `via` chain to the three packages that carry an advisory. The plain-text report read
-for each `--force` remedy and its wording. The chains read with
-`npm ls @modelcontextprotocol/server follow-redirects --package-lock-only --all`. The source manifests
-read for `dependencies`, and the published ones with `npm view <package>@<version> dependencies`.
-
 <a id="f25"></a>
 ## F25 — Four documentation checks Phase 10 left undecided
 
 **Package** repo · **Kind** decision · **Status** Open — opened 2026-10-21 by Phase 10 step 6, from
 its plan's § 8 q4 and the step's own run, and widened 2026-10-21 by step 8 with its § 8 q3, Part 4;
-**queued after Phase 10**, with [F21](#f21) and [F24](backlog-retired.md#f24)
+**queued after Phase 10**, with [F21](backlog-retired.md#f21) and [F24](backlog-retired.md#f24)
 
 The [Phase 10 plan](documentation/phase-10-plan.md)'s § 8 q4 recorded two things its decisions did
 not cover, Parts 1 and 2. Step 6 found a third, Part 3. The phase closed with its § 8 q3 still

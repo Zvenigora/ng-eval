@@ -2574,7 +2574,7 @@ a public repository advisory, read back with `gh api` rather than assumed:
   "entry as it stood" is kept verbatim, as the register keeps every quoted record, with a line saying
   where its claims now land. `CLAUDE.md` says this plan is complete and Phase 10 resumes at its
   step 3; the `step` skill is retargeted by Phase 10. It also carried two register items the release surfaced:
-  [F16](../backlog.md#f16)'s `qs` audit line, and [F21](../backlog.md#f21), the build-tooling
+  [F16](../backlog.md#f16)'s `qs` audit line, and [F21](../backlog-retired.md#f21), the build-tooling
   findings, scheduled after Phase 10.
 - **A plan correction: A42 is recorded as well.** The list above names A35, A36 and A39, written
   before Revision 16 added A42. The advisory names A42's defect — writing onto the context, and the

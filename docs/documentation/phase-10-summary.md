@@ -81,7 +81,7 @@ the plan had measured before the pause was measured again at step 3.
   all at `master`. The case that forces the question is `eval-signals`' link to
   `docs/backlog.md#a24`, which retiring A24 would break while 0.5.0 to 0.6.1 still print it. It is
   [F25](../backlog.md#f25) Part 4.
-- **Queued after the phase**: [F21](../backlog.md#f21), the build-tooling advisories;
+- **Queued after the phase**: [F21](../backlog-retired.md#f21), the build-tooling advisories;
   [F24](../backlog-retired.md#f24), the downstream F10 copies' missing reverse case; and F25's four parts.
 - **F20**, above.
 - The register holds 25 live entries at this commit.

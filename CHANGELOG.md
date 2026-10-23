@@ -59,6 +59,13 @@ Workspace tooling: nothing here reaches a consumer, so nothing here is versioned
   `handlebars` 4.7.9 → 4.7.10, inside `ts-jest`'s `^4.7.9`, for GHSA-p8wg-vrv2-v86f,
   GHSA-8r5x-fm3f-whwj (both critical) and GHSA-xw65-4hp5-5hc7. The 25 left are `sprintf-js`'s,
   which has no patched version. `docs/backlog.md` F16, part 4.
+- **Dependency security, 2026-10-23**: `npm audit` 11 → 0, all high. Angular 22.2.3 (framework) /
+  22.2.4 (CLI and devkit) for `@modelcontextprotocol/server` 2.3.1, and `nx` 23.3.0 for
+  `follow-redirects` 1.16.1, with `axios` gone from the tree. `overrides.nx` loses `brace-expansion`,
+  `smol-toml` and `axios`, which `nx` 23.3.0 no longer needs, and gains `undici` `^7.29.1`, since
+  23.3.0 pins `undici` 7.29.0; it is nested under `nx` so that `jsdom`'s `undici` 8 is untouched.
+  `sprintf-js` was no longer reported before the change. No `.d.ts` changed. `docs/backlog.md` F21,
+  and F16 part 2.
 - **eval-core's tests no longer print ts-jest's TS151001 advice** once per worker. It is silenced
   in `modules/eval-core/jest.config.ts`; the reason is in the comment there.
 - **The README drift gates check every `@zvenigora/…` import**, 2026-10-03 — `docs/backlog.md`

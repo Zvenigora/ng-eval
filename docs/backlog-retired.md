@@ -6064,6 +6064,86 @@ edit the first grep gives nothing, and the second gives the credits, the comment
 credits and the comment are attributions and stay. The linked GitHub docs page answered 200 with no
 redirect, headed "Reporting abuse or spam".
 
+<a id="f21"></a>
+## F21 — Build-tooling advisories, none reaching a consumer — **Retired, fixed**
+
+**Package** repo · **Kind** fix · **Status** **Retired — fixed 2026-10-23**, in no package: a
+toolchain bump, not `npm audit fix`. Was Open — opened 2026-10-20 by the A35 plan's U3 follow-up,
+scheduled after Phase 10
+
+*Fixed* 2026-10-23, in one commit that changes `package.json` and `package-lock.json` only. At its
+parent, 4246308, `npm audit --package-lock-only` reported **11 findings, all high**, from two
+advisory carriers; after it, **0 at every severity**.
+
+| Change | Clears |
+| ------ | ------ |
+| The six framework packages in `dependencies`, `@angular/compiler-cli` and `@angular/language-service` 22.2.1 → 22.2.3; `@angular/cli`, `@angular-devkit/core`, `@angular-devkit/schematics` and `@schematics/angular` 22.2.0 → 22.2.4. Exact pins, as one set ([F16](backlog.md#f16) part 1's rule) | `@modelcontextprotocol/server` 2.0.0 → **2.3.1**, which `@angular/cli` 22.2.4 pins: GHSA-jm63-cq47-j5jp, GHSA-46jr-4wx8-v453 (high), GHSA-rvq5-wwqv-78pq (moderate), all `>=2.0.0 <2.3.0` |
+| `nx` and the six `@nx/*` 23.2.1 → 23.3.0, by `nx migrate 23.3.0`, which had no migrations to run | `follow-redirects` 1.16.0 → **1.16.1**: GHSA-q3jh-wrc6-jgq8, GHSA-8r9p-f939-6h3c (high), both `>=1.16.0 <1.16.1`. `nx` 23.3.0 depends on neither `follow-redirects` nor `axios`, so the one copy left is `@nx/angular` → `@nx/web` → `http-server` → `http-proxy`'s, whose `^1.0.0` resolved 1.16.1 with no `npm update` |
+| `overrides.nx` replaced: `brace-expansion`, `smol-toml` and `axios` out, `"undici": "^7.29.1"` in. `allowScripts`' `nx@23.2.1` key renamed `nx@23.3.0` | `undici` 7.29.0 → **7.30.1** under `nx`, below |
+
+**`nx` 23.3.0 brought an advisory of its own.** It pins `undici` at exactly `7.29.0`, where 23.2.1
+had no `undici` dependency, and 7.29.0 carries ten advisories against `<7.29.1`, two of them high
+(GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3). 23.3.0 is the only stable 23.3 release, and `nx` 24.0.0
+pins the same `7.29.0`, so no `nx` upgrade fixes it. The override is **nested under `nx`** because the
+tree's other `undici` is `jsdom`'s, 8.11.2 under `jest-preset-angular`, which a top-level `^7.29.1`
+would force down a major. It holds until a stable `nx` stops pinning `undici` below 7.29.1, and
+[F16](backlog.md#f16) part 2 tracks it. `npm ls` prints nx's copy without `overridden`, and
+its JSON gives `"overridden": false`. The lockfile is the evidence: `node_modules/nx` declares
+`"undici": "7.29.0"`, and `node_modules/nx/node_modules/undici` is 7.30.1.
+
+**`sprintf-js` had already left the report.** At 4246308, before anything changed, audit reported
+nothing for it, although GHSA-hp3w-g68c-fv3c (`<=1.1.3`) is still published with no patched version.
+This entry's 2026-10-20 snapshot, and [F16](backlog.md#f16) parts 3 and 4, counted 21 to 25
+findings from it. The lockfile still holds the copy under the istanbul chain.
+
+**Method.** A plain `npm install` failed `ERESOLVE`: the framework packages peer on each other at
+exact versions, and the locked 22.2.1 set could not move. Naming every package in one `npm install`,
+or uninstalling and reinstalling them, failed the same way, since they stay in the tree as
+`jest-preset-angular`'s peers. Without `--force`, the route was to delete the lockfile entries of the
+locked framework packages (`@angular/common`, `compiler`, `compiler-cli`, `core` and
+`platform-browser`), then reinstall all eight at exact versions. A clean `npm ci` from the result left
+`package-lock.json` unchanged. [F16](backlog.md#f16) records the method for next time.
+
+**Nothing published changed.** Every `.d.ts` the gate built is SHA-256-identical to the build at
+4246308, and no peer range moved.
+
+**The entry as it stood**, at its opening snapshot (7741395, 2026-10-20): 32 findings, 11 high and
+21 moderate, from `@modelcontextprotocol/server` 2.0.0 via `@angular/cli` 22.2.0, `follow-redirects`
+1.16.0 via `nx` 23.2.1 (directly, through `axios` 1.20.0, and through `http-proxy`), and `sprintf-js`
+1.0.3 via the jest chain (`babel-plugin-istanbul` → `@istanbuljs/load-nyc-config` → `js-yaml` 3 →
+`argparse` 1). It warned against `npm audit fix --force`, which proposed `@angular/cli` 22.2.3 and
+`@nx/eslint-plugin` 23.3.0 outside the stated ranges and **`ts-jest` 27.0.3, a major downgrade**,
+and prescribed this fix: an Angular CLI patch moved with the rest of the set, and an `nx migrate` to
+a release that resolves `follow-redirects` 1.16.1 or later, each gated by a clean `npm ci` and the
+full gate at unchanged counts.
+
+*Recorded*: 2026-10-20, by the A35 plan's U3 follow-up.
+*Verified*: at opening, 2026-10-20 at 7741395, npm 12.0.1 on Node 26.4.0: `npm audit
+--package-lock-only --json`, each finding traced through its `via` chain; the `--force` remedies read
+in the plain-text report; the chains with `npm ls @modelcontextprotocol/server follow-redirects
+--package-lock-only --all`; the source manifests read for `dependencies`, and the published ones with
+`npm view <package>@<version> dependencies`. Fixed 2026-10-23 in the commit that retires this entry,
+whose parent is 4246308, npm 12.0.1 on Node 26.4.0:
+- `npm audit --package-lock-only --json`: `metadata.vulnerabilities` 11 high at 4246308, the
+  advisories on `@modelcontextprotocol/server` and `follow-redirects` alone and none on
+  `sprintf-js`; after, 0 at every severity.
+- `npm ls @modelcontextprotocol/server follow-redirects smol-toml brace-expansion axios undici
+  --package-lock-only --all`: server 2.3.1; `follow-redirects` 1.16.1, one copy, through
+  `http-proxy`; `smol-toml` 1.9.0; `brace-expansion` 5.0.12 under `nx` and `@nx/jest`, 2.1.7 and
+  1.1.21 elsewhere; no `axios`; `undici` 7.30.1 under `nx` and 8.11.2 under `jsdom`, no other copy.
+  `npm view nx@23.3.0 dependencies.undici` and `nx@24.0.0`'s both give `7.29.0`; `nx@23.2.1`'s
+  nothing.
+- `npm ls --depth=0 --package-lock-only` against 4246308's: only the twelve Angular and seven `nx`
+  packages changed version. `package.json` changes only in those, `overrides.nx` and the
+  `allowScripts` key.
+- `node_modules` deleted, `npm ci`, then `git diff --exit-code package-lock.json` against the staged
+  lockfile: clean.
+- The gate, `npx nx run-many -t lint test build --skip-nx-cache --output-style=static`, once: green
+  at 2880 / 443 / 380, doc-links 0 dangling, release-tags 0 failing.
+- The SHA-256 of each of the five `.d.ts` under `dist/modules/`, built at 4246308 and by the gate:
+  identical.
+- `npm ls @hono/node-server --package-lock-only --all`: empty; its override still matches nothing.
+
 <a id="f22"></a>
 ## F22 — The F10 allowlist and docblock count in `eval-core`, ungated — **Retired, fixed**
 
