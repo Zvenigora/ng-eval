@@ -10,7 +10,7 @@ independently and **all three published to npm** under the `@zvenigora` scope, e
 
 - **`@zvenigora/ng-eval-core`** (`modules/eval-core`) — a JavaScript expression
   parser/evaluator built on `acorn` + `acorn-walk`, exposed as Angular DI services.
-  Published at **0.13.2**. This is where nearly all the code is.
+  Published at **0.13.3**. This is where nearly all the code is.
 - **`@zvenigora/ng-eval-signals`** (`modules/eval-signals`) — expression → Angular
   `Signal`, built on the first library's published surface. Published at **0.6.1**;
   Phase 3 shipped 0.1.0.
