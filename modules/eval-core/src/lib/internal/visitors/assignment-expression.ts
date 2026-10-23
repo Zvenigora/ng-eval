@@ -51,6 +51,18 @@ export const assignmentExpressionVisitor = (node: AssignmentExpression, st: Eval
 
   const left = popVisitorResult(node, st) as number;
 
+  // A logical assignment that short-circuits gives `left` and does nothing
+  // more: its right side is not evaluated and nothing is written, so no write
+  // policy is asked (`docs/backlog.md` A45, part 1). The rule is
+  // `logical-expression.ts`'s, for `||`, `&&` and `??`.
+  if ((node.operator === '||=' && left) ||
+      (node.operator === '&&=' && !left) ||
+      (node.operator === '??=' && left !== null && left !== undefined)) {
+    pushVisitorResult(node, st, left);
+    afterVisitor(node, st);
+    return;
+  }
+
   callback(node.right, st);
 
   const right = popVisitorResult(node, st) as number;

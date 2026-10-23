@@ -136,8 +136,9 @@ end, so that 0.13.0, which closes the route through `this`, shipped first.
   reader to the repository README. The step recorded the release, wrote the retrospect, and widened
   [F25](#f25) with the plan's § 8 q3, which the phase left undecided.
 
-**Nothing is in flight, and no plan is active. [A45](#a45) is next.** [F21](#f21), [F24](#f24)
-and [F25](#f25), queued after Phase 10, stay queued behind it.
+**Nothing is in flight, and no plan is active. [A45](#a45)'s part 1 is fixed, unreleased; its
+part 2, which needs a plan, is next.** [F21](#f21), [F24](#f24) and [F25](#f25), queued after
+Phase 10, stay queued behind it.
 
 The A40/A41 batch is released as `eval-core` 0.13.2, alone, a patch, tagged at dc4302d and
 published 2026-10-22. It carries [A40](backlog-retired.md#a40), [A41](backlog-retired.md#a41),
@@ -260,6 +261,7 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.13.0, `eval-signals` 0.6.0, `eval-forms` 0.6.0 | `f7f27f7` | 2026-10-20 | 25 | 1: A42 | 3: A35, A39, A42 | 23 |
 | `eval-core` 0.13.1, `eval-signals` 0.6.1, `eval-forms` 0.6.1 | `5b9c859` | 2026-10-22 | 23 | 5: F21–F25 | 3: F19, F22, F23 | 25 |
 | `eval-core` 0.13.2 | `dc4302d` | 2026-10-22 | 25 | 5: A43–A47 | 4: A40, A41, A43, A46 | 26 |
+| *Unreleased* | — | — | 26 | 0 | 0 | 26 |
 | **Since the register opened** | | | **42** | **61** | **77** | **26** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
@@ -326,7 +328,7 @@ makes it that release's row, with its tag commit and date.
 | [A42](backlog-retired.md#a42) | `this.k = v` lands on the `EvalContext` instance, where nothing reads it back — but it shadows the class's own members, so the evaluator invoked what an expression planted, and it persists on a reused context | core | fix, security | **Retired — fixed 2026-10-19**, in the [A35 plan](a35/plan.md)'s step 9 under its Revision 16. The write is refused by class, the methods the evaluator calls are taken from the class, and a context reached as data is refused. Released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7; referenced in advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx) as additionally fixed, not its subject. Its first characterisation — "not a route to the context itself" — was measured wrong and corrected |
 | [A43](backlog-retired.md#a43) | Under `caseInsensitive`, an identifier write to a name the context resolves to nothing — absent, or bound to `undefined` — writes the key `undefined` | core | fix | **Retired — fixed 2026-10-22**, opened the same day by the [A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch; released 2026-10-22 in `eval-core` 0.13.2, tagged dc4302d. Both write sites fall back to the name as written, as `identifier.ts` does; `getKey` is unchanged |
 | [A44](#a44) | Under `caseInsensitive`, a member write to a case variant creates a new key: `OBJ.X = 2`, `OBJ.X += 1` and `OBJ.X++` on `{ x: 1 }` leave `{ x: 1, X: 2 }` | core | fix | Open — opened 2026-10-22 by the A40/A41 batch's `caseInsensitive` matrix; predates it. The update spec's `caseInsensitive` leg avoids case-variant spellings because of it, and its fix adds those rows |
-| [A45](#a45) | An assignment evaluates its target as an operand and its right side unconditionally — a short-circuited `\|\|=` still calls its right side and writes, a member target is evaluated twice, and `obj.fetch = 1` is refused at the read | core | fix | Open — opened 2026-10-22 by the A40/A41 batch. Fidelity; no refusal skipped, since every deviation adds one. Not scheduled |
+| [A45](#a45) | An assignment evaluates its target as an operand and its right side unconditionally — a short-circuited `\|\|=` called its right side and wrote (part 1, fixed), a member target is evaluated twice, and `obj.fetch = 1` is refused at the read | core | fix | Open — opened 2026-10-22 by the A40/A41 batch. **Part 1 retired 2026-10-22**: a logical assignment that short-circuits evaluates nothing more and writes nothing; unreleased. Part 2 needs a plan: it reopens Phase 1's decision that assignment targets emit read events. Fidelity; no refusal skipped, since every deviation adds one |
 | [A46](backlog-retired.md#a46) | An expression can rebind `undefined` on a reused context — `undefined = 1`, then `x === undefined` is `false` — and under `caseInsensitive` a case variant of `undefined`, `null`, `true` or `false` | core | fix, decision | **Retired — fixed 2026-10-22**; released 2026-10-22 in `eval-core` 0.13.2, tagged dc4302d. Such a write throws `Assignment to read-only name`, unless a scope binds the name or the context resolves it; a context class that overrides `set` decides these writes itself. `NaN` and `Infinity` are outside the set, since the evaluator resolves neither |
 | [A47](#a47) | An arrow's parameter scope is pushed without the walk's options, so under `caseInsensitive` `(x => X)(1)` is `undefined`, and `X = 5` in the body can land on the consumer's context | core | fix | Open — opened 2026-10-22 by the A40/A41 batch's code review; predates it. The other three scope pushers pass the options. Not scheduled |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
@@ -1061,40 +1063,102 @@ through a temporary spec, and the table above through `evaluate(parse(…), Eval
 <a id="a45"></a>
 ## A45 — An assignment evaluates its target as an operand and its right side unconditionally
 
-**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-22 by the
-[A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch. Not scheduled
+**Package** core · **Kind** fix · **Status** Open — **part 1 retired 2026-10-22**, part 2 open.
+Opened 2026-10-22 by the [A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch
 
 `assignment-expression.ts` evaluates `node.left` as an operand and `node.right` after it, then applies
 the operator to the two values. For a member target it then evaluates the target a second time,
-through `evaluateMember`, to find the object and key it writes, and it writes in every case.
-JavaScript evaluates a member target's object and key once, reads the target's value only for a
-compound or logical operator, skips the right side when a logical assignment short-circuits, and then
-writes nothing.
+through `evaluateMember`, to find the object and key it writes. Up to 0.13.2 it did that, and wrote,
+in every case. JavaScript evaluates a member target's object and key once, reads the target's value
+only for a compound or logical operator, skips the right side when a logical assignment
+short-circuits, and then writes nothing.
 
 Measured 2026-10-22 against the production bundle built from the batch's tree, through
-`evaluate(parse(…), EvalState.fromContext(…))`, beside the same expressions run natively:
+`evaluate(parse(…), EvalState.fromContext(…))`, beside the same expressions run natively. The table
+was one; its short-circuit and policy rows are part 1's now, and the rest are part 2's.
+
+**Two parts, and the first is fixed.** Part 1 is a logical assignment that short-circuits; part 2 is
+the target evaluated as an operand, and twice for a member.
+
+**1. A logical assignment that short-circuits — Retired 2026-10-22, fixed.** Unreleased; it ships in
+`eval-core`'s next release.
+
+| Expression | Up to 0.13.2 | Now | JavaScript |
+| :--- | :--- | :--- | :--- |
+| `a \|\|= f()`, `a` truthy | `f` called once | `f` not called | `f` not called |
+| `a &&= f()`, `a` falsy | `f` called once | `f` not called | `f` not called |
+| `a ??= f()`, `a` not nullish | `f` called once | `f` not called | `f` not called |
+| the same three on a member target, `o.a` | `f` called once each | `f` not called | `f` not called |
+| `o.g \|\|= 1`, the getter truthy | getter 2, setter 1 | getter 1, setter 0 | getter 1, setter 0 |
+| `o.a \|\|= 9`, `o.a &&= 9`, `o.a ??= 9`, each short-circuiting, under a policy that refuses what the walk did not create | refused, `o.a` unchanged | no write, so nothing to refuse | no write, so nothing to refuse |
+
+The value of every short-circuited row was already JavaScript's: the evaluator computed the operator
+on the two values and wrote back the value the target already held. What differed was effects: a
+right side that should not run ran, and a logical assignment always wrote, so a write policy refused
+a short-circuited one that JavaScript would not write.
+
+The fix is `logical-expression.ts`'s rule, applied once the left value is popped: for `||=` on a
+truthy value, `&&=` on a falsy one and `??=` on one that is not nullish, the visitor pushes that
+value and returns. The right side is not evaluated, and `evaluateMember`, the policy,
+`assignToBinding` and `safeSetProperty` are not reached. The `o.g ||= 1` row follows from that
+without being aimed at: its second read was `evaluateMember`'s, which only the write path calls. A
+logical assignment that does not short-circuit still reads a member target twice; that is part 2.
+
+Logical assignment is ES2021, and `EvalService` parses at `ecmaVersion: 2020`, which refuses it at
+the parse. It reaches the visitor only through a caller's own parser options, as `parse` with
+`ecmaVersion: 2021` does.
+
+*Verified*: `assignment-expression.spec.ts`, "a logical assignment that short-circuits (A45 part 1)",
+64 cases. 28 compare against the same expression run natively: the 16 identifier value rows, each
+operator short-circuiting and not in both modes, and the 8 member value rows, for the result, the
+target afterwards and the right side's call count; the 3 policy rows above that do not throw, for
+the result; and the `o.g ||= 1` row, for the result and the getter and setter counts. The 24
+recorder rows check the writes, through a context's `set`, a recording policy and a proxy on the
+member's object, against each row's short-circuit flag, which the value rows confirm natively. The
+other 12 check values written in the case: the policy's refusal of a write that does not
+short-circuit; the read hooks of `a ||= b` and the `'after'` node hook of `a ||= f()`, each
+short-circuiting and not; the value stack and the scopes after the expression runs in an arrow body;
+`const c = 1; c ||= 2`, which gives `1`; `TRUE ||= 1` under `caseInsensitive`, which gives `true`;
+and `fetch ||= 1`, refused by the funnel as `fetch || 1` is, a pin of existing behaviour that passed
+before the fix and does not discriminate it. Each probe was applied alone and reverted, and its
+failures read case by case:
+- the right side evaluated once, before the test: 17 red, every short-circuiting call-count row, the
+  read hook rows, the two short-circuiting arrow rows and the short-circuiting node hook row;
+- the write kept on a short-circuit: 18 red, the short-circuiting recorder rows, the three policy
+  rows, and the getter, `const` and `TRUE` rows;
+- `??=` tested as falsy: 14 red, every `??=` row on `0` or `''`;
+- no early return, falling through to the old path: 35 red, the unfixed code's set and the four rows
+  added since, each on its first effect assertion: call count, writes, the policy's refusal, the
+  read of `b`, the getter count, a write path's refusal, or a second `'after'` event. The values stay
+  right, since `evaluate` pops the top value and the stray one sits under it;
+- since that probe reds the arrow rows before their stack assertion, one more: a second push of the
+  value on the short-circuit path, 2 red, the two short-circuiting arrow rows, at the stack
+  assertion. Nothing else in the spec sees a stray push;
+- the short-circuit path's `afterVisitor` dropped: 1 red, the short-circuiting node hook row, at
+  `completed`. Its event count stays 1, since `exit` flushes the open frame when the enclosing
+  statement closes, synthesised and without a value; the row asserts both.
+
+The node hook row that does not short-circuit is the arm that tells the two apart, on the path the
+fix leaves alone; no probe reds it. The `o.g ||= 1` row was first measured after the fix through a
+temporary spec, deleted after, and is now the spec's getter row.
+
+**2. A target evaluated as an operand — Open; needs a plan: it reopens Phase 1's decision that
+assignment targets emit read events
+([`side-effects/phase-1-plan.md`](side-effects/phase-1-plan.md):274-280).**
 
 | Expression | The evaluator | JavaScript |
 | :--- | :--- | :--- |
-| `a \|\|= f()`, `a` truthy | `f` called once | `f` not called |
-| `a &&= f()`, `a` falsy | `f` called once | `f` not called |
-| `a ??= f()`, `a` not nullish | `f` called once | `f` not called |
-| the same three on a member target, `o.a` | `f` called once each | `f` not called |
 | `o.g = 1`, `g` an accessor | getter 2, setter 1 | getter 0, setter 1 |
 | `o.g += 1` | getter 2, setter 1 | getter 1, setter 1 |
-| `o.g \|\|= 1`, the getter truthy | getter 2, setter 1 | getter 1, setter 0 |
+| `o.g &&= 1`, the getter truthy | getter 2, setter 1 | getter 1, setter 1 |
 | `getObj().x = 1` | `getObj` called twice | once |
-| `o.a \|\|= 9`, `o.a &&= 9`, `o.a ??= 9`, each short-circuiting, under a policy that refuses what the walk did not create | refused, `o.a` unchanged | no write, so nothing to refuse |
 | `obj.fetch = 1` and `fetch = 1`, `fetch` the listed function | throws `Access to dangerous function "fetch" is blocked for security reasons`; the function stays | writes `1` |
 
-The value of every short-circuited row is JavaScript's: the evaluator computes the operator on the
-two values and writes back the value the target already held. So what differs is effects, in four
-kinds:
-- **a right side that should not run, runs**, and a function it calls is called;
+The `o.g &&= 1` row was measured 2026-10-22 with part 1's fix, through the same temporary spec; it
+is the double read on a logical assignment that does not short-circuit. What differs is effects, in
+two kinds:
 - **a member target is evaluated twice**: its getter and its object expression run twice, and the
   write reaches whatever the second evaluation yields;
-- **a logical assignment always writes**, so a write policy refuses a short-circuited one that
-  JavaScript would not write;
 - **the funnel refuses an assignment over a listed function**, since the target is read as an
   operand even for `=`. That refusal is the read's, not the write's. No write path refuses
   overwriting a listed function: `++obj.fetch` has overwritten one since before 0.13.0, and
@@ -1102,15 +1166,35 @@ kinds:
   reaches anything. `SECURITY.md` states it.
 
 **Fidelity; no refusal skipped.** Every extra evaluation passes through the same visitors as the
-first, so each extra read and call is checked as the first is, and the table's deviations add
-refusals, the funnel's at an `=` target and the policy's at a short-circuited write, rather than skip
-any.
+first, so each extra read and call is checked as the first is, and the table's deviations add a
+refusal, the funnel's at an `=` target, rather than skip any.
 
-**A direction, not a decision**: evaluate a member target's object and key once, read its value only
-for a compound or logical operator, and evaluate the right side, and write, only when a logical
-operator does not short-circuit. That changes what the table's rows do, and it removes the funnel's
-refusal of `obj.fetch = 1`, which would then write as an update does. So `SECURITY.md` changes with
-it, and which release can carry it is part of the fix.
+**A direction, not a decision**: evaluate a member target's object and key once, and read its value
+only for a compound or logical operator. That is the decision Phase 1 made the other way: `a.b = 1`
+reports a read of `a.b`, by design. It costs three things, which is why it needs a plan:
+- **`evaluateMember`'s split, on the M19 hot path.** `evaluateMember` resolves the object and key
+  and reads the value in one call, for every member read, a call's callee and an update's operand as
+  well as an assignment's target. Resolving without reading splits it, on the member read the
+  [A35 plan](a35/plan.md)'s M19 measured nearest the performance line.
+- **Node hooks and trace.** The target is walked as an operand, `callback(node.left)`, so a node
+  hook sees it enter and exit and the trace records its value. Not walking it changes both, for
+  every consumer that watches them.
+- **`SECURITY.md`.** It removes the funnel's refusal of `obj.fetch = 1` and `fetch = 1`, which would
+  then write as an update does. "Reads that only inspect the value throw too" changes with it, and
+  which release can carry it is part of the fix.
+
+`fetch ||= 1` is not part 2's: a logical assignment reads its target's value in JavaScript too, so
+the funnel's refusal there stays, as it does for `fetch || 1`. Part 1's spec pins it.
+
+**Logical assignment is unreachable downstream today**, because `CompilerService`, `/reactive` and
+`/signals` pass `defaultParserOptions`, at `ecmaVersion: 2020`, on every call. Whoever raises the
+default `ecmaVersion` to 2021, or writes into `defaultParserOptions` in place (the route
+[A34](#a34) records), has to revisit the downstream sites that call a `SignalContextWriteError`
+"illegal on every recompute with every dataset": a short-circuit makes that write error depend on
+the data. `git grep` on 2026-10-22 finds three in source (`eval-signal.ts` and `error-policy.ts`
+twice), four in specs (`eval-signal.spec.ts`, `field-schema.spec.ts`, `rules.spec.ts` and
+`evaluate-rule.spec.ts`), and one in `eval-forms`' README; that package's CHANGELOG says it of a
+released version.
 
 *Recorded*: this entry; `SECURITY.md`, "Reads that only inspect the value throw too".
 *Verified*: noticed in the A40/A41 batch, while correcting `SECURITY.md`'s account of why

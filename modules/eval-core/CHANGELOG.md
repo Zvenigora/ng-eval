@@ -12,6 +12,13 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Fixed
+- **A logical assignment that short-circuits no longer evaluates its right side or writes**:
+  `a ||= f()` with `a` truthy does not call `f`, and a write policy is not asked about a write that
+  does not happen. A refusal on the write path, such as a `const` binding or a read-only name, no
+  longer fires when the assignment short-circuits and writes nothing, as in JavaScript
+  ([A45](../../docs/backlog.md#a45), part 1).
+
 ---
 
 ## [0.13.2] - 2026-10-22
