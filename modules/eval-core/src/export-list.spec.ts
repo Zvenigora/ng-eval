@@ -11,8 +11,8 @@
  * different files.
  *
  * **Why it is triplicated.** `eval-signals` and `eval-forms` carry near-identical
- * copies; this one alone has `documentedAllowlistEntries` and its case, added
- * for `docs/backlog-retired.md` F22. This is deliberate, not an oversight: `@nx/enforce-module-boundaries`
+ * copies. `documentedAllowlistEntries` and its case were added here for
+ * `docs/backlog-retired.md` F22, and to the other two for F24. This is deliberate, not an oversight: `@nx/enforce-module-boundaries`
  * runs with `allow: []` (root `eslint.config.mjs`), so no spec may import a
  * helper out of another project — by alias or relatively — and § 6 gate 4
  * forbids loosening that rule to serve a spec. What retires the triplication is

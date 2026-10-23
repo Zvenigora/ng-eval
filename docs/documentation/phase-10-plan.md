@@ -53,7 +53,7 @@ It also fixed three readings:
 A second instruction, before the commit, added three things:
 - a leg in `readme-examples.spec.ts`' built-ins case pinning the new sentence's second half, so that
   F23 retires with no recorded gap. That file's edit is no longer comments only;
-- [F24](../backlog.md#f24), the downstream copies' missing reverse case, queued after the phase;
+- [F24](../backlog-retired.md#f24), the downstream copies' missing reverse case, queued after the phase;
 - § 6.1's rule on a claim that is false now against a gap that is only latent, with F23 and F24 as
   its two sides.
 
@@ -1220,7 +1220,7 @@ Steps 6, 7 and 8 move no row, so the phase ends there.
     `### Evaluation — EvalService` (`:81`), names the globals and says a value's own methods stay
     callable; `modules/eval-core/CHANGELOG.md` gains its `[Unreleased]` line. *Added before the
     commit*, at a second instruction: the built-ins case in `readme-examples.spec.ts` gains a leg for
-    the sentence's second half, and `docs/backlog.md` gains [F24](../backlog.md#f24).
+    the sentence's second half, and `docs/backlog.md` gains [F24](../backlog-retired.md#f24).
   - `modules/eval-core/src/lib/readme-examples.spec.ts`: the docblock's root-README paragraphs
     (`:31-40`, `:127-128`; *corrected in step 5*: they were cited as `:25-35` and `:108-109`, and
     step 3's docblock edits moved them), put in the past tense. Comments only.
@@ -1755,7 +1755,7 @@ in them, and its criterion 2 holds every `.d.ts` byte-identical to the published
     JavaScript's built-ins, while a value's own methods stay callable. Step 5 fixed it, and pinned
     both halves of the new sentence in the built-ins case, by two additions at its gate.
   - **Latent**: `eval-signals`' and `eval-forms`' copies of `export-list.spec.ts` lack F22's reverse
-    case ([F24](../backlog.md#f24)). `eval-signals`' one allowlist entry is not in its README, and
+    case ([F24](../backlog-retired.md#f24)). `eval-signals`' one allowlist entry is not in its README, and
     `eval-forms`' allowlist is empty, so nothing is masked today. No later step edits either project,
     so it is queued after the phase.
 - **A README case mirrors its block by hand**, and only the block count is read from the file. So the

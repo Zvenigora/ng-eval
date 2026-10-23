@@ -6257,6 +6257,73 @@ The root README's `:463`, "Comprehensive usage guide", describes a document, not
 § 3.4 drops it with its table. Step 4 fixed the `eval-forms` README's "a sandboxed evaluator, safe
 under a strict CSP".
 
+<a id="f24"></a>
+## F24 — The downstream F10 copies had no reverse case — **Retired, fixed**
+
+**Package** signals, forms · **Kind** test gap · **Status** **Retired — fixed 2026-10-22**, in no
+package, since specs ship in no tarball. Was Open — opened 2026-10-21 by Phase 10 step 5's review,
+queued after Phase 10
+
+*Fixed* 2026-10-22, by the entry's own recorded fix, in `modules/eval-signals/src/export-list.spec.ts`
+and `modules/eval-forms/src/export-list.spec.ts`, each following `eval-core`'s copy as
+[F22](#f22) left it: the helper `documentedAllowlistEntries`, the case "allowlists no name the
+package README names", a fixture line in "names the export it cannot account for", and
+`staleAllowlistEntries`' docblock pointed at the new case. No helper is shared across projects; the
+copies stay per-project, as [F10](#f10) has them. Three comment corrections went with it:
+- the downstream `staleAllowlistEntries` docblocks were one line, "Each allowlist entry the package
+  no longer exports", and called the other direction nothing. The entry's "its docblock still calls
+  the other direction harmless" described `eval-core`'s before F22, so there was no claim to remove;
+- `eval-core`'s header said its copy "alone has `documentedAllowlistEntries`", which this fix made
+  false; it now says the helper was added there for F22 and to the other two for F24;
+- `eval-forms`' allowlist docblock said "The two checks below still run over it"; it says three.
+
+*Verified*: the gate at 2880 / 443 / 380, from 2880 / 441 / 376. The latent state first: on the real
+allowlists both new cases pass. `git grep -n SignalContextSource modules/eval-signals/README.md`
+finds nothing, and `eval-forms`' allowlist is `{}`. Two probes, each applied alone, all three
+projects run, and reverted:
+- `createEvalSignal: 'function-form'` added to `eval-signals`' allowlist, a name its README
+  documents in a code span (`README.md:117`): 2 failures of 443, the new case in
+  `src/export-list.spec.ts` and `src/public-api.spec.ts`, naming `createEvalSignal`. `eval-core`
+  2880 and `eval-forms` 380 green;
+- `bindFieldProperties: 'function-form'` as `eval-forms`' one allowlist entry, a name its README
+  documents in a code span (`README.md:228`): 4 failures of 380, the new case in
+  `src/export-list.spec.ts` and the three entry points' `public-api.spec.ts`, naming
+  `bindFieldProperties`. `eval-core` 2880 and `eval-signals` 443 green.
+
+**The counts, against the entry's prediction.** `eval-signals` rose by 2, as predicted: its
+`public-api.spec.ts` imports the copy, so the case runs twice. `eval-forms` rose by 4, where the entry
+predicted 2: three `public-api.spec.ts` files import its copy, one per entry point (`src/`,
+`reactive/src/`, `signals/src/`), so it runs four times. The entry counted one importer per project.
+
+**The entry as it stood:**
+
+> [F22](#f22) gave `eval-core`'s copy of `export-list.spec.ts` a reverse case, "allowlists
+> no name the package README names", over a helper, `documentedAllowlistEntries`. An allowlist entry
+> whose name the README documents excuses nothing, and while it stands the README's mention can be
+> deleted with F10 green: the allowlist masks the regression F10 exists to catch. The other two copies,
+> `modules/eval-signals/src/export-list.spec.ts` and `modules/eval-forms/src/export-list.spec.ts`,
+> have neither the helper nor the case. Their `staleAllowlistEntries` checks only that each entry is
+> still exported, and its docblock still calls the other direction harmless.
+>
+> **Latent, not live.** Nothing is masked today:
+> - `eval-signals`' allowlist has one entry, `SignalContextSource` (`signature-type`), and its README
+>   does not name it anywhere, in a code span or otherwise;
+> - `eval-forms`' allowlist is empty.
+>
+> The gap opens the first time either README documents a name its allowlist still holds. Phase 10's
+> § 6.1 places it on the latent side of its rule: a register entry and a schedule, not a fix in the
+> step that found it.
+>
+> **The fix.** In each copy: the helper and its case, and a fixture line in "names the export it cannot
+> account for", as in `eval-core`'s; and `staleAllowlistEntries`' docblock pointed at it. *Wrong*, per
+> copy: an allowlist entry for a name the README documents, and the new case fails in that project.
+> Each project's case count rises by 1, or by 2 where a `public-api.spec.ts` imports the copy.
+
+*Recorded*: Phase 10 step 5's review, 2026-10-21.
+*Verified*: 2026-10-21. The two allowlists read from the copies; `grep -n SignalContextSource
+modules/eval-signals/README.md` finds nothing. Step 5's review measured the same against each
+README's code spans. Fixed and measured again 2026-10-22, as above.
+
 ---
 
 # Retired

@@ -333,7 +333,11 @@ export const undocumentedExports = (
     .sort()
     .map((name) => `${name}: exported, named in no code span of ${readme}, and not allowlisted`);
 
-/** Each allowlist entry the package no longer exports. */
+/**
+ * Each allowlist entry the package no longer exports. The other direction - an
+ * allowlisted name the README has since documented - is
+ * `documentedAllowlistEntries`, below.
+ */
 export const staleAllowlistEntries = (
   exported: ReadonlySet<string>,
   allowlist: Readonly<Record<string, UndocumentedReason>>
@@ -342,6 +346,23 @@ export const staleAllowlistEntries = (
     .filter((name) => !exported.has(name))
     .sort()
     .map((name) => `${name}: allowlisted, and not exported`);
+
+/**
+ * Each allowlist entry the README names in a code span. Such an entry excuses
+ * nothing, and it is not harmless: while it stands, the README's mention can be
+ * deleted and the documented-or-allowlisted case stays green, so the list
+ * masks the regression F10 exists to catch (`docs/backlog-retired.md` F22,
+ * F24).
+ */
+export const documentedAllowlistEntries = (
+  documented: ReadonlySet<string>,
+  allowlist: Readonly<Record<string, UndocumentedReason>>,
+  readme: string
+): readonly string[] =>
+  Object.keys(allowlist)
+    .filter((name) => documented.has(name))
+    .sort()
+    .map((name) => `${name}: allowlisted, and named in a code span of ${readme}`);
 
 describe('export-list reader (eval-forms copy)', () => {
   const core = () => exportedNames(SPECIFIER_ENTRY['@zvenigora/ng-eval-forms']);
@@ -504,7 +525,7 @@ describe('every @zvenigora import resolves against its own specifier (F11, eval-
 /**
  * The exports of the three entry points that `modules/eval-forms/README.md`
  * names in no code span, each with its reason (`docs/backlog.md` F10). Empty
- * when written: the README names every one. The two checks below still run
+ * when written: the README names every one. The three checks below still run
  * over it, so the first entry anyone adds is held to them.
  */
 const UNDOCUMENTED: Readonly<Record<string, UndocumentedReason>> = {};
@@ -532,6 +553,10 @@ describe('every export is documented or allowlisted (F10, eval-forms copy)', () 
     expect(staleAllowlistEntries(exported(), UNDOCUMENTED)).toEqual([]);
   });
 
+  it('allowlists no name the package README names', () => {
+    expect(documentedAllowlistEntries(documented(), UNDOCUMENTED, README)).toEqual([]);
+  });
+
   it('reads code spans, not fenced blocks, and not a member access', () => {
     const names = documentedNames(
       'Use `bindFieldProperties` and\n`binding.destroy()`.\n\n```ts\nimport { TEXT } from "x";\n```\n'
@@ -546,6 +571,9 @@ describe('every export is documented or allowlisted (F10, eval-forms copy)', () 
     ]);
     expect(staleAllowlistEntries(fixture, { B: 'unused', D: 'unused' })).toEqual([
       'D: allowlisted, and not exported',
+    ]);
+    expect(documentedAllowlistEntries(new Set(['A']), { A: 'unused', B: 'unused' }, 'fixture.md')).toEqual([
+      'A: allowlisted, and named in a code span of fixture.md',
     ]);
   });
 });

@@ -46,6 +46,10 @@ Workspace tooling: nothing here reaches a consumer, so nothing here is versioned
   the maintainer's GitHub account, [@Zvenigora](https://github.com/Zvenigora), or, when they must
   stay private, through GitHub's abuse reporting, which reaches GitHub's Trust & Safety team rather
   than this project. No email address is published. `docs/backlog.md` F20.
+- **`eval-signals`' and `eval-forms`' export-list gates check both directions**, 2026-10-22. Each
+  copy of `export-list.spec.ts` now fails on an allowlist entry its package README names in a code
+  span, as `eval-core`'s has since F22, so an entry can no longer excuse a name the README documents
+  and mask the deletion of its mention. `docs/backlog.md` F24.
 - **Dependency security, 2026-09-30**: `npm audit` 22 → 0. Angular 22.2.1 (framework) / 22.2.0
   (CLI and devkit), `jest-preset-angular` 17.0.1, `axios` and a higher `brace-expansion` floor
   under `overrides.nx`, in-range updates of `brace-expansion`, `undici` and `fast-uri`, and the

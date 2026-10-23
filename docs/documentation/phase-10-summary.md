@@ -14,7 +14,7 @@ retrospect, and also step 8's record (§ 5). The plan holds each step's outcome 
 | — | — | paused for twenty commits: the A35 plan shipped `eval-core` 0.12.1 and 0.13.0, `eval-signals` 0.6.0 and `eval-forms` 0.6.0, and its advisory; resumed at `4f99112` |
 | 3 | `938111c` | `eval-core`'s README is the package's whole documentation: the root README's API sections moved into it, and every `javascript` block executed; [F22](../backlog-retired.md#f22) opened |
 | 4 | `059bcd0` | the three package READMEs open with Install, Sibling packages and Security, and a case per project checks every quoted peer range against the manifest; [F23](../backlog-retired.md#f23) opened |
-| 5 | `b1a9863` | the root README is a landing page with no code and no quoted range, which a case enforces (D5); F22 and F23 retired, [F24](../backlog.md#f24) opened |
+| 5 | `b1a9863` | the root README is a landing page with no code and no quoted range, which a case enforces (D5); F22 and F23 retired, [F24](../backlog-retired.md#f24) opened |
 | 6 | `4b788fd` | [`docs/README.md`](../README.md), the maintainers' index; `ROADMAP.md` condensed to one table of the phases; [F19](../backlog-retired.md#f19) retired, [F25](../backlog.md#f25) opened |
 | 7 | `5b9c859` | the release commit: `eval-core` 0.13.1, `eval-signals` 0.6.1, `eval-forms` 0.6.1 |
 | 8 | this commit | the post-publish record, this retrospect, and the phase closed |
@@ -82,7 +82,7 @@ the plan had measured before the pause was measured again at step 3.
   `docs/backlog.md#a24`, which retiring A24 would break while 0.5.0 to 0.6.1 still print it. It is
   [F25](../backlog.md#f25) Part 4.
 - **Queued after the phase**: [F21](../backlog.md#f21), the build-tooling advisories;
-  [F24](../backlog.md#f24), the downstream F10 copies' missing reverse case; and F25's four parts.
+  [F24](../backlog-retired.md#f24), the downstream F10 copies' missing reverse case; and F25's four parts.
 - **F20**, above.
 - The register holds 25 live entries at this commit.
 

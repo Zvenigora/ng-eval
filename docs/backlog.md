@@ -120,7 +120,7 @@ end, so that 0.13.0, which closes the route through `this`, shipped first.
   of `eval-core`'s README was not scheduled.
 - Step 5 is done: the root README is a landing page, with no code and no quoted peer range, and a
   case in `eval-core`'s `public-api.spec.ts` keeps it that way. The root-README cases that a README
-  with no code makes vacuous or red are removed. It retired F22 and F23, and opened [F24](#f24),
+  with no code makes vacuous or red are removed. It retired F22 and F23, and opened [F24](backlog-retired.md#f24),
   queued after the phase. F23's `eval-core` README line was
   added to the step at its gate, so the step shipped that one correction in `eval-core` 0.13.1, and
   nothing else.
@@ -137,8 +137,9 @@ end, so that 0.13.0, which closes the route through `this`, shipped first.
   [F25](#f25) with the plan's § 8 q3, which the phase left undecided.
 
 **Nothing is in flight, and no plan is active. [A45](#a45)'s part 1 is fixed, unreleased; its
-part 2, which needs a plan, is next.** [F21](#f21), [F24](#f24) and [F25](#f25), queued after
-Phase 10, stay queued behind it.
+part 2, which needs a plan, is next.** [F21](#f21) and [F25](#f25), queued after Phase 10, stay
+queued behind it. [F20](backlog-retired.md#f20) and [F24](backlog-retired.md#f24) are fixed,
+unreleased, in no package.
 
 The A40/A41 batch is released as `eval-core` 0.13.2, alone, a patch, tagged at dc4302d and
 published 2026-10-22. It carries [A40](backlog-retired.md#a40), [A41](backlog-retired.md#a41),
@@ -261,8 +262,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.13.0, `eval-signals` 0.6.0, `eval-forms` 0.6.0 | `f7f27f7` | 2026-10-20 | 25 | 1: A42 | 3: A35, A39, A42 | 23 |
 | `eval-core` 0.13.1, `eval-signals` 0.6.1, `eval-forms` 0.6.1 | `5b9c859` | 2026-10-22 | 23 | 5: F21–F25 | 3: F19, F22, F23 | 25 |
 | `eval-core` 0.13.2 | `dc4302d` | 2026-10-22 | 25 | 5: A43–A47 | 4: A40, A41, A43, A46 | 26 |
-| *Unreleased* | — | — | 26 | 0 | 1: F20 | 25 |
-| **Since the register opened** | | | **42** | **61** | **78** | **25** |
+| *Unreleased* | — | — | 26 | 0 | 2: F20, F24 | 24 |
+| **Since the register opened** | | | **42** | **61** | **79** | **24** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -386,7 +387,7 @@ makes it that release's row, with its tag commit and date.
 | [F21](#f21) | Build-tooling advisories: 32 findings (11 high, 21 moderate) from `@modelcontextprotocol/server` via `@angular/cli`, `follow-redirects` via `nx`, and `sprintf-js` via the jest chain — none in a published package | repo | fix | Open — opened 2026-10-20 by the A35 plan's U3 follow-up; **scheduled after Phase 10**. A toolchain bump, **not `npm audit fix --force`**, which proposes `ts-jest` 27.0.3, a downgrade |
 | [F22](backlog-retired.md#f22) | `eval-core`'s F10 block, ungated in two places: eight allowlist entries its README now documents, so the free-functions sentence can be deleted with F10 green; and the docblock's "twenty-one of the sixty", which no case checks | core | fix (test) | **Retired — fixed 2026-10-21** by Phase 10 step 5: the eight entries removed, the figure dropped, and a case that fails on an allowlisted name the README names |
 | [F23](backlog-retired.md#f23) | Live documents claim guarantees the library does not give: twelve root README lines ("secure", "complete prototype pollution prevention", "function sandboxing", "prevents injection attacks"), and `eval-core`'s README saying an expression over an empty context "cannot use JavaScript's built-in functions", when a value's own methods stay callable | repo, core | docs | **Retired — fixed 2026-10-21** by Phase 10 step 5: the landing page keeps none of the twelve lines, and the `eval-core` README names the globals and says a value's own methods stay callable, with an `[Unreleased]` line. The README line released 2026-10-22 in `eval-core` 0.13.1, tagged 5b9c859; the root README part ships in no package |
-| [F24](#f24) | The `eval-signals` and `eval-forms` copies of `export-list.spec.ts` have no reverse case, so an allowlist entry the README documents would mask its mention's deletion, as F22 found in `eval-core` | signals, forms | test gap | Open — opened 2026-10-21 by Phase 10 step 5's review; **queued after Phase 10**, with F21. Latent: `eval-signals`' one entry is not in its README, and `eval-forms`' allowlist is empty |
+| [F24](backlog-retired.md#f24) | The `eval-signals` and `eval-forms` copies of `export-list.spec.ts` have no reverse case, so an allowlist entry the README documents would mask its mention's deletion, as F22 found in `eval-core` | signals, forms | test gap | **Retired — fixed 2026-10-22**, in no package: each copy has F22's helper and case, which fails in that project alone on an allowlisted name its README documents |
 | [F25](#f25) | Four documentation checks Phase 10 left undecided: no gate fails when `docs/README.md` stops linking a tracked `docs/` file; two links into `eval-core`'s CHANGELOG headings left the doc-links gate when they became absolute; doc-links silently skips an untracked `.md`; and whether a published README's absolute link binds its target path and anchor for good | repo | decision | Open — opened 2026-10-21 by Phase 10 step 6, from its plan's § 8 q4 and its own run, and widened by step 8 with § 8 q3; **queued after Phase 10**, with F21 and F24. Latent: the index is complete, both anchors resolve, `SKILL.md` requires `git add -N` for a new document, and every published absolute link resolves today |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
@@ -1765,45 +1766,12 @@ for each `--force` remedy and its wording. The chains read with
 `npm ls @modelcontextprotocol/server follow-redirects --package-lock-only --all`. The source manifests
 read for `dependencies`, and the published ones with `npm view <package>@<version> dependencies`.
 
-<a id="f24"></a>
-## F24 — The downstream F10 copies have no reverse case
-
-**Package** signals, forms · **Kind** test gap · **Status** Open — opened 2026-10-21 by Phase 10
-step 5's review; **queued after Phase 10**, with [F21](#f21), since no later step of the phase edits
-either project
-
-[F22](backlog-retired.md#f22) gave `eval-core`'s copy of `export-list.spec.ts` a reverse case, "allowlists
-no name the package README names", over a helper, `documentedAllowlistEntries`. An allowlist entry
-whose name the README documents excuses nothing, and while it stands the README's mention can be
-deleted with F10 green: the allowlist masks the regression F10 exists to catch. The other two copies,
-`modules/eval-signals/src/export-list.spec.ts` and `modules/eval-forms/src/export-list.spec.ts`,
-have neither the helper nor the case. Their `staleAllowlistEntries` checks only that each entry is
-still exported, and its docblock still calls the other direction harmless.
-
-**Latent, not live.** Nothing is masked today:
-- `eval-signals`' allowlist has one entry, `SignalContextSource` (`signature-type`), and its README
-  does not name it anywhere, in a code span or otherwise;
-- `eval-forms`' allowlist is empty.
-
-The gap opens the first time either README documents a name its allowlist still holds. Phase 10's
-§ 6.1 places it on the latent side of its rule: a register entry and a schedule, not a fix in the
-step that found it.
-
-**The fix.** In each copy: the helper and its case, and a fixture line in "names the export it cannot
-account for", as in `eval-core`'s; and `staleAllowlistEntries`' docblock pointed at it. *Wrong*, per
-copy: an allowlist entry for a name the README documents, and the new case fails in that project.
-Each project's case count rises by 1, or by 2 where a `public-api.spec.ts` imports the copy.
-
-*Recorded*: this entry. *Verified*: 2026-10-21. The two allowlists read from the copies; `grep -n
-SignalContextSource modules/eval-signals/README.md` finds nothing. Step 5's review measured the same
-against each README's code spans.
-
 <a id="f25"></a>
 ## F25 — Four documentation checks Phase 10 left undecided
 
 **Package** repo · **Kind** decision · **Status** Open — opened 2026-10-21 by Phase 10 step 6, from
 its plan's § 8 q4 and the step's own run, and widened 2026-10-21 by step 8 with its § 8 q3, Part 4;
-**queued after Phase 10**, with [F21](#f21) and [F24](#f24)
+**queued after Phase 10**, with [F21](#f21) and [F24](backlog-retired.md#f24)
 
 The [Phase 10 plan](documentation/phase-10-plan.md)'s § 8 q4 recorded two things its decisions did
 not cover, Parts 1 and 2. Step 6 found a third, Part 3. The phase closed with its § 8 q3 still
