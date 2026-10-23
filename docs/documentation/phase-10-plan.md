@@ -30,7 +30,7 @@ The confirmation gate answered § 8 q1 and fixed four more things:
 - **§ 6.1 applied to the new text**: `docs/README.md` links each document without counting them, and
   `ROADMAP.md`'s shipped column names the packages and links the register's Publication status
   table, which `tools/release-tags.mjs` checks, rather than restating versions;
-- **§ 8 q4 is [F25](../backlog.md#f25)**, queued after the phase with F21 and F24.
+- **§ 8 q4 is [F25](../backlog-retired.md#f25)**, queued after the phase with F21 and F24.
 
 **Revision**: 6 — step 5, in its own commit. Corrected in place:
 - step 5's `readme-examples.spec.ts` citations, `:25-35` and `:108-109`, which step 3's docblock edits
@@ -358,7 +358,7 @@ them is committed.
 - **Releases**, other than step 7's three docs-only patches. § 8 q1, answered at step 6's gate
   (Revision 7).
 - **A gate on `docs/README.md`'s completeness.** § 8 q4. Step 6 runs the check once and reports it.
-  The decision is [F25](../backlog.md#f25), queued after the phase.
+  The decision is [F25](../backlog-retired.md#f25), queued after the phase.
 - **Library code.** A change to any non-spec `.ts` file other than in a comment line is a
   stop-and-replan. That includes exporting anything new from an internal module for a spec to read.
 
@@ -1374,7 +1374,7 @@ Steps 6, 7 and 8 move no row, so the phase ends there.
     to the register on 2026-09-07, and the drift gate is F3, built and retired. So the five were false
     before this step, criterion 6 offers re-pointing as the remedy, and § 6.1 fixes a false claim in the
     open step. Specs ship in no tarball, so the category is unchanged (§ 2's note on planned scope).
-  - `docs/backlog.md`: [F25](../backlog.md#f25), from § 8 q4, with its index row.
+  - `docs/backlog.md`: [F25](../backlog-retired.md#f25), from § 8 q4, with its index row.
   - This document: § 8 q1 answered, and steps 7 and 8 written.
 - **Exit criteria**:
   1. **The index is complete.** A one-off check lists every tracked file under `docs/` that
@@ -1416,7 +1416,7 @@ Steps 6, 7 and 8 move no row, so the phase ends there.
     - **P1a**: it lists exactly `trace2/step-1.md`, `step-2.md` and `step-3.md`.
     - **P1b**: it lists nothing.
     
-    The check's rules are in [F25](../backlog.md#f25).
+    The check's rules are in [F25](../backlog-retired.md#f25).
   - **Criterion 2**: `CONTRIBUTING.md` links `docs/README.md` at `:3`, and its first `##` is at `:7`.
     - **P2**: the link at `:5` and the first `##` at `:3`, and the check fails.
     - `docs/README.md`'s "Consumer documents kept here" marks the two worked examples.
@@ -1622,7 +1622,7 @@ less the peer-range changes this release does not have.*
   3. **The npm pages are fixed.** M9 run again on the three new versions: `grep -c "repository
      README"` gives 0 in each extracted README. *Wrong* (P8c): M9's own counts for 0.13.0, 0.6.0 and
      0.6.0, which are 2, 1 and 1.
-  4. **The index is still complete.** A check applying [F25](../backlog.md#f25)'s rules, the ones step
+  4. **The index is still complete.** A check applying [F25](../backlog-retired.md#f25)'s rules, the ones step
      6's one-off check applied, lists nothing, with the summary linked. *Wrong*: the summary left
      unlinked, and the check lists it.
   5. **The phase is closed wherever it is named.** `CLAUDE.md`, `ROADMAP.md`, `docs/README.md`, "Work in
@@ -1841,7 +1841,7 @@ Each question is stated here and decided elsewhere.
    Steps 2–5 keep every one of these working (§ 3.5, § 3.10). The question is whether they must do so
    permanently. The package CHANGELOGs' 100 relative links (§ 3.2) ship as well but resolve nowhere
    inside a tarball, so they bind only inside the repository, through the gate.
-   **Moved to the register at step 8's gate**, undecided: [F25](../backlog.md#f25) Part 4.
+   **Moved to the register at step 8's gate**, undecided: [F25](../backlog-retired.md#f25) Part 4.
 4. **What the decisions do not cover**, found while measuring:
    - **`docs/README.md`'s completeness.** Step 6 checks it once. *To decide*: whether
      `tools/doc-links.mjs` should fail on a tracked `docs/` file that the index does not link.
@@ -1851,7 +1851,7 @@ Each question is stated here and decided elsewhere.
      necessarily on npm.
 
    **Moved to the register at step 6's gate** (Revision 7): both parts are
-   [F25](../backlog.md#f25), queued after the phase with F21 and F24. It records step 6's check, its
+   [F25](../backlog-retired.md#f25), queued after the phase with F21 and F24. It records step 6's check, its
    rules and its probes, for whoever builds the gate.
 
 ---
@@ -1874,5 +1874,5 @@ What a reader can rely on once this plan has landed:
 6. **Design records read as written.** Their plain text is untouched. The one link that had to change
    is a permalink to the commit it described.
 7. **Not provided**: guide files; a restructured `eval-forms` README (§ 8 q2); a gate on the index
-   (§ 8 q4, now [F25](../backlog.md#f25)). Releases are provided by step 7, as docs-only patches
+   (§ 8 q4, now [F25](../backlog-retired.md#f25)). Releases are provided by step 7, as docs-only patches
    (§ 8 q1, Revision 7).

@@ -41,7 +41,7 @@ unfixed, decisions logged rather than made, gaps in what the suite can catch —
 before recording a deferral anywhere else: the register exists because the most serious
 entry in it spent five phases invisible while two documents claimed it was tracked.
 
-**Retiring a backlog entry moves it to `docs/backlog-retired.md`; the index stays whole in `backlog.md`, and the doc-links gate lists the inbound links to re-point.**
+**Retiring a backlog entry moves it to `docs/backlog-retired.md`; the index stays whole in `backlog.md`, and the doc-links gate lists the inbound links to re-point. An entry whose anchor a published README links (`tools/published-links.txt`) keeps it on its index row, as `<a id="…"></a>` in the first cell.**
 
 ## Commands
 
@@ -73,10 +73,14 @@ lint.
 `test` also runs on a fourth project, the workspace root (`@zvenigora/ng-eval`), whose only
 `test` target is `node tools/doc-links.mjs && node tools/release-tags.mjs`, declared in the root
 `package.json`'s `nx.targets`. The first is the document cross-reference gate (`docs/backlog.md`
-F9). It fails on a relative link in any tracked `*.md`, or in a comment line of any tracked
-`*.ts`, whose file or `#anchor` does not resolve, so a doc-only or comment-only edit can turn
-`npm test`, CI and the gate red. A `.ts` line counts as a comment only if it starts with `*`,
-`/**` or `//`; code lines are never parsed. The second is the release tag check
+F9). It fails on a relative link in any `*.md`, or in a comment line of any `*.ts`, whose file or
+`#anchor` does not resolve, so a doc-only or comment-only edit can turn `npm test`, CI and the gate
+red. It scans tracked files and untracked ones git does not ignore, naming the untracked ones in its
+summary line. A `.ts` line counts as a comment only if it starts with `*`, `/**` or `//`; code
+lines are never parsed. Since F25 it also resolves an absolute link into the repository's tree at
+`master` against the tree; fails on any link a published README prints, listed in
+`tools/published-links.txt`, that stops resolving, and on a package README link of that form the
+list lacks; and fails on a file under `docs/` that `docs/README.md` does not link. The second is the release tag check
 (`docs/backlog.md` F8): every row of the register's Publication status table needs its
 `<project>@<version>` tag, at the commit the row names, so it fails in a checkout with no tags
 (`git fetch --tags`) and on a row written before its tag.
@@ -134,7 +138,8 @@ build before believing a type is sound.
     `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms` 0.6.1, docs-only; its § 3.2 is why
     nothing under `docs/` moves, § 3.5 the package READMEs' one opening and their gated peer ranges,
     § 3.10 `SECURITY.md`'s identifier check, § 6.1 the spec discipline for documentation, and § 9
-    the contract after it landed. Its § 8 q3 is undecided, and is `docs/backlog.md` F25 Part 4.
+    the contract after it landed. Its § 8 q3 was decided after the phase, as `docs/backlog.md` F25
+    Part 4: a published absolute link binds its target.
 
   Their open questions are settled unless the document says otherwise. Two of them number
   a § 9 and a § 9.1 on unrelated subjects, so name the document when citing one. Their line

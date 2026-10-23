@@ -20,6 +20,12 @@ which gained "(not published to npm)". This file now holds only changes that shi
 Workspace tooling: nothing here reaches a consumer, so nothing here is versioned.
 
 ### Added
+- **`tools/doc-links.mjs` checks the index, untracked documents and published links**, 2026-10-23.
+  It scans untracked files git does not ignore and names them, resolves absolute links into the
+  repository's tree at `master`, resolves every link a published README prints, listed in the new
+  `tools/published-links.txt`, and fails on a file under `docs/` that `docs/README.md` does not link.
+  A published link binds its target: a moved file leaves a stub, and a retired backlog entry's
+  anchor stays on its index row. `docs/backlog.md` F25.
 - **`docs/README.md`, the maintainers' index**, 2026-10-21. It links every document under `docs/`:
   the backlog register, the plan in flight, each completed phase's plan with its summaries and what
   it is the reference for, the completed tracks, the gates and what each checks, and the two worked

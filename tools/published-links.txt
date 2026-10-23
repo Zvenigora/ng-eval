@@ -1,0 +1,37 @@
+# Links into this repository that a published README prints (docs/backlog-retired.md F25 Part 4).
+#
+# A README in a tarball on npm links this repository at `master`, so each link resolves against
+# whatever `master` holds, for as long as that version is installed. A published link therefore
+# binds: tools/doc-links.mjs resolves every line below against the tree, and fails when a target
+# file or anchor stops existing. A move of a bound file leaves a stub at the old path linking the
+# new one. The retirement of a backlog entry whose anchor is bound gives its index row in
+# docs/backlog.md that anchor, <a id="…"></a>, in the first cell.
+#
+# One URL per line, in the form doc-links resolves: https://github.com/zvenigora/ng-eval followed
+# by /blob/master/<path> or /tree/master/<path>, or the bare repository root with or without
+# #readme. A link of that form in a modules/*/README.md must be listed here before it is published,
+# or doc-links fails with "not recorded". A line is never removed while a version that prints it
+# stays on npm.
+#
+# Built 2026-10-23 from package/README.md of all 54 versions npm lists of the three packages, links
+# outside fenced blocks and inline code. They also print one URL into the repository outside this
+# form, the advisory GHSA-qrqj-3445-3rjx, which doc-links skips.
+
+https://github.com/zvenigora/ng-eval
+https://github.com/zvenigora/ng-eval#readme
+https://github.com/zvenigora/ng-eval/blob/master/ROADMAP.md
+https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md
+https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md#documented-limits
+https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md#reviewed-external-advisories
+https://github.com/zvenigora/ng-eval/blob/master/docs/backlog.md#a24
+https://github.com/zvenigora/ng-eval/blob/master/docs/forms/phase-4-plan.md
+https://github.com/zvenigora/ng-eval/blob/master/docs/forms/phase-6-plan.md
+https://github.com/zvenigora/ng-eval/blob/master/docs/forms/worked-example-signals.md
+https://github.com/zvenigora/ng-eval/blob/master/docs/forms/worked-example.md
+https://github.com/zvenigora/ng-eval/blob/master/docs/signals/phase-5-plan.md
+https://github.com/zvenigora/ng-eval/blob/master/modules/eval-core/CHANGELOG.md#040---2026-09-15
+https://github.com/zvenigora/ng-eval/blob/master/modules/eval-core/CHANGELOG.md#050---2026-09-17
+https://github.com/zvenigora/ng-eval/tree/master/modules/eval-core#readme
+https://github.com/zvenigora/ng-eval/tree/master/modules/eval-forms#readme
+https://github.com/zvenigora/ng-eval/tree/master/modules/eval-signals#async-expressions
+https://github.com/zvenigora/ng-eval/tree/master/modules/eval-signals#readme

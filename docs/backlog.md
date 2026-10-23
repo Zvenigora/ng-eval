@@ -37,7 +37,10 @@ reader looking.
   `backlog-retired.md` and point its index row there. Do not delete. A retired entry with its
   reason tells the next reader the question was asked and answered; a gap tells them nothing,
   and they will re-derive it. Then run `node tools/doc-links.mjs`: every inbound link to the
-  moved entry now dangles, so the gate lists each one to re-point.
+  moved entry now dangles, so the gate lists each one to re-point. **A published README's link
+  binds** ([F25](backlog-retired.md#f25) Part 4): if `tools/published-links.txt` lists the entry's
+  anchor, as it lists `#a24`, the index row keeps it, `<a id="…"></a>` in its first cell, and the
+  gate fails at that list's line until it does.
 - **A step that fixes an entry** updates that entry in the same commit.
 
 **The convention above is not enough, and there is evidence rather than a worry.** The commit
@@ -126,7 +129,7 @@ end, so that 0.13.0, which closes the route through `this`, shipped first.
   nothing else.
 - Step 6 is done: [`docs/README.md`](README.md) is the maintainers' index, reached from
   `CONTRIBUTING.md`, and `ROADMAP.md` is condensed to one table of the phases. It retired
-  [F19](backlog-retired.md#f19), and opened [F25](#f25) from the plan's § 8 q4, queued after the
+  [F19](backlog-retired.md#f19), and opened [F25](backlog-retired.md#f25) from the plan's § 8 q4, queued after the
   phase with F21 and F24.
 - Step 7 is done: the release commit for `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms`
   0.6.1, docs-only patches with no peer range moved. Every built `.d.ts` is byte-identical to the
@@ -134,11 +137,11 @@ end, so that 0.13.0, which closes the route through `this`, shipped first.
 - Step 8 is done: the three are published, in the order `eval-core` → `eval-signals` → `eval-forms`,
   and tagged annotated at 5b9c859. Each published README is the repository's, and none sends its
   reader to the repository README. The step recorded the release, wrote the retrospect, and widened
-  [F25](#f25) with the plan's § 8 q3, which the phase left undecided.
+  [F25](backlog-retired.md#f25) with the plan's § 8 q3, which the phase left undecided.
 
-**Nothing is in flight, and no plan is active.** The queue is [F25](#f25). [A45](#a45)'s part 2
-waits on a plan. [F20](backlog-retired.md#f20), [F21](backlog-retired.md#f21) and
-[F24](backlog-retired.md#f24) are fixed, and ship in no package; F21's toolchain bump left one
+**Nothing is in flight, no plan is active, and nothing is queued.** [A45](#a45)'s part 2 waits on a
+plan. [F20](backlog-retired.md#f20), [F21](backlog-retired.md#f21),
+[F24](backlog-retired.md#f24) and [F25](backlog-retired.md#f25) are fixed, and ship in no package; F21's toolchain bump left one
 `overrides.nx` entry, `undici`, which [F16](#f16) part 2 holds.
 
 `eval-core` 0.13.3 is released alone, a patch, tagged at 021d5e4 and published 2026-10-23. It
@@ -268,8 +271,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.13.1, `eval-signals` 0.6.1, `eval-forms` 0.6.1 | `5b9c859` | 2026-10-22 | 23 | 5: F21–F25 | 3: F19, F22, F23 | 25 |
 | `eval-core` 0.13.2 | `dc4302d` | 2026-10-22 | 25 | 5: A43–A47 | 4: A40, A41, A43, A46 | 26 |
 | `eval-core` 0.13.3. A45 part 1 closed with it, a part, so A45 stays live; F20 and F24 ship in no package | `021d5e4` | 2026-10-23 | 26 | 0 | 2: F20, F24 | 24 |
-| *Unreleased*. F21 ships in no package | — | — | 24 | 0 | 1: F21 | 23 |
-| **Since the register opened** | | | **42** | **61** | **80** | **23** |
+| *Unreleased*. F21 and F25 ship in no package | — | — | 24 | 0 | 2: F21, F25 | 22 |
+| **Since the register opened** | | | **42** | **61** | **81** | **22** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -394,7 +397,7 @@ makes it that release's row, with its tag commit and date.
 | [F22](backlog-retired.md#f22) | `eval-core`'s F10 block, ungated in two places: eight allowlist entries its README now documents, so the free-functions sentence can be deleted with F10 green; and the docblock's "twenty-one of the sixty", which no case checks | core | fix (test) | **Retired — fixed 2026-10-21** by Phase 10 step 5: the eight entries removed, the figure dropped, and a case that fails on an allowlisted name the README names |
 | [F23](backlog-retired.md#f23) | Live documents claim guarantees the library does not give: twelve root README lines ("secure", "complete prototype pollution prevention", "function sandboxing", "prevents injection attacks"), and `eval-core`'s README saying an expression over an empty context "cannot use JavaScript's built-in functions", when a value's own methods stay callable | repo, core | docs | **Retired — fixed 2026-10-21** by Phase 10 step 5: the landing page keeps none of the twelve lines, and the `eval-core` README names the globals and says a value's own methods stay callable, with an `[Unreleased]` line. The README line released 2026-10-22 in `eval-core` 0.13.1, tagged 5b9c859; the root README part ships in no package |
 | [F24](backlog-retired.md#f24) | The `eval-signals` and `eval-forms` copies of `export-list.spec.ts` have no reverse case, so an allowlist entry the README documents would mask its mention's deletion, as F22 found in `eval-core` | signals, forms | test gap | **Retired — fixed 2026-10-22**, in no package: each copy has F22's helper and case, which fails in that project alone on an allowlisted name its README documents |
-| [F25](#f25) | Four documentation checks Phase 10 left undecided: no gate fails when `docs/README.md` stops linking a tracked `docs/` file; two links into `eval-core`'s CHANGELOG headings left the doc-links gate when they became absolute; doc-links silently skips an untracked `.md`; and whether a published README's absolute link binds its target path and anchor for good | repo | decision | Open — opened 2026-10-21 by Phase 10 step 6, from its plan's § 8 q4 and its own run, and widened by step 8 with § 8 q3; **queued after Phase 10**, with F21 and F24. Latent: the index is complete, both anchors resolve, `SKILL.md` requires `git add -N` for a new document, and every published absolute link resolves today |
+| [F25](backlog-retired.md#f25) | Four documentation checks Phase 10 left undecided: no gate fails when `docs/README.md` stops linking a tracked `docs/` file; two links into `eval-core`'s CHANGELOG headings left the doc-links gate when they became absolute; doc-links silently skips an untracked `.md`; and whether a published README's absolute link binds its target path and anchor for good | repo | decision | **Retired — decided and fixed 2026-10-23**, in no package: a published link binds, and `tools/doc-links.mjs` checks the index, names and checks untracked files, and resolves absolute links into the tree and every link in `tools/published-links.txt` |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -1747,86 +1750,3 @@ a plain `new Promise` rejected with no handler reached none of the three channel
 `uncaughtPromiseErrors` queue held it until the macrotask, and a function set under the hook was
 called with it. Then by criterion 5's own cases: a wrong implementation that left superseded runs'
 rejections unhandled turned both red through the hook, with the control green.
-
-<a id="f25"></a>
-## F25 — Four documentation checks Phase 10 left undecided
-
-**Package** repo · **Kind** decision · **Status** Open — opened 2026-10-21 by Phase 10 step 6, from
-its plan's § 8 q4 and the step's own run, and widened 2026-10-21 by step 8 with its § 8 q3, Part 4;
-**queued after Phase 10**, with [F21](backlog-retired.md#f21) and [F24](backlog-retired.md#f24)
-
-The [Phase 10 plan](documentation/phase-10-plan.md)'s § 8 q4 recorded two things its decisions did
-not cover, Parts 1 and 2. Step 6 found a third, Part 3. The phase closed with its § 8 q3 still
-undecided, and step 8 recorded it as Part 4. None misleads a reader today, so all four are on the
-latent side of the plan's § 6.1 rule: a register entry, not a fix in a step.
-
-**Part 1 — the index's completeness.** [`docs/README.md`](README.md) is the maintainers' index, and it
-links every tracked file under `docs/` except itself. Nothing keeps it that way: a document added
-later and never linked from the index leaves every gate green. Step 6 checked it once, with a script
-outside the repository that applies these rules:
-- the files are `git ls-files docs`, minus `docs/README.md`;
-- a link is any relative markdown link in `docs/README.md` outside fenced blocks and inline code,
-  resolved against `docs/`, with its `#anchor` dropped, so `./a8/plan.md` and `a8/plan.md#x` count;
-- the check lists every file no link resolves to, and fails if it lists any.
-
-*To decide*: whether `tools/doc-links.mjs`, or a check beside it in the root `test` target, applies
-those rules on every run. *Wrong*, for whoever builds it: the `trace2/` row dropped from the index,
-and it lists the three `trace2/` files; and a file linked as `./a8/plan.md#…`, and it does not list
-`a8/plan.md`.
-
-**Part 2 — two CHANGELOG anchors outside the gate.** Phase 10 step 3 moved two links into
-`eval-core`'s CHANGELOG headings, `#050---2026-09-17` and `#040---2026-09-15`, from the root README
-into `modules/eval-core/README.md`. The package README links other files by absolute URL only, so
-both became absolute, and `tools/doc-links.mjs` skips a link with a scheme. One relative link to
-`#040---2026-09-15` was left, in `ROADMAP.md`'s Phase 2 section, and step 6's condensing removed it.
-Since then no relative link names either anchor, so renaming either heading breaks a link on the
-package's npm page with every gate green.
-
-*To decide*: accept that, or allow a relative link in the package README, which resolves on GitHub
-but not necessarily on npm. A third option is a check that reads the absolute links into this
-repository's own files and resolves them against the tree.
-
-**Part 3 — a new document is not checked until git knows it.** `tools/doc-links.mjs` takes its files
-from `git ls-files '*.md' '*.ts'`, which lists no untracked file. A document added in the working
-tree is therefore skipped silently, with every gate green: its links go unchecked, and the file
-count does not move. Step 6 met this with `docs/README.md` itself. Its first doc-links run reported
-346 files, the count before the index existed, and checked none of its links. After
-`git add -N docs/README.md` it reported 347 and resolved them all. An intent-to-add file is listed,
-and so checked, and nothing is staged. `.claude/skills/step/SKILL.md` now requires that mark before
-the gate, as the guard until this is fixed.
-
-*The fix*: doc-links reports an untracked `.md`, from `git ls-files --others --exclude-standard`,
-rather than skipping it, either by failing or by checking it and naming it as untracked. *Wrong*,
-for whoever builds it: a new linked `.md`, left unmarked, with one dangling link, and the gate stays
-green today, where it must not.
-
-**Part 4 — whether a published absolute link binds its target for good.** This is the plan's § 8 q3,
-which the phase did not decide. A README in a tarball on npm links this repository by absolute URL at
-`master`, so each link resolves against whatever `master` holds, not against the version that
-printed it. The READMEs of `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms` 0.6.1 print 26
-such links into the repository's files:
-- 7 into `docs/`;
-- the rest to `SECURITY.md` and two of its anchors, to the package folders' READMEs and one of their
-  anchors, and to the two CHANGELOG headings of Part 2.
-
-Earlier versions print more, among them the repository's `#readme`. Phase 10 kept every one working
-(the plan's § 3.5 and § 3.10), and nothing keeps them working after it, since doc-links skips a link
-with a scheme. *The case that forces it*: `eval-signals`' README links `docs/backlog.md#a24`, and
-every version from 0.5.0 to 0.6.1 prints it. Retiring [A24](#a24) moves its entry to
-`backlog-retired.md`, which is this register's own convention, and the anchor then stops existing on
-`master` while those versions still print it.
-
-*To decide*: either a published link binds, so a retirement or a move leaves its target and anchor
-resolving; or it does not, so a README links a tagged commit rather than `master`. Part 2's third
-option, a check that resolves these links against the tree, would enforce the first answer. *Wrong*,
-for whoever builds that check: A24 moved to `backlog-retired.md`, and the check lists
-`eval-signals`' `#a24` link.
-
-*Recorded*: this entry; Part 4 by Phase 10 step 8. *Verified*, Parts 1–3: 2026-10-21 at b1a9863, with
-step 6's edits in the working tree. The index check lists none of the 49 tracked files; with the `trace2/` row removed it lists exactly
-those three, and with `a8/plan.md` linked as `./a8/plan.md#a8` it still lists none. `grep -n -E
-"^## \[0\.(5|4)\.0\]" modules/eval-core/CHANGELOG.md` gives `:839` and `:907`, whose slugs are the two
-anchors, and both links are at `modules/eval-core/README.md:289` and `:306`. `git show
-b1a9863:ROADMAP.md` has the relative `#040` link at `:94`; `git grep` finds no relative link to
-either anchor after step 6. *Verified*, Part 4: 2026-10-21, from the three tarballs as published,
-each extracted and its README's `https://github.com/zvenigora/ng-eval` links listed.

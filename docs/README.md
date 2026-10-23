@@ -5,7 +5,9 @@ the packages starts at the [root README](../README.md) instead, which links each
 
 Nothing under `docs/` moves or is renamed: published READMEs and design records name these paths, and
 most of those mentions are plain text that no check can follow ([Phase 10 plan](documentation/phase-10-plan.md)
-§ 3.2). This page gives the folder its structure instead.
+§ 3.2). This page gives the folder its structure instead. A file that must move anyway, and that a
+published README links ([`tools/published-links.txt`](../tools/published-links.txt)), leaves a stub at
+its old path that links the new one ([F25](backlog-retired.md#f25) Part 4).
 
 ## The register
 
@@ -18,7 +20,9 @@ most of those mentions are plain text that no check can follow ([Phase 10 plan](
   evidence.
 
 Cite an entry by its ID, `BL-A8` or A8, never by a line number. Retiring an entry moves it to
-`backlog-retired.md`, and the doc-links gate lists the inbound links to re-point.
+`backlog-retired.md`, and the doc-links gate lists the inbound links to re-point. If a published
+README links the entry's anchor, as `eval-signals`' links `#a24`, its index row in `backlog.md` keeps
+that anchor, `<a id="…"></a>` in the first cell.
 
 ## Active plan
 
@@ -39,7 +43,7 @@ summaries, refer to the code at the commit that wrote them.
 | 5, the async signal | [`signals/phase-5-plan.md`](signals/phase-5-plan.md) | [retrospect](signals/phase-5-summary.md) | Its § 3.4, the value and status contract, and § 9, the downstream one |
 | 6, `eval-forms`' `/signals` | [`forms/phase-6-plan.md`](forms/phase-6-plan.md) | [step 2](forms/phase-6-step-2-summary.md), [step 3](forms/phase-6-step-3-summary.md), [step 4](forms/phase-6-step-4-summary.md), [step 5](forms/phase-6-step-5-summary.md), [step 6](forms/phase-6-step-6-summary.md), [step 7](forms/phase-6-step-7-summary.md) | The Signal Forms adapter, and the choke point that discharges Phase 4's § 9.1 |
 | 9, colon-joined identifiers | [`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) | [retrospect](colon-identifiers/phase-9-summary.md) | Its § 3.4, the grammar, § 3.5, the acorn plugin and the internals it relies on, and § 9, the downstream contract. Its § 8 q1, q2 and q4 are open |
-| 10, the documentation restructure | [`documentation/phase-10-plan.md`](documentation/phase-10-plan.md) | [retrospect](documentation/phase-10-summary.md) | Its § 3.2, why nothing under `docs/` moves; § 3.5, the package READMEs' one opening and their gated peer ranges; § 3.10, `SECURITY.md`'s identifier check; § 6.1, the spec discipline for documentation; and § 9, the contract after it landed. Its § 8 q3 is undecided, and is [F25](backlog.md#f25) Part 4 |
+| 10, the documentation restructure | [`documentation/phase-10-plan.md`](documentation/phase-10-plan.md) | [retrospect](documentation/phase-10-summary.md) | Its § 3.2, why nothing under `docs/` moves; § 3.5, the package READMEs' one opening and their gated peer ranges; § 3.10, `SECURITY.md`'s identifier check; § 6.1, the spec discipline for documentation; and § 9, the contract after it landed. Its § 8 q3 was decided after the phase, as [F25](backlog-retired.md#f25) Part 4 |
 
 Phases 7 and 8 are reserved in [`ROADMAP.md`](../ROADMAP.md) and have no plan.
 
@@ -62,8 +66,12 @@ Work on one register entry, or a group of them, that needed more than one commit
 The gate is `npx nx run-many -t lint test build --skip-nx-cache --output-style=static`, run after every
 step. `static` keeps successful tasks' output, which is where the test counts are read.
 
-- [`tools/doc-links.mjs`](../tools/doc-links.mjs) — every relative link in a tracked `*.md`, and in a
-  comment line of a tracked `*.ts`, resolves to a file and, where it names one, an anchor.
+- [`tools/doc-links.mjs`](../tools/doc-links.mjs) — every relative link in a `*.md`, and in a comment
+  line of a `*.ts`, resolves to a file and, where it names one, an anchor; untracked files git does
+  not ignore are checked and named. So does every absolute link into the tree at `master`, and every
+  link a published README prints, listed in [`tools/published-links.txt`](../tools/published-links.txt),
+  which a package README's links must be in. And this page links every file under `docs/`
+  ([F25](backlog-retired.md#f25)).
 - [`tools/release-tags.mjs`](../tools/release-tags.mjs) — every row of the register's Publication
   status table has its `<project>@<version>` tag, at the commit the row names.
 - The `readme-examples.spec.ts` files — each documented block runs, and the blocks a README holds are
@@ -79,8 +87,6 @@ step. `static` keeps successful tasks' output, which is where the test counts ar
   manifest, and the root README holds no code.
 - [`internal/performance.spec.ts`](../modules/eval-core/src/lib/internal/performance.spec.ts) — the
   default path, with no hooks and no tracing, does not regress.
-
-Not gated: whether this page links every document under `docs/` ([F25](backlog.md#f25)).
 
 ## Consumer documents kept here
 

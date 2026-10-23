@@ -15,7 +15,7 @@ retrospect, and also step 8's record (§ 5). The plan holds each step's outcome 
 | 3 | `938111c` | `eval-core`'s README is the package's whole documentation: the root README's API sections moved into it, and every `javascript` block executed; [F22](../backlog-retired.md#f22) opened |
 | 4 | `059bcd0` | the three package READMEs open with Install, Sibling packages and Security, and a case per project checks every quoted peer range against the manifest; [F23](../backlog-retired.md#f23) opened |
 | 5 | `b1a9863` | the root README is a landing page with no code and no quoted range, which a case enforces (D5); F22 and F23 retired, [F24](../backlog-retired.md#f24) opened |
-| 6 | `4b788fd` | [`docs/README.md`](../README.md), the maintainers' index; `ROADMAP.md` condensed to one table of the phases; [F19](../backlog-retired.md#f19) retired, [F25](../backlog.md#f25) opened |
+| 6 | `4b788fd` | [`docs/README.md`](../README.md), the maintainers' index; `ROADMAP.md` condensed to one table of the phases; [F19](../backlog-retired.md#f19) retired, [F25](../backlog-retired.md#f25) opened |
 | 7 | `5b9c859` | the release commit: `eval-core` 0.13.1, `eval-signals` 0.6.1, `eval-forms` 0.6.1 |
 | 8 | this commit | the post-publish record, this retrospect, and the phase closed |
 
@@ -55,7 +55,7 @@ broken document fails, and § 6.1 requires that probe. Three examples that survi
 strengthened, not excused (Revision 4). The peer-range case's first version stayed green on a span
 with no range (Revision 5), and its reader hid every span after a stray backtick, which the review's
 probe found. And step 6's doc-links file count did not move on a new document, which is how
-[F25](../backlog.md#f25)'s Part 3 was found.
+[F25](../backlog-retired.md#f25)'s Part 3 was found.
 
 **The pause cost a re-measurement.** Step 2's review found A35, a route past the call sandbox,
 while `SECURITY.md` was being written. Its fix shipped first, so the phase documented 0.13.0's
@@ -80,7 +80,7 @@ the plan had measured before the pause was measured again at step 3.
   path and anchor for good. The latest three READMEs print 26 links into this repository's files,
   all at `master`. The case that forces the question is `eval-signals`' link to
   `docs/backlog.md#a24`, which retiring A24 would break while 0.5.0 to 0.6.1 still print it. It is
-  [F25](../backlog.md#f25) Part 4.
+  [F25](../backlog-retired.md#f25) Part 4.
 - **Queued after the phase**: [F21](../backlog-retired.md#f21), the build-tooling advisories;
   [F24](../backlog-retired.md#f24), the downstream F10 copies' missing reverse case; and F25's four parts.
 - **F20**, above.

@@ -5272,6 +5272,13 @@ other file is checked against the end of the file only. Links in fenced blocks a
 links with a scheme and reference-style definitions are skipped. A broken link prints
 `file:line: target — reason` and exits 1.
 
+*Widened* 2026-10-23 by [F25](#f25), so the paragraph above describes the gate as built, not as it
+runs. It also reads untracked files git does not ignore, naming them; it resolves a link with a
+scheme when it is an absolute link into this repository's tree at `master`, and skips and counts
+any other URL into the repository; it resolves every link in `tools/published-links.txt`, which
+lists what published READMEs print; and it fails on a file under `docs/` that `docs/README.md` does
+not link.
+
 **Where it lives, and why § 8.4's objection no longer holds.** It is the `test` target of the
 workspace root, `@zvenigora/ng-eval`, declared in the root `package.json`'s `nx.targets` as
 `node tools/doc-links.mjs`. So `nx run-many -t test`, `npm test` and CI all run it, with no project
@@ -6071,7 +6078,7 @@ redirect, headed "Reporting abuse or spam".
 toolchain bump, not `npm audit fix`. Was Open — opened 2026-10-20 by the A35 plan's U3 follow-up,
 scheduled after Phase 10
 
-*Fixed* 2026-10-23, in one commit that changes `package.json` and `package-lock.json` only. At its
+*Fixed* 2026-10-23, in one commit whose only non-documentation changes are `package.json` and `package-lock.json`. At its
 parent, 4246308, `npm audit --package-lock-only` reported **11 findings, all high**, from two
 advisory carriers; after it, **0 at every severity**.
 
@@ -6403,6 +6410,168 @@ predicted 2: three `public-api.spec.ts` files import its copy, one per entry poi
 *Verified*: 2026-10-21. The two allowlists read from the copies; `grep -n SignalContextSource
 modules/eval-signals/README.md` finds nothing. Step 5's review measured the same against each
 README's code spans. Fixed and measured again 2026-10-22, as above.
+
+<a id="f25"></a>
+## F25 — Four documentation checks Phase 10 left undecided — **Retired, decided and fixed**
+
+**Package** repo · **Kind** decision · **Status** **Retired — decided and fixed 2026-10-23**, in no
+package: all four parts are checks in `tools/doc-links.mjs`, which ships in no tarball. Was Open —
+opened 2026-10-21 by Phase 10 step 6, from its plan's § 8 q4 and the step's own run, and widened
+2026-10-21 by step 8 with its § 8 q3, Part 4; queued after Phase 10, with [F21](#f21) and
+[F24](#f24)
+
+**Decided** 2026-10-23:
+- **Part 4: a published absolute link binds.** Package READMEs keep linking `master`. A move of a
+  bound file leaves a stub at the old path that links the new one. The retirement of an entry whose
+  anchor is bound gives its index row in `docs/backlog.md` that anchor, `<a id="…"></a>`, in the
+  first cell. This is the Phase 10 plan's § 8 q3, which the phase left undecided.
+- **Part 2: resolved by Part 4's check.** The package READMEs keep absolute links, and the check
+  resolves the two CHANGELOG anchors against the tree like any other bound link.
+- **Part 1: in `tools/doc-links.mjs`**, not a check beside it.
+- **Part 3: an untracked file git does not ignore is checked and named, not failed.**
+
+*Fixed* 2026-10-23, in `tools/doc-links.mjs` and a new list, `tools/published-links.txt`:
+- **The files** are `git ls-files '*.md' '*.ts'` and `git ls-files --others --exclude-standard
+  '*.md' '*.ts'`. The summary line names each untracked file, as `(1 untracked: docs/x.md)`. An
+  ignored file is not scanned.
+- **Absolute links.** A link to `https://github.com/zvenigora/ng-eval`, the owner in any case since
+  the repository writes both `Zvenigora` and `zvenigora`, followed by `/blob/master/<path>`,
+  `/tree/master/<path>`, or nothing, with or without `#readme`, is resolved as the root-relative path
+  it names, through the code that resolves a relative link. Any other URL into the repository —
+  issues, advisories, another ref — is skipped and counted in the summary line. Any other scheme is
+  skipped as before. One check became stricter with it, for relative links too: `#readme` on a
+  directory now requires the directory to hold a `README.md`, where it passed unconditionally.
+- **The published list** has one URL per line, `#` comments allowed, under a header stating what it
+  is and the rule. It was built from `package/README.md` of every version npm lists of the three
+  packages, 54 tarballs, each `npm pack`ed into a scratch directory outside the repository, taking
+  the links of the absolute form above outside fenced blocks and inline code. It has **18 distinct
+  URLs, the 18 the review measured at 5b5a937**: the repository root with and without `#readme`;
+  `ROADMAP.md`; `SECURITY.md` and its `#documented-limits` and `#reviewed-external-advisories`;
+  `docs/backlog.md#a24`; four documents under `docs/forms/` and `docs/signals/phase-5-plan.md`;
+  `eval-core`'s CHANGELOG at `#040---2026-09-15` and `#050---2026-09-17`; and the three package
+  folders at `#readme`, with `eval-signals`' `#async-expressions`. The tarballs print one more URL
+  into the repository, the advisory GHSA-qrqj-3445-3rjx, which is not of that form. doc-links
+  resolves each line and reports a failure as `tools/published-links.txt:<line>`, saying what to do:
+  a stub at the old path for a missing file, the anchor on the index row for a lost backlog anchor.
+  It fails, with "not recorded in tools/published-links.txt", on a link of the absolute form in a
+  `modules/*/README.md` that the list lacks, comparing owners case-insensitively.
+- **The index.** The files are the list above under `docs/`, minus `docs/README.md`; a link is a
+  relative markdown link in `docs/README.md` outside fenced blocks and inline code, resolved against
+  `docs/` with its anchor dropped. Each file no link resolves to fails, as
+  `docs/README.md: <file> — not linked from the index`.
+
+With it, `.claude/skills/step/SKILL.md` drops its intent-to-add rule, `git add -N` before the gate:
+it was the guard for Part 3 only, and nothing else reads `git ls-files`. The retirement convention
+gains the bound-anchor rule, in `docs/backlog.md`'s "Using this file", `docs/README.md` and
+`CLAUDE.md`; the move rule, the stub, is in `docs/README.md` beside "Nothing under `docs/` moves".
+
+*Verified* 2026-10-23. On the final tree, `node tools/doc-links.mjs` reports `352 files (0 untracked),
+1755 links (22 in .ts comments, 30 absolute into the tree), 27 other repository URLs skipped, 18
+published links, 50 docs/ files checked against the index, 0 dangling`; the script of 5b5a937, run on
+the same tree, reports 352 files and 1725 links, the 30 absolute links being the difference. The
+live count goes 23 → 22. The gate at 2880 / 443 / 380, unchanged. Each wrong case below was made, run, and reverted, with `git diff`
+clean of it after:
+- a. the `trace2/` row removed from `docs/README.md`: exit 1, exactly three failures,
+  `docs/README.md: docs/trace2/step-1.md — not linked from the index`, and the same for `step-2.md`
+  and `step-3.md`;
+- b. `a8/plan.md` linked as `./a8/plan.md#a8`: `a8/plan.md` not listed as unlinked. The run fails once,
+  `docs/README.md:52: ./a8/plan.md#a8 — no such anchor in the target`, the ordinary link check;
+- c. a new untracked `docs/x.md`, linked from the index, with one dangling link: exit 1,
+  `docs/x.md:3: no-such-file.md — no such file (docs/no-such-file.md)`, and the summary
+  `353 files (1 untracked: docs/x.md)`. The same file gitignored: exit 0, 352 files, not scanned;
+- d. `eval-core`'s CHANGELOG heading `## [0.5.0] - 2026-09-17` reworded with an em dash: exit 1,
+  at `tools/published-links.txt:33` and at `modules/eval-core/README.md:291`, both `#050---2026-09-17
+  — no such anchor in the target`;
+- e. `<a id="a24"></a>` removed from A24's entry, as its retirement would: exit 1, at
+  `tools/published-links.txt:26`, with the anchor hint, and at the 13 in-repository links to `#a24`,
+  `eval-signals`' README among them. The same id then put on A24's index row,
+  `| <a id="a24"></a>[A24](#a24) |`: exit 0;
+- f. a new `/blob/master/ROADMAP.md#x` link in `modules/eval-forms/README.md`: exit 1, `not recorded
+  in tools/published-links.txt` and `no such anchor in the target`, both at `:44`. Recorded in the
+  list but `#x` absent: exit 1, `tools/published-links.txt:23: … — no such anchor in the target` and
+  the README's own failure;
+- g. the owner spelled `Zvenigora` in `eval-forms`' `SECURITY.md` link: exit 0, with 30 absolute and
+  27 skipped, the clean tree's counts, so it was resolved rather than skipped. Pointed at
+  `SECURITY.mdx`, the same spelling fails `no such file (SECURITY.mdx)` and "not recorded".
+
+**The entry as it stood:**
+
+> The [Phase 10 plan](documentation/phase-10-plan.md)'s § 8 q4 recorded two things its decisions did
+> not cover, Parts 1 and 2. Step 6 found a third, Part 3. The phase closed with its § 8 q3 still
+> undecided, and step 8 recorded it as Part 4. None misleads a reader today, so all four are on the
+> latent side of the plan's § 6.1 rule: a register entry, not a fix in a step.
+>
+> **Part 1 — the index's completeness.** [`docs/README.md`](README.md) is the maintainers' index, and
+> it links every tracked file under `docs/` except itself. Nothing keeps it that way: a document added
+> later and never linked from the index leaves every gate green. Step 6 checked it once, with a script
+> outside the repository that applies these rules:
+> - the files are `git ls-files docs`, minus `docs/README.md`;
+> - a link is any relative markdown link in `docs/README.md` outside fenced blocks and inline code,
+>   resolved against `docs/`, with its `#anchor` dropped, so `./a8/plan.md` and `a8/plan.md#x` count;
+> - the check lists every file no link resolves to, and fails if it lists any.
+>
+> *To decide*: whether `tools/doc-links.mjs`, or a check beside it in the root `test` target, applies
+> those rules on every run. *Wrong*, for whoever builds it: the `trace2/` row dropped from the index,
+> and it lists the three `trace2/` files; and a file linked as `./a8/plan.md#…`, and it does not list
+> `a8/plan.md`.
+>
+> **Part 2 — two CHANGELOG anchors outside the gate.** Phase 10 step 3 moved two links into
+> `eval-core`'s CHANGELOG headings, `#050---2026-09-17` and `#040---2026-09-15`, from the root README
+> into `modules/eval-core/README.md`. The package README links other files by absolute URL only, so
+> both became absolute, and `tools/doc-links.mjs` skips a link with a scheme. One relative link to
+> `#040---2026-09-15` was left, in `ROADMAP.md`'s Phase 2 section, and step 6's condensing removed it.
+> Since then no relative link names either anchor, so renaming either heading breaks a link on the
+> package's npm page with every gate green.
+>
+> *To decide*: accept that, or allow a relative link in the package README, which resolves on GitHub
+> but not necessarily on npm. A third option is a check that reads the absolute links into this
+> repository's own files and resolves them against the tree.
+>
+> **Part 3 — a new document is not checked until git knows it.** `tools/doc-links.mjs` takes its
+> files from `git ls-files '*.md' '*.ts'`, which lists no untracked file. A document added in the
+> working tree is therefore skipped silently, with every gate green: its links go unchecked, and the
+> file count does not move. Step 6 met this with `docs/README.md` itself. Its first doc-links run
+> reported 346 files, the count before the index existed, and checked none of its links. After
+> `git add -N docs/README.md` it reported 347 and resolved them all. An intent-to-add file is listed,
+> and so checked, and nothing is staged. `.claude/skills/step/SKILL.md` now requires that mark before
+> the gate, as the guard until this is fixed.
+>
+> *The fix*: doc-links reports an untracked `.md`, from `git ls-files --others --exclude-standard`,
+> rather than skipping it, either by failing or by checking it and naming it as untracked. *Wrong*,
+> for whoever builds it: a new linked `.md`, left unmarked, with one dangling link, and the gate stays
+> green today, where it must not.
+>
+> **Part 4 — whether a published absolute link binds its target for good.** This is the plan's § 8
+> q3, which the phase did not decide. A README in a tarball on npm links this repository by absolute
+> URL at `master`, so each link resolves against whatever `master` holds, not against the version
+> that printed it. The READMEs of `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms` 0.6.1
+> print 26 such links into the repository's files:
+> - 7 into `docs/`;
+> - the rest to `SECURITY.md` and two of its anchors, to the package folders' READMEs and one of their
+>   anchors, and to the two CHANGELOG headings of Part 2.
+>
+> Earlier versions print more, among them the repository's `#readme`. Phase 10 kept every one working
+> (the plan's § 3.5 and § 3.10), and nothing keeps them working after it, since doc-links skips a link
+> with a scheme. *The case that forces it*: `eval-signals`' README links `docs/backlog.md#a24`, and
+> every version from 0.5.0 to 0.6.1 prints it. Retiring [A24](backlog.md#a24) moves its entry to
+> `backlog-retired.md`, which is this register's own convention, and the anchor then stops existing on
+> `master` while those versions still print it.
+>
+> *To decide*: either a published link binds, so a retirement or a move leaves its target and anchor
+> resolving; or it does not, so a README links a tagged commit rather than `master`. Part 2's third
+> option, a check that resolves these links against the tree, would enforce the first answer.
+> *Wrong*, for whoever builds that check: A24 moved to `backlog-retired.md`, and the check lists
+> `eval-signals`' `#a24` link.
+
+*Recorded*: the entry; Part 4 by Phase 10 step 8. *Verified*, Parts 1–3: 2026-10-21 at b1a9863, with
+step 6's edits in the working tree. The index check listed none of the 49 tracked files; with the
+`trace2/` row removed it listed exactly those three, and with `a8/plan.md` linked as
+`./a8/plan.md#a8` it still listed none. `grep -n -E "^## \[0\.(5|4)\.0\]"
+modules/eval-core/CHANGELOG.md` gave `:839` and `:907`, whose slugs are the two anchors, and both
+links were at `modules/eval-core/README.md:289` and `:306`. `git show b1a9863:ROADMAP.md` had the
+relative `#040` link at `:94`; `git grep` found no relative link to either anchor after step 6.
+*Verified*, Part 4: 2026-10-21, from the three tarballs as published, each extracted and its
+README's `https://github.com/zvenigora/ng-eval` links listed. Decided and fixed 2026-10-23, as above.
 
 ---
 

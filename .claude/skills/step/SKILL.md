@@ -120,11 +120,6 @@ After I confirm:
   removed.
 - A case that reads a document is probed by breaking the document (the Phase 10 plan's § 6.1).
   Each probe is reverted.
-- **A new document is marked intent-to-add, `git add -N <path>`, before the gate runs.**
-  `tools/doc-links.mjs` reads `git ls-files`, so an untracked file is skipped silently: its links go
-  unchecked and the file count does not move, with every gate green. An intent-to-add file is
-  listed and checked, and nothing is staged. Until doc-links reports an untracked `.md` itself, this
-  is the guard ([F25](../../../docs/backlog.md#f25), Part 3).
 - The A35 plan's two probe rules (`docs/a35/plan.md`, "§ 1.2 Standing rules, from Revision 16" —
   the plan numbers two § 1.2s) hold for any case a step adds: a
   refusal it asserts is matched by the message that names its layer, and every option the case's
