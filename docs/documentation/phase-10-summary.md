@@ -10,7 +10,7 @@ retrospect, and also step 8's record (§ 5). The plan holds each step's outcome 
 | ---- | ------ | ---- |
 | — | `4d56de2` | the plan: decisions D1–D7, and the order § 4 adjusts from the one first proposed |
 | 1 | `3f00e3c` | ten stale documents deleted after a per-file audit that kept two facts; the `qs` override's reason, corrected, in [F16](../backlog.md#f16) |
-| 2 | `efe2803` | `SECURITY.md` rewritten to what the code does, with three cases in `eval-core`'s `public-api.spec.ts` that resolve every identifier it names; [F20](../backlog.md#f20) and [A35](../backlog-retired.md#a35) opened |
+| 2 | `efe2803` | `SECURITY.md` rewritten to what the code does, with three cases in `eval-core`'s `public-api.spec.ts` that resolve every identifier it names; [F20](../backlog-retired.md#f20) and [A35](../backlog-retired.md#a35) opened |
 | — | — | paused for twenty commits: the A35 plan shipped `eval-core` 0.12.1 and 0.13.0, `eval-signals` 0.6.0 and `eval-forms` 0.6.0, and its advisory; resumed at `4f99112` |
 | 3 | `938111c` | `eval-core`'s README is the package's whole documentation: the root README's API sections moved into it, and every `javascript` block executed; [F22](../backlog-retired.md#f22) opened |
 | 4 | `059bcd0` | the three package READMEs open with Install, Sibling packages and Security, and a case per project checks every quoted peer range against the manifest; [F23](../backlog-retired.md#f23) opened |
@@ -71,7 +71,7 @@ the plan had measured before the pause was measured again at step 3.
 - **Gate the index's completeness.** Step 6 and this step checked it once each; the gate is F25
   Part 1.
 - **Change library code.** No exported symbol, `.d.ts` or peer range moved in any step.
-- **Choose `CODE_OF_CONDUCT.md`'s contact** ([F20](../backlog.md#f20)). It is the maintainer's to
+- **Choose `CODE_OF_CONDUCT.md`'s contact** ([F20](../backlog-retired.md#f20)). It is the maintainer's to
   choose.
 
 ## 4. What is left after this commit

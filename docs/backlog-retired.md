@@ -6005,6 +6005,65 @@ The entry as it stood:
 read again 2026-10-21 at b1a9863: the same grep gives `member-expression.ts:244`, and `CLAUDE.md`
 cites the symbol.
 
+<a id="f20"></a>
+## F20 — `CODE_OF_CONDUCT.md` named the upstream `jse-eval` author as its enforcement contact — **Retired, fixed**
+
+**Package** repo · **Kind** docs · **Status** **Retired — fixed 2026-10-22**, in no package. Was
+Open — opened 2026-10-14 by Phase 10 step 2
+
+*Fixed* 2026-10-22, by the maintainer's decision of that day: no email address. Reports go to the
+maintainer's GitHub account, or, when they must stay private, through GitHub's own abuse reporting.
+`CODE_OF_CONDUCT.md`'s "Enforcement" section was:
+
+> Instances of abusive, harassing, or otherwise unacceptable behavior may be
+> reported to the community leaders responsible for enforcement at
+> [an address of the `6utt3rfly` account, not repeated here].
+
+and is now:
+
+> Instances of abusive, harassing, or otherwise unacceptable behavior may be
+> reported to the project's maintainer, [@Zvenigora](https://github.com/Zvenigora).
+> GitHub offers no private messages, so a report that should stay private may be
+> made through GitHub's
+> [abuse reporting](https://docs.github.com/en/communities/maintaining-your-safety-on-github/reporting-abuse-or-spam)
+> instead. Such a report goes to GitHub's Trust & Safety team, not to this
+> project.
+
+"All complaints will be reviewed…" and the privacy paragraph are unchanged, and so is the rest of the
+file. GitHub's private vulnerability reporting, the other channel the *Verified* line below checked,
+is a repository setting and the maintainer's to enable; it is not part of this fix, and `SECURITY.md`
+is unchanged.
+
+The entry as it stood:
+
+> `CODE_OF_CONDUCT.md:62-63` sends reports "to the community leaders responsible for enforcement" at an
+> address of the `6utt3rfly` account. The root README credits that account for `jse-eval`
+> (`README.md:30`, `:418`), the separate project ng-eval was inspired by. It is not this repository's
+> maintainer. The file came in with 2c42d3d on 2023-12-21, apparently carried over from `jse-eval`'s
+> own. A report sent there reaches someone outside this project.
+>
+> **Fix**: replace the address with a contact this repository's maintainer chooses. No such contact is
+> published today: the only one is the author field of each package's manifest, "Zvenigora
+> (https://github.com/zvenigora)", and GitHub's private vulnerability reporting is not enabled.
+> Phase 10 step 2 left the file unedited, by instruction, since the replacement is the maintainer's
+> choice.
+>
+> **Why it surfaced here**: Phase 10 step 2 looked for a reporting channel for `SECURITY.md` and found
+> that this address was the only one in the repository. `SECURITY.md` does not use it.
+
+*Recorded*: Phase 10 step 2, 2026-10-14.
+*Verified*: read 2026-10-14 at 3f00e3c. `CODE_OF_CONDUCT.md:63` holds the address; `git log
+--follow` gives 2c42d3d as the file's only commit; `README.md:30` and `:418` link `jse-eval` to
+`github.com/6utt3rfly`; and `gh api repos/Zvenigora/ng-eval/private-vulnerability-reporting`
+answers `{"enabled":false}`. Fixed and read again 2026-10-22 at d23a7b7, before the edit:
+`git grep -n '@gmail\|@outlook\|@hotmail'` gave `CODE_OF_CONDUCT.md:63` alone, and
+`git grep -n -i '6utt3rfly'` gave it, this entry, the root README's two `jse-eval` credits, which the
+landing-page rewrite had moved to `README.md:63` and `:72`, and a source attribution comment at
+`modules/eval-core/src/lib/internal/visitors/pattern.ts:12` linking `jse-eval`'s `index.ts`. After the
+edit the first grep gives nothing, and the second gives the credits, the comment and this entry; the
+credits and the comment are attributions and stay. The linked GitHub docs page answered 200 with no
+redirect, headed "Reporting abuse or spam".
+
 <a id="f22"></a>
 ## F22 — The F10 allowlist and docblock count in `eval-core`, ungated — **Retired, fixed**
 

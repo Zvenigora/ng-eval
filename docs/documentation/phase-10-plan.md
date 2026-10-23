@@ -867,7 +867,7 @@ Steps 6, 7 and 8 move no row, so the phase ends there.
   5. **Every protection cites its source and spec as links**, all resolved by the gate.
   - `eval-core` +3, all in `public-api.spec.ts`; `eval-signals` and `eval-forms` unchanged. The gate is
     green. `git diff --name-only` lists the files above and this document.
-  - *Added in the step* (Revision 3): `docs/backlog.md` gains [F20](../backlog.md#f20), with its index
+  - *Added in the step* (Revision 3): `docs/backlog.md` gains [F20](../backlog-retired.md#f20), with its index
     row. `CODE_OF_CONDUCT.md`'s enforcement contact is an address of the upstream `jse-eval` author.
     It was found looking for a reporting channel, and left unedited by instruction, since its fix is a
     contact the maintainer chooses. It also gains [A35](../backlog-retired.md#a35), with its index row:

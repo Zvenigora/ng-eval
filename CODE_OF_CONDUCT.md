@@ -59,8 +59,12 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-6utt3rfly.github@gmail.com.
+reported to the project's maintainer, [@Zvenigora](https://github.com/Zvenigora).
+GitHub offers no private messages, so a report that should stay private may be
+made through GitHub's
+[abuse reporting](https://docs.github.com/en/communities/maintaining-your-safety-on-github/reporting-abuse-or-spam)
+instead. Such a report goes to GitHub's Trust & Safety team, not to this
+project.
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the

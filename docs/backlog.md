@@ -261,8 +261,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.13.0, `eval-signals` 0.6.0, `eval-forms` 0.6.0 | `f7f27f7` | 2026-10-20 | 25 | 1: A42 | 3: A35, A39, A42 | 23 |
 | `eval-core` 0.13.1, `eval-signals` 0.6.1, `eval-forms` 0.6.1 | `5b9c859` | 2026-10-22 | 23 | 5: F21–F25 | 3: F19, F22, F23 | 25 |
 | `eval-core` 0.13.2 | `dc4302d` | 2026-10-22 | 25 | 5: A43–A47 | 4: A40, A41, A43, A46 | 26 |
-| *Unreleased* | — | — | 26 | 0 | 0 | 26 |
-| **Since the register opened** | | | **42** | **61** | **77** | **26** |
+| *Unreleased* | — | — | 26 | 0 | 1: F20 | 25 |
+| **Since the register opened** | | | **42** | **61** | **78** | **25** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -382,7 +382,7 @@ makes it that release's row, with its tag commit and date.
 | [F17](#f17) | An unhandled rejection reaches no channel a spec would normally watch — only zone.js's `unhandledPromiseRejectionHandler` hook sees it | repo | test gap | Open — opened 2026-10-08 by Phase 5 step 2 |
 | [F18](backlog-retired.md#f18) | `eval-signal.ts` line citations in `eval-forms` comments and completed plans are stale | forms, repo | docs | **Retired — fixed 2026-10-10** in live source; completed records kept as written, per `CLAUDE.md`. The three `eval-forms` comments cite symbols; `applyErrorPolicy`'s ships in the core `.d.ts` |
 | [F19](backlog-retired.md#f19) | `CLAUDE.md` cites the resolved-key re-check as `member-expression.ts:188`; it was at `:211`, and is at `:244` | repo | docs | **Retired — fixed 2026-10-21** by Phase 10 step 6: `CLAUDE.md` cites `isDangerousProperty(foundKey)` in `member-expression.ts` by symbol, as the entry's fix recorded |
-| [F20](#f20) | `CODE_OF_CONDUCT.md`'s enforcement contact is an address of the upstream `jse-eval` author, not this repository's maintainer | repo | docs | Open — opened 2026-10-14 by Phase 10 step 2; the fix needs a contact the maintainer chooses |
+| [F20](backlog-retired.md#f20) | `CODE_OF_CONDUCT.md`'s enforcement contact is an address of the upstream `jse-eval` author, not this repository's maintainer | repo | docs | **Retired — fixed 2026-10-22**, in no package: reports go to the maintainer's GitHub account, or privately through GitHub's abuse reporting; no address |
 | [F21](#f21) | Build-tooling advisories: 32 findings (11 high, 21 moderate) from `@modelcontextprotocol/server` via `@angular/cli`, `follow-redirects` via `nx`, and `sprintf-js` via the jest chain — none in a published package | repo | fix | Open — opened 2026-10-20 by the A35 plan's U3 follow-up; **scheduled after Phase 10**. A toolchain bump, **not `npm audit fix --force`**, which proposes `ts-jest` 27.0.3, a downgrade |
 | [F22](backlog-retired.md#f22) | `eval-core`'s F10 block, ungated in two places: eight allowlist entries its README now documents, so the free-functions sentence can be deleted with F10 green; and the docblock's "twenty-one of the sixty", which no case checks | core | fix (test) | **Retired — fixed 2026-10-21** by Phase 10 step 5: the eight entries removed, the figure dropped, and a case that fails on an allowlisted name the README names |
 | [F23](backlog-retired.md#f23) | Live documents claim guarantees the library does not give: twelve root README lines ("secure", "complete prototype pollution prevention", "function sandboxing", "prevents injection attacks"), and `eval-core`'s README saying an expression over an empty context "cannot use JavaScript's built-in functions", when a value's own methods stay callable | repo, core | docs | **Retired — fixed 2026-10-21** by Phase 10 step 5: the landing page keeps none of the twelve lines, and the `eval-core` README names the globals and says a value's own methods stay callable, with an `[Unreleased]` line. The README line released 2026-10-22 in `eval-core` 0.13.1, tagged 5b9c859; the root README part ships in no package |
@@ -1710,32 +1710,6 @@ a plain `new Promise` rejected with no handler reached none of the three channel
 `uncaughtPromiseErrors` queue held it until the macrotask, and a function set under the hook was
 called with it. Then by criterion 5's own cases: a wrong implementation that left superseded runs'
 rejections unhandled turned both red through the hook, with the control green.
-
-<a id="f20"></a>
-## F20 — `CODE_OF_CONDUCT.md` names the upstream `jse-eval` author as its enforcement contact
-
-**Package** repo · **Kind** docs · **Status** Open. Opened 2026-10-14 by Phase 10 step 2
-
-`CODE_OF_CONDUCT.md:62-63` sends reports "to the community leaders responsible for enforcement" at an
-address of the `6utt3rfly` account. The root README credits that account for `jse-eval`
-(`README.md:30`, `:418`), the separate project ng-eval was inspired by. It is not this repository's
-maintainer. The file came in with 2c42d3d on 2023-12-21, apparently carried over from `jse-eval`'s
-own. A report sent there reaches someone outside this project.
-
-**Fix**: replace the address with a contact this repository's maintainer chooses. No such contact is
-published today: the only one is the author field of each package's manifest, "Zvenigora
-(https://github.com/zvenigora)", and GitHub's private vulnerability reporting is not enabled.
-Phase 10 step 2 left the file unedited, by instruction, since the replacement is the maintainer's
-choice.
-
-**Why it surfaced here**: Phase 10 step 2 looked for a reporting channel for `SECURITY.md` and found
-that this address was the only one in the repository. `SECURITY.md` does not use it.
-
-*Recorded*: this entry.
-*Verified*: read 2026-10-14 at 3f00e3c. `CODE_OF_CONDUCT.md:63` holds the address; `git log
---follow` gives 2c42d3d as the file's only commit; `README.md:30` and `:418` link `jse-eval` to
-`github.com/6utt3rfly`; and `gh api repos/Zvenigora/ng-eval/private-vulnerability-reporting`
-answers `{"enabled":false}`.
 
 <a id="f21"></a>
 ## F21 — Build-tooling advisories: 32 findings, none reaching a consumer

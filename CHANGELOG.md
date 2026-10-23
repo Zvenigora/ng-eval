@@ -41,6 +41,11 @@ Workspace tooling: nothing here reaches a consumer, so nothing here is versioned
   published package depended on either.
 
 ### Fixed
+- **`CODE_OF_CONDUCT.md` names this project's maintainer**, 2026-10-22. Its enforcement contact was
+  an email address of the upstream `jse-eval` author, carried over with the file. Reports now go to
+  the maintainer's GitHub account, [@Zvenigora](https://github.com/Zvenigora), or, when they must
+  stay private, through GitHub's abuse reporting, which reaches GitHub's Trust & Safety team rather
+  than this project. No email address is published. `docs/backlog.md` F20.
 - **Dependency security, 2026-09-30**: `npm audit` 22 → 0. Angular 22.2.1 (framework) / 22.2.0
   (CLI and devkit), `jest-preset-angular` 17.0.1, `axios` and a higher `brace-expansion` floor
   under `overrides.nx`, in-range updates of `brace-expansion`, `undici` and `fast-uri`, and the
