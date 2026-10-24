@@ -10,6 +10,29 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ---
 
+## [Unreleased]
+
+### Changed
+- **Breaking: a compound or logical assignment reads its target once, and does not walk it.** A
+  member target's object and key are evaluated once, before the right side, and the write reuses
+  them: `getObj()[k()] += f()` runs `getObj`, `k`, the read, `f`, then the write, where up to 0.13.3
+  it evaluated the object, the key and the read a second time after `f`. A getter on the target is
+  called once where it was called twice. Two are read twice where they were read four times: a
+  prototype accessor under `caseInsensitive` ([A48](../../docs/backlog.md#a48)), and an accessor
+  on the context reached through `this` ([A49](../../docs/backlog.md#a49)). The read events are those of that one read, `a`, then `a.b`, where each was reported
+  twice; node hooks and the trace see the target's object and a computed key, and no longer the
+  target node, and an identifier target not at all. The value read still passes the checks every
+  read value passes, so a listed function as the target, `fetch += 1` or `obj.fetch ||= 1`, is
+  still refused. `=` is unchanged ([A45](../../docs/backlog.md#a45), part 2).
+
+### Fixed
+- **Under `caseInsensitive`, an identifier holding `null` reads as `null`**, where it read as
+  `undefined`: `x === null` is `true`, and `x += 1` gives `1`, where it gave `NaN`. The literals
+  registry now answers only a name the context finds nothing for
+  ([A52](../../docs/backlog.md#a52)).
+
+---
+
 ## [0.13.3] - 2026-10-23
 
 ### Fixed

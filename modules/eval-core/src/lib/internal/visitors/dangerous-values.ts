@@ -247,11 +247,14 @@ const readName = (node: AnyNode, fn: { name?: unknown }): string => {
  * The funnel (`docs/a35/plan.md` § 3.3): refuses a dangerous function pushed
  * by any node but an exempt one, so no visitor - including one not yet
  * written - can hand it on as an argument, a receiver, an element, a branch
- * or the expression's result. `pushVisitorResult` calls it for a function
- * value only.
+ * or the expression's result. `refuseFunnelledValue` (`visitor-result.ts`)
+ * calls it for a function value only, from its two call sites:
+ * `pushVisitorResult`, for every pushed value, and `assignment-expression.ts`,
+ * for a compound or logical assignment's target, which is read once and not
+ * pushed (`docs/backlog.md` A45, part 2).
  *
- * It sees only what passes through the walk's own stack. A value that reaches
- * native code without being pushed is not seen: the elements of an array the
+ * It sees only what is pushed on the walk's own stack, and those targets. A
+ * value that reaches native code without either is not seen: the elements of an array the
  * host built, spread into a call, which stays a documented limit. The other
  * such route, through `this` and the receiver of a call
  * (`docs/backlog-retired.md` A39), is closed in 0.13.0 elsewhere - by

@@ -140,10 +140,12 @@ end, so that 0.13.0, which closes the route through `this`, shipped first.
   [F25](backlog-retired.md#f25) with the plan's § 8 q3, which the phase left undecided.
 
 **The [A45 plan](a45/plan.md) is in flight**: [A45](#a45) part 2 and [A44](#a44), assignment targets
-as JavaScript evaluates them, for `eval-core` 0.14.0. It is at Revision 3, no step has run, and step
-1, the characterisation spec, is next. Revision 2 decided three of its open questions as D7–D9 and
-opened [A48](#a48)–[A52](#a52) for the defects it found. Revision 3 brought A52 into the plan's step 2
-(D10); A48–A51 are not scheduled. Its § 8 keeps the downstream versions open.
+as JavaScript evaluates them, for `eval-core` 0.14.0. It is at Revision 4, and steps 1 and 2 are done:
+the characterisation spec, and compound and logical targets read once, with A52 fixed in step 2 and
+not yet released. Step 3, the `=` resolver and A44, is next. Revision 2 decided three of its open
+questions as D7–D9 and opened [A48](#a48)–[A52](#a52) for the defects it found. Revision 3 brought A52
+into the plan's step 2 (D10), and Revision 4 kept the `this` refusal on every identifier target (D11);
+A48–A51 are not scheduled. Its § 8 keeps the downstream versions open.
 [F20](backlog-retired.md#f20), [F21](backlog-retired.md#f21),
 [F24](backlog-retired.md#f24) and [F25](backlog-retired.md#f25) are fixed, and ship in no package; F21's toolchain bump left one
 `overrides.nx` entry, `undici`, which [F16](#f16) part 2 holds.

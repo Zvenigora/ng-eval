@@ -1,10 +1,11 @@
 import { AssignmentExpression } from 'acorn';
 import * as walk from 'acorn-walk';
 import { beforeVisitor } from './before-visitor';
-import { pushVisitorResult, popVisitorResult } from './visitor-result';
+import { pushVisitorResult, popVisitorResult, refuseFunnelledValue } from './visitor-result';
 import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 import { evaluateMember } from './member-expression';
+import { readIdentifierTarget } from './identifier';
 import { safeSetProperty } from './prototype-pollution-guard';
 import { consultMemberWrite } from './member-write-policy';
 import { assignToBinding } from './variable-declaration';
@@ -47,9 +48,32 @@ export const assignmentExpressionVisitor = (node: AssignmentExpression, st: Eval
     throw new Error(`Unsupported assignment target: ${target.type}`);
   }
 
-  callback(node.left, st);
-
-  const left = popVisitorResult(node, st) as number;
+  // A compound or logical target is read once and not walked, as an update
+  // reads its operand (`docs/backlog.md` A45, part 2): a member through one
+  // `evaluateMember` call, whose object and key the write reuses, and an
+  // identifier through the identifier visitor's own read. Neither value is
+  // pushed, so it is given the funnel's tests here, or a listed function read
+  // as a target would be combined and written where `fetch || 1` refuses it.
+  // `=` still walks its target as an operand, and resolves a member target
+  // again after the right side.
+  const plain = node.operator === '=';
+  let left: number;
+  let targetObject: unknown;
+  let targetKey: unknown;
+  if (plain) {
+    callback(node.left, st);
+    left = popVisitorResult(node, st) as number;
+  } else {
+    if (target.type === 'Identifier') {
+      left = readIdentifierTarget(target, st) as number;
+    } else {
+      const [object, key, value] = evaluateMember(target, st, callback);
+      targetObject = object;
+      targetKey = key;
+      left = value as number;
+    }
+    refuseFunnelledValue(target, st, left);
+  }
 
   // A logical assignment that short-circuits gives `left` and does nothing
   // more: its right side is not evaluated and nothing is written, so no write
@@ -90,7 +114,9 @@ export const assignmentExpressionVisitor = (node: AssignmentExpression, st: Eval
     assignToBinding(st, key, value, target.name);
     pushVisitorResult(node, st, value);
   } else if (target.type === 'MemberExpression') {
-    const [object, key, ] = evaluateMember(target, st, callback);
+    const [object, key] = plain
+      ? evaluateMember(target, st, callback)
+      : [targetObject, targetKey];
     const value = func(left, right);
 
     // A member write never reaches `EvalContext.set`, so a context policing

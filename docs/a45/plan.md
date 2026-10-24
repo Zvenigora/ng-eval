@@ -10,7 +10,8 @@ compound targets and step 3 for `=`, while an update already writes, `This++` un
 the `=` resolver and the identifier update in step 3. The characterisation spec gains group T, 8 rows
 and 16 cases, pinned today. Its marks are witnessed by steps 2 and 3's probes, not by the pinned
 prototype, which predates D11: a stated exception to § 0 rule 10 (step 1's addendum). Rows: 100,
-cases 200. `eval-core` is at 3080 from this revision through step 2, and reaches 3116 at step 3.
+cases 200. `eval-core` is at 3080 from this revision, and reaches 3116 at step 3. Step 2's widening,
+group V, adds 8 cases, so step 2 ends at 3088 and step 3 at 3124 (step 2's outcome).
 **Revision**: 3 — the request's third instruction, measured first (M11). D10 brings
 [A52](../backlog.md#a52) into step 2. Under `caseInsensitive` the identifier visitor's own read takes
 the literals fallback only when `get` finds `undefined`, the rule § 3.2 gives the target read, so
@@ -898,17 +899,17 @@ probe is applied alone and reverted, and its red cases are named (§ 0 rule 8).
 | Step | Subject | Files (main) | Tests: `eval-core` / `eval-signals` / `eval-forms` | Ships in |
 | :--- | :--- | :--- | :--- | :--- |
 | 1 | Characterisation spec: today pinned, flips marked, deviations held | new `internal/visitors/assignment-target.spec.ts` | **+184** / 0 / 0; **+16** with Revision 4's group T | no package |
-| 2 | Compound and logical targets in update's shape, with the funnel's check | `assignment-expression.ts`, `identifier.ts`, `visitor-result.ts`, the spec's step-2 rows, `CHANGELOG.md` | 0 / 0 / 0 (rows rewritten 1:1) | `eval-core` 0.14.0 |
+| 2 | Compound and logical targets in update's shape, with the funnel's check | `assignment-expression.ts`, `identifier.ts`, `visitor-result.ts`, the spec's step-2 rows, `CHANGELOG.md` | **+8** / 0 / 0 (rows rewritten 1:1; group V, a widening at the step's approval) | `eval-core` 0.14.0 |
 | 3 | The `=` resolver; A44 in both visitors; the identifier update's checks and read (D8, D9) | `assignment-expression.ts`, `member-expression.ts`, `update-expression.ts`, `identifier.ts`, the spec's step-3 rows, `update-expression.spec.ts`, `CHANGELOG.md` | **+36** / 0 / 0 | `eval-core` 0.14.0 |
 | 4 | Timing against the rule in § 3.8 | this document only | 0 / 0 / 0 | no package |
 | 5 | `SECURITY.md`, README, CHANGELOG; A45, A44 and A52 retired | `SECURITY.md`, `modules/eval-core/README.md`, `CHANGELOG.md`, the register, link targets | 0 / 0 / 0, or the allowlist's entries | `eval-core` 0.14.0 (README); the rest no package |
 | 6 | Release commit | three `package.json`, three `CHANGELOG.md`, each README's peer line | 0 / 0 / 0 | the releases |
 | 7 | Post-publish commit | the register, `CLAUDE.md`, `docs/README.md`, CHANGELOG dates, this document | 0 / 0 / 0 | — |
 
-From 2880, `eval-core` is at 3064 once step 1 commits, at 3080 once Revision 4's addendum does, still
-3080 after step 2, and at 3116 once step 3 commits. `eval-signals` and `eval-forms` stay at 443 and 380
-(M4, M10). *Revision 2*: they were 3044 and 3080 at Revision 1. *Revision 4*: 3064 and 3100 at
-Revision 3.
+From 2880, `eval-core` is at 3064 once step 1 commits, at 3080 once Revision 4's addendum does, at
+3088 once step 2 does, with its group V, and at 3124 once step 3 commits. `eval-signals` and
+`eval-forms` stay at 443 and 380 (M4, M10). *Revision 2*: they were 3044 and 3080 at Revision 1.
+*Revision 4*: 3064 and 3100 at Revision 3, and 3080 and 3116 before step 2's widening.
 
 ### Step 1 — Characterisation spec: today's behaviour pinned, the flips marked
 
@@ -1145,7 +1146,8 @@ Revision 3.
     reads as `null` ([A52](../backlog.md#a52)).
   - This document; the skill's state.
 - **Exit criteria**:
-  1. The gate is green at 3080 / 443 / 380 (*Revision 4*; 3064 at Revision 3). Every step-2 case now
+  1. The gate is green at 3088 / 443 / 380 (step 2's widening, group V; 3080 at Revision 4, 3064 at
+     Revision 3). Every step-2 case now
      equals the native run, except held cases, which equal their recorded values. B's `n.x = 1` under
      `caseInsensitive` is the exception, and equals the case-sensitive message (M11). No other row
      changed, group T's included. `git diff` on the spec touches only the rows marked `2`.
@@ -1176,6 +1178,84 @@ Revision 3.
        host-built `this += 1` in both modes. Four cases, the four `stage-2.patch` turns red in T (M12).
   3. `performance.spec.ts` is green and untouched; part 1's 64 cases are untouched and green.
 - **Category**: ships in `eval-core`'s next release.
+- **Outcome** — done 2026-10-24, under Revision 4.
+  - **The confirmation gate's readings.** `identifier.ts` exports one function,
+    `readIdentifierTarget`, and the read it shares with `identifierVisitorCaseInsensitive`,
+    `readCaseInsensitive`, stays private. The blocklist checks stay private until step 3. The funnel's
+    function is `refuseFunnelledValue`. The CHANGELOG's `[Unreleased]` › Changed bullet opens with
+    **Breaking**, and step 5 consolidates it under `### Breaking`. The spec's docblock, which describes
+    0.13.3 and step 2's marks, is left for step 3, which removes the last marks; `n.x = 1`'s own
+    comment is rewritten with its row. Group R's six rows are rewritten by hand to M2's prototype
+    column through four new constants beside the existing ones, `identifierRead`, `memberReadOnce`,
+    `chainReadOnce` and `computedReadOnce`. So the spec's diff is the 28 cases' rows and those four
+    constants, and no other row.
+  - **Before the rows were rewritten**, the new code against the unchanged spec turned exactly 28
+    cases red, every one marked `2`, and nothing else in `eval-core`.
+  - **Criterion 1.** The gate is green at 3088 / 443 / 380: 3080 and group V's 8 cases (below). No `2`
+    mark remains. Each rewritten case
+    equals its native run, or for R's its M2 prototype column, or for P's `caseInsensitive` and C's
+    case-sensitive `+=` its held value. B's `n.x = 1` under `caseInsensitive` gives the
+    case-sensitive message. Group T is unchanged and green.
+  - **Criterion 2**, each probe applied alone with the Edit tool and reverted, over all of
+    `eval-core`:
+    - **(i)**, the walk restored for compound targets (`=`'s path for every operator): **25 red, not
+      28**, all of them rewritten step-2 cases, and nothing else. The three missing are D10's rows,
+      N's `x += 1` and `x === null` and B's `n.x = 1` under `caseInsensitive`. Their values are
+      decided by the read's fallback, not by the walk: with the walk restored, the identifier visitor
+      reads `null` through D10's rule too. That leg of the criterion names a red case this wrong
+      implementation cannot produce, so it is corrected and not amended (`CLAUDE.md`): the three are
+      witnessed by (vi) and (vii), which turn exactly them red.
+    - **(ii)**, the funnel's check dropped: 9 red, exactly as predicted. Part 1's `fetch ||= 1` goes red
+      on its message, `"bound fetch"` for `"fetch"`. It is still refused, by the push of the
+      short-circuit's result, whose node is the `AssignmentExpression`, so `readName` falls back to
+      the function's own name. F's `obj.fetch ||= 1` short-circuits the same way and went red with it;
+      its message was not read.
+    - **(iii)**, the target read's event dropped: 6 red, exactly as predicted.
+    - **(iv)**, the write's object and key from a second `evaluateMember` after the right side: 21
+      red, all in the spec. They are the 7 the criterion names, E's two `getObj()[k()]` rows in both
+      modes, P's `c.g += 1` in both and C's case-sensitive `this.g += 1`, plus 14 it does not name.
+      The criterion does not say "exactly". The 14, each in both modes:
+      - E's `o.g += 1`, `o.g &&= 1` and `o.g ||= 1`, on their getter counts: the second call reads
+        the own accessor again;
+      - R's `a.b += 1`, `a.b ||= 1`, `a.b.c += 1` and `a[k] += 1`, on their reads, node hooks and
+        trace: the second call walks the object, and a computed key, again.
+    - **(v)**, the shape applied to `=`: 24 red, every one marked `3`, and nothing else. They are the
+      `=` rows whose walk or read the shape removes, 24 of the 55 marked `3`. The others are A44's
+      keys, D8's and D9's updates and D11's update rows, which the shape does not reach.
+    - **(vi)**, `??` in the shared read: 3 red, exactly as predicted.
+    - **(vii)**, `??` in the visitor alone: 2 red, exactly as predicted.
+    - **(viii)**, the `this` test dropped from the target read: 4 red, exactly as predicted.
+  - **Criterion 3.** `performance.spec.ts` is untouched and green; part 1's cases in
+    `assignment-expression.spec.ts` are untouched and green.
+  - **Widenings at the step's approval**, from the code review. It found nothing Critical. Each item
+    below was confirmed at the approval and is recorded here with its reason:
+    1. **Group V, 4 rows and 8 cases** (the review's W1). The funnel's `EvalContext` test at the new
+       call site had no case that would fail without it: probe (ii) dropped the whole call, and every
+       case it turned red was a function case. So a narrowing to the function test would have left the
+       suite green, while `f &&= 2` overwrote a name holding a foreign context.
+       - **The rows**: `f += 1`, `o.f += 1`, `f &&= 2` and `o.f &&= 2`, over a foreign `EvalContext`,
+         in both modes. Each is refused with `Access to the evaluation context is blocked for security
+         reasons`, with both names left holding the context. Each is beside its native run, which
+         combines or overwrites it. They carry the design mark "the funnel", and no flip mark. Up to
+         0.13.3 the operand walk pushed the target's value, which the funnel refuses, so they should
+         have been refused then too. That was not run: the rows were written after step 2's code.
+       - **The probe**: the call narrowed to the function test, `if (typeof left === 'function')`.
+         Exactly the 8 cases of V went red, and nothing else in `eval-core`: `f += 1`, `o.f += 1`,
+         `f &&= 2` and `o.f &&= 2`, case-sensitive and `caseInsensitive`.
+       - **The counts move.** `eval-core` reaches 3088 at this step and 3124 at step 3. Criterion 1
+         here, step 3's criterion 1, § 4, § 6 and the skill say so. The step's criterion 1 named
+         3080 at its gate. The new count is this widening, confirmed at the approval, and not an
+         amendment by the step.
+    2. **Two stale comments, comments only** (the review's N2). `dangerous-values.ts`'s
+       `refuseDangerousRead` and `prototype-pollution-guard.ts`'s `refuseContextRead` said that the
+       funnel was called from `pushVisitorResult`, and saw only what the walk pushes. Each now names
+       `refuseFunnelledValue` and its two call sites. `visitor-result.ts`, on the list, gained one
+       sentence on why the push path takes that frame.
+    3. **The register's in-flight line** (the review's N5). `docs/backlog.md` said "Revision 3, no
+       step has run". It now says Revision 4, with steps 1 and 2 done.
+
+    The CHANGELOG line's claim about A48 and A49, "still read twice", was corrected to "read twice
+    where they were read four times" (the review's N1). That file is on the list.
 
 ### Step 3 — The `=` resolver (D1, D2, D3) and A44 in both visitors (D4)
 
@@ -1199,7 +1279,8 @@ Revision 3.
     update of `this` written as a name, refused (D11).
   - This document; the skill's state.
 - **Exit criteria**:
-  1. The gate is green at 3116 / 443 / 380 (*Revision 4*; 3100 at Revision 3). Every step-3 case
+  1. The gate is green at 3124 / 443 / 380 (step 2's widening; 3116 at Revision 4, 3100 at Revision
+     3). Every step-3 case
      equals the native run, or for group A the matched key, except held cases, which equal their
      recorded values, and group T's, which equal the `this` refusal (D11). No row is left marked to
      flip; the held marks stay.
@@ -1319,7 +1400,7 @@ release is breaking by behaviour (§ 3.1, M2, M5), not by shape.
 | Gate | Command | Expected |
 | :--- | :--- | :--- |
 | Everything | `npx nx run-many -t lint test build --skip-nx-cache --output-style=static` | Green, every step |
-| `eval-core` tests | (in the above) | +184 in step 1, +16 in Revision 4's addendum, +36 in step 3, 0 otherwise: 3064, 3080, 3080 after step 2, 3116 from step 3 (Revision 4; +164 at Revision 1) |
+| `eval-core` tests | (in the above) | +184 in step 1, +16 in Revision 4's addendum, +8 in step 2 (its widening), +36 in step 3, 0 otherwise: 3064, 3080, 3088 after step 2, 3124 from step 3 (Revision 4; +164 at Revision 1) |
 | `eval-signals` / `eval-forms` tests | (in the above) | 443 / 380 in every step |
 | Perf | `internal/performance.spec.ts` | Green and untouched in every step |
 | Timing | § 3.8's harness | Step 4 only, under the rule stated there |

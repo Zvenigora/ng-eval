@@ -235,21 +235,18 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     },
     {
       source: 'o.g += 1', observe: effects(1),
-      today: both({ value: 2, log: ['get g', 'get g', 'set g=2'] }),
+      today: both({ value: 2, log: ['get g', 'set g=2'] }),
       js: both(native({ value: 2, log: ['get g', 'set g=2'] })),
-      flips: both(2),
     },
     {
       source: 'o.g &&= 1', observe: effects(1),
-      today: both({ value: 1, log: ['get g', 'get g', 'set g=1'] }),
+      today: both({ value: 1, log: ['get g', 'set g=1'] }),
       js: both(native({ value: 1, log: ['get g', 'set g=1'] })),
-      flips: both(2),
     },
     {
       source: 'o.g ||= 1', observe: effects(0),
-      today: both({ value: 1, log: ['get g', 'get g', 'set g=1'] }),
+      today: both({ value: 1, log: ['get g', 'set g=1'] }),
       js: both(native({ value: 1, log: ['get g', 'set g=1'] })),
-      flips: both(2),
     },
     {
       source: 'o.g ??= 1', observe: effects(1),
@@ -276,9 +273,8 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     },
     {
       source: 'getObj()[k()] += f()', observe: effects(1),
-      today: both({ value: 15, log: ['getObj', 'k', 'get x', 'f', 'getObj', 'k', 'get x', 'set x=15'] }),
+      today: both({ value: 15, log: ['getObj', 'k', 'get x', 'f', 'set x=15'] }),
       js: both(native({ value: 15, log: ['getObj', 'k', 'get x', 'f', 'set x=15'] })),
-      flips: both(2),
     },
     {
       source: 'getObj()[k()] ||= f()', observe: effects(1),
@@ -287,9 +283,8 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     },
     {
       source: 'getObj()[k()] &&= f()', observe: effects(1),
-      today: both({ value: 5, log: ['getObj', 'k', 'get x', 'f', 'getObj', 'k', 'get x', 'set x=5'] }),
+      today: both({ value: 5, log: ['getObj', 'k', 'get x', 'f', 'set x=5'] }),
       js: both(native({ value: 5, log: ['getObj', 'k', 'get x', 'f', 'set x=5'] })),
-      flips: both(2),
     },
     {
       source: 'getObj().x++', observe: effects(1),
@@ -510,15 +505,11 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
       design: both("safeSetProperty's message"),
     },
     {
-      // Under `caseInsensitive` `n` reads as `undefined` up to 0.13.3 (A52),
-      // and D10 makes it `null` at step 2.
+      // Under `caseInsensitive` `n` read as `undefined` up to 0.13.3, so the
+      // message said `undefined` there (A52). It reads as `null` in both modes.
       source: 'n.x = 1', observe: blocked,
-      today: {
-        cs: { ...untouched, threw: nonObject('object') },
-        ci: { ...untouched, threw: nonObject('undefined') },
-      },
+      today: both({ ...untouched, threw: nonObject('object') }),
       js: both(native({ ...untouched, threw: "Cannot set properties of null (setting 'x')" })),
-      flips: { ci: 2 },
       design: both("safeSetProperty's message"),
     },
     {
@@ -724,16 +715,44 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     trace: ['Identifier', 'Identifier', 'MemberExpression', 'Literal', 'Identifier', 'Identifier',
       'AssignmentExpression'],
   };
+  /** A compound target read once and not walked: M2's prototype column. */
+  const identifierRead = {
+    reads: ['identifier:x@x'],
+    dependencies: ['x'],
+    nodes: ['before AssignmentExpression', 'before Literal', 'after Literal', 'after AssignmentExpression'],
+    trace: ['Literal', 'AssignmentExpression'],
+  };
+  const memberReadOnce = {
+    reads: ['identifier:a@a', 'member:b@a.b'],
+    dependencies: ['a', 'a.b'],
+    nodes: ['before AssignmentExpression', 'before Identifier', 'after Identifier', 'before Literal',
+      'after Literal', 'after AssignmentExpression'],
+    trace: ['Identifier', 'Literal', 'AssignmentExpression'],
+  };
+  const chainReadOnce = {
+    reads: ['identifier:a@a', 'member:b@a.b', 'member:c@a.b.c'],
+    dependencies: ['a', 'a.b', 'a.b.c'],
+    nodes: ['before AssignmentExpression', 'before MemberExpression', 'before Identifier', 'after Identifier',
+      'after MemberExpression', 'before Literal', 'after Literal', 'after AssignmentExpression'],
+    trace: ['Identifier', 'MemberExpression', 'Literal', 'AssignmentExpression'],
+  };
+  const computedReadOnce = {
+    reads: ['identifier:a@a', 'identifier:k@k', 'member:b@-'],
+    dependencies: ['a', 'k'],
+    nodes: ['before AssignmentExpression', 'before Identifier', 'after Identifier', 'before Identifier',
+      'after Identifier', 'before Literal', 'after Literal', 'after AssignmentExpression'],
+    trace: ['Identifier', 'Identifier', 'Literal', 'AssignmentExpression'],
+  };
 
   const R: Row[] = [
     { source: 'x = 1', observe: onX, today: both({ value: 1, ...identifierWalked }), js: both(noHooks), flips: both(3) },
-    { source: 'x += 1', observe: onX, today: both({ value: 1, ...identifierWalked }), js: both(noHooks), flips: both(2) },
-    { source: 'x ||= 1', observe: onX, today: both({ value: 1, ...identifierWalked }), js: both(noHooks), flips: both(2) },
+    { source: 'x += 1', observe: onX, today: both({ value: 1, ...identifierRead }), js: both(noHooks) },
+    { source: 'x ||= 1', observe: onX, today: both({ value: 1, ...identifierRead }), js: both(noHooks) },
     { source: 'x++', observe: onX, today: both({ value: 0, ...identifierUpdated }), js: both(noHooks), flips: both(3) },
     { source: '++x', observe: onX, today: both({ value: 1, ...identifierUpdated }), js: both(noHooks), flips: both(3) },
     { source: 'a.b = 1', observe: onAB, today: both({ value: 1, ...memberWalkedTwice }), js: both(noHooks), flips: both(3) },
-    { source: 'a.b += 1', observe: onAB, today: both({ value: 1, ...memberWalkedTwice }), js: both(noHooks), flips: both(2) },
-    { source: 'a.b ||= 1', observe: onAB, today: both({ value: 1, ...memberWalkedTwice }), js: both(noHooks), flips: both(2) },
+    { source: 'a.b += 1', observe: onAB, today: both({ value: 1, ...memberReadOnce }), js: both(noHooks) },
+    { source: 'a.b ||= 1', observe: onAB, today: both({ value: 1, ...memberReadOnce }), js: both(noHooks) },
     {
       source: 'a.b++', observe: onAB,
       today: both({
@@ -746,7 +765,7 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
       js: both(noHooks),
     },
     { source: 'a.b.c = 1', observe: onABC, today: both({ value: 1, ...chainWalkedTwice }), js: both(noHooks), flips: both(3) },
-    { source: 'a.b.c += 1', observe: onABC, today: both({ value: 1, ...chainWalkedTwice }), js: both(noHooks), flips: both(2) },
+    { source: 'a.b.c += 1', observe: onABC, today: both({ value: 1, ...chainReadOnce }), js: both(noHooks) },
     {
       source: 'a.b.c++', observe: onABC,
       today: both({
@@ -760,7 +779,7 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
       js: both(noHooks),
     },
     { source: 'a[k] = 1', observe: onAK, today: both({ value: 1, ...computedWalkedTwice }), js: both(noHooks), flips: both(3) },
-    { source: 'a[k] += 1', observe: onAK, today: both({ value: 1, ...computedWalkedTwice }), js: both(noHooks), flips: both(2) },
+    { source: 'a[k] += 1', observe: onAK, today: both({ value: 1, ...computedReadOnce }), js: both(noHooks) },
     {
       source: 'this.x = 1', observe: onX,
       today: both({
@@ -921,11 +940,10 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     {
       source: 'c.g += 1', observe: onInstance,
       today: {
-        cs: { value: 2, log: ['get g', 'get g', 'set g=2'] },
-        ci: { value: 2, log: ['get g', 'get g', 'get g', 'get g', 'set g=2'] },
+        cs: { value: 2, log: ['get g', 'set g=2'] },
+        ci: { value: 2, log: ['get g', 'get g', 'set g=2'] },
       },
       js: both(native({ value: 2, log: ['get g', 'set g=2'] })),
-      flips: both(2),
       held: { ci: { under: 'A48', after: { value: 2, log: ['get g', 'get g', 'set g=2'] } } },
     },
     {
@@ -1014,9 +1032,8 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     },
     {
       source: 'this.g += 1', observe: onAccessorG,
-      today: { cs: { value: 2, get: 4, set: 1 }, ci: { value: 2, get: 0, set: 0 } },
+      today: { cs: { value: 2, get: 2, set: 1 }, ci: { value: 2, get: 0, set: 0 } },
       js: both(native({ value: 2, get: 1, set: 1 })),
-      flips: { cs: 2 },
       held: {
         cs: { under: 'A49', after: { value: 2, get: 2, set: 1 } },
         ci: { under: 'A50', after: { value: 2, get: 0, set: 0 } },
@@ -1034,9 +1051,8 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   const N: Row[] = [
     {
       source: 'x += 1', observe: onNull,
-      today: { cs: { value: 1, x: 1 }, ci: { value: NaN, x: NaN } },
+      today: both({ value: 1, x: 1 }),
       js: both(native({ value: 1, x: 1 })),
-      flips: { ci: 2 },
     },
     {
       source: 'x++', observe: onNull,
@@ -1045,9 +1061,8 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     },
     {
       source: 'x === null', observe: onNull,
-      today: { cs: { value: true, x: null }, ci: { value: false, x: null } },
+      today: both({ value: true, x: null }),
       js: both(native({ value: true, x: null })),
-      flips: { ci: 2 },
     },
   ];
 
@@ -1143,6 +1158,54 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     },
   ];
 
+  // --- V (step 2's review, W1): a foreign EvalContext as the target --------
+
+  /**
+   * `f`, and `o.f`, an `EvalContext` other than the walk's own, which the
+   * funnel refuses wherever it is read. A compound or logical target is read
+   * and not pushed from step 2, so these rows witness the funnel's context test
+   * at that call site: a function test alone would let each one combine or
+   * overwrite the context.
+   */
+  const foreignContext: Observe = (engine, source, options) => {
+    const context = EvalContext.fromContext({ k: 1 }, {});
+    const o: Record<string, unknown> = { f: context };
+    const shown = (value: unknown) => value === context ? 'the foreign context' : value;
+    const ran = engine.run(source, { f: context, o }, options);
+    return { ...outcome(ran, shown), f: shown(ran.read('f')), oF: shown(o['f']) };
+  };
+
+  const foreign = 'the foreign context';
+  const contextRead = 'Access to the evaluation context is blocked for security reasons';
+  const foreignPlusOne = '[object Object]1';
+
+  const V: Row[] = [
+    {
+      source: 'f += 1', observe: foreignContext,
+      today: both({ threw: contextRead, f: foreign, oF: foreign }),
+      js: both(native({ value: foreignPlusOne, f: foreignPlusOne, oF: foreign })),
+      design: both('the funnel'),
+    },
+    {
+      source: 'o.f += 1', observe: foreignContext,
+      today: both({ threw: contextRead, f: foreign, oF: foreign }),
+      js: both(native({ value: foreignPlusOne, f: foreign, oF: foreignPlusOne })),
+      design: both('the funnel'),
+    },
+    {
+      source: 'f &&= 2', observe: foreignContext,
+      today: both({ threw: contextRead, f: foreign, oF: foreign }),
+      js: both(native({ value: 2, f: 2, oF: foreign })),
+      design: both('the funnel'),
+    },
+    {
+      source: 'o.f &&= 2', observe: foreignContext,
+      today: both({ threw: contextRead, f: foreign, oF: foreign }),
+      js: both(native({ value: 2, f: foreign, oF: 2 })),
+      design: both('the funnel'),
+    },
+  ];
+
   const GROUPS: [string, Row[]][] = [
     ['E (M1a): getters, setters, calls and order', E],
     ['F (M1b): a listed function as the target', F],
@@ -1156,6 +1219,7 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     ['C (M1j): an accessor on the context, through this', C],
     ['N (M9, M11): an identifier holding null', N],
     ['T (M12): this as an identifier target, written This or host-built', T],
+    ['V (step 2, W1): a foreign EvalContext as a compound target', V],
   ];
 
   /** The row's source and its marks in `mode`, which name the case. */

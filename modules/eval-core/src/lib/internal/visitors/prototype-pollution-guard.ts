@@ -186,8 +186,11 @@ export const refuseContextWrite = (target: unknown): void => {
  *
  * The companion to {@link refuseContextWrite}, and the load-bearing one: the
  * context cannot be written to, and it cannot be obtained either. It is
- * raised from the value funnel in `visitor-result.ts`, so it covers every
- * value the walk pushes, whatever node pushed it.
+ * raised from the value funnel, `refuseFunnelledValue` in `visitor-result.ts`,
+ * which has two call sites: `pushVisitorResult`, so it covers every value the
+ * walk pushes, whatever node pushed it, and `assignment-expression.ts`, for a
+ * compound or logical assignment's target, which is read once and not pushed
+ * (`docs/backlog.md` A45, part 2).
  *
  * **It is at the funnel because a member read was not enough.** The first
  * version refused a context only as a member read's object and value, and

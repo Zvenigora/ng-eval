@@ -97,6 +97,53 @@ const refuseDangerousMatch = (node: Identifier, st: EvalState) => {
   }
 }
 
+/**
+ * The `caseInsensitive` read of a name: the context, then the literals
+ * registry for a name `get` finds nothing for. Only `undefined` falls through,
+ * so a key holding `null` reads as `null`. Up to 0.13.3 the fallback was
+ * `??`, which turned that `null` into `undefined` (`docs/backlog.md` A52).
+ */
+const readCaseInsensitive = (node: Identifier, st: EvalState): unknown => {
+  const found = st.context?.get(node.name);
+  return found === undefined ? literals.get(node.name) : found;
+}
+
+/**
+ * An assignment target's read, for a compound or logical operator: the
+ * visitor's own checks and read, with no push and no node hooks, since the
+ * target is read and not walked (`docs/backlog.md` A45, part 2).
+ *
+ * It refuses what the visitor refuses before any lookup: a name on the
+ * blocklist, `this` written as a name - a host-built one, or under
+ * `caseInsensitive` any spelling of it - and under `caseInsensitive` a name
+ * whose lookup matched a blocklisted key. A target is never a member's object,
+ * so `refuseThisValue` refuses every `this` that reaches it. Then it reads the
+ * name as the visitor does, and reports the read.
+ */
+export const readIdentifierTarget = (node: Identifier, st: EvalState): unknown => {
+  refuseDangerousName(node);
+
+  const caseInsensitive = !!st.options?.caseInsensitive;
+
+  if (caseInsensitive ? !!equalIgnoreCase(node.name, 'this') : node.name === 'this') {
+    refuseThisValue(node);
+  }
+
+  if (caseInsensitive) {
+    refuseDangerousMatch(node, st);
+  }
+
+  const value = caseInsensitive
+    ? readCaseInsensitive(node, st)
+    : st.context?.get(node.name);
+
+  if (st.hasHooks && st.hooks.hasReadHooks) {
+    emitRead(node, st, value);
+  }
+
+  return value;
+}
+
 export const identifierVisitor = (node: Identifier, st: EvalState) => {
 
   if (st.options?.caseInsensitive) {
@@ -140,8 +187,6 @@ const identifierVisitorCaseInsensitive = (node: Identifier, st: EvalState) => {
 
   refuseDangerousName(node);
 
-  const context = st.context;
-
   const isThis = !!equalIgnoreCase(node.name, 'this');
 
   // `This` is refused outside a member's object, as `this` is
@@ -154,7 +199,7 @@ const identifierVisitorCaseInsensitive = (node: Identifier, st: EvalState) => {
 
   const value = isThis
     ? st.context
-    : context?.get(node.name) ?? literals.get(node.name);
+    : readCaseInsensitive(node, st);
 
   if (st.hasHooks && st.hooks.hasReadHooks && !isThis) {
     emitRead(node, st, value);
