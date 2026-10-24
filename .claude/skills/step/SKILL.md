@@ -39,10 +39,11 @@ its reason, is not a replan. A `package.json` in the diff before step 6 is a sto
 
 **The counts the steps start from**, the gate at db287da: `eval-core` 2880, `eval-signals` 443,
 `eval-forms` 380. `eval-core` reaches 3064 at step 1 and 3100 at step 3 (the plan's Revision 3); the
-other two do not move. Step 1's spec holds 18 cases: they match their recorded values, not the native
-run.
+other two do not move. Step 1's spec holds 18 held cases, each matching its recorded value, not the
+native run.
 
-**Step state**: no step has run. Step 1 is next.
+**Step state**: step 1 has run: the characterisation spec, 184 cases, with its marks measured against
+the prototype (the plan's step 1 outcome). Step 2 is next.
 
 **All three packages are published**, and a README or CHANGELOG under `modules/<name>/` ships in that
 package's tarball, as its code does. So a change is in one of three categories:

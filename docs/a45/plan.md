@@ -342,7 +342,7 @@ place.
 | :--- | :--- | :--- | :--- | :---: |
 | `fetch = 1`, `obj.fetch = 1` | refused | writes `1` | writes `1` | 3 |
 | `fetch += 1`, `obj.fetch += 1` | refused | refused | reads, then writes a string | — |
-| `fetch \|\|= 1`, `obj.fetch \|\|= 1`, `obj.fetch &&= 1` | refused | refused | reads | — |
+| `fetch \|\|= 1`, `obj.fetch \|\|= 1`, `obj.fetch &&= 1` [JavaScript writes 1; corrected at step 1 — see its outcome] | refused | refused | reads | — |
 | `fetch++`, `obj.fetch++` | `NaN`, writes `NaN` | the same | the same | — |
 
 **M1c — blocklisted names as targets** (identical today and under the prototype). "Refused" is
@@ -846,6 +846,8 @@ and `eval-forms` stay at 443 and 380 (M4, M10). *Revision 2*: they were 3044 and
   - Every row asserts today's behaviour, beside the same expression run natively where JavaScript has
     an answer.
   - Every row carries a `flips` mark, `2`, `3` or none, per mode where the modes differ.
+  - A `design` mark, beside the `2`, `3` and `held` marks, is a row that differs from JavaScript by
+    design, and no later step rewrites it to JavaScript.
   - Expectations are recorded per row, never computed from the implementation.
   - **Held rows** (*Revision 2*). A case whose value after its step is still not JavaScript's, for a
     reason that is open, carries a `held` mark. The mark names the register entry and records that
@@ -940,6 +942,81 @@ and `eval-forms` stay at 443 and 380 (M4, M10). *Revision 2*: they were 3044 and
      the native arm is a separate producer (`CLAUDE.md`, "the setup").
   4. No existing file changes. `git diff --name-only` lists the spec, this document and the skill.
 - **Category**: ships in no package.
+- **Outcome** — done 2026-10-24, under Revision 3.
+  - **Corrections to the group counts**, confirmed at the step's gate. The plan's tables did not
+    determine three things, and step 1 fixed them as follows:
+    1. **Group A has 11 rows, and § 1.4 names 10**: M1e's nine and `c.G = 1`. The eleventh is
+       `obj.x = 2`, spelled as the data spells it. It is a control in both modes, so step 3's 51 is
+       unchanged.
+    2. **Group F has 8 rows, and M1b lists 9 expressions.** F omits `fetch ||= 1`, which part 1 pins
+       as `should refuse fetch ||= 1 with the funnel's message`. Step 2's probe (ii) names that case
+       apart from F's four.
+    3. **The native arm under `caseInsensitive`.** A case-variant row carries `nativeAs`: the same
+       assignment written by hand in the data's spelling (`OBJ.X = 2` → `obj.x = 2`), run natively and
+       never computed from the row's own source. Today's values are asserted as usual, and step 3
+       compares group A's rewritten rows with `nativeAs`. Eleven rows carry one: group A's nine case
+       variants, B's `o.CONSTRUCTOR = 1` and S's `this.K = 5`. `fn.X = 1` carries none, since a
+       function's key is never matched on the read path either: its native arm is its own source.
+       Rows with no JavaScript answer carry `native: none` and a reason: R's 16, whose read events,
+       node hooks and trace are the evaluator's own (§ 3.6).
+  - **The native arm** runs the row's source, or its `nativeAs`, in sloppy mode under `with`, over a
+    proxy that holds every name. So a name the data lacks reads as `undefined` and is written onto
+    the data, as the evaluator does, and nothing reaches a global. `this` is the data. A lookup, in
+    group L, has no JavaScript counterpart, so the native arm stands an accessor in for it, and counts
+    its reads.
+  - **The caller's object is asserted beside the store** (§ 0 rule 7). Group B reports `caller`, the
+    keys of the object the caller handed in, and group S the `k` on it, beside the store the context
+    writes. Under `caseInsensitive` the store is the copy, so without `caller` a change that wrote
+    through to the caller's object as well would leave the leg green. The code review found the gap
+    (its W1). Probed by making `fromContext` skip the copy for these fixtures, applied alone and
+    reverted: 9 `caseInsensitive` cases went red, B's `constructor++`, `__proto__++`, `toString++`
+    and `CONSTRUCTOR = 1` and five S rows through `this`. In B's `constructor++`, `toString++` and
+    `CONSTRUCTOR = 1`, `caller` was the only field that differed. `CONSTRUCTOR = 1` under
+    `caseInsensitive` writes only into the copy, so it gained that design mark.
+  - **Two recorded values the run corrected.** Both were values written for the spec, not the plan's
+    measurements, and each was read before it was changed:
+    - B's `__proto__++` under `caseInsensitive`: the copy gains a `__proto__` map key. M1c's "nothing
+      changes" is about the caller's object, which `caller` shows unchanged in both modes. The row
+      asserts the copy's keys as well, so it carries the design mark of a write into the copy.
+    - S: at first every S row also reported a later `ns.k`. Natively that reads the instance's
+      missing `k`, so three case-sensitive controls, `this.k = 5`, `this.k += 5` and `this.k++`,
+      differed from JavaScript in a field they are not about. Probe (iii) found them, as its only
+      unmarked red cases. S now has two fixtures: `this.*` rows observe the context, and `ns.*` rows
+      observe the scope.
+  - **Criterion 1**: all 184 cases pass. Nothing under `modules/` changed since db287da, apart from
+    the new spec.
+  - **Criterion 2.** Both SHA-256s matched the values above, both patches passed `git apply --check`,
+    and each was reverted with `git restore modules/eval-core/src`, after which `git status` showed
+    the spec alone. Both probes ran against the final spec, over all of `eval-core`:
+    - **(i)**, `stage-2.patch`: 28 red of 3064, all in the spec, and the set of red cases equals the
+      set marked `2`. The other 81 suites are green. Each red case's diff was read against the plan's
+      prototype columns:
+      - group E's and P's compound rows lose the second evaluation;
+      - group R's six compound rows lose the target walk, and report each read once;
+      - the held rows that flip reach their recorded values: C's case-sensitive `this.g += 1` get 2,
+        and P's `caseInsensitive` `c.g += 1` two gets and one set;
+      - B's `n.x = 1` gives the `object` message;
+      - N's `x += 1` and `x === null` give JavaScript's values.
+    - **(ii)**, `full.patch`: 79 red of 3064, all in the spec, and the set of red cases equals the set
+      marked `2` or `3`: 28 + 51. Each step-3 diff matches the prototype column, and the held rows
+      that flip reach their recorded values: C's case-sensitive `this.g = 1` get 1, and L's
+      `caseInsensitive` `x = 1` and `X = 1` one call each.
+  - **Criterion 3.** 152 cases have a native arm, every case but R's 32. Under probe (iii), 112 went
+    red, every one on the native assertion and none on today's. None of them is unmarked. The 40
+    that stayed green are the 37 unmarked controls, and group B's case-sensitive `constructor++`,
+    `__proto__++` and `toString++`. Those three equal JavaScript today, and are refused by design
+    only from step 3. Before `caller` was added, the count was 109 red, with 3 unmarked: the S rows
+    above.
+  - **M1b's JavaScript column is wrong for one row.** It gives `obj.fetch &&= 1` as "reads", but the
+    listed function is truthy, so JavaScript writes `1`. The spec's row records `value: 1` and
+    `objFetch: 1`, and the native arm confirms it. § 1.4 stays as written, as a measurement record.
+    Group F's "six are controls, asserted by message" counts `fetch++` and `obj.fetch++`, which do not
+    throw. They are asserted by value.
+  - **Criterion 4.** `git status --short` lists the new spec, untracked, and `git diff --name-only`
+    lists this document and the skill.
+  - **Totals.** The gate is green at 3064 / 443 / 380, so `eval-core` gained exactly 184 cases.
+    doc-links: 354 files, the spec untracked among them, 1827 links, 0 dangling, 51 `docs/` files
+    checked against the index. release-tags: 43 rows, 53 tags, 0 failing.
 
 ### Step 2 — Compound and logical targets in update's shape (D1, D2 and D3 for those operators), and one identifier read (D10)
 
