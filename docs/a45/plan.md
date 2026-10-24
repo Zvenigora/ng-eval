@@ -1,6 +1,18 @@
 # A45 part 2 and A44 — assignment targets as JavaScript evaluates them (`@zvenigora/ng-eval-core`)
 
 **Date**: October 23, 2026
+**Revision**: 3 — the request's third instruction, measured first (M11). D10 brings
+[A52](../backlog.md#a52) into step 2. Under `caseInsensitive` the identifier visitor's own read takes
+the literals fallback only when `get` finds `undefined`, the rule § 3.2 gives the target read, so
+there is one read, exported and shared. With the Revision 2 prototype plus that change, all three
+suites stayed green at 2880 / 443 / 380, and on `{ x: null }` every M9 row gave JavaScript's value in
+both modes. Group N's held `x === null` becomes a step-2 flip. M11 also moved one row the request did
+not name: group B's `n.x = 1` under `caseInsensitive` now throws the case-sensitive message, since `n`
+reads as `null`, so it flips at step 2 too. So held cases fall from 19 to 18, and step 1's probe (i)
+predicts 28. Step 2 gains a probe, `??` restored in the visitor alone, which turns red exactly those
+two cases. A52 stays open until step 5 retires it with A44 and A45. The identifier read joins step 4's
+reported paths, which no decision rule covers. The row and case counts, and 3064 / 3100, are
+unchanged.
 **Revision**: 2 — the request of 2026-10-23's second instruction, measured before it was written
 (M8–M10, M5b). Step 1 gains hold marks. Every row whose value after its step is not JavaScript's,
 for a reason still open, names the register entry that holds it, and records that value per mode
@@ -25,7 +37,8 @@ downstream witnesses with their counts unchanged (M4).
 - [A45](../backlog.md#a45) part 2, in steps 2 and 3;
 - [A44](../backlog.md#a44), in step 3;
 - an identifier update's missing blocklist checks and read event, D8 and D9, in step 3. Neither has a
-  register entry: Revision 1 recorded them as § 8 q5 and q1.
+  register entry: Revision 1 recorded them as § 8 q5 and q1;
+- [A52](../backlog.md#a52), in step 2 (D10, Revision 3).
 
 **Opens**: [A48](../backlog.md#a48)–[A52](../backlog.md#a52) (Revision 2), for defects the plan
 measured and does not fix. The characterisation spec holds their rows.
@@ -62,8 +75,9 @@ funnel. The refusal that goes is the funnel's at an `=` target, a read JavaScrip
   which it already computes for the read event. Paired against HEAD over twelve rotations, that cost
   +0.12% by median, positive in 6 of 12 (M6). Step 4 measures the result against a decision rule
   stated here in advance.
-- **What § 1 found and D1–D9 do not decide is in the register**, as A48–A52, and the spec holds their
-  rows. The largest is A49: the context branch's `getThis` reads the value it tests, so `this.g = 1`
+- **What § 1 found and D1–D10 do not decide is in the register**, as A48–A51, and the spec holds their
+  rows. A52, also found here, is fixed in step 2 (D10). The largest is A49: the context branch's
+  `getThis` reads the value it tests, so `this.g = 1`
   still calls a getter on the context. § 8 keeps one question open, the downstream versions.
 
 ---
@@ -257,7 +271,14 @@ Findings 12–16 were added by Revision 2.
     fallback on `undefined` only (D9).
 16. **Under `caseInsensitive`, an identifier holding `null` reads as `undefined`** (M9): `x === null`
     is `false`. This is the identifier visitor's own read, which D1–D9 leave alone:
-    [A52](../backlog.md#a52), whose row step 1 holds.
+    [A52](../backlog.md#a52). *Revision 3*: D10 fixes it in step 2 (finding 17).
+17. **One read for the visitor and the target is safe to ship** (M11, *Revision 3*). The Revision 2
+    prototype plus the visitor's fallback on `undefined` only kept all 2880 / 443 / 380 cases green, so
+    no existing case relies on a `null` reading as `undefined`. Every M9 row then equals JavaScript's
+    in both modes. One characterisation row moves that no one aimed at: `n.x = 1` under
+    `caseInsensitive` throws `Cannot set property on non-object: object`, the case-sensitive message,
+    because `n` now reads as `null`. Restoring `??` in the visitor alone moves exactly that row and
+    `x === null` back.
 
 ### 1.3 Measurements run for this plan
 
@@ -284,6 +305,7 @@ db287da. The prototype's bundle was measured with the same scripts.
 | M8 | *Revision 2.* The resolver's edges, a blocklisted key with a calling right side, identifier updates of blocklisted names, and identifier update read events | M1's method. JavaScript's side for the edges through `new Function`, sloppy and strict, since a module script is always strict | Findings 12–14; § 1.4, tables M8a–M8d |
 | M9 | *Revision 2.* An identifier holding `null` under `caseInsensitive` | M1's method, at HEAD and under the prototype | Finding 16; § 1.4, table M9 |
 | M10 | *Revision 2.* The prototype extended by D7–D9, against the suites and its own probes | `nx run-many -t test --parallel=1`, then each switch alone, against `eval-core` or against M1/M8 | The `??` fallback: 4 red, `update-expression.spec.ts`'s `caseInsensitive` `x++`, `x--`, `++x`, `--x` on `null`. The fallback taken only on `undefined`: 2880 / 443 / 380 green. Probe results: § 1.4, table M10 |
+| M11 | *Revision 3.* D10: the Revision 2 prototype plus the visitor's literals fallback on `undefined` only | The prototype applied a fourth time and reverted the same way. `nx run-many -t test --parallel=1`. M9's rows under it, under a switch restoring `??` in the visitor alone, and natively through `new Function` with `with`. M1, M2 and M8 re-run and diffed against Revision 2's prototype | All green, 2880 / 443 / 380, no red case. M9: table M11. M1 and M2 identical to Revision 2's prototype. M8 differs by one row, `n.x = 1` under `caseInsensitive` (finding 17) |
 | M5b | *Revision 2.* `x++` over a signal context | M5's throwaway spec, rows `x++`, `++x`, `let i = x; i++; i` and `user.n++`, at HEAD and under the prototype | Finding 14; § 1.4, table M5b |
 
 ### 1.4 The measurements
@@ -495,6 +517,18 @@ Under the prototype with the `??` fallback, `x++` under `caseInsensitive` gave `
 fallback taken only on `undefined`, `x++` gave `0` and `x += 1` gave `1`. A bare `x` read stayed
 `undefined`, since the identifier visitor is not changed.
 
+**M11 — D10, on `{ x: null, o: { x: null } }`** (*Revision 3*).
+
+| Expression | D10, case-sensitive | D10, `caseInsensitive` | `??` restored in the visitor, `caseInsensitive` | JavaScript |
+| :--- | :--- | :--- | :--- | :--- |
+| `x` | `null` | `null` | **`undefined`** | `null` |
+| `x === null` | `true` | `true` | **`false`** | `true` |
+| `x += 1` | `1`, writes `1` | `1`, writes `1` | `1` (the target read keeps D9's rule) | `1` |
+| `x ??= 5` | `5` | `5` | `5` | `5` |
+| `x++` | `0`, writes `1` | `0`, writes `1` | `0`, writes `1` | `0`, writes `1` |
+| `o.x`; `o.x += 1` | `null`; `1` | `null`; `1` | `null`; `1` | `null`; `1` |
+| `n.x = 1` (M8a) | `…non-object: object` | **`…non-object: object`**, from `…: undefined` today | `…non-object: undefined` | `TypeError: Cannot set properties of null` |
+
 **M10 — the extended prototype's probes** (*Revision 2*), each switch applied alone.
 
 | Switch | Red, or changed |
@@ -604,6 +638,13 @@ Fixed by the request's second instruction, Revision 2, after M8 and M10 measured
   update takes no funnel check, so `fetch++` still writes `NaN` ([A40](../backlog-retired.md#a40)).
   This decides Revision 1's § 8 q1.
 
+Fixed by the request's third instruction, Revision 3, after M11 measured it:
+
+- **D10. [A52](../backlog.md#a52) joins, in step 2.** Under `caseInsensitive`, the identifier
+  visitor's own read takes the literals fallback only when `get` finds `undefined`, the rule § 3.2
+  gives the target read. So there is one read, exported and shared, as § 3.2 says. On `{ x: null }`,
+  `x === null` is `true` and `x += 1` gives `1`, both JavaScript's (M11).
+
 ---
 
 ## 3. Design
@@ -632,7 +673,10 @@ identifier visitor's own read, exported from `identifier.ts`. That read runs `re
 dispatches node hooks. *Revision 2*: under `caseInsensitive`, the literals fallback is taken only when
 `get` finds `undefined`, where the identifier visitor takes it on `null` too ([A52](../backlog.md#a52)).
 So `x += 1` on `null` gives `1`, JavaScript's value, where today it gives `NaN`. That is a step-2 flip,
-group N's. D9 then needs this read unchanged for the update (finding 15).
+group N's. D9 then needs this read unchanged for the update (finding 15). *Revision 3* (D10): the
+identifier visitor reads through the same function, which wraps it in its push and its node hooks, so
+there is one `caseInsensitive` identifier read and A52 is fixed in the same step. Group N's
+`x === null` and group B's `n.x = 1` flip with it (M11).
 
 **Then the funnel's check runs on the value**, with the target node as the node: the same two tests
 `pushVisitorResult` makes, factored so that both call one function (§ 0 rule 12). Without it,
@@ -734,8 +778,8 @@ from the same probe run against `eval-forms` at that gate. If `eval-signals` bec
 **Method** (step 4), the M6 harness unchanged:
 - Two production bundles: the plan commit's, which is db287da's code, and step 3's.
 - Plus an A/A control, the plan commit's bundle against a copy of itself, in the same run.
-- Four paths: member read `obj.x`, member write `obj.x = 1`, member compound `obj.x += 1`, identifier
-  write `x = 1`.
+- Five paths: member read `obj.x`, member write `obj.x = 1`, member compound `obj.x += 1`, identifier
+  write `x = 1`, and identifier read `x` (*Revision 3*).
 - Twelve rotations, with the bundle order alternated, one process per bundle and path, children run
   one at a time, never in parallel with any other nx or Jest run.
 - 15 rounds of 60,000, after 20,000 warm-up, on a cached AST with a fresh `EvalState` per evaluation.
@@ -751,6 +795,10 @@ Applied to M6's A/A data, the test flags nothing: 5, 7, 6 and 6 positives.
   reports it, commits nothing but its outcome, and § 8 gains the question.
 - The member compound and the identifier write are reported and do not decide. Both are expected to
   get cheaper, since a walk and a second `evaluateMember` are removed.
+- *Revision 3*: **the identifier read, `x`, is reported too, and does not decide.** D10 adds one
+  comparison to the `caseInsensitive` identifier read. Neither decision path covers it, since the
+  member read's object is an identifier read only under `caseInsensitive`, which this rule leaves out
+  (M7). The case-sensitive identifier read does not change. Nothing new was timed for Revision 3.
 - The `caseInsensitive` legs are reported only (M7).
 - `performance.spec.ts` stays green and untouched in every step. It is structural, and the
   member-write case at `:400` constrains steps 2 and 3 directly.
@@ -778,7 +826,7 @@ probe is applied alone and reverted, and its red cases are named (§ 0 rule 8).
 | 2 | Compound and logical targets in update's shape, with the funnel's check | `assignment-expression.ts`, `identifier.ts`, `visitor-result.ts`, the spec's step-2 rows, `CHANGELOG.md` | 0 / 0 / 0 (rows rewritten 1:1) | `eval-core` 0.14.0 |
 | 3 | The `=` resolver; A44 in both visitors; the identifier update's checks and read (D8, D9) | `assignment-expression.ts`, `member-expression.ts`, `update-expression.ts`, `identifier.ts`, the spec's step-3 rows, `update-expression.spec.ts`, `CHANGELOG.md` | **+36** / 0 / 0 | `eval-core` 0.14.0 |
 | 4 | Timing against the rule in § 3.8 | this document only | 0 / 0 / 0 | no package |
-| 5 | `SECURITY.md`, README, CHANGELOG; A45 and A44 retired | `SECURITY.md`, `modules/eval-core/README.md`, `CHANGELOG.md`, the register, link targets | 0 / 0 / 0, or the allowlist's entries | `eval-core` 0.14.0 (README); the rest no package |
+| 5 | `SECURITY.md`, README, CHANGELOG; A45, A44 and A52 retired | `SECURITY.md`, `modules/eval-core/README.md`, `CHANGELOG.md`, the register, link targets | 0 / 0 / 0, or the allowlist's entries | `eval-core` 0.14.0 (README); the rest no package |
 | 6 | Release commit | three `package.json`, three `CHANGELOG.md`, each README's peer line | 0 / 0 / 0 | the releases |
 | 7 | Post-publish commit | the register, `CLAUDE.md`, `docs/README.md`, CHANGELOG dates, this document | 0 / 0 / 0 | — |
 
@@ -809,7 +857,8 @@ and `eval-forms` stay at 443 and 380 (M4, M10). *Revision 2*: they were 3044 and
     - Revision 1's 14 rows, with `s.constructor = 1` and `s.x = 1` on a string `s`.
     - *Revision 2*: `n.x = 1` (`null`), `u.x = 1` (`undefined`) and `fn.X = 1` (a function with an own
       `x`). They are controls, measured identical under the prototype (M8a), each with its native
-      outcome.
+      outcome. *Revision 3*: except `n.x = 1` under `caseInsensitive`, which flips at 2, from
+      `…non-object: undefined` to `…non-object: object`, the case-sensitive message (D10, M11).
     - *Revision 2*: `o.__proto__ = f()`, `o.constructor = f()` and `this.constructor = f()`, which
       assert the message and that `f` was not called. Controls (M8b).
     - *Revision 2*: `toString++`.
@@ -827,9 +876,10 @@ and `eval-forms` stay at 443 and 380 (M4, M10). *Revision 2*: they were 3044 and
   - **N** (*Revision 2*; M9, M10): 3 rows on `{ x: null }`.
     - `x += 1` flips at 2 under `caseInsensitive`, from `NaN` to `1`. Case-sensitive, it is a control.
     - `x++` is a control in both modes. It is the row that D9's shared read would break (finding 15).
-    - `x === null` is a control, held under `caseInsensitive`.
+    - `x === null` flips at 2 under `caseInsensitive`, from `false` to `true` (D10, M11; *Revision 3*,
+      where Revision 2 held it under A52). Case-sensitive, it is a control.
 
-  **The held cases** (*Revision 2*): 19 of the 184. "After" is the value the row asserts once its step
+  **The held cases** (*Revision 2*; *Revision 3* removed N's): 18 of the 184. "After" is the value the row asserts once its step
   has run, and the native run is JavaScript's.
 
   | Group and row | Mode | After | JavaScript | Held under |
@@ -844,7 +894,6 @@ and `eval-forms` stay at 443 and 380 (M4, M10). *Revision 2*: they were 3044 and
   | L `x += 1` | `caseInsensitive` | 2 lookup calls | 1 | A49 |
   | S `this.k = 5`, `this.k += 5`, `this.K = 5`, `this.k++` | `caseInsensitive` | `5`, `6`, `5`, `1`; an own `k` on the `Registry`; `get('k')` `1` | `k` written | A50 |
   | S `ns.k = 5`, `ns.k += 5` | both | `5`, `6`; an own `k` on the instance; a later `ns.k` `1` | a later `ns.k` `5`; `NaN` for `+=` | [A51](../backlog.md#a51) |
-  | N `x === null` | `caseInsensitive` | `false` | `true` | [A52](../backlog.md#a52) |
 
   A step that fixes one of these entries moves its held rows to the native run, and removes the mark.
 - **Edit**: this document (Revision 2 and the outcome); `.claude/skills/step/SKILL.md`, step 1's
@@ -852,20 +901,22 @@ and `eval-forms` stay at 443 and 380 (M4, M10). *Revision 2*: they were 3044 and
 - **Exit criteria**:
   1. All 184 cases pass against db287da's library code, which step 1 does not touch.
   2. **The marks are measured, not asserted** (§ 0 rule 10). The executor applies the prototype as M10
-     left it, D7–D9 included, in two stages, and reverts it after each, reading the red cases one by
+     and M11 left it, D7–D10 included, in two stages, and reverts it after each, reading the red cases one by
      one:
-     - **(i)** *Wrong for today*: step 2's half of the prototype alone, compound and logical targets
-       with the `undefined`-only fallback. Exactly the cases marked `2` go red, and nothing else in the
-       suite. Predicted count: 26.
-     - **(ii)** *Wrong for today*: the whole prototype, with A44, D7, D8 and D9. Exactly the cases
-       marked `2` or `3` go red, and nothing else. Predicted: 26 + 51.
+     - **(i)** *Wrong for today*: step 2's half of the prototype alone: compound and logical targets,
+       and the one `caseInsensitive` identifier read with the fallback on `undefined` only (D10).
+       Exactly the cases marked `2` go red, and nothing else in the suite. Predicted count: 28.
+     - **(ii)** *Wrong for today*: the whole prototype, with A44 and D7–D10. Exactly the cases marked
+       `2` or `3` go red, and nothing else. Predicted: 28 + 51.
      - **A held case goes red only if it is also marked to flip.** The hold marks change no
        prediction, and checked against Revision 1's rows they leave its 25 and 41 as they were. The
        growth comes from Revision 2's new rows:
        - step 2 gains 1, N's `x += 1` under `caseInsensitive`;
        - step 3 gains 10: B's `constructor++`, `__proto__++` and `toString++`, and R's `x++` and `++x`,
          each in both modes;
-       - the six new B rows and N's other two flip nowhere (M8a, M8b, M9).
+       - *Revision 3*: step 2 gains 2 more from D10, N's `x === null` and B's `n.x = 1`, each under
+         `caseInsensitive` (M11);
+       - the other new B rows, and N's `x++`, flip nowhere (M8a, M8b, M9, M11).
 
      A mismatch either way is a wrong mark, corrected in the step before the commit, with the
      difference in the outcome.
@@ -875,25 +926,27 @@ and `eval-forms` stay at 443 and 380 (M4, M10). *Revision 2*: they were 3044 and
   4. No existing file changes. `git diff --name-only` lists the spec, this document and the skill.
 - **Category**: ships in no package.
 
-### Step 2 — Compound and logical targets in update's shape (D1, D2 and D3 for those operators)
+### Step 2 — Compound and logical targets in update's shape (D1, D2 and D3 for those operators), and one identifier read (D10)
 
 - **Edit**:
   - `assignment-expression.ts`. For an operator other than `=`, a member target gets one
     `evaluateMember` call and an identifier target is not walked (§ 3.2). The funnel's check runs on
     the read value. Part 1's short-circuit runs on that value. `=` keeps today's path until step 3.
   - `identifier.ts`, which exports the target read of § 3.2, with the literals fallback on `undefined`
-    only.
+    only. *Revision 3* (D10): `identifierVisitorCaseInsensitive` reads through the same function.
   - `visitor-result.ts`, which factors the funnel's two tests into one exported function that
     `pushVisitorResult` also calls.
   - The spec: the rows marked `2` are rewritten to JavaScript's expectations, 1:1, and their marks are
     removed.
   - `modules/eval-core/CHANGELOG.md`: `[Unreleased]` › Changed, marked breaking. A compound or logical
     assignment's member target is evaluated once and read once; its read events and node hooks are
-    those of the read.
+    those of the read. › Fixed, *Revision 3*: under `caseInsensitive` an identifier holding `null`
+    reads as `null` ([A52](../backlog.md#a52)).
   - This document; the skill's state.
 - **Exit criteria**:
   1. The gate is green at 3064 / 443 / 380. Every step-2 case now equals the native run, except held
-     cases, which equal their recorded values. No other row changed. `git diff` on the spec touches
+     cases, which equal their recorded values. B's `n.x = 1` under `caseInsensitive` is the exception,
+     and equals the case-sensitive message (M11). No other row changed. `git diff` on the spec touches
      only the rows marked `2`.
   2. **Probes**:
      - **(i)** *Wrong*: restore the operand walk for compound targets. Exactly the rewritten step-2
@@ -909,9 +962,14 @@ and `eval-forms` stay at 443 and 380 (M4, M10). *Revision 2*: they were 3044 and
        `this.g += 1` on their getter counts.
      - **(v)** *Wrong*: apply the shape to `=` as well. Rows marked `3` go red. This shows that the
        two steps are separable, since they are pinned separately.
-     - **(vi)** (*Revision 2*) *Wrong*: take the target read's literals fallback with `??`, as the
-       identifier visitor does. Red: group N's `x += 1` under `caseInsensitive`, alone, which gives
-       `NaN` again.
+     - **(vi)** (*Revision 2*; *Revision 3* widened) *Wrong*: take the shared read's literals fallback
+       with `??`, as the identifier visitor did up to 0.13.3. Red, all under `caseInsensitive`: group
+       N's `x += 1`, which gives `NaN` again, and the two cases of (vii). That prediction combines M10
+       and M11, and was not measured as one switch.
+     - **(vii)** (*Revision 3*) *Wrong*: restore `??` in the visitor alone, leaving the target read's
+       rule. Red: exactly group N's `x === null` and group B's `n.x = 1`, under `caseInsensitive`.
+       They are the two rows whose value the visitor's read decides. N's `x += 1` and `x++` stay green,
+       since they read through the target read (M11).
   3. `performance.spec.ts` is green and untouched; part 1's 64 cases are untouched and green.
 - **Category**: ships in `eval-core`'s next release.
 
@@ -985,7 +1043,7 @@ and `eval-forms` stay at 443 and 380 (M4, M10). *Revision 2*: they were 3044 and
 - **Category**: ships in no package. The reviewer is run on the step's outcome, the numbers and the
   rule's application.
 
-### Step 5 — `SECURITY.md`, README and CHANGELOG; A45 and A44 retired
+### Step 5 — `SECURITY.md`, README and CHANGELOG; A45, A44 and A52 retired
 
 - **Edit**:
   - `SECURITY.md`, as § 3.5 lists.
@@ -993,7 +1051,8 @@ and `eval-forms` stay at 443 and 380 (M4, M10). *Revision 2*: they were 3044 and
     `readme-examples.spec.ts` changes with it, probed by breaking the document.
   - `CHANGELOG.md`: the README's `[Unreleased]` line, and the consolidation.
   - `public-api.spec.ts`'s allowlist, only if `SECURITY.md` names a new identifier.
-  - The register: A45 and A44 retire to `backlog-retired.md` as fixed and not yet released, with their
+  - The register: A45, A44 and, *Revision 3*, A52 retire to `backlog-retired.md` as fixed and not yet
+    released, with their
     index rows re-pointed and "Work in flight" updated.
   - The published CHANGELOG sections' links to `#a45` and `#a44`: their targets only.
   - This document; the skill's state.
@@ -1066,14 +1125,15 @@ release is breaking by behaviour (§ 3.1, M2, M5), not by shape.
 | The machine's noise hides a real regression | Medium (M6) | § 3.8's A/A control and its void rule |
 | The resolver runs the right side before refusing a blocklisted key | Certain without D7's case-sensitive check (M8b) | Step 3, probes (iv) and (viii) |
 | D9's shared read turns `null` into `undefined` under `caseInsensitive` | Certain with the `??` fallback (M10) | Step 2, probe (vi); step 3, probe (xi); `update-expression.spec.ts`'s four `null` cases |
-| A held row is read as a pass, and its entry is forgotten | Medium | Every hold names a live register entry, A48–A52; fixing one moves its rows |
+| A held row is read as a pass, and its entry is forgotten | Medium | Every hold names a live register entry, A48–A51; fixing one moves its rows |
+| D10's read changes a `null` the host relied on reading as `undefined` | Low: no case in any suite does (M11) | The `### Fixed` entry; step 2, probe (vii) |
 
 ## 8. Open questions
 
 *Revision 2* decided q1, q5 and q6 as D9, D8 and D7 (§ 2) and removed them. It moved q2, q3 and q4
 into the register and removed q8, folding its note into A48. The remaining questions keep their
 numbers, so a citation of "§ 8 q7" still resolves. Only q7 is undecided here; q2–q4 are pointers, and
-their decisions belong to their entries.
+their decisions belong to their entries. *Revision 3* decided q9 as D10 and removed it.
 
 2. **Under `caseInsensitive`, the read path reads a prototype accessor twice**:
    [A48](../backlog.md#a48) (M1f, finding 7). Its rows are held in step 1. The entry also records
@@ -1095,9 +1155,9 @@ their decisions belong to their entries.
    *Revision 2*: D9 moves `eval-signals`' `dependencies` the other way for an identifier update. `x++`
    records `{x}` where today it records `{}`, while the recompute is unchanged, since the signal read
    happens either way (M5b). That too is an expression that throws on every recompute.
-9. **Under `caseInsensitive`, an identifier holding `null` reads as `undefined`**:
-   [A52](../backlog.md#a52) (M9, finding 16), opened by Revision 2. The target read of steps 2 and 3
-   avoids it; the identifier visitor's own read keeps it. Held in step 1.
+   *Revision 3*: D10 changes what a `caseInsensitive` signal context's identifier reads give for a
+   `null` source. M11's suites cover `eval-signals` and `eval-forms`, both green, but M5's probe was
+   not re-run under D10.
 
 ## 9. Contract after this lands
 
@@ -1116,9 +1176,11 @@ their decisions belong to their entries.
 6. An identifier update of a blocklisted name is refused with the blocklist message (D8). An
    identifier update reports one read of its target (D9). Its value is read with the literals
    fallback on `undefined` only, so `x++` on `null` stays `0`.
-7. **Not provided**, each held in step 1 under its entry:
+7. Under `caseInsensitive`, an identifier holding `null` reads as `null`, through the one identifier
+   read the visitor and every target share (D10, *Revision 3*). The literals registry answers only a
+   name `get` finds nothing for.
+8. **Not provided**, each held in step 1 under its entry:
    - a single read of a prototype accessor under `caseInsensitive` ([A48](../backlog.md#a48));
    - an `=` through the context branch that reads nothing ([A49](../backlog.md#a49));
    - a write through `this` under `caseInsensitive` that reaches the data ([A50](../backlog.md#a50));
-   - a write through an `EvalScope` value that reaches the data ([A51](../backlog.md#a51));
-   - an identifier read of `null` under `caseInsensitive` that is `null` ([A52](../backlog.md#a52)).
+   - a write through an `EvalScope` value that reaches the data ([A51](../backlog.md#a51)).

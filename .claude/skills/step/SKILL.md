@@ -34,8 +34,9 @@ stop-and-replan, not a wider step. A deliberate widening at a step's confirmatio
 its reason, is not a replan. A `package.json` in the diff before step 6 is a stop-and-replan.
 
 **The counts the steps start from**, the gate at db287da: `eval-core` 2880, `eval-signals` 443,
-`eval-forms` 380. `eval-core` reaches 3064 at step 1 and 3100 at step 3 (the plan's Revision 2); the
-other two do not move. Held rows in step 1's spec match their recorded values, not the native run.
+`eval-forms` 380. `eval-core` reaches 3064 at step 1 and 3100 at step 3 (the plan's Revision 3); the
+other two do not move. Step 1's spec holds 18 cases: they match their recorded values, not the native
+run.
 
 **Step state**: no step has run. Step 1 is next.
 

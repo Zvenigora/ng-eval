@@ -140,10 +140,10 @@ end, so that 0.13.0, which closes the route through `this`, shipped first.
   [F25](backlog-retired.md#f25) with the plan's § 8 q3, which the phase left undecided.
 
 **The [A45 plan](a45/plan.md) is in flight**: [A45](#a45) part 2 and [A44](#a44), assignment targets
-as JavaScript evaluates them, for `eval-core` 0.14.0. It is at Revision 2, no step has run, and step
+as JavaScript evaluates them, for `eval-core` 0.14.0. It is at Revision 3, no step has run, and step
 1, the characterisation spec, is next. Revision 2 decided three of its open questions as D7–D9 and
-opened [A48](#a48)–[A52](#a52) for the defects it found and does not fix; its § 8 keeps the
-downstream versions open.
+opened [A48](#a48)–[A52](#a52) for the defects it found. Revision 3 brought A52 into the plan's step 2
+(D10); A48–A51 are not scheduled. Its § 8 keeps the downstream versions open.
 [F20](backlog-retired.md#f20), [F21](backlog-retired.md#f21),
 [F24](backlog-retired.md#f24) and [F25](backlog-retired.md#f25) are fixed, and ship in no package; F21's toolchain bump left one
 `overrides.nx` entry, `undici`, which [F16](#f16) part 2 holds.
@@ -349,7 +349,7 @@ makes it that release's row, with its tag commit and date.
 | [A49](#a49) | The context branch reads what it tests: `getThis` reads the value and `getKey` calls lookups, so `this.g = 1` calls a getter on the context | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q3); predates it. Its fix touches `EvalContext`, a published class. Not scheduled |
 | [A50](#a50) | Under `caseInsensitive`, `this.k = v` writes an own property onto the context's `Registry` copy, and the data is unchanged | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q4); predates it. Not scheduled |
 | [A51](#a51) | A member write to an `EvalScope` held as a value lands on the instance, never through `EvalScope.set`, and can replace its `_context` and `_options` | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q4); predates it. A write policy can refuse it. Not scheduled |
-| [A52](#a52) | Under `caseInsensitive`, an identifier holding `null` reads as `undefined`: `x === null` is `false`, and `x += 1` writes `NaN` | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2, while measuring its D9; predates it. Not scheduled |
+| [A52](#a52) | Under `caseInsensitive`, an identifier holding `null` reads as `undefined`: `x === null` is `false`, and `x += 1` writes `NaN` | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2, while measuring its D9; predates it. Planned: the plan's step 2 fixes it (D10, Revision 3), and step 5 retires it with A44 and A45 |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -1391,8 +1391,9 @@ production bundle built at db287da and the A45 plan's prototype, with the Angula
 ## A52 — Under `caseInsensitive`, an identifier holding `null` reads as `undefined`
 
 **Package** core · **Kind** fix · **Status** Open. Opened 2026-10-23 by the
-[A45 plan](a45/plan.md), Revision 2, whose measurement of its D9 found it. It predates that plan. Not
-scheduled
+[A45 plan](a45/plan.md), Revision 2, whose measurement of its D9 found it. It predates that plan.
+**Scheduled** by the plan's Revision 3 (its D10): its step 2 fixes it, and its step 5 retires it with
+A44 and A45
 
 `identifierVisitorCaseInsensitive` reads `context.get(name) ?? literals.get(name)`. The literal
 fallback, which resolves `TRUE`, `Undefined` and their kin, is taken for `null` as well as for
@@ -1413,8 +1414,17 @@ name, which is `undefined` for every ordinary name. A member's `null` is unaffec
 read as a compound assignment. Run with this fallback, that turned `update-expression.spec.ts`'s four
 `caseInsensitive` `null` rows red (`x++`, `x--`, `++x` and `--x` on `null` gave `NaN`). Taken only on
 `undefined`, the fallback kept all 2880 cases green and gave `x += 1` its JavaScript value. The plan
-adopts that for its own target read (its D9, Revision 2) and leaves the identifier visitor's read to
-this entry. Its characterisation spec holds the `x === null` row under this ID.
+adopted that for its own target read (its D9, Revision 2).
+
+**The fix, as planned** (the plan's D10, Revision 3). The identifier visitor reads through the same
+function, so there is one `caseInsensitive` identifier read, with the fallback on `undefined` only.
+Measured 2026-10-23 with the plan's prototype (its M11):
+- all three suites stayed green, at 2880 / 443 / 380;
+- every row above gave JavaScript's value, in both modes;
+- `n.x = 1` on a `null` `n` now throws the case-sensitive message, `…non-object: object`.
+
+The plan's characterisation spec marks `x === null` and `n.x = 1`, under `caseInsensitive`, to flip
+at its step 2.
 
 *Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M9.
 *Verified*: measured 2026-10-23 with a throwaway script outside the repository, against the
