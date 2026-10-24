@@ -38,12 +38,16 @@ stop-and-replan, not a wider step. A deliberate widening at a step's confirmatio
 its reason, is not a replan. A `package.json` in the diff before step 6 is a stop-and-replan.
 
 **The counts the steps start from**, the gate at db287da: `eval-core` 2880, `eval-signals` 443,
-`eval-forms` 380. `eval-core` reaches 3064 at step 1 and 3100 at step 3 (the plan's Revision 3); the
-other two do not move. Step 1's spec holds 18 held cases, each matching its recorded value, not the
-native run.
+`eval-forms` 380. `eval-core` reaches 3064 at step 1, 3080 with the plan's Revision 4 addendum, stays
+3080 through step 2, and reaches 3116 at step 3; the other two do not move. Step 1's spec holds 18
+held cases, each matching its recorded value, not the native run.
 
 **Step state**: step 1 has run: the characterisation spec, 184 cases, with its marks measured against
-the prototype (the plan's step 1 outcome). Step 2 is next.
+the prototype (the plan's step 1 outcome). Revision 4 added group T, 16 cases (D11), whose marks steps
+2 and 3's probes witness, not the prototype. Step 2 is next.
+
+**Revert a patch with `git apply -R`, never `git restore modules/eval-core/src`**: the spec is tracked
+now, under `src/`, and that restore takes its uncommitted rows with it.
 
 **All three packages are published**, and a README or CHANGELOG under `modules/<name>/` ships in that
 package's tarball, as its code does. So a change is in one of three categories:

@@ -1,4 +1,4 @@
-import { AnyNode } from 'acorn';
+import { AnyNode, AssignmentExpression, ExpressionStatement, Identifier, Program } from 'acorn';
 import { EvalContext, EvalKnownOptions, EvalScope, EvalState, createDependencyTracker } from '../classes/eval';
 import { Registry } from '../classes/common';
 import { evaluate, parse } from '../functions';
@@ -62,8 +62,11 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
 
   interface Engine {
     native: boolean;
-    /** `arm` runs after the context is built and before the source runs. */
-    run(source: string, data: Record<string, unknown>, options: EvalKnownOptions,
+    /**
+     * `arm` runs after the context is built and before the source runs. A
+     * host-built AST, in place of a source, has no native run.
+     */
+    run(source: string | AnyNode, data: Record<string, unknown>, options: EvalKnownOptions,
       arm?: (context?: EvalContext, state?: EvalState) => void): Ran;
   }
 
@@ -81,7 +84,7 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
       const context = EvalContext.fromContext(data, options);
       const state = EvalState.fromContext(context, options);
       arm?.(context, state);
-      const ran = attempt(() => evaluate(programOf(source), state));
+      const ran = attempt(() => evaluate(typeof source === 'string' ? programOf(source) : source, state));
       const store = context.original;
       return {
         ...ran,
@@ -96,6 +99,9 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   const nativeEngine: Engine = {
     native: true,
     run: (source, data, _options, arm) => {
+      if (typeof source !== 'string') {
+        throw new Error('A host-built AST has no native run');
+      }
       const scope = new Proxy(data, { has: (_target, key) => typeof key === 'string' });
       const run = (text: string): unknown =>
         new Function('scope', `with (scope) { return (${text}); }`).call(data, scope);
@@ -1045,6 +1051,98 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     },
   ];
 
+  // --- T (M12): `this` as an identifier target ------------------------------
+
+  /**
+   * The row's source with `this` spelled `self` for the parser, which refuses
+   * `this` as a target, and the target renamed back: an AST only a host builds.
+   */
+  const hostBuilt = (source: string): Program => {
+    const program = programOf(source.replace('this', 'self')) as Program;
+    const expression = (program.body[0] as ExpressionStatement).expression;
+    const target = expression.type === 'UpdateExpression'
+      ? expression.argument
+      : (expression as AssignmentExpression).left;
+    (target as Identifier).name = 'this';
+    return program;
+  };
+
+  /**
+   * The context is `{ k: 1 }`. `keys` is the store's keys, and `caller` the
+   * caller's own object's, as group B reports them.
+   */
+  const thisTarget = (host: boolean): Observe => (engine, source, options) => {
+    const data: Record<string, unknown> = { k: 1 };
+    const ran = engine.run(host ? hostBuilt(source) : source, data, options);
+    return { ...outcome(ran), keys: ran.keys(), caller: Object.keys(data) };
+  };
+
+  const thisRefused = 'Access to "this" outside a member access is blocked for security reasons';
+  const alone = { keys: ['k'], caller: ['k'] };
+  /** `name` written onto the caller's object, which is the store. */
+  const beside = (name: string) => ({ keys: ['k', name], caller: ['k', name] });
+  /** `name` written into the `caseInsensitive` copy, and the caller's object left as it was. */
+  const besideInCopy = (name: string) => ({ keys: ['k', name], caller: ['k'] });
+  const notATarget = none('`this` is not an assignment target in JavaScript: the parser refuses it');
+
+  /**
+   * Case-sensitive, `This` is an ordinary name. Under `caseInsensitive` it is
+   * `this`, refused outside a member's object: by the operand walk today, and
+   * by every identifier target path from steps 2 and 3 (D11). An update walks
+   * nothing and refuses nothing up to 0.13.3. These marks are witnessed by
+   * steps 2 and 3's probes, not by the pinned prototype, which predates D11.
+   */
+  const T: Row[] = [
+    {
+      source: 'This = 1', observe: thisTarget(false),
+      today: { cs: { value: 1, ...beside('This') }, ci: { threw: thisRefused, ...alone } },
+      js: both(native({ value: 1, ...beside('This') })),
+      design: { ci: 'the this refusal' },
+    },
+    {
+      source: 'This += 1', observe: thisTarget(false),
+      today: { cs: { value: NaN, ...beside('This') }, ci: { threw: thisRefused, ...alone } },
+      js: both(native({ value: NaN, ...beside('This') })),
+      design: { ci: 'the this refusal' },
+    },
+    {
+      source: 'This ||= 1', observe: thisTarget(false),
+      today: { cs: { value: 1, ...beside('This') }, ci: { threw: thisRefused, ...alone } },
+      js: both(native({ value: 1, ...beside('This') })),
+      design: { ci: 'the this refusal' },
+    },
+    {
+      source: 'This++', observe: thisTarget(false),
+      today: { cs: { value: NaN, ...beside('This') }, ci: { value: NaN, ...besideInCopy('This') } },
+      js: both(native({ value: NaN, ...beside('This') })),
+      flips: { ci: 3 },
+      design: { ci: `${copied}; the this refusal, from step 3` },
+    },
+    {
+      source: '++This', observe: thisTarget(false),
+      today: { cs: { value: NaN, ...beside('This') }, ci: { value: NaN, ...besideInCopy('This') } },
+      js: both(native({ value: NaN, ...beside('This') })),
+      flips: { ci: 3 },
+      design: { ci: `${copied}; the this refusal, from step 3` },
+    },
+    {
+      source: 'this = 1', observe: thisTarget(true),
+      today: both({ threw: thisRefused, ...alone }),
+      js: both(notATarget),
+    },
+    {
+      source: 'this += 1', observe: thisTarget(true),
+      today: both({ threw: thisRefused, ...alone }),
+      js: both(notATarget),
+    },
+    {
+      source: 'this++', observe: thisTarget(true),
+      today: { cs: { value: NaN, ...beside('this') }, ci: { value: NaN, ...besideInCopy('this') } },
+      js: both(notATarget),
+      flips: both(3),
+    },
+  ];
+
   const GROUPS: [string, Row[]][] = [
     ['E (M1a): getters, setters, calls and order', E],
     ['F (M1b): a listed function as the target', F],
@@ -1057,6 +1155,7 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     ['L (M1j): a lookup answering the name', L],
     ['C (M1j): an accessor on the context, through this', C],
     ['N (M9, M11): an identifier holding null', N],
+    ['T (M12): this as an identifier target, written This or host-built', T],
   ];
 
   /** The row's source and its marks in `mode`, which name the case. */
