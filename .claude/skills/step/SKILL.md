@@ -8,24 +8,35 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: none active
-Target: none
+Plan document: `docs/a45/plan.md`
+Target: `@zvenigora/ng-eval-core` — A45 part 2 and A44, assignment targets as JavaScript evaluates them
 Requested step: $ARGUMENTS
 
-**No plan is active.** Phase 10, the documentation restructure (`docs/documentation/phase-10-plan.md`),
-is complete: its eight steps shipped as `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms`
-0.6.1, and its retrospect is `docs/documentation/phase-10-summary.md`. The next plan retargets this
-file when it is written. It names the plan above, says which projects each step reaches, and records
-the gate's counts its steps start from.
+**Read the plan's § 0 first.** It collects the failure modes carried forward from the earlier plans,
+and every step's criteria cite them by number.
 
-**Invoked while no plan is active, this skill stops at § 1.** Run the baseline, report it, say that
-no plan is active, and do nothing else. Do not run a step of a completed plan, and do not treat a
-register entry as a plan: a one-commit item or a batch has its exit criteria in the prompt
-(`CLAUDE.md`, "Working from a plan").
+**Each step's file list in the plan's § 4 is its scope, and it is not the same list every step.** The
+plan changes `eval-core` only. `eval-signals` and `eval-forms` are witnesses until the release:
 
-**Each step's file list in the plan's § 4 is its scope, and it is not the same list every step.** A
-file outside it, or under a project the step does not name, is a stop-and-replan, not a wider step.
-A deliberate widening at a step's confirmation gate, recorded with its reason, is not a replan.
+- **Step 1 is one new spec**, `internal/visitors/assignment-target.spec.ts`, and no other file under
+  `modules/`. Its probes apply the plan's M4 prototype in two stages and revert it.
+- **Steps 2 and 3 are `eval-core`'s visitors**: the files each step lists under
+  `modules/eval-core/src/lib/internal/visitors/`, the spec's marked rows, `update-expression.spec.ts`
+  in step 3, and `modules/eval-core/CHANGELOG.md`'s `[Unreleased]`.
+- **Step 4 is timing**: no file but the plan. Its harness runs one process at a time, never beside
+  another nx or Jest run.
+- **Step 5 is documents**: `SECURITY.md`, `modules/eval-core/README.md` with its CHANGELOG line, the
+  register, and link targets.
+- **Steps 6 and 7 are the release** and the post-publish record.
+
+A file outside the step's list, or under `eval-signals` or `eval-forms` before step 6, is a
+stop-and-replan, not a wider step. A deliberate widening at a step's confirmation gate, recorded with
+its reason, is not a replan. A `package.json` in the diff before step 6 is a stop-and-replan.
+
+**The counts the steps start from**, the gate at db287da: `eval-core` 2880, `eval-signals` 443,
+`eval-forms` 380. `eval-core` reaches 3044 at step 1 and 3080 at step 3; the other two do not move.
+
+**Step state**: no step has run. Step 1 is next.
 
 **All three packages are published**, and a README or CHANGELOG under `modules/<name>/` ships in that
 package's tarball, as its code does. So a change is in one of three categories:

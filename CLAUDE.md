@@ -32,7 +32,8 @@ and its plan is `docs/signals/phase-5-plan.md`. Phase 9, colon-joined identifier
 `eval-core` 0.12.0, `eval-signals` 0.5.1 and `eval-forms` 0.5.0, and its plan is
 `docs/colon-identifiers/phase-9-plan.md`. Phase 10, the documentation restructure, is complete:
 it shipped as `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms` 0.6.1, docs-only patches,
-and its plan is `docs/documentation/phase-10-plan.md`. No plan is active. What `ROADMAP.md` has
+and its plan is `docs/documentation/phase-10-plan.md`. The active plan is `docs/a45/plan.md`, A45
+part 2 and A44: assignment targets as JavaScript evaluates them. What `ROADMAP.md` has
 left is Phases 7 and 8, which it reserves without specifying them.
 
 **Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left
@@ -104,9 +105,10 @@ build before believing a type is sound.
   live in the prompt, as the A3/B4/D6/F6, D9/F13 and F2 batches did. The A35 plan,
   `docs/a35/plan.md` — dangerous function values past the call sandbox, with A36 and A37 — is
   complete: it shipped as `eval-core` 0.12.1 and 0.13.0, and its advisory is GHSA-qrqj-3445-3rjx.
-  Phase 10's plan is complete, and no plan is active. `.claude/skills/step/SKILL.md` targets the
-  active plan, and is retargeted with each new plan; until the next one is written it names none,
-  and stops if invoked.
+  Phase 10's plan is complete. The active plan is `docs/a45/plan.md`, A45 part 2 and A44,
+  assignment targets as JavaScript evaluates them; its § 0 collects the failure modes carried
+  forward from the earlier plans. `.claude/skills/step/SKILL.md` targets it, and is retargeted with
+  each new plan.
 - **One retrospect per track; no per-step summaries.**
 - **Anything left for later work goes in `docs/backlog.md`; a commit body never carries it
   forward.**

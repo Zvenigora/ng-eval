@@ -1,0 +1,873 @@
+# A45 part 2 and A44 — assignment targets as JavaScript evaluates them (`@zvenigora/ng-eval-core`)
+
+**Date**: October 23, 2026
+**Revision**: 1 — initial plan.
+**Target package**: `@zvenigora/ng-eval-core`, released as **0.14.0**, a minor that carries breaking
+changes (D5; the precedent is 0.8.0). `eval-signals` 0.6.x and `eval-forms` 0.6.x declare
+`>=0.13.0 <0.14.0`, so both release to admit it. M5 measured that `eval-signals` observes D2, so
+whether each release is a patch or a minor is § 8 q7, decided at step 6's gate.
+**Also touches**: no downstream code through step 5. `eval-signals` and `eval-forms` run as the
+downstream witnesses with their counts unchanged (M4).
+**Fixes**:
+- [A45](../backlog.md#a45) part 2, in steps 2 and 3;
+- [A44](../backlog.md#a44), in step 3.
+
+**Reopens**: Phase 1's decision that assignment and update targets emit read events
+([`side-effects/phase-1-plan.md`](../side-effects/phase-1-plan.md):274-280), for assignment
+targets only (§ 2, D2).
+**Source**: the request of 2026-10-23, which fixed decisions D1–D6 and proposed the step shape that
+§ 4 adjusts in two places (§ 4's preamble).
+**Objective**: an assignment evaluates its target as JavaScript does. A member target's object and
+key are evaluated once. `=` never reads the target's value, and a compound or logical operator reads
+it once. Effects happen in JavaScript's order: object, key, read, right side, write. Read events
+follow the reads. Under `caseInsensitive` the write reaches the key the lookup matched. No refusal
+JavaScript's own reads would make is lost: a compound or logical target is still refused by the
+funnel. The refusal that goes is the funnel's at an `=` target, a read JavaScript does not make.
+
+**Conclusion, stated first so the rest reads as its argument**:
+- **Nothing in the three suites pins today's behaviour** (M4). A throwaway prototype of D1–D4 left
+  `eval-core` 2880, `eval-signals` 443 and `eval-forms` 380 green. Two of its pieces, removed one at a
+  time, turned 1 and 2 existing cases red, and a third turned none. So step 1 writes the only witness
+  first: a characterisation spec of 82 rows in both modes, each marked with the step that flips it.
+  Its probe is the prototype itself: applied in step 1, it must turn red exactly the marked cases.
+- **Then compound and logical targets take update's shape** (step 2): one `evaluateMember` call for a
+  member, no walk for an identifier. **Update's shape bypasses the funnel**, which is why `obj.fetch++`
+  writes `NaN`. So the read value goes through the funnel's check explicitly, or `obj.fetch += 1` and
+  `fetch ||= 1` stop being refused (M4, probe P2).
+- **Then `=` gets its own resolver, and A44 lands in both visitors** (step 3). For an identifier, the
+  resolver keeps the blocklist checks the operand walk used to make, or `constructor = 1` would write
+  as `constructor++` already does (M1c). For a member, it walks the object and the key, runs the read
+  path's key checks, and matches the key under `caseInsensitive` without reading the value.
+- **The read path keeps its shape** (D6). It gains a fifth tuple slot, the key the lookup matched,
+  which it already computes for the read event. Paired against HEAD over twelve rotations, that cost
+  +0.12% by median, positive in 6 of 12 (M6). Step 4 measures the result against a decision rule
+  stated here in advance.
+- **Six things § 1 found are not decided by D1–D6**, and § 8 holds them, undecided. The largest: `x++`
+  emits no read event at all, and the context branch's `getThis` reads the value it tests, so
+  `this.g = 1` still calls a getter on the context.
+
+---
+
+## 0. Failure modes carried forward
+
+Neither the A35 plan nor the Phase 10 plan has a § 0. The latest plan that does is Phase 2's
+([`statements/phase-2-plan.md`](../statements/phase-2-plan.md) § 0.1), and the measurement rules
+before it are Phase 6's ([`forms/phase-6-plan.md`](../forms/phase-6-plan.md) § 0.2). The A35 plan
+keeps its standing rules in its second § 1.2 ("Standing rules, from Revision 16"), and the Phase 10
+plan keeps its rules in § 6.1. This section collects them, each with its origin, and adds the three
+that this plan's own measurements produced. Every step applies all of them; § 4's criteria cite them
+by number.
+
+**Carried forward**
+
+1. **A criterion naming a property states the implementation that satisfies it while being wrong**
+   (Phase 2 § 0.1). A property is not a detector. That plan's fifth instance was the correction
+   written to close the fourth, so the rule applies to its own corrections too.
+2. **A mechanism question is settled by measurement, against the artifact the claim is about**
+   (Phase 6 § 0.2). A number from a neighbouring tool is a fact about that tool. Here the artifacts
+   are the production bundle for values and timings, and the gate for counts. Jest is used only for
+   what Jest runs.
+3. **A measurement supports only what its arms distinguish** (Phase 6 § 0.2). Before citing one,
+   name the arm that would have produced the claim's negation.
+4. **Grep for the claim, not for the section** (Phase 6 § 0.2). A fix scoped to the section a finding
+   names leaves the same claim standing elsewhere. This plan's own instance is § 1.5, whose list is
+   built by grep and confirmed by running the change.
+5. **Every risk, criterion and published claim names the thing that goes red when it is violated**
+   (Phase 6 § 0.2.1). If the answer is a section number, it is not an answer.
+6. **A refusal's message names its layer, and a case that expects a refusal asserts the message**
+   (A35, second § 1.2). The cheapest way for a security case to go green is for its setup to fail
+   first. § 8 q6 is a live instance: two layers in step 3 refuse with one message.
+7. **Every supported option gets a leg, and the fixture is checked under it** (A35, second § 1.2).
+   Under `caseInsensitive`, `fromContext` copies a plain object into a `Registry`. So a write lands in
+   the copy, a getter on the context is read at the copy, and the caller's object is not the one
+   written (M1d, M1g).
+8. **Each probe is applied alone and reverted, and its red cases are read case by case**
+   (`CLAUDE.md`; the A45 part 1 entry). A suite going red is not the evidence; which cases went red
+   is.
+9. **A case that reads a document is probed by breaking the document, and every new check has a
+   probe that proves it can fail** (Phase 10 § 6.1). It applies to step 5's README and `SECURITY.md`
+   edits.
+
+**Added by this plan**
+
+10. **A suite that stays green under a change may be evidence that nothing looks.** M4 ran the whole
+    change, prototyped, against all three suites, and nothing went red. Read as "the change is safe",
+    that result would have been the wrong conclusion, at exactly the moment it was most tempting. So:
+    before a behavioural change, run its prototype against the suite and count the red cases. When
+    the count is zero, the spec that pins today's behaviour comes first. Its marks are then the
+    change's criterion, and the prototype is the probe that checks them.
+11. **A timing is a paired, signed comparison inside one run, never two runs side by side.** M6 timed
+    the same bundle against a copy of itself. Single rotations swung from −17.6% to +20.2%, and the
+    median of six A/A rotations differed by 6.5%. Between two runs an hour apart the machine's speed
+    moved by about 1.5×. So a timing claim pairs within each rotation, counts the signs, and carries an
+    A/A control in the same run (§ 3.8).
+12. **Borrowing a mechanism's shape borrows its gaps.** "Take update's shape" is the obvious
+    instruction for compound targets. But update's member branch never pushes its operand, so the
+    funnel never sees it. That gap is why `obj.fetch++` writes `NaN`
+    ([A40](../backlog-retired.md#a40)). The prototype without an explicit check turned one existing
+    case red, and with it none. Before reusing a shape, list what it does not do.
+
+---
+
+## 1. Current state
+
+### 1.1 What exists today
+
+Measured at db287da, the commit before this plan. 5b5a937 is its parent. Line numbers are at db287da.
+
+| Element | Where | State |
+| :--- | :--- | :--- |
+| Assignment visitor | `internal/visitors/assignment-expression.ts` | Walks `node.left` as an operand (`:50`), so the target is read and its value pushed through the funnel. Then it applies part 1's short-circuit (`:58-64`) and walks the right side (`:66`). For an identifier it writes through `assignToBinding` (`:90`). For a member it calls `evaluateMember` **a second time**, after the right side, and writes to the object and key that call yields (`:93`, `:104`) |
+| Update visitor | `internal/visitors/update-expression.ts` | Identifier: `getKey` under `caseInsensitive`, then `context.get`, with **no read event and no walk** (`:22-45`). Member: **one** `evaluateMember` call (`:47`), no walk, and no push before the result, so the funnel does not see the operand |
+| `evaluateMember` | `internal/visitors/member-expression.ts:86-289` | Evaluates the object and the key, reads the value and emits the read event, all in one call. It returns `[receiver, key, value, origin]`. The key is the key **as spelled**, while the read matched `resolvedKey` (`:188`, `:259-261`), which goes to the read event only. Under `caseInsensitive`, a key that no own property matches is tested by **reading** `obj[key]` (`:226`) |
+| Context branch | `member-expression.ts:110-150` | Blocklist check, `getKey` and the resolved-key check under `caseInsensitive`, `get`, then `getThis`. `getThis` (`eval-context.ts:342`) and `getKey`'s `resolve` (`eval-context.ts:63`) each read the value they test |
+| Identifier checks | `identifier.ts:73-98` | `refuseDangerousName`, and under `caseInsensitive` `refuseDangerousMatch`, both module-private. An assignment reaches them only through the operand walk |
+| Write helpers | `variable-declaration.ts:182`, `:225`; `prototype-pollution-guard.ts:226` | `refuseReadOnlyName` (A46), `assignToBinding`; `safeSetProperty` refuses a blocklisted key, a context target (A42), a built-in constructor or a built-in prototype |
+| The funnel | `visitor-result.ts:40` | `pushVisitorResult` refuses a dangerous function value and an `EvalContext` value, wherever they are pushed. Nothing that is not pushed passes it |
+| Existing pins | `assignment-expression.spec.ts:120` | A45 part 1's 64 cases. `fetch ||= 1` is refused by the funnel, and `a ||= b`'s read hooks are checked when it short-circuits |
+| Held-back rows | `update-expression.spec.ts:19-23` | Its `caseInsensitive` leg spells every member as the data does, because of A44 |
+| Structural perf case | `performance.spec.ts:400` | The member-write path builds no view, asks a context with no policy nothing, and pushes one scope |
+
+The baseline is the gate at db287da, measured for this plan: `eval-core` 2880, `eval-signals` 443,
+`eval-forms` 380. doc-links reported 352 files and 1755 links, with 0 dangling and 50 `docs/` files
+checked against the index. release-tags reported 43 rows, 53 tags and 0 failing.
+
+### 1.2 Findings that shape the plan
+
+Each finding cites the measurement in § 1.3 that produced it.
+
+1. **The A45 table holds at HEAD, and the prototype matches JavaScript on every row** (M1a). A member
+   target is evaluated twice, **the second time after the right side**: `getObj()[k()] = f()` runs
+   `getObj, k, get x, f, getObj, k, get x, set x`, where JavaScript runs `getObj, k, f, set x`. Both
+   case modes give the same counts, since the fixture's objects are referenced and not copied.
+2. **Read events report every hop of an assignment target twice, and `x++` reports nothing** (M2).
+   - `a.b = 1` reports `a, a.b, a, a.b`, and `a.b.c = 1` reports each of its three hops twice.
+   - `y = x` reports `y`, the target.
+   - `x++` and `++x` emit **no read event**, so `createDependencyTracker` records nothing, while
+     `a.b++` reports `a` and `a.b` once each.
+   - Node hooks see the target `MemberExpression` enter and exit, then its object a second time after
+     the right side. The trace records the object twice.
+3. **Nothing in the suites pins today's behaviour** (M4): § 0 rule 10.
+4. **Update's shape needs the funnel's check added** (M4, probe P2): § 0 rule 12. The check runs on
+   the compound target's read value, with the target node as the node. With it, every listed-function
+   row that reads stays refused with today's message (M1b, under the prototype).
+5. **The identifier write path refuses no blocklisted name; only the operand walk does** (M1c).
+   - `constructor++` today writes an own `constructor` key, with `NaN`, onto the caller's context
+     (case-sensitive), or into the `Registry` copy (`caseInsensitive`).
+   - `constructor = 1` is refused today only because the target is walked.
+   - So the `=` resolver keeps `refuseDangerousName` and `refuseDangerousMatch`, and under the
+     prototype `constructor = 1`, `__proto__ = 1` and `toString = 1` stay refused. Whether `++` should
+     refuse too is § 8 q5.
+6. **A44 is wider than the register's table** (M1e, M1f).
+   - A computed literal key, `obj["X"] = 2`, creates the new key too.
+   - On a class instance, `c.G = 1` under `caseInsensitive` creates an own `G` and never calls the
+     prototype's setter `g`. Under the prototype the setter is called once and nothing is created.
+   - `obj.X ||= 2` short-circuits on the matched `x`, so it writes nothing either way.
+7. **Under `caseInsensitive`, the read path reads a prototype accessor twice** (M1f). The lookup tests
+   `obj[key]` (`member-expression.ts:226`) and then reads `obj[foundKey]`. So `c.g` calls the getter
+   twice, and `c.g += 1` calls it twice even under the prototype, against JavaScript's once. D6 keeps
+   the read path's shape, so D1's "reads it once" cannot hold for this case: § 8 q2.
+8. **The context branch reads what it tests** (M1j). `this.g` calls a getter on the context twice,
+   once through `get` and once through `getThis`. `this.g = 1` calls it four times today, and once
+   under the prototype, where JavaScript calls it zero times. Under `caseInsensitive`, `getKey`
+   consults a lookup function. So `x = 1` calls a lookup twice today and once under the prototype
+   (once and zero times case-sensitive). D6 names `getThis` and `getKey` as the resolver's: § 8 q3.
+9. **Two write targets miss the data entirely, today and under the prototype** (M1d, M1h, M1i).
+   - **`this.k = 5` under `caseInsensitive`** writes an own JavaScript property `k` onto the context's
+     `Registry` copy. Its map is not changed, so `get('k')` still reads `1`. `getThis` answers the
+     original, and the original is the copy.
+   - **A member of an `EvalScope` held as a value**, `ns.k = 5`, writes an own property onto the
+     `EvalScope` instance. Its context is untouched, a later `ns.k` still reads the old value, and
+     `ns._context = 9` replaces the scope's context. The read goes through `EvalScope.get`; the write
+     never reaches `EvalScope.set`.
+
+   D1–D6 do not decide either: § 8 q4.
+10. **`eval-signals` observes D2, and nothing else** (M5).
+    - `count = 5` over a signal context records `count` today and is recomputed when `count` changes.
+      Under the prototype it records nothing and is not recomputed: the cached `SignalContextWriteError`
+      is rethrown.
+    - `user.name = "Bob"` records `user` and `user.name` today, and `user` alone under the prototype.
+    - The error's class, `kind` and `key` are unchanged, and so is every expression that does not throw.
+
+    So the change is visible through `EvalSignal.dependencies` and recompute counts, on expressions
+    that throw on every recompute (§ 8 q7).
+11. **The timing harness has to be paired and signed** (M6): § 0 rule 11.
+    - Over twelve A/A rotations the paired medians were −0.45% (member read), +2.46% (member write),
+      +0.54% (member compound) and −0.12% (identifier write).
+    - The read was positive in 5 rotations of 12, and the write in 7.
+    - The `caseInsensitive` paths could not be timed stably (M7), so they stay out of the decision
+      rule.
+
+### 1.3 Measurements run for this plan
+
+M1, M2, M6 and M7 were throwaway scripts outside the repository, run in plain Node against the
+production bundle built at db287da, with `@angular/compiler` loaded. M6's bundle copies sat under the
+git-ignored `dist/`, so that their bare imports resolved, and were deleted after. Each evaluation was
+`evaluate(parse(…, { ecmaVersion: 2022 }), EvalState.fromContext(…))`, and every row was also run
+natively beside it. M4 and M5 used a throwaway prototype of D1–D4 in the library, applied twice. M5
+also used a throwaway spec in `eval-signals`. The prototype was **reverted** with `git restore` and the
+spec deleted before this commit: `git status` showed a clean tree, and the bundle was rebuilt from
+db287da. The prototype's bundle was measured with the same scripts.
+
+| ID | Question | Method | Result |
+| :--- | :--- | :--- | :--- |
+| M1 | Effects of assignment targets: value, getter and setter counts, call order, which object and key are written | Scripts M1a–M1j, both case modes, against the HEAD bundle and the prototype's | § 1.4's tables |
+| M2 | Read events, node-hook `before`/`after` and the trace | An `EvalHooks` with `onRead` and `on('before'/'after', '*')`, plus `createDependencyTracker`, over 16 expressions in both modes | § 1.4, table M2 |
+| M3 | What pins today's behaviour | `git grep` over specs, READMEs, `SECURITY.md`, CHANGELOGs and the downstream sources, for `A44`, `A45`, read-event counts, assignment-target wording and `createDependencyTracker` on a written path | § 1.5 |
+| M4 | Whether any existing case observes D1–D4 | The prototype in the library; `nx run-many -t test --parallel=1` over all four projects; then one probe at a time, each an environment switch in the prototype, re-running `eval-core` | All green: 2880 / 443 / 380. Funnel check removed (P2): 1 red, `should refuse fetch ||= 1 with the funnel's message`. Identifier compound read event removed: 2 red, part 1's `should report a read of a and none of b for a short-circuited a ||= b`, both modes. A44's match removed: 0 red |
+| M5 | What `eval-signals` observes | A throwaway spec: `createEvalSignal(…, { trackDependencies: true })` over 7 expressions, `compiler.createState` spied on as the recompute counter, one source signal changed between two reads; run at HEAD and under the prototype | Finding 10; § 1.4, table M5 |
+| M6 | The timing baseline | One process per bundle and path; a cached AST and a fresh `EvalState` per evaluation; 15 rounds of 60,000 per process, after 20,000 warm-up; per-round µs, min and median. Bundle order alternated by rotation, children run one at a time. An A/A pair of the HEAD bundle, six rotations and then twelve; then HEAD against the prototype on the member read, twelve rotations | § 1.4, table M6 |
+| M7 | Whether the `caseInsensitive` paths can be timed | The same harness with `caseInsensitive`, and three standalone growth checks | Not stably: § 1.4, table M6's note |
+
+### 1.4 The measurements
+
+**M1a — getters, setters, calls and order.** `o.g` is an own accessor whose value is `1`, or `0`
+where marked. `t` is a proxy over `{ x: 10 }` that logs `get` and `set`. `getObj`, `k` and `f` log
+their calls. Both modes gave identical rows, today and under the prototype.
+
+| Expression | Today | JavaScript | Prototype | Step |
+| :--- | :--- | :--- | :--- | :---: |
+| `o.g = 1` | get 2, set 1 | get 0, set 1 | = JavaScript | 3 |
+| `o.g += 1` | get 2, set 1 | get 1, set 1 | = JavaScript | 2 |
+| `o.g &&= 1` | get 2, set 1 | get 1, set 1 | = JavaScript | 2 |
+| `o.g \|\|= 1`, getter `0` | get 2, set 1 | get 1, set 1 | = JavaScript | 2 |
+| `o.g ??= 1`, short-circuits | get 1, set 0 | get 1, set 0 | = JavaScript | — |
+| `getObj().x = 1` | `getObj, get x, getObj, get x, set x=1` | `getObj, set x=1` | = JavaScript | 3 |
+| `t[k()] = f()` | `k, get x, f, k, get x, set x=5` | `k, f, set x=5` | = JavaScript | 3 |
+| `getObj()[k()] = f()` | `getObj, k, get x, f, getObj, k, get x, set x=5` | `getObj, k, f, set x=5` | = JavaScript | 3 |
+| `getObj()[k()] += f()` | `getObj, k, get x, f, getObj, k, get x, set x=15` | `getObj, k, get x, f, set x=15` | = JavaScript | 2 |
+| `getObj()[k()] \|\|= f()`, short-circuits | `getObj, k, get x` | the same | the same | — |
+| `getObj()[k()] &&= f()` | `getObj, k, get x, f, getObj, k, get x, set x=5` | `getObj, k, get x, f, set x=5` | = JavaScript | 2 |
+| `getObj().x++` | `getObj, get x, set x=11` | the same | the same | — |
+
+**M1b — a listed function as the target** (`globalThis.fetch`, both modes alike). "Refused" is
+`Access to dangerous function "fetch" is blocked for security reasons`, with the function left in
+place.
+
+| Expression | Today | Prototype | JavaScript | Step |
+| :--- | :--- | :--- | :--- | :---: |
+| `fetch = 1`, `obj.fetch = 1` | refused | writes `1` | writes `1` | 3 |
+| `fetch += 1`, `obj.fetch += 1` | refused | refused | reads, then writes a string | — |
+| `fetch \|\|= 1`, `obj.fetch \|\|= 1`, `obj.fetch &&= 1` | refused | refused | reads | — |
+| `fetch++`, `obj.fetch++` | `NaN`, writes `NaN` | the same | the same | — |
+
+**M1c — blocklisted names as targets** (identical today and under the prototype). "Refused" is
+`Access to dangerous property "<name>" is blocked for security reasons`.
+
+| Expression | Case-sensitive | `caseInsensitive` |
+| :--- | :--- | :--- |
+| `constructor = 1`, `__proto__ = 1`, `toString = 1`, `constructor += 1` | refused | refused |
+| `o.constructor = 1`, `o.__proto__ = 1`, `o["__proto__"] = 1`, `o.constructor++` | refused | refused |
+| `constructor++` | `NaN`, and the caller's context gains an own `constructor` | `NaN`, written into the `Registry` copy |
+| `__proto__++` | `NaN`, nothing changes | the same |
+| `CONSTRUCTOR = 1` | writes `CONSTRUCTOR` | writes it into the copy |
+| `o.CONSTRUCTOR = 1` | writes `CONSTRUCTOR` on `o` | refused, as `"constructor"`, by the resolved-key check |
+
+**M1d — `this.k` and an `EvalScope` value.** The context is `{ k: 1 }`.
+
+| Expression | Case-sensitive | `caseInsensitive` |
+| :--- | :--- | :--- |
+| `this.k = 5`, `this.k += 5`, `this.k++` | writes the caller's `k` | gives `5`, `6`, `1`, and writes an own property `k` on the `Registry`; `get('k')` stays `1` |
+| `this.K = 5` | refused, `Write to the evaluation context is blocked for security reasons` | the same as `this.k = 5` |
+| `this.z = 5` | refused, the same message | refused, the same message |
+
+The prototype gave the same rows.
+
+**M1e — A44 under `caseInsensitive`, on `{ obj: { x: 1 } }`.** Case-sensitive rows behave as written
+and do not change.
+
+| Expression | Today | Prototype |
+| :--- | :--- | :--- |
+| `OBJ.X = 2`, `obj.X = 2`, `obj["X"] = 2` | `2`; `obj` is `{ x: 1, X: 2 }` | `2`; `{ x: 2 }` |
+| `OBJ.X += 1`, `++OBJ.X` | `2`; `{ x: 1, X: 2 }` | `2`; `{ x: 2 }` |
+| `OBJ.X++` | `1`; `{ x: 1, X: 2 }` | `1`; `{ x: 2 }` |
+| `obj.X &&= 2` | `2`; `{ x: 1, X: 2 }` | `2`; `{ x: 2 }` |
+| `obj.X \|\|= 2` | `1`; unchanged | the same |
+| `obj.Y = 2` | `{ x: 1, Y: 2 }`, the key as spelled | the same |
+
+**M1f — a prototype accessor**, `class C { get g(); set g(v) }`, against an own accessor.
+
+| Expression | Case-sensitive today → prototype | `caseInsensitive` today → prototype | JavaScript |
+| :--- | :--- | :--- | :--- |
+| `c.g` | get 1 → 1 | **get 2 → 2** | get 1 |
+| `c.g = 1` | get 2, set 1 → get 0, set 1 | get 4, set 1 → get 0, set 1 | get 0, set 1 |
+| `c.g += 1` | get 2, set 1 → get 1, set 1 | get 4, set 1 → **get 2**, set 1 | get 1, set 1 |
+| `c.g++` | get 1, set 1 → the same | get 2, set 1 → the same | get 1, set 1 |
+| `c.G = 1` | own `G` created → the same | get 2, own `G` created, setter not called → get 0, set 1, nothing created | — |
+| own accessor `o.g` | get 1 | get 1 | get 1 |
+
+**M1g — an identifier target with a getter on the context**, `{ get x(), set x(v) }`, `x` holding
+`0`. Under `caseInsensitive` the getter is read when the context is copied, before the walk, so both
+counts there are 0 today and under the prototype.
+
+| Expression | Case-sensitive today | Prototype | JavaScript (`with`-style) |
+| :--- | :--- | :--- | :--- |
+| `x = 1` | get 1, set 1 | get 0, set 1 | get 0, set 1 |
+| `x += 1`, `x \|\|= 1`, `x++` | get 1, set 1 | the same | get 1, set 1 |
+
+**M1h and M1i — an `EvalScope` held as a value.** For `new EvalScope({ k: 1 }, { global: true })`,
+`ns.k` reads `1`. `ns.k = 5`, `ns.k += 5` and `ns.k++` give `5`, `6` and `1`, and each adds an own `k`
+to the instance. The scope's context stays `{ k: 1 }`, and a later `ns.k` reads `1`. A namespaced
+scope reads `undefined` for `ns.k`, by `EvalScope.get`'s rule, and its writes land on the instance
+the same way. `ns._context = 9`, `ns._options = 9` and `ns.type = 9` each replace that field. The
+prototype gave the same rows.
+
+**M1j — what the context branch and an identifier write still read.**
+
+| Expression | Case-sensitive today → prototype | `caseInsensitive` today → prototype |
+| :--- | :--- | :--- |
+| `this.g` (getter on the context) | get 2 → 2 | get 0 → 0 (copied) |
+| `this.g = 1` | get 4, set 1 → **get 1**, set 1 | get 0, **set 0** → the same (finding 9) |
+| `this.g += 1` | get 4, set 1 → get 2, set 1 | get 0, set 0 → the same |
+| `g = 1` | get 1, set 1 → get 0, set 1 | 0 → 0 |
+| `x = 1`, a lookup answering `x` | 1 lookup call → **0** | 2 → **1** (`getKey`) |
+| `x += 1`, the same lookup | 1 → 1 | 2 → 2 |
+
+**M2 — read events, node hooks and trace.** Both modes gave identical rows. `Program` and
+`ExpressionStatement` are left out. "Reads" lists `kind:key@path`.
+
+| Expression | Reads today | Reads, prototype | Nodes and trace today | Nodes and trace, prototype | Step |
+| :--- | :--- | :--- | :--- | :--- | :---: |
+| `x = 1` | `x` | none | target `Identifier` walked | `Literal` only | 3 |
+| `x += 1`, `x \|\|= 1` (`x` = 0) | `x` | `x` | target walked | `Literal` only | 2 |
+| `x++`, `++x` | **none** | none | `UpdateExpression` only | the same | — (§ 8 q1) |
+| `a.b = 1` | `a, a.b, a, a.b` | `a` | `MemberExpression` walked, then `Identifier a` again; trace `Identifier MemberExpression Literal Identifier` | `Identifier a`, `Literal` | 3 |
+| `a.b += 1`, `a.b \|\|= 1` | `a, a.b, a, a.b` | `a, a.b` | as `a.b = 1` | `Identifier a`, `Literal` | 2 |
+| `a.b++` | `a, a.b` | the same | `Identifier a` | the same | — |
+| `a.b.c = 1` | `a, a.b, a.b.c` twice | `a, a.b` | the chain walked, then `a.b` again | `MemberExpression a.b`, `Literal` | 3 |
+| `a.b.c += 1` | `a, a.b, a.b.c` twice | `a, a.b, a.b.c` | as above | `MemberExpression a.b`, `Literal` | 2 |
+| `a.b.c++` | `a, a.b, a.b.c` | the same | `MemberExpression a.b` | the same | — |
+| `a[k] = 1` | `a, k, member b` twice | `a, k` | both `Identifier`s twice | `a`, `k`, `Literal` | 3 |
+| `a[k] += 1` | `a, k, member b` twice | `a, k, member b` | as above | `a`, `k`, `Literal` | 2 |
+| `this.x = 1` | `member x` twice | none | `ThisExpression` twice | `ThisExpression` once | 3 |
+| `y = x` | `y, x` | `x` | `Identifier y`, `Identifier x` | `Identifier x` | 3 |
+
+The dependency sets follow the reads: `a.b = 1` gives `{a, a.b}` today and `{a}` under the
+prototype. `a[k] = 1` gives `{a, k}` in both, since a computed member contributes no path.
+
+**M5 — what `eval-signals` observes.** `trackDependencies: true`. "Recomputes" counts
+`createState` calls over two reads with one change in between.
+
+| Expression | Today | Prototype |
+| :--- | :--- | :--- |
+| `count = 5` | `SignalContextWriteError` (`kind` `key`, `key` `count`); deps `{count}`; recomputes 2 | the same error; deps `{}`; **recomputes 1** |
+| `count += 5` | the error; deps `{count}`; 2 | the same |
+| `user.name = "Bob"` | `SignalContextWriteError` (`member`, `name`); deps `{user, user.name}`; 2 | the same error; deps `{user}`; 2 |
+| `user.name += "Bob"` | the error; deps `{user, user.name}`; 2 | the same |
+| `user.a.b = 1` | the error (`member`, `b`); deps `{user, user.a, user.a.b}`; 2 | deps `{user, user.a}`; 2 |
+| `let o = { a: count }; o.a = 1; o.a + count` | `2`, then `3`; deps `{count}`; 2 | the same |
+| `let o = { a: count }; o.a += 1; o.a` | `2`, then `3`; deps `{count}`; 2 | the same |
+
+**M6 — the timing baseline**, in µs per evaluation, as per-process medians.
+
+| Path | Expression | A/A, 12 rotations: A's medians, low–high | Paired deltas, B vs A | Median delta | Positive |
+| :--- | :--- | :--- | :--- | ---: | ---: |
+| member read | `obj.x` | 0.854–1.101 | 1.9, −3.0, −0.4, −4.6, −12.2, −17.6, 0.8, −11.9, 0.4, −1.9, 2.0, 0.9 | −0.45% | 5 / 12 |
+| member write | `obj.x = 1` | 1.251–1.505 | −13.6, −1.9, 2.5, 2.9, 12.6, 5.6, 2.6, 16.3, −1.3, −11.7, 1.9, −2.6 | +2.46% | 7 / 12 |
+| member compound | `obj.x += 1` | 1.249–2.244 | 3.1, 2.2, 1.2, 10.0, −6.2, −0.0, −0.2, −1.7, −1.5, −19.1, 0.5, 12.1 | +0.54% | 6 / 12 |
+| identifier write | `x = 1` | 0.908–2.162 | 27.6, −1.9, −5.9, −2.2, −14.0, 4.6, −0.1, 15.3, 15.1, 98.4, −9.1, −51.9 | −0.12% | 6 / 12 |
+| member read, **prototype** vs HEAD | `obj.x` | 0.714–1.222 | 8.5, 24.9, 2.5, 3.8, −13.8, −0.1, −0.1, −1.9, −13.8, 0.1, −19.8, 2.7 | +0.12% | 6 / 12 |
+
+The first A/A run, of six rotations, read 0.564–0.878 µs on the member read, with a median delta of
++6.51% between two copies of one bundle. Its last two rotations ran about 1.5× slower across every
+path, so it is recorded and not used. The prototype row measures the fifth tuple slot alone: the
+prototype's write paths carried environment switches, which cost time on those paths, so it was timed
+on the read only. **M7**: under `caseInsensitive`, every path costs about 5.5–6 µs, an identifier read
+included, because the context is copied per evaluation. In the harness the write path's medians were
+bimodal, 6.7–66 µs at the same settings, while three standalone runs measured a steady 10.5–11 µs with
+no heap growth and no difference between a shared and a fresh options object. That is unexplained, so
+the `caseInsensitive` legs are reported and never decide.
+
+### 1.5 What pins today's behaviour (M3), and the step that changes it
+
+| Where | What it says or asserts | Step |
+| :--- | :--- | :--- |
+| `assignment-expression.spec.ts:120`, part 1 | `fetch \|\|= 1` refused by the funnel; `a \|\|= b`'s read hooks when it short-circuits | Stay green and unedited: steps 2 and 3 must keep them (P2 and probe 2.iii guard them) |
+| `update-expression.spec.ts:19-23` | The `caseInsensitive` leg avoids case-variant spellings because of A44 | 3: the docblock is rewritten and the 36 rows added |
+| `SECURITY.md:188-191` | "Reads that only inspect the value throw too": `fetch = 1` and `obj.fetch = 1` | 5: the bullet goes |
+| `SECURITY.md:196-203` | "only an assignment reads its target as an operand", so only an update overwrites a listed function | 5: rewritten, since `=` then overwrites one as an update does |
+| `SECURITY.md:64-67` | "Identifiers are checked before any lookup" | Holds, because step 3's resolver keeps the checks (finding 5); its probe 3.ii proves it |
+| `modules/eval-core/README.md:277-282` | The `AssignmentExpression` and `UpdateExpression` rows say nothing about reads or A44 | 5 |
+| `modules/eval-core/README.md:511` | `onRead` fires "once per resolved context read" | Holds. Step 5 adds what an assignment target reports |
+| `modules/eval-core/README.md:354` | `caseInsensitive` "applies to identifiers and to member names alike" | True of reads only until step 3. Step 5 states the write side |
+| `modules/eval-core/CHANGELOG.md:22`, `:32` | Published sections link `backlog.md#a45` and `#a44` | 5: link targets only, re-pointed to `backlog-retired.md` when both retire; the wording stays |
+| `docs/side-effects/phase-1-plan.md:274-280` | `a.b = 1` reports a read of `a.b`, "by design" | Stays as written, as a design record. D2 reopens it here |
+| `modules/eval-signals/README.md:237` | An assignment throws `SignalContextWriteError` "on the first read" | Holds (M5) |
+| `modules/eval-signals/README.md:74-77` | Angular records dependencies "exactly as the walk performed it" | Holds. M5 shows that the walk performs fewer reads |
+| `modules/eval-forms/README.md:179`, `:640` | "the expression named `country`, so it recomputes when `country` changes" | True of every rule that reads a key. A write-only rule names its target and no longer reads it, and such a rule throws on every recompute anyway (`:454`). § 8 q7 |
+| `eval-forms` `reactive/…/field-schema.spec.ts:271`, `signals/…/evaluate-rule.spec.ts:199`, `signals/…/rules.spec.ts:297`; `eval-forms` README `:454` | "illegal on every recompute with every dataset" | Holds: the write throws whether or not its target was read |
+| `eval-signals` `track-dependencies.ts` | Respells first segments from identifier reads | No change: it consumes whatever reads arrive |
+| `createDependencyTracker` on a written path | No spec in any project asserts one (M4: green) | Step 1 pins it (group R) |
+| The trace surface | No spec asserts an assignment target's trace entries (M4: green) | Step 1 pins it (group R) |
+
+---
+
+## 2. Decisions — recorded, not reopened
+
+Fixed by the request of 2026-10-23, before this plan was committed.
+
+- **D1. A member target's object and key are evaluated once.** `=` never reads the target's value,
+  and a compound or logical operator reads it once. Effects happen in JavaScript's order: object, key,
+  the read where there is one, the right side, then the write.
+- **D2. Read events follow the reads.**
+  - `a.b = 1` reports `a`, and any intermediate hops, and not `a.b`.
+  - `x = 1` reports nothing.
+  - A compound or logical assignment reports one read of its target.
+
+  **This reopens Phase 1's decision**
+  ([`side-effects/phase-1-plan.md`](../side-effects/phase-1-plan.md):274-280) that "assignment and
+  update targets emit read events", so that `a.b = 1` reports a read of `a.b`. Its reason was that
+  "resolving the assignment target genuinely reads `a` from the context, and a tracker that filtered
+  it would miss a real dependency on the object being written to".
+  - **That reason survives.** The dependency on the written object is the read of `a`, and D2 keeps
+    it: M2 shows `a` reported under the prototype, and M5 shows `user` still recorded.
+  - **What is reopened is the read of the property itself.** It is not a read JavaScript makes for
+    `=`. It was an artefact of walking the target as an operand, and it was made twice (M2).
+  - **It has costs beyond the event**: a getter called, a host function called again after the right
+    side, and a funnel refusal of a write (M1a, M1b).
+
+  Phase 1's other reason, that emitting inside `evaluateMember` makes the call path's read reachable,
+  is unaffected, since calls keep that path. The update half of the old decision is not reopened. For
+  a member it already matches D2, and an identifier update's missing read event is § 8 q1.
+- **D3. The target is not walked as an operand, as `update-expression.ts` already does.** Node hooks
+  and the trace see the object and a computed key, not the target node. For an identifier target,
+  nothing of the target is walked: the node hooks and the trace see the right side alone (M2).
+- **D4. A44 joins.** Under `caseInsensitive`, the write goes to the key the lookup matched, in
+  assignment and in update. With no match, it goes to the key as spelled.
+- **D5. `eval-core` 0.14.0, a breaking minor**, on the precedent of 0.8.0. `eval-signals` and
+  `eval-forms` release to widen their peer ranges. Whether either changes behaviour, and so its
+  version, is measured: M5 is that measurement for `eval-signals`, and § 8 q7 carries the result to
+  step 6's gate.
+- **D6. `evaluateMember`'s read path keeps its shape.**
+  - Compound and logical member targets take update's shape: one `evaluateMember` call.
+  - `=` gets its own resolver. It evaluates the object and the key, runs the context branch's
+    `getKey`, `getThis` and key checks, and applies A44's key match, with no value read.
+  - The member read and the member write are measured before and after, with the M19/M20 harness and
+    rotation discipline (§ 3.8, step 4).
+
+---
+
+## 3. Design
+
+### 3.1 What each target does after step 3
+
+| Target and operator | Evaluated | Read | Read events | Node hooks and trace see | Write key under `caseInsensitive` |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `x = v` | nothing of the target | none | none | the right side | `getKey(x) ?? x`, as today |
+| `x op= v`, `x ??= v` and the other logical operators | nothing walked | once, through the identifier's own read: blocklist checks, `get`, the read event, then the funnel's check | one, `x` | the right side | `getKey(x) ?? x`, as today |
+| `o.k = v` | object, then a computed key | none | the object's own reads only | the object and a computed key | the key the lookup matched, found without a read |
+| `o.k op= v` and the logical operators | one `evaluateMember` | once, then the funnel's check | the object's, plus one for `o.k` | the object and a computed key | `evaluateMember`'s matched key (its fifth slot) |
+| `x++` | unchanged | once | **none, as today** (§ 8 q1) | the update only | unchanged |
+| `o.k++` | unchanged: one `evaluateMember` | once | the object's, plus one for `o.k` | the object and a computed key | **the matched key** (D4) |
+
+The value stack is unchanged: each visitor still pushes one value, and pops one per walked child. Part
+1's short-circuit runs on the value of the single read.
+
+### 3.2 Compound and logical targets — update's shape, plus the funnel (step 2)
+
+A member target is resolved by one `evaluateMember(target, st, callback)` call, as
+`update-expression.ts:47` does. Its object, key and value are kept, and there is no `callback(node.left)`
+and no second call after the right side. An identifier target is not walked. Its value comes from the
+identifier visitor's own read, exported from `identifier.ts`. That read runs `refuseDangerousName`,
+`refuseDangerousMatch` under `caseInsensitive`, `get` (with the literal fallback under
+`caseInsensitive`) and the read event, but it neither pushes nor dispatches node hooks.
+
+**Then the funnel's check runs on the value**, with the target node as the node: the same two tests
+`pushVisitorResult` makes, factored so that both call one function (§ 0 rule 12). Without it,
+`obj.fetch += 1` would write the function's text followed by `1`, and `fetch ||= 1` would stop being
+refused (M4, P2). Factoring keeps a single definition of what the funnel refuses. The push-path cost is
+measured in step 4, since `pushVisitorResult` runs per node.
+
+### 3.3 The `=` resolver (step 3)
+
+**For an identifier**, the target is not walked. The resolver runs `refuseDangerousName`, and under
+`caseInsensitive` `refuseDangerousMatch`, both exported from `identifier.ts` for this one use. It reads
+nothing, emits no event, and leaves the write path as it is: `getKey` under `caseInsensitive`, then
+`assignToBinding` with A46's check. Without the two checks, `constructor = 1` would write an own
+`constructor` onto the caller's context, as `constructor++` already does (finding 5).
+
+**For a member**, a new internal `resolveMemberTarget(node, st, callback)` sits beside `evaluateMember`
+in `member-expression.ts` and returns `[object, key]`:
+- the object is marked by `markThisPositional`, walked and popped, with `node.optional` treated as
+  `evaluateMember` treats it;
+- the key is read as `evaluateMember` reads it: a dotted name, a computed literal, or a computed
+  expression, walked and popped;
+- **the context branch**: the blocklist check, then under `caseInsensitive` `getKey` and the
+  resolved-key check, then `getThis(contextKey) ?? object`. `getThis` reads the value it tests (§ 8 q3);
+- **the `EvalScope` branch**: the blocklist check, and `[object, key]` (§ 8 q4);
+- **any other object**: under `caseInsensitive`, for a string key, the primitive or full blocklist
+  check. Then the key is matched without a read: the own-key cache, then `key in object`, then the
+  prototype's own names. Where `evaluateMember` reads `obj[key]`, the resolver uses `in`. The
+  resolved-key check runs on the match. Case-sensitive, a primitive's key gets the primitive subset's
+  check. Without that check, `s.constructor = 1` would throw `Cannot set property on non-object`,
+  where today it throws the dangerous-property message.
+
+The write is then made as today: `consultMemberWrite` with the resolved object and key, and then
+`safeSetProperty`.
+
+### 3.4 A44 in both visitors (step 3)
+
+`evaluateMember` already computes the key its lookup matched, `resolvedKey`, for the read event. It
+returns it in a **fifth tuple slot**: the context branch gives `contextKey`, the `EvalScope` branch
+the key, and the plain branch `resolvedKey`. Update's member branch and the compound branch write to
+that slot. The four-slot callers, the call and tag paths, are unchanged. M6 measured the slot at
++0.12% on the member read, positive in 6 of 12 rotations. `=` takes its key from the resolver.
+
+### 3.5 `SECURITY.md`, the README and the CHANGELOG (step 5)
+
+- **`SECURITY.md`**:
+  - The "an assignment's target" bullet under "Reads that only inspect the value throw too" goes.
+  - The paragraph "No write path refuses overwriting a listed function" is rewritten. `fetch = 1` and
+    `obj.fetch = 1` now write, as `obj.fetch++` does. `fetch += 1`, `fetch ||= 1` and their member
+    forms stay refused, since they read the target, as `fetch || 1` is refused.
+  - "Identifiers are checked before any lookup" stays, now true of an `=` target by the resolver.
+  - `public-api.spec.ts`'s identifier case stays green.
+- **The README**:
+  - The `AssignmentExpression` row says what an assignment target reads and reports. The `onRead`
+    paragraph gains one sentence: `a.b = 1` reports `a`, `x = 1` nothing, and a compound or logical
+    assignment one read of its target.
+  - The case-insensitive section says that a member write reaches the key the read would match, since
+    0.14.0. `UpdateExpression`'s row says the same.
+  - Each sentence gets a probe that breaks the document (§ 0 rule 9) where a spec reads it.
+- **The CHANGELOG**: the `[Unreleased]` entries steps 2 and 3 added are consolidated under `### Breaking`
+  and `### Fixed`, with the README's own line.
+
+### 3.6 Read events, node hooks and the trace
+
+M2's prototype column is the contract, row by row. Step 1 pins today's column; steps 2 and 3 move
+each marked row to the prototype's.
+
+### 3.7 Versions and the downstream packages
+
+`eval-core` 0.14.0, a breaking minor (D5). The `.d.ts` is expected to be byte-identical to 0.13.3's,
+since nothing under `internal/visitors` is published (`src/public-api.ts`); step 6 checks it.
+`eval-signals` and `eval-forms` each widen `@zvenigora/ng-eval-core` to admit 0.14.0. Whether each
+floor moves, and whether each is a patch or a minor, is § 8 q7, decided at step 6's gate from M5 and
+from the same probe run against `eval-forms` at that gate. If `eval-signals` becomes 0.7.0,
+`eval-forms`' `>=0.6.0 <0.7.0` must widen too.
+
+### 3.8 Performance — the decision rule, stated in advance
+
+**Method** (step 4), the M6 harness unchanged:
+- Two production bundles: the plan commit's, which is db287da's code, and step 3's.
+- Plus an A/A control, the plan commit's bundle against a copy of itself, in the same run.
+- Four paths: member read `obj.x`, member write `obj.x = 1`, member compound `obj.x += 1`, identifier
+  write `x = 1`.
+- Twelve rotations, with the bundle order alternated, one process per bundle and path, children run
+  one at a time, never in parallel with any other nx or Jest run.
+- 15 rounds of 60,000, after 20,000 warm-up, on a cached AST with a fresh `EvalState` per evaluation.
+  Per-process median, paired within each rotation.
+
+**The run is void** when the A/A control meets the regression test below on any path, or when its
+paired median delta on any path exceeds ±3%. A void run is repeated, and it is reported, not dropped.
+
+**A regression on a path** is a paired median delta above **+3%** together with **at least 10 of 12
+rotations positive**. Under the null, 10 or more positives in 12 arise with probability about 1.9%.
+Applied to M6's A/A data, the test flags nothing: 5, 7, 6 and 6 positives.
+- The member read and the member write decide. A regression on either stops the step. The step
+  reports it, commits nothing but its outcome, and § 8 gains the question.
+- The member compound and the identifier write are reported and do not decide. Both are expected to
+  get cheaper, since a walk and a second `evaluateMember` are removed.
+- The `caseInsensitive` legs are reported only (M7).
+- `performance.spec.ts` stays green and untouched in every step. It is structural, and the
+  member-write case at `:400` constrains steps 2 and 3 directly.
+
+---
+
+## 4. Work breakdown
+
+Each step is one commit, leaves all three projects and the workspace root green, and runs in its own
+session. The code-reviewer runs at each step's exit criteria, before the commit, steps 4, 6 and 7
+included. "Wrong" in a probe names the change the executor makes to show the criterion can go red. Each
+probe is applied alone and reverted, and its red cases are named (§ 0 rule 8).
+
+**The request's step shape is changed in two places.**
+1. **Compound identifier targets join step 2.** The request placed "compound and logical member
+   targets" in step 2 and "the `=` resolver, identifier and member" in step 3. That leaves `x += 1`,
+   which D3 says is not walked, in no step.
+2. **Steps 2 and 3 each add their own `[Unreleased]` line.** A shipped file changed carries its
+   CHANGELOG line in the same commit (`.claude/skills/step/SKILL.md`), so step 5 consolidates the
+   entry rather than writing it.
+
+| Step | Subject | Files (main) | Tests: `eval-core` / `eval-signals` / `eval-forms` | Ships in |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Characterisation spec: today pinned, flips marked | new `internal/visitors/assignment-target.spec.ts` | **+164** / 0 / 0 | no package |
+| 2 | Compound and logical targets in update's shape, with the funnel's check | `assignment-expression.ts`, `identifier.ts`, `visitor-result.ts`, the spec's step-2 rows, `CHANGELOG.md` | 0 / 0 / 0 (rows rewritten 1:1) | `eval-core` 0.14.0 |
+| 3 | The `=` resolver; A44 in both visitors | `assignment-expression.ts`, `member-expression.ts`, `update-expression.ts`, `identifier.ts`, the spec's step-3 rows, `update-expression.spec.ts`, `CHANGELOG.md` | **+36** / 0 / 0 | `eval-core` 0.14.0 |
+| 4 | Timing against the rule in § 3.8 | this document only | 0 / 0 / 0 | no package |
+| 5 | `SECURITY.md`, README, CHANGELOG; A45 and A44 retired | `SECURITY.md`, `modules/eval-core/README.md`, `CHANGELOG.md`, the register, link targets | 0 / 0 / 0, or the allowlist's entries | `eval-core` 0.14.0 (README); the rest no package |
+| 6 | Release commit | three `package.json`, three `CHANGELOG.md`, each README's peer line | 0 / 0 / 0 | the releases |
+| 7 | Post-publish commit | the register, `CLAUDE.md`, `docs/README.md`, CHANGELOG dates, this document | 0 / 0 / 0 | — |
+
+From 2880, `eval-core` is at 3044 once step 1 commits and at 3080 once step 3 does. `eval-signals`
+and `eval-forms` stay at 443 and 380 (M4).
+
+### Step 1 — Characterisation spec: today's behaviour pinned, the flips marked
+
+- **New**: `modules/eval-core/src/lib/internal/visitors/assignment-target.spec.ts`.
+  - It holds 82 rows, each run under `describe.each` in both case modes (§ 0 rule 7), so 164 cases by
+    construction; the gate confirms the count.
+  - Every row asserts today's behaviour, beside the same expression run natively where JavaScript has
+    an answer.
+  - Every row carries a `flips` mark, `2`, `3` or none, per mode where the modes differ.
+  - Expectations are recorded per row, never computed from the implementation.
+
+  The groups, from § 1.4:
+  - **E** (M1a): 12 rows. Five flip at step 2, four at step 3, and three are controls.
+  - **F** (M1b): 8 rows. `fetch = 1` and `obj.fetch = 1` flip at 3. Six are controls, asserted by
+    message.
+  - **B** (M1c): 14 rows, all controls, asserted by message. They include `constructor++`, pinned as
+    it is (§ 8 q5), `s.constructor = 1` and `s.x = 1` on a string `s`.
+  - **A** (M1e, and `c.G = 1` from M1f): 11 rows. Eight flip at 3 under `caseInsensitive` only.
+  - **R** (M2): 16 rows, asserting the read events in order, the dependency set, the node-hook
+    sequence and the trace's types. Six flip at 2 and six at 3. `x++`, `++x`, `a.b++` and `a.b.c++`
+    are controls, `x++` pinned with no event (§ 8 q1).
+  - **S** (M1d, M1h): 7 rows, all controls, which pin § 8 q3 and q4's behaviour as it is.
+  - **G** (M1g): 4 rows. `x = 1` flips at 3, case-sensitive only.
+  - **P** (M1f): 4 rows. `c.g = 1` flips at 3 and `c.g += 1` at 2.
+  - **L** (M1j, lookups): 3 rows. `x = 1` and `X = 1` flip at 3.
+  - **C** (M1j, a context getter): 3 rows. `this.g = 1` and `g = 1` flip at 3, `this.g += 1` at 2,
+    case-sensitive only.
+- **Edit**: this document (Revision 2 and the outcome); `.claude/skills/step/SKILL.md`, step 1's
+  state.
+- **Exit criteria**:
+  1. All 164 cases pass against db287da's library code, which step 1 does not touch.
+  2. **The marks are measured, not asserted** (§ 0 rule 10). The executor applies M4's prototype in
+     two stages and reverts it after each, reading the red cases one by one:
+     - **(i)** *Wrong for today*: step 2's half of the prototype alone, compound and logical targets.
+       Exactly the cases marked `2` go red, and nothing else in the suite. Predicted count: 25.
+     - **(ii)** *Wrong for today*: the whole prototype, with A44. Exactly the cases marked `2` or `3`
+       go red, and nothing else. Predicted: 25 + 41.
+
+     A mismatch either way is a wrong mark, corrected in the step before the commit, with the
+     difference in the outcome.
+  3. **(iii)** *Wrong*: every row's `native` comparison run against the evaluator's own result in
+     place of the native run. The rows whose today differs from JavaScript go red, which shows that
+     the native arm is a separate producer (`CLAUDE.md`, "the setup").
+  4. No existing file changes. `git diff --name-only` lists the spec, this document and the skill.
+- **Category**: ships in no package.
+
+### Step 2 — Compound and logical targets in update's shape (D1, D2 and D3 for those operators)
+
+- **Edit**:
+  - `assignment-expression.ts`. For an operator other than `=`, a member target gets one
+    `evaluateMember` call and an identifier target is not walked (§ 3.2). The funnel's check runs on
+    the read value. Part 1's short-circuit runs on that value. `=` keeps today's path until step 3.
+  - `identifier.ts`, which exports the target read of § 3.2.
+  - `visitor-result.ts`, which factors the funnel's two tests into one exported function that
+    `pushVisitorResult` also calls.
+  - The spec: the rows marked `2` are rewritten to JavaScript's expectations, 1:1, and their marks are
+    removed.
+  - `modules/eval-core/CHANGELOG.md`: `[Unreleased]` › Changed, marked breaking. A compound or logical
+    assignment's member target is evaluated once and read once; its read events and node hooks are
+    those of the read.
+  - This document; the skill's state.
+- **Exit criteria**:
+  1. The gate is green at 3044 / 443 / 380. Every step-2 row now equals the native run, and no other
+     row changed. `git diff` on the spec touches only the rows marked `2`.
+  2. **Probes**:
+     - **(i)** *Wrong*: restore the operand walk for compound targets. Exactly the rewritten step-2
+       cases go red.
+     - **(ii)**, P2, *Wrong*: drop the funnel's check on the read value. Red: group F's
+       `fetch += 1`, `obj.fetch += 1`, `obj.fetch ||= 1` and `obj.fetch &&= 1` in both modes, and part
+       1's `should refuse fetch ||= 1 with the funnel's message`. Nothing else.
+     - **(iii)** *Wrong*: drop the identifier read's event. Red: group R's `x += 1` and `x ||= 1` in
+       both modes, and part 1's two short-circuit read-hook cases (M4).
+     - **(iv)** *Wrong*: read through the one `evaluateMember` call, but take the write's object and
+       key from a second call after the right side. Group E's `getObj()[k()] += f()` and
+       `getObj()[k()] &&= f()` go red on their call order, and group P's `c.g += 1` and group C's
+       `this.g += 1` on their getter counts.
+     - **(v)** *Wrong*: apply the shape to `=` as well. Rows marked `3` go red. This shows that the
+       two steps are separable, since they are pinned separately.
+  3. `performance.spec.ts` is green and untouched; part 1's 64 cases are untouched and green.
+- **Category**: ships in `eval-core`'s next release.
+
+### Step 3 — The `=` resolver (D1, D2, D3) and A44 in both visitors (D4)
+
+- **Edit**:
+  - `assignment-expression.ts`: `=` uses the resolver of § 3.3, for an identifier and for a member.
+    The compound branch writes to `evaluateMember`'s fifth slot.
+  - `member-expression.ts`: `resolveMemberTarget`, and the fifth slot.
+  - `update-expression.ts`: the member branch writes to the fifth slot.
+  - `identifier.ts`: the two checks exported for the resolver.
+  - The spec: the rows marked `3` are rewritten to JavaScript's expectations, or to the matched key for
+    group A, and their marks are removed. No mark remains.
+  - `update-expression.spec.ts`: the docblock's A44 sentence is rewritten, and **36 rows** are added.
+    They are the member matrix again under `caseInsensitive`, spelled `OBJ.X` over `{ obj: { x } }`,
+    9 operands by 4 forms, read back through the matched key.
+  - `CHANGELOG.md`: `[Unreleased]` › Changed (breaking), for `=` not reading its target, and the
+    read events that follow; › Fixed, for A44.
+  - This document; the skill's state.
+- **Exit criteria**:
+  1. The gate is green at 3080 / 443 / 380. Every step-3 row equals the native run, or for group A the
+     matched key. No row is left marked.
+  2. **Probes**:
+     - **(i)** *Wrong*: restore the operand walk for `=`, with its second `evaluateMember` call. Every
+       rewritten step-3 case of an `=` row goes red, group A's `=` rows included, since that call
+       returns the key as spelled. Group A's compound and update rows (`OBJ.X += 1`, `OBJ.X++`,
+       `++OBJ.X`, `obj.X &&= 2`) stay green, as do the 36 update rows.
+     - **(ii)** *Wrong*: drop the identifier checks from the resolver. Red: group B's
+       `constructor = 1`, `__proto__ = 1` and `toString = 1`, in both modes, which then write.
+       `SECURITY.md`'s "Identifiers are checked before any lookup" has no other witness.
+     - **(iii)** *Wrong*: drop the resolver's primitive check. Red: `s.constructor = 1`, both modes,
+       on its message.
+     - **(iv)** *Wrong*: drop the resolver's other member key checks, in the context, `EvalScope` and
+       plain branches. Predicted **0 red**, since `safeSetProperty` refuses the same keys with the same
+       message. The result is recorded, and § 8 q6 decides it.
+     - **(v)** *Wrong*: write the key as spelled. Red: group A's eight `caseInsensitive` rows and the
+       36 new update rows.
+     - **(vi)** *Wrong*: match the key by reading `obj[key]`, as `evaluateMember` does. Red: group P's
+       `c.g = 1` under `caseInsensitive`, on its getter count.
+     - **(vii)** *Wrong*: emit a read event for the member target in the resolver. Red: group R's
+       `a.b = 1`, `a.b.c = 1`, `a[k] = 1` and `this.x = 1`.
+  3. `performance.spec.ts` is green and untouched, its member-write case at `:400` included.
+- **Category**: ships in `eval-core`'s next release.
+
+### Step 4 — Timing: member read and member write, before and after
+
+- **Run** § 3.8's method, exactly, against the plan commit's bundle and step 3's.
+- **Edit**: this document only. The outcome records every rotation of every path, the A/A control,
+  and the verdict under § 3.8's rule.
+- **Exit criteria**:
+  1. The run is valid by § 3.8's void rule.
+  2. Neither the member read nor the member write meets the regression test. A path that meets it
+     stops the plan before step 5, and § 8 gains the question.
+  3. The compound, identifier-write and `caseInsensitive` figures are reported.
+- **Category**: ships in no package. The reviewer is run on the step's outcome, the numbers and the
+  rule's application.
+
+### Step 5 — `SECURITY.md`, README and CHANGELOG; A45 and A44 retired
+
+- **Edit**:
+  - `SECURITY.md`, as § 3.5 lists.
+  - `modules/eval-core/README.md`, as § 3.5 lists. If a README block changes, its case in
+    `readme-examples.spec.ts` changes with it, probed by breaking the document.
+  - `CHANGELOG.md`: the README's `[Unreleased]` line, and the consolidation.
+  - `public-api.spec.ts`'s allowlist, only if `SECURITY.md` names a new identifier.
+  - The register: A45 and A44 retire to `backlog-retired.md` as fixed and not yet released, with their
+    index rows re-pointed and "Work in flight" updated.
+  - The published CHANGELOG sections' links to `#a45` and `#a44`: their targets only.
+  - This document; the skill's state.
+- **Exit criteria**:
+  1. The gate is green, doc-links included.
+  2. `git grep -n 'fetch = 1'` finds no claim that the write is refused.
+  3. Each new README sentence that a spec reads has a probe that breaks the document and goes red.
+  4. `SECURITY.md`'s identifier case is green.
+- **Category**: the README line ships in `eval-core`'s next release; the rest ships in no package.
+
+### Step 6 — Release commit
+
+- **Before the commit**: § 8 q7 is answered at the gate, from M5 and from the same probe run against
+  `eval-forms`. The answer fixes each downstream version and floor.
+- **Edit**:
+  - `eval-core` 0.14.0;
+  - `eval-signals` and `eval-forms` at the versions q7 fixes, their ranges widened;
+  - each `CHANGELOG.md`'s `[Unreleased]` moved under its version;
+  - each README's peer line, which the peer-range cases check;
+  - this document.
+- **Exit criteria**:
+  1. The gate is green.
+  2. The built `eval-core` `.d.ts` is byte-identical to 0.13.3's tarball's, or the difference is
+     listed.
+  3. Every peer range admits a consistent set.
+- **Category**: the releases. Publishing and tagging, in the order core → signals → forms, are the
+  maintainer's.
+
+### Step 7 — Post-publish commit
+
+- **Edit**:
+  - the register's Publication status rows and A45's and A44's status lines, with the tags;
+  - `CLAUDE.md`'s versions and active-plan lines;
+  - `docs/README.md`, moving this plan to "Completed tracks";
+  - the skill, back to "none active";
+  - this document's last revision and the track's retrospect.
+- **Exit criteria**: release-tags is green with the new rows, and doc-links is green.
+- **Category**: ships in no package.
+
+---
+
+## 5. Public API surface
+
+None changes. `evaluateMember`, `resolveMemberTarget`, the exported identifier helpers and the
+funnel's function are all under `internal/visitors`, which `src/public-api.ts` does not re-export. The
+release is breaking by behaviour (§ 3.1, M2, M5), not by shape.
+
+## 6. Verification gates
+
+| Gate | Command | Expected |
+| :--- | :--- | :--- |
+| Everything | `npx nx run-many -t lint test build --skip-nx-cache --output-style=static` | Green, every step |
+| `eval-core` tests | (in the above) | +164 in step 1, +36 in step 3, 0 otherwise |
+| `eval-signals` / `eval-forms` tests | (in the above) | 443 / 380 in every step |
+| Perf | `internal/performance.spec.ts` | Green and untouched in every step |
+| Timing | § 3.8's harness | Step 4 only, under the rule stated there |
+| Scope | `git diff --name-status HEAD` | The step's file list; no `R`; no `package.json` before step 6 |
+| Surface | the built `.d.ts` against 0.13.3's tarball | Step 6 |
+
+## 7. Risks
+
+| Risk | Likelihood | Mitigation — the criterion that fails |
+| :--- | :---: | :--- |
+| A compound target stops being refused by the funnel | Certain without § 3.2's check (M4) | Step 2, probe (ii) |
+| `constructor = 1` writes once the walk is gone | Certain without the resolver's checks (M1c) | Step 3, probe (ii) |
+| A mark in the characterisation spec is wrong, so a flip goes unwitnessed | Medium | Step 1, probes (i) and (ii), against the prototype |
+| A consumer relied on `a.b = 1` reporting `a.b`, or on `count = 5` depending on `count` | Low: no case in any suite does (M4) | The `### Breaking` entry; § 8 q7 for the downstream versions |
+| The fifth slot or the factored funnel slows the read or push path | Low: +0.12% measured on the read (M6) | Step 4's rule; `performance.spec.ts` |
+| A host relied on A44's new key | Low | The `### Fixed` entry names the old behaviour |
+| The machine's noise hides a real regression | Medium (M6) | § 3.8's A/A control and its void rule |
+
+## 8. Open questions
+
+None of these is decided here.
+
+1. **`x++` and `++x` emit no read event** (M2). An identifier update reads its target through
+   `context.get` and reports nothing, so `createDependencyTracker` records no dependency for `x++`,
+   while `a.b++` records `a` and `a.b`. Phase 1 calls under-reporting a read the worse failure mode.
+   D2 covers assignments, not updates. Step 1 pins it as it is.
+2. **Under `caseInsensitive`, the read path reads a prototype accessor twice** (M1f, finding 7). So
+   `c.g += 1` reads it twice after step 2, against D1's once. D6 keeps the read path's shape. Is the
+   read path's lookup changed, by an `in` test as the resolver uses, or is the limit documented?
+3. **The context branch reads what it tests** (M1j, finding 8). `getThis` reads the value of the key
+   it answers for, and `getKey` resolves through lookups. So `this.g = 1` calls a getter on the context
+   once, and `x = 1` under `caseInsensitive` calls a lookup once, where D1 says `=` reads nothing. D6
+   names both as the resolver's. Is a presence test added to `EvalContext`, a published class, or is
+   the read documented?
+4. **Two write targets miss the data** (M1d, M1h, M1i; finding 9).
+   - `this.k = v` under `caseInsensitive` writes onto the `Registry` copy as an own property.
+   - A member of an `EvalScope` value is written onto the instance and never through `EvalScope.set`,
+     including `_context` and `_options`.
+
+   Each wants a register entry, a fix, or both.
+5. **An identifier update refuses no blocklisted name** (M1c, finding 5). `constructor++` writes an own
+   `constructor` onto the caller's context, while `constructor = 1` is refused. `SECURITY.md` lists
+   update among the visitors that apply the guard, which is true of its member branch only.
+6. **Two layers, one message** (step 3, probe (iv)). The resolver's member key checks and
+   `safeSetProperty` refuse the same keys with the same text, so the resolver's are depth with no
+   witness. The A35 plan's M20 precedent removed such a check, and § 0 rule 6 asks that a layer be
+   attributable. Keep them, remove them, or give them their own message?
+7. **The downstream versions** (M5, finding 10; D5). `eval-signals`' `dependencies` and recompute
+   count change for an expression that writes a context key or a member. Every such expression throws
+   `SignalContextWriteError` on every recompute. The 0.6.0 precedent forwarded a consumer-observable
+   change as a breaking minor with no shipped code changed. Is this a minor, 0.7.0, or a patch, 0.6.2?
+   And `eval-forms`, which M5 did not measure directly: its suite is green (M4), and its README's "the
+   expression named `country`" (`:179`, `:640`) is true of every rule that reads.
+8. **The `caseInsensitive` timing is unstable in the harness** (M7). It does not decide in step 4. Is
+   a separate harness for that path wanted?
+
+## 9. Contract after this lands
+
+1. An assignment's member target has its object and key evaluated once, in JavaScript's order:
+   object, key, the read where there is one, the right side, the write. `=` reads no value, except
+   what § 8 q3 records for the context branch.
+2. A compound or logical assignment reads its target once, and that value passes the funnel. A listed
+   function as such a target is refused with today's message.
+3. `a.b = 1` reports the reads of `a` and of any intermediate hops. `x = 1` reports nothing. A compound
+   or logical assignment reports one read of its target. Node hooks and the trace see the object and a
+   computed key, never the target node.
+4. Under `caseInsensitive`, an assignment or update writes to the key the lookup matched, and to the
+   key as spelled when nothing matches.
+5. An `=` target that is a blocklisted identifier, a blocklisted member key, or a blocklisted key the
+   lookup matched is refused, with today's message.
+6. **Not provided**: a read event for an identifier update (q1); a single read of a prototype accessor
+   under `caseInsensitive` (q2); an `=` through the context branch that reads nothing (q3); a write
+   through `this` under `caseInsensitive`, or through an `EvalScope` value, that reaches the data (q4).

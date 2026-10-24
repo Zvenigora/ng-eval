@@ -26,8 +26,10 @@ that anchor, `<a id="…"></a>` in the first cell.
 
 ## Active plan
 
-None is active. Phase 10, the last, is complete and listed below. The next plan is listed here when
-it is written.
+- [`a45/plan.md`](a45/plan.md) — [A45](backlog.md#a45) part 2 and [A44](backlog.md#a44): assignment
+  targets as JavaScript evaluates them, released as `eval-core` 0.14.0. Its § 0 collects the failure
+  modes carried forward from earlier plans, § 1.4 holds the measurements, and § 8 the questions it
+  leaves open.
 
 ## Completed phases
 
