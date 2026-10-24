@@ -140,8 +140,10 @@ end, so that 0.13.0, which closes the route through `this`, shipped first.
   [F25](backlog-retired.md#f25) with the plan's § 8 q3, which the phase left undecided.
 
 **The [A45 plan](a45/plan.md) is in flight**: [A45](#a45) part 2 and [A44](#a44), assignment targets
-as JavaScript evaluates them, for `eval-core` 0.14.0. It is at Revision 1, no step has run, and step
-1, the characterisation spec, is next. Its § 8 records eight questions it found and left undecided.
+as JavaScript evaluates them, for `eval-core` 0.14.0. It is at Revision 2, no step has run, and step
+1, the characterisation spec, is next. Revision 2 decided three of its open questions as D7–D9 and
+opened [A48](#a48)–[A52](#a52) for the defects it found and does not fix; its § 8 keeps the
+downstream versions open.
 [F20](backlog-retired.md#f20), [F21](backlog-retired.md#f21),
 [F24](backlog-retired.md#f24) and [F25](backlog-retired.md#f25) are fixed, and ship in no package; F21's toolchain bump left one
 `overrides.nx` entry, `undici`, which [F16](#f16) part 2 holds.
@@ -273,8 +275,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.13.1, `eval-signals` 0.6.1, `eval-forms` 0.6.1 | `5b9c859` | 2026-10-22 | 23 | 5: F21–F25 | 3: F19, F22, F23 | 25 |
 | `eval-core` 0.13.2 | `dc4302d` | 2026-10-22 | 25 | 5: A43–A47 | 4: A40, A41, A43, A46 | 26 |
 | `eval-core` 0.13.3. A45 part 1 closed with it, a part, so A45 stays live; F20 and F24 ship in no package | `021d5e4` | 2026-10-23 | 26 | 0 | 2: F20, F24 | 24 |
-| *Unreleased*. F21 and F25 ship in no package | — | — | 24 | 0 | 2: F21, F25 | 22 |
-| **Since the register opened** | | | **42** | **61** | **81** | **22** |
+| *Unreleased*. F21 and F25 ship in no package | — | — | 24 | 5: A48–A52 | 2: F21, F25 | 27 |
+| **Since the register opened** | | | **42** | **66** | **81** | **27** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -343,6 +345,11 @@ makes it that release's row, with its tag commit and date.
 | [A45](#a45) | An assignment evaluates its target as an operand and its right side unconditionally — a short-circuited `\|\|=` called its right side and wrote (part 1, fixed), a member target is evaluated twice, and `obj.fetch = 1` is refused at the read | core | fix | Open — opened 2026-10-22 by the A40/A41 batch. **Part 1 retired 2026-10-22**: a logical assignment that short-circuits evaluates nothing more and writes nothing; released 2026-10-23 in `eval-core` 0.13.3, tagged 021d5e4. Part 2 is planned in the [A45 plan](a45/plan.md), steps 1–3, which reopens Phase 1's decision that assignment targets emit read events. Fidelity; no refusal skipped, since every deviation adds one |
 | [A46](backlog-retired.md#a46) | An expression can rebind `undefined` on a reused context — `undefined = 1`, then `x === undefined` is `false` — and under `caseInsensitive` a case variant of `undefined`, `null`, `true` or `false` | core | fix, decision | **Retired — fixed 2026-10-22**; released 2026-10-22 in `eval-core` 0.13.2, tagged dc4302d. Such a write throws `Assignment to read-only name`, unless a scope binds the name or the context resolves it; a context class that overrides `set` decides these writes itself. `NaN` and `Infinity` are outside the set, since the evaluator resolves neither |
 | [A47](#a47) | An arrow's parameter scope is pushed without the walk's options, so under `caseInsensitive` `(x => X)(1)` is `undefined`, and `X = 5` in the body can land on the consumer's context | core | fix | Open — opened 2026-10-22 by the A40/A41 batch's code review; predates it. The other three scope pushers pass the options. Not scheduled |
+| [A48](#a48) | Under `caseInsensitive`, a member read calls a prototype accessor twice: `c.g` reads its getter twice, and so does `c.g++` | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q2); predates it. The plan's characterisation spec holds three rows under it. Not scheduled |
+| [A49](#a49) | The context branch reads what it tests: `getThis` reads the value and `getKey` calls lookups, so `this.g = 1` calls a getter on the context | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q3); predates it. Its fix touches `EvalContext`, a published class. Not scheduled |
+| [A50](#a50) | Under `caseInsensitive`, `this.k = v` writes an own property onto the context's `Registry` copy, and the data is unchanged | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q4); predates it. Not scheduled |
+| [A51](#a51) | A member write to an `EvalScope` held as a value lands on the instance, never through `EvalScope.set`, and can replace its `_context` and `_options` | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q4); predates it. A write policy can refuse it. Not scheduled |
+| [A52](#a52) | Under `caseInsensitive`, an identifier holding `null` reads as `undefined`: `x === null` is `false`, and `x += 1` writes `NaN` | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2, while measuring its D9; predates it. Not scheduled |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -1256,6 +1263,163 @@ parameter write, and moves that pinned row.
 *Recorded*: this entry.
 *Verified*: found by the batch's code review. Re-measured 2026-10-22 with a throwaway script outside
 the repository, against the production bundle with the Angular compiler loaded.
+
+<a id="a48"></a>
+## A48 — Under `caseInsensitive`, a member read calls a prototype accessor twice
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-23 by the
+[A45 plan](a45/plan.md), Revision 2 (its § 8 q2). It predates that plan. Not scheduled
+
+When no own property matches the key, `evaluateMember`'s `caseInsensitive` lookup tests the key by
+reading it, `obj[key]` (`member-expression.ts:226` at db287da), and then reads `obj[foundKey]`. A key
+that an accessor on the prototype answers is therefore read twice. An own accessor is matched by the
+lookup cache, which reads no value, so it is read once. Measured 2026-10-23 against the production
+bundle, `class C { get g(); set g(v) }`:
+
+| Expression | Case-sensitive | `caseInsensitive` | JavaScript |
+| :--- | :--- | :--- | :--- |
+| `c.g` | get 1 | **get 2** | get 1 |
+| `c.g++` | get 1, set 1 | **get 2**, set 1 | get 1, set 1 |
+| `c.g += 1`, under the A45 plan's prototype | get 1, set 1 | **get 2**, set 1 | get 1, set 1 |
+| `o.g`, an own accessor | get 1 | get 1 | get 1 |
+
+The A45 plan keeps the read path's shape (its D6), so its step 2 leaves `c.g += 1` at two reads under
+`caseInsensitive`. Its characterisation spec holds that row and the two above it under this ID. The
+plan's resolver for `=` matches the key with `in` and reads nothing, which is one possible fix here.
+
+**The `caseInsensitive` path cannot be timed with the plan's harness** (the plan's M7). Every path
+costs about 5.5–6 µs, a bare identifier read included, because the context is copied per evaluation.
+The write path's medians were bimodal in the harness, 6.7–66 µs at the same settings, while three
+standalone runs measured 10.5–11 µs with no heap growth. That is unexplained, so a fix here cannot be
+shown to be free by that harness, and needs one of its own.
+
+*Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M1f and M7.
+*Verified*: measured 2026-10-23 with a throwaway script outside the repository, against the
+production bundle built at db287da with the Angular compiler loaded, each row run natively beside it.
+
+<a id="a49"></a>
+## A49 — The context branch reads what it tests: `getThis` reads the value, `getKey` calls lookups
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-23 by the
+[A45 plan](a45/plan.md), Revision 2 (its § 8 q3). It predates that plan. Not scheduled
+
+`EvalContext.getThis` decides which object holds a key by reading the key's value, through
+`getContextValue`. `getKey` resolves through `resolve`, which reads the value and calls each lookup in
+turn. Both are on the member read's context branch, and the A45 plan's `=` resolver calls both by
+design (its D6). So a getter on the context, or a lookup function, runs where JavaScript reads nothing.
+Measured 2026-10-23 against the production bundle: a getter `g` on the context object, and an
+`EvalContext` with a lookup that answers `x`:
+
+| Expression | Today, case-sensitive | Under the A45 plan's prototype | JavaScript |
+| :--- | :--- | :--- | :--- |
+| `this.g` | get 2 | get 2 | get 1 |
+| `this.g = 1` | get 4, set 1 | **get 1**, set 1 | get 0, set 1 |
+| `this.g += 1` | get 4, set 1 | **get 2**, set 1 | get 1, set 1 |
+| `x = 1`, the lookup, `caseInsensitive` | 2 calls | **1 call** (`getKey`) | — (a resolver; 0 reads) |
+| `X = 1`, the same | 2 calls | **1 call** | — |
+| `x += 1`, the same | 2 calls | **2 calls** | — (1 read) |
+| `x = 1`, the lookup, case-sensitive | 1 call | 0 calls | — |
+
+Under `caseInsensitive` a getter on the context is read when the context is copied, before the walk,
+so it shows 0 in that mode. A fix needs a presence test on `EvalContext`, a published class, or a
+documented limit. The A45 plan's characterisation spec holds the bold rows under this ID.
+
+*Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M1j.
+*Verified*: measured 2026-10-23 with a throwaway script outside the repository, against the
+production bundle built at db287da and the A45 plan's prototype, with the Angular compiler loaded.
+
+<a id="a50"></a>
+## A50 — Under `caseInsensitive`, a member write through `this` lands on the `Registry` copy, not in it
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-23 by the
+[A45 plan](a45/plan.md), Revision 2 (its § 8 q4, first half). It predates that plan. Not scheduled
+
+Under `caseInsensitive`, `EvalContext.fromContext` copies a plain context into a case-insensitive
+`Registry`, which becomes the context's original. For a key the original holds, `getThis` answers the
+original, so `this.k = v` writes `safeSetProperty(registry, k, v)`. That sets an own JavaScript
+property on the `Registry` instance. Its map is not changed, so every later read of `k` sees the old
+value, and the expression's own result is the only sign of the write. Measured 2026-10-23 against
+the production bundle, on `{ k: 1 }`:
+
+| Expression | Case-sensitive | `caseInsensitive` |
+| :--- | :--- | :--- |
+| `this.k = 5` | `5`; the caller's `k` is `5` | `5`; an own `k` on the `Registry`; `get('k')` is `1` |
+| `this.k += 5` | `6`; `k` is `6` | `6`; the same; `get('k')` is `1` |
+| `this.k++` | `1`; `k` is `2` | `1`; the same; `get('k')` is `1` |
+| `this.K = 5` | refused, `Write to the evaluation context is blocked for security reasons` | `5`; an own `k` on the `Registry` |
+| `this.g = 1`, a setter `g` on the context | set 1 | **set 0** |
+
+A key the original does not hold is refused in both modes, by [A42](backlog-retired.md#a42)'s
+by-class refusal. The A45 plan's prototype gave the same rows: its resolver calls `getThis` as the
+read path does. The plan's characterisation spec holds the `caseInsensitive` rows under this ID. The
+case-sensitive `this.K = 5` refusal is A42's decision, not this defect.
+
+*Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M1d and M1j.
+*Verified*: measured 2026-10-23 with a throwaway script outside the repository, against the
+production bundle built at db287da and the A45 plan's prototype, with the Angular compiler loaded.
+
+<a id="a51"></a>
+## A51 — A member write to an `EvalScope` held as a value lands on the instance, and reaches its fields
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-23 by the
+[A45 plan](a45/plan.md), Revision 2 (its § 8 q4, second half). It predates that plan. Not scheduled
+
+A member read whose object is an `EvalScope` goes through `EvalScope.get`. A member write to one
+never reaches `EvalScope.set`: `safeSetProperty` sets an own property on the instance. So the scope's
+context is unchanged, and a later read through `get` does not see the write. The write can also
+replace the instance's own fields. The branch is reached only when the host places an `EvalScope` in
+the context as a value; a prior scope is never reachable as one. Measured 2026-10-23 against the
+production bundle, both case modes alike:
+
+| Expression | `new EvalScope({ k: 1 }, { global: true })` | Namespaced, `{ namespace: 'n' }` |
+| :--- | :--- | :--- |
+| `ns.k` | `1` | `undefined`, by `EvalScope.get`'s rule |
+| `ns.k = 5` | `5`; an own `k` on the instance; the context stays `{ k: 1 }`; a later `ns.k` is `1` | `5`; an own `k`; a later `ns.k` is `undefined` |
+| `ns.k += 5` | `6`; the same | `NaN`; the same |
+| `ns.k++` | `1`; the same | `NaN`; the same |
+| `ns._context = 9`, `ns._options = 9`, `ns.type = 9` | each replaces that field | the same |
+
+A host that wants such writes refused can use a write policy, `EvalContext.checkMemberWrite`, which is
+asked first. The A45 plan's prototype gave the same rows. Its characterisation spec holds the
+`ns.k = 5` and `ns.k += 5` rows under this ID.
+
+*Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M1h and M1i.
+*Verified*: measured 2026-10-23 with a throwaway script outside the repository, against the
+production bundle built at db287da and the A45 plan's prototype, with the Angular compiler loaded.
+
+<a id="a52"></a>
+## A52 — Under `caseInsensitive`, an identifier holding `null` reads as `undefined`
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-23 by the
+[A45 plan](a45/plan.md), Revision 2, whose measurement of its D9 found it. It predates that plan. Not
+scheduled
+
+`identifierVisitorCaseInsensitive` reads `context.get(name) ?? literals.get(name)`. The literal
+fallback, which resolves `TRUE`, `Undefined` and their kin, is taken for `null` as well as for
+`undefined`. So a context key holding `null` reads as whatever the literals registry holds under that
+name, which is `undefined` for every ordinary name. A member's `null` is unaffected. Measured
+2026-10-23 against the production bundle, on `{ x: null, o: { x: null } }`:
+
+| Expression | Case-sensitive | `caseInsensitive` | JavaScript |
+| :--- | :--- | :--- | :--- |
+| `x` | `null` | **`undefined`** | `null` |
+| `x === null` | `true` | **`false`** | `true` |
+| `x += 1` | `1` | **`NaN`**, and writes `NaN` | `1` |
+| `x ??= 5` | `5` | `5` | `5` |
+| `x++` | `0`, writes `1` | `0`, writes `1`: the update reads through `get` | `0` |
+| `o.x` | `null` | `null` | `null` |
+
+**Why it was found now.** The A45 plan's D9 has the identifier update read through the same target
+read as a compound assignment. Run with this fallback, that turned `update-expression.spec.ts`'s four
+`caseInsensitive` `null` rows red (`x++`, `x--`, `++x` and `--x` on `null` gave `NaN`). Taken only on
+`undefined`, the fallback kept all 2880 cases green and gave `x += 1` its JavaScript value. The plan
+adopts that for its own target read (its D9, Revision 2) and leaves the identifier visitor's read to
+this entry. Its characterisation spec holds the `x === null` row under this ID.
+
+*Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M9.
+*Verified*: measured 2026-10-23 with a throwaway script outside the repository, against the
+production bundle built at db287da and the A45 plan's prototype, with the Angular compiler loaded;
+the four red cases by running `eval-core`'s suite against the prototype.
 
 ---
 
