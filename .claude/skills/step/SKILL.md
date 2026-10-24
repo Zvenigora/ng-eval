@@ -19,7 +19,11 @@ and every step's criteria cite them by number.
 plan changes `eval-core` only. `eval-signals` and `eval-forms` are witnesses until the release:
 
 - **Step 1 is one new spec**, `internal/visitors/assignment-target.spec.ts`, and no other file under
-  `modules/`. Its probes apply the plan's M4 prototype in two stages and revert it.
+  `modules/`. Its probes apply the plan's M4 prototype in two stages and revert it. The prototype is
+  two patches outside the repository, `D:\repo.2026\ng-eval-base\a45-prototype\stage-2.patch` and
+  `full.patch`. Step 1 checks each one's SHA-256 against the plan's step 1 criterion 2, applies it as
+  a file with `git apply`, and never rebuilds the prototype from § 3. A mismatched SHA-256, or a patch
+  that does not apply, stops the step.
 - **Steps 2 and 3 are `eval-core`'s visitors**: the files each step lists under
   `modules/eval-core/src/lib/internal/visitors/`, the spec's marked rows, `update-expression.spec.ts`
   in step 3, and `modules/eval-core/CHANGELOG.md`'s `[Unreleased]`.

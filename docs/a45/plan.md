@@ -289,7 +289,12 @@ git-ignored `dist/`, so that their bare imports resolved, and were deleted after
 natively beside it. M4 and M5 used a throwaway prototype of D1–D4 in the library, applied twice. M5
 also used a throwaway spec in `eval-signals`. *Revision 2* applied the prototype a third time,
 extended by D7–D9 and by switches for each new probe (M10). It re-ran M1, M2 and the suites against
-it, and measured M8, M9 and M5b. It was reverted the same way. The prototype was **reverted** with `git restore` and the
+it, and measured M8, M9 and M5b. It was reverted the same way.
+
+**The prototype was verified and saved on 2026-10-23**, as `stage-2.patch` and `full.patch` in
+`D:\repo.2026\ng-eval-base\a45-prototype\` (step 1, criterion 2). They were rebuilt from § 3 on
+10e963f and carry no environment switches. Measured against them, M1a–j, M2, M8a–d and M9 equal the
+recorded prototype columns, with no row differing, and the suites stay at 2880 / 443 / 380. The prototype was **reverted** with `git restore` and the
 spec deleted before this commit: `git status` showed a clean tree, and the bundle was rebuilt from
 db287da. The prototype's bundle was measured with the same scripts.
 
@@ -902,7 +907,17 @@ and `eval-forms` stay at 443 and 380 (M4, M10). *Revision 2*: they were 3044 and
   1. All 184 cases pass against db287da's library code, which step 1 does not touch.
   2. **The marks are measured, not asserted** (§ 0 rule 10). The executor applies the prototype as M10
      and M11 left it, D7–D10 included, in two stages, and reverts it after each, reading the red cases one by
-     one:
+     one. **The prototype is two files outside the repository**, both against 10e963f:
+     - `D:\repo.2026\ng-eval-base\a45-prototype\stage-2.patch`, SHA-256
+       `4f92564a10170677e5c4f97b7065261403a9946b874a97af3248bcbb312da90d`, for stage (i);
+     - `D:\repo.2026\ng-eval-base\a45-prototype\full.patch`, SHA-256
+       `b465caec5fedc06203595faa7814f99c0552ee8a044210443cf879bd3a3ed1fa`, for stage (ii), applied on
+       its own and not on top of the first.
+
+     For each stage, the step checks the patch's SHA-256 first, then applies it as a file with
+     `git apply`, and reverts it with `git restore modules/eval-core/src`. A mismatched SHA-256, or a
+     patch that does not apply, stops the step. **The step never rebuilds the prototype from § 3.**
+     The README beside the patches says what each contains and how it was verified.
      - **(i)** *Wrong for today*: step 2's half of the prototype alone: compound and logical targets,
        and the one `caseInsensitive` identifier read with the fallback on `undefined` only (D10).
        Exactly the cases marked `2` go red, and nothing else in the suite. Predicted count: 28.
