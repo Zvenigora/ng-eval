@@ -90,7 +90,8 @@ funnel. The refusal that goes is the funnel's at an `=` target, a read JavaScrip
 - **The read path keeps its shape** (D6). It gains a fifth tuple slot, the key the lookup matched,
   which it already computes for the read event. Paired against HEAD over twelve rotations, that cost
   +0.12% by median, positive in 6 of 12 (M6). Step 4 measures the result against a decision rule
-  stated here in advance.
+  stated here in advance. It met no regression: the member read moved −0.86% by median, positive in
+  4 of 12, and the member write −20.90%, positive in 0 of 12 (step 4's outcome).
 - **What § 1 found and D1–D10 do not decide is in the register**, as A48–A51, and the spec holds their
   rows. A52, also found here, is fixed in step 2 (D10). The largest is A49: the context branch's
   `getThis` reads the value it tests, so `this.g = 1`
@@ -1479,6 +1480,177 @@ From 2880, `eval-core` is at 3064 once step 1 commits, at 3080 once Revision 4's
   3. The compound, identifier-write and `caseInsensitive` figures are reported.
 - **Category**: ships in no package. The reviewer is run on the step's outcome, the numbers and the
   rule's application.
+- **Outcome** — done 2026-10-25, under Revision 4. **Valid at the first run; no regression on any
+  path.** The member read moved −0.86% by median, positive in 4 of 12, and the member write −20.90%,
+  positive in 0 of 12.
+  - **The confirmation gate's readings.**
+    1. **The harness was rebuilt, not reused.** M6's script was throwaway and did not survive (§ 1.3;
+       the prototype's README.txt). This one was written from M6's recorded method and § 3.8, so M6's
+       figures came from a different script, and its absolute µs are not comparable with these. Only
+       the paired deltas within this run are.
+    2. **Bundles.** A is the plan commit's: `git checkout db287da -- modules/eval-core/src`, then
+       `nx run eval-core:build:production --skip-nx-cache`. f71656d has db287da's `modules/` tree,
+       `git diff db287da f71656d -- modules` being empty. A second fresh build from db287da hashed
+       equal to A. A′ is a copy of A. Then `git checkout HEAD -- modules/eval-core/src`: `git status`
+       was clean and `git diff --stat HEAD -- modules` empty. B was built from HEAD, 93d76b2, step 3's
+       commit. SHA-256 of `fesm2022/zvenigora-ng-eval-core.mjs`: A and A′ `0A3290FE…B468C679`,
+       330,949 bytes; B `1977F994…53ADAFB40`, 341,267 bytes. A ≠ B. All three were built before the
+       harness started, under the git-ignored `dist/a45-bench/`, deleted after.
+    3. **Rotation order.** Odd rotations ran A, A′, B and even ones B, A′, A, so the A/A pair and the
+       B-vs-A pair each alternate which runs first.
+    4. **The void rule covers the five case-sensitive paths**, the identifier read included. The
+       `caseInsensitive` A/A is reported and does not void, since M7 found those legs bimodal. The
+       reading did not decide the outcome: the `caseInsensitive` A/A medians are inside ±3% too, with
+       at most 7 of 12 positive, so the run is valid under either reading of "on any path".
+    5. **The `caseInsensitive` legs ran as a second pass** after the case-sensitive one, with the same
+       harness, rotations and A/A, so that their cost did not stretch the deciding rotations: 5–8× per
+       evaluation before their slowdown (below), and 14× the case-sensitive pass's wall time.
+    6. **A widening confirmed at the gate**: `.claude/skills/step/SKILL.md`'s step state, as steps 2
+       and 3 updated it, beside this document.
+  - **The harness**, as run:
+
+    ```text
+    node 26.4.0, plain Node against the production bundle (fesm2022), @angular/compiler imported first
+    child process = one bundle × one path × one mode; children run one at a time (spawnSync)
+    loop: rotation 1..12 → path → bundle (odd: A, A′, B; even: B, A′, A)
+    paths: obj.x | obj.x = 1 | obj.x += 1 | x = 1 | x
+    context: { obj: { x: 1 }, x: 1 }, one object per process
+    options: undefined (case-sensitive pass) | { caseInsensitive: true }, one object per process
+    ast = acorn.parse(expr, { ecmaVersion: 2022 }), once per process
+    one evaluation = evaluate(ast, EvalState.fromContext(context, options))
+    one untimed evaluation, its value recorded; then warm-up 20,000, untimed
+    then 15 rounds × 60,000, each round timed by process.hrtime.bigint()
+    per process: µs per evaluation per round; its median of 15 is the process's figure
+    pair, per rotation: delta = (X − A) / A, X = A′ (A/A) or B
+    per path: median of the 12 deltas; positive = delta > 0
+    regression: median > +3% and ≥ 10 of 12 positive
+    void (case-sensitive A/A only): the regression test met, or |median| > 3%
+    ```
+
+  - **The machine.** A laptop, Intel Core i7-13700H, 14 cores and 20 threads, 31.7 GB. On mains
+    power, the battery at 100%. Windows power plan Balanced, with no power-mode overlay set. Nothing
+    from nx, Jest or a build ran during either pass: the Nx daemon was stopped before the run. One
+    process was present throughout, VS Code's Jest extension watcher (`jest --watch`, started the day
+    before). **That is a departure from § 3.8's wording**, "never in parallel with any other nx or Jest
+    run", accepted rather than corrected, because the process was the user's and it ran no tests. It
+    used 0.53 CPU-s over the 142 s case-sensitive pass and 8.3 CPU-s over the 33.6-minute
+    `caseInsensitive` pass, and nothing in the repository changed during either. It does not void the
+    run: the case-sensitive A/A medians stayed within ±1.09%. The
+    case-sensitive pass ran 10:10:47–10:13:09 on 2026-10-25, the `caseInsensitive` pass
+    10:13:29–10:47:04.
+  - **Case-sensitive pass, the deciding one.** Deltas in %, rotations 1–12:
+
+    | Path | Expression | A/A deltas | Median | Positive | B vs A deltas | Median | Positive |
+    | :--- | :--- | :--- | ---: | ---: | :--- | ---: | ---: |
+    | member read | `obj.x` | 3.0, −8.3, −1.5, 1.4, 2.2, −3.7, −1.4, 9.2, −2.8, 4.0, −5.0, 4.2 | −0.01% | 6 / 12 | 1.8, 5.2, −3.4, −3.0, 6.0, −1.3, −8.5, 7.8, −2.5, −0.4, −3.8, −0.1 | −0.86% | 4 / 12 |
+    | member write | `obj.x = 1` | −5.6, 2.1, −2.0, −1.5, −2.3, 3.2, 7.0, −0.6, −6.0, 10.3, −4.9, 0.5 | −1.09% | 5 / 12 | −26.7, −21.5, −20.6, −21.1, −19.5, −19.3, −22.4, −18.5, −23.6, −20.2, −22.8, −19.7 | −20.90% | 0 / 12 |
+    | member compound | `obj.x += 1` | −0.7, 2.7, 0.4, −3.5, 2.8, −4.7, −6.2, 0.3, 4.8, −2.8, 2.7, 0.1 | +0.20% | 7 / 12 | −18.8, −20.1, −19.2, −21.6, −18.0, −18.7, −21.9, −19.1, −17.7, −18.8, −17.5, −12.6 | −18.83% | 0 / 12 |
+    | identifier write | `x = 1` | −9.8, 2.2, 1.9, 3.7, −5.1, 1.0, 7.8, −1.4, −7.0, −1.2, −1.7, 3.9 | −0.12% | 6 / 12 | −22.8, −13.2, −17.6, −16.1, −20.5, −16.8, −14.4, −20.7, −23.4, −21.5, −18.1, −22.6 | −19.31% | 0 / 12 |
+    | identifier read | `x` | 6.5, 2.5, −2.8, 1.2, −1.5, −7.2, 0.5, 5.9, −3.6, −0.2, 0.9, −2.3 | +0.16% | 6 / 12 | 3.6, 1.9, 2.0, −0.6, −0.6, −1.9, 2.4, 6.4, −2.1, 3.2, −1.2, −2.7 | +0.64% | 6 / 12 |
+
+    Per-process medians, µs per evaluation, rotations 1–12:
+
+    | Path | Bundle | Medians |
+    | :--- | :--- | :--- |
+    | member read | A | 0.514, 0.533, 0.533, 0.534, 0.512, 0.547, 0.559, 0.519, 0.572, 0.513, 0.569, 0.556 |
+    |  | A′ | 0.529, 0.488, 0.525, 0.542, 0.523, 0.527, 0.551, 0.566, 0.556, 0.533, 0.541, 0.579 |
+    |  | B | 0.523, 0.561, 0.514, 0.518, 0.543, 0.540, 0.511, 0.559, 0.558, 0.510, 0.547, 0.555 |
+    | member write | A | 0.808, 0.808, 0.799, 0.812, 0.829, 0.803, 0.790, 0.822, 0.864, 0.785, 0.868, 0.800 |
+    |  | A′ | 0.763, 0.825, 0.783, 0.800, 0.810, 0.829, 0.845, 0.816, 0.812, 0.866, 0.825, 0.804 |
+    |  | B | 0.592, 0.634, 0.634, 0.640, 0.667, 0.648, 0.613, 0.669, 0.660, 0.626, 0.670, 0.642 |
+    | member compound | A | 0.812, 0.810, 0.799, 0.815, 0.802, 0.827, 0.882, 0.843, 0.818, 0.840, 0.826, 0.797 |
+    |  | A′ | 0.806, 0.832, 0.802, 0.787, 0.825, 0.788, 0.827, 0.845, 0.858, 0.817, 0.848, 0.798 |
+    |  | B | 0.659, 0.647, 0.646, 0.639, 0.658, 0.672, 0.689, 0.682, 0.674, 0.682, 0.681, 0.697 |
+    | identifier write | A | 0.703, 0.635, 0.668, 0.656, 0.709, 0.672, 0.651, 0.697, 0.700, 0.700, 0.686, 0.683 |
+    |  | A′ | 0.634, 0.649, 0.681, 0.680, 0.674, 0.679, 0.702, 0.687, 0.650, 0.692, 0.675, 0.709 |
+    |  | B | 0.543, 0.551, 0.550, 0.550, 0.564, 0.559, 0.557, 0.553, 0.536, 0.550, 0.562, 0.528 |
+    | identifier read | A | 0.428, 0.453, 0.455, 0.460, 0.460, 0.478, 0.448, 0.451, 0.454, 0.463, 0.480, 0.479 |
+    |  | A′ | 0.456, 0.464, 0.443, 0.465, 0.453, 0.444, 0.450, 0.478, 0.438, 0.462, 0.484, 0.468 |
+    |  | B | 0.444, 0.461, 0.465, 0.457, 0.457, 0.469, 0.459, 0.480, 0.444, 0.478, 0.474, 0.466 |
+
+  - **`caseInsensitive` pass, reported only.** Deltas in %, rotations 1–12:
+
+    | Path | Expression | A/A deltas | Median | Positive | B vs A deltas | Median | Positive |
+    | :--- | :--- | :--- | ---: | ---: | :--- | ---: | ---: |
+    | member read | `obj.x` | −3.4, −0.7, −0.7, 3.5, −4.1, −2.0, −0.6, 0.4, −3.0, 1.4, 0.5, −7.0 | −0.67% | 4 / 12 | −7.1, −1.4, 1.7, 2.5, −5.8, 6.5, −2.2, 2.9, 1.1, 0.3, 1.7, −3.2 | +0.70% | 7 / 12 |
+    | member write | `obj.x = 1` | −0.3, 1.3, 2.1, 1.5, −73.4, −49.7, −2.7, 2.3, 8.4, 1.3, −7.9, 8.0 | +1.33% | 7 / 12 | −88.6, −89.0, −88.8, −87.7, −84.3, −89.1, −88.2, −88.5, −89.3, −88.8, −90.5, −91.1 | −88.79% | 0 / 12 |
+    | member compound | `obj.x += 1` | 7.2, −0.6, 5.4, 2.1, 120.6, −1.5, −1.8, −0.6, −2.7, 7.8, −1.8, 3.5 | +0.77% | 6 / 12 | −88.6, −89.0, −88.3, −88.8, −41.5, −89.0, −88.0, −88.9, −89.8, −88.3, −91.0, −90.6 | −88.84% | 0 / 12 |
+    | identifier write | `x = 1` | −0.4, 0.1, −2.1, −4.6, 1.0, 0.1, 3.6, 2.4, −1.9, 1.6, −2.9, 4.2 | +0.13% | 7 / 12 | −7.1, −3.8, −4.9, −11.9, −7.1, −6.8, 0.9, −8.8, −11.0, −2.2, −5.3, −6.6 | −6.73% | 1 / 12 |
+    | identifier read | `x` | 3.7, 2.7, 0.03, 9.8, −2.1, −3.8, −1.6, −0.1, −2.9, −4.1, −2.2, 7.9 | −0.81% | 5 / 12 | 0.4, 2.5, 5.0, −1.0, 4.0, 8.7, −5.6, 4.3, −2.9, −1.3, 0.7, 10.8 | +1.61% | 8 / 12 |
+
+    Per-process medians, µs per evaluation, rotations 1–12:
+
+    | Path | Bundle | Medians |
+    | :--- | :--- | :--- |
+    | member read | A | 3.884, 3.804, 3.685, 3.628, 4.023, 3.842, 3.874, 3.708, 3.798, 3.749, 3.689, 3.860 |
+    |  | A′ | 3.750, 3.778, 3.660, 3.753, 3.859, 3.764, 3.852, 3.722, 3.683, 3.802, 3.706, 3.592 |
+    |  | B | 3.607, 3.751, 3.748, 3.717, 3.789, 4.093, 3.787, 3.814, 3.841, 3.759, 3.754, 3.737 |
+    | member write | A | 33.874, 35.134, 34.947, 33.059, 25.288, 36.321, 33.946, 34.495, 36.369, 34.594, 39.452, 42.131 |
+    |  | A′ | 33.775, 35.607, 35.697, 33.545, 6.733, 18.257, 33.025, 35.279, 39.421, 35.049, 36.331, 45.481 |
+    |  | B | 3.848, 3.848, 3.910, 4.077, 3.970, 3.947, 3.999, 3.973, 3.901, 3.886, 3.746, 3.755 |
+    | member compound | A | 33.150, 35.578, 33.703, 34.188, 6.876, 36.564, 33.480, 35.432, 37.830, 33.185, 42.496, 41.558 |
+    |  | A′ | 35.545, 35.349, 35.512, 34.917, 15.168, 36.014, 32.887, 35.223, 36.813, 35.758, 41.726, 43.017 |
+    |  | B | 3.781, 3.925, 3.953, 3.843, 4.024, 4.040, 4.024, 3.925, 3.858, 3.882, 3.825, 3.891 |
+    | identifier write | A | 4.025, 4.018, 3.971, 4.242, 3.939, 4.046, 4.010, 3.928, 4.091, 3.883, 3.964, 3.928 |
+    |  | A′ | 4.008, 4.024, 3.890, 4.049, 3.978, 4.051, 4.155, 4.024, 4.015, 3.944, 3.848, 4.091 |
+    |  | B | 3.737, 3.864, 3.776, 3.736, 3.661, 3.770, 4.045, 3.583, 3.642, 3.797, 3.754, 3.667 |
+    | identifier read | A | 3.481, 3.512, 3.537, 3.623, 3.570, 3.588, 3.748, 3.566, 3.678, 3.628, 3.543, 3.329 |
+    |  | A′ | 3.610, 3.606, 3.538, 3.979, 3.496, 3.454, 3.690, 3.564, 3.571, 3.478, 3.464, 3.592 |
+    |  | B | 3.494, 3.601, 3.713, 3.588, 3.713, 3.901, 3.539, 3.718, 3.570, 3.580, 3.567, 3.690 |
+
+  - **Criterion 1: met.** The case-sensitive A/A medians are −0.01%, −1.09%, +0.20%, −0.12% and
+    +0.16%, all inside ±3%, with 6, 5, 7, 6 and 6 positives of 12, so none meets the regression test.
+    The run is valid at its first attempt, and no repeat was needed. The `caseInsensitive` A/A medians,
+    reported only, are −0.67%, +1.33%, +0.77%, +0.13% and −0.81%, with 4 to 7 positives. Its member
+    write and compound swung by −73.4%, −49.7% and +120.6% in single rotations. These are not two
+    stable modes. They are rotations in which one process's in-process slowdown (below) came after
+    round 8, the median round, instead of at round 7.
+  - **Criterion 2: met.** The member read is −0.86% by median, positive in 4 of 12. The member write is
+    −20.90%, positive in 0 of 12. Neither meets the test, which needs above +3% and at least 10
+    positive. § 8 gains no question.
+  - **Criterion 3: met.** Reported, none deciding. Case-sensitive: the member compound −18.83%, 0 of 12
+    positive, and the identifier write −19.31%, 0 of 12, as § 3.8 expected, since a walk and a second
+    `evaluateMember` are gone. The identifier read, `x`, is +0.64%, 6 of 12, which is within its A/A
+    spread. It is a one-node walk, so it is the closest leg to a push-only figure. It answers § 3.2's
+    "the push-path cost is measured in step 4": no cost the run can see. Under `caseInsensitive`:
+    member read +0.70%, 7 of 12; member write −88.79%, 0 of 12; member compound −88.84%, 0 of 12;
+    identifier write −6.73%, 1 of 12; identifier read +1.61%, 8 of 12. The identifier read is the leg
+    carrying D10's added comparison, below the test's +3% and 10. **The two −88% figures compare a
+    slowed A with a B not yet slowed** (below). Taking each process's median over its rounds before
+    the slowdown, the member write is −42.37% and the compound −41.29%, both 0 of 12. On the same
+    basis the member read is +0.30%, the identifier write −5.81% and the identifier read +1.31%, with
+    A/A medians within ±1.13%.
+  - **The `caseInsensitive` slowdown, measured and not explained.** The per-round data, which the
+    tables above summarise by each process's median, shows almost every `caseInsensitive` process
+    slowing 5–9× partway through its rounds. Here a process's slow round is its first round above
+    twice the fastest of its first three. It happens in every bundle and on every path, step 3's
+    included. For example, B's member write in rotation 1 runs `3.8 … 3.8 7.3 20.1 29.8 33.6`.
+    - **By round:** A and A′'s member write and compound slow at round 7 or 8. Every other leg slows at
+      round 12 to 14, B's write and compound included. 175 of 180 processes slow. Each process's figure
+      is the median of its 15 rounds, round 8. So that figure lands after the slowdown on A's two write
+      paths and before it everywhere else.
+    - **(a) By elapsed time**, from the raw data with no new run: the time at a process's first slow
+      round is its warm-up, estimated as 20,000 × round 1's µs, plus its preceding rounds. Process
+      start-up is not included. Across the 175 processes it is 2.50–3.29 s, median 2.72 s. Each bundle
+      and path's median lies between 2.54 s and 2.80 s. So A's write at about 6.7 µs reaching round 7
+      or 8 and B's at about 3.9 µs reaching round 12 or 13 land at the same time. The five processes
+      that never slowed ran 3.10–6.32 s in total, three of them in rotation 5.
+    - **(b) One case-sensitive process for longer**: A's member write, 60 rounds of 60,000, run alone
+      after the passes. A was rebuilt from db287da for it, as in reading 2, with its hash equal to
+      the run's, and deleted after. B, at 0.64 µs, would have stopped at about 2.3 s. It ran 0.747–0.832 µs in every round, with no rising trend, through 2.87 s of
+      timed evaluation, while 150 of the 175 `caseInsensitive` processes had slowed by that point. No
+      case-sensitive process in the pass ran longer than 0.81 s.
+    - **A cloud run**, recorded as reported: Linux, Node 22.22.0 and 26.12.1, both bundles,
+      `obj.x = 1` and `obj.x` under `caseInsensitive`, 20,000 + 15 × 60,000. It saw no slowdown and a
+      flat heap, 22–40 MB.
+
+    So the slowdown starts at about the same time in each process, not after the same number of
+    evaluations. A case-sensitive process does not slow by that time on this machine, and the cloud
+    run did not slow at all. What A versus B shows is only that step 3's code reaches the slowdown
+    after more evaluations, because each evaluation is cheaper. It does not show the slowdown belongs
+    to either bundle's code. The cause was not measured: this machine and Node 26.4.0 against the cloud's
+    Linux and Node versions, and the `caseInsensitive` path's per-evaluation copy against the
+    case-sensitive path, are not separated by any arm here. Step 5's notes carry it.
 
 ### Step 5 — `SECURITY.md`, README and CHANGELOG; A45, A44 and A52 retired
 
@@ -1505,6 +1677,19 @@ From 2880, `eval-core` is at 3064 once step 1 commits, at 3080 once Revision 4's
     and M8d measured it under the prototype, but no spec asserts a `scoped` read from an update
     (§ 0 rule 5). Step 5's consolidation either gives it a row, a widening of the step's counts
     decided at its gate, or drops the clause.
+  - *Step 4's `caseInsensitive` slowdown*: step 4 proposes a new register entry, a widening of step
+    5's register edit decided at its gate. On this machine, Windows and Node 26.4.0, every
+    `caseInsensitive` process in step 4's harness slowed 5–9× about 2.7 s into its timed loop, in both
+    bundles and on every path: (a), 175 of 180 processes, first slow round at 2.50–3.29 s, median
+    2.72 s. A case-sensitive member write ran 2.87 s alone without slowing: (b). A cloud run on Linux,
+    Node 22.22.0 and 26.12.1, both bundles, `obj.x = 1` and `obj.x` under `caseInsensitive`, saw no
+    slowdown and a flat heap, 22–40 MB. The entry would record those three results and that the cause
+    is open: the platform or Node version, or something the `caseInsensitive` path builds per
+    evaluation (step 4's outcome).
+  - *The register's "Work in flight" paragraph on this plan* (`docs/backlog.md`, "The A45 plan is in
+    flight") still says that steps 1 and 2 are done and step 3 is next. It has been stale since step 3's commit, which did not touch the
+    register, and step 4's edit list excludes it. Step 5's update of "Work in flight" brings it to
+    step 5.
 - **Category**: the README line ships in `eval-core`'s next release; the rest ships in no package.
 
 ### Step 6 — Release commit
@@ -1564,7 +1749,7 @@ release is breaking by behaviour (§ 3.1, M2, M5), not by shape.
 | `constructor = 1` writes once the walk is gone | Certain without the resolver's checks (M1c) | Step 3, probe (ii) |
 | A mark in the characterisation spec is wrong, so a flip goes unwitnessed | Medium | Step 1, probes (i) and (ii), against the prototype |
 | A consumer relied on `a.b = 1` reporting `a.b`, or on `count = 5` depending on `count` | Low: no case in any suite does (M4) | The `### Breaking` entry; § 8 q7 for the downstream versions |
-| The fifth slot or the factored funnel slows the read or push path | Low: +0.12% measured on the read (M6) | Step 4's rule; `performance.spec.ts` |
+| The fifth slot or the factored funnel slows the read or push path | Low: +0.12% measured on the read (M6) | Step 4's rule, met by no path: the read −0.86%, 4 of 12 positive (step 4's outcome); `performance.spec.ts` |
 | A host relied on A44's new key | Low | The `### Fixed` entry names the old behaviour |
 | The machine's noise hides a real regression | Medium (M6) | § 3.8's A/A control and its void rule |
 | The resolver runs the right side before refusing a blocklisted key | Certain without D7's case-sensitive check (M8b) | Step 3, probes (iv) and (viii) |

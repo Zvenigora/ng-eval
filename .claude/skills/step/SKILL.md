@@ -49,8 +49,9 @@ the prototype (the plan's step 1 outcome). Revision 4 added group T, 16 cases (D
 the funnel's check on the value, one `caseInsensitive` identifier read (D10) and the `this` refusal on
 the target read (D11); no `2` mark remains (the plan's step 2 outcome). Step 3 has run: the `=`
 resolver, A44 in both visitors, and the identifier update's checks, read event and `this` refusal (D8,
-D9, D11); no flip mark remains, and the 18 held cases keep theirs (the plan's step 3 outcome). Step 4,
-the timing, is next.
+D9, D11); no flip mark remains, and the 18 held cases keep theirs (the plan's step 3 outcome). Step 4
+has run: the timing, valid at its first run, with no regression on any path (the plan's step 4
+outcome). Step 5, the documents, is next.
 
 **Revert a patch with `git apply -R`, never `git restore modules/eval-core/src`**: the spec is tracked
 now, under `src/`, and that restore takes its uncommitted rows with it.
