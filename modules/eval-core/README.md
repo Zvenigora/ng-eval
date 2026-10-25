@@ -274,12 +274,23 @@ The project has been tested with the following node types:
  - `TemplateLiteral`
  - `TaggedTemplateExpression`
  - `ObjectExpression`
- - `AssignmentExpression` — to an identifier or a member, parenthesised or not. Destructuring
-   assignment, `[a, b] = arr` or `({ m } = o)`, throws `Unsupported assignment target`;
+ - `AssignmentExpression` — to an identifier or a member, parenthesised or not. Since 0.14.0 the
+   target is evaluated as JavaScript evaluates it: a member target's object and key once, then
+   the target's value only for a compound or logical operator, then the right side, then the
+   write. So `=` does not read its target, and `+=` or `||=` reads it once; up to 0.13.3 the
+   target was read as an operand, and a member target was evaluated again after the right side.
+   Three kinds of read remain beyond JavaScript's. Case-sensitive, a getter `g` on the context,
+   reached through `this`: `this.g = 1` calls it once and `this.g += 1` twice. Under
+   `caseInsensitive`, a lookup that answers an identifier target: `x = 1` calls it once and
+   `x += 1` twice. And under `caseInsensitive`, a getter an instance inherits: `c.g += 1` calls it
+   twice, as `c.g` does. Destructuring assignment, `[a, b] = arr` or `({ m } = o)`, throws
+   `Unsupported assignment target`;
    before `@zvenigora/ng-eval-core` 0.7.0 it silently did nothing. An identifier write that
    would shadow `undefined`, or under `caseInsensitive` a literal, throws
    `Assignment to read-only name`, since 0.13.2
- - `UpdateExpression` — to an identifier or a member, parenthesised or not
+ - `UpdateExpression` — to an identifier or a member, parenthesised or not. Under
+   `caseInsensitive` a member update writes the key its read matched, since 0.14.0: `OBJ.X++`
+   on `{ obj: { x: 1 } }` writes `x`
  - `ArrowFunctionExpression` *potentially unsafe* (AssignmentPattern is not implemented, so a
    destructuring default — `({ a = 1 }) => a` — is rejected rather than defaulted)
  - `SequenceExpression` — each expression in order, the value the last one's
@@ -351,7 +362,7 @@ To change the evaluator's default behaviour, pass `options`: the last argument o
 
 ### Case-insensitive evaluation
 
-While JavaScript is a case-sensitive language, some may find it hard to use. To provide case-insensitive evaluation, set `caseInsensitive` to `true`. It applies to identifiers and to member names alike.
+While JavaScript is a case-sensitive language, some may find it hard to use. To provide case-insensitive evaluation, set `caseInsensitive` to `true`. It applies to identifiers and to member names alike. Since 0.14.0 a member write reaches the key the read would match: `OBJ.X = 2` on `{ obj: { x: 1 } }` writes `x`, where up to 0.13.3 it created a key `X` beside it. A key that matches nothing is written as spelled.
 
 ```javascript
 import { EvalService } from '@zvenigora/ng-eval-core';
@@ -520,6 +531,8 @@ state.hooks.onRead((event) => {
                 // EvalContext.push - so not a dependency
 });
 ```
+
+Since 0.14.0 an assignment or an update reports the reads JavaScript makes: `a.b = 1` reports `a` and not `a.b`, `x = 1` reports nothing, a compound or logical assignment one read of its target — `a.b += 1` reports `a`, then `a.b` — and `x++` one read of `x`.
 
 If you want a dependency set rather than raw events, `createDependencyTracker()` builds one and applies the `scoped` filtering for you.
 

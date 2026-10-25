@@ -12,8 +12,8 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
-### Changed
-- **Breaking: a compound or logical assignment reads its target once, and does not walk it.** A
+### Breaking
+- **A compound or logical assignment reads its target once, and does not walk it.** A
   member target's object and key are evaluated once, before the right side, and the write reuses
   them: `getObj()[k()] += f()` runs `getObj`, `k`, the read, `f`, then the write, where up to 0.13.3
   it evaluated the object, the key and the read a second time after `f`. A getter on the target is
@@ -23,8 +23,8 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   twice; node hooks and the trace see the target's object and a computed key, and no longer the
   target node, and an identifier target not at all. The value read still passes the checks every
   read value passes, so a listed function as the target, `fetch += 1` or `obj.fetch ||= 1`, is
-  still refused ([A45](../../docs/backlog.md#a45), part 2).
-- **Breaking: `=` does not read its target, and walks it no further than its object and a computed
+  still refused ([A45](../../docs/backlog-retired.md#a45), part 2).
+- **`=` does not read its target, and walks it no further than its object and a computed
   key.** As in JavaScript, `getObj()[k()] = f()` runs `getObj`, `k`, `f`, then the write, where up
   to 0.13.3 it read the target, and after `f` evaluated the object and the key and read the target a
   second time. A getter on the target is not called, except an accessor on the context reached
@@ -40,20 +40,25 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   `o.__proto__ = f()` are refused with `f` not called. Case-sensitive, a `null` or `undefined`
   object with a blocklisted key, `n.constructor = 1`, is now refused as a dangerous property, as it
   already was under `caseInsensitive`, where it was refused as `Cannot set property on non-object`
-  ([A45](../../docs/backlog.md#a45), part 2).
-- **Breaking: an identifier update reports the read of its operand**: `x++` and `++x` report one
+  ([A45](../../docs/backlog-retired.md#a45), part 2).
+- **An identifier update reports the read of its operand**: `x++` and `++x` report one
   read of `x`, as `a.b++` reports one of `a.b`, where they reported none. So a dependency tracker
   records `x`, and a `for` loop's `i++` adds its reads, each flagged `scoped`.
+
+### Changed
+- **The README states what an assignment target reads and reports**, in the `AssignmentExpression`
+  row and beside `onRead`, with the reads that remain beyond JavaScript's, and that under
+  `caseInsensitive` a member write or update reaches the key the read would match. No code change.
 
 ### Fixed
 - **Under `caseInsensitive`, a member write reaches the key the read would match**: `OBJ.X = 2`,
   `obj["X"] = 2`, `OBJ.X += 1` and `OBJ.X++` on `{ obj: { x: 1 } }` write `x`, where they created a new key `X`
   beside it, and `c.G = 1` calls the setter `g` an instance inherits. A key the lookup matches on
-  nothing is written as spelled ([A44](../../docs/backlog.md#a44)).
+  nothing is written as spelled ([A44](../../docs/backlog-retired.md#a44)).
 - **Under `caseInsensitive`, an identifier holding `null` reads as `null`**, where it read as
   `undefined`: `x === null` is `true`, and `x += 1` gives `1`, where it gave `NaN`. The literals
   registry now answers only a name the context finds nothing for
-  ([A52](../../docs/backlog.md#a52)).
+  ([A52](../../docs/backlog-retired.md#a52)).
 
 ### Security
 - **An identifier update of a blocklisted name is refused**, as its assignment is: `constructor++`,
@@ -76,7 +81,7 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   longer fires when the assignment short-circuits and writes nothing, as in JavaScript. Logical
   assignment is ES2021, and the default parser options, at `ecmaVersion: 2020`, refuse it at the
   parse, so this reaches only a caller whose own parser options set `ecmaVersion` to 2021 or later
-  ([A45](../../docs/backlog.md#a45), part 1).
+  ([A45](../../docs/backlog-retired.md#a45), part 1).
 
 ---
 
@@ -86,7 +91,7 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 - **The README states a limit of `caseInsensitive` on a context built with `new EvalContext`**: a
   plain object handed to the constructor matches no case variant, even with the option passed to
   the walk too, and `EvalContext.fromContext` is the way to build one that does. No code change
-  ([A44](../../docs/backlog.md#a44), where it was measured).
+  ([A44](../../docs/backlog-retired.md#a44), where it was measured).
 
 ### Fixed
 - **An update converts its operand to a number once, as JavaScript does**, and uses that one

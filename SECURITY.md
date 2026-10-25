@@ -57,6 +57,9 @@ Implemented in
 applied by the identifier, member, assignment, update, object, pattern and variable-declaration
 visitors, and pinned by
 [eval.service.prototype-pollution.spec.ts](modules/eval-core/src/lib/actual/services/eval.service.prototype-pollution.spec.ts).
+**From 0.14.0** the update visitor applies it to an identifier operand too, so `constructor++` is
+refused. **Up to 0.13.3** it applied it to a member operand only, and `constructor++` wrote an own
+`constructor` onto the context while `constructor = 1` was refused.
 
 - **A blocklist, matched by exact name**: `__proto__`, `constructor`, `prototype`,
   `__defineGetter__`, `__defineSetter__`, `__lookupGetter__`, `__lookupSetter__`, `hasOwnProperty`,
@@ -65,7 +68,9 @@ visitors, and pinned by
 - **Identifiers are checked before any lookup.** A bare identifier, `this.k`, and a member of an
   `EvalScope` held in the context refuse a blocklisted name before the context is consulted, so an
   expression cannot read what the context inherits from `Object.prototype`. This is the fix for
-  GHSA-jh43-xc7j-93c2, below.
+  GHSA-jh43-xc7j-93c2, below. An assignment's identifier target is checked the same way, and nothing
+  is written: `constructor = 1` and `constructor += 1` are refused. So is `constructor++`, **from
+  0.14.0**; up to 0.13.3 it wrote an own `constructor` onto the context.
 - **Member reads and writes** refuse a blocklisted key on an object receiver, in member access,
   assignment, update and object literals. **Binding names** — an arrow parameter, a `let` or `const`,
   a destructuring target — refuse it too.
@@ -186,21 +191,24 @@ refused at the read:
 - a host-bound function handed on, `["1+1"].map(e)`, and the expression's own result, `eval`.
 
 Reads that only inspect the value throw too, since the rule has no exception for them:
-- an assignment's target, `fetch = 1` or `obj.fetch = 1`: an assignment evaluates its target as an
-  operand before it writes, even for `=`, so the funnel refuses that read
-  ([A45](docs/backlog.md#a45));
 - an operator's operand, `x instanceof Function` or `obj.fetch != null`;
 - a conditional's test, a template interpolation and a declaration's initializer;
 - `typeof (eval)` under preserveParens, whose operand is the parenthesis.
 
-**No write path refuses overwriting a listed function.** The refusal of `obj.fetch = 1` is the
-read's, and only an assignment reads its target as an operand. An update takes its operand without
-pushing it where the funnel looks, and converts it to a number, as JavaScript does: `++obj.fetch`
-has overwritten the function since before 0.13.0, with a string up to 0.13.1 and `NaN` from 0.13.2,
-and `obj.fetch++` does from 0.13.2, with `NaN`, where it threw after writing. Either way the
-function is replaced, and no function value reaches anything
-([A40](docs/backlog-retired.md#a40), [A41](docs/backlog-retired.md#a41),
-[A45](docs/backlog.md#a45)).
+**No write path refuses overwriting a listed function.** No function value reaches anything
+either way ([A40](docs/backlog-retired.md#a40), [A41](docs/backlog-retired.md#a41),
+[A45](docs/backlog-retired.md#a45)):
+- **`=`, from 0.14.0.** An assignment with `=` does not read its target, as in JavaScript, so
+  `fetch = 1` and `obj.fetch = 1` write `1`. **Up to 0.13.3** both were refused at the read: the
+  target was read as an operand, and the funnel refused that read.
+- **An update, in every version.** An update takes its operand without the funnel's test.
+  `++obj.fetch` has overwritten the function since before 0.13.0, with a string up to 0.13.1 and
+  `NaN` from 0.13.2. **From 0.13.2** an update converts its operand to a number, as JavaScript
+  does, so `++obj.fetch`, `fetch++` and `obj.fetch++` write `NaN`. Up to 0.13.1 `obj.fetch++` threw
+  after writing.
+- **A compound or logical assignment** reads its target first, as JavaScript does, and that read is
+  given the funnel's test although it is not pushed. So `fetch += 1`, `obj.fetch += 1`,
+  `fetch ||= 1` and `obj.fetch ||= 1` are refused, as `fetch || 1` is.
 
 **Exempt**: a callee or tag node itself, which the check at the callee covers, and `typeof`'s
 operand, so `typeof eval` is still `"function"`. Only that node is exempt, never what is under it:

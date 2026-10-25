@@ -39,8 +39,8 @@ its reason, is not a replan. A `package.json` in the diff before step 6 is a sto
 
 **The counts the steps start from**, the gate at db287da: `eval-core` 2880, `eval-signals` 443,
 `eval-forms` 380. `eval-core` reaches 3064 at step 1, 3080 with the plan's Revision 4 addendum, 3088
-at step 2 with its widening (group V), and 3130 at step 3 with its widening (three D7 rows); the other
-two do not move. Step 1's spec holds 18
+at step 2 with its widening (group V), 3130 at step 3 with its widening (three D7 rows), and 3134 at
+step 5 with its widenings (N8's row, and the prefix update of a listed function); the other two do not move. Step 1's spec holds 18
 held cases, each matching its recorded value, not the native run.
 
 **Step state**: step 1 has run: the characterisation spec, 184 cases, with its marks measured against
@@ -51,7 +51,9 @@ the target read (D11); no `2` mark remains (the plan's step 2 outcome). Step 3 h
 resolver, A44 in both visitors, and the identifier update's checks, read event and `this` refusal (D8,
 D9, D11); no flip mark remains, and the 18 held cases keep theirs (the plan's step 3 outcome). Step 4
 has run: the timing, valid at its first run, with no regression on any path (the plan's step 4
-outcome). Step 5, the documents, is next.
+outcome). Step 5 has run: `SECURITY.md`, the README and the CHANGELOG, A44, A45 and A52 retired as
+fixed and not yet released, and A53 opened for step 4's `caseInsensitive` slowdown (the plan's step 5
+outcome). Step 6, the release, is next; § 8 q7 is answered at its gate.
 
 **Revert a patch with `git apply -R`, never `git restore modules/eval-core/src`**: the spec is tracked
 now, under `src/`, and that restore takes its uncommitted rows with it.

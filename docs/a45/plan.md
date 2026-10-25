@@ -14,7 +14,7 @@ cases 200. `eval-core` is at 3080 from this revision, and reaches 3116 at step 3
 group V, adds 8 cases, so step 2 ends at 3088 and step 3 at 3124 (step 2's outcome). Step 3's
 widening, three D7 rows, adds 6 more: step 3 ends at 3130 (step 3's outcome).
 **Revision**: 3 — the request's third instruction, measured first (M11). D10 brings
-[A52](../backlog.md#a52) into step 2. Under `caseInsensitive` the identifier visitor's own read takes
+[A52](../backlog-retired.md#a52) into step 2. Under `caseInsensitive` the identifier visitor's own read takes
 the literals fallback only when `get` finds `undefined`, the rule § 3.2 gives the target read, so
 there is one read, exported and shared. With the Revision 2 prototype plus that change, all three
 suites stayed green at 2880 / 443 / 380, and on `{ x: null }` every M9 row gave JavaScript's value in
@@ -36,7 +36,7 @@ read used to make, so `o.constructor = f()` called `f` before refusing. Measurin
 target read's literal fallback turned `null` into `undefined`, which put four existing cases red. Both
 are corrected in § 3.3 and § 3.2. q2, q3 and q4 are now [A48](../backlog.md#a48)–[A51](../backlog.md#a51),
 q4 as two entries since its two halves are different code paths. The `null` read is
-[A52](../backlog.md#a52). q8 is folded into A48. Rows: 92, cases 184. `eval-core` reaches 3064 at
+[A52](../backlog-retired.md#a52). q8 is folded into A48. Rows: 92, cases 184. `eval-core` reaches 3064 at
 step 1 and 3100 at step 3.
 **Revision**: 1 — initial plan.
 **Target package**: `@zvenigora/ng-eval-core`, released as **0.14.0**, a minor that carries breaking
@@ -46,17 +46,19 @@ whether each release is a patch or a minor is § 8 q7, decided at step 6's gate.
 **Also touches**: no downstream code through step 5. `eval-signals` and `eval-forms` run as the
 downstream witnesses with their counts unchanged (M4).
 **Fixes**:
-- [A45](../backlog.md#a45) part 2, in steps 2 and 3;
-- [A44](../backlog.md#a44), in step 3;
+- [A45](../backlog-retired.md#a45) part 2, in steps 2 and 3;
+- [A44](../backlog-retired.md#a44), in step 3;
 - an identifier update's missing blocklist checks and read event, D8 and D9, in step 3. Neither has a
   register entry: Revision 1 recorded them as § 8 q5 and q1;
-- [A52](../backlog.md#a52), in step 2 (D10, Revision 3);
+- [A52](../backlog-retired.md#a52), in step 2 (D10, Revision 3);
 - the `this` refusal on every identifier target (D11, Revision 4). An identifier update of `this`
   written as a name writes it as a key today, and is refused from step 3. No compound or `=` target
   loses the refusal in steps 2 and 3. It has no register entry: step 2's confirmation gate found it.
 
-**Opens**: [A48](../backlog.md#a48)–[A52](../backlog.md#a52) (Revision 2), for defects the plan
-measured and does not fix. The characterisation spec holds their rows.
+**Opens**: [A48](../backlog.md#a48)–[A51](../backlog.md#a51) (Revision 2), for defects the plan
+measured and does not fix. The characterisation spec holds their rows. [A52](../backlog-retired.md#a52),
+opened with them, the plan fixes in step 2 (D10). Step 5 opens
+[A53](../backlog.md#a53), step 4's unexplained `caseInsensitive` slowdown.
 **Reopens**: Phase 1's decision that assignment and update targets emit read events
 ([`side-effects/phase-1-plan.md`](../side-effects/phase-1-plan.md):274-280), for assignment
 targets only (§ 2, D2).
@@ -288,7 +290,7 @@ Findings 12–16 were added by Revision 2.
     fallback on `undefined` only (D9).
 16. **Under `caseInsensitive`, an identifier holding `null` reads as `undefined`** (M9): `x === null`
     is `false`. This is the identifier visitor's own read, which D1–D9 leave alone:
-    [A52](../backlog.md#a52). *Revision 3*: D10 fixes it in step 2 (finding 17).
+    [A52](../backlog-retired.md#a52). *Revision 3*: D10 fixes it in step 2 (finding 17).
 17. **One read for the visitor and the target is safe to ship** (M11, *Revision 3*). The Revision 2
     prototype plus the visitor's fallback on `undefined` only kept all 2880 / 443 / 380 cases green, so
     no existing case relies on a `null` reading as `undefined`. Every M9 row then equals JavaScript's
@@ -698,7 +700,7 @@ Fixed by the request's second instruction, Revision 2, after M8 and M10 measured
 
 Fixed by the request's third instruction, Revision 3, after M11 measured it:
 
-- **D10. [A52](../backlog.md#a52) joins, in step 2.** Under `caseInsensitive`, the identifier
+- **D10. [A52](../backlog-retired.md#a52) joins, in step 2.** Under `caseInsensitive`, the identifier
   visitor's own read takes the literals fallback only when `get` finds `undefined`, the rule § 3.2
   gives the target read. So there is one read, exported and shared, as § 3.2 says. On `{ x: null }`,
   `x === null` is `true` and `x += 1` gives `1`, both JavaScript's (M11).
@@ -744,7 +746,7 @@ the `this` refusal (*Revision 4*, D11) and `refuseDangerousMatch` under `caseIns
 the read event, but it neither pushes nor dispatches node hooks. The `this` test is the visitor's:
 `node.name === 'this'` case-sensitive, `equalIgnoreCase` under `caseInsensitive`, and a match is
 refused by `refuseThisValue`, since a target node is never marked positional. *Revision 2*: under `caseInsensitive`, the literals fallback is taken only when
-`get` finds `undefined`, where the identifier visitor takes it on `null` too ([A52](../backlog.md#a52)).
+`get` finds `undefined`, where the identifier visitor takes it on `null` too ([A52](../backlog-retired.md#a52)).
 So `x += 1` on `null` gives `1`, JavaScript's value, where today it gives `NaN`. That is a step-2 flip,
 group N's. D9 then needs this read unchanged for the update (finding 15). *Revision 3* (D10): the
 identifier visitor reads through the same function, which wraps it in its push and its node hooks, so
@@ -1146,7 +1148,7 @@ From 2880, `eval-core` is at 3064 once step 1 commits, at 3080 once Revision 4's
   - `modules/eval-core/CHANGELOG.md`: `[Unreleased]` › Changed, marked breaking. A compound or logical
     assignment's member target is evaluated once and read once; its read events and node hooks are
     those of the read. › Fixed, *Revision 3*: under `caseInsensitive` an identifier holding `null`
-    reads as `null` ([A52](../backlog.md#a52)).
+    reads as `null` ([A52](../backlog-retired.md#a52)).
   - This document; the skill's state.
 - **Exit criteria**:
   1. The gate is green at 3088 / 443 / 380 (step 2's widening, group V; 3080 at Revision 4, 3064 at
@@ -1691,6 +1693,101 @@ From 2880, `eval-core` is at 3064 once step 1 commits, at 3080 once Revision 4's
     register, and step 4's edit list excludes it. Step 5's update of "Work in flight" brings it to
     step 5.
 - **Category**: the README line ships in `eval-core`'s next release; the rest ships in no package.
+- **Outcome** — done 2026-10-25, under Revision 4. **A44, A45 and A52 are retired, fixed and not yet
+  released; A53 is opened.**
+  - **The confirmation gate's readings.**
+    1. **N8 gets its row**, a widening of the file list and the counts: `update-expression.spec.ts`,
+       "the read of an identifier update (D9)", one case in each mode, so `eval-core` is at **3132**.
+       It runs `for (let i = 0; i < 2; i++) {}` and asserts that the reads at the update's operand
+       are two, each flagged `scoped`, and that a dependency tracker records nothing. Probes, each
+       applied alone with the Edit tool and reverted, over all of `eval-core`:
+       - the update's read event dropped from `readIdentifierTarget`: 12 red, the new 2, group R's
+         `x += 1`, `x ||= 1`, `x++` and `++x` in both modes, and part 1's two `a ||= b` read rows,
+         every case that reads an identifier target's event;
+       - the event dispatched without `scoped`: exactly the new 2. So the row is the only witness of
+         the CHANGELOG's clause, and the clause stays.
+    2. **`docs/README.md:29`**, a widening: its `#a45` and `#a44` targets only, re-pointed to
+       `backlog-retired.md`, since the anchors moved. Step 7 rewrites the line.
+    3. **The CHANGELOG's sections as 0.13.0's**: the three "Breaking:" bullets under
+       `### Breaking`, the prefix dropped; the README's line under `### Changed`, as 0.13.2's README
+       line is; `### Fixed` (A44, A52) and step 3's `### Security` (D8, D11) kept. § 3.5 named only
+       Breaking and Fixed, having predated D8 and D11.
+    4. **Criterion 3 is met by the claim → witness table below**, decided at the gate: no spec reads
+       README prose, since `readme-examples.spec.ts` executes and counts the fenced blocks and the
+       edits are in rows and paragraphs. Every new or changed sentence in the README and
+       `SECURITY.md` names the cases that pin its behaviour. Writing the table reworded two README
+       sentences before it was complete. "`+=` or `||=` reads it once" stood alone: group P and C's
+       held rows read twice, so the README names the reads that remain. Its first form, "`this.g =
+       1` calls its getter once", was case-sensitive only: under `caseInsensitive` C's row gives 0,
+       the write landing in the copy (A50).
+    5. **A53 is opened** with Kind "decision, then fix", A24's precedent: the cause, the platform or
+       the library, is decided first. Its two runs are the entry's to make, not this step's.
+    6. **At the step's approval, N3**: `SECURITY.md` is read at master by every published version's
+       README, so the listed-function paragraph and the `constructor++` lines carry version markers,
+       in the file's "From 0.13.0" style. The paragraph is now three bullets, `=`, an update, and a
+       compound or logical assignment, and restores `++obj.fetch`'s history: overwritten since before
+       0.13.0, a string up to 0.13.1, `NaN` from 0.13.2. No spec pinned a prefix update of a listed
+       function, so that sentence got a witness rather than a rewording: `update-expression.spec.ts`,
+       "should give NaN for ++tools.eval and write NaN", beside the A40 postfix cases, one in each
+       mode. **`eval-core` is at 3134.** Probe: the member branch's prefix update of a function
+       concatenating again, as up to 0.13.1, turned exactly the new 2 red over all of `eval-core`;
+       reverted.
+  - **Claim → witness**, every new or changed sentence. A spec named without a file is
+    `assignment-target.spec.ts`, by its group and row, each in both modes unless marked:
+
+    | Document | Claim | Witness |
+    | :--- | :--- | :--- |
+    | `SECURITY.md`, Protections | **From 0.14.0** the update visitor applies the guard to an identifier operand too, so `constructor++` is refused | B's `constructor++`, `__proto__++`, `toString++`, refused with the dangerous-property message; step 3's probe (ix), 6 red |
+    | | **Up to 0.13.3** only to a member operand, and `constructor++` wrote an own `constructor` onto the context while `constructor = 1` was refused | B's `constructor = 1`; B's `constructor++` row comment and probe (ix)'s diff, which showed `NaN` and the key written |
+    | | An assignment's identifier target is checked the same way, and nothing is written: `constructor = 1`, `constructor += 1`; so is `constructor++`, **from 0.14.0**, which up to 0.13.3 wrote onto the context | B's three rows, each asserting the message and the store's and the caller's keys unchanged; step 3's probe (ii) for `=`, (ix) for the update |
+    | `SECURITY.md`, the funnel | No function value reaches anything either way | F's rows and the A40 cases: each gives `1`, `NaN` or the funnel's throw |
+    | | **`=`, from 0.14.0**: `=` does not read its target, so `fetch = 1` and `obj.fetch = 1` write `1` | F's `fetch = 1` and `obj.fetch = 1`, against the native run; step 3's probe (i), the walk restored, turned F's 4 red |
+    | | **Up to 0.13.3** both were refused at the read: the target was read as an operand, and the funnel refused that read | The same probe (i), which restores that read |
+    | | **An update, in every version**, takes its operand without the funnel's test | F's `fetch++` and `obj.fetch++` and the A40 cases, none refused |
+    | | `++obj.fetch` has overwritten the function since before 0.13.0, a string up to 0.13.1 and `NaN` from 0.13.2 | `update-expression.spec.ts`, "should give NaN for ++tools.eval and write NaN" (reading 6); the history, A41's retired entry, whose fix replaced the concatenation |
+    | | **From 0.13.2** an update converts its operand, so `++obj.fetch`, `fetch++` and `obj.fetch++` write `NaN`; up to 0.13.1 `obj.fetch++` threw after writing | The same case; F's `fetch++` and `obj.fetch++`; `update-expression.spec.ts`, "a listed function as the operand (A40)"; the history, A40's retired entry |
+    | | A compound or logical target's read is given the funnel's test although not pushed; so `fetch += 1`, `obj.fetch += 1`, `fetch \|\|= 1` and `obj.fetch \|\|= 1` are refused, as `fetch \|\| 1` is | F's `fetch += 1`, `obj.fetch += 1`, `obj.fetch \|\|= 1`; `assignment-expression.spec.ts`, "should refuse fetch \|\|= 1 with the funnel's message, as fetch \|\| 1 is"; step 2's probe (ii), 9 red |
+    | README, `AssignmentExpression` | From 0.14.0, object and key once, the value only for a compound or logical operator, then the right side, then the write | E's `getObj().x = 1`, `getObj()[k()] = f()`, `+= f()`, `\|\|= f()`, `&&= f()`, call order against the native run |
+    | | `=` does not read its target; `+=` or `\|\|=` reads it once | E's `o.g = 1` (getter 0), `o.g += 1`, `o.g &&= 1` (getter 1), `o.g \|\|= 1` |
+    | | Up to 0.13.3 the target was read as an operand, and a member target evaluated again after the right side | Step 2's probe (i), the walk restored for compound targets, 25 red; step 3's (i), for `=`, 37 red |
+    | | Three kinds of read remain: `this.g = 1` once and `this.g += 1` twice case-sensitive; a lookup answering `x`, once for `x = 1` and twice for `x += 1`, under `caseInsensitive`; an inherited getter under `caseInsensitive`, twice for `c.g += 1`, as for `c.g` | C's `this.g = 1` and `this.g += 1`, case-sensitive, held under A49; L's `x = 1` and `x += 1`, `caseInsensitive`, held under A49; P's `c.g += 1` and `c.g`, `caseInsensitive`, held under A48 |
+    | README, `UpdateExpression` | Under `caseInsensitive` a member update writes the key its read matched: `OBJ.X++` writes `x` | `update-expression.spec.ts`, "under caseInsensitive, a case variant of the member (A44)", 36 cases; A's `OBJ.X++`, `++OBJ.X`; step 3's probe (v), 44 red |
+    | README, case-insensitive section | A member write reaches the key the read would match: `OBJ.X = 2` writes `x`, where up to 0.13.3 it created `X` | A's `OBJ.X = 2`, `obj.X = 2`, `obj["X"] = 2`, `caseInsensitive`, each asserting the object's keys; probe (v) |
+    | | A key that matches nothing is written as spelled | A's `obj.Y = 2` |
+    | README, beside `onRead` | `a.b = 1` reports `a` and not `a.b`; `x = 1` nothing; a compound or logical assignment one read of its target, `a.b += 1` reporting `a` then `a.b`; `x++` one read of `x` | R's `a.b = 1`, `x = 1`, `a.b += 1`, `a.b \|\|= 1`, `x += 1`, `x \|\|= 1`, `x++`, `++x`; step 3's probes (vii), 8 red, and (x), 4 red; step 2's (iii), 6 red; reading 1's first probe, 12 red |
+
+    The bullet "an assignment's target, `fetch = 1` or `obj.fetch = 1`" under "Reads that only
+    inspect the value throw too" is removed, as § 3.5 lists, and needs no witness. "Identifiers are
+    checked before any lookup" and the `this` statement (`SECURITY.md:227-230` now) are unchanged.
+  - **The code review** found nothing Critical. Corrected in this step: the README's lookup case
+    gave `x = 1`'s count and not `x += 1`'s, two, which L's held row pins (W1); A53's index row said
+    every process slowed, where the entry measures 175 of 180 (W2); the plan's "Opens" line still
+    counted A52 among the defects it does not fix (N1); `SECURITY.md` now says the compound read is
+    given the funnel's test without being pushed, and an update's is not (N2); a reflow leftover in
+    the README row (N4). N3, the rewrite's lost `++obj.fetch` history, was fixed at the step's
+    approval (reading 6). Left: source comments citing `docs/backlog.md` A44, A45 and A52 by ID, as
+    criterion 1 records (N5).
+  - **Criterion 1.** The gate is green at 3134 / 443 / 380, doc-links at 0 dangling. The move left
+    14 dangling links, all listed by the gate and re-pointed: the plan's ten, `docs/README.md`'s two,
+    `backlog-retired.md`'s A40 entry, and the register's own A44 mention. Comments in source cite
+    `docs/backlog.md` A44, A45 and A52 by ID, which the index still resolves, and are not edited.
+  - **Criterion 2.** `git grep -n 'fetch = 1'`, read line by line: `SECURITY.md:202` says the write
+    happens. The CHANGELOG's `[Unreleased]` (`:34`) says it writes where it was refused, and its
+    `[0.12.1]` (`:379`) is that release's history. `backlog.md`'s are the 0.13.2 Publication row and
+    A45's index title, each describing the defect as it stood, and `backlog-retired.md`'s are A45's,
+    in the past tense. The rest are the A35 plan, a design record, this plan, and the spec's two F
+    rows. None claims the write is refused now.
+  - **Criterion 3.** Met by the table above (reading 4).
+  - **Criterion 4.** `public-api.spec.ts`'s identifier case is green, and no allowlist entry was
+    needed. Probed by breaking the document: a code span `refuseProbeXyz()` added to the rewritten
+    paragraph turned exactly that case red, naming the identifier; reverted.
+  - **The register.** A44, A45 and A52 moved to `backlog-retired.md` after A46, each with its
+    *Fixed* and *Verified* paragraphs and its original measurement kept; their index rows point
+    there. A53 is opened after A51. "Work in flight" is brought to step 5. The register history's
+    *Unreleased* row becomes 24 live before, 6 opened (A48–A53), 5 closed (F21, F25, A44, A45, A52),
+    25 after, and the totals row 42 + 67 − 84 = 25. **The cycle's live count rises from 24 to 25
+    because this plan's measurements surfaced six pre-existing defects, A48–A53**, and it closed
+    three.
 
 ### Step 6 — Release commit
 
@@ -1734,7 +1831,7 @@ release is breaking by behaviour (§ 3.1, M2, M5), not by shape.
 | Gate | Command | Expected |
 | :--- | :--- | :--- |
 | Everything | `npx nx run-many -t lint test build --skip-nx-cache --output-style=static` | Green, every step |
-| `eval-core` tests | (in the above) | +184 in step 1, +16 in Revision 4's addendum, +8 in step 2 (its widening), +42 in step 3 (its widening included), 0 otherwise: 3064, 3080, 3088 after step 2, 3130 from step 3 (Revision 4; +164 at Revision 1) |
+| `eval-core` tests | (in the above) | +184 in step 1, +16 in Revision 4's addendum, +8 in step 2 (its widening), +42 in step 3 (its widening included), +4 in step 5 (its widenings), 0 otherwise: 3064, 3080, 3088 after step 2, 3130 after step 3, 3134 from step 5 (Revision 4; +164 at Revision 1) |
 | `eval-signals` / `eval-forms` tests | (in the above) | 443 / 380 in every step |
 | Perf | `internal/performance.spec.ts` | Green and untouched in every step |
 | Timing | § 3.8's harness | Step 4 only, under the rule stated there |

@@ -2341,7 +2341,8 @@ every other operand, which is A41.
 
 **What it leaves.** The update writes `NaN` over the listed function, where an assignment over it,
 `obj.e = 1`, `e = 1` or `obj.e += 1`, is refused. That refusal is the read's, not the write's: an
-assignment evaluates its target as an operand before it writes ([A45](backlog.md#a45)), and no
+assignment evaluates its target as an operand before it writes ([A45](#a45), whose part 2 changes
+that for `eval-core` 0.14.0), and no
 write path refuses overwriting a listed function. Nor is the update's overwrite new: the prefix form
 already wrote over it, with a string, before this fix, as the table below shows. No function value
 is handed on. `SECURITY.md` states it.
@@ -2705,6 +2706,274 @@ A throw rather than a no-op: it names the misuse, where a no-op would leave `und
 built bundle. Re-measured 2026-10-22 with a throwaway script outside the repository, against the
 production bundle built from the batch's tree and against the same tree built without A43's
 fallback, the Angular compiler loaded.
+
+<a id="a44"></a>
+## A44 — Under `caseInsensitive`, a member write to a case variant creates a new key
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-24**, as step 3 of the
+[A45 plan](a45/plan.md); not yet released, for `eval-core` 0.14.0. Opened 2026-10-22 by the
+[A40](#a40) and [A41](#a41) batch, whose `caseInsensitive` case matrix found it. It predates that
+batch
+
+Under `caseInsensitive`, a member read matches a case variant of the property, and a member write
+does not. The write uses the property as the expression spells it, so a case variant creates a new
+key beside the one the read matched. Measured 2026-10-22 against the production bundle built from
+the batch's tree, under `caseInsensitive`, the context a plain object:
+
+| Expression | On `{ obj: { x: 1 } }` | `obj` afterwards |
+| :--- | :--- | :--- |
+| `OBJ.X = 2` | gives `2` | `{ x: 1, X: 2 }` |
+| `OBJ.X += 1` | gives `2`, from the matched `x` | `{ x: 1, X: 2 }` |
+| `OBJ.X++` | gives `1`, from the matched `x` | `{ x: 1, X: 2 }` |
+| `obj.X = 2` | gives `2` | `{ x: 1, X: 2 }` |
+
+The root identifier is not the cause, since `obj.X = 2` does the same; an identifier write corrects
+its key ([A43](#a43) is its case where nothing matches). The read and the write of one compound
+assignment or update therefore reach different keys.
+
+**What it held back.** `update-expression.spec.ts`'s `caseInsensitive` leg spelled every source as
+the data spells it, `x` and `obj.x`, because a case-variant spelling of the member rows failed on
+this entry and not on the update. The fix added those rows: the matrix again, with the property
+spelled as a case variant.
+
+**Related, and documented rather than recorded.** A plain object handed to `new EvalContext`, with
+`caseInsensitive` on the context and on the walk, matches no case variant at all, for a read either:
+measured the same day, `2 + 3 * A` on `{ a: 10 }` gives `NaN`, where `EvalContext.fromContext`, a
+plain object handed to the walk and a case-insensitive `Registry` each give `32`. The `eval-core`
+README says so, since 0.13.2.
+
+*Fixed* 2026-10-24, in the plan's step 3 (its D4, § 3.4). `evaluateMember` returns the key its lookup
+matched in a fifth tuple slot, and update's member branch and the compound branch write to it; the
+`=` resolver matches the key without reading the value. `OBJ.X = 2`, `obj["X"] = 2`, `OBJ.X += 1`
+and `OBJ.X++` on `{ obj: { x: 1 } }` write `x`, and `c.G = 1` calls the setter `g` an instance
+inherits. A key the lookup matches on nothing, `obj.Y = 2`, is written as spelled.
+
+*Verified*: the plan's characterisation spec, `assignment-target.spec.ts`, group A, whose eight
+`caseInsensitive` rows flipped at step 3, each against the native run of its `nativeAs`, the matched
+key; and `update-expression.spec.ts`'s "under caseInsensitive, a case variant of the member (A44)",
+36 cases, `OBJ.X` over `{ obj: { x } }` against the native update, each asserting that `obj`'s own
+keys are exactly `['x']`. Step 3's probe (v), the key as spelled in the resolver, the compound branch
+and the update, turned exactly those 44 cases red. The defect itself was found by the A40/A41
+batch's matrix, and measured 2026-10-22 with a throwaway script outside the repository, against the
+production bundle: `OBJ.X = 2`, `OBJ.X += 1` and `OBJ.X++` through a temporary spec, and the table
+above through `evaluate(parse(…), EvalState.fromContext(…))`.
+
+*Recorded*: this entry; `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Fixed.
+
+<a id="a45"></a>
+## A45 — An assignment evaluates its target as an operand and its right side unconditionally
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-24**: part 1 on 2026-10-22,
+released 2026-10-23 in `eval-core` 0.13.3, tagged 021d5e4; part 2 in steps 2 and 3 of the
+[A45 plan](a45/plan.md), not yet released, for `eval-core` 0.14.0. Opened 2026-10-22 by the
+[A40](#a40) and [A41](#a41) batch
+
+`assignment-expression.ts` evaluated `node.left` as an operand and `node.right` after it, then
+applied the operator to the two values. For a member target it then evaluated the target a second
+time, through `evaluateMember`, to find the object and key it writes. Up to 0.13.2 it did that, and
+wrote, in every case. JavaScript evaluates a member target's object and key once, reads the target's
+value only for a compound or logical operator, skips the right side when a logical assignment
+short-circuits, and then writes nothing.
+
+Measured 2026-10-22 against the production bundle built from the batch's tree, through
+`evaluate(parse(…), EvalState.fromContext(…))`, beside the same expressions run natively. The table
+was one; its short-circuit and policy rows are part 1's, and the rest are part 2's.
+
+**Two parts, both fixed.** Part 1 is a logical assignment that short-circuits; part 2 is the target
+evaluated as an operand, and twice for a member.
+
+**1. A logical assignment that short-circuits — Retired 2026-10-22, fixed.** Released
+2026-10-23 in `eval-core` 0.13.3, tagged 021d5e4.
+
+| Expression | Up to 0.13.2 | Now | JavaScript |
+| :--- | :--- | :--- | :--- |
+| `a \|\|= f()`, `a` truthy | `f` called once | `f` not called | `f` not called |
+| `a &&= f()`, `a` falsy | `f` called once | `f` not called | `f` not called |
+| `a ??= f()`, `a` not nullish | `f` called once | `f` not called | `f` not called |
+| the same three on a member target, `o.a` | `f` called once each | `f` not called | `f` not called |
+| `o.g \|\|= 1`, the getter truthy | getter 2, setter 1 | getter 1, setter 0 | getter 1, setter 0 |
+| `o.a \|\|= 9`, `o.a &&= 9`, `o.a ??= 9`, each short-circuiting, under a policy that refuses what the walk did not create | refused, `o.a` unchanged | no write, so nothing to refuse | no write, so nothing to refuse |
+
+The value of every short-circuited row was already JavaScript's: the evaluator computed the operator
+on the two values and wrote back the value the target already held. What differed was effects: a
+right side that should not run ran, and a logical assignment always wrote, so a write policy refused
+a short-circuited one that JavaScript would not write.
+
+The fix is `logical-expression.ts`'s rule, applied once the left value is popped: for `||=` on a
+truthy value, `&&=` on a falsy one and `??=` on one that is not nullish, the visitor pushes that
+value and returns. The right side is not evaluated, and `evaluateMember`, the policy,
+`assignToBinding` and `safeSetProperty` are not reached. The `o.g ||= 1` row follows from that
+without being aimed at: its second read was `evaluateMember`'s, which only the write path calls. A
+logical assignment that does not short-circuit still read a member target twice; that was part 2.
+
+Logical assignment is ES2021, and `EvalService` parses at `ecmaVersion: 2020`, which refuses it at
+the parse. It reaches the visitor only through a caller's own parser options, as `parse` with
+`ecmaVersion: 2021` does.
+
+*Verified*: `assignment-expression.spec.ts`, "a logical assignment that short-circuits (A45 part 1)",
+64 cases. 28 compare against the same expression run natively: the 16 identifier value rows, each
+operator short-circuiting and not in both modes, and the 8 member value rows, for the result, the
+target afterwards and the right side's call count; the 3 policy rows above that do not throw, for
+the result; and the `o.g ||= 1` row, for the result and the getter and setter counts. The 24
+recorder rows check the writes, through a context's `set`, a recording policy and a proxy on the
+member's object, against each row's short-circuit flag, which the value rows confirm natively. The
+other 12 check values written in the case: the policy's refusal of a write that does not
+short-circuit; the read hooks of `a ||= b` and the `'after'` node hook of `a ||= f()`, each
+short-circuiting and not; the value stack and the scopes after the expression runs in an arrow body;
+`const c = 1; c ||= 2`, which gives `1`; `TRUE ||= 1` under `caseInsensitive`, which gives `true`;
+and `fetch ||= 1`, refused by the funnel as `fetch || 1` is, a pin of existing behaviour that passed
+before the fix and does not discriminate it. Each probe was applied alone and reverted, and its
+failures read case by case:
+- the right side evaluated once, before the test: 17 red, every short-circuiting call-count row, the
+  read hook rows, the two short-circuiting arrow rows and the short-circuiting node hook row;
+- the write kept on a short-circuit: 18 red, the short-circuiting recorder rows, the three policy
+  rows, and the getter, `const` and `TRUE` rows;
+- `??=` tested as falsy: 14 red, every `??=` row on `0` or `''`;
+- no early return, falling through to the old path: 35 red, the unfixed code's set and the four rows
+  added since, each on its first effect assertion: call count, writes, the policy's refusal, the
+  read of `b`, the getter count, a write path's refusal, or a second `'after'` event. The values stay
+  right, since `evaluate` pops the top value and the stray one sits under it;
+- since that probe reds the arrow rows before their stack assertion, one more: a second push of the
+  value on the short-circuit path, 2 red, the two short-circuiting arrow rows, at the stack
+  assertion. Nothing else in the spec sees a stray push;
+- the short-circuit path's `afterVisitor` dropped: 1 red, the short-circuiting node hook row, at
+  `completed`. Its event count stays 1, since `exit` flushes the open frame when the enclosing
+  statement closes, synthesised and without a value; the row asserts both.
+
+The node hook row that does not short-circuit is the arm that tells the two apart, on the path the
+fix leaves alone; no probe reds it. The `o.g ||= 1` row was first measured after the fix through a
+temporary spec, deleted after, and is now the spec's getter row.
+
+**2. A target evaluated as an operand — Retired 2026-10-24, fixed** in steps 2 and 3 of the
+[A45 plan](a45/plan.md), which reopened Phase 1's decision that assignment targets emit read events
+([`side-effects/phase-1-plan.md`](side-effects/phase-1-plan.md):274-280). Not yet released.
+
+| Expression | Up to 0.13.3 | From 0.14.0 | JavaScript |
+| :--- | :--- | :--- | :--- |
+| `o.g = 1`, `g` an accessor | getter 2, setter 1 | getter 0, setter 1 | getter 0, setter 1 |
+| `o.g += 1` | getter 2, setter 1 | getter 1, setter 1 | getter 1, setter 1 |
+| `o.g &&= 1`, the getter truthy | getter 2, setter 1 | getter 1, setter 1 | getter 1, setter 1 |
+| `getObj().x = 1` | `getObj` called twice | once | once |
+| `obj.fetch = 1` and `fetch = 1`, `fetch` the listed function | throws `Access to dangerous function "fetch" is blocked for security reasons`; the function stays | writes `1` | writes `1` |
+
+The `o.g &&= 1` row was measured 2026-10-22 with part 1's fix, through the same temporary spec; it
+is the double read on a logical assignment that does not short-circuit. What differed was effects,
+in two kinds:
+- **a member target was evaluated twice**: its getter and its object expression ran twice, and the
+  write reached whatever the second evaluation yielded;
+- **the funnel refused an assignment over a listed function**, since the target was read as an
+  operand even for `=`. That refusal was the read's, not the write's. No write path refuses
+  overwriting a listed function: `++obj.fetch` has overwritten one since before 0.13.0, and
+  `obj.fetch++` does from [A40](#a40)'s fix, with `NaN`, and no function value reaches anything.
+  `SECURITY.md` states it.
+
+**Fidelity; no refusal skipped.** Every extra evaluation passed through the same visitors as the
+first, so each extra read and call was checked as the first was, and the table's deviations added a
+refusal, the funnel's at an `=` target, rather than skipped any.
+
+**The direction this entry recorded**, which the plan decided as its D1–D6: evaluate a member
+target's object and key once, and read its value only for a compound or logical operator. That is
+the decision Phase 1 made the other way: `a.b = 1` reported a read of `a.b`, by design. It cost three
+things, which is why it needed a plan:
+- **`evaluateMember`'s split, on the M19 hot path.** `evaluateMember` resolves the object and key
+  and reads the value in one call, for every member read, a call's callee and an update's operand as
+  well as an assignment's target. The plan kept the read path's shape (its D6) and gave `=` its own
+  resolver instead; its step 4 measured the member read at −0.86% by median, positive in 4 of 12
+  rotations, and the member write at −20.90%, positive in 0 of 12.
+- **Node hooks and trace.** The target was walked as an operand, `callback(node.left)`, so a node
+  hook saw it enter and exit and the trace recorded its value. It is no longer walked: node hooks
+  and the trace see the target's object and a computed key, and an identifier target not at all.
+- **`SECURITY.md`.** The funnel's refusal of `obj.fetch = 1` and `fetch = 1` is gone, and they write
+  as an update does. "Reads that only inspect the value throw too" lost its assignment bullet.
+
+`fetch ||= 1` was not part 2's: a logical assignment reads its target's value in JavaScript too, so
+the funnel's refusal there stays, as it does for `fetch || 1`. Part 1's spec pins it.
+
+**Logical assignment is unreachable downstream today**, because `CompilerService`, `/reactive` and
+`/signals` pass `defaultParserOptions`, at `ecmaVersion: 2020`, on every call. Whoever raises the
+default `ecmaVersion` to 2021, or writes into `defaultParserOptions` in place (the route
+[A34](backlog.md#a34) records), has to revisit the downstream sites that call a
+`SignalContextWriteError` "illegal on every recompute with every dataset": a short-circuit makes that
+write error depend on the data. `git grep` on 2026-10-22 finds three in source (`eval-signal.ts` and
+`error-policy.ts` twice), four in specs (`eval-signal.spec.ts`, `field-schema.spec.ts`,
+`rules.spec.ts` and `evaluate-rule.spec.ts`), and one in `eval-forms`' README; that package's
+CHANGELOG says it of a released version.
+
+*Fixed* 2026-10-24, part 2. Step 2 gave a compound or logical target update's shape, one
+`evaluateMember` call for a member and no walk for an identifier, and passed the value it reads
+through the funnel's check, so `fetch += 1` and `obj.fetch ||= 1` are still refused. Step 3 gave `=`
+its own resolver, which walks the object and a computed key, makes the read path's key checks before
+the right side (the plan's D7), and reads nothing. The identifier update gained the blocklist checks
+and the read event an assignment target had (D8, D9). Read events follow the reads: `a.b = 1`
+reports `a`, `x = 1` nothing, and a compound or logical assignment one read of its target. The
+release is breaking by behaviour, not by shape (the plan's § 5).
+
+*Verified* (part 2): `assignment-target.spec.ts`, the plan's characterisation spec, 214 cases in both
+modes: 184 written at its step 1, each row marked with the step that flips it, group T's 16 added by
+the plan's Revision 4, group V's 8 by step 2 and three D7 rows' 6 by step 3. The plan's prototype
+turned red exactly the marked cases of step 1. Before step 2's rows were rewritten, its code turned
+exactly 28 cases red, every one marked `2`; before step 3's, exactly 55, every one marked `3`;
+nothing else in `eval-core` either time. Each step's probes, applied alone and reverted, are in the
+plan's step 2 and step 3 outcomes: the funnel's check dropped turned 9 cases red, the walk restored
+for `=` 37, and D9's read event dropped from the update 4. The 18 held cases name the entries that
+keep them, [A48](backlog.md#a48)–[A51](backlog.md#a51). The defect was noticed in the A40/A41
+batch, while correcting `SECURITY.md`'s account of why `obj.fetch = 1` threw, and measured
+2026-10-22 with a throwaway script outside the repository, against the production bundle with the
+Angular compiler loaded, each row run natively beside it.
+
+*Recorded*: this entry; `SECURITY.md`, "No write path refuses overwriting a listed function";
+`modules/eval-core/CHANGELOG.md`'s `[0.13.3]` › Fixed and `[Unreleased]` › Breaking.
+
+<a id="a52"></a>
+## A52 — Under `caseInsensitive`, an identifier holding `null` reads as `undefined`
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-24**, as step 2 of the
+[A45 plan](a45/plan.md) (its D10); not yet released, for `eval-core` 0.14.0. Opened 2026-10-23 by
+the plan's Revision 2, whose measurement of its D9 found it. It predates that plan
+
+`identifierVisitorCaseInsensitive` read `context.get(name) ?? literals.get(name)`. The literal
+fallback, which resolves `TRUE`, `Undefined` and their kin, was taken for `null` as well as for
+`undefined`. So a context key holding `null` read as whatever the literals registry holds under that
+name, which is `undefined` for every ordinary name. A member's `null` was unaffected. Measured
+2026-10-23 against the production bundle, on `{ x: null, o: { x: null } }`:
+
+| Expression | Case-sensitive | `caseInsensitive` | JavaScript |
+| :--- | :--- | :--- | :--- |
+| `x` | `null` | **`undefined`** | `null` |
+| `x === null` | `true` | **`false`** | `true` |
+| `x += 1` | `1` | **`NaN`**, and writes `NaN` | `1` |
+| `x ??= 5` | `5` | `5` | `5` |
+| `x++` | `0`, writes `1` | `0`, writes `1`: the update reads through `get` | `0` |
+| `o.x` | `null` | `null` | `null` |
+
+**Why it was found then.** The A45 plan's D9 has the identifier update read through the same target
+read as a compound assignment. Run with this fallback, that turned `update-expression.spec.ts`'s four
+`caseInsensitive` `null` rows red (`x++`, `x--`, `++x` and `--x` on `null` gave `NaN`). Taken only on
+`undefined`, the fallback kept all 2880 cases green and gave `x += 1` its JavaScript value. The plan
+adopted that for its own target read (its D9, Revision 2).
+
+**The fix, as planned** (the plan's D10, Revision 3). The identifier visitor reads through the same
+function, so there is one `caseInsensitive` identifier read, with the fallback on `undefined` only.
+Measured 2026-10-23 with the plan's prototype (its M11):
+- all three suites stayed green, at 2880 / 443 / 380;
+- every row above gave JavaScript's value, in both modes;
+- `n.x = 1` on a `null` `n` now throws the case-sensitive message, `…non-object: object`.
+
+*Fixed* 2026-10-24, as planned: `readCaseInsensitive` (`identifier.ts`) is the one
+`caseInsensitive` identifier read, the visitor's and the target read's, and it falls through to the
+literals registry only for `undefined`.
+
+*Verified*: the plan's characterisation spec, `assignment-target.spec.ts`: group N's `x === null`
+and group B's `n.x = 1`, under `caseInsensitive`, flipped at step 2, and N's `x += 1` gives `1`.
+Step 2's probe (vi), `??` in the shared read, turned 3 cases red, and (vii), `??` in the visitor
+alone, exactly those two; step 3's (xi), the target read's fallback by `??`, turned 6 red, among
+them `update-expression.spec.ts`'s four `null` rows. The defect was measured 2026-10-23 with a
+throwaway script outside the repository, against the production bundle built at db287da and the
+plan's prototype, with the Angular compiler loaded; the four red cases by running `eval-core`'s suite
+against the prototype.
+
+*Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M9; `modules/eval-core/CHANGELOG.md`'s
+`[Unreleased]` › Fixed.
 
 ---
 

@@ -1,5 +1,5 @@
 import { AnyNode } from 'acorn';
-import { EvalContext, EvalKnownOptions, EvalMemberWrite, EvalState } from '../classes/eval';
+import { EvalContext, EvalKnownOptions, EvalMemberWrite, EvalState, createDependencyTracker } from '../classes/eval';
 import { Context, Registry, fromContext } from '../classes/common';
 import { evaluate, parse } from '../functions';
 
@@ -224,6 +224,15 @@ describe('updateExpressionVisitor', () => {
         expect(run('e++', context)).toBe(nativeUpdate(listed, 'x++').result);
         expect(context.get('e')).toBe(NaN);
       });
+
+      // The prefix form, which has overwritten a listed function since before
+      // 0.13.0, with a string up to 0.13.1 (`docs/backlog-retired.md` A41).
+      it('should give NaN for ++tools.eval and write NaN, as JavaScript does', () => {
+        const context = contextOf({ tools: { eval: listed } });
+
+        expect(run('++tools.eval', context)).toBe(nativeUpdate(listed, '++x').result);
+        expect((context.get('tools') as Record<string, unknown>)['eval']).toBe(NaN);
+      });
     });
 
     describe('a write policy', () => {
@@ -236,6 +245,35 @@ describe('updateExpressionVisitor', () => {
 
         expect((error as Error).message).toBe(`policy refused a write to "x"`);
         expect((context.get('tools') as Record<string, unknown>)['x']).toBe(1);
+      });
+    });
+
+    /**
+     * An identifier update reports the read of its operand, which up to 0.13.3
+     * it did not (`docs/a45/plan.md` D9). A loop counter is bound by the scope
+     * `for-statement.ts` pushes, so each read the update reports is flagged
+     * `scoped`, and a dependency tracker drops it. The update's reads are told
+     * from the test's `i < 2` by the node's position.
+     */
+    describe('the read of an identifier update (D9)', () => {
+
+      it('should report each read of a for loop\'s i++, flagged scoped, and no dependency', () => {
+        const source = 'for (let i = 0; i < 2; i++) {}';
+        const operandAt = source.indexOf('i++');
+        const updateReads: boolean[] = [];
+        const tracker = createDependencyTracker();
+        const state = EvalState.fromContext(contextOf({}), options);
+        state.hooks.onRead(event => {
+          if (event.node.start === operandAt) {
+            updateReads.push(event.scoped === true);
+          }
+        });
+        tracker.install(state.hooks);
+
+        evaluate(programOf(source), state);
+
+        expect(updateReads).toEqual([true, true]);
+        expect([...tracker.dependencies]).toEqual([]);
       });
     });
   });
