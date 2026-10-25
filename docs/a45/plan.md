@@ -11,7 +11,8 @@ the `=` resolver and the identifier update in step 3. The characterisation spec 
 and 16 cases, pinned today. Its marks are witnessed by steps 2 and 3's probes, not by the pinned
 prototype, which predates D11: a stated exception to § 0 rule 10 (step 1's addendum). Rows: 100,
 cases 200. `eval-core` is at 3080 from this revision, and reaches 3116 at step 3. Step 2's widening,
-group V, adds 8 cases, so step 2 ends at 3088 and step 3 at 3124 (step 2's outcome).
+group V, adds 8 cases, so step 2 ends at 3088 and step 3 at 3124 (step 2's outcome). Step 3's
+widening, three D7 rows, adds 6 more: step 3 ends at 3130 (step 3's outcome).
 **Revision**: 3 — the request's third instruction, measured first (M11). D10 brings
 [A52](../backlog.md#a52) into step 2. Under `caseInsensitive` the identifier visitor's own read takes
 the literals fallback only when `get` finds `undefined`, the rule § 3.2 gives the target read, so
@@ -900,14 +901,15 @@ probe is applied alone and reverted, and its red cases are named (§ 0 rule 8).
 | :--- | :--- | :--- | :--- | :--- |
 | 1 | Characterisation spec: today pinned, flips marked, deviations held | new `internal/visitors/assignment-target.spec.ts` | **+184** / 0 / 0; **+16** with Revision 4's group T | no package |
 | 2 | Compound and logical targets in update's shape, with the funnel's check | `assignment-expression.ts`, `identifier.ts`, `visitor-result.ts`, the spec's step-2 rows, `CHANGELOG.md` | **+8** / 0 / 0 (rows rewritten 1:1; group V, a widening at the step's approval) | `eval-core` 0.14.0 |
-| 3 | The `=` resolver; A44 in both visitors; the identifier update's checks and read (D8, D9) | `assignment-expression.ts`, `member-expression.ts`, `update-expression.ts`, `identifier.ts`, the spec's step-3 rows, `update-expression.spec.ts`, `CHANGELOG.md` | **+36** / 0 / 0 | `eval-core` 0.14.0 |
+| 3 | The `=` resolver; A44 in both visitors; the identifier update's checks and read (D8, D9) | `assignment-expression.ts`, `member-expression.ts`, `update-expression.ts`, `identifier.ts`, the spec's step-3 rows, `update-expression.spec.ts`, `CHANGELOG.md`; at the step's approval `call-expression.ts` and `assignment-expression.spec.ts`, comments only | **+42** / 0 / 0 (+36, and +6 for three D7 rows, a widening at the step's approval) | `eval-core` 0.14.0 |
 | 4 | Timing against the rule in § 3.8 | this document only | 0 / 0 / 0 | no package |
 | 5 | `SECURITY.md`, README, CHANGELOG; A45, A44 and A52 retired | `SECURITY.md`, `modules/eval-core/README.md`, `CHANGELOG.md`, the register, link targets | 0 / 0 / 0, or the allowlist's entries | `eval-core` 0.14.0 (README); the rest no package |
 | 6 | Release commit | three `package.json`, three `CHANGELOG.md`, each README's peer line | 0 / 0 / 0 | the releases |
 | 7 | Post-publish commit | the register, `CLAUDE.md`, `docs/README.md`, CHANGELOG dates, this document | 0 / 0 / 0 | — |
 
 From 2880, `eval-core` is at 3064 once step 1 commits, at 3080 once Revision 4's addendum does, at
-3088 once step 2 does, with its group V, and at 3124 once step 3 commits. `eval-signals` and
+3088 once step 2 does, with its group V, and at 3130 once step 3 commits, with its three D7 rows
+(3124 without them). `eval-signals` and
 `eval-forms` stay at 443 and 380 (M4, M10). *Revision 2*: they were 3044 and 3080 at Revision 1.
 *Revision 4*: 3064 and 3100 at Revision 3, and 3080 and 3116 before step 2's widening.
 
@@ -1237,8 +1239,9 @@ From 2880, `eval-core` is at 3064 once step 1 commits, at 3080 once Revision 4's
          in both modes. Each is refused with `Access to the evaluation context is blocked for security
          reasons`, with both names left holding the context. Each is beside its native run, which
          combines or overwrites it. They carry the design mark "the funnel", and no flip mark. Up to
-         0.13.3 the operand walk pushed the target's value, which the funnel refuses, so they should
-         have been refused then too. That was not run: the rows were written after step 2's code.
+         0.13.3 the operand walk pushed the target's value, which the funnel refuses, so they were
+         refused then too: refused at 0.13.3, measured 2026-10-24, when all 8 passed against
+         57be303's visitors with step 2's spec.
        - **The probe**: the call narrowed to the function test, `if (typeof left === 'function')`.
          Exactly the 8 cases of V went red, and nothing else in `eval-core`: `f += 1`, `o.f += 1`,
          `f &&= 2` and `o.f &&= 2`, case-sensitive and `caseInsensitive`.
@@ -1279,8 +1282,9 @@ From 2880, `eval-core` is at 3064 once step 1 commits, at 3080 once Revision 4's
     update of `this` written as a name, refused (D11).
   - This document; the skill's state.
 - **Exit criteria**:
-  1. The gate is green at 3124 / 443 / 380 (step 2's widening; 3116 at Revision 4, 3100 at Revision
-     3). Every step-3 case
+  1. The gate is green at 3130 / 443 / 380 (step 3's widening, three D7 rows, confirmed at its
+     approval; 3124 at its gate, with step 2's widening; 3116 at Revision 4, 3100 at Revision 3).
+     Every step-3 case
      equals the native run, or for group A the matched key, except held cases, which equal their
      recorded values, and group T's, which equal the `this` refusal (D11). No row is left marked to
      flip; the held marks stay.
@@ -1323,6 +1327,145 @@ From 2880, `eval-core` is at 3064 once step 1 commits, at 3080 once Revision 4's
        `this++` in both modes, which then write as today.
   3. `performance.spec.ts` is green and untouched, its member-write case at `:400` included.
 - **Category**: ships in `eval-core`'s next release.
+- **Outcome** — done 2026-10-24, under Revision 4.
+  - **The confirmation gate's readings.**
+    1. `identifier.ts` exports one function, `refuseIdentifierTarget`, which runs the blocklist
+       check, the `this` refusal and, under `caseInsensitive`, the matched-key check, in that order.
+       `readIdentifierTarget` calls it, so every identifier target path shares one definition. The
+       `=` resolver calls it alone.
+    2. The identifier update reads through `readIdentifierTarget` **before** `getKey`, so the checks
+       run before any lookup (D8, D11): under `caseInsensitive` `getKey` reads the value it tests
+       (finding 8). `full.patch` called `getKey` first. No row tells the two orders apart.
+    3. **Case-sensitive, a `null` or `undefined` object with a blocklisted key changes message.**
+       § 3.3 gives every receiver that is not a string, number or boolean the full blocklist, as
+       `full.patch` does. So `n.constructor = 1` is refused as `Access to dangerous property
+       "constructor"…`, where up to 0.13.3 the read's `safeGetProperty` answered `undefined` for a
+       nullish object without a check, and `safeSetProperty` refused it as `Cannot set property on
+       non-object: object`. Under `caseInsensitive` nothing changes: the read path's own check
+       already refused it with the dangerous-property message (the code review's W2). It is refused
+       either way, no row pins it, and the CHANGELOG says so.
+    4. **The resolver's `key in object` test is in a `try`**, as the read's `obj[key]` test is, so a
+       lookup that throws leaves the key as spelled. `full.patch` had none. **Under
+       `caseInsensitive` the `=` resolver calls a proxy's `has` trap, which JavaScript's `=` does not
+       call**: it is the read path's lookup, with `in` for the read. Group E's proxy `t` has no `has`
+       trap, so no row observes it.
+    5. The spec's `flips` field, its `Step` type and the flips mark in case names are removed, so no
+       row can carry one. Its docblock now describes 0.14.0 and the held and design marks; the
+       `today` field name and the `describe` title stay, so the rows' diff stays 1:1. Group R's four
+       walked-twice constants are replaced by four `=` constants, and `identifierUpdated` gains its
+       read; T's `besideInCopy` went with its last row.
+    6. `update-expression.spec.ts`'s 36 rows are a block under `caseInsensitive` alone, `OBJ.X` over
+       `{ obj: { x } }`, each against the native update and, beside the read of `x`, asserting that
+       `obj`'s own keys are exactly `['x']`, so a write that also created `X` goes red.
+    7. **The shared `this` node needs no row: `SECURITY.md:340` covers it.** A host-built AST using
+       one `this` Identifier first as a member's object, which marks it positional, and then as a
+       target skips D11's refusal at the target. No target path then evaluates `this` to the
+       context: `=` reads nothing, and the target read and the update read `get('this')`, an
+       ordinary key. So the second place cannot carry the context; it writes a data key named
+       `this`, as case-sensitive `This = 1` writes `This` by design. That is the mark-reuse residual
+       `SECURITY.md:340` records and case L11 pins, with less reach. A throwaway spec, deleted after
+       its run, measured it against this step's code on `{ k: 1 }`, in both modes alike:
+       - `(this.k, this = 1)`: `1`; the store gains `this`, holding `1`;
+       - `(this.k, this += 1)`: `NaN`; the store gains `this`, holding `NaN`;
+       - `(this.k, this++)`: `NaN`; the store gains `this`, holding `NaN`.
+
+       No result was the context, and no key written held it. The trace held the context in all
+       three, as `this.k`'s own entry, the limit `SECURITY.md:337` records. Case-sensitive the store
+       is the caller's object; under `caseInsensitive` the copy, the caller's keys unchanged. With
+       the target first, `(this = 1, this.k)`, `(this += 1, this.k)` and `(this++, this.k)` were
+       refused with the `this` message in both modes, nothing written.
+  - **Before the rows were rewritten**, the new code against the unchanged spec turned exactly 55
+    cases red, every one marked `3`, and nothing else in `eval-core`: the 81 other suites, and
+    `update-expression.spec.ts` before its new rows, stayed green.
+  - **Criterion 1.** The gate is green at 3130 / 443 / 380: 3088, the 36 update rows, and widening 1's
+    6 cases (below); 3124 before the widenings. No case is
+    marked to flip, and the eighteen held cases keep their marks. Each rewritten case equals its
+    native run, or for group A's `caseInsensitive` rows its `nativeAs`, the matched key; for group
+    R's its M2 prototype column, with D9's read for `x++` and `++x`; for C's case-sensitive
+    `this.g = 1` and L's `caseInsensitive` `x = 1` and `X = 1` their held values, get 1 and one
+    lookup call; for T's update rows the `this` refusal; and for B's three updates the blocklist
+    refusal, which is their design mark.
+  - **Criterion 2**, each probe applied alone with the Edit tool and reverted by hand, over all of
+    `eval-core`. Probes (ii), (ix), (x), (xii) and (xiii) dropped a check at one call site through a
+    probe-only parameter of `refuseIdentifierTarget` or `readIdentifierTarget`, inert unless passed;
+    `markThisPositional` was not used, since it marks the node permanently. A grep found no residue.
+    - **(i)**, the walk restored for `=` with the second `evaluateMember`: 37 red, every rewritten
+      `=` case: E's 8, F's 4, A's 4 `caseInsensitive` `=` rows, R's 12, G's 1, P's 2, L's 4 and C's
+      2. A's compound and update rows, B's and R's updates and the 36 update rows stayed green.
+    - **(ii)**, the blocklist checks dropped from the `=` resolver, the `this` test kept: 6 red,
+      exactly B's `constructor = 1`, `__proto__ = 1` and `toString = 1` in both modes.
+    - **(iii)**, the primitive check dropped: 2 red, exactly `s.constructor = 1` in both modes.
+    - **(iv)**, the context, `EvalScope` and plain branches' other key checks dropped, the matched-key
+      check included: 6 red, exactly B's three `= f()` rows in both modes, each on `f`'s call count.
+      Under `caseInsensitive` `this.constructor = f()` also differs on its message,
+      `Write to the evaluation context…`; case-sensitive only `calls` differs.
+    - **(v)**, the key as spelled in the resolver, the compound branch and the update: 44 red, A's 8
+      `caseInsensitive` rows and the 36 update rows.
+    - **(vi)**, the match by `obj[key] !== undefined` for `in`: 1 red, P's `c.g = 1` under
+      `caseInsensitive`. A's `c.G = 1` stays green: `c['G']` calls no getter.
+    - **(vii)**, a read event for the member target in the resolver: 8 red, exactly R's `a.b = 1`,
+      `a.b.c = 1`, `a[k] = 1` and `this.x = 1` in both modes.
+    - **(viii)**, the full check made `caseInsensitive` only: 2 red, exactly the two case-sensitive
+      `o.* = f()` rows. Under `caseInsensitive` the full check, kept in that mode, still refuses them
+      before `f`.
+    - **(ix)**, D8's checks dropped from the update: 6 red, exactly B's `constructor++`,
+      `__proto__++` and `toString++` in both modes. The diff read shows `NaN` and the key written.
+    - **(x)**, D9's event dropped from the update: 4 red, exactly R's `x++` and `++x` in both modes.
+    - **(xi)**, the target read's fallback by `??`, the visitor's read untouched: 6 red, exactly the
+      four `update-expression.spec.ts` `caseInsensitive` identifier cases on `null` and N's `x++` and
+      `x += 1` under `caseInsensitive`.
+    - **(xii)**, the `this` refusal dropped at the `=` resolver: 3 red, exactly T's `This = 1` under
+      `caseInsensitive` and the host-built `this = 1` in both modes.
+    - **(xiii)**, the `this` refusal dropped at the update: 4 red, exactly T's `This++` and `++This`
+      under `caseInsensitive` and the host-built `this++` in both modes.
+  - **Criterion 3.** `performance.spec.ts` is untouched and green.
+  - **The code review** found nothing Critical. Corrected in this step, on its list: the CHANGELOG's
+    `=` bullet now names A49's getter and lookup calls (W1); the nullish message change is
+    case-sensitive only, in the CHANGELOG and reading 3 (W2); all three blocklisted updates wrote
+    into the copy under `caseInsensitive` (N1); `refuseIdentifierTarget`'s docblock names the
+    shared-node limit (N2); probe (viii)'s wording (N5). N8, no witness for an update's `scoped`
+    read, is carried to step 5's notes.
+  - **Widenings at the step's approval**, from the code review, each confirmed at the approval:
+    1. **Three D7 rows in group B, 6 cases** (the review's W3). Three of the resolver's checks are
+       repeated by `safeSetProperty` after the right side with the same message, so no row went red
+       without them: probe (iv) dropped them with the others, and its red cases came from the plain
+       full check and the context exact-key check. Each row asserts `f`'s call count, beside its
+       native run, over a fixture of its own, `beforeRight`:
+       - `ns.__proto__ = f()`, a global `EvalScope`: refused with `f` uncalled in both modes, the
+         design mark "the blocklist, before the right side". Natively `5`, `f` once, and the
+         primitive given to `__proto__` ignored.
+       - `o.CONSTRUCTOR = f()`: case-sensitive it is another name, so `5`, `f` once and `o` gains
+         `CONSTRUCTOR`, equal to JavaScript; under `caseInsensitive` refused as `"constructor"` with
+         `f` uncalled, the design mark "the resolved-key check, before the right side", where its
+         `nativeAs`, `o.constructor = f()`, writes.
+       - `this.CONSTRUCTOR = f()` over `{ constructor: 1 }`: case-sensitive the context holds no
+         `CONSTRUCTOR`, so `getThis` answers nothing and the write reaches the context, refused by
+         A42 after `f` is called once, the design mark "A42, a write to the context"; under
+         `caseInsensitive` `getKey` matches `constructor`, refused with `f` uncalled, the
+         resolved-key check's mark. Natively `5`, `f` once.
+
+       **Probes**, each check dropped alone and reverted by hand: the `EvalScope` branch's check
+       turned exactly `ns.__proto__ = f()` red in both modes, 2 cases; the plain branch's
+       matched-key check exactly `o.CONSTRUCTOR = f()` under `caseInsensitive`, 1; the context
+       branch's matched-key check exactly `this.CONSTRUCTOR = f()` under `caseInsensitive`, 1. In
+       each, `calls` went from 0 to 1 and the message did not change.
+    2. **Three stale comments, comments only** (the review's N3), in two files outside the step's
+       list. `call-expression.ts`'s `scopeReceiver` said that `evaluateMember`'s first slot was the
+       target of `ns.x = v`; it names `ns.x += v` and `ns.x++`, and `resolveMemberTarget` for `=`.
+       `assignment-expression.spec.ts` said that a member target "is still evaluated twice", and
+       that the funnel refuses the function "as the left side pushes it"; both now say what 0.13.3
+       did and what part 2 does.
+    3. **The table's own claim, asserted** (the review's N4), no new cases. Each case of
+       `assignment-target.spec.ts` now asserts, before running the evaluator, that a held row's
+       `today` equals its `held.after`, and an unmarked row's equals its native or `nativeAs` arm's
+       outcome. Design-marked rows, and rows with no native arm, are exempt. Every case stayed
+       green. **Probe**: E's `o.g += 1` recorded with `value: 3`. Exactly its 2 cases went red, on
+       the new assertion's line, before the evaluator ran.
+  - **The counts move.** `eval-core` reaches 3130 at this step: criterion 1, § 4, § 6, the header
+    and the skill say so. The criterion named 3124 at the step's gate; the new count is widening 1,
+    confirmed at the approval, and not an amendment by the step.
+  - **Step 2's outcome is edited here**, in group V's paragraph: its "that was not run" became the
+    measurement, at the request's second note.
 
 ### Step 4 — Timing: member read and member write, before and after
 
@@ -1356,6 +1499,12 @@ From 2880, `eval-core` is at 3064 once step 1 commits, at 3080 once Revision 4's
   2. `git grep -n 'fetch = 1'` finds no claim that the write is refused.
   3. Each new README sentence that a spec reads has a probe that breaks the document and goes red.
   4. `SECURITY.md`'s identifier case is green.
+- **Notes**:
+  - *Step 3's code review, N8*: the `[Unreleased]` line's claim that "a `for` loop's `i++` adds its
+    reads, each flagged `scoped`" has no witness. It follows from `emitRead`'s `hasInScopes` test,
+    and M8d measured it under the prototype, but no spec asserts a `scoped` read from an update
+    (§ 0 rule 5). Step 5's consolidation either gives it a row, a widening of the step's counts
+    decided at its gate, or drops the clause.
 - **Category**: the README line ships in `eval-core`'s next release; the rest ships in no package.
 
 ### Step 6 — Release commit
@@ -1400,7 +1549,7 @@ release is breaking by behaviour (§ 3.1, M2, M5), not by shape.
 | Gate | Command | Expected |
 | :--- | :--- | :--- |
 | Everything | `npx nx run-many -t lint test build --skip-nx-cache --output-style=static` | Green, every step |
-| `eval-core` tests | (in the above) | +184 in step 1, +16 in Revision 4's addendum, +8 in step 2 (its widening), +36 in step 3, 0 otherwise: 3064, 3080, 3088 after step 2, 3124 from step 3 (Revision 4; +164 at Revision 1) |
+| `eval-core` tests | (in the above) | +184 in step 1, +16 in Revision 4's addendum, +8 in step 2 (its widening), +42 in step 3 (its widening included), 0 otherwise: 3064, 3080, 3088 after step 2, 3130 from step 3 (Revision 4; +164 at Revision 1) |
 | `eval-signals` / `eval-forms` tests | (in the above) | 443 / 380 in every step |
 | Perf | `internal/performance.spec.ts` | Green and untouched in every step |
 | Timing | § 3.8's harness | Step 4 only, under the rule stated there |

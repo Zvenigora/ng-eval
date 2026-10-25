@@ -147,7 +147,10 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
     // holds with the original, which is an ordinary host object - so the fact
     // is carried from here, where it is known, rather than re-derived at the
     // call, where it is not (`docs/a35/plan.md` § 8 q7).
-    return [thisValue ?? object, contextKey, value, true];
+    //
+    // The fifth slot is the key the lookup matched, which a write reaches
+    // (`docs/backlog.md` A44). Here it is the key the context resolved.
+    return [thisValue ?? object, contextKey, value, true, contextKey];
   } else if (object instanceof EvalScope) {
     // A global scope reads its object as the context does, with a bare
     // property access, so a blocklisted key is refused here as it is above.
@@ -174,7 +177,7 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
     // A namespaced or global prior scope is not the context's own chain: its
     // object, or the `thisArg` its host declared, is the receiver it has
     // always been.
-    return [thisValue ?? object, key, value, false];
+    return [thisValue ?? object, key, value, false, key];
   } else {
     // Not the walk's own context, and not a scope. A context cannot reach
     // here at all: the value funnel refuses one as it is pushed, and the one
@@ -183,8 +186,10 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
     // For regular objects, we need both case-insensitive lookup AND prototype pollution protection
     let value: unknown;
 
-    // The key the lookup actually matched, reported to the read hooks. The
-    // returned tuple keeps the original `key`; only the event is corrected.
+    // The key the lookup actually matched, reported to the read hooks and
+    // returned in the fifth slot, which a compound assignment and an update
+    // write to (`docs/backlog.md` A44). The second slot keeps the original
+    // `key`, which the call path names a function by.
     let resolvedKey: string | number | symbol = key;
 
     // A primitive receiver (string, number, boolean) is checked against the
@@ -284,6 +289,105 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
       });
     }
 
-    return [object, key, value, false];
+    return [object, key, value, false, resolvedKey];
   }
+}
+
+/**
+ * An `=` target's object and key, with no value read: JavaScript's `=` does
+ * not read its target (`docs/backlog.md` A45, part 2). The object, and a
+ * computed key, are evaluated as {@link evaluateMember} evaluates them, once
+ * and before the right side, and nothing reports a read of the target.
+ *
+ * The key checks the read used to make stay, and run here, before the right
+ * side (`docs/a45/plan.md` D7): `safeSetProperty` refuses the same keys with
+ * the same message, but only after the right side has run. A string, number or
+ * boolean object gets the primitive subset's check, and any other object,
+ * `null` and `undefined` included, the full blocklist.
+ *
+ * Under `caseInsensitive` a string key on an object is matched as the read
+ * matches it, the own-key cache and then the prototype's own names, but tested
+ * with `in` where the read tests `obj[key]`, so no getter is called
+ * (`docs/backlog.md` A44). The match is checked against the blocklist, as the
+ * read's `foundKey` is. Any other object takes the key as spelled, as on the
+ * read path.
+ *
+ * The context branch still calls `getThis`, which reads the value it tests
+ * (`docs/backlog.md` A49), and under `caseInsensitive` answers the `Registry`
+ * copy (A50). An `EvalScope` is written as an object (A51).
+ */
+export const resolveMemberTarget = (node: MemberExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>): [unknown, unknown] => {
+
+  markThisPositional(node.object, !!st.options?.caseInsensitive);
+  callback(node.object, st);
+  const obj = popVisitorResult(node, st) as object;
+  const object = (node.optional ? (obj || {}) : obj);
+
+  let key: string | number | symbol;
+  if (!node.computed && node.property.type === 'Identifier') {
+    key = node.property.name;
+  } else if (node.property.type === 'Literal') {
+    key = node.property.value as string | number | symbol;
+  } else {
+    callback(node.property, st);
+    key = popVisitorResult(node, st) as (string | number | symbol);
+  }
+
+  if (object === st.context) {
+    // As the read path's context branch, without its `get`.
+    if (isDangerousProperty(key)) {
+      throw new Error(`Access to dangerous property "${String(key)}" is blocked for security reasons`);
+    }
+
+    let contextKey: string | number | symbol | undefined = key;
+    if (st.options?.caseInsensitive && typeof key === 'string') {
+      contextKey = st.context.getKey(key);
+      if (isDangerousProperty(contextKey)) {
+        throw new Error(`Access to dangerous property "${String(contextKey)}" is blocked for security reasons`);
+      }
+    }
+    return [st.context.getThis(contextKey) ?? object, contextKey];
+  } else if (object instanceof EvalScope) {
+    if (isDangerousProperty(key)) {
+      throw new Error(`Access to dangerous property "${String(key)}" is blocked for security reasons`);
+    }
+    return [object, key];
+  }
+
+  const isPrimitive = (typeof object === 'string' || typeof object === 'number' || typeof object === 'boolean');
+
+  if (isPrimitive ? isDangerousPrimitiveProperty(key) : isDangerousProperty(key)) {
+    throw new Error(`Access to dangerous property "${String(key)}" is blocked for security reasons`);
+  }
+
+  if (st.options?.caseInsensitive && typeof key === 'string' && object && typeof object === 'object') {
+    const target = object as Record<PropertyKey, unknown>;
+    let foundKey: string | null | undefined = getCachedCaseInsensitiveProperty(target, key,
+      (a, b) => equalIgnoreCase(a, b) === true);
+
+    if (!foundKey) {
+      // As the read path's `obj[key]` test, a lookup that throws leaves the
+      // key as spelled. A proxy's `has` trap is called here, which
+      // JavaScript's `=` does not call.
+      try {
+        if (key in target) {
+          foundKey = key;
+        } else {
+          const prototype = Object.getPrototypeOf(target);
+          if (prototype) {
+            foundKey = Object.getOwnPropertyNames(prototype).find(k => equalIgnoreCase(k, key));
+          }
+        }
+      } catch {
+        foundKey = undefined;
+      }
+    }
+
+    if (foundKey && isDangerousProperty(foundKey)) {
+      throw new Error(`Access to dangerous property "${foundKey}" is blocked for security reasons`);
+    }
+    return [object, foundKey || key];
+  }
+
+  return [object, key];
 }

@@ -109,18 +109,22 @@ const readCaseInsensitive = (node: Identifier, st: EvalState): unknown => {
 }
 
 /**
- * An assignment target's read, for a compound or logical operator: the
- * visitor's own checks and read, with no push and no node hooks, since the
- * target is read and not walked (`docs/backlog.md` A45, part 2).
- *
- * It refuses what the visitor refuses before any lookup: a name on the
- * blocklist, `this` written as a name - a host-built one, or under
+ * An identifier target's checks, which the visitor makes before any lookup: a
+ * name on the blocklist, `this` written as a name - a host-built one, or under
  * `caseInsensitive` any spelling of it - and under `caseInsensitive` a name
  * whose lookup matched a blocklisted key. A target is never a member's object,
- * so `refuseThisValue` refuses every `this` that reaches it. Then it reads the
- * name as the visitor does, and reports the read.
+ * so `refuseThisValue` refuses every `this` that reaches it - unless a
+ * host-built AST reused one `this` node as a member's object, visited first,
+ * the mark-reuse limit `this-position.ts` describes. No target path evaluates
+ * `this` to the context, so that node is written as a key named `this`.
+ *
+ * Every identifier target is checked here and by nothing else: `=`'s, which
+ * reads nothing, and through {@link readIdentifierTarget} a compound or logical
+ * operator's and an update's (`docs/a45/plan.md` D8, D11). Without it,
+ * `constructor = 1` would write an own `constructor` onto the context, as
+ * `constructor++` did up to 0.13.3.
  */
-export const readIdentifierTarget = (node: Identifier, st: EvalState): unknown => {
+export const refuseIdentifierTarget = (node: Identifier, st: EvalState): void => {
   refuseDangerousName(node);
 
   const caseInsensitive = !!st.options?.caseInsensitive;
@@ -132,8 +136,20 @@ export const readIdentifierTarget = (node: Identifier, st: EvalState): unknown =
   if (caseInsensitive) {
     refuseDangerousMatch(node, st);
   }
+}
 
-  const value = caseInsensitive
+/**
+ * An assignment or update target's read, for a compound or logical operator
+ * and for `++` and `--`: the visitor's own checks and read, with no push and
+ * no node hooks, since the target is read and not walked (`docs/backlog.md`
+ * A45, part 2). The checks are {@link refuseIdentifierTarget}'s, so a refused
+ * target reads nothing. Then it reads the name as the visitor does, and
+ * reports the read: up to 0.13.3 an identifier update reported none.
+ */
+export const readIdentifierTarget = (node: Identifier, st: EvalState): unknown => {
+  refuseIdentifierTarget(node, st);
+
+  const value = st.options?.caseInsensitive
     ? readCaseInsensitive(node, st)
     : st.context?.get(node.name);
 

@@ -4,8 +4,8 @@ import { beforeVisitor } from './before-visitor';
 import { pushVisitorResult, popVisitorResult, refuseFunnelledValue } from './visitor-result';
 import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
-import { evaluateMember } from './member-expression';
-import { readIdentifierTarget } from './identifier';
+import { evaluateMember, resolveMemberTarget } from './member-expression';
+import { readIdentifierTarget, refuseIdentifierTarget } from './identifier';
 import { safeSetProperty } from './prototype-pollution-guard';
 import { consultMemberWrite } from './member-write-policy';
 import { assignToBinding } from './variable-declaration';
@@ -48,30 +48,35 @@ export const assignmentExpressionVisitor = (node: AssignmentExpression, st: Eval
     throw new Error(`Unsupported assignment target: ${target.type}`);
   }
 
-  // A compound or logical target is read once and not walked, as an update
-  // reads its operand (`docs/backlog.md` A45, part 2): a member through one
-  // `evaluateMember` call, whose object and key the write reuses, and an
-  // identifier through the identifier visitor's own read. Neither value is
-  // pushed, so it is given the funnel's tests here, or a listed function read
-  // as a target would be combined and written where `fetch || 1` refuses it.
-  // `=` still walks its target as an operand, and resolves a member target
-  // again after the right side.
+  // The target is not walked, and is evaluated once, before the right side
+  // (`docs/backlog.md` A45, part 2). `=` reads nothing of it, as JavaScript's
+  // `=` does not: an identifier gets the identifier visitor's checks, and a
+  // member is resolved to its object and key. A compound or logical target is
+  // read once, as an update reads its operand: a member through one
+  // `evaluateMember` call, whose object and matched key the write reuses
+  // (A44), and an identifier through the identifier visitor's own read. The
+  // value read is not pushed, so it is given the funnel's tests here, or a
+  // listed function read as a target would be combined and written where
+  // `fetch || 1` refuses it.
   const plain = node.operator === '=';
-  let left: number;
+  let left: number | undefined;
   let targetObject: unknown;
   let targetKey: unknown;
-  if (plain) {
-    callback(node.left, st);
-    left = popVisitorResult(node, st) as number;
-  } else {
-    if (target.type === 'Identifier') {
-      left = readIdentifierTarget(target, st) as number;
+  if (target.type === 'Identifier') {
+    if (plain) {
+      refuseIdentifierTarget(target, st);
     } else {
-      const [object, key, value] = evaluateMember(target, st, callback);
-      targetObject = object;
-      targetKey = key;
-      left = value as number;
+      left = readIdentifierTarget(target, st) as number;
     }
+  } else if (plain) {
+    [targetObject, targetKey] = resolveMemberTarget(target, st, callback);
+  } else {
+    const [object, , value, , key] = evaluateMember(target, st, callback);
+    targetObject = object;
+    targetKey = key;
+    left = value as number;
+  }
+  if (!plain) {
     refuseFunnelledValue(target, st, left);
   }
 
@@ -105,7 +110,7 @@ export const assignmentExpressionVisitor = (node: AssignmentExpression, st: Eval
     const key = st.options?.caseInsensitive
       ? st.context.getKey(target.name) ?? target.name
       : target.name;
-    const value = func(left, right);
+    const value = func(left as number, right);
     // Scope first, the caller's object second. Before Phase 2 this was
     // `st.context.set(key, value)`, which consults no scope at all - so
     // `(x => (x = 99))(1)` wrote `99` into the caller's own object and left the
@@ -114,10 +119,9 @@ export const assignmentExpressionVisitor = (node: AssignmentExpression, st: Eval
     assignToBinding(st, key, value, target.name);
     pushVisitorResult(node, st, value);
   } else if (target.type === 'MemberExpression') {
-    const [object, key] = plain
-      ? evaluateMember(target, st, callback)
-      : [targetObject, targetKey];
-    const value = func(left, right);
+    const object = targetObject;
+    const key = targetKey;
+    const value = func(left as number, right);
 
     // A member write never reaches `EvalContext.set`, so a context policing
     // writes is asked here instead - `EvalContext.checkMemberWrite`.

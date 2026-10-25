@@ -114,8 +114,9 @@ describe('assignmentExpressionVisitor', () => {
    * hooks, the arrow rows, `const`, `TRUE` under `caseInsensitive`, and the
    * `fetch` pin.
    *
-   * A member target is still evaluated twice when the operator does not
-   * short-circuit; that is part 2.
+   * Up to 0.13.3 a member target was evaluated twice when the operator did not
+   * short-circuit. Part 2 evaluates it once, and its witness is
+   * `assignment-target.spec.ts`.
    */
   describe('a logical assignment that short-circuits (A45 part 1)', () => {
 
@@ -439,13 +440,15 @@ describe('assignmentExpressionVisitor', () => {
 
     /**
      * A pin of existing behaviour, not a test of this fix: the funnel refuses
-     * the function as the left side pushes it, before the short-circuit test,
+     * the function as the left side is read, before the short-circuit test,
      * so the row passed before the fix and no probe reds it.
      *
      * A logical assignment reads its target's value, in JavaScript as here, so
-     * the funnel refuses a listed function there as it does `fetch || 1`: the
-     * value pushed is the function. Part 2 does not change this row: it removes
-     * the read from `=` only.
+     * the funnel refuses a listed function there as it does `fetch || 1`. Up to
+     * 0.13.3 the target was walked and its value pushed; from part 2 it is read
+     * and not pushed, and the visitor gives the value the funnel's tests,
+     * `refuseFunnelledValue`. Part 2 does not change this row: it removes the
+     * read from `=` only.
      *
      * jsdom has no global `fetch`, so the listed function is one bound under
      * the listed name, which the funnel refuses by its name, `"bound fetch"`.

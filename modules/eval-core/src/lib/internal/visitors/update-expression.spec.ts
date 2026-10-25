@@ -17,9 +17,10 @@ import { evaluate, parse } from '../functions';
  * the evaluator, rather than from a table typed by hand. Every case runs in
  * both modes, and the operand is read back through the context, since
  * `caseInsensitive` copies the data into a `Registry` and the caller's object
- * is then not the one written. Sources are spelled as the data spells them: a
- * member write to a case variant creates a new key (`docs/backlog.md` A44),
- * and its fix adds the case-variant rows.
+ * is then not the one written. The matrix's sources are spelled as the data
+ * spells them. Under `caseInsensitive` the member matrix runs again spelled
+ * `OBJ.X`, whose write reaches the matched `x`: up to 0.13.3 it created a new
+ * key `X` beside it (`docs/backlog.md` A44).
  */
 describe('updateExpressionVisitor', () => {
 
@@ -236,6 +237,37 @@ describe('updateExpressionVisitor', () => {
         expect((error as Error).message).toBe(`policy refused a write to "x"`);
         expect((context.get('tools') as Record<string, unknown>)['x']).toBe(1);
       });
+    });
+  });
+
+  /**
+   * A member update spelled as a case variant writes to the key the lookup
+   * matched, as the read of it does (`docs/backlog.md` A44). The member matrix
+   * again, under `caseInsensitive` only, since case-sensitive `OBJ` is another
+   * name. The native run is the same update spelled as the data spells it, and
+   * the object's own keys are asserted whole, so a write that also created `X`
+   * goes red.
+   */
+  describe('under caseInsensitive, a case variant of the member (A44)', () => {
+
+    const options = { caseInsensitive: true };
+
+    const run = (source: string, context: EvalContext): unknown =>
+      evaluate(programOf(source), EvalState.fromContext(context, options));
+
+    const rows = OPERANDS.flatMap(([label, operand]) =>
+      FORMS.map(form => [form.replace('x', 'OBJ.X'), label, form, operand] as const));
+
+    it.each(rows)('%s on %s writes the matched key', (source, _label, form, operand) => {
+      const expected = nativeUpdate(operand(), form);
+      const obj: Record<string, unknown> = { x: operand() };
+      const context = EvalContext.fromContext({ obj }, options);
+
+      const result = run(source, context);
+
+      expect(result).toBe(expected.result);
+      expect((context.get('obj') as Record<string, unknown>)['x']).toBe(expected.after);
+      expect(Object.keys(obj)).toEqual(['x']);
     });
   });
 

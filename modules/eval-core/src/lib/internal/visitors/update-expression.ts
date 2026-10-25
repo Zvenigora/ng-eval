@@ -5,6 +5,7 @@ import { pushVisitorResult } from './visitor-result';
 import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 import { evaluateMember } from './member-expression';
+import { readIdentifierTarget } from './identifier';
 import { safeSetProperty } from './prototype-pollution-guard';
 import { consultMemberWrite } from './member-write-policy';
 import { assignToBinding } from './variable-declaration';
@@ -20,12 +21,18 @@ export const updateExpressionVisitor = (node: UpdateExpression, st: EvalState, c
   if (!st.context) {
     throw new Error(`Context is not set.`);
   } else if (target.type === 'Identifier') {
+    // The target read a compound assignment makes: the identifier visitor's
+    // checks, before any lookup, then one read and its read event
+    // (`docs/a45/plan.md` D8, D9, D11). Up to 0.13.3 an update checked
+    // nothing and reported nothing, so `constructor++` wrote an own
+    // `constructor` onto the context. It takes no funnel check, as the member
+    // branch takes none: `fetch++` gives `NaN` (`docs/backlog-retired.md` A40).
+    const value = readIdentifierTarget(target, st);
     // The fallback `assignment-expression.ts` takes, for the same reason
     // (`docs/backlog-retired.md` A43).
     const key = st.options?.caseInsensitive
     ? st.context.getKey(target.name) ?? target.name
     : target.name;
-    const value = st.context?.get(key);
     // The update run natively on a copy of the operand. JavaScript converts
     // the operand to a numeric once, then adds or subtracts, and a postfix
     // update gives that converted old value. `value + 1` on the operand as
@@ -44,7 +51,8 @@ export const updateExpressionVisitor = (node: UpdateExpression, st: EvalState, c
     assignToBinding(st, key, updated, target.name);
     pushVisitorResult(node, st, node.prefix ? updated : old);
   } else if (target.type === 'MemberExpression') {
-    const [object, property, value] = evaluateMember(target, st, callback);
+    // The write reaches the key the lookup matched (`docs/backlog.md` A44).
+    const [object, , value, , property] = evaluateMember(target, st, callback);
     // As in the identifier branch: one native conversion, before the write.
     let updated = value as number;
     const old = node.operator === '++' ? updated++ : updated--;

@@ -23,13 +23,47 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   twice; node hooks and the trace see the target's object and a computed key, and no longer the
   target node, and an identifier target not at all. The value read still passes the checks every
   read value passes, so a listed function as the target, `fetch += 1` or `obj.fetch ||= 1`, is
-  still refused. `=` is unchanged ([A45](../../docs/backlog.md#a45), part 2).
+  still refused ([A45](../../docs/backlog.md#a45), part 2).
+- **Breaking: `=` does not read its target, and walks it no further than its object and a computed
+  key.** As in JavaScript, `getObj()[k()] = f()` runs `getObj`, `k`, `f`, then the write, where up
+  to 0.13.3 it read the target, and after `f` evaluated the object and the key and read the target a
+  second time. A getter on the target is not called, except an accessor on the context reached
+  through `this`, which is called once where it was called four times
+  ([A49](../../docs/backlog.md#a49)); under `caseInsensitive` a lookup answering an identifier
+  target's name is called once, where it was called twice (A49). A listed function as the target is overwritten
+  as `obj.fetch++` overwrites one, so `fetch = 1` and `obj.fetch = 1` write `1` where they were
+  refused; `fetch += 1` and `fetch ||= 1` read it, and are still refused. The read events are the
+  object's own reads: `a.b = 1` reports `a`, where it reported `a` and `a.b` twice each, and
+  `x = 1` and `this.x = 1` report nothing. Node hooks and the trace see the object and a computed
+  key, and no longer the target node, and an identifier target not at all. The blocklist checks a
+  target was given by being read stay, before the right side: `constructor = 1` and
+  `o.__proto__ = f()` are refused with `f` not called. Case-sensitive, a `null` or `undefined`
+  object with a blocklisted key, `n.constructor = 1`, is now refused as a dangerous property, as it
+  already was under `caseInsensitive`, where it was refused as `Cannot set property on non-object`
+  ([A45](../../docs/backlog.md#a45), part 2).
+- **Breaking: an identifier update reports the read of its operand**: `x++` and `++x` report one
+  read of `x`, as `a.b++` reports one of `a.b`, where they reported none. So a dependency tracker
+  records `x`, and a `for` loop's `i++` adds its reads, each flagged `scoped`.
 
 ### Fixed
+- **Under `caseInsensitive`, a member write reaches the key the read would match**: `OBJ.X = 2`,
+  `obj["X"] = 2`, `OBJ.X += 1` and `OBJ.X++` on `{ obj: { x: 1 } }` write `x`, where they created a new key `X`
+  beside it, and `c.G = 1` calls the setter `g` an instance inherits. A key the lookup matches on
+  nothing is written as spelled ([A44](../../docs/backlog.md#a44)).
 - **Under `caseInsensitive`, an identifier holding `null` reads as `null`**, where it read as
   `undefined`: `x === null` is `true`, and `x += 1` gives `1`, where it gave `NaN`. The literals
   registry now answers only a name the context finds nothing for
   ([A52](../../docs/backlog.md#a52)).
+
+### Security
+- **An identifier update of a blocklisted name is refused**, as its assignment is: `constructor++`,
+  `toString++` and `__proto__++` throw `Access to dangerous property … is blocked for security
+  reasons`, where up to 0.13.3 the first two wrote an own key onto the caller's context, and under
+  `caseInsensitive` all three wrote into its copy.
+- **An identifier update of `this` written as a name is refused**, as every other use of it outside
+  a member's object is: `This++` under `caseInsensitive`, and a host-built `this++`, throw `Access
+  to "this" outside a member access is blocked for security reasons`, where up to 0.13.3 they wrote
+  `NaN` under that key.
 
 ---
 

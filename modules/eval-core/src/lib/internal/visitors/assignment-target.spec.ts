@@ -4,30 +4,29 @@ import { Registry } from '../classes/common';
 import { evaluate, parse } from '../functions';
 
 /**
- * A characterisation of assignment targets as the evaluator handles them up to
- * 0.13.3: what a target evaluates, reads, calls, reports and writes
- * (`docs/a45/plan.md`, step 1; `docs/backlog.md` A45 part 2 and A44).
+ * A characterisation of assignment targets: what a target evaluates, reads,
+ * calls, reports and writes (`docs/a45/plan.md`; `docs/backlog.md` A45 part 2
+ * and A44). From 0.14.0 a target is not walked and is evaluated once, before
+ * the right side; `=` reads nothing of it, a compound or logical operator reads
+ * it once, and under `caseInsensitive` a member write reaches the key the
+ * lookup matched.
  *
  * Nothing else in the three suites pins this. The plan's prototype of the
- * change left every existing case green (its M4), so this spec is the witness
- * steps 2 and 3 rewrite. Each row's expectations are recorded by hand, from the
- * plan's measurements, and never computed from the implementation.
+ * change left every existing case green (its M4), so this spec was written
+ * first, pinning 0.13.3, and the plan's steps 2 and 3 rewrote the rows each
+ * changed, 1:1. Each row's expectations are recorded by hand, from the plan's
+ * measurements, and never computed from the implementation.
  *
  * Every row runs in both case modes, and carries per mode:
  *
- * - `today`, the outcome the evaluator gives now;
+ * - `today`, the outcome the evaluator gives;
  * - `js`, JavaScript's outcome, checked against the native arm: the row's own
  *   source run natively, or under `caseInsensitive` a case-variant row's
  *   `nativeAs`, the same assignment written by hand in the data's spelling.
  *   A row JavaScript has no answer for says so, with its reason;
- * - its marks. `flips` names the step that changes `today`. `held` names the
- *   register entry that keeps a row from JavaScript's outcome after its step,
- *   with the outcome it keeps. `design` names the decision a deviation is.
- *
- * Marks are not asserted here. They are measured by applying the plan's
- * prototype: step 2's half must turn red exactly the cases marked `2`, and the
- * whole of it exactly those marked `2` or `3`. The marks are in each case's
- * name, so the red cases read off the run.
+ * - its marks. `held` names the register entry that keeps a row from
+ *   JavaScript's outcome, with the outcome it keeps, and `design` the decision
+ *   a deviation is. The marks are in each case's name.
  *
  * The native arm runs the source in sloppy mode under `with`, over a proxy that
  * holds every name, so a name the data lacks reads as `undefined` and is
@@ -121,8 +120,6 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
 
   type Js = { native: Outcome } | { none: string };
 
-  type Step = 2 | 3;
-
   /** A row whose outcome after its step is still not JavaScript's, and the entry that keeps it so. */
   interface Hold {
     under: 'A48' | 'A49' | 'A50' | 'A51';
@@ -136,7 +133,6 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     js: PerMode<Js>;
     /** Under `caseInsensitive`, the assignment in the data's spelling, written by hand. */
     nativeAs?: string;
-    flips?: Partial<PerMode<Step>>;
     held?: Partial<PerMode<Hold>>;
     design?: Partial<PerMode<string>>;
   }
@@ -229,9 +225,8 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   const E: Row[] = [
     {
       source: 'o.g = 1', observe: effects(1),
-      today: both({ value: 1, log: ['get g', 'get g', 'set g=1'] }),
+      today: both({ value: 1, log: ['set g=1'] }),
       js: both(native({ value: 1, log: ['set g=1'] })),
-      flips: both(3),
     },
     {
       source: 'o.g += 1', observe: effects(1),
@@ -255,21 +250,18 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     },
     {
       source: 'getObj().x = 1', observe: effects(1),
-      today: both({ value: 1, log: ['getObj', 'get x', 'getObj', 'get x', 'set x=1'] }),
+      today: both({ value: 1, log: ['getObj', 'set x=1'] }),
       js: both(native({ value: 1, log: ['getObj', 'set x=1'] })),
-      flips: both(3),
     },
     {
       source: 't[k()] = f()', observe: effects(1),
-      today: both({ value: 5, log: ['k', 'get x', 'f', 'k', 'get x', 'set x=5'] }),
+      today: both({ value: 5, log: ['k', 'f', 'set x=5'] }),
       js: both(native({ value: 5, log: ['k', 'f', 'set x=5'] })),
-      flips: both(3),
     },
     {
       source: 'getObj()[k()] = f()', observe: effects(1),
-      today: both({ value: 5, log: ['getObj', 'k', 'get x', 'f', 'getObj', 'k', 'get x', 'set x=5'] }),
+      today: both({ value: 5, log: ['getObj', 'k', 'f', 'set x=5'] }),
       js: both(native({ value: 5, log: ['getObj', 'k', 'f', 'set x=5'] })),
-      flips: both(3),
     },
     {
       source: 'getObj()[k()] += f()', observe: effects(1),
@@ -314,15 +306,13 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   const F: Row[] = [
     {
       source: 'fetch = 1', observe: funnelled,
-      today: both({ threw: dangerousFunction, fetch: listed, objFetch: listed }),
+      today: both({ value: 1, fetch: 1, objFetch: listed }),
       js: both(native({ value: 1, fetch: 1, objFetch: listed })),
-      flips: both(3),
     },
     {
       source: 'obj.fetch = 1', observe: funnelled,
-      today: both({ threw: dangerousFunction, fetch: listed, objFetch: listed }),
+      today: both({ value: 1, fetch: listed, objFetch: 1 }),
       js: both(native({ value: 1, fetch: listed, objFetch: 1 })),
-      flips: both(3),
     },
     {
       source: 'fetch += 1', observe: funnelled,
@@ -387,6 +377,19 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   /** `name` written into the `caseInsensitive` copy, and the caller's object left as it was. */
   const intoCopy = (name: string) => ({ keys: [...keys, name], caller: keys });
 
+  /**
+   * The data `make` builds, beside `f` returning `5` and counting its calls.
+   * `o` is the keys of the data's `o`, if it holds one, and `caller` the
+   * caller's own object's keys.
+   */
+  const beforeRight = (make: () => Record<string, unknown>): Observe => (engine, source, options) => {
+    const f = Object.assign(() => { f.calls += 1; return 5; }, { calls: 0 });
+    const data: Record<string, unknown> = { ...make(), f };
+    const ran = engine.run(source, data, options);
+    const o = data['o'];
+    return { ...outcome(ran), calls: f.calls, o: o ? Object.keys(o as object) : [], caller: Object.keys(data) };
+  };
+
   const B: Row[] = [
     {
       source: 'constructor = 1', observe: blocked,
@@ -437,36 +440,26 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
       design: both('the blocklist'),
     },
     {
-      // Writes onto the caller's object case-sensitive, and into the copy
-      // under `caseInsensitive`. Step 3 refuses it (D8), by design after.
+      // Up to 0.13.3 it wrote onto the caller's object case-sensitive, and
+      // into the copy under `caseInsensitive`: an update checked no name (D8).
       source: 'constructor++', observe: blocked,
-      today: {
-        cs: { ...untouched, value: NaN, ...wrote('constructor') },
-        ci: { ...untouched, value: NaN, ...intoCopy('constructor') },
-      },
+      today: both({ ...untouched, threw: dangerousProperty('constructor') }),
       js: both(native({ ...untouched, value: NaN, ...wrote('constructor') })),
-      flips: both(3),
-      design: { cs: 'the blocklist, from step 3', ci: `${copied}; the blocklist, from step 3` },
+      design: both('the blocklist'),
     },
     {
-      // The caller's object is unchanged in both modes, as `caller` asserts.
-      // Under `caseInsensitive` the copy is a `Registry`, which takes
-      // `__proto__` as a map key like any other.
+      // Up to 0.13.3 the copy, a `Registry`, took `__proto__` as a map key
+      // like any other under `caseInsensitive`.
       source: '__proto__++', observe: blocked,
-      today: { cs: { ...untouched, value: NaN }, ci: { ...untouched, value: NaN, ...intoCopy('__proto__') } },
+      today: both({ ...untouched, threw: dangerousProperty('__proto__') }),
       js: both(native({ ...untouched, value: NaN })),
-      flips: both(3),
-      design: { cs: 'the blocklist, from step 3', ci: `${copied}; the blocklist, from step 3` },
+      design: both('the blocklist'),
     },
     {
       source: 'toString++', observe: blocked,
-      today: {
-        cs: { ...untouched, value: NaN, ...wrote('toString') },
-        ci: { ...untouched, value: NaN, ...intoCopy('toString') },
-      },
+      today: both({ ...untouched, threw: dangerousProperty('toString') }),
       js: both(native({ ...untouched, value: NaN, ...wrote('toString') })),
-      flips: both(3),
-      design: { cs: 'the blocklist, from step 3', ci: `${copied}; the blocklist, from step 3` },
+      design: both('the blocklist'),
     },
     {
       // Not a blocklisted name, and the copy holds no `constructor` to match.
@@ -544,6 +537,48 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
       js: both(native({ ...untouched, value: 5, calls: 1, ...wrote('constructor') })),
       design: both('the blocklist, before the right side'),
     },
+    // Step 3's review, W3: the resolver's three checks that `safeSetProperty`
+    // repeats after the right side, so only `f`'s call count attributes them.
+    {
+      // The `EvalScope` branch's blocklist check. Natively a primitive
+      // assigned to `__proto__` is ignored.
+      source: 'ns.__proto__ = f()', observe: beforeRight(() => ({ ns: new EvalScope({ k: 1 }, { global: true }) })),
+      today: both({ threw: dangerousProperty('__proto__'), calls: 0, o: [], caller: ['ns', 'f'] }),
+      js: both(native({ value: 5, calls: 1, o: [], caller: ['ns', 'f'] })),
+      design: both('the blocklist, before the right side'),
+    },
+    {
+      // The plain branch's matched-key check: under `caseInsensitive` the key
+      // matches `constructor` on `o`'s prototype. Case-sensitive it is
+      // another name, and written.
+      source: 'o.CONSTRUCTOR = f()', observe: beforeRight(() => ({ o: {} })), nativeAs: 'o.constructor = f()',
+      today: {
+        cs: { value: 5, calls: 1, o: ['CONSTRUCTOR'], caller: ['o', 'f'] },
+        ci: { threw: dangerousProperty('constructor'), calls: 0, o: [], caller: ['o', 'f'] },
+      },
+      js: {
+        cs: native({ value: 5, calls: 1, o: ['CONSTRUCTOR'], caller: ['o', 'f'] }),
+        ci: native({ value: 5, calls: 1, o: ['constructor'], caller: ['o', 'f'] }),
+      },
+      design: { ci: 'the resolved-key check, before the right side' },
+    },
+    {
+      // The context branch's matched-key check: under `caseInsensitive`
+      // `getKey` matches the context's own `constructor`. Case-sensitive the
+      // context holds no `CONSTRUCTOR`, so the write reaches the context
+      // itself, after the right side (A42).
+      source: 'this.CONSTRUCTOR = f()', observe: beforeRight(() => ({ constructor: 1 })),
+      nativeAs: 'this.constructor = f()',
+      today: {
+        cs: { threw: contextWrite, calls: 1, o: [], caller: ['constructor', 'f'] },
+        ci: { threw: dangerousProperty('constructor'), calls: 0, o: [], caller: ['constructor', 'f'] },
+      },
+      js: {
+        cs: native({ value: 5, calls: 1, o: [], caller: ['constructor', 'f', 'CONSTRUCTOR'] }),
+        ci: native({ value: 5, calls: 1, o: [], caller: ['constructor', 'f'] }),
+      },
+      design: { cs: 'A42, a write to the context', ci: 'the resolved-key check, before the right side' },
+    },
   ];
 
   // --- A (M1e, M1f's c.G = 1): the key a member write reaches ---------------
@@ -565,52 +600,45 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   const A: Row[] = [
     {
       source: 'OBJ.X = 2', observe: matched, nativeAs: 'obj.x = 2',
-      today: { cs: { ...plain, threw: nonObject('undefined') }, ci: { ...created, value: 2 } },
+      today: { cs: { ...plain, threw: nonObject('undefined') }, ci: { ...corrected, value: 2 } },
       js: {
         cs: native({ ...plain, threw: "Cannot set properties of undefined (setting 'X')" }),
         ci: native({ ...corrected, value: 2 }),
       },
-      flips: { ci: 3 },
       design: { cs: "safeSetProperty's message" },
     },
     {
       source: 'obj.X = 2', observe: matched, nativeAs: 'obj.x = 2',
-      today: both({ ...created, value: 2 }),
+      today: { cs: { ...created, value: 2 }, ci: { ...corrected, value: 2 } },
       js: { cs: native({ ...created, value: 2 }), ci: native({ ...corrected, value: 2 }) },
-      flips: { ci: 3 },
     },
     {
       source: 'obj["X"] = 2', observe: matched, nativeAs: 'obj["x"] = 2',
-      today: both({ ...created, value: 2 }),
+      today: { cs: { ...created, value: 2 }, ci: { ...corrected, value: 2 } },
       js: { cs: native({ ...created, value: 2 }), ci: native({ ...corrected, value: 2 }) },
-      flips: { ci: 3 },
     },
     {
       source: 'OBJ.X += 1', observe: matched, nativeAs: 'obj.x += 1',
-      today: { cs: { ...plain, threw: nonObject('undefined') }, ci: { ...created, value: 2 } },
+      today: { cs: { ...plain, threw: nonObject('undefined') }, ci: { ...corrected, value: 2 } },
       js: { cs: native({ ...plain, threw: readUndefined }), ci: native({ ...corrected, value: 2 }) },
-      flips: { ci: 3 },
       design: { cs: "safeSetProperty's message" },
     },
     {
       source: '++OBJ.X', observe: matched, nativeAs: '++obj.x',
-      today: { cs: { ...plain, threw: nonObject('undefined') }, ci: { ...created, value: 2 } },
+      today: { cs: { ...plain, threw: nonObject('undefined') }, ci: { ...corrected, value: 2 } },
       js: { cs: native({ ...plain, threw: readUndefined }), ci: native({ ...corrected, value: 2 }) },
-      flips: { ci: 3 },
       design: { cs: "safeSetProperty's message" },
     },
     {
       source: 'OBJ.X++', observe: matched, nativeAs: 'obj.x++',
-      today: { cs: { ...plain, threw: nonObject('undefined') }, ci: { ...created, value: 1 } },
+      today: { cs: { ...plain, threw: nonObject('undefined') }, ci: { ...corrected, value: 1 } },
       js: { cs: native({ ...plain, threw: readUndefined }), ci: native({ ...corrected, value: 1 }) },
-      flips: { ci: 3 },
       design: { cs: "safeSetProperty's message" },
     },
     {
       source: 'obj.X &&= 2', observe: matched, nativeAs: 'obj.x &&= 2',
-      today: { cs: { ...plain, value: undefined }, ci: { ...created, value: 2 } },
+      today: { cs: { ...plain, value: undefined }, ci: { ...corrected, value: 2 } },
       js: { cs: native({ ...plain, value: undefined }), ci: native({ ...corrected, value: 2 }) },
-      flips: { ci: 3 },
     },
     {
       source: 'obj.X ||= 2', observe: matched, nativeAs: 'obj.x ||= 2',
@@ -626,13 +654,12 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
       source: 'c.G = 1', observe: matched, nativeAs: 'c.g = 1',
       today: {
         cs: { ...plain, value: 1, c: ['G'] },
-        ci: { ...plain, value: 1, c: ['G'], log: ['get g', 'get g'] },
+        ci: { ...plain, value: 1, log: ['set g=1'] },
       },
       js: {
         cs: native({ ...plain, value: 1, c: ['G'] }),
         ci: native({ ...plain, value: 1, log: ['set g=1'] }),
       },
-      flips: { ci: 3 },
     },
     {
       source: 'obj.x = 2', observe: matched,
@@ -674,46 +701,40 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   const onAK = observed(() => ({ a: { b: 0 }, k: 'b' }));
   const noHooks = none('read events, node hooks and the trace are the evaluator\'s own; the plan\'s § 3.6 makes M2\'s prototype column the contract');
 
-  const identifierWalked = {
-    reads: ['identifier:x@x'],
-    dependencies: ['x'],
-    nodes: ['before AssignmentExpression', 'before Identifier', 'after Identifier',
-      'before Literal', 'after Literal', 'after AssignmentExpression'],
-    trace: ['Identifier', 'Literal', 'AssignmentExpression'],
-  };
-  const identifierUpdated = {
+  /** An `=` target, not walked and not read: M2's prototype column. */
+  const identifierWritten = {
     reads: [],
     dependencies: [],
-    nodes: ['before UpdateExpression', 'after UpdateExpression'],
-    trace: ['UpdateExpression'],
+    nodes: ['before AssignmentExpression', 'before Literal', 'after Literal', 'after AssignmentExpression'],
+    trace: ['Literal', 'AssignmentExpression'],
   };
-  const memberWalkedTwice = {
-    reads: ['identifier:a@a', 'member:b@a.b', 'identifier:a@a', 'member:b@a.b'],
+  const memberWritten = {
+    reads: ['identifier:a@a'],
+    dependencies: ['a'],
+    nodes: ['before AssignmentExpression', 'before Identifier', 'after Identifier', 'before Literal',
+      'after Literal', 'after AssignmentExpression'],
+    trace: ['Identifier', 'Literal', 'AssignmentExpression'],
+  };
+  const chainWritten = {
+    reads: ['identifier:a@a', 'member:b@a.b'],
     dependencies: ['a', 'a.b'],
     nodes: ['before AssignmentExpression', 'before MemberExpression', 'before Identifier', 'after Identifier',
-      'after MemberExpression', 'before Literal', 'after Literal', 'before Identifier', 'after Identifier',
-      'after AssignmentExpression'],
-    trace: ['Identifier', 'MemberExpression', 'Literal', 'Identifier', 'AssignmentExpression'],
+      'after MemberExpression', 'before Literal', 'after Literal', 'after AssignmentExpression'],
+    trace: ['Identifier', 'MemberExpression', 'Literal', 'AssignmentExpression'],
   };
-  const chainWalkedTwice = {
-    reads: ['identifier:a@a', 'member:b@a.b', 'member:c@a.b.c', 'identifier:a@a', 'member:b@a.b', 'member:c@a.b.c'],
-    dependencies: ['a', 'a.b', 'a.b.c'],
-    nodes: ['before AssignmentExpression', 'before MemberExpression', 'before MemberExpression',
-      'before Identifier', 'after Identifier', 'after MemberExpression', 'after MemberExpression',
-      'before Literal', 'after Literal', 'before MemberExpression', 'before Identifier', 'after Identifier',
-      'after MemberExpression', 'after AssignmentExpression'],
-    trace: ['Identifier', 'MemberExpression', 'MemberExpression', 'Literal', 'Identifier', 'MemberExpression',
-      'AssignmentExpression'],
-  };
-  const computedWalkedTwice = {
-    reads: ['identifier:a@a', 'identifier:k@k', 'member:b@-', 'identifier:a@a', 'identifier:k@k', 'member:b@-'],
+  const computedWritten = {
+    reads: ['identifier:a@a', 'identifier:k@k'],
     dependencies: ['a', 'k'],
-    nodes: ['before AssignmentExpression', 'before MemberExpression', 'before Identifier', 'after Identifier',
-      'before Identifier', 'after Identifier', 'after MemberExpression', 'before Literal', 'after Literal',
-      'before Identifier', 'after Identifier', 'before Identifier', 'after Identifier',
-      'after AssignmentExpression'],
-    trace: ['Identifier', 'Identifier', 'MemberExpression', 'Literal', 'Identifier', 'Identifier',
-      'AssignmentExpression'],
+    nodes: ['before AssignmentExpression', 'before Identifier', 'after Identifier', 'before Identifier',
+      'after Identifier', 'before Literal', 'after Literal', 'after AssignmentExpression'],
+    trace: ['Identifier', 'Identifier', 'Literal', 'AssignmentExpression'],
+  };
+  /** An identifier update, which reads its operand once (D9) and walks nothing. */
+  const identifierUpdated = {
+    reads: ['identifier:x@x'],
+    dependencies: ['x'],
+    nodes: ['before UpdateExpression', 'after UpdateExpression'],
+    trace: ['UpdateExpression'],
   };
   /** A compound target read once and not walked: M2's prototype column. */
   const identifierRead = {
@@ -745,12 +766,12 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   };
 
   const R: Row[] = [
-    { source: 'x = 1', observe: onX, today: both({ value: 1, ...identifierWalked }), js: both(noHooks), flips: both(3) },
+    { source: 'x = 1', observe: onX, today: both({ value: 1, ...identifierWritten }), js: both(noHooks) },
     { source: 'x += 1', observe: onX, today: both({ value: 1, ...identifierRead }), js: both(noHooks) },
     { source: 'x ||= 1', observe: onX, today: both({ value: 1, ...identifierRead }), js: both(noHooks) },
-    { source: 'x++', observe: onX, today: both({ value: 0, ...identifierUpdated }), js: both(noHooks), flips: both(3) },
-    { source: '++x', observe: onX, today: both({ value: 1, ...identifierUpdated }), js: both(noHooks), flips: both(3) },
-    { source: 'a.b = 1', observe: onAB, today: both({ value: 1, ...memberWalkedTwice }), js: both(noHooks), flips: both(3) },
+    { source: 'x++', observe: onX, today: both({ value: 0, ...identifierUpdated }), js: both(noHooks) },
+    { source: '++x', observe: onX, today: both({ value: 1, ...identifierUpdated }), js: both(noHooks) },
+    { source: 'a.b = 1', observe: onAB, today: both({ value: 1, ...memberWritten }), js: both(noHooks) },
     { source: 'a.b += 1', observe: onAB, today: both({ value: 1, ...memberReadOnce }), js: both(noHooks) },
     { source: 'a.b ||= 1', observe: onAB, today: both({ value: 1, ...memberReadOnce }), js: both(noHooks) },
     {
@@ -764,7 +785,7 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
       }),
       js: both(noHooks),
     },
-    { source: 'a.b.c = 1', observe: onABC, today: both({ value: 1, ...chainWalkedTwice }), js: both(noHooks), flips: both(3) },
+    { source: 'a.b.c = 1', observe: onABC, today: both({ value: 1, ...chainWritten }), js: both(noHooks) },
     { source: 'a.b.c += 1', observe: onABC, today: both({ value: 1, ...chainReadOnce }), js: both(noHooks) },
     {
       source: 'a.b.c++', observe: onABC,
@@ -778,34 +799,31 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
       }),
       js: both(noHooks),
     },
-    { source: 'a[k] = 1', observe: onAK, today: both({ value: 1, ...computedWalkedTwice }), js: both(noHooks), flips: both(3) },
+    { source: 'a[k] = 1', observe: onAK, today: both({ value: 1, ...computedWritten }), js: both(noHooks) },
     { source: 'a[k] += 1', observe: onAK, today: both({ value: 1, ...computedReadOnce }), js: both(noHooks) },
     {
       source: 'this.x = 1', observe: onX,
       today: both({
         value: 1,
-        reads: ['member:x@-', 'member:x@-'],
+        reads: [],
         dependencies: [],
-        nodes: ['before AssignmentExpression', 'before MemberExpression', 'before ThisExpression',
-          'after ThisExpression', 'after MemberExpression', 'before Literal', 'after Literal',
-          'before ThisExpression', 'after ThisExpression', 'after AssignmentExpression'],
-        trace: ['ThisExpression', 'MemberExpression', 'Literal', 'ThisExpression', 'AssignmentExpression'],
+        nodes: ['before AssignmentExpression', 'before ThisExpression', 'after ThisExpression',
+          'before Literal', 'after Literal', 'after AssignmentExpression'],
+        trace: ['ThisExpression', 'Literal', 'AssignmentExpression'],
       }),
       js: both(noHooks),
-      flips: both(3),
     },
     {
       source: 'y = x', observe: observed(() => ({ x: 0, y: 0 })),
       today: both({
         value: 0,
-        reads: ['identifier:y@y', 'identifier:x@x'],
-        dependencies: ['y', 'x'],
-        nodes: ['before AssignmentExpression', 'before Identifier', 'after Identifier', 'before Identifier',
-          'after Identifier', 'after AssignmentExpression'],
-        trace: ['Identifier', 'Identifier', 'AssignmentExpression'],
+        reads: ['identifier:x@x'],
+        dependencies: ['x'],
+        nodes: ['before AssignmentExpression', 'before Identifier', 'after Identifier',
+          'after AssignmentExpression'],
+        trace: ['Identifier', 'AssignmentExpression'],
       }),
       js: both(noHooks),
-      flips: both(3),
     },
   ];
 
@@ -888,9 +906,8 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   const G: Row[] = [
     {
       source: 'x = 1', observe: onAccessorX,
-      today: { cs: { value: 1, get: 1, set: 1 }, ci: { value: 1, get: 0, set: 0 } },
+      today: { cs: { value: 1, get: 0, set: 1 }, ci: { value: 1, get: 0, set: 0 } },
       js: both(native({ value: 1, get: 0, set: 1 })),
-      flips: { cs: 3 },
       design: { ci: copied },
     },
     {
@@ -930,12 +947,8 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     },
     {
       source: 'c.g = 1', observe: onInstance,
-      today: {
-        cs: { value: 1, log: ['get g', 'get g', 'set g=1'] },
-        ci: { value: 1, log: ['get g', 'get g', 'get g', 'get g', 'set g=1'] },
-      },
+      today: both({ value: 1, log: ['set g=1'] }),
       js: both(native({ value: 1, log: ['set g=1'] })),
-      flips: both(3),
     },
     {
       source: 'c.g += 1', observe: onInstance,
@@ -988,16 +1001,14 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   const L: Row[] = [
     {
       source: 'x = 1', observe: looked,
-      today: { cs: { value: 1, calls: 1 }, ci: { value: 1, calls: 2 } },
+      today: { cs: { value: 1, calls: 0 }, ci: { value: 1, calls: 1 } },
       js: both(native({ value: 1, calls: 0 })),
-      flips: both(3),
       held: { ci: { under: 'A49', after: { value: 1, calls: 1 } } },
     },
     {
       source: 'X = 1', observe: looked,
-      today: { cs: { value: 1, calls: 1 }, ci: { value: 1, calls: 2 } },
+      today: { cs: { value: 1, calls: 0 }, ci: { value: 1, calls: 1 } },
       js: both(native({ value: 1, calls: 0 })),
-      flips: both(3),
       held: { ci: { under: 'A49', after: { value: 1, calls: 1 } } },
     },
     {
@@ -1015,9 +1026,8 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   const C: Row[] = [
     {
       source: 'this.g = 1', observe: onAccessorG,
-      today: { cs: { value: 1, get: 4, set: 1 }, ci: { value: 1, get: 0, set: 0 } },
+      today: { cs: { value: 1, get: 1, set: 1 }, ci: { value: 1, get: 0, set: 0 } },
       js: both(native({ value: 1, get: 0, set: 1 })),
-      flips: { cs: 3 },
       held: {
         cs: { under: 'A49', after: { value: 1, get: 1, set: 1 } },
         ci: { under: 'A50', after: { value: 1, get: 0, set: 0 } },
@@ -1025,9 +1035,8 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     },
     {
       source: 'g = 1', observe: onAccessorG,
-      today: { cs: { value: 1, get: 1, set: 1 }, ci: { value: 1, get: 0, set: 0 } },
+      today: { cs: { value: 1, get: 0, set: 1 }, ci: { value: 1, get: 0, set: 0 } },
       js: both(native({ value: 1, get: 0, set: 1 })),
-      flips: { cs: 3 },
       design: { ci: copied },
     },
     {
@@ -1096,16 +1105,15 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   const alone = { keys: ['k'], caller: ['k'] };
   /** `name` written onto the caller's object, which is the store. */
   const beside = (name: string) => ({ keys: ['k', name], caller: ['k', name] });
-  /** `name` written into the `caseInsensitive` copy, and the caller's object left as it was. */
-  const besideInCopy = (name: string) => ({ keys: ['k', name], caller: ['k'] });
   const notATarget = none('`this` is not an assignment target in JavaScript: the parser refuses it');
 
   /**
    * Case-sensitive, `This` is an ordinary name. Under `caseInsensitive` it is
-   * `this`, refused outside a member's object: by the operand walk today, and
-   * by every identifier target path from steps 2 and 3 (D11). An update walks
-   * nothing and refuses nothing up to 0.13.3. These marks are witnessed by
-   * steps 2 and 3's probes, not by the pinned prototype, which predates D11.
+   * `this`, refused outside a member's object, on every identifier target path
+   * (D11): by the operand walk up to 0.13.3, and from 0.14.0 by
+   * `refuseIdentifierTarget`. An update walked nothing and refused nothing up
+   * to 0.13.3, so `This++` wrote. These rows are witnessed by steps 2 and 3's
+   * probes, not by the pinned prototype, which predates D11.
    */
   const T: Row[] = [
     {
@@ -1128,17 +1136,15 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     },
     {
       source: 'This++', observe: thisTarget(false),
-      today: { cs: { value: NaN, ...beside('This') }, ci: { value: NaN, ...besideInCopy('This') } },
+      today: { cs: { value: NaN, ...beside('This') }, ci: { threw: thisRefused, ...alone } },
       js: both(native({ value: NaN, ...beside('This') })),
-      flips: { ci: 3 },
-      design: { ci: `${copied}; the this refusal, from step 3` },
+      design: { ci: 'the this refusal' },
     },
     {
       source: '++This', observe: thisTarget(false),
-      today: { cs: { value: NaN, ...beside('This') }, ci: { value: NaN, ...besideInCopy('This') } },
+      today: { cs: { value: NaN, ...beside('This') }, ci: { threw: thisRefused, ...alone } },
       js: both(native({ value: NaN, ...beside('This') })),
-      flips: { ci: 3 },
-      design: { ci: `${copied}; the this refusal, from step 3` },
+      design: { ci: 'the this refusal' },
     },
     {
       source: 'this = 1', observe: thisTarget(true),
@@ -1152,9 +1158,8 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     },
     {
       source: 'this++', observe: thisTarget(true),
-      today: { cs: { value: NaN, ...beside('this') }, ci: { value: NaN, ...besideInCopy('this') } },
+      today: both({ threw: thisRefused, ...alone }),
       js: both(notATarget),
-      flips: both(3),
     },
   ];
 
@@ -1225,12 +1230,8 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   /** The row's source and its marks in `mode`, which name the case. */
   const title = (row: Row, mode: Mode): string => {
     const marks: string[] = [];
-    const flips = row.flips?.[mode];
     const held = row.held?.[mode];
     const design = row.design?.[mode];
-    if (flips) {
-      marks.push(`flips at ${flips}`);
-    }
     if (held) {
       marks.push(`held under ${held.under}`);
     }
@@ -1248,12 +1249,26 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     describe.each(GROUPS)('%s', (_group, rows) => {
 
       it.each(rows.map(row => [title(row, mode), row] as [string, Row]))('%s', (_title, row) => {
+        const js = row.js[mode];
+        const ran = 'native' in js
+          ? nativeArm(row, mode === 'ci' && row.nativeAs ? row.nativeAs : row.source, options)
+          : undefined;
+
+        // The table's own claim, before the evaluator is run: a held row's
+        // `today` is the outcome it is held at, and an unmarked row's is its
+        // native arm's. A design-marked row differs from JavaScript by
+        // decision, and a row with no native arm has nothing to equal.
+        const held = row.held?.[mode];
+        if (held) {
+          expect(row.today[mode]).toEqual(held.after);
+        } else if (!row.design?.[mode] && ran) {
+          expect(row.today[mode]).toEqual(ran);
+        }
+
         expect(row.observe(evaluator, row.source, options)).toEqual(row.today[mode]);
 
-        const js = row.js[mode];
         if ('native' in js) {
-          const source = mode === 'ci' && row.nativeAs ? row.nativeAs : row.source;
-          expect(nativeArm(row, source, options)).toEqual(js.native);
+          expect(ran).toEqual(js.native);
         }
       });
     });
