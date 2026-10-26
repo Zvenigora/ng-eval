@@ -12,6 +12,18 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+---
+
+## [0.14.0] - 2026-10-25
+
+**An assignment evaluates its target as JavaScript does.** A minor carrying breaking changes
+([A45](../../docs/backlog-retired.md#a45) part 2, [A44](../../docs/backlog-retired.md#a44),
+[A52](../../docs/backlog-retired.md#a52); the [A45 plan](../../docs/a45/plan.md)). No exported
+symbol changes shape: the `.d.ts` is byte-identical to 0.13.3's. What changes is behaviour —
+which reads an assignment makes and reports, which key a `caseInsensitive` write reaches, and what
+an identifier holding `null` reads as under `caseInsensitive`. `eval-signals` 0.7.0 and `eval-forms` 0.7.0 raise
+their floors to it.
+
 ### Breaking
 - **A compound or logical assignment reads its target once, and does not walk it.** A
   member target's object and key are evaluated once, before the right side, and the write reuses

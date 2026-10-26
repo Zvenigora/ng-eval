@@ -40,7 +40,8 @@ its reason, is not a replan. A `package.json` in the diff before step 6 is a sto
 **The counts the steps start from**, the gate at db287da: `eval-core` 2880, `eval-signals` 443,
 `eval-forms` 380. `eval-core` reaches 3064 at step 1, 3080 with the plan's Revision 4 addendum, 3088
 at step 2 with its widening (group V), 3130 at step 3 with its widening (three D7 rows), and 3134 at
-step 5 with its widenings (N8's row, and the prefix update of a listed function); the other two do not move. Step 1's spec holds 18
+step 5 with its widenings (N8's row, and the prefix update of a listed function). `eval-forms` does not
+move; `eval-signals` reaches 444 at step 6, with its gate's widening (A44's write-error case). Step 1's spec holds 18
 held cases, each matching its recorded value, not the native run.
 
 **Step state**: step 1 has run: the characterisation spec, 184 cases, with its marks measured against

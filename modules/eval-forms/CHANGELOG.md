@@ -10,6 +10,52 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.7.0] - 2026-10-25
+
+**Both `@zvenigora` floors rise, and a rule is recomputed for the keys it reads.** A breaking minor:
+no symbol of this package changes shape, and **no shipped code of it changes**, so all three
+`.d.ts` files are byte-identical to 0.6.1's. What changes is the behaviour it forwards from
+`@zvenigora/ng-eval-core` 0.14.0, which evaluates an assignment's target as JavaScript does
+([A45](../../docs/backlog-retired.md#a45) part 2, [A44](../../docs/backlog-retired.md#a44),
+[A52](../../docs/backlog-retired.md#a52)).
+
+### Breaking
+- **A case-sensitive rule that only assigns to a key is not recomputed when that key changes.**
+  `count = 5`, as a `/reactive` `visible` or `text` rule over a control `count`, was recomputed
+  when `count` changed, and now is not. On `/signals` the same rule ran again after `count`
+  changed, and now does not. Under `caseInsensitive`, which only `/signals` takes, it still does,
+  since resolving the write's key reads `count` ([A49](../../docs/backlog.md#a49)), so the change is
+  case-sensitive only. Such a rule throws `SignalContextWriteError` on every run, in every mode.
+  Where the rule spells its key as the data does, the error is unchanged: its class, `kind`, `key`,
+  and the `expression` and message each entry point gives it; a case-variant member key under
+  `caseInsensitive` is the second entry under Fixed. A rule that reads the key it writes,
+  `count += 5` or `x++`, is recomputed as before, and `/reactive`'s `dependencies` stay empty, since
+  `bindFieldProperties` turns no tracking on. No case in this package's suite changed for it.
+
+### Fixed
+- **Under `caseInsensitive`, a model key holding `null` reads as `null` on `/signals`**, where it
+  read as `undefined`: over `{ nul: null }`, `evalVisible(p.city, 'nul === null')` shows the field
+  where it hid it, and `evalText(p.city, 'nul + 1')` gives `'1'` where it gave `'NaN'`. This change
+  is `caseInsensitive` only, so it does not reach `/reactive`, which takes no evaluator options.
+- **Under `caseInsensitive`, a member write spelled differently from its target names the key the
+  target holds, on `/signals`**: over `{ user: { name: 'a' } }`, `user.NAME = "Bob"`,
+  `user.NAME += "x"` and `user.NAME++` throw `SignalContextWriteError` with `key` `name` and a
+  message naming `'name'`, where up to 0.6.1 both named `NAME`, the key as the rule spelled it
+  (A44). Case-sensitive, the key is as written, and `/reactive` takes no evaluator options.
+
+### Changed
+- **The README's three recompute sentences say "reads"**: the quick start's "the expression reads
+  `country`", Reactivity's "a control it reads", and Signal Forms' "a rule that reads
+  `country`", where each said the rule *named* the key. A rule that only assigns to a key names it
+  without reading it. No code change.
+- **Both `@zvenigora` floors raised.** `@zvenigora/ng-eval-core`: `>=0.13.0 <0.14.0` →
+  `>=0.14.0 <0.15.0`. `@zvenigora/ng-eval-signals`: `>=0.6.0 <0.7.0` → `>=0.7.0 <0.8.0`.
+  **The floors rise rather than only the ceilings**: the entries above describe behaviour that
+  exists only with `eval-core` 0.14.0, and `eval-signals` below 0.7.0 requires `eval-core` below
+  0.14.0, so it cannot sit beside this release.
+
+---
+
 ## [0.6.1] - 2026-10-22
 
 ### Changed

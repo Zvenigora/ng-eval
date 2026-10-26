@@ -249,6 +249,19 @@ Each finding cites the measurement in § 1.3 that produced it.
 
     So the change is visible through `EvalSignal.dependencies` and recompute counts, on expressions
     that throw on every recompute (§ 8 q7).
+
+    *Corrected 2026-10-25, at step 6's gate.* M5 ran case-sensitive only, and before D10. Re-measured
+    against 0.13.3's code and step 5's tree (step 6's outcome), its rows and M5b's reproduce, and
+    two legs it lacked change the reading. Under `caseInsensitive`, `count = 5` still recomputes, 2
+    and 2, since `getKey` reads the signal ([A49](../backlog.md#a49)): the recompute change is
+    case-sensitive only. And "every expression that does not throw" is **not** unchanged under
+    `caseInsensitive`: D10 moves a `null` source's reads, `nul === null` from `false` to `true` and
+    `nul + 1` from `NaN` to `1`, through both downstream packages. Nor is the error's `key`
+    unchanged on every row: under `caseInsensitive`, a member write spelled differently from its
+    target, `user.NAME = "Bob"` over `{ user: { name: 'a' } }`, names `name` where it named `NAME`,
+    through A44, in `eval-signals` and in `eval-forms`' `/signals` (found by step 6's code review). The
+    sentences above stand as measured at Revision 1, on rows that each spelled their key as the data
+    does.
 11. **The timing harness has to be paired and signed** (M6): § 0 rule 11.
     - Over twelve A/A rotations the paired medians were −0.45% (member read), +2.46% (member write),
       +0.54% (member compound) and −0.12% (identifier write).
@@ -907,13 +920,14 @@ probe is applied alone and reverted, and its red cases are named (§ 0 rule 8).
 | 3 | The `=` resolver; A44 in both visitors; the identifier update's checks and read (D8, D9) | `assignment-expression.ts`, `member-expression.ts`, `update-expression.ts`, `identifier.ts`, the spec's step-3 rows, `update-expression.spec.ts`, `CHANGELOG.md`; at the step's approval `call-expression.ts` and `assignment-expression.spec.ts`, comments only | **+42** / 0 / 0 (+36, and +6 for three D7 rows, a widening at the step's approval) | `eval-core` 0.14.0 |
 | 4 | Timing against the rule in § 3.8 | this document only | 0 / 0 / 0 | no package |
 | 5 | `SECURITY.md`, README, CHANGELOG; A45, A44 and A52 retired | `SECURITY.md`, `modules/eval-core/README.md`, `CHANGELOG.md`, the register, link targets | 0 / 0 / 0, or the allowlist's entries | `eval-core` 0.14.0 (README); the rest no package |
-| 6 | Release commit | three `package.json`, three `CHANGELOG.md`, each README's peer line | 0 / 0 / 0 | the releases |
+| 6 | Release commit | three `package.json`, three `CHANGELOG.md`, each README's peer line; at the gate the `eval-forms` README's recompute sentences, the `eval-signals` README's respelling bullet, `signal-context.spec.ts` and the register's "Work in flight" | 0 / **+1** / 0 (a widening at the gate) | the releases |
 | 7 | Post-publish commit | the register, `CLAUDE.md`, `docs/README.md`, CHANGELOG dates, this document | 0 / 0 / 0 | — |
 
 From 2880, `eval-core` is at 3064 once step 1 commits, at 3080 once Revision 4's addendum does, at
 3088 once step 2 does, with its group V, and at 3130 once step 3 commits, with its three D7 rows
-(3124 without them). `eval-signals` and
-`eval-forms` stay at 443 and 380 (M4, M10). *Revision 2*: they were 3044 and 3080 at Revision 1.
+(3124 without them), and at 3134 once step 5 does, with its widenings. `eval-signals` and
+`eval-forms` stay at 443 and 380 (M4, M10) through step 5; step 6 adds one `eval-signals` case, a
+widening at its gate, so `eval-signals` is at 444 from step 6. *Revision 2*: they were 3044 and 3080 at Revision 1.
 *Revision 4*: 3064 and 3100 at Revision 3, and 3080 and 3116 before step 2's widening.
 
 ### Step 1 — Characterisation spec: today's behaviour pinned, the flips marked
@@ -1806,6 +1820,94 @@ From 2880, `eval-core` is at 3064 once step 1 commits, at 3080 once Revision 4's
   3. Every peer range admits a consistent set.
 - **Category**: the releases. Publishing and tagging, in the order core → signals → forms, are the
   maintainer's.
+- **Outcome** — done 2026-10-25, under Revision 4. **`eval-core` 0.14.0, `eval-signals` 0.7.0,
+  `eval-forms` 0.7.0, every `@zvenigora` floor raised.**
+  - **§ 8 q7, measured at the gate before any version was written.** Throwaway Jest specs, run once
+    in step 5's tree and once in a worktree at the `eval-core@0.13.3` tag, then deleted from both.
+    `git diff eval-core@0.13.3 HEAD -- modules/eval-signals modules/eval-forms` is empty, so the two
+    arms differ in `eval-core` alone. The full-text diff of the results has the same changed rows as
+    the diff with messages and `expression` fields stripped: every error message is identical **on
+    these rows**, each of which spells its key as the data does. The A44 leg below, found by the code
+    review, is the row they lacked.
+    - **`eval-signals`** (`trackDependencies: true`, `createState` as the recompute counter, one
+      source changed between two reads). M5's and M5b's rows reproduce exactly, case-sensitive:
+      `count = 5` deps `{count}` → `{}`, recomputes 2 → 1; `user.name = "Bob"` `{user, user.name}` →
+      `{user}`; `user.a.b = 1` `{user, user.a, user.a.b}` → `{user, user.a}`; `x++` and `++x` `{}` →
+      `{x}`, recomputes 2 and 2. Compound rows, both `let o` rows, `let i = x; i++; i` and `user.n++`
+      are unchanged. The `SignalContextWriteError`'s class, `kind`, `key`, `expression` and message
+      are unchanged on every row. **Under `caseInsensitive`**, a leg M5 lacked, the dependency rows
+      move alike, but `count = 5` still recomputes, 2 and 2, since `getKey` reads the signal (A49).
+    - **`eval-forms`, its public surface.** `/reactive`, `bindFieldProperties` with `count = 5` as a
+      `visible` or a `text` rule: recomputes 2 → **1**. `/signals`, `EvalState.fromContext` counted
+      as the walk: `count = 5` case-sensitive walks 1 then 1 → **1 then 0**, and under
+      `caseInsensitive` 1 then 1 in both. The error's class, `kind`, `key`, `expression` and message
+      are unchanged at both entry points. `/reactive`'s exposed `dependencies` are `{}` at both
+      versions, since `bindFieldProperties` turns no tracking on. `count += 5`, `user.name = "Bob"`,
+      `user.name += "Bob"`, `x++`, `++x` and `count > 0` are unchanged on every surface.
+    - **D10, the leg q7's Revision 3 named.** Under `caseInsensitive`, over a `null` source:
+      `eval-signals` `nul` `undefined` → `null`, `nul === null` `false` → `true`, `nul + 1` `NaN` →
+      `1`; `eval-forms` `/signals` `evalVisible(…, 'nul === null')` hidden → shown, `evalText(…,
+      'nul + 1')` `'NaN'` → `'1'`. Case-sensitive, nothing moves. Finding 10 carries the dated
+      correction.
+    - **A44, through the write error**, found by the code review and measured the same way, over
+      `{ user: { name: 'a' } }`. Under `caseInsensitive`, `user.NAME = "Bob"`, `user.NAME += "x"`,
+      `user.NAME++` and `USER.NAME = "Bob"` throw `SignalContextWriteError` with `key` `NAME` and a
+      message naming `'NAME'` at 0.13.3, and `name` at step 5, in `eval-signals`; the first three
+      likewise in `eval-forms`' `/signals`. Case-sensitive, every row keeps `NAME`. The class, `kind`
+      and `expression` are unchanged.
+    - **The choice**: both 0.7.0, on the 0.6.0 precedent. `eval-forms` changed on its surface, its
+      recompute triggers and its `/signals` values.
+  - **The gate's readings.** 1, the floors rise; 2, each README's floor reason is rewritten with its
+    range; 3, **a widening**: `eval-forms` README's two recompute sentences (`:179`, `:640` at step 5)
+    say "reads `country`" where they said "named", so they hold for a write-only rule. The existing
+    cases that witness the reading form are `reactive/src/lib/readme-examples.spec.ts`, "should
+    recompute only for the control a rule named (S 4)", and `signals/src/lib/readme-examples.spec.ts`,
+    "should re-evaluate a rule for the key it named and not for another (S 4)": each counts the
+    recomputes of `country + missing.fn()`, a rule that reads `country`, across a change to `country`
+    and to another key. 4, each 0.7.0 entry states that the recompute change is case-sensitive only
+    (A49) and the D10 change `caseInsensitive` only. 5, finding 10's correction is dated, not a
+    rewrite.
+  - **After the code review, approved at the gate.** Both 0.7.0 entries name A44 in their lead, gain
+    a `### Fixed` entry for the write error's key (`/signals` only in `eval-forms`), and claim the
+    error unchanged only where a rule spells its key as the data does. Three widenings:
+    - 2: `eval-forms` README's Reactivity sentence, "a control it named emits", says "reads", the
+      flaw reading 3 fixed twice. Its witness is the same `/reactive` readme-examples case.
+    - 3: the register's "Work in flight" brought to step 6 done, pending publish.
+    - 5: `eval-signals` README's "Only your own record's keys are respelled" names the exception, a
+      member write's key, with **one new case**: `signal-context.spec.ts`, "should name a member write
+      the key its target holds under caseInsensitive", `user.NAME = "Bob"` over
+      `{ user: signal({ name: 'a' }) }`, asserting `kind` `member`, `key` `name`, the message naming
+      `'name'`, and the signal unwritten. **`eval-signals` is at 444.** Probe: `resolveMemberTarget`
+      returning the key as spelled (`member-expression.ts:389`) turned exactly the new case red over
+      all of `eval-signals`, 1 of 444, receiving `NAME`; reverted, `git diff` on `eval-core`'s source
+      empty.
+  - **The code review** found one Critical, A44 through the write error, above, confirmed end to
+    end and fixed in this step. Its Warnings were the three widenings and the suite counts, which
+    were 439 and 376 at 0.6.1, not 443 and 380: each entry now says no case changed for it. Its
+    Notes were applied: `eval-core`'s lead says no exported symbol changes shape, "records what it
+    recorded before", `/signals` named for the `null` clause in the forms README, and reflows. One
+    Note stays open as written: `eval-signals` README's divergence list (`:173`) does not name
+    `count = 5` reporting `{}` while it recomputes under `caseInsensitive`; the CHANGELOG does.
+  - **For step 7's retrospect.** § 0 gains rule 13: **a downstream "unchanged" claim is measured on
+    each fixed defect's own rows through the downstream package.** q7's measurement reused M5's rows,
+    each spelling its key as the data does, so A44, a defect this plan fixed, was never run through
+    `eval-signals` or `eval-forms`, and both entries said the error was unchanged until the code
+    review measured it.
+  - **Peer ranges, before → after.** `eval-signals`: `@zvenigora/ng-eval-core` `>=0.13.0 <0.14.0` →
+    `>=0.14.0 <0.15.0`. `eval-forms`: `@zvenigora/ng-eval-core` the same; `@zvenigora/ng-eval-signals`
+    `>=0.6.0 <0.7.0` → `>=0.7.0 <0.8.0`. Every other peer of the three is unchanged.
+  - **Criterion 1.** The gate is green at 3134 / 444 / 380, `eval-signals` +1 by widening 5;
+    doc-links 354 files and 1857 links, 0 dangling; release-tags 43 rows, 53 tags, 0 failing.
+  - **Criterion 2.** The built `types/zvenigora-ng-eval-core.d.ts` is byte-identical to the npm
+    0.13.3 tarball's: SHA-256 `4F11D36F…3D16F651`, 111,787 bytes, before and after the version bump.
+    Measured the same way before the entries claimed it: `eval-signals`' `.d.ts` and `eval-forms`'
+    three are byte-identical to their 0.6.1 tarballs'.
+  - **Criterion 3.** `semver`: `eval-signals`' core range admits 0.14.0 and not 0.13.3; `eval-forms`'
+    admits core 0.14.0 and signals 0.7.0, and not 0.13.3 or 0.6.1; the two core ranges intersect.
+    The README peer-range cases are green, and each was probed by breaking its document: the signals
+    README's span widened to `>=0.13.0 <0.15.0` turned exactly that package's peer case red, naming
+    `:15`, and the forms README's manifest block quoting `>=0.6.0 <0.8.0` turned exactly its peer case
+    red, naming `:94`. Both reverted.
 
 ### Step 7 — Post-publish commit
 
@@ -1832,7 +1934,7 @@ release is breaking by behaviour (§ 3.1, M2, M5), not by shape.
 | :--- | :--- | :--- |
 | Everything | `npx nx run-many -t lint test build --skip-nx-cache --output-style=static` | Green, every step |
 | `eval-core` tests | (in the above) | +184 in step 1, +16 in Revision 4's addendum, +8 in step 2 (its widening), +42 in step 3 (its widening included), +4 in step 5 (its widenings), 0 otherwise: 3064, 3080, 3088 after step 2, 3130 after step 3, 3134 from step 5 (Revision 4; +164 at Revision 1) |
-| `eval-signals` / `eval-forms` tests | (in the above) | 443 / 380 in every step |
+| `eval-signals` / `eval-forms` tests | (in the above) | 443 / 380 through step 5; 444 / 380 from step 6, its gate's widening |
 | Perf | `internal/performance.spec.ts` | Green and untouched in every step |
 | Timing | § 3.8's harness | Step 4 only, under the rule stated there |
 | Scope | `git diff --name-status HEAD` | The step's file list; no `R`; no `package.json` before step 6 |
@@ -1861,7 +1963,8 @@ release is breaking by behaviour (§ 3.1, M2, M5), not by shape.
 *Revision 2* decided q1, q5 and q6 as D9, D8 and D7 (§ 2) and removed them. It moved q2, q3 and q4
 into the register and removed q8, folding its note into A48. The remaining questions keep their
 numbers, so a citation of "§ 8 q7" still resolves. Only q7 is undecided here; q2–q4 are pointers, and
-their decisions belong to their entries. *Revision 3* decided q9 as D10 and removed it.
+their decisions belong to their entries. *Revision 3* decided q9 as D10 and removed it. Step 6's gate
+decided q7 by measurement; q7 keeps its text, with the decision under it.
 
 2. **Under `caseInsensitive`, the read path reads a prototype accessor twice**:
    [A48](../backlog.md#a48) (M1f, finding 7). Its rows are held in step 1. The entry also records
@@ -1886,6 +1989,11 @@ their decisions belong to their entries. *Revision 3* decided q9 as D10 and remo
    *Revision 3*: D10 changes what a `caseInsensitive` signal context's identifier reads give for a
    `null` source. M11's suites cover `eval-signals` and `eval-forms`, both green, but M5's probe was
    not re-run under D10.
+   **Decided at step 6's gate, 2026-10-25**: `eval-signals` 0.7.0 and `eval-forms` 0.7.0, both
+   breaking minors on the 0.6.0 precedent, with every `@zvenigora` floor raised. `eval-forms` was
+   measured on its public surface and changed: a case-sensitive write-only rule is no longer
+   recomputed when its target changes, on both entry points, and the D10 reads change on `/signals`
+   under `caseInsensitive`. The measurement is step 6's outcome.
 
 ## 9. Contract after this lands
 

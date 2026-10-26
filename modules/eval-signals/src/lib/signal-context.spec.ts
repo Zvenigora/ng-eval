@@ -652,6 +652,30 @@ describe('createSignalContext', () => {
       expect(context.original).toEqual({});
     });
 
+    it('should name a member write the key its target holds under caseInsensitive', () => {
+      const user = signal({ name: 'a' });
+      const context = createSignalContext({ user }, { caseInsensitive: true });
+
+      let caught: unknown;
+      try {
+        service.simpleEval('user.NAME = "Bob"', context, { caseInsensitive: true });
+      } catch (error) {
+        caught = error;
+      }
+
+      // Since `eval-core` 0.14.0 the write reaches the key the lookup matched
+      // (`docs/backlog-retired.md` A44), so the policy is asked about `name`.
+      // Up to 0.13.3 it was asked about `NAME`, the key as the expression
+      // spelled it, and the error named that.
+      expect(caught).toBeInstanceOf(SignalContextWriteError);
+      expect((caught as SignalContextWriteError).kind).toEqual('member');
+      expect((caught as SignalContextWriteError).key).toEqual('name');
+      expect((caught as Error).message).toEqual(
+        "Cannot assign to member 'name': a signal expression may write only into objects it created."
+      );
+      expect(user()).toEqual({ name: 'a' });
+    });
+
   });
 
   describe('getKey', () => {

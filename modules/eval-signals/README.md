@@ -12,11 +12,13 @@ recomputes **exactly** when a key the expression actually read has changed.
 npm install @zvenigora/ng-eval-signals @zvenigora/ng-eval-core
 ```
 
-Peer dependencies: `@angular/core >=19.0.0` and `@zvenigora/ng-eval-core >=0.13.0 <0.14.0`. The floor
-is 0.13.0 since 0.6.0: this version documents the guarded receiver a source function's `this` is,
-and that contract exists only in `eval-core` 0.13.0 and later. It also carries the write guard,
-which needs `eval-core` 0.11.0 to ask about a built-in method's write as well as a member write —
-see [Writes are not supported](#writes-are-not-supported).
+Peer dependencies: `@angular/core >=19.0.0` and `@zvenigora/ng-eval-core >=0.14.0 <0.15.0`. The floor
+is 0.14.0 since 0.7.0: an assignment records only the reads `eval-core` 0.14.0 makes for it, so
+`count = 5` records no dependency and `x++` records `x`, and that behaviour exists only there. The
+guarded receiver a source function's `this` is, which raised the floor to 0.13.0 in 0.6.0, holds in
+0.14.0 as well. This version also carries the write guard, which needs `eval-core` 0.11.0 to ask
+about a built-in method's write as well as a member write — see
+[Writes are not supported](#writes-are-not-supported).
 
 ## Sibling packages
 
@@ -562,7 +564,9 @@ Four things that decide whether this library fits, rather than surprises you lat
   `SignalContextWriteError.key`, which since 0.2.0 is `count` for `COUNT = 5` over `{ count }`
   rather than `undefined`. A name something else resolves — an arrow parameter, a prior scope,
   a lookup you pushed onto the context — gets `eval-core`'s answer, which for a lookup is the
-  name as the expression wrote it.
+  name as the expression wrote it. A member write is the exception: since 0.7.0 its
+  `SignalContextWriteError.key` is the key its target object holds, so `user.NAME = "Bob"` over
+  `{ user: signal({ name: 'a' }) }` names `name`, where up to 0.6.1 it named `NAME`.
 - **Lookups resolve last.** A key resolvable earlier in `EvalContext.get`'s order shadows the
   source. The adapter starts with an empty `original`, but an empty object is not an *absent*
   one: up to `eval-core` 0.10.x, `Object.prototype` names — `toString`, `valueOf`,

@@ -10,6 +10,59 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.7.0] - 2026-10-25
+
+**An assignment records only the reads JavaScript makes for it, and the `eval-core` range moves to
+0.14.** A breaking minor: no symbol of this package changes shape, and **no shipped code of it
+changes**, so the `.d.ts` is byte-identical to 0.6.1's. What changes is the behaviour it forwards
+from `@zvenigora/ng-eval-core` 0.14.0, which evaluates an assignment's target as JavaScript does
+([A45](../../docs/backlog-retired.md#a45) part 2, [A44](../../docs/backlog-retired.md#a44),
+[A52](../../docs/backlog-retired.md#a52)).
+
+### Breaking
+- **An assignment's `dependencies` follow its reads.** With `trackDependencies: true`:
+  - `count = 5` records nothing, where up to 0.6.1 it recorded `count`. Case-sensitive, it is no
+    longer recomputed when `count` changes either. Under `caseInsensitive` it still is, since
+    resolving the write's key reads `count` ([A49](../../docs/backlog.md#a49)), so the recompute
+    change is case-sensitive only.
+  - `user.name = "Bob"` records `user`, where it recorded `user` and `user.name`, and
+    `user.a.b = 1` records `user` and `user.a`, where it also recorded `user.a.b`. Each is still
+    recomputed when `user` changes.
+  - `x++` and `++x` record `x`, where they recorded nothing. They were recomputed when `x` changed
+    and still are.
+
+  Every one of these throws `SignalContextWriteError` on every recompute, in both modes. Where the
+  expression spells its key as the data does, the error is unchanged: its class, `kind`, `key`,
+  `expression` and message; a case-variant member key under `caseInsensitive` is the second entry
+  under Fixed. A compound assignment, `count += 5` or `user.name += "Bob"`, records what it recorded
+  before, and an expression that writes only into an object it created,
+  `let o = { a: count }; o.a = 1`, is unchanged. No case in this package's suite changed for it; one
+  is added, for the second Fixed entry, so the suite is at 444.
+
+### Fixed
+- **Under `caseInsensitive`, a source holding `null` reads as `null`**, where it read as
+  `undefined`: over `{ nul: signal(null) }`, `nul === null` gives `true` where it gave `false`, and
+  `nul + 1` gives `1` where it gave `NaN`. This change is `caseInsensitive` only; a case-sensitive
+  read already gave `null`.
+- **Under `caseInsensitive`, a member write spelled differently from its target names the key the
+  target holds**: over `{ user: signal({ name: 'a' }) }`, `user.NAME = "Bob"`, `user.NAME += "x"`
+  and `user.NAME++` throw `SignalContextWriteError` with `key` `name` and a message naming `'name'`,
+  where up to 0.6.1 both named `NAME`, the key as the expression spelled it. `eval-core` 0.14.0 asks
+  the write policy about the key its lookup matched (A44), as `EvalMemberWrite.key` and
+  `SignalContextWriteError.key` already documented. Case-sensitive, the key is as written.
+
+### Changed
+- **The `eval-core` floor raised**: `>=0.13.0 <0.14.0` → `>=0.14.0 <0.15.0`. **The floor rises
+  rather than only the ceiling** because the entries above describe behaviour that exists only with
+  `eval-core` 0.14.0: under a range admitting 0.13.x, what `dependencies` reports for an assignment
+  would depend on which evaluator the install resolved. The README's peer line gives the floor's
+  reason.
+- **The README's "Only your own record's keys are respelled" names the exception**: under
+  `caseInsensitive` a member write's `SignalContextWriteError.key` is the key its target object
+  holds. No code change.
+
+---
+
 ## [0.6.1] - 2026-10-22
 
 ### Changed

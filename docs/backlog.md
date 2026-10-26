@@ -144,12 +144,13 @@ end, so that 0.13.0, which closes the route through `this`, shipped first.
 0.14.0. It is at Revision 4, and steps 1 to 5 are done: the characterisation spec; compound and
 logical targets read once (step 2); the `=` resolver and A44 (step 3); the timing, with no regression
 on any path (step 4); and the documents, which retired A44, A45 and
-[A52](backlog-retired.md#a52), all three fixed and not yet released (step 5). Step 6, the release,
-is next. Revision 2 decided three of its open questions as D7–D9 and opened [A48](#a48)–A52 for the
-defects it found. Revision 3 brought A52 into the plan's step 2 (D10), and Revision 4 kept the
-`this` refusal on every identifier target (D11). Step 5 opened [A53](#a53), step 4's unexplained
-`caseInsensitive` slowdown. A48–A51 and A53 are not scheduled. Its § 8 keeps the downstream
-versions open.
+[A52](backlog-retired.md#a52), all three fixed and not yet released (step 5). Step 6, the release
+commit, is done: `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms` 0.7.0, every `@zvenigora`
+floor raised, pending publish; its gate decided § 8 q7, the downstream versions, by measurement.
+Step 7, the post-publish record, is next. Revision 2 decided three of its open questions as D7–D9
+and opened [A48](#a48)–A52 for the defects it found. Revision 3 brought A52 into the plan's step 2
+(D10), and Revision 4 kept the `this` refusal on every identifier target (D11). Step 5 opened
+[A53](#a53), step 4's unexplained `caseInsensitive` slowdown. A48–A51 and A53 are not scheduled.
 [F20](backlog-retired.md#f20), [F21](backlog-retired.md#f21),
 [F24](backlog-retired.md#f24) and [F25](backlog-retired.md#f25) are fixed, and ship in no package; F21's toolchain bump left one
 `overrides.nx` entry, `undici`, which [F16](#f16) part 2 holds.
