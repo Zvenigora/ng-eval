@@ -20,6 +20,11 @@ which gained "(not published to npm)". This file now holds only changes that shi
 Workspace tooling: nothing here reaches a consumer, so nothing here is versioned.
 
 ### Added
+- **`tools/release-tags.mjs` fails on a lightweight release tag**, 2026-10-26. Every
+  `eval-core@`, `eval-signals@` and `eval-forms@` tag, whether a Publication status row names it or
+  not, must be annotated: a lightweight one fails, named once, and the message gives the
+  `git tag -a` form. The `v*` tags from before the `<project>@<version>` names are lightweight and are
+  not checked. The summary line says `all annotated`. `docs/backlog.md` F26.
 - **`tools/doc-links.mjs` checks the index, untracked documents and published links**, 2026-10-23.
   It scans untracked files git does not ignore and names them, resolves absolute links into the
   repository's tree at `master`, resolves every link a published README prints, listed in the new
@@ -72,6 +77,14 @@ Workspace tooling: nothing here reaches a consumer, so nothing here is versioned
   23.3.0 pins `undici` 7.29.0; it is nested under `nx` so that `jsdom`'s `undici` 8 is untouched.
   `sprintf-js` was no longer reported before the change. No `.d.ts` changed. `docs/backlog.md` F21,
   and F16 part 2.
+- **Dependency security, 2026-10-26**: `npm audit` 2 → 0, one high and one moderate, from seven
+  advisories. `undici` 8.11.2 → 8.12.3, inside `jsdom`'s `^8.9.0`, for GHSA-xjj6-f33q-929c (high),
+  GHSA-4qv8-2p9j-2685 and GHSA-f72v-6w45-q472; `fast-uri` 3.1.8 → 3.1.9, inside `ajv`'s `^3.0.1`, for
+  GHSA-w74x-v6f9-j3xg, GHSA-wjr9-j795-jxcr, GHSA-xhq7-xmqj-769h and GHSA-333x-w4r6-6crp. Both are
+  dev-only. `overrides.nx.undici`'s floor rises from `^7.29.1` to `^7.30.1`, since all three `undici`
+  advisories cover 7.x below 7.30.1; `nx`'s `undici` was already 7.30.1 and stays there, so the
+  lockfile changes in the two updated entries alone. Dependabot showed five of the seven as open
+  alerts; it had auto-dismissed the two `undici` moderates. `docs/backlog.md` F16.
 - **eval-core's tests no longer print ts-jest's TS151001 advice** once per worker. It is silenced
   in `modules/eval-core/jest.config.ts`; the reason is in the comment there.
 - **The README drift gates check every `@zvenigora/…` import**, 2026-10-03 — `docs/backlog.md`

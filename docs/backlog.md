@@ -417,7 +417,7 @@ makes it that release's row, with its tag commit and date.
 | [F13](backlog-retired.md#f13) | Nothing gates the README block count `readme-examples.spec.ts` claims | core, signals, forms | test gap | **Retired — fixed 2026-09-27**, test only; all four specs gated. The gate's first run found `eval-core`'s count wrong a third time |
 | [F14](backlog-retired.md#f14) | Six sites cite the retired `^0.3.0` range, two of them in published READMEs | signals, forms | fix (comments, docs) | **Retired — fixed, Phase 2 step 8**; filed as four sites, was six |
 | [F15](backlog-retired.md#f15) | The downstream peer ranges exclude `eval-core` 0.6.0 — **latent until the bump, then both downstream `lint` targets fail** | signals, forms | fix (release coordination) | **Retired — fixed and released 2026-09-26**; both ranges widened to `>=0.3.0 <0.7.0`, and both packages released: `eval-signals` 0.1.3 and `eval-forms` 0.2.3, tagged f26f987 |
-| [F16](#f16) | Workspace dependency advisories — 9 moderate on the workspace's Angular 22.0.8, and a **temporary override under `nx`**, now `undici`'s; beside it, the **`qs` override**, whose `^6.14.1` floor does not exclude GHSA-w7fw-mjwx-w883 (fixed 6.14.2) | repo | fix | Open — **part 2's `brace-expansion`, `smol-toml` and `axios` overrides retired 2026-10-23** with `nx` 23.3.0 ([F21](backlog-retired.md#f21)); part 2 now holds `overrides.nx.undici` only, until a stable `nx` stops pinning `undici` below 7.29.1. **Part 1 retired 2026-09-27**: `nx` 23.2.1, Angular 22.1.8 / 22.1.9, `npm audit` 0 at every severity. Part 2, the override, is live until a stable `nx` depends on `smol-toml >= 1.7.1`. **Re-audited 2026-09-30: 22 (14 high, 8 moderate)**, none reaching a published package; **fixed the same day**: Angular 22.2.1 / 22.2.0, two more `overrides.nx` entries, `verdaccio` removed, `npm audit` 0. **`qs` recorded 2026-10-14**: the override was added for GHSA-6rw7-vpxm-498p, not prototype pollution; raising its floor is held here. **Re-audited 2026-10-20 at 7741395**: `qs` resolves 6.16.0, past both advisories, and audit reports nothing for it |
+| [F16](#f16) | Workspace dependency advisories — 9 moderate on the workspace's Angular 22.0.8, and a **temporary override under `nx`**, now `undici`'s; beside it, the **`qs` override**, whose `^6.14.1` floor does not exclude GHSA-w7fw-mjwx-w883 (fixed 6.14.2) | repo | fix | Open — **part 2's `brace-expansion`, `smol-toml` and `axios` overrides retired 2026-10-23** with `nx` 23.3.0 ([F21](backlog-retired.md#f21)); part 2 now holds `overrides.nx.undici` only, until a stable `nx` no longer pins `undici` below 7.30.1. **Part 1 retired 2026-09-27**: `nx` 23.2.1, Angular 22.1.8 / 22.1.9, `npm audit` 0 at every severity. Part 2, the override, is live until a stable `nx` depends on `smol-toml >= 1.7.1`. **Re-audited 2026-09-30: 22 (14 high, 8 moderate)**, none reaching a published package; **fixed the same day**: Angular 22.2.1 / 22.2.0, two more `overrides.nx` entries, `verdaccio` removed, `npm audit` 0. **`qs` recorded 2026-10-14**: the override was added for GHSA-6rw7-vpxm-498p, not prototype pollution; raising its floor is held here. **Re-audited 2026-10-20 at 7741395**: `qs` resolves 6.16.0, past both advisories, and audit reports nothing for it. **Re-audited 2026-10-26 at f78fca2: 2 (1 high, 1 moderate)**, seven `undici` and `fast-uri` advisories, dev-only; **fixed the same day** in range: `undici` 8.12.3, `fast-uri` 3.1.9, and `overrides.nx.undici`'s floor raised to `^7.30.1`, `npm audit` 0. The `qs` floor stays held |
 | [F17](#f17) | An unhandled rejection reaches no channel a spec would normally watch — only zone.js's `unhandledPromiseRejectionHandler` hook sees it | repo | test gap | Open — opened 2026-10-08 by Phase 5 step 2 |
 | [F18](backlog-retired.md#f18) | `eval-signal.ts` line citations in `eval-forms` comments and completed plans are stale | forms, repo | docs | **Retired — fixed 2026-10-10** in live source; completed records kept as written, per `CLAUDE.md`. The three `eval-forms` comments cite symbols; `applyErrorPolicy`'s ships in the core `.d.ts` |
 | [F19](backlog-retired.md#f19) | `CLAUDE.md` cites the resolved-key re-check as `member-expression.ts:188`; it was at `:211`, and is at `:244` | repo | docs | **Retired — fixed 2026-10-21** by Phase 10 step 6: `CLAUDE.md` cites `isDangerousProperty(foundKey)` in `member-expression.ts` by symbol, as the entry's fix recorded |
@@ -1459,7 +1459,8 @@ not lost in a tidying edit.
 
 **Package** repo · **Kind** fix · **Status** Open — **part 1 retired 2026-09-27**, part 2 open,
 narrowed 2026-10-23 to the `undici` override, and the `qs` override held. A re-audit 2026-09-30 found
-22 new findings, and they were fixed the same day (below).
+22 new findings, and they were fixed the same day (below). A re-audit 2026-10-26 found 2, from
+seven `undici` and `fast-uri` advisories, fixed in range the same day (below).
 Recorded 2026-09-26, by the commit that cleared the Dependabot high alert
 
 **None of this reaches a consumer.** Every package below is a root workspace dependency. No
@@ -1567,7 +1568,8 @@ without them. But 23.3.0 pins `undici` at exactly `7.29.0`, which carries two hi
 (GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3) among ten against `<7.29.1`, and 24.0.0 pins the same. So
 `overrides.nx` is now `{ "undici": "^7.29.1" }`, which resolves 7.30.1. It is **nested under `nx`**
 because the tree's other `undici` is `jsdom`'s 8.11.2, which a top-level override would force down a
-major. **Remove it** once a stable `nx` no longer pins `undici` below 7.29.1. As with `smol-toml`, the
+major. Its floor rose to `^7.30.1` on 2026-10-26 (the re-audit below), since three later advisories
+cover 7.x below 7.30.1. **Remove it** once a stable `nx` no longer pins `undici` below 7.30.1. As with `smol-toml`, the
 lockfile keeps `nx`'s declared `"undici": "7.29.0"` under `node_modules/nx`;
 `node_modules/nx/node_modules/undici` is the entry to check.
 
@@ -1720,6 +1722,45 @@ the lockfile resolves `node_modules/qs` to **6.16.0**, past GHSA-6rw7-vpxm-498p 
 stays held here; the installed tree is clear of both. The 32 findings that audit did report are
 [F21](backlog-retired.md#f21).
 
+**Re-audited 2026-10-26 at f78fca2: 2 findings, 1 high and 1 moderate, from seven advisories.** The
+lockfile had not changed since F21's 0 on 2026-10-23, so these are advisories published since, all
+seven on 2026-10-23. Neither package has a dependent audit flags:
+
+| Package (resolved) | Advisories | Patched in | Root dependency | Flagged as dependents |
+| ------------------ | ---------- | ---------- | --------------- | --------------------- |
+| `undici` 8.11.2 | Three: GHSA-xjj6-f33q-929c (high; DoS by an unhandled error on excessive content-encodings); GHSA-4qv8-2p9j-2685 (moderate; DoS by unbounded memory in the EventSource parser), GHSA-f72v-6w45-q472 (moderate; Subresource Integrity bypass via non-lowercase algorithm tokens) | 8.12.2 | `jest-preset-angular` 17.0.1 (dev), through `jsdom` 30.0.1, which declares `^8.9.0` | — |
+| `fast-uri` 3.1.8 | Four: GHSA-w74x-v6f9-j3xg (moderate; scheme spoofing via percent-encoded scheme decoding), GHSA-wjr9-j795-jxcr (moderate; host confusion via unchecked WHATWG host canonicalization, `>=3.1.3`); GHSA-xhq7-xmqj-769h (low; path equivalence in relative reference normalization), GHSA-333x-w4r6-6crp (low; scheme injection via an unescaped first-segment colon) | 3.1.9 | `@angular-devkit/core` 22.2.4 (dev), through `ajv` 8.20.0, which declares `^3.0.1` | — |
+
+`nx`'s own `undici`, 7.30.1 under part 2's override, is not flagged: all three `undici` advisories
+reach the 7.x line too, and each is fixed there in 7.30.1 (GHSA-xjj6 `>=7.18.0 <7.30.1`, GHSA-4qv8
+`>=7.0.0 <7.30.1`, GHSA-f72v `>=7.15.0 <7.30.1`). The override's floor, `^7.29.1`, still admitted
+7.29.1 to 7.30.0, every one of them covered, though the lockfile's 7.30.1 is past them all, so the
+fix below raises it.
+
+**Dependabot showed five open alerts, not seven.** #349 is GHSA-xjj6 and #343–#346 the four
+`fast-uri` advisories, all `package-lock.json`, `development` scope: 1 high, 2 moderate and 2 low.
+The two `undici` moderates are alerts #348 (GHSA-4qv8) and #347 (GHSA-f72v), created with #349 and
+`auto_dismissed`, so the open list omits them. Audit shows every alert; Dependabot shows no advisory
+audit does not.
+
+**Fixed 2026-10-26, the same day, with no release.** One commit, toolchain only:
+
+| Change | Clears |
+| ------ | ------ |
+| `npm update undici fast-uri`, inside each dependent's declared range: `undici` 8.11.2 → 8.12.3 and `fast-uri` 3.1.8 → 3.1.9 | all seven |
+| `overrides.nx.undici`'s floor `^7.29.1` → `^7.30.1` | none in the tree; the floor no longer admits an `nx` `undici` the three `undici` advisories cover |
+
+No new override, no `--force`, and nothing else moved. `package.json` changed in that floor alone.
+The lockfile changed in two entries only, `node_modules/undici` and `node_modules/fast-uri`, each in
+its `version`, `resolved` and `integrity`; the floor left it byte-identical, since `nx`'s nested
+`undici` already resolved 7.30.1 and stays there. Part 2's removal condition moves with the floor, to
+a stable `nx` that no longer pins `undici` below 7.30.1. `npm audit --package-lock-only` then reported
+**0 at every severity**.
+
+**The `qs` override is not changed here.** Its floor, `^6.14.1`, still admits 6.14.1, which
+GHSA-w7fw-mjwx-w883 covers (fixed in 6.14.2); the lockfile resolves 6.16.0, and audit reports nothing
+for `qs`. Raising that floor stays held, as recorded under 2026-10-14 and 2026-10-20 above.
+
 *Recorded*: this entry; `package.json` `overrides.nx` and `overrides.qs`.
 *Verified*: `npm audit --package-lock-only`, 2026-09-26. Before the override: 12 high, 9 moderate.
 After: 0 high, 0 critical, 9 moderate, as listed above. Again 2026-09-27, after part 1: 0 at every
@@ -1743,7 +1784,19 @@ finding, none. Part 2 narrowed 2026-10-23, in [F21](backlog-retired.md#f21)'s co
 `brace-expansion` 5.0.12 under `nx` with no override, no `axios`, and `undici` 7.30.1 under `nx` and
 8.11.2 under `jsdom`; the lockfile's `node_modules/nx` entry read for its declared `"undici":
 "7.29.0"`; `npm view nx@23.3.0 dependencies` and `nx@24.0.0`'s read for their pins; a clean `npm ci`
-left the lockfile unchanged, and the gate green at 2880 / 443 / 380. `qs` is unchanged.
+left the lockfile unchanged, and the gate green at 2880 / 443 / 380. `qs` is unchanged. Again
+2026-10-26 at f78fca2, npm 12.0.1 on Node 26.4.0: `npx -y npm@12 audit --package-lock-only --json`
+before, 1 high and 1 moderate, the seven advisories tabled above; `npm ls undici fast-uri
+--package-lock-only --all` for the chains, and the lockfile's `jsdom`, `ajv` and `nx` entries read for
+`^8.9.0`, `^3.0.1` and `"undici": "7.29.0"`; Dependabot's alerts read with `gh api`, open and in every
+state, and all seven advisories with `gh api advisories/<id>` for their ranges and dates. After the
+update: audit 0 at every severity; `npm ls` gives `undici` 8.12.3 under `jsdom`, `fast-uri` 3.1.9
+under `ajv`, and `undici` 7.30.1 under `nx`; `git diff package.json` empty; `node_modules` deleted and
+a clean `npm ci`, after which the lockfile's diff was the update's six lines changed, unchanged. After
+the floor, on top of that lockfile (452707e): `npm install`, then `node_modules` deleted and a clean
+`npm ci`, with `git diff 452707e -- package-lock.json` empty after each; `npm ls undici
+--package-lock-only --all` gives 7.30.1 under `nx` and 8.12.3 under `jsdom`; audit 0 at every
+severity; the gate green at 3134 / 444 / 380, with doc-links and release-tags green.
 
 <a id="f17"></a>
 ## F17 — An unhandled rejection reaches no channel a spec would normally watch
