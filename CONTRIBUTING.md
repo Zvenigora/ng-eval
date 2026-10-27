@@ -136,7 +136,8 @@ All three packages publish to the public npm registry under the `@zvenigora` sco
 
    **This is the commit the tag check runs on.** `npm test` runs `tools/release-tags.mjs`, which
    fails unless every Publication status row's tag exists and, where the row names the commit it
-   was tagged at, points there. So the post-publish commit is red until step 5's tag exists, and
+   was tagged at, points there. It also fails on any release tag that is not annotated, with or
+   without a row: a lightweight tag, made without step 5's `-a`, fails. So the post-publish commit is red until step 5's tag exists, and
    it is red in a checkout with no tags at all: run `git fetch --tags` first. CI's checkout
    fetches them (`fetch-depth: 0`). The commits before it carry no row for the new version, so
    the check does not see a release until its row is written.

@@ -151,14 +151,14 @@ annotated at 0d305a3 and published 2026-10-26, every `@zvenigora` floor raised. 
 - Step 5 wrote `SECURITY.md`, the README and the CHANGELOG, retired A44, A45 and A52, and opened
   [A53](#a53), step 4's unexplained `caseInsensitive` slowdown.
 - Step 6 decided § 8 q7, the downstream versions, by measurement, and wrote the release commit.
-- Step 7 recorded the release and opened [F26](#f26): `tools/release-tags.mjs` does not check that a
-  tag is annotated. **F26 is the next item.**
+- Step 7 recorded the release and opened [F26](backlog-retired.md#f26): `tools/release-tags.mjs` did
+  not check that a tag is annotated. F26 is fixed since, in no package.
 
 Revision 2 decided three of its open questions as D7–D9 and opened [A48](#a48)–A52 for the defects
 it found. Revision 3 brought A52 into the plan's step 2 (D10), and Revision 4 kept the `this`
 refusal on every identifier target (D11). A48–A51 and A53 are not scheduled.
 [F20](backlog-retired.md#f20), [F21](backlog-retired.md#f21),
-[F24](backlog-retired.md#f24) and [F25](backlog-retired.md#f25) are fixed, and ship in no package; F21's toolchain bump left one
+[F24](backlog-retired.md#f24), [F25](backlog-retired.md#f25) and F26 are fixed, and ship in no package; F21's toolchain bump left one
 `overrides.nx` entry, `undici`, which [F16](#f16) part 2 holds.
 
 `eval-core` 0.13.3 is released alone, a patch, tagged at 021d5e4 and published 2026-10-23. It
@@ -263,10 +263,10 @@ and 776885a copied the [0.10.1] CHANGELOG section from d77fa16.
 three at `016a313`, three at `7935a78`) plus ten for versions before this table: seven written
 retroactively on 2026-09-16, and three at their own release on 2026-08-22 (`eval-core@0.3.0`,
 `eval-signals@0.1.0`, `eval-forms@0.1.0`). That is fifty-six, the count `tools/release-tags.mjs`
-reports, all annotated and all on the remote. That they are annotated is not something the check
-tests ([F26](#f26)): `git cat-file -t` gives `tag` for each, read 2026-10-26, before 0.14.0's
-post-publish commit. `git tag -l` lists three more, `v0.1.0`, `v0.2.2`
-and `v0.2.3`: lightweight tags from before the `<project>@<version>` names.
+reports, all annotated and all on the remote. The check tests that they are annotated since
+[F26](backlog-retired.md#f26): it reads each release tag's object type, fails on a lightweight one,
+and says `all annotated` in its summary line. `git tag -l` lists three more, `v0.1.0`, `v0.2.2`
+and `v0.2.3`: lightweight tags from before the `<project>@<version>` names, which it does not check.
 
 ### Register history
 
@@ -294,8 +294,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.13.2 | `dc4302d` | 2026-10-22 | 25 | 5: A43–A47 | 4: A40, A41, A43, A46 | 26 |
 | `eval-core` 0.13.3. A45 part 1 closed with it, a part, so A45 stays live; F20 and F24 ship in no package | `021d5e4` | 2026-10-23 | 26 | 0 | 2: F20, F24 | 24 |
 | `eval-core` 0.14.0, `eval-signals` 0.7.0, `eval-forms` 0.7.0. F21 and F25 ship in no package | `0d305a3` | 2026-10-26 | 24 | 6: A48–A53 | 5: F21, F25, A44, A45, A52 | 25 |
-| *Unreleased*. F26, opened by 0.14.0's post-publish commit, ships in no package | — | — | 25 | 1: F26 | 0 | 26 |
-| **Since the register opened** | | | **42** | **68** | **84** | **26** |
+| *Unreleased*. F26, opened by 0.14.0's post-publish commit and fixed after it, ships in no package | — | — | 25 | 1: F26 | 1: F26 | 25 |
+| **Since the register opened** | | | **42** | **68** | **85** | **25** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -427,7 +427,7 @@ makes it that release's row, with its tag commit and date.
 | [F23](backlog-retired.md#f23) | Live documents claim guarantees the library does not give: twelve root README lines ("secure", "complete prototype pollution prevention", "function sandboxing", "prevents injection attacks"), and `eval-core`'s README saying an expression over an empty context "cannot use JavaScript's built-in functions", when a value's own methods stay callable | repo, core | docs | **Retired — fixed 2026-10-21** by Phase 10 step 5: the landing page keeps none of the twelve lines, and the `eval-core` README names the globals and says a value's own methods stay callable, with an `[Unreleased]` line. The README line released 2026-10-22 in `eval-core` 0.13.1, tagged 5b9c859; the root README part ships in no package |
 | [F24](backlog-retired.md#f24) | The `eval-signals` and `eval-forms` copies of `export-list.spec.ts` have no reverse case, so an allowlist entry the README documents would mask its mention's deletion, as F22 found in `eval-core` | signals, forms | test gap | **Retired — fixed 2026-10-22**, in no package: each copy has F22's helper and case, which fails in that project alone on an allowlisted name its README documents |
 | [F25](backlog-retired.md#f25) | Four documentation checks Phase 10 left undecided: no gate fails when `docs/README.md` stops linking a tracked `docs/` file; two links into `eval-core`'s CHANGELOG headings left the doc-links gate when they became absolute; doc-links silently skips an untracked `.md`; and whether a published README's absolute link binds its target path and anchor for good | repo | decision | **Retired — decided and fixed 2026-10-23**, in no package: a published link binds, and `tools/doc-links.mjs` checks the index, names and checks untracked files, and resolves absolute links into the tree and every link in `tools/published-links.txt` |
-| [F26](#f26) | `tools/release-tags.mjs` does not check that a release tag is annotated: it resolves each tag with `git rev-list -n 1`, which accepts a lightweight tag, so the register's "all annotated" is checked by nothing | repo | fix | Open — opened 2026-10-26 by the [A45 plan](a45/plan.md)'s step 7. Next after that step |
+| [F26](backlog-retired.md#f26) | `tools/release-tags.mjs` does not check that a release tag is annotated: it resolves each tag with `git rev-list -n 1`, which accepts a lightweight tag, so the register's "all annotated" is checked by nothing | repo | fix | **Retired — fixed 2026-10-26**, in no package: every `eval-core@`, `eval-signals@` and `eval-forms@` tag must be a tag object, with or without a row, and a lightweight one fails, named once; the `v*` tags are not checked |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -1774,31 +1774,3 @@ a plain `new Promise` rejected with no handler reached none of the three channel
 `uncaughtPromiseErrors` queue held it until the macrotask, and a function set under the hook was
 called with it. Then by criterion 5's own cases: a wrong implementation that left superseded runs'
 rejections unhandled turned both red through the hook, with the control green.
-
-<a id="f26"></a>
-## F26 — The release tag check does not test that a tag is annotated
-
-**Package** repo · **Kind** fix · **Status** Open. Opened 2026-10-26 by the
-[A45 plan](a45/plan.md)'s step 7. Next after that step
-
-`tools/release-tags.mjs` fails on a Publication status row whose `<project>@<version>` tag is
-missing, or points at a commit other than the one the row names. It resolves the tag with
-`git rev-list -n 1`, which peels an annotated tag and accepts a lightweight one alike, so a
-lightweight tag at the right commit passes. CONTRIBUTING's Releasing step 5 writes `git tag -a`, and
-this register's tag paragraph under Publication status says every release tag is annotated: nothing
-checks either.
-
-It has happened once. The [A35 plan](a35/plan.md)'s step 11 found `eval-core@0.13.0`,
-`eval-signals@0.6.0` and `eval-forms@0.6.0` pushed lightweight, where the gate would have passed on
-them, and they were recreated annotated at the same commit. Phase 10's step 8 and this plan's step 7 each checked
-their tags by hand with `git cat-file -t`, which is what the gate does not do.
-
-**The gap only**: this entry records it, and does not choose the fix. A check would read each row's
-tag's object type (`git cat-file -t <tag>` gives `tag` for an annotated tag and `commit` for a
-lightweight one) and fail on `commit`. Its probe is a lightweight scratch tag named by a row, as
-Phase 10's P8b made one.
-
-*Recorded*: this entry; the A45 plan's step 7 outcome.
-*Verified*: read from `tools/release-tags.mjs` at 0d305a3, which calls `git rev-list -n 1` and reads
-no object type; the 56 release tags, each `tag` under `git cat-file -t`, read 2026-10-26, before
-0.14.0's post-publish commit. Not probed: no lightweight tag was made.

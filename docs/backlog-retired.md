@@ -2381,8 +2381,8 @@ effect. The prefix form pushes the new value, so it never throws.
 **The fix**: check the operand before writing. A listed old value is then refused before the
 write, so the update throws having changed nothing.
 
-*Recorded*: this entry; `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Security entry, from
-step 4.
+*Recorded*: this entry; `modules/eval-core/CHANGELOG.md`'s `[0.12.1]` › Security entry, from
+step 4, and its `[0.13.2]` › Fixed line.
 *Verified*: the code review of the A35 plan's step 4 found it (its W1). Measured 2026-10-16 with a
 throwaway script outside the repository, against step 3's bundle and step 4's.
 
@@ -6843,6 +6843,67 @@ links were at `modules/eval-core/README.md:289` and `:306`. `git show b1a9863:RO
 relative `#040` link at `:94`; `git grep` found no relative link to either anchor after step 6.
 *Verified*, Part 4: 2026-10-21, from the three tarballs as published, each extracted and its
 README's `https://github.com/zvenigora/ng-eval` links listed. Decided and fixed 2026-10-23, as above.
+
+<a id="f26"></a>
+## F26 — The release tag check does not test that a tag is annotated — **Retired, fixed**
+
+**Package** repo · **Kind** fix · **Status** **Retired — fixed 2026-10-26**, in no package, since
+`tools/release-tags.mjs` ships in no tarball. Was Open — opened 2026-10-26 by the
+[A45 plan](a45/plan.md)'s step 7, next after that step
+
+*Fixed* 2026-10-26, in `tools/release-tags.mjs`:
+- **The tags** come from one `git for-each-ref refs/tags --format='%(refname:short) %(objecttype)'`
+  call, in place of `git tag --list`, which gives the tag set and each tag's object type together.
+- **Every release tag must be annotated**: any tag starting `eval-core@`, `eval-signals@` or
+  `eval-forms@`, whether a Publication status row names it or not, must have object type `tag`. One
+  that does not fails, once per tag and not per row: `<tag> is a lightweight tag; release tags are
+  annotated (git tag -a <tag> <commit> -m ...)`. The three `v*` tags, lightweight and from before the
+  `<project>@<version>` names, are outside the prefixes and are not checked.
+- **The commit check is unchanged**: `git rev-list -n 1` still resolves a row's tag, which it peels
+  alike whether the tag is annotated or not, and so still cannot tell the two apart by itself.
+- **The summary line** names the result, `46 rows, 56 release tags, all annotated, 0 failing`, or
+  `<n> lightweight` in place of `all annotated`.
+
+CONTRIBUTING's Releasing step 5 already wrote `git tag -a`, and is unchanged.
+
+*Verified* 2026-10-26, on the fixed script: the gate at 3134 / 444 / 380, unchanged, and
+release-tags at `46 rows, 56 release tags, all annotated, 0 failing`. Three probes, each applied alone
+at 0d305a3 and undone, with `git tag --list` at 59 tags before and after each, and no real release
+tag deleted or recreated:
+- a. a lightweight `eval-core@9.9.9`, named by no row (`git cat-file -t` gives `commit`): exit 1, one
+  failure, `eval-core@9.9.9 is a lightweight tag; release tags are annotated (git tag -a
+  eval-core@9.9.9 <commit> -m ...)`, and `46 rows, 57 release tags, 1 lightweight, 1 failing`;
+- b. the same name annotated, `git tag -a … -m x` (`tag`): exit 0, `57 release tags, all annotated`;
+- c. a lightweight `v9.9.9`, outside the prefixes (`commit`): exit 0, `56 release tags, all
+  annotated`.
+
+After them, `git ls-remote --tags origin` lists the 56 local release tags one for one, each at the
+same tag object, and no `9.9.9`.
+
+**The entry as it stood:**
+
+> `tools/release-tags.mjs` fails on a Publication status row whose `<project>@<version>` tag is
+> missing, or points at a commit other than the one the row names. It resolves the tag with
+> `git rev-list -n 1`, which peels an annotated tag and accepts a lightweight one alike, so a
+> lightweight tag at the right commit passes. CONTRIBUTING's Releasing step 5 writes `git tag -a`, and
+> this register's tag paragraph under Publication status says every release tag is annotated: nothing
+> checks either.
+>
+> It has happened once. The [A35 plan](a35/plan.md)'s step 11 found `eval-core@0.13.0`,
+> `eval-signals@0.6.0` and `eval-forms@0.6.0` pushed lightweight, where the gate would have passed on
+> them, and they were recreated annotated at the same commit. Phase 10's step 8 and this plan's step 7
+> each checked their tags by hand with `git cat-file -t`, which is what the gate does not do.
+>
+> **The gap only**: this entry records it, and does not choose the fix. A check would read each row's
+> tag's object type (`git cat-file -t <tag>` gives `tag` for an annotated tag and `commit` for a
+> lightweight one) and fail on `commit`. Its probe is a lightweight scratch tag named by a row, as
+> Phase 10's P8b made one.
+
+*Recorded*: the entry; the A45 plan's step 7 outcome.
+*Verified*, as opened: read from `tools/release-tags.mjs` at 0d305a3, which calls `git rev-list -n 1`
+and reads no object type; the 56 release tags, each `tag` under `git cat-file -t`, read 2026-10-26,
+before 0.14.0's post-publish commit. Not probed then: no lightweight tag was made. Fixed and probed
+2026-10-26, as above.
 
 ---
 

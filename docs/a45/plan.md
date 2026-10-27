@@ -4,7 +4,7 @@
 **Revision**: 5 — the post-publish record, at step 7 (2026-10-26 UTC). The three releases are
 published and tagged annotated at 0d305a3. § 0 gains rule 13, from step 6's code review: a
 downstream "unchanged" claim is measured on each fixed defect's own rows. Step 7 opened
-[F26](../backlog.md#f26), the release tag check's blindness to a lightweight tag. § 10 is the track's
+[F26](../backlog-retired.md#f26), the release tag check's blindness to a lightweight tag. § 10 is the track's
 retrospect. **The plan is complete.**
 **Revision**: 4 — D11, found at step 2's confirmation gate and measured first (M12). Up to 0.13.3 an
 assignment target was walked, so the identifier visitor refused `this` written as a name: a
@@ -1994,7 +1994,8 @@ widening at its gate, so `eval-signals` is at 444 from step 6. *Revision 2*: the
     - § 4's table row (N7).
 
     Left as found, older than this step: A40's *Recorded* line cites `[Unreleased]` › Security
-    (`backlog-retired.md`, A40), which 0.13.2 released.
+    (`backlog-retired.md`, A40), which 0.13.2 released [the A35 step 4 Security entry shipped in
+    0.12.1; corrected at F26].
 
 ---
 

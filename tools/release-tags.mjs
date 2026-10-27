@@ -6,6 +6,12 @@
 // at that commit, and where they name the tag, it must be this row's. Runs as part of the root
 // project's `test` target, after doc-links.
 //
+// Every release tag — any tag named `eval-core@`, `eval-signals@` or `eval-forms@`, whether a row
+// names it or not — must be annotated (docs/backlog-retired.md F26): its ref's object type is `tag`,
+// where a lightweight tag's is `commit`. `git rev-list -n 1` peels both alike, so the commit check
+// cannot tell them apart. The `v*` tags from before the `<project>@<version>` names are lightweight,
+// and are not checked.
+//
 // A checkout with no release tags at all fails, with a hint, rather than skipping. That is a
 // shallow or tagless clone, which is what CI's checkout gives unless it is asked for
 // `fetch-depth: 0`, and a check that skipped there would pass in the one place it runs on every
@@ -51,8 +57,16 @@ function publicationRows(lines) {
 }
 
 const rows = publicationRows(readFileSync(resolve(root, register), 'utf8').split(/\r?\n/));
-const tags = new Set(git('tag', '--list').split('\n').filter(Boolean));
+/** Each tag's name, mapped to the type of the object its ref points at. */
+const tagTypes = new Map(
+  git('for-each-ref', 'refs/tags', '--format=%(refname:short) %(objecttype)')
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => line.split(' '))
+);
+const tags = new Set(tagTypes.keys());
 const releaseTags = [...tags].filter((tag) => Object.values(PROJECT).some((project) => tag.startsWith(`${project}@`)));
+const lightweight = releaseTags.filter((tag) => tagTypes.get(tag) !== 'tag');
 
 if (releaseTags.length === 0) {
   errors.push(
@@ -61,6 +75,9 @@ if (releaseTags.length === 0) {
       'The check does not skip.'
   );
 } else {
+  for (const tag of lightweight) {
+    errors.push(`release-tags: ${tag} is a lightweight tag; release tags are annotated (git tag -a ${tag} <commit> -m ...)`);
+  }
   for (const { line, cells } of rows) {
     const [packageCell = '', versionCell = '', notes = ''] = cells;
     const name = packageCell.replace(/`/g, '');
@@ -97,5 +114,8 @@ if (releaseTags.length === 0) {
 
 const ms = Number(process.hrtime.bigint() - started) / 1e6;
 for (const error of errors) console.error(error);
-console.log(`release-tags: ${rows.length} rows, ${releaseTags.length} release tags, ${errors.length} failing (${Math.round(ms)} ms)`);
+const annotated = lightweight.length === 0 ? 'all annotated' : `${lightweight.length} lightweight`;
+console.log(
+  `release-tags: ${rows.length} rows, ${releaseTags.length} release tags, ${annotated}, ${errors.length} failing (${Math.round(ms)} ms)`
+);
 process.exitCode = errors.length ? 1 : 0;

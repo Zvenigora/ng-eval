@@ -85,7 +85,9 @@ lines are never parsed. Since F25 it also resolves an absolute link into the rep
 list lacks; and fails on a file under `docs/` that `docs/README.md` does not link. The second is the release tag check
 (`docs/backlog.md` F8): every row of the register's Publication status table needs its
 `<project>@<version>` tag, at the commit the row names, so it fails in a checkout with no tags
-(`git fetch --tags`) and on a row written before its tag.
+(`git fetch --tags`) and on a row written before its tag. Since F26 every release tag — any
+`eval-core@`, `eval-signals@` or `eval-forms@` tag, with or without a row — must also be annotated,
+and a lightweight one fails; the `v*` tags are not checked.
 
 **A green `test` run is not a type-check.** Jest compiles per file through `tsconfig.spec`
 and is more permissive than `tsconfig.lib` — Phase 3 step 3 shipped an `EvalOptions` index
