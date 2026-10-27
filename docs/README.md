@@ -26,10 +26,7 @@ that anchor, `<a id="…"></a>` in the first cell.
 
 ## Active plan
 
-- [`a45/plan.md`](a45/plan.md) — [A45](backlog-retired.md#a45) part 2 and [A44](backlog-retired.md#a44): assignment
-  targets as JavaScript evaluates them, released as `eval-core` 0.14.0. Its § 0 collects the failure
-  modes carried forward from earlier plans, § 1.4 holds the measurements, and § 8 the questions it
-  leaves open.
+None. The next plan is linked here when it is written.
 
 ## Completed phases
 
@@ -59,6 +56,7 @@ Work on one register entry, or a group of them, that needed more than one commit
 | `a20/` | [plan](a20/plan.md) | [A20](backlog-retired.md#a20): `EvalService._activeContexts` deleted |
 | `a21/` | [plan](a21/plan.md) | [A21](backlog-retired.md#a21): `EvalService.ngOnDestroy` no longer clears caller-owned contexts |
 | `a35/` | [plan](a35/plan.md) | [A35](backlog-retired.md#a35), with A36, A37, A39 and A42: dangerous function values past the call sandbox. Its § 3.1 is the identity set, § 3.3 the funnel, § 3.4 what stays open, and § 9 the contract after it landed. The second of its two § 1.2s holds the two probe rules the `step` skill repeats |
+| `a45/` | [plan](a45/plan.md) | [A45](backlog-retired.md#a45) part 2 and [A44](backlog-retired.md#a44), with [A52](backlog-retired.md#a52): assignment targets as JavaScript evaluates them, released as `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms` 0.7.0. Its § 0 collects thirteen rules, nine carried forward from earlier plans and four its own; § 1.4 holds the measurements, § 9 the contract after it landed, and § 10 the retrospect |
 | `gates/` | [plan](gates/plan.md), [step 1](gates/step-1-summary.md), [step 2](gates/step-2-summary.md), [step 3](gates/step-3-summary.md), [step 4](gates/step-4-summary.md), [retrospect](gates/summary.md) | The documentation and CI gates |
 | `trace-surface/` | [plan](trace-surface/plan.md) | The trace surface: A15, A16 and A19 decided |
 | `trace2/` | [step 1, the bound](trace2/step-1.md), [step 2, the reset](trace2/step-2.md), [step 3, docs and records](trace2/step-3.md) | [A12](backlog-retired.md#a12): the trace bound and its reset, as step records without a plan |

@@ -14,7 +14,7 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ---
 
-## [0.14.0] - 2026-10-25
+## [0.14.0] - 2026-10-26
 
 **An assignment evaluates its target as JavaScript does.** A minor carrying breaking changes
 ([A45](../../docs/backlog-retired.md#a45) part 2, [A44](../../docs/backlog-retired.md#a44),

@@ -8,56 +8,28 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: `docs/a45/plan.md`
-Target: `@zvenigora/ng-eval-core` — A45 part 2 and A44, assignment targets as JavaScript evaluates them
+Plan document: none active
+Target: none
 Requested step: $ARGUMENTS
 
-**Read the plan's § 0 first.** It collects the failure modes carried forward from the earlier plans,
-and every step's criteria cite them by number.
+**No plan is active.** The A45 plan (`docs/a45/plan.md`), A45 part 2 and A44, assignment targets as
+JavaScript evaluates them, is complete: its seven steps shipped as `eval-core` 0.14.0, `eval-signals`
+0.7.0 and `eval-forms` 0.7.0, and its retrospect is its § 10. The next plan retargets this file when it
+is written. It names the plan above, says which projects each step reaches, and records the gate's
+counts its steps start from: at 0d305a3, `eval-core` 3134, `eval-signals` 444, `eval-forms` 380.
 
-**Each step's file list in the plan's § 4 is its scope, and it is not the same list every step.** The
-plan changes `eval-core` only. `eval-signals` and `eval-forms` are witnesses until the release:
+**Invoked while no plan is active, this skill stops at § 1.** Run the baseline, report it, say that
+no plan is active, and do nothing else. Do not run a step of a completed plan, and do not treat a
+register entry as a plan: a one-commit item or a batch has its exit criteria in the prompt
+(`CLAUDE.md`, "Working from a plan").
 
-- **Step 1 is one new spec**, `internal/visitors/assignment-target.spec.ts`, and no other file under
-  `modules/`. Its probes apply the plan's M4 prototype in two stages and revert it. The prototype is
-  two patches outside the repository, `D:\repo.2026\ng-eval-base\a45-prototype\stage-2.patch` and
-  `full.patch`. Step 1 checks each one's SHA-256 against the plan's step 1 criterion 2, applies it as
-  a file with `git apply`, and never rebuilds the prototype from § 3. A mismatched SHA-256, or a patch
-  that does not apply, stops the step.
-- **Steps 2 and 3 are `eval-core`'s visitors**: the files each step lists under
-  `modules/eval-core/src/lib/internal/visitors/`, the spec's marked rows, `update-expression.spec.ts`
-  in step 3, and `modules/eval-core/CHANGELOG.md`'s `[Unreleased]`.
-- **Step 4 is timing**: no file but the plan. Its harness runs one process at a time, never beside
-  another nx or Jest run.
-- **Step 5 is documents**: `SECURITY.md`, `modules/eval-core/README.md` with its CHANGELOG line, the
-  register, and link targets.
-- **Steps 6 and 7 are the release** and the post-publish record.
+**Each step's file list in the plan's § 4 is its scope, and it is not the same list every step.** A
+file outside it, or under a project the step does not name, is a stop-and-replan, not a wider step.
+A deliberate widening at a step's confirmation gate, recorded with its reason, is not a replan. A
+`package.json` in the diff outside a release step is a stop-and-replan.
 
-A file outside the step's list, or under `eval-signals` or `eval-forms` before step 6, is a
-stop-and-replan, not a wider step. A deliberate widening at a step's confirmation gate, recorded with
-its reason, is not a replan. A `package.json` in the diff before step 6 is a stop-and-replan.
-
-**The counts the steps start from**, the gate at db287da: `eval-core` 2880, `eval-signals` 443,
-`eval-forms` 380. `eval-core` reaches 3064 at step 1, 3080 with the plan's Revision 4 addendum, 3088
-at step 2 with its widening (group V), 3130 at step 3 with its widening (three D7 rows), and 3134 at
-step 5 with its widenings (N8's row, and the prefix update of a listed function). `eval-forms` does not
-move; `eval-signals` reaches 444 at step 6, with its gate's widening (A44's write-error case). Step 1's spec holds 18
-held cases, each matching its recorded value, not the native run.
-
-**Step state**: step 1 has run: the characterisation spec, 184 cases, with its marks measured against
-the prototype (the plan's step 1 outcome). Revision 4 added group T, 16 cases (D11), whose marks steps
-2 and 3's probes witness, not the prototype. Step 2 has run: compound and logical targets read once,
-the funnel's check on the value, one `caseInsensitive` identifier read (D10) and the `this` refusal on
-the target read (D11); no `2` mark remains (the plan's step 2 outcome). Step 3 has run: the `=`
-resolver, A44 in both visitors, and the identifier update's checks, read event and `this` refusal (D8,
-D9, D11); no flip mark remains, and the 18 held cases keep theirs (the plan's step 3 outcome). Step 4
-has run: the timing, valid at its first run, with no regression on any path (the plan's step 4
-outcome). Step 5 has run: `SECURITY.md`, the README and the CHANGELOG, A44, A45 and A52 retired as
-fixed and not yet released, and A53 opened for step 4's `caseInsensitive` slowdown (the plan's step 5
-outcome). Step 6, the release, is next; § 8 q7 is answered at its gate.
-
-**Revert a patch with `git apply -R`, never `git restore modules/eval-core/src`**: the spec is tracked
-now, under `src/`, and that restore takes its uncommitted rows with it.
+**Read the plan's § 0 first**, where it has one. The A45 plan's § 0 collects thirteen rules, nine
+carried forward from the earlier plans and four its own; a new plan starts from it.
 
 **All three packages are published**, and a README or CHANGELOG under `modules/<name>/` ships in that
 package's tarball, as its code does. So a change is in one of three categories:

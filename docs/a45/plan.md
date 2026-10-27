@@ -1,6 +1,11 @@
 # A45 part 2 and A44 — assignment targets as JavaScript evaluates them (`@zvenigora/ng-eval-core`)
 
 **Date**: October 23, 2026
+**Revision**: 5 — the post-publish record, at step 7 (2026-10-26 UTC). The three releases are
+published and tagged annotated at 0d305a3. § 0 gains rule 13, from step 6's code review: a
+downstream "unchanged" claim is measured on each fixed defect's own rows. Step 7 opened
+[F26](../backlog.md#f26), the release tag check's blindness to a lightweight tag. § 10 is the track's
+retrospect. **The plan is complete.**
 **Revision**: 4 — D11, found at step 2's confirmation gate and measured first (M12). Up to 0.13.3 an
 assignment target was walked, so the identifier visitor refused `this` written as a name: a
 host-built `Identifier` named `this`, and under `caseInsensitive` any spelling of it, `This += 1`
@@ -107,8 +112,8 @@ Neither the A35 plan nor the Phase 10 plan has a § 0. The latest plan that does
 ([`statements/phase-2-plan.md`](../statements/phase-2-plan.md) § 0.1), and the measurement rules
 before it are Phase 6's ([`forms/phase-6-plan.md`](../forms/phase-6-plan.md) § 0.2). The A35 plan
 keeps its standing rules in its second § 1.2 ("Standing rules, from Revision 16"), and the Phase 10
-plan keeps its rules in § 6.1. This section collects them, each with its origin, and adds the three
-that this plan's own measurements produced. Every step applies all of them; § 4's criteria cite them
+plan keeps its rules in § 6.1. This section collects them, each with its origin, and adds the four
+that this plan's own measurements produced, the fourth at step 7 (Revision 5). Every step applies all of them; § 4's criteria cite them
 by number.
 
 **Carried forward**
@@ -161,6 +166,14 @@ by number.
     funnel never sees it. That gap is why `obj.fetch++` writes `NaN`
     ([A40](../backlog-retired.md#a40)). The prototype without an explicit check turned one existing
     case red, and with it none. Before reusing a shape, list what it does not do.
+13. **A downstream "unchanged" claim is measured on each fixed defect's own rows, through the
+    downstream package** (*Revision 5*, from step 6). § 8 q7's measurement reused M5's rows, and
+    each of them spelled its key as the data does. So [A44](../backlog-retired.md#a44), a defect
+    this plan fixed, never ran through `eval-signals` or `eval-forms`. Both 0.7.0 entries said that
+    `SignalContextWriteError` was unchanged until step 6's code review measured `user.NAME = "Bob"`
+    under `caseInsensitive`, whose `key` moved from `NAME` to `name`. Before a downstream entry
+    claims a surface unchanged, list the defects the release fixes, and run one row of each through
+    that surface.
 
 ---
 
@@ -921,7 +934,7 @@ probe is applied alone and reverted, and its red cases are named (§ 0 rule 8).
 | 4 | Timing against the rule in § 3.8 | this document only | 0 / 0 / 0 | no package |
 | 5 | `SECURITY.md`, README, CHANGELOG; A45, A44 and A52 retired | `SECURITY.md`, `modules/eval-core/README.md`, `CHANGELOG.md`, the register, link targets | 0 / 0 / 0, or the allowlist's entries | `eval-core` 0.14.0 (README); the rest no package |
 | 6 | Release commit | three `package.json`, three `CHANGELOG.md`, each README's peer line; at the gate the `eval-forms` README's recompute sentences, the `eval-signals` README's respelling bullet, `signal-context.spec.ts` and the register's "Work in flight" | 0 / **+1** / 0 (a widening at the gate) | the releases |
-| 7 | Post-publish commit | the register, `CLAUDE.md`, `docs/README.md`, CHANGELOG dates, this document | 0 / 0 / 0 | — |
+| 7 | Post-publish commit | the register, `CLAUDE.md`, `docs/README.md`, CHANGELOG dates, the skill, this document | 0 / 0 / 0 | — |
 
 From 2880, `eval-core` is at 3064 once step 1 commits, at 3080 once Revision 4's addendum does, at
 3088 once step 2 does, with its group V, and at 3130 once step 3 commits, with its three D7 rows
@@ -1918,7 +1931,70 @@ widening at its gate, so `eval-signals` is at 444 from step 6. *Revision 2*: the
   - the skill, back to "none active";
   - this document's last revision and the track's retrospect.
 - **Exit criteria**: release-tags is green with the new rows, and doc-links is green.
-- **Category**: ships in no package.
+- **Category**: ships in no package, except widening 1 below, which corrects three shipped files.
+- **Outcome** — done 2026-10-26 (UTC; the step's records are dated in UTC, as the release's are),
+  under Revision 5. **The three releases are recorded, and the plan is complete.**
+  - **The release, measured and not taken from the request.** `npm view <pkg> time`:
+    `eval-core` 0.14.0 at 2026-10-26 00:29:37 UTC, `eval-signals` 0.7.0 at 00:32:38 and `eval-forms`
+    0.7.0 at 00:34:07, in the order step 6 requires; each is `latest`. The three tags are
+    **annotated**, left as they were: `git cat-file -t` gives `tag` for each, each peels to 0d305a3,
+    and `git ls-remote` shows each tag object and its `^{}` peel on origin. HEAD was 0d305a3,
+    `origin/master`'s commit. Of the 59 tags, the 56 release tags are annotated and the three `v*`
+    lightweight, as the register says.
+  - **The confirmation gate's readings.**
+    1. **The three CHANGELOG headings move to 2026-10-26**, a widening of step 7's Edit list, which
+       omitted them, though § 4's table already named "CHANGELOG dates" (and omitted the skill, now
+       added there): `modules/eval-core/CHANGELOG.md`'s `[0.14.0]` and `eval-signals`' and
+       `eval-forms`' `[0.7.0]`.
+       Publishing crossed UTC midnight, and CONTRIBUTING's Releasing step 6 has the post-publish
+       commit correct a heading to npm's UTC publish date. No `[Unreleased]` line: the change is
+       the release entry's own heading. **The published tarballs keep 2026-10-25**: each was
+       fetched with `npm pack` and its `package/CHANGELOG.md` read, and each heading says
+       2026-10-25. A package's next release ships the corrected date. `git grep 2026-10-25` found the
+       date nowhere else as a release date.
+    2. **F26 is opened as the gap only**: `tools/release-tags.mjs` resolves a tag with
+       `git rev-list -n 1`, which a lightweight tag satisfies, so the register's "all annotated"
+       is checked by nothing. It is the next item after this step. It opens after 0d305a3, so the
+       register history gains an *Unreleased* row, 25 + 1 − 0 = 26.
+    3. **The retrospect is § 10 of this document**, as the A35 track's plan stands alone, and not a
+       separate summary.
+    4. **A52's lines move with A44's and A45's**: the step names A44 and A45, and A52 carried the
+       same "not yet released" in the same two files.
+  - **The register.** Three Publication status rows at 0d305a3; the tag paragraph at forty-six rows
+    and fifty-six tags, naming F26 beside its "all annotated"; the *Unreleased* row becomes 0.14.0's,
+    `0d305a3`, 2026-10-26, 24 + 6 − 5 = 25, and a new *Unreleased* row holds F26, 25 + 1 − 0 = 26,
+    totals 42 + 68 − 84 = 26. A44's, A45's and A52's index rows and retired entries say released in
+    0.14.0, tagged 0d305a3. "Work in flight" says the plan is complete, with F26 next.
+  - **The criterion.** The gate is green at 3134 / 444 / 380, every row unmoved. release-tags: 46
+    rows, 56 release tags, 0 failing. doc-links: 354 files, 1878 links, 0 dangling, 51 `docs/` files
+    checked against the index. The new rows are parsed, not skipped: `eval-core`'s row's commit
+    changed to 021d5e4 failed exactly `docs/backlog.md:206`, "eval-core@0.14.0 is at 0d305a3, and the
+    row says 021d5e4", 1 failing; reverted, 0 failing. `git diff --name-status HEAD` lists the step's
+    files and the three CHANGELOGs of widening 1, all `M`.
+  - **The code review** found nothing Critical. It verified:
+    - the three rows clause by clause against the CHANGELOGs and manifests;
+    - "admitted only by 0.7.0", against every earlier downstream tag's `package.json`;
+    - the live count from the index, 24 at 021d5e4, 25 at 0d305a3 and 26 after;
+    - the tag counts, against `git cat-file -t` and `git ls-remote`;
+    - release-tags' parsing, by two probes on a scratch copy of the register.
+
+    Corrected in this step:
+    - § 10.2's M11 bullet said `n.x = 1` took the held cases from 19 to 18: it was a control, and
+      raised step 2's flips to 28, while N's `x === null` left the holds (W1);
+    - § 10.3 said step 1's probes ran M4's code, where the pinned patches are the prototype rebuilt
+      with D7–D10 and verified 2026-10-23 (W2);
+    - the *Recorded* lines of A44, A45 and A52 in `backlog-retired.md` cited `[Unreleased]`, now
+      `[0.14.0]`, as dc4302d re-pointed A41's (W3), in entries the step already edits;
+    - § 10.2's D7 bullet credited step 3 with Revision 1's prediction (N1);
+    - F26 stated the A35 plan's hypothetical as fact (N2);
+    - "thirteen rules" are nine carried forward and four this plan's own (N3);
+    - a missing subject in the `eval-signals` row (N4);
+    - the tag reading tied to a commit (N5);
+    - two reflows (N6);
+    - § 4's table row (N7).
+
+    Left as found, older than this step: A40's *Recorded* line cites `[Unreleased]` › Security
+    (`backlog-retired.md`, A40), which 0.13.2 released.
 
 ---
 
@@ -2023,3 +2099,87 @@ decided q7 by measurement; q7 keeps its text, with the decision under it.
    - an `=` through the context branch that reads nothing ([A49](../backlog.md#a49));
    - a write through `this` under `caseInsensitive` that reaches the data ([A50](../backlog.md#a50));
    - a write through an `EvalScope` value that reaches the data ([A51](../backlog.md#a51)).
+
+## 10. Retrospect
+
+*Revision 5, step 7.* The track's one retrospect. It keeps what a later plan can reuse, not a
+summary of the steps, which are § 4's outcomes.
+
+### 10.1 Twice the measured rows did not exercise the change
+
+Both times the measurement was sound, the reading was "nothing changed", and the rows could not have
+shown a change.
+
+- **M4, before step 1.** The whole change, prototyped, left all three suites green at 2880 / 443 /
+  380. Read as "safe", that was wrong: nothing in the suites pinned an assignment target's reads, so
+  nothing could go red. The answer was § 0 rule 10. The characterisation spec came first, and the
+  prototype became the probe that checked its marks: 28 red at stage 2, 79 for the whole change.
+- **§ 8 q7, at step 6's gate.** The downstream measurement reused M5's rows, and every one of them
+  spelled its key as the data does. So A44, which this plan fixed, never ran through `eval-signals`
+  or `eval-forms`. Both 0.7.0 entries called the write error unchanged until the code review
+  measured `user.NAME = "Bob"`: the error's `key` moved from `NAME` to `name`. The answer was § 0
+  rule 13.
+
+What the two share: a row set inherited from an earlier question, run against a new change. Before
+citing "unchanged", name the row that would have shown the change (§ 0 rule 3). If no row in the set
+can, the measurement has not been made yet.
+
+### 10.2 Each corrected prediction, and why it was wrong
+
+- **Revision 2, D7.** § 3.3's resolver lacked the case-sensitive blocklist check the read used to
+  make, so `o.constructor = f()` called `f` before refusing (M8b). Revision 1 could not see this.
+  `safeSetProperty` refuses the same keys with the same message after the right side, and no row had
+  a right side with an effect, so Revision 1 predicted step 3's probe (iv) at 0 red; Revision 2
+  corrected that before step 3 ran. Step 3 then hit the same blind spot once more: three of the
+  resolver's checks had no witness until a widening gave each a `= f()` row. **A check repeated downstream with the same message has no
+  witness unless a row's side effect separates the two layers** (§ 0 rule 6).
+- **Revision 2, D9's fallback.** The target read's `??` turned a `null` into `undefined`, and four
+  existing cases went red (M10). The fix was to take the fallback on `undefined` only. The same
+  `??` in the visitor was the separate defect A52.
+- **Revision 3, M11.** D10 also flipped a row the request did not name: group B's `n.x = 1` under
+  `caseInsensitive`, a control until then. That raised step 2's flips to 28. Separately, group N's
+  held `x === null` became a flip, so the held cases fell from 19 to 18. `n.x = 1` is a row about a
+  write that moved through a read, since `n` now reads as `null`. A change to a read moves every row
+  that reads, whatever the row is about.
+- **Revision 4, D11.** Walking an identifier target was also what refused `this` written as a name.
+  Removing the walk in steps 2 and 3 would have dropped that refusal. Step 2's confirmation gate
+  found it, not the prototype, which predates it. So group T's marks are witnessed by step probes, a
+  stated exception to rule 10. **A mechanism you remove also removes what it did incidentally.** List
+  that, as rule 12 lists what a borrowed shape does not do.
+- **Step 1's counts and values.** Group A has 11 rows and § 1.4 names 10. Group F has 8, and M1b
+  lists 9 expressions. M1b's JavaScript column gave `obj.fetch &&= 1` as "reads", but a function is
+  truthy, so JavaScript writes. Two recorded values were wrong too. B's `__proto__++` under
+  `caseInsensitive` does change the copy, which gains a `__proto__` map key. Group S's rows reported
+  a later `ns.k`, a field they are not about, and probe (iii) found that one. **A value written by
+  hand for a spec is a prediction.** Running it is what checks it: against today's evaluator, and in
+  its native arm against JavaScript.
+- **Step 2's probe (i): 25 red, not 28.** The prediction came from the marks: every case marked `2`.
+  The probe restored the walk, and three of those cases are decided by D10's fallback, not by the
+  walk. That leg named a red case the wrong implementation could not produce, so it was corrected,
+  not amended, and probes (vi) and (vii) witness the three. **Predict a probe's red set from what
+  the probe changes, not from which step owns the rows.**
+- **Step 2's group V.** Probe (ii) dropped the funnel's whole call, and only function cases went
+  red. So the `EvalContext` test inside the call had no witness. A narrowing to the function test
+  would have stayed green. **A probe that removes a whole call cannot show which test inside it is
+  load-bearing.** Probe each test alone.
+- **Step 5's claim → witness table** reworded two README sentences before the table was finished.
+  "`+=` reads it once" was false for the held rows. "`this.g = 1` calls its getter once" was true
+  case-sensitive only. Writing a document's witness table is a measurement of the document.
+
+### 10.3 Process traps
+
+- **`git restore` on a directory took the tracked spec with it.** Step 1 reverted the prototype with
+  `git restore modules/eval-core/src`. That was safe while the spec was untracked. From the addendum
+  on, the spec was tracked under `src/`, and one run lost its uncommitted rows that way. They were
+  re-applied before the measurement. Later steps reverted a patch with `git apply -R` and a probe edit
+  with the Edit tool. **A revert scoped by directory reverts every tracked file in it**, the work in
+  progress included.
+- **The prototype was pinned as hashed patches, outside the repository.** `stage-2.patch` and
+  `full.patch`, with their SHA-256s in step 1's criterion 2, were checked before each `git apply`
+  and never rebuilt from § 3. So step 1's probes ran the code verified on 2026-10-23 against the
+  recorded prototype columns (§ 1.3), and a mismatch would have stopped the step rather than quietly
+  changing the probe. M4's own prototype, of D1–D4 only, was throwaway; the patches were rebuilt
+  from § 3 with D7–D10. M6's timing harness is the
+  contrast. It was throwaway and did not survive, so step 4 rebuilt it from the recorded method. Its
+  absolute µs are therefore not comparable with M6's, only its paired deltas. **Pin, by hash, what a
+  later step must re-run.**

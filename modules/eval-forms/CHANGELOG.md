@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## [0.7.0] - 2026-10-25
+## [0.7.0] - 2026-10-26
 
 **Both `@zvenigora` floors rise, and a rule is recomputed for the keys it reads.** A breaking minor:
 no symbol of this package changes shape, and **no shipped code of it changes**, so all three

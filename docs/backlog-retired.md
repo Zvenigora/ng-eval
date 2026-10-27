@@ -2711,9 +2711,9 @@ fallback, the Angular compiler loaded.
 ## A44 — Under `caseInsensitive`, a member write to a case variant creates a new key
 
 **Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-24**, as step 3 of the
-[A45 plan](a45/plan.md); not yet released, for `eval-core` 0.14.0. Opened 2026-10-22 by the
-[A40](#a40) and [A41](#a41) batch, whose `caseInsensitive` case matrix found it. It predates that
-batch
+[A45 plan](a45/plan.md); released 2026-10-26 in `eval-core` 0.14.0, tagged 0d305a3. Opened
+2026-10-22 by the [A40](#a40) and [A41](#a41) batch, whose `caseInsensitive` case matrix found it.
+It predates that batch
 
 Under `caseInsensitive`, a member read matches a case variant of the property, and a member write
 does not. The write uses the property as the expression spells it, so a case variant creates a new
@@ -2758,15 +2758,15 @@ batch's matrix, and measured 2026-10-22 with a throwaway script outside the repo
 production bundle: `OBJ.X = 2`, `OBJ.X += 1` and `OBJ.X++` through a temporary spec, and the table
 above through `evaluate(parse(…), EvalState.fromContext(…))`.
 
-*Recorded*: this entry; `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Fixed.
+*Recorded*: this entry; `modules/eval-core/CHANGELOG.md`'s `[0.14.0]` › Fixed.
 
 <a id="a45"></a>
 ## A45 — An assignment evaluates its target as an operand and its right side unconditionally
 
 **Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-24**: part 1 on 2026-10-22,
 released 2026-10-23 in `eval-core` 0.13.3, tagged 021d5e4; part 2 in steps 2 and 3 of the
-[A45 plan](a45/plan.md), not yet released, for `eval-core` 0.14.0. Opened 2026-10-22 by the
-[A40](#a40) and [A41](#a41) batch
+[A45 plan](a45/plan.md), released 2026-10-26 in `eval-core` 0.14.0, tagged 0d305a3. Opened
+2026-10-22 by the [A40](#a40) and [A41](#a41) batch
 
 `assignment-expression.ts` evaluated `node.left` as an operand and `node.right` after it, then
 applied the operator to the two values. For a member target it then evaluated the target a second
@@ -2846,7 +2846,8 @@ temporary spec, deleted after, and is now the spec's getter row.
 
 **2. A target evaluated as an operand — Retired 2026-10-24, fixed** in steps 2 and 3 of the
 [A45 plan](a45/plan.md), which reopened Phase 1's decision that assignment targets emit read events
-([`side-effects/phase-1-plan.md`](side-effects/phase-1-plan.md):274-280). Not yet released.
+([`side-effects/phase-1-plan.md`](side-effects/phase-1-plan.md):274-280). Released 2026-10-26 in
+`eval-core` 0.14.0, tagged 0d305a3.
 
 | Expression | Up to 0.13.3 | From 0.14.0 | JavaScript |
 | :--- | :--- | :--- | :--- |
@@ -2922,14 +2923,15 @@ batch, while correcting `SECURITY.md`'s account of why `obj.fetch = 1` threw, an
 Angular compiler loaded, each row run natively beside it.
 
 *Recorded*: this entry; `SECURITY.md`, "No write path refuses overwriting a listed function";
-`modules/eval-core/CHANGELOG.md`'s `[0.13.3]` › Fixed and `[Unreleased]` › Breaking.
+`modules/eval-core/CHANGELOG.md`'s `[0.13.3]` › Fixed and `[0.14.0]` › Breaking.
 
 <a id="a52"></a>
 ## A52 — Under `caseInsensitive`, an identifier holding `null` reads as `undefined`
 
 **Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-24**, as step 2 of the
-[A45 plan](a45/plan.md) (its D10); not yet released, for `eval-core` 0.14.0. Opened 2026-10-23 by
-the plan's Revision 2, whose measurement of its D9 found it. It predates that plan
+[A45 plan](a45/plan.md) (its D10); released 2026-10-26 in `eval-core` 0.14.0, tagged 0d305a3.
+Opened 2026-10-23 by the plan's Revision 2, whose measurement of its D9 found it. It predates that
+plan
 
 `identifierVisitorCaseInsensitive` read `context.get(name) ?? literals.get(name)`. The literal
 fallback, which resolves `TRUE`, `Undefined` and their kin, was taken for `null` as well as for
@@ -2973,7 +2975,7 @@ plan's prototype, with the Angular compiler loaded; the four red cases by runnin
 against the prototype.
 
 *Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M9; `modules/eval-core/CHANGELOG.md`'s
-`[Unreleased]` › Fixed.
+`[0.14.0]` › Fixed.
 
 ---
 
