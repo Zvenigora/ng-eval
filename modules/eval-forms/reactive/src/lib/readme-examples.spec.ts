@@ -23,8 +23,9 @@ import {
 } from '../public-api';
 
 /**
- * The ` ```ts ` fences in `modules/eval-forms/README.md` from
- * `## Quick start — Reactive Forms (/reactive)` up to, not including,
+ * The ` ```ts ` fences in `modules/eval-forms/README.md`'s shared and
+ * `/reactive` sections: from `## How it fits together`, the first of the
+ * sections both adapters share, up to, not including,
  * `## Signal Forms — /signals`.
  */
 const README_REACTIVE_TS_BLOCKS = 11;
@@ -54,22 +55,22 @@ const WORKED_EXAMPLE_TS_BLOCKS = 11;
  * what it says runs*.
  *
  * **Coverage, `README_REACTIVE_TS_BLOCKS`**: the README's ` ```ts ` blocks
- * from `## Quick start — Reactive Forms (/reactive)` up to, not including,
- * `## Signal Forms — /signals`. The range holds two of the shared core's
- * sections as well, `## Coercion` and `## When a rule fails`, and their blocks
- * live here rather than under `src/lib/` because a spec there could not import
- * `bindFieldProperties` to sit beside them.
+ * in its shared and `/reactive` sections, from `## How it fits together` up
+ * to, not including, `## Signal Forms — /signals`. The shared sections come
+ * first; two of them hold blocks, `## Coercion` and `## When a rule fails`,
+ * and those blocks live here rather than under `src/lib/` because a spec
+ * there could not import `bindFieldProperties` to sit beside them.
  *
  * Executed here, in document order:
  *
- * 1. `## Quick start`, both blocks - **one case**; the second reads the
- *    binding the first builds.
- * 2. `### Colon-joined names`, under the root providers it declares - Phase 9
- *    step 7.
- * 3. `## Coercion`, the `toVisible` block.
- * 4. `## Coercion`, the `toText` block.
- * 5. `## When a rule fails`, the `applyErrorPolicy` block - two cases
+ * 1. `## Coercion`, the `toVisible` block.
+ * 2. `## Coercion`, the `toText` block.
+ * 3. `## When a rule fails`, the `applyErrorPolicy` block - two cases
  *    (`docs/backlog.md` D10).
+ * 4. `## Quick start`, both blocks - **one case**; the second reads the
+ *    binding the first builds.
+ * 5. `### Colon-joined names`, under the root providers it declares - Phase 9
+ *    step 7.
  * 6. `### {emitEvent: false} freezes a value`.
  * 7. `### The key set is not reactive`.
  *
@@ -695,9 +696,9 @@ describe('README block count (docs/backlog.md F13)', () => {
   const read = (relative: string): string[] =>
     fs.readFileSync(path.join(__dirname, relative), 'utf8').split(/\r?\n/);
 
-  it('should hold README_REACTIVE_TS_BLOCKS ts blocks from the /reactive quick start to /signals', () => {
+  it('should hold README_REACTIVE_TS_BLOCKS ts blocks in the shared and /reactive sections, up to /signals', () => {
     const lines = read('../../../README.md');
-    const from = lines.indexOf('## Quick start — Reactive Forms (`/reactive`)');
+    const from = lines.indexOf('## How it fits together');
     const to = lines.indexOf('## Signal Forms — `/signals`');
 
     // The bounds are headings, so a renamed one must fail here rather than

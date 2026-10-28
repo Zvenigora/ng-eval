@@ -11,6 +11,44 @@ That rule is a string. It can be fetched from an API, typed into a form-builder 
 administrator, or stored in a database and versioned separately from your application —
 because nothing about it is compiled in.
 
+**Contents**, by entry point — the package's own sections, then what both adapters share, then
+each adapter's:
+
+- **The package**
+  - [Install](#install)
+  - [Sibling packages](#sibling-packages)
+  - [Security](#security)
+  - [When *not* to use this library](#when-not-to-use-this-library)
+  - [Entry points](#entry-points)
+  - [Versions](#versions)
+  - [What is not here](#what-is-not-here) and [Development](#development), at the end of the file
+- **Shared by both adapters**
+  - [How it fits together](#how-it-fits-together)
+  - [Coercion](#coercion)
+  - [When a rule fails](#when-a-rule-fails)
+- **`/reactive`**
+  - [Quick start — Reactive Forms (`/reactive`)](#quick-start--reactive-forms-reactive)
+  - [The field schema](#the-field-schema)
+    - [It is validated when you bind](#it-is-validated-when-you-bind)
+    - [Expressions are validated too](#expressions-are-validated-too)
+  - [What an expression can name](#what-an-expression-can-name)
+    - [An empty control reads as absent](#an-empty-control-reads-as-absent)
+    - [Colon-joined names](#colon-joined-names)
+  - [Reactivity, and its two holes](#reactivity-and-its-two-holes)
+    - [`{ emitEvent: false }` freezes a value](#-emitevent-false--freezes-a-value)
+    - [The key **set** is not reactive](#the-key-set-is-not-reactive)
+  - [Lifetime](#lifetime)
+    - [Constructed, not computed](#constructed-not-computed)
+- **`/signals`**
+  - [Signal Forms — `/signals`](#signal-forms--signals)
+    - [The three registrars, and their polarity](#the-three-registrars-and-their-polarity)
+    - [Lifetime — there is nothing to destroy](#lifetime--there-is-nothing-to-destroy)
+    - [Reuse a schema *function*, not a schema *value*](#reuse-a-schema-function-not-a-schema-value)
+    - [Prototype-shadowed identifiers are rejected](#prototype-shadowed-identifiers-are-rejected)
+    - [`caseInsensitive` per registration](#caseinsensitive-per-registration)
+    - [Colon-joined names, per factory or registration](#colon-joined-names-per-factory-or-registration)
+    - [Two things that are not available here](#two-things-that-are-not-available-here)
+
 ## Install
 
 ```sh
@@ -122,11 +160,137 @@ hoisting and would not resolve at all under pnpm's isolated layout. `acorn` itse
 deliberately **not** declared — this package imports no `acorn` symbol, and `acorn-walk`
 depends on it directly.
 
+## How it fits together
+
+| Symbol | Entry point | What it is |
+| :--- | :--- | :--- |
+| `bindFieldProperties(schema, group, options)` | `/reactive` | The primary API. Validates the schema, mirrors the group, returns a `FormBinding`. |
+| `FormBinding` | `/reactive` | `{ fields: Record<string, FieldProperties>; destroy(): void }`. |
+| `FieldSchema` | `/reactive` | `{ name, visible?, text? }` — one field's rules. |
+| `FieldProperties` | `/reactive` | `{ visible?: EvalSignal<boolean>; text?: EvalSignal<string> }`. Both optional, because the schema's rules are. |
+| `createControlSource(group, options)` | `/reactive` | The mirror on its own, for callers composing contexts by hand. |
+| `createFieldContext(formSource, fieldSource, options?)` | core | Composes one `EvalContext` out of a form-wide and a field-local source. |
+| `toVisible(value)` / `toText(value)` | core | The two coercions, exported so an adapter or a test can apply the same rule. |
+| `ExpressionErrorPolicy` | core | `'throw' \| 'undefined' \| ((error) => unknown)`. |
+| `applyErrorPolicy(run, policy?)` | core | Runs `run` under a policy, **new in 0.2.0**. Rethrows a `SignalContextWriteError` whatever the policy says — see [When a rule fails](#when-a-rule-fails). Exported so an adapter applies the rule rather than reimplementing it. |
+| `guardIdentifiers(expression, node)` | core | Throws if a parsed expression names a member of `Object.prototype` as an identifier, **new in 0.3.0**, or parses as a top-level labeled statement — see [Colon-joined names](#colon-joined-names). Both adapters call it before compiling — see [Prototype-shadowed identifiers are rejected](#prototype-shadowed-identifiers-are-rejected). Exported for the same reason as `applyErrorPolicy`. |
+| `createExpressionRules(model, options?)` | `/signals` | The primary API. Binds one model signal and returns `evalVisible` / `evalText` / `evalDisabled`. |
+| `ExpressionRules` | `/signals` | The three registrars, each `(path, expression, options?) => void`. |
+| `ExpressionRuleOptions` | `/signals` | `{ eval?: EvalOptions; onError?: ExpressionErrorPolicy; colonIdentifiers?: boolean }`, accepted by the factory and per registration. |
+| `TEXT` | `/signals` | The metadata key `evalText` writes through and `field().metadata(TEXT)` reads back. |
+
+`FieldProperties` members are `EvalSignal`, not plain `Signal`, and both extra members
+matter here: `invalidate()` is the escape hatch described under
+[Reactivity](#reactivity-and-its-two-holes), and `destroy()` is what
+[Lifetime](#lifetime) counts.
+
+## Coercion
+
+`visible` is **JavaScript truthiness, and nothing cleverer**:
+
+```ts
+toVisible(undefined);   // => false — an empty or missing field is not visible
+toVisible(0);           // => false
+toVisible('false');     // => true  — a non-empty string
+```
+
+That third line is the one to know about, and it is the one a form-builder UI storing every
+value as a string will hit. It is truthiness rather than parsing: a coercion that read
+`'false'` as false would then owe an answer for `'no'`, `'0'` and `'off'`, and JavaScript
+has one for none of them. Write `visible: "flag === 'true'"` if that is what you mean.
+
+`text` is `String(value)`, with `null` and `undefined` mapping to `''`:
+
+```ts
+toText(null);        // => ''    — never the literal text "null"
+toText(undefined);   // => ''
+toText(0);           // => '0'   — not ''
+toText(false);       // => 'false'
+```
+
+Every *other* falsy value stringifies normally. Mapping all falsy values to `''` is the
+obvious way to write this rule wrongly, and it blanks a field whose value is legitimately
+zero.
+
+## When a rule fails
+
+`options.onError` decides, and **the default is `'undefined'`** — the opposite of
+`@zvenigora/ng-eval-signals`' default:
+
+| Value | Effect |
+| :--- | :--- |
+| `'undefined'` *(default)* | The property resolves `undefined`, which coerces to `false` / `''`. |
+| `'throw'` | Rethrow. |
+| `(error) => unknown` | Your function's return value becomes the property's value. |
+
+The default differs from upstream's because the author differs. An expression that fails in
+`@zvenigora/ng-eval-signals` was written by the developer reading the stack trace; an
+expression that fails here may have been typed into a form builder by an end user, and the
+right response to "the administrator wrote a bad rule" is a field that does not render, not
+an application that throws on every change-detection pass.
+
+`applyErrorPolicy` is that decision on its own, exported so an adapter applies the rule rather
+than reimplementing it — and so you can apply it to a rule invocation you drive yourself:
+
+```ts
+import { applyErrorPolicy } from '@zvenigora/ng-eval-forms';
+// Neither adapter re-exports it, so it comes from its own package.
+import { SignalContextWriteError } from '@zvenigora/ng-eval-signals';
+
+const boom = () => { throw new Error('bad rule'); };
+
+applyErrorPolicy(boom);              // undefined — the default
+applyErrorPolicy(boom, 'undefined'); // undefined
+applyErrorPolicy(boom, () => '—');   // '—'
+applyErrorPolicy(boom, 'throw');     // rethrows Error('bad rule')
+applyErrorPolicy(() => 'fine');      // 'fine' — nothing thrown, nothing to police
+
+// A write violation is rethrown whatever the policy says:
+const write = () => { throw new SignalContextWriteError('country', 'country = "CA"'); };
+
+applyErrorPolicy(write, 'undefined'); // throws SignalContextWriteError
+```
+
+Two things are **not** routed through `options.onError`, in either adapter:
+
+- **A parse error throws at registration**, whatever the policy. Expressions are compiled
+  eagerly: at `/reactive` it throws from `bindFieldProperties` itself, so
+  `visible: 'country ==='` fails at bind time, and at `/signals` from `form()`, where the
+  schema body that registers the rule runs.
+- **An assignment throws `SignalContextWriteError`, in every mode.** Expression keys are
+  read-only, and a write violation is *static* — illegal on every recompute with every
+  dataset. Swallowing it under the default would hand you a silent blank for a syntax bug
+  in the rule itself.
+
+  **So does a write into the form's data, since 0.3.0.**
+  A rule may write into what it created — object, array and regex literals, rest values,
+  arrow functions — and not into anything it was given. `address.city = 'x'`, over a
+  control whose value is `{ city: 'Rome' }` or over the `/signals` model, throws
+  `SignalContextWriteError` with `kind` `'member'`, in every mode; up to 0.2.x it wrote into
+  the very object Angular holds.
+
+  **So does a built-in method that would write into it, since 0.4.0.** `tags.push('x')`,
+  `tags.sort()`, `splice`, `Map#set`, a `Date`'s setters and, where the context supplies
+  `Object`, `Object.assign`, over a control's value or the `/signals` model, throw
+  `SignalContextWriteError` with `kind` `'method'`, in every mode, naming the method and what to
+  call instead — `toSorted`, `toReversed`, `toSpliced`, `with`, or a spread into a literal. So
+  does each one reached through `call`, `apply` or `bind`. Up to 0.3.x the call went through and
+  mutated the form's data. On a copy the rule made they still work: `[...tags].sort()`. Not
+  caught: a method you wrote, and `lastIndex` on a regex you supplied.
+
+  **It holds through a call too.** An assignment **nested inside a call**,
+  `[1].map(x => (country = 'CA'))`, reaches the bypass as `SignalContextWriteError` and is
+  rethrown like a direct one. Up to `eval-core` 0.6.x the evaluator's own call wrapper
+  re-raised it as a plain `Error`, which lost the class the bypass matches on, so it was routed
+  by `onError` like any other failure: under the default, a blank field with nothing in the
+  console. The peer range admitted those versions until 0.3.0 raised its `eval-core` floor to
+  0.10.0.
+
 ## Quick start — Reactive Forms (`/reactive`)
 
-Everything from here to [Lifetime](#lifetime) is the `/reactive` adapter, except for three
-sections that cover both: [How it fits together](#how-it-fits-together), [Coercion](#coercion)
-and [When a rule fails](#when-a-rule-fails). Signal Forms has
+Everything from here to [Constructed, not computed](#constructed-not-computed) is the
+`/reactive` adapter. The sections both adapters share are above it, from
+[How it fits together](#how-it-fits-together), and Signal Forms has
 [its own section](#signal-forms--signals) below.
 
 ```ts
@@ -183,30 +347,6 @@ The recompute is Angular's own dependency tracking, per key: the expression read
 worked example of a whole form is in
 [docs/forms/worked-example.md](https://github.com/zvenigora/ng-eval/blob/master/docs/forms/worked-example.md).
 
-## How it fits together
-
-| Symbol | Entry point | What it is |
-| :--- | :--- | :--- |
-| `bindFieldProperties(schema, group, options)` | `/reactive` | The primary API. Validates the schema, mirrors the group, returns a `FormBinding`. |
-| `FormBinding` | `/reactive` | `{ fields: Record<string, FieldProperties>; destroy(): void }`. |
-| `FieldSchema` | `/reactive` | `{ name, visible?, text? }` — one field's rules. |
-| `FieldProperties` | `/reactive` | `{ visible?: EvalSignal<boolean>; text?: EvalSignal<string> }`. Both optional, because the schema's rules are. |
-| `createControlSource(group, options)` | `/reactive` | The mirror on its own, for callers composing contexts by hand. |
-| `createFieldContext(formSource, fieldSource, options?)` | core | Composes one `EvalContext` out of a form-wide and a field-local source. |
-| `toVisible(value)` / `toText(value)` | core | The two coercions, exported so an adapter or a test can apply the same rule. |
-| `ExpressionErrorPolicy` | core | `'throw' \| 'undefined' \| ((error) => unknown)`. |
-| `applyErrorPolicy(run, policy?)` | core | Runs `run` under a policy, **new in 0.2.0**. Rethrows a `SignalContextWriteError` whatever the policy says — see [When a rule fails](#when-a-rule-fails). Exported so an adapter applies the rule rather than reimplementing it. |
-| `guardIdentifiers(expression, node)` | core | Throws if a parsed expression names a member of `Object.prototype` as an identifier, **new in 0.3.0**, or parses as a top-level labeled statement — see [Colon-joined names](#colon-joined-names). Both adapters call it before compiling — see [Prototype-shadowed identifiers are rejected](#prototype-shadowed-identifiers-are-rejected). Exported for the same reason as `applyErrorPolicy`. |
-| `createExpressionRules(model, options?)` | `/signals` | The primary API. Binds one model signal and returns `evalVisible` / `evalText` / `evalDisabled`. |
-| `ExpressionRules` | `/signals` | The three registrars, each `(path, expression, options?) => void`. |
-| `ExpressionRuleOptions` | `/signals` | `{ eval?: EvalOptions; onError?: ExpressionErrorPolicy; colonIdentifiers?: boolean }`, accepted by the factory and per registration. |
-| `TEXT` | `/signals` | The metadata key `evalText` writes through and `field().metadata(TEXT)` reads back. |
-
-`FieldProperties` members are `EvalSignal`, not plain `Signal`, and both extra members
-matter here: `invalidate()` is the escape hatch described under
-[Reactivity](#reactivity-and-its-two-holes), and `destroy()` is what
-[Lifetime](#lifetime) counts.
-
 ## The field schema
 
 ```ts
@@ -238,6 +378,10 @@ later as an evaluation result nobody can trace:
 | A control in the group that is not a `FormControl` | Nested groups and `FormArray` are out of scope; the alternative is a group's *aggregate object* arriving where a value was expected. |
 | An expression naming a member of `Object.prototype` | The same failure as the name, reached through the expression — see [Expressions are validated too](#expressions-are-validated-too). |
 | An expression that parses as a labeled statement | It never evaluates, so it would render blank. A rule that starts with a colon-joined name parses that way when colon-joined names are off — see [Colon-joined names](#colon-joined-names). |
+
+A rule that does not parse ([When a rule fails](#when-a-rule-fails)) throws from
+`bindFieldProperties` too, after the fields before it are built, and the binding
+releases everything it had already built before rethrowing.
 
 **Field and control names may not be `constructor`, `toString`, `valueOf`,
 `hasOwnProperty`, `__proto__` or any other member of `Object.prototype`.** `FormGroup`
@@ -377,110 +521,6 @@ the rule's own statements is refused: one inside a function the rule defines is 
 function may never be called, and nor is one inside a block. A colon-joined name anywhere else —
 `x + Q1:1 > 0` — is a syntax error with the switch off, thrown when the rule is compiled, as before.
 
-## Coercion
-
-`visible` is **JavaScript truthiness, and nothing cleverer**:
-
-```ts
-toVisible(undefined);   // => false — an empty or missing field is not visible
-toVisible(0);           // => false
-toVisible('false');     // => true  — a non-empty string
-```
-
-That third line is the one to know about, and it is the one a form-builder UI storing every
-value as a string will hit. It is truthiness rather than parsing: a coercion that read
-`'false'` as false would then owe an answer for `'no'`, `'0'` and `'off'`, and JavaScript
-has one for none of them. Write `visible: "flag === 'true'"` if that is what you mean.
-
-`text` is `String(value)`, with `null` and `undefined` mapping to `''`:
-
-```ts
-toText(null);        // => ''    — never the literal text "null"
-toText(undefined);   // => ''
-toText(0);           // => '0'   — not ''
-toText(false);       // => 'false'
-```
-
-Every *other* falsy value stringifies normally. Mapping all falsy values to `''` is the
-obvious way to write this rule wrongly, and it blanks a field whose value is legitimately
-zero.
-
-The coercion sits in front of the signal rather than inside the walk, so a **destroyed**
-property still answers `false` / `''` rather than leaking `undefined` into a template.
-
-## When a rule fails
-
-`options.onError` decides, and **the default is `'undefined'`** — the opposite of
-`@zvenigora/ng-eval-signals`' default:
-
-| Value | Effect |
-| :--- | :--- |
-| `'undefined'` *(default)* | The property resolves `undefined`, which coerces to `false` / `''`. |
-| `'throw'` | Rethrow. |
-| `(error) => unknown` | Your function's return value becomes the property's value. |
-
-The default differs from upstream's because the author differs. An expression that fails in
-`@zvenigora/ng-eval-signals` was written by the developer reading the stack trace; an
-expression that fails here may have been typed into a form builder by an end user, and the
-right response to "the administrator wrote a bad rule" is a field that does not render, not
-an application that throws on every change-detection pass.
-
-`applyErrorPolicy` is that decision on its own, exported so an adapter applies the rule rather
-than reimplementing it — and so you can apply it to a rule invocation you drive yourself:
-
-```ts
-import { applyErrorPolicy } from '@zvenigora/ng-eval-forms';
-// Neither adapter re-exports it, so it comes from its own package.
-import { SignalContextWriteError } from '@zvenigora/ng-eval-signals';
-
-const boom = () => { throw new Error('bad rule'); };
-
-applyErrorPolicy(boom);              // undefined — the default
-applyErrorPolicy(boom, 'undefined'); // undefined
-applyErrorPolicy(boom, () => '—');   // '—'
-applyErrorPolicy(boom, 'throw');     // rethrows Error('bad rule')
-applyErrorPolicy(() => 'fine');      // 'fine' — nothing thrown, nothing to police
-
-// A write violation is rethrown whatever the policy says:
-const write = () => { throw new SignalContextWriteError('country', 'country = "CA"'); };
-
-applyErrorPolicy(write, 'undefined'); // throws SignalContextWriteError
-```
-
-Two things are **not** routed through `options.onError`, in either adapter:
-
-- **A parse error throws from `bindFieldProperties` itself**, whatever the policy.
-  Expressions are compiled eagerly, so `visible: 'country ==='` fails at bind time — and
-  the binding releases everything it had already built before rethrowing.
-- **An assignment throws `SignalContextWriteError`, in every mode.** Expression keys are
-  read-only, and a write violation is *static* — illegal on every recompute with every
-  dataset. Swallowing it under the default would hand you a silent blank for a syntax bug
-  in the rule itself.
-
-  **So does a write into the form's data, since 0.3.0.**
-  A rule may write into what it created — object, array and regex literals, rest values,
-  arrow functions — and not into anything it was given. `address.city = 'x'`, over a
-  control whose value is `{ city: 'Rome' }` or over the `/signals` model, throws
-  `SignalContextWriteError` with `kind` `'member'`, in every mode; up to 0.2.x it wrote into
-  the very object Angular holds.
-
-  **So does a built-in method that would write into it, since 0.4.0.** `tags.push('x')`,
-  `tags.sort()`, `splice`, `Map#set`, a `Date`'s setters and, where the context supplies
-  `Object`, `Object.assign`, over a control's value or the `/signals` model, throw
-  `SignalContextWriteError` with `kind` `'method'`, in every mode, naming the method and what to
-  call instead — `toSorted`, `toReversed`, `toSpliced`, `with`, or a spread into a literal. So
-  does each one reached through `call`, `apply` or `bind`. Up to 0.3.x the call went through and
-  mutated the form's data. On a copy the rule made they still work: `[...tags].sort()`. Not
-  caught: a method you wrote, and `lastIndex` on a regex you supplied.
-
-  **It holds through a call too.** An assignment **nested inside a call**,
-  `[1].map(x => (country = 'CA'))`, reaches the bypass as `SignalContextWriteError` and is
-  rethrown like a direct one. Up to `eval-core` 0.6.x the evaluator's own call wrapper
-  re-raised it as a plain `Error`, which lost the class the bypass matches on, so it was routed
-  by `onError` like any other failure: under the default, a blank field with nothing in the
-  console. The peer range admitted those versions until 0.3.0 raised its `eval-core` floor to
-  0.10.0.
-
 ## Reactivity, and its two holes
 
 A property recomputes when a control it reads emits on `valueChanges`. The mirror
@@ -578,6 +618,10 @@ registers its teardown on the `DestroyRef` of the injector you passed, so a bind
 a component or route injector is released when that injector dies even if nobody called
 `destroy()`. A binding built on the *root* injector is released at the end of the
 application and no sooner.
+
+The [coercion](#coercion) sits in front of the signal rather than inside the walk, so
+a **destroyed** property still answers `false` / `''` rather than leaking `undefined` into a
+template.
 
 ### Constructed, not computed
 
@@ -719,11 +763,10 @@ const bad = schema<Order>((p) => {
 form(model, bad);   // throws: identifier 'constructor' is a member of Object.prototype …
 ```
 
-Without the check, with `@zvenigora/ng-eval-core` up to 0.10.x, the identifier resolved off the
-prototype to a *function*, a function is truthy, and `evalVisible` would render precisely the
-field that has no data — with nothing logged. Since `eval-core` 0.11.0 the evaluator refuses it
-on each evaluation instead, where `onError` decides what the error becomes. The fix is to rename
-the model key.
+What the identifier resolved to without the check, and what `eval-core` has done with it since
+0.11.0, is the same at both entry points: see
+[Expressions are validated too](#expressions-are-validated-too). The fix is to rename the model
+key.
 
 **The throw arrives from `form()`, not from `schema()`.** The schema body is what registers, and
 Angular invokes that body once per `form()` — so building the schema is silent and every
@@ -740,13 +783,13 @@ Three bounds on the check, none of them obvious from the paragraph above:
   `@zvenigora/ng-eval-core`'s prototype-pollution guard, under the rules documented there.
 - **It refuses a name the expression *binds* itself, whether or not it reads it.**
   `'[1].map(valueOf => valueOf)'` and `'[1].map(valueOf => 1)'` both throw at registration,
-  as do `'let toString = 1; 2'` and `'(({ valueOf }) => 1)({})'`. That costs nothing: the
-  expression could never evaluate, because `@zvenigora/ng-eval-core` refuses to bind any of
-  these names — an arrow parameter, a `let` or a destructured name — and throws `Access to
-  dangerous property "valueOf" is blocked …` on every evaluation. Up to 0.2.x this bullet
-  called the refusal an over-rejection, saying the parameter would have resolved correctly;
-  measured, it does not. And up to 0.2.x a name bound and never read registered, because the
-  walk did not visit a binding — then threw that same error on every evaluation. Rename the
+  as do `'let toString = 1; 2'` and `'(({ valueOf }) => 1)({})'`. That costs nothing: such an
+  expression could never evaluate, for the reason
+  [Expressions are validated too](#expressions-are-validated-too) gives for an arrow parameter
+  and a `let`, and a destructured name is refused the same way. Up to 0.2.x this bullet called
+  the refusal an over-rejection, saying the parameter would have resolved correctly; measured, it
+  does not. And up to 0.2.x a name bound and never read registered, because the walk did not
+  visit a binding — then threw `Access to dangerous property …` on every evaluation. Rename the
   binding.
 
 **`/reactive` makes the same check on its expressions**, since 0.3.0 — see

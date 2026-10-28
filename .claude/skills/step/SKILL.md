@@ -18,11 +18,11 @@ Requested step: $ARGUMENTS
 version. `eval-core` and `eval-signals` change in nothing:
 
 - **Step 1 is the plan and its records**, with the README's Development sentence and its
-  `[Unreleased]` line.
+  `[Unreleased]` line. *Done.*
 - **Step 2 is the reorder**: `modules/eval-forms/README.md`, the `/reactive`
   `readme-examples.spec.ts`'s `from`, its count case's title and its comment lines, and the
   CHANGELOG's `[Unreleased]`. No heading's text or level changes, and the `/signals` spec is not
-  edited.
+  edited. *Done.*
 - **Step 3 is the release commit**, `eval-forms` 0.7.1; **step 4** the post-publish record, which
   touches no file under `modules/` unless npm's publish date differs from the CHANGELOG's.
 

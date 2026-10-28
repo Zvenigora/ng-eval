@@ -477,6 +477,28 @@ recorded at 0d305a3.
   - Tests 0 / 0 / 0. doc-links: 0 files; links +31 for the contents list, with § 3.3's `#coercion`
     link in Lifetime and § 3.4's and § 3.6's changes counted and reported.
 - **Category**: ships in `eval-forms`' next release, with § 3.7's line.
+- **Outcome** (2026-10-28): done as § 3.2–3.6 say; the gate green at 3134 / 444 / 380. The README's
+  links went from 39 to 72, +33: the contents list's 31, Lifetime's `#coercion`, the moved release
+  clause's `#when-a-rule-fails`, § 3.4's two, and § 3.6's five down to three. Probes, each alone and
+  reverted: P2a 1 of 37 `eval-forms` README cases red, the count case with 8; P2b the same case with
+  9; P2c the `README_ASYMMETRY_BLOCKS` case with 0, and doc-links 5 dangling, every link to the
+  renamed anchor. Corrections, under [SR4](../standing-rules.md#sr4):
+  - § 3.3 counts one link for the moves; the release clause carries a second, to
+    `#when-a-rule-fails`, where the parse error it names is explained.
+  - Citations from `:884` on are 8e6a617's, before step 1 widened `## Development`; the README
+    was 894 lines at step 1's commit, not 893. Those before `:884` held.
+  - `SKILL.md`'s summary of this step named three files where this step's list names five; the
+    list here governed.
+  - § 3.3 put `:408-409` after `:573-574`, between `destroy()`'s paragraph and the one that opens
+    "There is a **net** under that", whose "that" then named the coercion. Found by the code
+    review, which criterion 6's grep could not see: it lands at the end of `## Lifetime` instead,
+    after the net, and both paragraphs stay as written.
+  - `docs/backlog.md` joins this step's file list, under [SR4](../standing-rules.md#sr4) and
+    [SR5](../standing-rules.md#sr5), to open [F29](../backlog.md#f29): the parse-error item's
+    "whatever the policy" is witnessed at both adapters under the default policy only. That resolves
+    the code review's finding 4, a latent gap, which this plan's 0 / 0 / 0 leaves to the register.
+    The same commit corrects F28's first constraint, which named the count case's old `from` and was
+    false once this step moved it ([SR31](../standing-rules.md#sr31)).
 
 ### Step 3 — Release commit: `eval-forms` 0.7.1
 

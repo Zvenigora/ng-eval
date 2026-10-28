@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **The README's Development section names both shared sections whose blocks the `/reactive` spec
   executes**, Coercion and When a rule fails; it named Coercion only. It also names every block no
   case executes, where it named the template and manifest blocks only. Documentation only.
+- **The README is ordered by entry point**, with a contents list: the package's sections, then the
+  ones both adapters share, then `/reactive`, then `/signals`. Every heading keeps its text, so
+  every link into it still resolves. Two passages about `/reactive` alone moved out of the shared
+  sections, When a rule fails says where each adapter throws a rule that does not parse, and two
+  facts stated on both adapters' sides are stated once. Documentation only.
 
 ---
 

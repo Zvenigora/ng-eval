@@ -301,8 +301,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.13.2 | `dc4302d` | 2026-10-22 | 25 | 5: A43–A47 | 4: A40, A41, A43, A46 | 26 |
 | `eval-core` 0.13.3. A45 part 1 closed with it, a part, so A45 stays live; F20 and F24 ship in no package | `021d5e4` | 2026-10-23 | 26 | 0 | 2: F20, F24 | 24 |
 | `eval-core` 0.14.0, `eval-signals` 0.7.0, `eval-forms` 0.7.0. F21 and F25 ship in no package | `0d305a3` | 2026-10-26 | 24 | 6: A48–A53 | 5: F21, F25, A44, A45, A52 | 25 |
-| *Unreleased*. F26, opened by 0.14.0's post-publish commit and fixed after it, ships in no package; F27 ships in no package but for one `eval-core` docblock | — | — | 25 | 3: F26, F27, F28 | 2: F26, F27 | 26 |
-| **Since the register opened** | | | **42** | **70** | **86** | **26** |
+| *Unreleased*. F26, opened by 0.14.0's post-publish commit and fixed after it, ships in no package; F27 ships in no package but for one `eval-core` docblock | — | — | 25 | 4: F26–F29 | 2: F26, F27 | 27 |
+| **Since the register opened** | | | **42** | **71** | **86** | **27** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -437,6 +437,7 @@ makes it that release's row, with its tag commit and date.
 | [F26](backlog-retired.md#f26) | `tools/release-tags.mjs` does not check that a release tag is annotated: it resolves each tag with `git rev-list -n 1`, which accepts a lightweight tag, so the register's "all annotated" is checked by nothing | repo | fix | **Retired — fixed 2026-10-26**, in no package: every `eval-core@`, `eval-signals@` and `eval-forms@` tag must be a tag object, with or without a row, and a lightweight one fails, named once; the `v*` tags are not checked |
 | [F27](backlog-retired.md#f27) | The process and verification rules were copied across `CLAUDE.md`, the `step` skill, the `code-reviewer`, `CONTRIBUTING.md` and four plans' rule sections, and the copies had drifted: twenty divergences, among them three different gate commands | repo, core | docs | **Retired — fixed 2026-10-27**: [`docs/standing-rules.md`](standing-rules.md), SR1–SR38, imported by `CLAUDE.md`; the copies cite it. In no package, but for `contextPush`'s docblock, an `eval-core` `[Unreleased]` line, documentation only |
 | [F28](#f28) | The consumer documents Phase 10 left out: whether the package READMEs split into guides, where a guide lives and whether it ships; `eval-forms`' README, at 893 lines, by entry point first | repo, core, signals, forms | decision | Open — in flight as Phase 11; opened 2026-10-27 by F27 |
+| [F29](#f29) | The README's "a rule that does not parse throws at registration, whatever the policy" is witnessed at both adapters under the default policy only; a function policy, the other one that swallows an error, is unwitnessed | forms | test gap | Open; opened 2026-10-28 by Phase 11 step 2's code review |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -1853,8 +1854,9 @@ README splits into guides, where a guide lives, and whether it ships.
 **Constraints, whatever the answer:**
 - **The `readme-examples.spec.ts` count cases find their blocks by heading**
   ([F13](backlog-retired.md#f13)): `eval-forms/reactive`'s counts the range from the heading
-  "Quick start — Reactive Forms", its entry point in a code span, up to "Signal Forms", so a heading
-  moved or renamed moves a count; the case matches the heading as the README writes it.
+  "How it fits together" up to "Signal Forms" — from "Quick start — Reactive Forms", its entry point
+  in a code span, until Phase 11 step 2 — so a heading moved or renamed moves a count; the case
+  matches the heading as the README writes it.
 - **`tools/published-links.txt` binds `#readme`** — the repository's and each package folder's, which
   binds each README file — and `modules/eval-signals#async-expressions`, a heading `eval-forms`'
   published README links ([F25](backlog-retired.md#f25) Part 4): the files and that heading stay, or a
@@ -1869,3 +1871,39 @@ README splits into guides, where a guide lives, and whether it ships.
 *Recorded*: this entry. *Verified*: read 2026-10-27 at 54f1d6d — the Phase 10 plan's D6 and § 8 q2,
 `tools/published-links.txt`, the count case's docblock in
 `modules/eval-forms/reactive/src/lib/readme-examples.spec.ts`, and `wc -l` of the three READMEs.
+
+<a id="f29"></a>
+## F29 — A parse error's policy claim is witnessed under the default policy only
+
+**Package** forms · **Kind** test gap · **Status** Open. Opened 2026-10-28 by Phase 11 step 2's code
+review
+
+`eval-forms`' README, `## When a rule fails`, says that **a rule that does not parse throws at
+registration, whatever the policy**, at both adapters: from `bindFieldProperties` at `/reactive`, and
+from `form()` at `/signals`. Phase 11 step 2 made the sentence adapter-neutral; until then it named
+`bindFieldProperties` only, with the same "whatever the policy".
+
+**Witnessed under the default policy only.** `reactive/src/lib/readme-examples.spec.ts:377` and
+`signals/src/lib/rules.spec.ts:710-718` each register a rule that does not parse with no `onError`, so
+under `'undefined'`, and expect the throw. **Unwitnessed: a function policy**, such as
+`onError: () => 'handled'`, the other policy that swallows an error. `'throw'` would pass under any
+implementation, so it is no witness: an adapter that parsed inside its policy would rethrow there too.
+
+**Measured, not tested.** `/signals` parses, guards and compiles in `prepare`
+(`modules/eval-forms/signals/src/lib/rules.ts:221-230`), when the registrar is called, outside the
+closure `applyErrorPolicy` wraps (`:233-234`). `/reactive`'s `validate` skips a rule that does not
+parse (`modules/eval-forms/reactive/src/lib/field-schema.ts:241-245`), and the compile throws from
+`createEvalSignal` inside the bind loop (`:536-556`), which takes `onError` for evaluation, not for
+the compile: `modules/eval-signals/src/lib/eval-signal.ts` compiles at `:258`, outside the `catch` at
+`:369` that applies the policy. The loop's `catch` releases the binding and rethrows (`:561-567`). The M4 probe
+([`phase-11-plan.md`](documentation/phase-11-plan.md) § 8 q1) moved `/signals`' parse, guard and
+compile inside the returned closure: 2 of 31 `rules.spec.ts` cases went red, both under the default
+policy.
+
+**Fix**: two cases, one per adapter, each registering a rule that does not parse under a function
+policy and asserting the parse error's message, never a bare `toThrow()`
+([SR18](standing-rules.md#sr18)), each probed by moving that adapter's parse inside its policy.
+Scheduled with the next phase that moves `eval-forms`' rows; Phase 11 holds them 0 / 0 / 0.
+
+*Recorded*: this entry; the Phase 11 plan's step 2 Outcome. *Verified*: read 2026-10-28 — the two
+witnesses, `rules.ts` and `field-schema.ts` at the lines cited, and the M4 probe's record.
