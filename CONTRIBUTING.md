@@ -2,7 +2,7 @@
 
 **Maintainers start at [`docs/README.md`](docs/README.md)**, the index of the design records, the
 backlog register, the gates and the active plan, when there is one. This file covers setup, code style, commit
-messages and releasing.
+messages and releasing. The process and verification rules are [`docs/standing-rules.md`](docs/standing-rules.md).
 
 ## Prerequisites
 
@@ -53,8 +53,8 @@ the configs add is `@nx/enforce-module-boundaries`, which uses the `scope:core` 
 `scope:signals` / `scope:forms` project tags so that `eval-core` depends on neither downstream
 library and `eval-signals` does not depend on `eval-forms`; the `zvenigora` prefix for component
 and directive selectors; and `@nx/dependency-checks` over each module's `package.json`. Read the
-config files for the exact rule set, and run `npm run lint` before committing — it lints all
-three projects.
+config files for the exact rule set. `npm run lint` lints all three projects; before committing,
+run the gate ([SR8](docs/standing-rules.md#sr8)), which includes it.
 
 ## Commit Messages
 
@@ -95,9 +95,11 @@ All three packages publish to the public npm registry under the `@zvenigora` sco
    `[Unreleased]` items under the new version's heading. Each package has its own changelog,
    as it has its own version. The root `CHANGELOG.md` only lists the three, and records
    workspace changes that ship in no package.
-2. Run the full gate — `npm run lint`, `npm test`, `npm run build`. Publishing an unbuilt or
-   stale `dist/` is the failure this ordering exists to prevent, and a green `npm test` is
-   **not** a type-check: only `build` runs `tsconfig.lib`.
+2. Run the gate, `npx nx run-many -t lint test build --skip-nx-cache --output-style=static`
+   ([SR8](docs/standing-rules.md#sr8)). `npm run lint`, `npm test` and `npm run build` run the
+   same targets, cached, so they are not the gate. Publishing an unbuilt or stale `dist/` is the
+   failure this ordering exists to prevent, and a green `npm test` is **not** a type-check
+   ([SR9](docs/standing-rules.md#sr9)).
 3. Publish from the built directory, never from `modules/`:
 
    ```bash

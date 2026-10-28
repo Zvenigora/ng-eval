@@ -9,6 +9,12 @@ most of those mentions are plain text that no check can follow ([Phase 10 plan](
 published README links ([`tools/published-links.txt`](../tools/published-links.txt)), leaves a stub at
 its old path that links the new one ([F25](backlog-retired.md#f25) Part 4).
 
+## Standing rules
+
+[`standing-rules.md`](standing-rules.md) — the process and verification rules for all three
+libraries, SR1 onward, each with its origin and what goes red when it is broken. `CLAUDE.md` imports
+it, so every session loads it; the `code-reviewer` does not see the import and reads the file first. Cite a rule by its link, not by restating it.
+
 ## The register
 
 - [`backlog.md`](backlog.md) — everything recorded and not done: defects left unfixed, decisions
@@ -55,16 +61,16 @@ Work on one register entry, or a group of them, that needed more than one commit
 | `a8/` | [plan](a8/plan.md), [step 2 plan](a8/step-2-plan.md), [step 2 decision](a8/step-2-decision.md) | [A8](backlog-retired.md#a8): `EvalService` retained every state it created until `ngOnDestroy` |
 | `a20/` | [plan](a20/plan.md) | [A20](backlog-retired.md#a20): `EvalService._activeContexts` deleted |
 | `a21/` | [plan](a21/plan.md) | [A21](backlog-retired.md#a21): `EvalService.ngOnDestroy` no longer clears caller-owned contexts |
-| `a35/` | [plan](a35/plan.md) | [A35](backlog-retired.md#a35), with A36, A37, A39 and A42: dangerous function values past the call sandbox. Its § 3.1 is the identity set, § 3.3 the funnel, § 3.4 what stays open, and § 9 the contract after it landed. The second of its two § 1.2s holds the two probe rules the `step` skill repeats |
-| `a45/` | [plan](a45/plan.md) | [A45](backlog-retired.md#a45) part 2 and [A44](backlog-retired.md#a44), with [A52](backlog-retired.md#a52): assignment targets as JavaScript evaluates them, released as `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms` 0.7.0. Its § 0 collects thirteen rules, nine carried forward from earlier plans and four its own; § 1.4 holds the measurements, § 9 the contract after it landed, and § 10 the retrospect |
+| `a35/` | [plan](a35/plan.md) | [A35](backlog-retired.md#a35), with A36, A37, A39 and A42: dangerous function values past the call sandbox. Its § 3.1 is the identity set, § 3.3 the funnel, § 3.4 what stays open, and § 9 the contract after it landed. The second of its two § 1.2s holds the two probe rules that are now [SR18](standing-rules.md#sr18) and [SR19](standing-rules.md#sr19) |
+| `a45/` | [plan](a45/plan.md) | [A45](backlog-retired.md#a45) part 2 and [A44](backlog-retired.md#a44), with [A52](backlog-retired.md#a52): assignment targets as JavaScript evaluates them, released as `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms` 0.7.0. Its § 0 collects thirteen rules, now [standing rules](standing-rules.md#old-numberings); § 1.4 holds the measurements, § 9 the contract after it landed, and § 10 the retrospect |
 | `gates/` | [plan](gates/plan.md), [step 1](gates/step-1-summary.md), [step 2](gates/step-2-summary.md), [step 3](gates/step-3-summary.md), [step 4](gates/step-4-summary.md), [retrospect](gates/summary.md) | The documentation and CI gates |
 | `trace-surface/` | [plan](trace-surface/plan.md) | The trace surface: A15, A16 and A19 decided |
 | `trace2/` | [step 1, the bound](trace2/step-1.md), [step 2, the reset](trace2/step-2.md), [step 3, docs and records](trace2/step-3.md) | [A12](backlog-retired.md#a12): the trace bound and its reset, as step records without a plan |
 
 ## Gates
 
-The gate is `npx nx run-many -t lint test build --skip-nx-cache --output-style=static`, run after every
-step. `static` keeps successful tasks' output, which is where the test counts are read.
+The gate is [SR8](standing-rules.md#sr8), run once after every step. Beside the three projects' lint,
+test and build targets, it runs these checks:
 
 - [`tools/doc-links.mjs`](../tools/doc-links.mjs) — every relative link in a `*.md`, and in a comment
   line of a `*.ts`, resolves to a file and, where it names one, an anchor; untracked files git does
@@ -98,10 +104,7 @@ published READMEs link them by absolute URL, which is why they stay under `docs/
 
 ## Conventions
 
-- **Design records stay as written.** A completed plan or summary is not updated to match the code.
-  A link in one that would dangle becomes a permalink to the target at the last commit that touched
-  it.
-- **Their line citations refer to the commit that wrote them.** `git log` on the document finds that
-  commit, and `git show <commit>:<file>` reads the code a citation names.
-- **A live document cites a heading or a symbol**, not a line.
-- **One retrospect per track**, and no per-step summaries in new work.
+- **Design records stay as written**, and their line citations refer to the commit that wrote them
+  ([SR6](standing-rules.md#sr6)). `git log` on the document finds that commit, and
+  `git show <commit>:<file>` reads the code a citation names.
+- **One retrospect per track**, and no per-step summaries in new work ([SR7](standing-rules.md#sr7)).

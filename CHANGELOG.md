@@ -20,6 +20,11 @@ which gained "(not published to npm)". This file now holds only changes that shi
 Workspace tooling: nothing here reaches a consumer, so nothing here is versioned.
 
 ### Added
+- **The standing rules, in one place**, 2026-10-27. `docs/standing-rules.md` holds the process and
+  verification rules for all three libraries as SR1–SR38, each with its origin and what goes red when
+  it is broken, and a table resolving the older plans' rule numbers. `CLAUDE.md` imports it, and
+  `CLAUDE.md`, the `step` skill, the `code-reviewer`, `CONTRIBUTING.md` and `docs/README.md` cite it
+  in place of their copies, which had drifted. `docs/backlog.md` F27.
 - **`tools/release-tags.mjs` fails on a lightweight release tag**, 2026-10-26. Every
   `eval-core@`, `eval-signals@` and `eval-forms@` tag, whether a Publication status row names it or
   not, must be annotated: a lightweight one fails, named once, and the message gives the

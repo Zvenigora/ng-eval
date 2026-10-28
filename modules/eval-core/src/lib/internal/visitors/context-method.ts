@@ -181,10 +181,11 @@ export const contextSetInScope = (context: EvalContext, key: unknown, value: unk
  * `EvalContext.push` as the class defines it, for a context that may be
  * undefined.
  *
- * The optional receiver is deliberate: every scope push in the evaluator is
- * written `st.context?.push(...)`, and its pop is paired with it by a
- * `finally`. Both wrappers no-op on an absent context, so a walk with no
- * context pushes nothing and pops nothing, exactly as the optional chain did.
+ * The optional receiver is deliberate: every scope push in the evaluator
+ * calls `contextPush(st.context, ...)`, and its pop, `contextPop`, runs in the
+ * `finally` of a `try` opened on the next line. Both wrappers no-op on an
+ * absent context, so a walk with no context pushes nothing and pops nothing,
+ * exactly as the `st.context?.push(...)` optional chain they replaced did.
  */
 export const contextPush = (context: EvalContext | undefined, scope: Context, options?: EvalOptions): void => {
   if (!context) {

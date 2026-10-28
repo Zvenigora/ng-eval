@@ -12,6 +12,13 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Changed
+- The internal `contextPush`'s JSDoc says what every scope push site does since
+  [A42](../../docs/backlog-retired.md#a42): it calls `contextPush(st.context, …)`, its pop runs in
+  a `finally`, and both no-op on an absent context. It said each site wrote `st.context?.push(...)`
+  ([F27](../../docs/backlog-retired.md#f27)). Documentation only: the comment reaches the bundle,
+  not the `.d.ts`.
+
 ---
 
 ## [0.14.0] - 2026-10-26

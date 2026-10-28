@@ -6905,6 +6905,93 @@ and reads no object type; the 56 release tags, each `tag` under `git cat-file -t
 before 0.14.0's post-publish commit. Not probed then: no lightweight tag was made. Fixed and probed
 2026-10-26, as above.
 
+<a id="f27"></a>
+## F27 — The standing rules were copied, and the copies had drifted — **Retired, fixed**
+
+**Package** repo, core · **Kind** docs · **Status** **Retired — fixed 2026-10-27**, in no package but
+for one `eval-core` docblock, which ships in its next release, documentation only. Opened and fixed in
+the same commit, from an inventory made first
+
+*Found* 2026-10-27, by an inventory at 54f1d6d of every process and verification rule in `CLAUDE.md`'s
+"Working from a plan", "Testing", "Public API discipline", "Conventions" and "Git"; the `step` skill;
+the `code-reviewer`'s general rules; `CONTRIBUTING.md`; the [A45 plan](a45/plan.md)'s § 0 and the
+sections it cites as origins (Phase 2 § 0.1, Phase 6 § 0.2–§ 0.2.3, the A35 plan's second § 1.2,
+Phase 10 § 6.1); `docs/README.md`'s Conventions; and the register's preamble. It found about forty
+distinct rules and twenty divergences between copies, among them:
+- **three gate commands**: `CLAUDE.md`'s full one, its own Git section's "green lint + test run",
+  and `CONTRIBUTING.md`'s cached `npm run lint`, `npm test`, `npm run build`;
+- **removing a test**: `CLAUDE.md` said flag it and ask, the skill allowed a removal the plan lists,
+  and Phase 10 § 6.1 required a vacuous case's removal;
+- **rules the A45 plan's § 0 said it collected and did not**: Phase 6's probe decay and its kill-list
+  procedure, and three of Phase 10 § 6.1's seven bullets;
+- **stale facts in the reviewer's general rules**: `eval-forms` "published at `0.1.0`", two scope
+  pushers where there are four, and a placeholder citing a section "once that document exists".
+
+*Fixed* 2026-10-27: [`docs/standing-rules.md`](standing-rules.md) holds SR1–SR38, each with its
+statement, its origin and what goes red, and a table resolving the older plans' rule numbers.
+`CLAUDE.md` imports it with an `@docs/standing-rules.md` line. `CLAUDE.md`, the `step` skill, the
+`code-reviewer`, `CONTRIBUTING.md`, `docs/README.md` and [A53](backlog.md#a53) cite an SR link in place
+of their copies; the design records keep their own numbering. The maintainer decided each divergence:
+the gate is the full command and the `npm run` scripts are its targets cached (SR8); a vacuous case
+is removed with its reason and count, approved at a gate or in a prompt (SR14); the reviewer runs
+before every commit touching `modules/` or `tools/`, and anything else where the plan or the prompt
+says, so a plan step outside them no longer runs it by default (SR33); and the rest as the rules
+state. Found
+false while measuring, and fixed: `CLAUDE.md`'s scope-stack paragraph said every push site writes
+`st.context?.push(...)`, where all four call `contextPush(st.context, …)` since A42.
+
+*Widened* at the maintainer's decision, by SR31, since a claim false now is fixed in the open commit:
+`contextPush`'s docblock in `modules/eval-core/src/lib/internal/visitors/context-method.ts` said the
+same, and now says that every push calls `contextPush(st.context, …)`, its `contextPop` runs in a
+`finally`, and both no-op on an absent context. Comment only. Measured on a production build of
+`eval-core`: neither the old text nor the new is in the package's one `.d.ts`, and both reach
+`fesm2022/zvenigora-ng-eval-core.mjs` and its map, which keep the source's comments. So it ships in
+`eval-core`'s next release, with an `[Unreleased]` line marked documentation only, as
+[F18](#f18)'s comment fix did in `eval-forms`; Phase 10 step 6's comment-only files were specs, which
+ship in no package, and are not the precedent. No release is cut for it. `CLAUDE.md`'s line citation
+of `nested-signal-check.ts` became its symbol, `warnOnNestedSignals` (SR6).
+
+*The sweep* (SR25): each removed copy's distinctive words, grepped across the repository, untracked
+files included, and every hit decided.
+
+| Grep | Hits outside the new file | Decision |
+| :--- | :--- | :--- |
+| "spent five phases invisible", "the index stays whole", "never carries it forward", "one numbered step per session", "improvising a replacement design", "corrected, not amended", "Run every wrong implementation", "worse than no test", "7 failures", "2026-09-26, no package prefix", "Nothing parses the type", "one commit = one PR", "green lint + test run", "name the document when citing", "a mention the doc-links gate cannot see", "Ending the session is the correct outcome", "A removal the plan lists", "matched by the message that names its layer", "used to cover on its own", "may skip it only where the plan says so", "published at 0.1.0", "Cite the deciding", "floor, not the ceiling", "leave only with the step that owns them", "headed by the bare version", "drive-by edits defeat", "bare § 9.1", "precisely the way CLAUDE.md describes", "break the implementation", "Grep for the claim" | none | — |
+| "silently dropped" | Phase 6 plan; `eval-core` CHANGELOG; `evaluate-rule.ts:65` | other subjects; kept |
+| "more permissive than", "after every step", "Check the setup separately", "nine carried forward", "mirrors its block by hand", "own commit" | Phase 6, Phase 1, Phase 10, A35 and A45 plans | design records, kept as written (SR6) |
+| "pattern.ts:110-113" | Phase 2, 3 and 6 plans; this file's [A9](#a9) | history, kept |
+| "st.context?.push(...)" | Phase 2 plan; A9; `CLAUDE.md`, naming the form `contextPush` replaced; **`contextPush`'s docblock in `context-method.ts`** | history kept. **The docblock was false now, and is fixed here**: see the widening below |
+| "gets a leg", "stop-and-replan" | `eval.service.context-write.spec.ts:91`; three `export-list.spec.ts` docblocks; `code-reviewer.md` | a spec stating its own matrix or its plan's gate; kept |
+| "npm run lint" | `CONTRIBUTING.md`'s Code style: run it "before committing" | **rewritten**: the gate before committing (SR8) |
+| "thirteen rules", "§ 0 rule" | `CLAUDE.md`, `docs/README.md`, A53 | each now points at the [old numberings](standing-rules.md#old-numberings) |
+| "two probe rules" (the skill "repeats" them) | `CLAUDE.md`, `docs/README.md` | **rewritten**: now SR18 and SR19. Missed by the first sweep and found by the code review |
+
+*Verified* 2026-10-27, before the commit: the gate, run once and alone, green at 3134 / 444 / 380,
+unchanged; doc-links at 355 files and 1994 links, 0 dangling; release-tags at 46 rows and 56 release
+tags, all annotated. Two probes, each applied alone with the Edit tool and reverted:
+- a. a link to `docs/standing-rules.md#sr99` added to `CLAUDE.md`: doc-links exit 1, naming
+  `CLAUDE.md:11: docs/standing-rules.md#sr99 — no such anchor in the target`;
+- b. `docs/README.md`'s links to the file removed. Its section link alone left the index check green,
+  since four more links into the file remained; with all five removed, doc-links exit 1, naming
+  `docs/README.md: docs/standing-rules.md — not linked from the index`.
+
+The code review found no Critical. Its findings on this change were folded in: the "two probe
+rules" row above; the `code-reviewer`'s own `st.context.push` and `arrow-function-expression.ts:17`
+mentions, now `contextPush` and the symbol; the skill and SR33 agreeing on "the plan or the prompt";
+SR6's origin moved to Phase 10 § 3.8; and wording SR4, SR5, SR17 and SR36 had dropped, restored.
+
+*Witnessed* 2026-10-27 by the maintainer in a fresh session, on the commit as first made: the main
+session loads the import, and the `code-reviewer` does not. The first review had suggested as much,
+since the `CLAUDE.md` it was given was HEAD's. So `code-reviewer.md`'s body opens by sending it to
+`docs/standing-rules.md`, and the three sentences that said it loaded the file through `CLAUDE.md` —
+its own, `docs/README.md`'s and the standing rules' preamble — now say it does not.
+
+Context loaded per session: `CLAUDE.md` 469 → 428 lines and 31,389 → 28,237 bytes, and with its
+import 648 lines and 46,428 bytes, so a session loads 15,039 bytes more than before. The `step`
+skill 188 → 149 lines, 9,833 → 7,233 bytes; the `code-reviewer` 503 → 505 lines, 33,594 → 34,235
+bytes, since its description and its scope-pusher paragraph grew, and it now reads the 18,191-byte
+standing rules as a file.
+
 ---
 
 # Retired

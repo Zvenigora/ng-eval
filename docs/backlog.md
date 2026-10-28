@@ -161,6 +161,11 @@ refusal on every identifier target (D11). A48–A51 and A53 are not scheduled.
 [F24](backlog-retired.md#f24), [F25](backlog-retired.md#f25) and F26 are fixed, and ship in no package; F21's toolchain bump left one
 `overrides.nx` entry, `undici`, which [F16](#f16) part 2 holds.
 
+[F27](backlog-retired.md#f27) is fixed: the process and verification rules are in
+[`standing-rules.md`](standing-rules.md), imported by `CLAUDE.md`, and the copies cite it. It ships
+in no package but for one corrected `eval-core` docblock, an `[Unreleased]` line documentation only. It opened
+[F28](#f28), the consumer documents, which is not scheduled.
+
 `eval-core` 0.13.3 is released alone, a patch, tagged at 021d5e4 and published 2026-10-23. It
 carries A45 part 1 only. Its `.d.ts` is SHA-256-identical to 0.13.2's, and it is inside
 `eval-signals`' and `eval-forms`' `>=0.13.0 <0.14.0`, so neither downstream package released.
@@ -294,8 +299,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.13.2 | `dc4302d` | 2026-10-22 | 25 | 5: A43–A47 | 4: A40, A41, A43, A46 | 26 |
 | `eval-core` 0.13.3. A45 part 1 closed with it, a part, so A45 stays live; F20 and F24 ship in no package | `021d5e4` | 2026-10-23 | 26 | 0 | 2: F20, F24 | 24 |
 | `eval-core` 0.14.0, `eval-signals` 0.7.0, `eval-forms` 0.7.0. F21 and F25 ship in no package | `0d305a3` | 2026-10-26 | 24 | 6: A48–A53 | 5: F21, F25, A44, A45, A52 | 25 |
-| *Unreleased*. F26, opened by 0.14.0's post-publish commit and fixed after it, ships in no package | — | — | 25 | 1: F26 | 1: F26 | 25 |
-| **Since the register opened** | | | **42** | **68** | **85** | **25** |
+| *Unreleased*. F26, opened by 0.14.0's post-publish commit and fixed after it, ships in no package; F27 ships in no package but for one `eval-core` docblock | — | — | 25 | 3: F26, F27, F28 | 2: F26, F27 | 26 |
+| **Since the register opened** | | | **42** | **70** | **86** | **26** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -428,6 +433,8 @@ makes it that release's row, with its tag commit and date.
 | [F24](backlog-retired.md#f24) | The `eval-signals` and `eval-forms` copies of `export-list.spec.ts` have no reverse case, so an allowlist entry the README documents would mask its mention's deletion, as F22 found in `eval-core` | signals, forms | test gap | **Retired — fixed 2026-10-22**, in no package: each copy has F22's helper and case, which fails in that project alone on an allowlisted name its README documents |
 | [F25](backlog-retired.md#f25) | Four documentation checks Phase 10 left undecided: no gate fails when `docs/README.md` stops linking a tracked `docs/` file; two links into `eval-core`'s CHANGELOG headings left the doc-links gate when they became absolute; doc-links silently skips an untracked `.md`; and whether a published README's absolute link binds its target path and anchor for good | repo | decision | **Retired — decided and fixed 2026-10-23**, in no package: a published link binds, and `tools/doc-links.mjs` checks the index, names and checks untracked files, and resolves absolute links into the tree and every link in `tools/published-links.txt` |
 | [F26](backlog-retired.md#f26) | `tools/release-tags.mjs` does not check that a release tag is annotated: it resolves each tag with `git rev-list -n 1`, which accepts a lightweight tag, so the register's "all annotated" is checked by nothing | repo | fix | **Retired — fixed 2026-10-26**, in no package: every `eval-core@`, `eval-signals@` and `eval-forms@` tag must be a tag object, with or without a row, and a lightweight one fails, named once; the `v*` tags are not checked |
+| [F27](backlog-retired.md#f27) | The process and verification rules were copied across `CLAUDE.md`, the `step` skill, the `code-reviewer`, `CONTRIBUTING.md` and four plans' rule sections, and the copies had drifted: twenty divergences, among them three different gate commands | repo, core | docs | **Retired — fixed 2026-10-27**: [`docs/standing-rules.md`](standing-rules.md), SR1–SR38, imported by `CLAUDE.md`; the copies cite it. In no package, but for `contextPush`'s docblock, an `eval-core` `[Unreleased]` line, documentation only |
+| [F28](#f28) | The consumer documents Phase 10 left out: whether the package READMEs split into guides, where a guide lives and whether it ships; `eval-forms`' README, at 893 lines, by entry point first | repo, core, signals, forms | decision | Open — opened 2026-10-27 by F27 |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -1261,7 +1268,7 @@ plan's M7), which may be the same effect.
 
 **Lead, unverified: allocation-driven garbage collection from the per-evaluation `Registry` copy.**
 Under `caseInsensitive`, `EvalContext.fromContext` copies a plain context into a `Registry` on every
-evaluation (the plan's § 0 rule 7). If collecting those copies triggers the slowdown, its onset
+evaluation ([SR19](standing-rules.md#sr19), the plan's § 0 rule 7). If collecting those copies triggers the slowdown, its onset
 would follow allocation over time rather than evaluation count. That would look the same across
 bundles, as (a) does. No run has tested it.
 
@@ -1827,3 +1834,35 @@ a plain `new Promise` rejected with no handler reached none of the three channel
 `uncaughtPromiseErrors` queue held it until the macrotask, and a function set under the hook was
 called with it. Then by criterion 5's own cases: a wrong implementation that left superseded runs'
 rejections unhandled turned both red through the hook, with the control green.
+
+<a id="f28"></a>
+## F28 — The consumer documents Phase 10 left out
+
+**Package** repo, core, signals, forms · **Kind** decision · **Status** Open. Opened 2026-10-27 by
+[F27](backlog-retired.md#f27)
+
+[Phase 10](documentation/phase-10-plan.md) restructured the maintainer documents and gave the three
+package READMEs one opening, and left the consumer documents' shape out of scope: its D6 ruled out
+separate guide files, and its § 8 q2 left `eval-forms`' README, then 864 lines, as it was. That
+README is 893 lines now, `eval-core`'s 671 and `eval-signals`' 627. Undecided: whether a package
+README splits into guides, where a guide lives, and whether it ships.
+
+**Constraints, whatever the answer:**
+- **The `readme-examples.spec.ts` count cases find their blocks by heading**
+  ([F13](backlog-retired.md#f13)): `eval-forms/reactive`'s counts the range from the heading
+  "Quick start — Reactive Forms", its entry point in a code span, up to "Signal Forms", so a heading
+  moved or renamed moves a count; the case matches the heading as the README writes it.
+- **`tools/published-links.txt` binds `#readme`** — the repository's and each package folder's, which
+  binds each README file — and `modules/eval-signals#async-expressions`, a heading `eval-forms`'
+  published README links ([F25](backlog-retired.md#f25) Part 4): the files and that heading stay, or a
+  stub keeps the path and the anchor.
+- **A guide file needs a home and a ship decision.** One under `modules/<name>/` ships only if the
+  package's build copies it; one under `docs/` is linked by absolute URL from a published README,
+  which then binds its path.
+- **A moved shipped section needs a CHANGELOG line and a docs-only patch release**, as Phase 10's
+  `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms` 0.6.1 were.
+- **The first cut is `eval-forms` by entry point**: the shared core, `/reactive` and `/signals`.
+
+*Recorded*: this entry. *Verified*: read 2026-10-27 at 54f1d6d — the Phase 10 plan's D6 and § 8 q2,
+`tools/published-links.txt`, the count case's docblock in
+`modules/eval-forms/reactive/src/lib/readme-examples.spec.ts`, and `wc -l` of the three READMEs.

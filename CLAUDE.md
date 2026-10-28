@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Standing rules
+
+@docs/standing-rules.md
+
+The process and verification rules for all three libraries — plans and steps, the gate, probes,
+claims, commits — are [`docs/standing-rules.md`](docs/standing-rules.md), imported by the line
+above and cited as [SR1](docs/standing-rules.md#sr1), SR2, …. This file keeps the facts about the
+code and the state of the work, and cites a rule rather than restating it.
+
 ## What this is
 
 An Nx monorepo containing three Angular libraries under `modules/`, versioned
@@ -39,11 +48,8 @@ part 2 and A44, assignment targets as JavaScript evaluates them — is complete:
 
 **Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left
 unfixed, decisions logged rather than made, gaps in what the suite can catch — is in
-**`docs/backlog.md`**, cited by stable ID (`BL-A8`, not a line number). Read its preamble
-before recording a deferral anywhere else: the register exists because the most serious
-entry in it spent five phases invisible while two documents claimed it was tracked.
-
-**Retiring a backlog entry moves it to `docs/backlog-retired.md`; the index stays whole in `backlog.md`, and the doc-links gate lists the inbound links to re-point. An entry whose anchor a published README links (`tools/published-links.txt`) keeps it on its index row, as `<a id="…"></a>` in the first cell.**
+**`docs/backlog.md`**, cited by stable ID ([SR5](docs/standing-rules.md#sr5)). Read its
+preamble before recording a deferral anywhere else.
 
 ## Commands
 
@@ -62,9 +68,9 @@ npx nx test eval-core --testPathPatterns=queue.spec
 npx nx test eval-core --testNamePattern="case insensitive"   # note: singular here
 ```
 
-**Do not filter `run-many` with `-p`.** A project named in `-p` that does not exist is
-**silently dropped** rather than an error, so a stale project list reads as a pass while
-covering less than it names.
+The gate is the full command in [SR8](docs/standing-rules.md#sr8), never filtered with `-p`.
+Its `--output-style=static` is there because nx 23.3, like 23.2, hides successful tasks'
+output, and the gate is read for its test counts.
 
 Root scripts: `npm test`, `npm run build` and `npm run lint` are `nx run-many -t <target>`
 with no project filter, so each covers all three projects. CI
@@ -89,10 +95,8 @@ list lacks; and fails on a file under `docs/` that `docs/README.md` does not lin
 `eval-core@`, `eval-signals@` or `eval-forms@` tag, with or without a row — must also be annotated,
 and a lightweight one fails; the `v*` tags are not checked.
 
-**A green `test` run is not a type-check.** Jest compiles per file through `tsconfig.spec`
-and is more permissive than `tsconfig.lib` — Phase 3 step 3 shipped an `EvalOptions` index
-read that the whole suite accepted and `build:production` rejected (`TS7053`), so run the
-build before believing a type is sound.
+**A green `test` run is not a type-check** ([SR9](docs/standing-rules.md#sr9), which names
+the tsconfig each target compiles through).
 
 `lint` and `test` targets are *inferred* by the `@nx/eslint` / `@nx/jest` plugins
 (`nx.json` `plugins`); only `build` and target-level overrides live in each project's
@@ -100,24 +104,18 @@ build before believing a type is sound.
 
 ## Working from a plan
 
-- Work runs per backlog item or batch. **A plan document is for one item that needs more than
-  one commit**, under `docs/<item>/` — as in `docs/a8/`, `docs/a20/`, `docs/a21/` and
-  `docs/trace-surface/`. **A one-commit item gets no plan document: its exit criteria live in
-  the prompt, and its backlog entry records what verified it.** **Neither does a batch of
-  independent one-commit items**, however many commits it runs to: each item's exit criteria
-  live in the prompt, as the A3/B4/D6/F6, D9/F13 and F2 batches did. The A35 plan,
-  `docs/a35/plan.md` — dangerous function values past the call sandbox, with A36 and A37 — is
-  complete: it shipped as `eval-core` 0.12.1 and 0.13.0, and its advisory is GHSA-qrqj-3445-3rjx.
-  Phase 10's plan is complete, and so is the A45 plan, `docs/a45/plan.md`, which shipped as
-  `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms` 0.7.0. No plan is active.
-  `.claude/skills/step/SKILL.md` targets the active plan, and is retargeted with each new plan;
-  until the next one is written it names none, and stops at its § 1 if invoked.
-- **One retrospect per track; no per-step summaries.**
-- **Anything left for later work goes in `docs/backlog.md`; a commit body never carries it
-  forward.**
-- **The gate is `npx nx run-many -t lint test build --skip-nx-cache --output-style=static`** —
-  `static` because nx 23.3, like 23.2, hides successful tasks' output, and the gate is read for its
-  test counts.
+Work runs per backlog item or batch, and a plan document is only for an item that needs more
+than one commit ([SR1](docs/standing-rules.md#sr1)) — as in `docs/a8/`, `docs/a20/`,
+`docs/a21/` and `docs/trace-surface/`. Steps, plan corrections, the gate, review and commits are
+[SR2](docs/standing-rules.md#sr2)–[SR4](docs/standing-rules.md#sr4),
+[SR8](docs/standing-rules.md#sr8) and [SR33](docs/standing-rules.md#sr33)–[SR35](docs/standing-rules.md#sr35).
+
+- The A35 plan, `docs/a35/plan.md` — dangerous function values past the call sandbox, with A36
+  and A37 — is complete: it shipped as `eval-core` 0.12.1 and 0.13.0, and its advisory is
+  GHSA-qrqj-3445-3rjx. Phase 10's plan is complete, and so is the A45 plan, `docs/a45/plan.md`,
+  which shipped as `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms` 0.7.0. No plan is
+  active. `.claude/skills/step/SKILL.md` targets the active plan, and is retargeted with each new
+  plan; until the next one is written it names none, and stops at its § 1 if invoked.
 - The completed plans are design records, not work in progress, and each remains the
   reference for its library — they record findings about this codebase that are not
   obvious from reading files in isolation:
@@ -138,7 +136,7 @@ build before believing a type is sound.
     A36, A37, A39 and A42, shipped as `eval-core` 0.12.1 and 0.13.0; its § 3.1 is the identity
     set, § 3.3 the funnel, § 3.4 what stays open, and § 9 the contract after it landed. It
     numbers two § 1.2s: the second, "Standing rules, from Revision 16", holds the two probe rules
-    `.claude/skills/step/SKILL.md` repeats.
+    that are now [SR18](docs/standing-rules.md#sr18) and [SR19](docs/standing-rules.md#sr19).
   - `docs/documentation/phase-10-plan.md` — Phase 10, the documentation restructure, shipped as
     `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms` 0.6.1, docs-only; its § 3.2 is why
     nothing under `docs/` moves, § 3.5 the package READMEs' one opening and their gated peer ranges,
@@ -147,32 +145,15 @@ build before believing a type is sound.
     Part 4: a published absolute link binds its target.
   - `docs/a45/plan.md` — the A45 track, A45 part 2 and A44, assignment targets as JavaScript
     evaluates them, with A52, shipped as `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms`
-    0.7.0; its § 0 collects thirteen rules, nine carried forward from the earlier plans and four
-    its own, § 3 is the design, § 9 the contract after it landed, and § 10 the retrospect. Its § 8 q2–q4
+    0.7.0; its § 0 collects thirteen rules, now standing rules
+    ([the map](docs/standing-rules.md#old-numberings)), § 3 is the design, § 9 the contract after it landed, and § 10 the retrospect. Its § 8 q2–q4
     are pointers to A48–A51, which stay open.
 
-  Their open questions are settled unless the document says otherwise. Two of them number
-  a § 9 and a § 9.1 on unrelated subjects, so name the document when citing one. Their line
-  citations, and those in their summaries, refer to the code at the commits that wrote them
-  and stay as written: `git log` on the document finds that commit, and
-  `git show <commit>:<file>` the code a citation names.
-- **Execute one numbered step per session.** Do not begin step N+1 in the same session.
-- Run the gate (above) after **every** step, not only at the end.
-- A step is done when its stated exit criteria are met, not when the code looks finished.
-- If a step turns out to be wrong, stop and say so rather than improvising a replacement
-  design.
-- **A plan correction found during a step lands in that step's own commit**, with the reason
-  in the commit body and in the step report. It gets no commit of its own, and it is not
-  drafted ahead of the step. Scope, file list, chores, cross-references and stale prose are
-  all editable in place by whichever step finds the problem. **The one exception is the exit
-  criteria fixed at the step's confirmation gate: the step running under them cannot amend
-  them.** Evidence: separate amendment commits once took fourteen commits for three steps of
-  shipped work; the same change made this way took four.
-- **A criterion that names something that does not exist is corrected, not amended**, even one
-  fixed at the gate. The step records what it found and why that leg was unsatisfiable, and does
-  not halt. Weakening a criterion that *can* be met stays forbidden.
-- **Run every wrong implementation against every case, and read the results case by case**:
-  a criterion can go red, or stay green, for a reason other than the one it names.
+  Their open questions are settled unless the document says otherwise. They stay as written,
+  and their line citations, and those in their summaries, refer to the code at the commits that
+  wrote them ([SR6](docs/standing-rules.md#sr6)): `git log` on the document finds that commit,
+  and `git show <commit>:<file>` the code a citation names. Two of them number a § 9 and a
+  § 9.1 on unrelated subjects.
 
 ## Architecture (`eval-core`)
 
@@ -230,15 +211,17 @@ So there are **three** stack invariants, not one, and a new visitor must satisfy
 - the value stack above — push exactly one, pop exactly one per child;
 - the open-node stack — exactly one `afterVisitor` per `beforeVisitor`, on every exit path
   including the ones an exception takes;
-- the **scope stack** — exactly one `st.context.pop()` per `st.context.push()`, again on
-  every exit path. **Four** visitors push scopes — `arrow-function-expression.ts` (the
-  parameter bindings), and `program.ts`, `block-statement.ts` and `for-statement.ts` (a
-  lexical scope each, all three added by Phase 2) — and since Phase 2 step 0
-  (`docs/backlog.md` `BL-A9`) **every one pops in a `finally`**. That is the idiom to copy,
-  and the `try` opens on the line *after* the push, never around it: every site writes
-  `st.context?.push(...)`, so a `try` opened one line early would pair a `finally` pop with a
-  push the same optional chain had skipped, and would swallow a throw from the
-  context-building call into a pop as well.
+- the **scope stack** — exactly one `contextPop(st.context)` per
+  `contextPush(st.context, …)`, again on every exit path. **Four** visitors push scopes —
+  `arrow-function-expression.ts` (the parameter bindings), and `program.ts`,
+  `block-statement.ts` and `for-statement.ts` (a lexical scope each, all three added by
+  Phase 2) — and since Phase 2 step 0 (`docs/backlog.md` `BL-A9`) **every one pops in a
+  `finally`**. That is the idiom to copy, and the `try` opens on the line *after* the push,
+  never around it. `contextPush` and `contextPop` (`context-method.ts`, which takes both
+  methods from the context's class, A42) skip an absent context alike, as the optional chain
+  `st.context?.push(...)` they replaced did. The hazard is a throw: a `try` opened one line
+  early would run its `finally` pop after the push, or the call building its scope, had thrown,
+  and pop a scope that belongs to the caller.
 
   **Count them with `grep`, and do not trust the number in this paragraph either.** It said
   "two — `arrow-function-expression.ts` and `pattern.ts`" from Phase 1 until the A11 repair,
@@ -364,29 +347,9 @@ These apply to all three libraries.
 - Specs live next to the code they cover, as `*.spec.ts` or `*.test.ts`.
 - Match the existing per-visitor spec style — read a neighbouring spec before writing a
   new one.
-- New behaviour is written test-first. Pure refactors are not: for those the existing
-  suite is the regression gate, and new specs are added once the refactor is green.
-- Never weaken or delete an existing assertion to make a change pass. If an existing test
-  genuinely encodes wrong behaviour, flag it and ask.
-- **A test that would pass without the code it tests is worse than no test** — it reports
-  coverage it does not have. For any assertion covering an invariant, break the
-  implementation and confirm the test fails. Phase 1 step 3's identity-checked `exit` is
-  the pattern: it was confirmed load-bearing by forcing `exit` back to a positional pop and
-  observing **7 failures**. Without that probe, "the suite is green" would have been equally
-  true of the broken version.
-  Common ways an assertion goes vacuous here: asserting on a hook that was never registered,
-  a no-op guard whose absence changes nothing for a singly-registered callback,
-  `expect(x).not.toThrow()` standing in for a behavioural claim, or a fixture shared between
-  the two arms of a comparison, so one producer moves both.
-- **The probe checks the assertion. Check the setup separately.** The failure is usually the
-  setup, not the assertion: a fixture in which the discriminating condition cannot arise.
-  Phase 3 step 4's pairing case gave both signals one shared source, so the "a dependency
-  changed" producer moved *both* of them and the two arms it existed to compare were never
-  distinct.
-  So before writing the assertion, describe what the setup would look like if the invariant
-  were false, and confirm that setup is reachable from the fixture you have. Then, when you
-  break the implementation, read **which** tests went red rather than that the suite did —
-  that pairing case survived a probe that produced three failures, none of them it.
+- Test-first, assertions, probes and the setup check are
+  [SR13](docs/standing-rules.md#sr13)–[SR19](docs/standing-rules.md#sr19), and the
+  documentation specs [SR30](docs/standing-rules.md#sr30).
 
 ## Public API discipline
 
@@ -394,20 +357,16 @@ These apply to all three libraries.
   `internal/classes/*/public-api.ts`, which reaches `src/public-api.ts` automatically —
   not by adding a direct export there. The downstream libraries have no such nesting:
   their barrels list modules directly, and `eval-forms` has one barrel per entry point.
-- Prefer purely additive changes. All three packages are published, so altering an
-  exported symbol's shape is a **breaking release**: it needs an explicit callout in the
-  response, a version bump, and an entry in **that package's own
-  `modules/<name>/CHANGELOG.md`** (`## [0.2.3] - 2026-09-26`, no package prefix). The root
+- A changed exported shape is a breaking release ([SR12](docs/standing-rules.md#sr12)), and
+  every change states where it ships ([SR11](docs/standing-rules.md#sr11)). A package's entry
+  goes in **its own `modules/<name>/CHANGELOG.md`**, headed `## [<version>] - <date>` with no
+  package prefix and npm's publish date in UTC, by `CONTRIBUTING.md`'s Releasing. The root
   `CHANGELOG.md` only lists the three, plus workspace changes that ship in no package.
 
 ## Conventions
 
-- Commit messages follow the Angular format: `<type>(<scope>): <summary>` with `<type>`
-  one of `build | chore | ci | docs | feat | fix | perf | refactor | test`. `chore` is for
-  changes that ship to no consumer — repository tooling such as the agent and skill
-  definitions under `.claude/`. Nothing parses the type: versions are bumped by hand
-  (`CONTRIBUTING.md`), so it is a convention for whoever reads the log, not a release
-  trigger.
+- Commit messages follow the Angular format in `CONTRIBUTING.md`'s Commit Messages, where
+  `chore` is for changes that ship to no consumer, such as `.claude/`.
 - Prettier config exists but the codebase is not formatted to it; match the surrounding file's style.
 - `tsconfig.base.json` sets `strict: false`, but all three libraries override it — so
   library code compiles under strict, and you should narrow `T | undefined` for real
@@ -451,19 +410,19 @@ These apply to all three libraries.
   retired).
   The one deliberate call is the carve-out — a dev-mode-only diagnostic behind
   `isDevMode()`, for a misuse that fails silently and would otherwise be undiagnosable
-  (`eval-signals`' `nested-signal-check.ts:88`, guarded at `:79`). Anything reachable in
+  (`eval-signals`' `warnOnNestedSignals`, in `nested-signal-check.ts`, behind its
+  `isDevMode()` guard). Anything reachable in
   production, or that a consumer could have caught another way, does not qualify.
 - New evaluator features generally need: the visitor, its registration in
   `recursive-visitors.ts`, a co-located spec, and an entry in the "ESTree nodes supported" list
   of `modules/eval-core/README.md`, the package README.
-- Modify files with the Edit and Write tools only. Do not edit files via shell
-  commands (`sed -i`, `>` redirection, `Set-Content`, etc.) — those bypass
-  formatting and lint automation.
+- Modify files with the Edit and Write tools only ([SR36](docs/standing-rules.md#sr36)).
 - Do not add `eslint-disable` comments to make lint pass. Fix the code, or raise
   the rule for discussion.
 
 ## Git
 
-- One plan step = one commit = one PR.
-- Never commit without a green lint + test run.
-- Do not commit or push unless asked.
+- Commit or push only when asked, and commit only after a green gate, one plan step to a
+  commit ([SR34](docs/standing-rules.md#sr34)); review first
+  ([SR33](docs/standing-rules.md#sr33)), and verify every push
+  ([SR35](docs/standing-rules.md#sr35)).
