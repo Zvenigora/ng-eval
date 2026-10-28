@@ -164,7 +164,9 @@ refusal on every identifier target (D11). A48–A51 and A53 are not scheduled.
 [F27](backlog-retired.md#f27) is fixed: the process and verification rules are in
 [`standing-rules.md`](standing-rules.md), imported by `CLAUDE.md`, and the copies cite it. It ships
 in no package but for one corrected `eval-core` docblock, an `[Unreleased]` line documentation only. It opened
-[F28](#f28), the consumer documents, which is not scheduled.
+[F28](#f28), the consumer documents, which is in flight as Phase 11
+([plan](documentation/phase-11-plan.md)): `eval-forms`' README reordered by entry point, with a
+contents list, to ship as `eval-forms` 0.7.1, a docs-only patch.
 
 `eval-core` 0.13.3 is released alone, a patch, tagged at 021d5e4 and published 2026-10-23. It
 carries A45 part 1 only. Its `.d.ts` is SHA-256-identical to 0.13.2's, and it is inside
@@ -434,7 +436,7 @@ makes it that release's row, with its tag commit and date.
 | [F25](backlog-retired.md#f25) | Four documentation checks Phase 10 left undecided: no gate fails when `docs/README.md` stops linking a tracked `docs/` file; two links into `eval-core`'s CHANGELOG headings left the doc-links gate when they became absolute; doc-links silently skips an untracked `.md`; and whether a published README's absolute link binds its target path and anchor for good | repo | decision | **Retired — decided and fixed 2026-10-23**, in no package: a published link binds, and `tools/doc-links.mjs` checks the index, names and checks untracked files, and resolves absolute links into the tree and every link in `tools/published-links.txt` |
 | [F26](backlog-retired.md#f26) | `tools/release-tags.mjs` does not check that a release tag is annotated: it resolves each tag with `git rev-list -n 1`, which accepts a lightweight tag, so the register's "all annotated" is checked by nothing | repo | fix | **Retired — fixed 2026-10-26**, in no package: every `eval-core@`, `eval-signals@` and `eval-forms@` tag must be a tag object, with or without a row, and a lightweight one fails, named once; the `v*` tags are not checked |
 | [F27](backlog-retired.md#f27) | The process and verification rules were copied across `CLAUDE.md`, the `step` skill, the `code-reviewer`, `CONTRIBUTING.md` and four plans' rule sections, and the copies had drifted: twenty divergences, among them three different gate commands | repo, core | docs | **Retired — fixed 2026-10-27**: [`docs/standing-rules.md`](standing-rules.md), SR1–SR38, imported by `CLAUDE.md`; the copies cite it. In no package, but for `contextPush`'s docblock, an `eval-core` `[Unreleased]` line, documentation only |
-| [F28](#f28) | The consumer documents Phase 10 left out: whether the package READMEs split into guides, where a guide lives and whether it ships; `eval-forms`' README, at 893 lines, by entry point first | repo, core, signals, forms | decision | Open — opened 2026-10-27 by F27 |
+| [F28](#f28) | The consumer documents Phase 10 left out: whether the package READMEs split into guides, where a guide lives and whether it ships; `eval-forms`' README, at 893 lines, by entry point first | repo, core, signals, forms | decision | Open — in flight as Phase 11; opened 2026-10-27 by F27 |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -1838,8 +1840,9 @@ rejections unhandled turned both red through the hook, with the control green.
 <a id="f28"></a>
 ## F28 — The consumer documents Phase 10 left out
 
-**Package** repo, core, signals, forms · **Kind** decision · **Status** Open. Opened 2026-10-27 by
-[F27](backlog-retired.md#f27)
+**Package** repo, core, signals, forms · **Kind** decision · **Status** Open — in flight as Phase 11,
+[`phase-11-plan.md`](documentation/phase-11-plan.md), which decides it as its D1–D6. Opened
+2026-10-27 by [F27](backlog-retired.md#f27)
 
 [Phase 10](documentation/phase-10-plan.md) restructured the maintainer documents and gave the three
 package READMEs one opening, and left the consumer documents' shape out of scope: its D6 ruled out

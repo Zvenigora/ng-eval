@@ -68,8 +68,10 @@ summary of every phase.
 | 5 | Async expression signals | `@zvenigora/ng-eval-signals`, with `@zvenigora/ng-eval-forms` for its peer range | [`signals/phase-5-plan.md`](docs/signals/phase-5-plan.md) | [`signals/phase-5-summary.md`](docs/signals/phase-5-summary.md) |
 | 9 | Colon-joined identifiers | `@zvenigora/ng-eval-core`, with `@zvenigora/ng-eval-signals` and `@zvenigora/ng-eval-forms` | [`colon-identifiers/phase-9-plan.md`](docs/colon-identifiers/phase-9-plan.md) | [`colon-identifiers/phase-9-summary.md`](docs/colon-identifiers/phase-9-summary.md) |
 | 10 | Documentation restructure, repository-wide | All three, as docs-only patches | [`documentation/phase-10-plan.md`](docs/documentation/phase-10-plan.md) | [`documentation/phase-10-summary.md`](docs/documentation/phase-10-summary.md) |
+| 11 | `eval-forms`' README by entry point | `@zvenigora/ng-eval-forms`, a docs-only patch | [`documentation/phase-11-plan.md`](docs/documentation/phase-11-plan.md) | Its § 10, when written |
 
-Every phase in the table is complete, Phase 10 the last of them, and none is in flight.
+Every other phase in the table is complete, Phase 10 the last of them. Phase 11 is in flight: its
+plan is the active one, and it retires [F28](docs/backlog.md#f28).
 
 Phase 9 is numbered after the two reserved phases below and ran ahead of them: it was the one with
 a consumer waiting. Until Phase 10 condensed this file, each phase had a section here with its

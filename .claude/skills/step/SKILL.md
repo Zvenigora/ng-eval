@@ -8,20 +8,30 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: none active
-Target: none
+Plan document: `docs/documentation/phase-11-plan.md`
+Target: `@zvenigora/ng-eval-forms` — Phase 11, its README by entry point (F28)
 Requested step: $ARGUMENTS
 
-**No plan is active.** The A45 plan (`docs/a45/plan.md`), A45 part 2 and A44, assignment targets as
-JavaScript evaluates them, is complete: its seven steps shipped as `eval-core` 0.14.0, `eval-signals`
-0.7.0 and `eval-forms` 0.7.0, and its retrospect is its § 10. The next plan retargets this file when it
-is written. It names the plan above, says which projects each step reaches, and records the gate's
-counts its steps start from: at 0d305a3, `eval-core` 3134, `eval-signals` 444, `eval-forms` 380.
+**The plan adds no rules of its own** (its § 0). Its § 3.1 fixes D1–D6, and no step reopens them.
 
-**Invoked while no plan is active, this skill stops at § 1.** Run the baseline, report it, say that
-no plan is active, and do nothing else. Do not run a step of a completed plan, and do not treat a
-register entry as a plan: a one-commit item or a batch has its exit criteria in the prompt
-(`CLAUDE.md`, "Working from a plan").
+**The plan changes `eval-forms` only**, and only its documents, one spec's bound and title and its
+version. `eval-core` and `eval-signals` change in nothing:
+
+- **Step 1 is the plan and its records**, with the README's Development sentence and its
+  `[Unreleased]` line.
+- **Step 2 is the reorder**: `modules/eval-forms/README.md`, the `/reactive`
+  `readme-examples.spec.ts`'s `from`, its count case's title and its comment lines, and the
+  CHANGELOG's `[Unreleased]`. No heading's text or level changes, and the `/signals` spec is not
+  edited.
+- **Step 3 is the release commit**, `eval-forms` 0.7.1; **step 4** the post-publish record, which
+  touches no file under `modules/` unless npm's publish date differs from the CHANGELOG's.
+
+A file outside the step's list is a stop-and-replan, not a wider step. A `package.json` in the diff
+before step 3 is a stop-and-replan.
+
+**The counts every step holds**, the gate at 8e6a617 with step 1's edits, which compile nothing and
+move no block, heading or import a README spec reads: `eval-core` 3134, `eval-signals` 444,
+`eval-forms` 380, as at 0d305a3. Every step moves them 0 / 0 / 0.
 
 **The standing rules load with `CLAUDE.md`** (`docs/standing-rules.md`), and the plan's § 0, where
 it has one, adds to them; read it first. Each step's file list in the plan's § 4 is its scope, and it
@@ -117,10 +127,12 @@ Then the check a green build cannot make: the scope gate.
 
 **Nothing moved outside the step's file list** ([SR3](../../../docs/standing-rules.md#sr3)); an edit
 to a document or a comment moves no test row at all. Every path must be on the step's list or be the
-plan document itself; anything else, report and stop.
+plan document itself; anything else, report and stop. The check is `git status --porcelain`, not
+`git diff --name-status HEAD`, which lists no untracked file, and a file a step creates is untracked
+until it is staged: a new file, wanted or stray, would pass unseen.
 
 ```sh
-git diff --name-status HEAD
+git status --porcelain
 ```
 
 Then the step's **one-off checks**, the commands its criteria name. They are not in the gate, so

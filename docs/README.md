@@ -32,7 +32,10 @@ that anchor, `<a id="…"></a>` in the first cell.
 
 ## Active plan
 
-None. The next plan is linked here when it is written.
+[`documentation/phase-11-plan.md`](documentation/phase-11-plan.md) — Phase 11, `eval-forms`' README
+by entry point ([F28](backlog.md#f28)): the README reordered so that the package's sections come
+first, then those both adapters share, then `/reactive`, then `/signals`, with a contents list. It
+ships as `eval-forms` 0.7.1, a docs-only patch.
 
 ## Completed phases
 

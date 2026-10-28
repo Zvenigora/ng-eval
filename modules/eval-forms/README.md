@@ -883,11 +883,12 @@ npx nx run eval-forms:build:production
 
 Two `readme-examples.spec.ts` files execute the runnable examples in this document, and the
 split is not quite by folder: the one under `reactive/src/lib/` covers the `/reactive` blocks,
-the shared core's two [Coercion](#coercion) blocks and the
+the shared core's two [Coercion](#coercion) blocks and its
+[When a rule fails](#when-a-rule-fails) block, and the
 [worked example](https://github.com/zvenigora/ng-eval/blob/master/docs/forms/worked-example.md);
 the one under `signals/src/lib/` covers the `/signals` blocks and the `/signals`
 [worked example](https://github.com/zvenigora/ng-eval/blob/master/docs/forms/worked-example-signals.md),
 **plus the one `/reactive` block whose subject is the difference between the two entry points**,
 because that claim is a pair and splitting it would let either half drift alone. So a documented example that stops working fails
-the suite rather than shipping. The template and manifest blocks are not executable and are not
-covered.
+the suite rather than shipping. Not executed: the opening rule, the field schema's interface and the
+Lifetime fragment, which are not programs, and the template, manifest and `sh` blocks.
