@@ -203,7 +203,7 @@ that shows it.
    `preserveParens: false`, `defaultParserOptions`' values; `simpleEval('await q')` still threw
    `SyntaxError: Unexpected token (1:6)`. So a key `defaultParserOptions` does not carry reaches every
    service, and no acorn option does. § 3.1 rests on the first half; the second is outside scope and
-   recorded as [BL-A30](../backlog.md#a30). **It is also why `defaultParserOptions` must never carry
+   recorded as [BL-A30](../backlog-retired.md#a30). **It is also why `defaultParserOptions` must never carry
    `colonIdentifiers`**, not even as `false`: per-call `false` would override every application-wide
    setting on every service path.
 
@@ -354,7 +354,7 @@ switch (S1, F2). C1 ran in Node against the installed acorn. D1 read the `acorn@
   wildcard. Nothing splits it.
 - **`defaultParserOptions`** — unchanged, and § 1.2 finding 4 is why it must stay so.
 - **A per-signal parser option in `eval-signals`** — § 8 q5.
-- [BL-A30](../backlog.md#a30), [BL-D13](../backlog.md#d13) — found by this plan's probes, recorded,
+- [BL-A30](../backlog-retired.md#a30), [BL-D13](../backlog.md#d13) — found by this plan's probes, recorded,
   and not needed by it. A third, [BL-A29](../backlog-retired.md#a29), was fixed on its own after this
   plan was written (Revision 2).
 - **A source rewrite** — any approach that edits the text before acorn sees it (§ 3.5).

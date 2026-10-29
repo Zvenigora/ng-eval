@@ -309,8 +309,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.13.3. A45 part 1 closed with it, a part, so A45 stays live; F20 and F24 ship in no package | `021d5e4` | 2026-10-23 | 26 | 0 | 2: F20, F24 | 24 |
 | `eval-core` 0.14.0, `eval-signals` 0.7.0, `eval-forms` 0.7.0. F21 and F25 ship in no package | `0d305a3` | 2026-10-26 | 24 | 6: A48–A53 | 5: F21, F25, A44, A45, A52 | 25 |
 | `eval-forms` 0.7.1. F26, opened by 0.14.0's post-publish commit and fixed after it, ships in no package; F27 ships in no package but for one `eval-core` docblock | `69c3e0e` | 2026-10-29 | 25 | 4: F26–F29 | 2: F26, F27 | 27 |
-| *Unreleased*. F28, decided by Phase 11 and shipped in `eval-forms` 0.7.1, is retired by its post-publish commit, after the tag; A47 is fixed and A32 decided and deleted for `eval-core`'s next release | — | — | 27 | 0 | 3: F28, A47, A32 | 24 |
-| **Since the register opened** | | | **42** | **71** | **89** | **24** |
+| *Unreleased*. F28, decided by Phase 11 and shipped in `eval-forms` 0.7.1, is retired by its post-publish commit, after the tag; A47 is fixed, A32 decided and deleted, and A30 decided and documented for `eval-core`'s next release | — | — | 27 | 0 | 4: F28, A47, A32, A30 | 23 |
+| **Since the register opened** | | | **42** | **71** | **90** | **23** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -361,7 +361,7 @@ makes it that release's row, with its tag commit and date.
 | [A27](#a27) | A nested `evaluate` writes the enclosing walk's `EvalResult` — and `start()` clears nothing, so a reused state shows the last run's outcome | core | decision | Open — recorded, not scheduled; opened 2026-10-08 by Phase 5 step 1 |
 | [A28](backlog-retired.md#a28) | `scoped` is documented as a scope pushed during this walk; the code asks the whole scope stack | core | docs | **Retired — fixed 2026-10-10**, documentation comments only; released 2026-10-10 in `eval-core` 0.11.1, tagged 7ee65fc. The `.d.ts` differs in four JSDoc blocks: every scope on the stack counts, whoever pushed it |
 | [A29](backlog-retired.md#a29) | `CompilerService` keys a compiled AST by type, start, end and `toString()` — two ASTs of one type and span share a compiled function | core | fix | **Retired — fixed 2026-10-10**; released 2026-10-10 in `eval-core` 0.11.1, tagged 7ee65fc. An AST is compiled on every call and never cached; a string is cached as before. Affected `eval-core` 0.2.1–0.11.0 |
-| [A30](#a30) | `ParserService.parserOptions` reaches `EvalService`, `CompilerService` and `DiscoveryService` for no acorn option | core | decision | Open — opened 2026-10-10 by the Phase 9 plan |
+| [A30](backlog-retired.md#a30) | `ParserService.parserOptions` reaches `EvalService`, `CompilerService` and `DiscoveryService` for no acorn option | core | decision | **Retired — decided 2026-10-29: documented**; ships in `eval-core`'s next release, documentation only. The setter configures direct `ParserService.parse` calls, and its JSDoc says so |
 | [A31](backlog-retired.md#a31) | The case-insensitive property cache keys an object by its key count and first five keys — objects sharing them share answers, process-wide | core | fix | **Retired — fixed 2026-10-10**; released 2026-10-10 in `eval-core` 0.11.1, tagged 7ee65fc. Keyed by the object itself, a cached key re-checked as the object's own; a colliding entry no longer turns a case-variant refusal into `undefined`. Affected `eval-core` 0.2.1–0.11.0 |
 | [A32](backlog-retired.md#a32) | The disabled visitor result cache keys a node without its operands — `a + b` and `c + d` share an entry | core | decision | **Retired — decided and deleted 2026-10-29**; unreleased, in `eval-core`'s next release, comments only: no code reached the bundle |
 | [A33](#a33) | The case-insensitive property cache keeps a miss while the own-key count is unchanged — a key added as another is deleted reads `undefined` by a case variant | core | fix | Open — opened 2026-10-10, after the `eval-core` 0.11.1 tag; a limit [A31](backlog-retired.md#a31)'s fix documents in a code comment. No refusal is skipped |
@@ -531,8 +531,9 @@ several of these visible at all. [A6](backlog-retired.md#a6) was surfaced by Pha
 [A9](backlog-retired.md#a9) were never recorded in the roadmap at all. [A23](backlog-retired.md#a23) was surfaced by
 [C1](backlog-retired.md#c1)'s fix. [A24](#a24), [A25](#a25) and [A26](backlog-retired.md#a26) were surfaced by the Phase 5 plan's probes
 ([`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.3), which keeps all three out of its scope
-(§ 3.1). [A29](backlog-retired.md#a29) and [A30](#a30) were surfaced by the Phase 9 plan's probes
-([`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.3), which needs neither.
+(§ 3.1). [A29](backlog-retired.md#a29) and [A30](backlog-retired.md#a30) were surfaced by the Phase 9 plan's probes
+([`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.3), which needs neither;
+A30 was decided by documenting what the setter configures.
 [A31](backlog-retired.md#a31) and [A32](backlog-retired.md#a32) were found by A29's fix, grepping for other keys built
 from an object's shape; A32 was decided by deleting the cache. [A33](#a33) is a limit A31's fix left, and documented in the code; [A34](#a34)
 is one A26's fix left, documented the same way. [A44](backlog-retired.md#a44)–[A47](backlog-retired.md#a47) were found by the
@@ -904,33 +905,6 @@ settlement — so it is a decision before it is a fix.
 *Verified*: measured 2026-10-08 against the gate-built `eval-core` bundle, by scripts outside the
 repo — P7 in that plan's § 1.3, and the reused-state and sync-path cases above. `eval-core`'s source
 is the same at cc0761e and 9d5715d.
-
-<a id="a30"></a>
-## A30 — `ParserService.parserOptions` reaches the services for no acorn option
-
-**Package** core · **Kind** decision · **Status** Open. Opened 2026-10-10 by the Phase 9 plan
-
-`EvalService`, `CompilerService` and `DiscoveryService` parse through `BaseEval.parse`, which passes
-their own options per call — `defaultParserOptions`, or a copy of it (`base-eval.ts:41`). Those carry
-all of acorn's `defaultOptions`, 23 keys in all, and `ParserService.parse` lets a per-call key win
-(`parser.service.ts:123`). So a value set through `ParserService`'s public `parserOptions` setter is
-overridden, on every service path, for every key acorn defines; it reaches only callers of
-`ParserService.parse` itself.
-
-Measured: with the setter carrying `allowAwaitOutsideFunction: true`, `preserveParens: true` and
-`colonIdentifiers: true`, the options `simpleEval` handed `acorn.parse` held `null`, `false` — the
-defaults — and `true`; `simpleEval('await q')` still threw.
-
-**The decision**: whether the setter is meant to configure the services. If it is, the services'
-per-call options should stop restating acorn's defaults; if not, its JSDoc should say it configures
-direct `ParserService.parse` calls only. Either way the Phase 9 plan relies on the half that works —
-a key `defaultParserOptions` does not carry reaches every service — and on `defaultParserOptions`
-never carrying `colonIdentifiers` (§ 1.2 finding 4).
-
-*Recorded*: this entry; [`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.2
-finding 4.
-*Verified*: measured 2026-10-10 at af81e24 by spying on `acorn.parse`, with a throwaway spec deleted the
-same day (that plan's § 1.3, P6).
 
 <a id="a33"></a>
 ## A33 — The case-insensitive property cache keeps a miss across a same-count key swap

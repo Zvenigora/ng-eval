@@ -1745,6 +1745,143 @@ finding 7. Opened 2026-10-10 by the Phase 9 plan.
 *Verified*: measured 2026-10-10 at af81e24, with a throwaway spec deleted the same day (that plan's
 § 1.3, P8).
 
+<a id="a30"></a>
+## A30 — `ParserService.parserOptions` reaches the services for no acorn option
+
+**Package** core · **Kind** decision · **Status** **Retired — decided 2026-10-29: documented**; ships
+in `eval-core`'s next release, documentation only. Was Open. Opened 2026-10-10 by the Phase 9 plan
+
+*Decided* 2026-10-29, as a one-commit item: `ParserService.parserOptions` keeps its behaviour, and its
+JSDoc says what it configures. Making the services honour the setter would change behaviour on a
+published path, so that change is not made. The getter's JSDoc says it returns the constructor's
+options or the last value given to the setter. The setter's says:
+
+- the value configures direct `ParserService.parse` calls, which merge their own options over it,
+  the call's key winning, for every key but `cacheSize`;
+- `EvalService`, `CompilerService` and `DiscoveryService` pass their own options on every parse, and
+  those carry every key of `defaultParserOptions`, so for each of them the service's key wins,
+  `cacheSize` again aside;
+- only `cacheSize` and a key `defaultParserOptions` does not carry reach them through the setter,
+  and `colonIdentifiers` is the one the README relies on;
+- `cacheSize` is read from this value alone, never from a call's or a service's options. It sizes
+  the parse cache once, at construction, and a later value does not resize it. Whether a parse uses
+  the cache is read from it on every parse, so a later falsy one stops every parse using the cache,
+  the services' included.
+
+The item's prompt said "`cacheSize` is read once, at construction". That is true of the cache's size
+and not of the key: `parse` reads `cacheSize` again on every call to decide whether to use the cache.
+The JSDoc says both, and witness cases (e) and (f) pin them.
+
+**`cacheSize` is the exception, found by the code review.** The first draft said the call's key wins
+and that only a key `defaultParserOptions` does not carry reaches the services, and both were false
+for `cacheSize`. `parse` reads it from `this.parserOptions` alone (its `isCache`), and the
+fingerprint leaves it out, so a call's own `cacheSize`, `DiscoveryService`'s `undefined` included,
+changes nothing. Meanwhile the setter's falsy one stops the services' parses using the cache too. No
+case covered that leg; (g) and (h) were added for it.
+
+No code changed, and nothing on the published surface but the two JSDoc blocks. After the build the
+`.d.ts` and `fesm2022/zvenigora-ng-eval-core.mjs` each carry the new text, so the item ships in the
+next release as documentation, with an `[Unreleased]` line in `eval-core`'s CHANGELOG.
+
+*Verified*: re-measured first, since the entry was measured at af81e24, before A26's fingerprint and
+Phase 9. Twelve cases in `parser.service.spec.ts`, "ParserService.parserOptions configures direct parse
+calls (A30)", a fresh root injector each, so the root `ParserService`'s cache serves no AST parsed
+under other options. The setter is given the current options with `allowAwaitOutsideFunction: true`,
+`ecmaVersion: 2022` and `colonIdentifiers: true`. Every case agreed with the entry.
+
+| Case | Claim | Its setup check, where the claim would be false |
+| :--- | :--- | :--- |
+| (a) | the setter configures a direct parse, and the getter returns its value | `parse('await q')` is a `SyntaxError` before the setter |
+| (b) ×3 | a key `defaultParserOptions` carries loses to each service's own options: `Unexpected token (1:6)` from `simpleEval`, `compile` and `extract` | the key is in `defaultParserOptions`, and a direct parse of the same text succeeds under the setter |
+| (c) ×3 | a key `defaultParserOptions` lacks reaches each service: `3` from `simpleEval` and from `simpleCall` over `{ 'Q1:1': 2 }`, and `extract` finds `Q1:1` | the key is not in `defaultParserOptions`; before the setter, the walk refuses the labelled statement and `extract` finds no identifier |
+| (d) | a per-call key beats the setter on a direct parse | without the per-call key, the setter's value parses the text |
+| (e) | a later `cacheSize` does not resize the cache | a cache of one would evict the first of two texts |
+| (f) | a later falsy `cacheSize` stops parses using the cache | the cache serves a second parse before the setter |
+| (g) | a call's own falsy `cacheSize` does not stop a direct parse using the cache | read from the merged options, `cacheSize: 0` would bypass the cache |
+| (h) | `DiscoveryService`'s own `cacheSize: undefined` changes nothing, and the setter's falsy one reaches it | its parses are served from the cache before the setter |
+
+Two hand-written values were corrected when they ran. Before the setter, case (c) expected `simpleEval`
+to give something other than `3`; it throws `Unsupported statement type: LabeledStatement`, which
+is now asserted. `extract` was expected to find the label `Q1`; it finds nothing.
+
+Probes, each applied alone against `parser.service.spec.ts` only and reverted by hand, run on the
+final twelve cases:
+
+| Probe | Predicted red | Observed red |
+| :--- | :--- | :--- |
+| P1: `parse` merges `{ ...options, ...this.parserOptions }`, the setter winning | 19: (b) ×3, (d), (c) on `EvalService` and `CompilerService`, and 13 existing cases | the same 19 |
+| P2: the setter ignores every write after the constructor's | 13: (a), (b) ×3, (c) ×3, (d), (f), (h), and 3 existing cases | the same 13 |
+| P3: the setter rebuilds the cache from a truthy `cacheSize` | (e) | (e) |
+| P4: `parse` uses the cache whenever one exists | (f), (h) | (f), (h) |
+| P5: `parse` reads `cacheSize` from the merged options | (g), (h), and criterion 5's "cacheSize is no part of the key" | the same 3 |
+
+- **The services' leg of the falsy `cacheSize`** is witnessed through `DiscoveryService` alone. Only
+  its result shows whether an AST was cached; `EvalService` and `CompilerService` reach the same
+  `isCache` through `BaseEval.parse`.
+- **P1 on the first four cases.** Run against an earlier form of the cases, P1 was predicted to turn
+  (b) and (d) red, as the item's prompt said. It turned (c) red too, at its setup check. Under P1 the
+  service's own `extractExpressions: true` beats `EvalService`'s `false`, so the labelled statement
+  extracts to nothing and `simpleEval` gives `undefined` instead of refusing it. `DiscoveryService`'s
+  (c) row stays green under P1 for the same reason: its "before" is already no identifier.
+- **The 13 existing cases under P1** are the per-call cases of the A26 and Phase 9 describes. The
+  service's own options spread acorn's `defaultOptions`, so their `null` callbacks and `program`,
+  and their `extractExpressions: true`, beat every per-call value.
+- **The three existing cases under P2** are the ones that write through the setter: criterion 3, the
+  key present as `undefined`, and the callback on the service's own options.
+- **P2 is not a literal no-op setter**, which would break construction, since the constructor
+  installs its options through the setter.
+- **(b) and (d) go red under P2 as well as P1**, which the prompt did not predict, because each
+  checks its own setup: under P2, the setter-in-effect parse fails.
+
+| Claim | Witness, red when it is false |
+| :--- | :--- |
+| JSDoc: the getter gives the constructor's options or the last value given to the setter | (a)'s `toBe(options)`; P2 |
+| JSDoc: the setter configures direct `ParserService.parse` calls | (a); P2 |
+| JSDoc: the call's key wins, for every key but `cacheSize` | (d); P1, and (g); P5 |
+| JSDoc: the three services pass their own options, and their key wins, `cacheSize` aside | (b) ×3; P1, and (h); P5 |
+| JSDoc: only `cacheSize` and a key `defaultParserOptions` does not carry reach them, `colonIdentifiers` among them | (c) ×3; P2, and (h); P2 and P4 |
+| JSDoc: `cacheSize` is read from this value alone | (g), (h) and criterion 5; P5 |
+| JSDoc: `cacheSize` sizes the cache once, at construction | (e); P3 |
+| JSDoc: a later falsy `cacheSize` stops every parse using the cache, the services' included | (f) and (h); P4 |
+| CHANGELOG: the same claims, and "no behaviour changes" | the rows above; no source line but the JSDoc differs from 4bcb221, and the 3154 earlier cases pass at the gate |
+| CHANGELOG: the JSDoc reaches the `.d.ts` and the bundle | a grep of both after the build |
+
+The sweep for claims the decision makes false: [`eval-core`'s README](../modules/eval-core/README.md),
+§ Colon-joined names, says that setting `ParserService.parserOptions` to a new object makes "every
+later parse or compile" follow it. In that section the subject is `colonIdentifiers`, which (c)
+shows reaches every service, so the sentence is true and is not changed. Its example reads the
+getter, `parser.parserOptions.colonIdentifiers`, and is unaffected. The other mentions of the
+setter, in `compiler.service.ts`, `parse-fingerprint.ts` and `colon-identifiers.provider.ts`, are
+about the cache key and reading the provider, and stay true. The CHANGELOG's history entries stay as
+written.
+
+The three links in the Phase 9 plan and its summary that pointed at this entry in `backlog.md` are
+re-pointed here. That was widened at the item's gate, as was done for [A26](#a26) and [A29](#a29).
+
+**The entry as it stood:**
+
+`EvalService`, `CompilerService` and `DiscoveryService` parse through `BaseEval.parse`, which passes
+their own options per call — `defaultParserOptions`, or a copy of it (`base-eval.ts:41`). Those carry
+all of acorn's `defaultOptions`, 23 keys in all, and `ParserService.parse` lets a per-call key win
+(`parser.service.ts:123`). So a value set through `ParserService`'s public `parserOptions` setter is
+overridden, on every service path, for every key acorn defines; it reaches only callers of
+`ParserService.parse` itself.
+
+Measured: with the setter carrying `allowAwaitOutsideFunction: true`, `preserveParens: true` and
+`colonIdentifiers: true`, the options `simpleEval` handed `acorn.parse` held `null`, `false` — the
+defaults — and `true`; `simpleEval('await q')` still threw.
+
+**The decision**: whether the setter is meant to configure the services. If it is, the services'
+per-call options should stop restating acorn's defaults; if not, its JSDoc should say it configures
+direct `ParserService.parse` calls only. Either way the Phase 9 plan relies on the half that works —
+a key `defaultParserOptions` does not carry reaches every service — and on `defaultParserOptions`
+never carrying `colonIdentifiers` (§ 1.2 finding 4).
+
+*Recorded*: this entry; [`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.2
+finding 4.
+*Verified*: measured 2026-10-10 at af81e24 by spying on `acorn.parse`, with a throwaway spec deleted the
+same day (that plan's § 1.3, P6).
+
 <a id="a31"></a>
 ## A31 — The case-insensitive property cache keys an object by its key count and first five keys
 

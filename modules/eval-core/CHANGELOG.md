@@ -21,6 +21,15 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 - The disabled visitor result cache is deleted ([A32](../../docs/backlog-retired.md#a32)). Nothing
   called it or exported it. Documentation only: the bundle loses the commented-out import and call
   sites in the binary and member visitors, and no code; the `.d.ts` is unchanged.
+- `ParserService.parserOptions`' JSDoc says what the setter configures
+  ([A30](../../docs/backlog-retired.md#a30)): direct `ParserService.parse` calls, whose own options'
+  keys win, but for `cacheSize`. `EvalService`, `CompilerService` and `DiscoveryService` pass their
+  own options on every parse, which carry every key of `defaultParserOptions`, so only `cacheSize`
+  and a key it does not carry, such as `colonIdentifiers`, reach them through the setter.
+  `cacheSize` is read from the setter's value alone: it sizes the parse cache once, at
+  construction, and a later falsy one stops every parse using the cache, the services' included,
+  while a call's or a service's own `cacheSize` changes nothing. No behaviour changes.
+  Documentation only: the JSDoc reaches the `.d.ts` and the bundle.
 
 ### Fixed
 - **Under `caseInsensitive`, an arrow's parameters are matched case-insensitively**, as a `let`

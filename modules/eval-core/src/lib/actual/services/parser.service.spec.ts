@@ -2,11 +2,13 @@ import { TestBed } from '@angular/core/testing';
 
 import { ParserService } from './parser.service';
 import { EvalService } from './eval.service';
+import { CompilerService } from './compiler.service';
+import { DiscoveryService } from './discovery.service';
 import * as fingerprint from './parse-fingerprint';
 import { COLON_IDENTIFIERS, provideColonIdentifiers } from './colon-identifiers.provider';
 import { ParserOptions } from '../../internal/interfaces';
 import { defaultParserOptions } from '../../internal/classes/eval';
-import { BinaryExpression, Literal, parse as acornParse } from 'acorn';
+import { AnyNode, BinaryExpression, Identifier, Literal, parse as acornParse } from 'acorn';
 
 describe('ParserService', () => {
   let service: ParserService;
@@ -331,6 +333,154 @@ describe('ParserService cache keyed on parse-relevant options (A26)', () => {
     expect(evalService.simpleEval('m + 1', { m: 1 })).toBe(2);
     expect(evalService.simpleEval('m * 3', { m: 2 })).toBe(6);
     expect(build).toHaveBeenCalledTimes(1);
+  });
+});
+
+// `docs/backlog-retired.md` A30: the setter configures a direct `parse`, and
+// reaches the services only for a key `defaultParserOptions` does not carry,
+// since every service passes its own options on every parse. Each case has a
+// fresh root injector, so no cached AST was parsed under other options.
+describe('ParserService.parserOptions configures direct parse calls (A30)', () => {
+  let parser: ParserService;
+  let services: Services;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    parser = TestBed.inject(ParserService);
+    services = {
+      evalService: TestBed.inject(EvalService),
+      compiler: TestBed.inject(CompilerService),
+      discovery: TestBed.inject(DiscoveryService),
+    };
+  });
+
+  interface Services {
+    evalService: EvalService;
+    compiler: CompilerService;
+    discovery: DiscoveryService;
+  }
+
+  const outcome = (fn: () => unknown): unknown => {
+    try {
+      return fn();
+    } catch (error) {
+      return { threw: (error as Error).message };
+    }
+  };
+
+  const names = (nodes: AnyNode[] | undefined): unknown[] =>
+    (nodes ?? []).map(node => (node as Identifier).name);
+
+  const thrownBy = (fn: () => unknown): unknown => {
+    try {
+      fn();
+    } catch (error) {
+      return error;
+    }
+    throw new Error('expected a throw, and nothing was thrown');
+  };
+
+  const permissive = (current: ParserOptions): ParserOptions => ({
+    ...current,
+    allowAwaitOutsideFunction: true,
+    ecmaVersion: 2022,
+    colonIdentifiers: true,
+  });
+
+  it('(a) the setter configures a direct parse', () => {
+    // Without the setter the text does not parse, so a setter that went
+    // nowhere fails the case.
+    const before = thrownBy(() => parser.parse('await q'));
+    expect(before).toBeInstanceOf(SyntaxError);
+    expect((before as SyntaxError).message).toBe('Unexpected token (1:6)');
+
+    const options = permissive(parser.parserOptions);
+    parser.parserOptions = options;
+    expect(parser.parserOptions).toBe(options);
+    expect(parser.parse('await q')).toMatchObject({ type: 'AwaitExpression' });
+  });
+
+  it.each<[string, (s: Services) => unknown]>([
+    ['EvalService', s => s.evalService.simpleEval('await q', { q: 1 })],
+    ['CompilerService', s => s.compiler.simpleCall(s.compiler.compile('await q'), { q: 1 })],
+    ['DiscoveryService', s => s.discovery.extract('await q', 'AwaitExpression')],
+  ])('(b) a key defaultParserOptions carries loses to %s\'s own options', (_name, run) => {
+    expect('allowAwaitOutsideFunction' in defaultParserOptions).toBe(true);
+    parser.parserOptions = permissive(parser.parserOptions);
+    // The setter is in effect: a direct parse of the same text succeeds.
+    expect(parser.parse('await q')).toMatchObject({ type: 'AwaitExpression' });
+
+    const error = thrownBy(() => run(services));
+    expect(error).toBeInstanceOf(SyntaxError);
+    expect((error as SyntaxError).message).toBe('Unexpected token (1:6)');
+  });
+
+  // Without the setter the colon is a label's: the walk refuses a labelled
+  // statement, and `extract` finds no identifier, since it does not visit a
+  // label as one.
+  const refused = { threw: 'Unsupported statement type: LabeledStatement' };
+
+  it.each<[string, (s: Services) => unknown, unknown, unknown]>([
+    ['EvalService', s => s.evalService.simpleEval('Q1:1 + 1', { 'Q1:1': 2 }), refused, 3],
+    ['CompilerService',
+      s => s.compiler.simpleCall(s.compiler.compile('Q1:1 + 1'), { 'Q1:1': 2 }), refused, 3],
+    ['DiscoveryService', s => names(s.discovery.extract('Q1:1 + 1', 'Identifier')), [], ['Q1:1']],
+  ])('(c) a key defaultParserOptions lacks reaches %s', (_name, run, before, after) => {
+    expect('colonIdentifiers' in defaultParserOptions).toBe(false);
+    expect(outcome(() => run(services))).toEqual(before);
+
+    parser.parserOptions = permissive(parser.parserOptions);
+    expect(outcome(() => run(services))).toEqual(after);
+  });
+
+  it('(d) a per-call key beats the setter on a direct parse', () => {
+    parser.parserOptions = permissive(parser.parserOptions);
+    // Without the per-call key the setter's value parses the text.
+    expect(parser.parse('await q')).toMatchObject({ type: 'AwaitExpression' });
+
+    const error = thrownBy(() => parser.parse('await q', { allowAwaitOutsideFunction: false }));
+    expect(error).toBeInstanceOf(SyntaxError);
+    expect((error as SyntaxError).message).toBe('Unexpected token (1:6)');
+  });
+
+  // A cache of one would evict the first text when the second is parsed.
+  it('(e) a later cacheSize does not resize the parse cache', () => {
+    parser.parserOptions = { ...parser.parserOptions, cacheSize: 1 };
+    const first = parser.parse('r + 1');
+    expect(parser.parse('r + 2')).toMatchObject({ type: 'BinaryExpression' });
+    expect(parser.parse('r + 1')).toBe(first);
+  });
+
+  it('(f) a later falsy cacheSize stops parses using the cache', () => {
+    // The cache serves the second parse while cacheSize is set.
+    const cached = parser.parse('r * 1');
+    expect(parser.parse('r * 1')).toBe(cached);
+
+    parser.parserOptions = { ...parser.parserOptions, cacheSize: 0 };
+    const first = parser.parse('r * 2');
+    expect(first).toMatchObject({ type: 'BinaryExpression' });
+    expect(parser.parse('r * 2')).not.toBe(first);
+  });
+
+  // `cacheSize` is read from the setter's value alone. Criterion 5 above has
+  // a call's `cacheSize: undefined`; this is a falsy number.
+  it('(g) a call\'s own falsy cacheSize does not stop a direct parse using the cache', () => {
+    const first = parser.parse('r - 1', { cacheSize: 0 });
+    expect(first).toMatchObject({ type: 'BinaryExpression' });
+    expect(parser.parse('r - 1', { cacheSize: 0 })).toBe(first);
+  });
+
+  it('(h) DiscoveryService\'s own cacheSize changes nothing, and the setter\'s falsy one reaches it', () => {
+    const identifier = () => services.discovery.extract('h + 1', 'Identifier')?.[0];
+    // Its options carry `cacheSize: undefined`, and its parses are cached.
+    const cached = identifier();
+    expect(cached).toMatchObject({ type: 'Identifier', name: 'h' });
+    expect(identifier()).toBe(cached);
+
+    parser.parserOptions = { ...parser.parserOptions, cacheSize: 0 };
+    const first = identifier();
+    expect(first).toMatchObject({ type: 'Identifier', name: 'h' });
+    expect(identifier()).not.toBe(first);
   });
 });
 

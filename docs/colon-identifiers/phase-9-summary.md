@@ -67,7 +67,7 @@ the installed acorn. Step 7 widened the helper's parameter type, so a future run
 - **Every unsupported top-level statement refused** — only a label; the rest is
   [D13](../backlog.md#d13), open, because `eval-core` does not publish its list of supported
   statements.
-- **[A30](../backlog.md#a30)** — `ParserService.parserOptions` reaching the services for no acorn
+- **[A30](../backlog-retired.md#a30)** — `ParserService.parserOptions` reaching the services for no acorn
   option — recorded by the plan's probes, not needed by it, open.
 
 **Open questions that wait on data.** § 8 q1 (colon names in consequents), q2 (compact object

@@ -26,14 +26,32 @@ export class ParserService implements OnDestroy {
   private _isDestroyed = false;
 
   /**
-   * Gets the parser options.
+   * Gets the parser options: the constructor's, or the last value given to
+   * the setter.
    */
   get parserOptions(): ParserOptions {
     return this._parserOptions;
   }
 
   /**
-   * Sets the parser options.
+   * Sets the parser options for direct `ParserService.parse` calls, which
+   * merge the options they are given over this value, the call's key winning,
+   * for every key but `cacheSize`.
+   *
+   * `EvalService`, `CompilerService` and `DiscoveryService` pass their own
+   * options on every parse, and those carry every key of
+   * `defaultParserOptions`, so for each of them the service's key wins over
+   * this value, `cacheSize` again aside. Only `cacheSize` and a key
+   * `defaultParserOptions` does not carry reach those services through the
+   * setter: `colonIdentifiers` is the one the README relies on
+   * (`docs/backlog-retired.md` A30).
+   *
+   * `cacheSize` is read from this value alone, never from a call's or a
+   * service's options. It sizes the parse cache once, at construction, and a
+   * later value does not resize it. Whether a parse uses the cache is read
+   * from it on every parse, so a later falsy one stops every parse using the
+   * cache, the services' included.
+   *
    * @param value The parser options to set.
    */
   set parserOptions(value: ParserOptions) {
