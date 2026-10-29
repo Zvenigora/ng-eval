@@ -164,13 +164,15 @@ refusal on every identifier target (D11). A48–A51 and A53 are not scheduled.
 [F27](backlog-retired.md#f27) is fixed: the process and verification rules are in
 [`standing-rules.md`](standing-rules.md), imported by `CLAUDE.md`, and the copies cite it. It ships
 in no package but for one corrected `eval-core` docblock, an `[Unreleased]` line documentation only. It opened
-[F28](#f28), the consumer documents.
+[F28](backlog-retired.md#f28), the consumer documents.
 
-**Phase 11 is in flight** ([plan](documentation/phase-11-plan.md)), F28's answer: `eval-forms`' README
-reordered by entry point, with a contents list. Steps 1 to 3 are done, and step 3, the release
-commit, is `eval-forms` 0.7.1, a docs-only patch, its three `.d.ts` byte-identical to 0.7.0's and no
-peer range moved, pending publish. Step 4, the post-publish record, is next; it retires F28.
-[F29](#f29), opened by step 2's code review, waits for the next phase that moves `eval-forms`' rows.
+**Phase 11 is complete**: its [plan](documentation/phase-11-plan.md), at Revision 1, steps 1 to 4,
+F28's answer. `eval-forms`' README is ordered by entry point, with a contents list, and no README
+splits. It shipped as `eval-forms` 0.7.1, a docs-only patch tagged annotated at 69c3e0e and published
+2026-10-29, its three `.d.ts` byte-identical to 0.7.0's and no peer range moved. F28 is decided and
+retired. Its retrospect is the plan's § 10, which added [SR39](standing-rules.md#sr39) and corrected
+[SR3](standing-rules.md#sr3)'s check. [F29](#f29), opened by step 2's code review, waits for the next
+phase that moves `eval-forms`' rows. No plan is active.
 
 `eval-core` 0.13.3 is released alone, a patch, tagged at 021d5e4 and published 2026-10-23. It
 carries A45 part 1 only. Its `.d.ts` is SHA-256-identical to 0.13.2's, and it is inside
@@ -214,6 +216,7 @@ release, not a free change. Each package's release notes are in its own
 
 | Package | Version | Notes |
 | ------- | ------- | ----- |
+| `@zvenigora/ng-eval-forms` | 0.7.1 | Phase 11 ([plan](documentation/phase-11-plan.md)): the README is ordered by entry point — the package's sections, then those both adapters share, then `/reactive`, then `/signals` — under a contents list that links every `##` and `###`, and every heading keeps 0.7.0's text and level. Two passages about `/reactive` alone left the shared sections, When a rule fails says where each adapter throws a rule that does not parse, and two facts stated on both adapters' sides are stated once. Its Development section names both shared sections whose blocks the `/reactive` spec executes, and every block no case executes. [F28](backlog-retired.md#f28) decided by it. A docs-only patch: all three `.d.ts` files are byte-identical to 0.7.0's, and the manifest differs in `version` only. Peer ranges unchanged. Tagged `eval-forms@0.7.1` at 69c3e0e, published 2026-10-29 (npm: 00:50 UTC) |
 | `@zvenigora/ng-eval-core` | 0.14.0 | The [A45 plan](a45/plan.md): an assignment evaluates its target as JavaScript does. [A45](backlog-retired.md#a45) part 2 fix: a member target's object and key are evaluated once, before the right side; `=` reads no value and walks no further than the object and a computed key, so `fetch = 1` and `obj.fetch = 1` write `1` where they were refused at the read; a compound or logical operator reads its target once, and that value still passes the funnel; read events follow the reads, so `a.b = 1` reports `a` and `x = 1` nothing, which reopened Phase 1's decision for assignment targets. An `=` target's blocklist checks run before the right side. An identifier update is refused a blocklisted name and `this` written as a name, and reports one read of its operand. [A44](backlog-retired.md#a44) fix: under `caseInsensitive` a member write or update reaches the key the read matched. [A52](backlog-retired.md#a52) fix: under `caseInsensitive` an identifier holding `null` reads as `null`. What stays beyond JavaScript's reads is held under [A48](#a48) and [A49](#a49). A minor carrying breaking changes by behaviour: the `.d.ts` is byte-identical to 0.13.3's. Peer ranges unchanged. Admitted only by `eval-signals` 0.7.0 and `eval-forms` 0.7.0; every earlier one excludes it by its own range. Tagged `eval-core@0.14.0` at 0d305a3, published 2026-10-26 (npm: 00:29 UTC) |
 | `@zvenigora/ng-eval-signals` | 0.7.0 | `eval-core` 0.14.0's assignment-target change, forwarded: with `trackDependencies`, `count = 5` records nothing, and, case-sensitive, it is no longer recomputed when `count` changes; `user.name = "Bob"` records `user` alone; `x++` records `x`. Each throws `SignalContextWriteError` on every recompute, as before. Under `caseInsensitive` `count = 5` still recomputes, since resolving the key reads it ([A49](#a49)); a source holding `null` reads as `null` ([A52](backlog-retired.md#a52)); and a case-variant member write's error names the key the target holds, `name` for `user.NAME = "Bob"` ([A44](backlog-retired.md#a44)), with one case added for it, so the suite is at 444. A breaking minor with no shipped code changed: the `.d.ts` is byte-identical to 0.6.1's. Peer range on `eval-core` moved to `>=0.14.0 <0.15.0` — the floor rises, since the forwarded behaviour exists only in 0.14.0. Tagged `eval-signals@0.7.0` at 0d305a3, published 2026-10-26 (npm: 00:32 UTC) |
 | `@zvenigora/ng-eval-forms` | 0.7.0 | `eval-core` 0.14.0's assignment-target change, forwarded at both entry points: a case-sensitive rule that only assigns to a key, `count = 5`, is not recomputed when that key changes. On `/signals` under `caseInsensitive` it still is ([A49](#a49)), a model key holding `null` reads as `null` ([A52](backlog-retired.md#a52)), and a case-variant member write's error names the key the target holds ([A44](backlog-retired.md#a44)). The README's three recompute sentences say "reads" where they said "named". A breaking minor with no shipped code changed: all three `.d.ts` files are byte-identical to 0.6.1's. Peer ranges raised: `eval-core` to `>=0.14.0 <0.15.0`, and `eval-signals` to `>=0.7.0 <0.8.0`, since every earlier `eval-signals` requires `eval-core` below 0.14.0. Tagged `eval-forms@0.7.0` at 0d305a3, published 2026-10-26 (npm: 00:34 UTC) |
@@ -270,10 +273,10 @@ the two commits only that spec and two backlog files changed, so neither package
 0c3299e, so it carries B6's fix and none of 0.11.0's other changes. Master has the fix as 1a6ebdc,
 and 776885a copied the [0.10.1] CHANGELOG section from d77fa16.
 
-**Every published version now carries a tag** — the forty-six above (three at 0d305a3, one at 021d5e4, one at dc4302d, three at 5b9c859, three at f7f27f7, one at 7cc8d30, three at 3466c80, one at 7ee65fc, two at 577c4f0, three at 776885a, one at d77fa16, one at 3d56994, three at 0c3299e, three at eb403c0, three at c56f987, three at 724d831, two at 587ebf1, three at f26f987,
+**Every published version now carries a tag** — the forty-seven above (one at 69c3e0e, three at 0d305a3, one at 021d5e4, one at dc4302d, three at 5b9c859, three at f7f27f7, one at 7cc8d30, three at 3466c80, one at 7ee65fc, two at 577c4f0, three at 776885a, one at d77fa16, one at 3d56994, three at 0c3299e, three at eb403c0, three at c56f987, three at 724d831, two at 587ebf1, three at f26f987,
 three at `016a313`, three at `7935a78`) plus ten for versions before this table: seven written
 retroactively on 2026-09-16, and three at their own release on 2026-08-22 (`eval-core@0.3.0`,
-`eval-signals@0.1.0`, `eval-forms@0.1.0`). That is fifty-six, the count `tools/release-tags.mjs`
+`eval-signals@0.1.0`, `eval-forms@0.1.0`). That is fifty-seven, the count `tools/release-tags.mjs`
 reports, all annotated and all on the remote. The check tests that they are annotated since
 [F26](backlog-retired.md#f26): it reads each release tag's object type, fails on a lightweight one,
 and says `all annotated` in its summary line. `git tag -l` lists three more, `v0.1.0`, `v0.2.2`
@@ -305,8 +308,9 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.13.2 | `dc4302d` | 2026-10-22 | 25 | 5: A43–A47 | 4: A40, A41, A43, A46 | 26 |
 | `eval-core` 0.13.3. A45 part 1 closed with it, a part, so A45 stays live; F20 and F24 ship in no package | `021d5e4` | 2026-10-23 | 26 | 0 | 2: F20, F24 | 24 |
 | `eval-core` 0.14.0, `eval-signals` 0.7.0, `eval-forms` 0.7.0. F21 and F25 ship in no package | `0d305a3` | 2026-10-26 | 24 | 6: A48–A53 | 5: F21, F25, A44, A45, A52 | 25 |
-| *Unreleased*. F26, opened by 0.14.0's post-publish commit and fixed after it, ships in no package; F27 ships in no package but for one `eval-core` docblock | — | — | 25 | 4: F26–F29 | 2: F26, F27 | 27 |
-| **Since the register opened** | | | **42** | **71** | **86** | **27** |
+| `eval-forms` 0.7.1. F26, opened by 0.14.0's post-publish commit and fixed after it, ships in no package; F27 ships in no package but for one `eval-core` docblock | `69c3e0e` | 2026-10-29 | 25 | 4: F26–F29 | 2: F26, F27 | 27 |
+| *Unreleased*. F28, decided by Phase 11 and shipped in `eval-forms` 0.7.1, is retired by its post-publish commit, after the tag | — | — | 27 | 0 | 1: F28 | 26 |
+| **Since the register opened** | | | **42** | **71** | **87** | **26** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -440,7 +444,7 @@ makes it that release's row, with its tag commit and date.
 | [F25](backlog-retired.md#f25) | Four documentation checks Phase 10 left undecided: no gate fails when `docs/README.md` stops linking a tracked `docs/` file; two links into `eval-core`'s CHANGELOG headings left the doc-links gate when they became absolute; doc-links silently skips an untracked `.md`; and whether a published README's absolute link binds its target path and anchor for good | repo | decision | **Retired — decided and fixed 2026-10-23**, in no package: a published link binds, and `tools/doc-links.mjs` checks the index, names and checks untracked files, and resolves absolute links into the tree and every link in `tools/published-links.txt` |
 | [F26](backlog-retired.md#f26) | `tools/release-tags.mjs` does not check that a release tag is annotated: it resolves each tag with `git rev-list -n 1`, which accepts a lightweight tag, so the register's "all annotated" is checked by nothing | repo | fix | **Retired — fixed 2026-10-26**, in no package: every `eval-core@`, `eval-signals@` and `eval-forms@` tag must be a tag object, with or without a row, and a lightweight one fails, named once; the `v*` tags are not checked |
 | [F27](backlog-retired.md#f27) | The process and verification rules were copied across `CLAUDE.md`, the `step` skill, the `code-reviewer`, `CONTRIBUTING.md` and four plans' rule sections, and the copies had drifted: twenty divergences, among them three different gate commands | repo, core | docs | **Retired — fixed 2026-10-27**: [`docs/standing-rules.md`](standing-rules.md), SR1–SR38, imported by `CLAUDE.md`; the copies cite it. In no package, but for `contextPush`'s docblock, an `eval-core` `[Unreleased]` line, documentation only |
-| [F28](#f28) | The consumer documents Phase 10 left out: whether the package READMEs split into guides, where a guide lives and whether it ships; `eval-forms`' README, at 893 lines, by entry point first | repo, core, signals, forms | decision | Open — in flight as Phase 11; opened 2026-10-27 by F27 |
+| [F28](backlog-retired.md#f28) | The consumer documents Phase 10 left out: whether the package READMEs split into guides, where a guide lives and whether it ships; `eval-forms`' README, at 893 lines, by entry point first | repo, core, signals, forms | decision | **Retired — decided 2026-10-27, released 2026-10-29** as Phase 11: one README per package and no guide files; `eval-forms`' ordered by entry point, with a contents list, in `eval-forms` 0.7.1, docs-only |
 | [F29](#f29) | The README's "a rule that does not parse throws at registration, whatever the policy" is witnessed at both adapters under the default policy only; a function policy, the other one that swallows an error, is unwitnessed | forms | test gap | Open; opened 2026-10-28 by Phase 11 step 2's code review |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
@@ -1841,40 +1845,6 @@ a plain `new Promise` rejected with no handler reached none of the three channel
 `uncaughtPromiseErrors` queue held it until the macrotask, and a function set under the hook was
 called with it. Then by criterion 5's own cases: a wrong implementation that left superseded runs'
 rejections unhandled turned both red through the hook, with the control green.
-
-<a id="f28"></a>
-## F28 — The consumer documents Phase 10 left out
-
-**Package** repo, core, signals, forms · **Kind** decision · **Status** Open — in flight as Phase 11,
-[`phase-11-plan.md`](documentation/phase-11-plan.md), which decides it as its D1–D6. Opened
-2026-10-27 by [F27](backlog-retired.md#f27)
-
-[Phase 10](documentation/phase-10-plan.md) restructured the maintainer documents and gave the three
-package READMEs one opening, and left the consumer documents' shape out of scope: its D6 ruled out
-separate guide files, and its § 8 q2 left `eval-forms`' README, then 864 lines, as it was. That
-README is 893 lines now, `eval-core`'s 671 and `eval-signals`' 627. Undecided: whether a package
-README splits into guides, where a guide lives, and whether it ships.
-
-**Constraints, whatever the answer:**
-- **The `readme-examples.spec.ts` count cases find their blocks by heading**
-  ([F13](backlog-retired.md#f13)): `eval-forms/reactive`'s counts the range from the heading
-  "How it fits together" up to "Signal Forms" — from "Quick start — Reactive Forms", its entry point
-  in a code span, until Phase 11 step 2 — so a heading moved or renamed moves a count; the case
-  matches the heading as the README writes it.
-- **`tools/published-links.txt` binds `#readme`** — the repository's and each package folder's, which
-  binds each README file — and `modules/eval-signals#async-expressions`, a heading `eval-forms`'
-  published README links ([F25](backlog-retired.md#f25) Part 4): the files and that heading stay, or a
-  stub keeps the path and the anchor.
-- **A guide file needs a home and a ship decision.** One under `modules/<name>/` ships only if the
-  package's build copies it; one under `docs/` is linked by absolute URL from a published README,
-  which then binds its path.
-- **A moved shipped section needs a CHANGELOG line and a docs-only patch release**, as Phase 10's
-  `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms` 0.6.1 were.
-- **The first cut is `eval-forms` by entry point**: the shared core, `/reactive` and `/signals`.
-
-*Recorded*: this entry. *Verified*: read 2026-10-27 at 54f1d6d — the Phase 10 plan's D6 and § 8 q2,
-`tools/published-links.txt`, the count case's docblock in
-`modules/eval-forms/reactive/src/lib/readme-examples.spec.ts`, and `wc -l` of the three READMEs.
 
 <a id="f29"></a>
 ## F29 — A parse error's policy claim is witnessed under the default policy only

@@ -8,31 +8,21 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: `docs/documentation/phase-11-plan.md`
-Target: `@zvenigora/ng-eval-forms` — Phase 11, its README by entry point (F28)
+Plan document: none active
+Target: none
 Requested step: $ARGUMENTS
 
-**The plan adds no rules of its own** (its § 0). Its § 3.1 fixes D1–D6, and no step reopens them.
+**No plan is active.** The Phase 11 plan (`docs/documentation/phase-11-plan.md`), `eval-forms`' README
+by entry point, is complete: its four steps shipped as `eval-forms` 0.7.1, a docs-only patch, and its
+retrospect is its § 10. The next plan retargets this file when it is written. It names the plan
+above, says which projects each step reaches, and records the gate's counts its steps start from: at
+69c3e0e, the release commit, and unchanged by its post-publish record, `eval-core` 3134,
+`eval-signals` 444, `eval-forms` 380.
 
-**The plan changes `eval-forms` only**, and only its documents, one spec's bound and title and its
-version. `eval-core` and `eval-signals` change in nothing:
-
-- **Step 1 is the plan and its records**, with the README's Development sentence and its
-  `[Unreleased]` line. *Done.*
-- **Step 2 is the reorder**: `modules/eval-forms/README.md`, the `/reactive`
-  `readme-examples.spec.ts`'s `from`, its count case's title and its comment lines, and the
-  CHANGELOG's `[Unreleased]`. No heading's text or level changes, and the `/signals` spec is not
-  edited. *Done.*
-- **Step 3 is the release commit**, `eval-forms` 0.7.1. *Done.*
-- **Step 4 is the post-publish record**, which touches no file under `modules/` unless npm's
-  publish date differs from the CHANGELOG's.
-
-A file outside the step's list is a stop-and-replan, not a wider step. A `package.json` in the diff
-before step 3 is a stop-and-replan.
-
-**The counts every step holds**, the gate at 8e6a617 with step 1's edits, which compile nothing and
-move no block, heading or import a README spec reads: `eval-core` 3134, `eval-signals` 444,
-`eval-forms` 380, as at 0d305a3. Every step moves them 0 / 0 / 0.
+**Invoked while no plan is active, this skill stops at § 1.** Run the baseline, report it, say that
+no plan is active, and do nothing else. Do not run a step of a completed plan, and do not treat a
+register entry as a plan: a one-commit item or a batch has its exit criteria in the prompt
+(`CLAUDE.md`, "Working from a plan").
 
 **The standing rules load with `CLAUDE.md`** (`docs/standing-rules.md`), and the plan's § 0, where
 it has one, adds to them; read it first. Each step's file list in the plan's § 4 is its scope, and it

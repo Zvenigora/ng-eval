@@ -6992,6 +6992,68 @@ skill 188 → 149 lines, 9,833 → 7,233 bytes; the `code-reviewer` 503 → 505 
 bytes, since its description and its scope-pusher paragraph grew, and it now reads the 18,191-byte
 standing rules as a file.
 
+<a id="f28"></a>
+## F28 — The consumer documents Phase 10 left out — **Retired, decided**
+
+**Package** repo, core, signals, forms · **Kind** decision · **Status** **Retired — decided
+2026-10-27, released 2026-10-29**: one README per package and no guide files; `eval-forms`' README
+ordered by entry point, with a contents list, shipped as `eval-forms` 0.7.1, a docs-only patch. Was
+Open — opened 2026-10-27 by [F27](#f27), in flight as Phase 11 from its step 1, 2026-10-28
+
+*Decided* 2026-10-27, by the request that fixed the [Phase 11 plan](documentation/phase-11-plan.md)'s
+D1–D6, on a read-only inventory of the three package READMEs taken that day at 8e6a617. **D1**: no
+split — each package keeps one README and there are no guide files, since a README in a secondary
+entry point's folder does not ship, and a guide under `docs/` that a published README links binds its
+path for as long as that version stays on npm, resolved against `master` rather than the version
+installed. **D2**: `eval-forms`' README reorders by entry point — the package's sections, then the
+three both adapters share, then `/reactive`, then `/signals` — every heading keeping its exact text
+and level, so that every anchor any document links still resolves, with the `/reactive`-only passages
+moved out of the shared sections and each fact stated once within it. **D3**: a contents list, in
+that README only. **D4**: repetition across the three READMEs stays, so that each stands alone on
+npm. **D5**: released as `eval-forms` 0.7.1, docs-only, with `eval-core` and `eval-signals`
+unchanged. **D6**: the plan is `docs/documentation/phase-11-plan.md`, beside Phase 10's, which had
+deferred the question.
+
+*Released* 2026-10-29 as `eval-forms` 0.7.1, tagged annotated `eval-forms@0.7.1` at 69c3e0e and
+published 00:50 UTC. Its three `.d.ts` are SHA-256-identical to 0.7.0's, its manifest differs in
+`version` only, and the packed README is byte-identical to the repository's. The `/reactive` count
+case reads from `## How it fits together` to `## Signal Forms`, at the same 11 fences, and every
+step held the gate at 3134 / 444 / 380. Step 2's code review opened [F29](backlog.md#f29), a latent
+test gap in the parse-error sentence the step made adapter-neutral. The retrospect is the plan's
+§ 10.
+
+**The entry as it stood:**
+
+> [Phase 10](documentation/phase-10-plan.md) restructured the maintainer documents and gave the three
+> package READMEs one opening, and left the consumer documents' shape out of scope: its D6 ruled out
+> separate guide files, and its § 8 q2 left `eval-forms`' README, then 864 lines, as it was. That
+> README is 893 lines now, `eval-core`'s 671 and `eval-signals`' 627. Undecided: whether a package
+> README splits into guides, where a guide lives, and whether it ships.
+>
+> **Constraints, whatever the answer:**
+> - **The `readme-examples.spec.ts` count cases find their blocks by heading**
+>   ([F13](#f13)): `eval-forms/reactive`'s counts the range from the heading
+>   "How it fits together" up to "Signal Forms" — from "Quick start — Reactive Forms", its entry point
+>   in a code span, until Phase 11 step 2 — so a heading moved or renamed moves a count; the case
+>   matches the heading as the README writes it.
+> - **`tools/published-links.txt` binds `#readme`** — the repository's and each package folder's, which
+>   binds each README file — and `modules/eval-signals#async-expressions`, a heading `eval-forms`'
+>   published README links ([F25](#f25) Part 4): the files and that heading stay, or a stub keeps the
+>   path and the anchor.
+> - **A guide file needs a home and a ship decision.** One under `modules/<name>/` ships only if the
+>   package's build copies it; one under `docs/` is linked by absolute URL from a published README,
+>   which then binds its path.
+> - **A moved shipped section needs a CHANGELOG line and a docs-only patch release**, as Phase 10's
+>   `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms` 0.6.1 were.
+> - **The first cut is `eval-forms` by entry point**: the shared core, `/reactive` and `/signals`.
+
+*Recorded*: the entry; the Phase 11 plan. *Verified*, as opened: read 2026-10-27 at 54f1d6d — the
+Phase 10 plan's D6 and § 8 q2, `tools/published-links.txt`, the count case's docblock in
+`modules/eval-forms/reactive/src/lib/readme-examples.spec.ts`, and `wc -l` of the three READMEs.
+*Verified*, retired: 2026-10-29, `npm pack @zvenigora/ng-eval-forms@0.7.1`, its README `cmp` silent
+against the repository's, and `git cat-file -t eval-forms@0.7.1` giving `tag` (the plan's step 4
+criteria 2 and 3).
+
 ---
 
 # Retired

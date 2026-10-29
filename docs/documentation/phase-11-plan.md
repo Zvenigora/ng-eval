@@ -10,7 +10,7 @@
 and its title — and comment lines (step 2, § 1.2 finding 6).
 **Also touches**: no library code. No exported symbol and no `.d.ts` changes. `eval-core` and
 `eval-signals` change in nothing (D5).
-**Retires**: [F28](../backlog.md#f28), in step 4.
+**Retires**: [F28](../backlog-retired.md#f28), in step 4.
 **Source**: the request of 2026-10-27, which fixed D1–D6 and the four steps, on a read-only inventory
 of the three package READMEs taken the same day at 8e6a617 (§ 1.3).
 **Objective**: one `eval-forms` README that a reader of one adapter can read without the other's
@@ -564,6 +564,25 @@ recorded at 0d305a3.
   - Tests 0 / 0 / 0. doc-links: files unchanged; links reported.
 - **Category**: the release's post-publish commit. Ships in no package, unless the CHANGELOG date
   changes, which is then recorded as a correction to the published entry.
+- **Outcome** (2026-10-29): done as listed. `eval-forms` 0.7.1 was published 2026-10-29T00:50:59Z,
+  dist-tag `latest`, and tagged annotated, `eval-forms@0.7.1` at b344a04, peeling to 69c3e0e, on
+  origin. npm's date is the CHANGELOG's, so no file under `modules/` changed, and the code-reviewer
+  did not run: § 4's table runs it only if a CHANGELOG date changes. The gate green at 3134 / 444 /
+  380; release-tags 47 rows, 57 release tags, all annotated, 0 failing. `git tag -l` lists 60, the 57
+  and the three `v*`, so the register's tag sentence counts fifty-seven. Its Register history turns
+  the *Unreleased* row into 0.7.1's, at 69c3e0e, 25 → 27, and adds an *Unreleased* row for F28,
+  retired by this commit, after the tag: 27 → 26. Probes, each alone:
+  - P4a, the new row naming df99cf1: release-tags exit 1, `docs/backlog.md:219: eval-forms@0.7.1 is
+    at 69c3e0e, and the row says df99cf1`, 1 failing; reverted by hand, 0 failing.
+  - P4b, `git tag p4b-scratch 69c3e0e`: `git cat-file -t` gives `commit`, where `eval-forms@0.7.1`
+    gives `tag`; deleted, and `git tag -l` back at 60.
+  - P4c: `npm pack @zvenigora/ng-eval-forms@0.7.1`, its README and CHANGELOG `cmp` silent against the
+    repository's, its three `.d.ts` 0.7.0's by SHA-256; 0.7.0's README differs at line 14.
+
+  Correction, under [SR4](../standing-rules.md#sr4): this document's own **Retires** line linked
+  `../backlog.md#f28`, which F28's move left dangling; it now links `backlog-retired.md`, and
+  doc-links found no other. `docs/standing-rules.md` joins the list as the step allows, since § 10
+  promotes a rule and corrects one.
 
 ---
 
@@ -646,4 +665,49 @@ None open.
 
 ## 10. Retrospect
 
-Written in step 4.
+Written in step 4, 2026-10-29.
+
+### 10.1 What landed
+
+§ 9 holds as written. Each package has one README, and `eval-forms`' is ordered by entry point under
+a contents list of its 31 `##` and `###`, every heading 0.7.0's word for word. It shipped as
+`eval-forms` 0.7.1, docs-only, its `.d.ts` 0.7.0's by SHA-256 and its npm page the repository's
+README byte for byte. Every step held the gate at 3134 / 444 / 380, as § 4 said it would, and the
+`/reactive` count held its 11 fences with a new `from`. The README's links went from 39 to 72.
+
+### 10.2 What the criteria did not catch
+
+Each step's code review found something its exit criteria could not:
+
+- **Step 1**: the Development section's not-covered sentence was false in the same way as the one
+  the step corrected, and was widened under [SR31](../standing-rules.md#sr31). The same review found
+  the step skill's scope gate, `git diff --name-status HEAD`, blind to this document, which was
+  untracked; the skill now runs `git status --porcelain`.
+- **Step 2**: § 3.3 put `:408-409` after `destroy()`'s paragraph, where the next paragraph's "There
+  is a **net** under that" would have named the coercion. Criterion 6's grep for directional words
+  was green, because "that" is not one of them. The same review found the parse-error sentence's
+  "whatever the policy" witnessed under the default policy only, now [F29](../backlog.md#f29).
+- **Step 3**: one Minor, a register sentence contradicting F29's own entry.
+
+The release went as planned: the CHANGELOG's date, written at the commit, was npm's, so step 4
+touched no file under `modules/`. One process trap: Git Bash's GNU `tar` reads `C:` in an archive
+path as a remote host, so a tarball in the scratchpad is extracted from its own folder.
+
+### 10.3 Rules weighed
+
+- **(a) A moved passage is re-read where it lands. Promoted, as
+  [SR39](../standing-rules.md#sr39).** Step 2 met the class twice. Criterion 7 was written for it in
+  advance: a block moved ahead of the names it uses. The captured "that" was not anticipated, and was
+  caught only by review. Neither is visible to a grep, which matches words and not antecedents, and
+  criterion 6's sweep was green while the defect stood. The rule applies to any plan that moves text,
+  in any library, and Phase 10 moved more than this one did. It costs one read per moved passage. It
+  stands as a rule because the next plan to move text will not inherit this plan's criteria, and a
+  step criterion that is not a standing rule dies with its plan.
+- **(b) The scope check uses `git status --porcelain`. Not a new rule: a correction to
+  [SR3](../standing-rules.md#sr3).** The scope rule existed. What was wrong was the check its *Red*
+  named, `git diff --name-status HEAD`, which cannot see a file a step creates, so a stray new file
+  passed it. That was false now ([SR31](../standing-rules.md#sr31)), not latent: step 1's own document
+  was such a file. The skill already ran the right command from step 1 on, but the skill is
+  retargeted with every plan, and the rule it cites still named the blind one. SR3's *Red* now names
+  `git status --porcelain` and says why, and its origin cites this section. A new ID would have left
+  two rules for one check.

@@ -23,8 +23,10 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
 - <a id="sr3"></a>**SR3 — The file list is the scope.** A file outside the step's list, a project it
   does not name, an unlisted rename or delete, or a `package.json` outside a release step is a
   stop-and-replan, unless widened at the confirmation gate with its reason. Something wrong nearby is
-  reported, not fixed. *Origin*: [Phase 10 § 6](documentation/phase-10-plan.md#6-verification-gates).
-  *Red*: nothing — `git diff --name-status HEAD`, read by hand.
+  reported, not fixed. *Origin*: [Phase 10 § 6](documentation/phase-10-plan.md#6-verification-gates);
+  the check, [Phase 11 § 10](documentation/phase-11-plan.md#10-retrospect). *Red*: nothing —
+  `git status --porcelain`, read by hand; `git diff --name-status HEAD` lists no untracked file, and a
+  file a step creates is one until it is staged.
 - <a id="sr4"></a>**SR4 — A plan correction lands in the step that finds it**: in that step's commit,
   with the reason in its body and the report, never in a commit of its own or drafted ahead; scope,
   file list, chores, cross-references and stale prose are editable in place. The step
@@ -172,6 +174,12 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
   a schedule. *Origin*:
   [Phase 10 § 6.1](documentation/phase-10-plan.md#61-the-spec-discipline-for-documentation). *Red*:
   nothing — held by review.
+- <a id="sr39"></a>**SR39 — A moved passage is re-read where it lands.** Text that moves is read in
+  its new place, with the paragraphs on either side, for what its new neighbours change: a pronoun or
+  a "that" now capturing another antecedent, a name used before the text that introduces it, a
+  directional word pointing the wrong way. A grep for `above` or `below` finds the last of these
+  only. *Origin*: [Phase 11 § 10](documentation/phase-11-plan.md#10-retrospect). *Red*: nothing —
+  held by review.
 
 ## Hygiene
 
