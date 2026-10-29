@@ -4,7 +4,6 @@
 
 import { TestBed } from '@angular/core/testing';
 import { EvalService } from '../actual/services/eval.service';
-import { clearVisitorResultCache, getVisitorResultCacheStats } from './visitors/visitor-result-cache';
 import { clearPropertyLookupCache, getPropertyLookupCacheStats } from './visitors/property-lookup-cache';
 import { EvalContext, EvalHooks, EvalState } from './classes/eval';
 import { evaluate, parse } from './functions';
@@ -20,80 +19,62 @@ describe('Performance Optimizations', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({});
     service = TestBed.inject(EvalService);
-    clearVisitorResultCache();
     clearPropertyLookupCache();
   });
 
   afterEach(() => {
-    clearVisitorResultCache();
     clearPropertyLookupCache();
   });
 
-  describe('Visitor Result Caching', () => {
-    it('should not cache visitor results due to context sensitivity', () => {
+  describe('Repeated Evaluation', () => {
+    it('should give the same binary expression result when evaluated twice', () => {
       const context = { a: 5, b: 3 };
       const expression = 'a + b * 2';
-      
+
       // First evaluation
       const result1 = service.simpleEval(expression, context);
       expect(result1).toBe(11); // 5 + (3 * 2)
-      
-      // Second evaluation should produce same result but not use cache
+
+      // Second evaluation should produce the same result
       const result2 = service.simpleEval(expression, context);
       expect(result2).toBe(11);
-      
-      // Visitor result caching is disabled to prevent context sensitivity issues
-      const stats = getVisitorResultCacheStats();
-      expect(stats.size).toBe(0);
     });
 
-    it('should not cache member expression visitor results', () => {
+    it('should give the same member expression result when evaluated twice', () => {
       const context = { user: { name: 'John', age: 25 } };
       const expression = 'user.name';
-      
+
       // First evaluation
       const result1 = service.simpleEval(expression, context);
       expect(result1).toBe('John');
-      
-      // Second evaluation should produce same result but not use cache
+
+      // Second evaluation should produce the same result
       const result2 = service.simpleEval(expression, context);
       expect(result2).toBe('John');
-      
-      // Visitor result caching is disabled to prevent context sensitivity issues
-      const stats = getVisitorResultCacheStats();
-      expect(stats.size).toBe(0);
     });
 
-    it('should handle context changes without caching', () => {
+    it('should re-read a changed context', () => {
       let context = { value: 10 };
       const expression = 'value * 2';
-      
+
       // First evaluation
       const result1 = service.simpleEval(expression, context);
       expect(result1).toBe(20);
-      
+
       // Change context
       context = { value: 15 };
-      
-      // Should recalculate with new context (no cache interference)
+
+      // Should recalculate with the new context
       const result2 = service.simpleEval(expression, context);
       expect(result2).toBe(30);
-      
-      // Cache should remain empty
-      const stats = getVisitorResultCacheStats();
-      expect(stats.size).toBe(0);
     });
 
-    it('should not cache simple literal expressions', () => {
+    it('should give the same literal result when evaluated twice', () => {
       const result1 = service.simpleEval('42');
       const result2 = service.simpleEval('42');
-      
+
       expect(result1).toBe(42);
       expect(result2).toBe(42);
-      
-      // Cache should remain empty for simple literals
-      const stats = getVisitorResultCacheStats();
-      expect(stats.size).toBe(0);
     });
   });
 
@@ -209,11 +190,9 @@ describe('Performance Optimizations', () => {
       // Should complete reasonably quickly (this is more about regression testing)
       expect(duration).toBeLessThan(5000); // 5 seconds for 100 iterations
       
-      // Only property lookup cache should be populated (visitor cache is disabled)
-      const visitorStats = getVisitorResultCacheStats();
+      // The property lookup cache should be populated
       const propertyStats = getPropertyLookupCacheStats();
-      
-      expect(visitorStats.size).toBe(0); // Disabled
+
       expect(propertyStats.size).toBeGreaterThan(0); // Should have cached case-insensitive lookups
     });
   });

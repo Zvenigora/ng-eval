@@ -326,9 +326,10 @@ obvious from `get`'s resolution order:
 Prototype-pollution blocking lives in `visitors/prototype-pollution-guard.ts` and is
 applied by the `member`, `assignment`, `update`, and `object` expression visitors; call
 sandboxing is in `call-expression.ts`. `visitors/property-lookup-cache.ts` is an LRU that
-makes repeated property lookups O(1). `visitor-result-cache.ts` exists but is
-**deliberately disabled** (commented out in `binary-expression.ts`) due to
-context-sensitivity bugs — don't re-enable it without solving cache-key-includes-context.
+makes repeated property lookups O(1). A visitor result cache, disabled since it was written,
+was **deleted** ([A32](docs/backlog-retired.md#a32)): its key held none of the node's operands,
+so `a + b` and `c + d` over one context shared an entry, and of the `EvalContext` the visitors
+passed it held only the size and the time. A future result cache starts from A32's register entry.
 
 Under `caseInsensitive`, what blocks the case-variant bypass (`x.CONSTRUCTOR`, the shape of
 GHSA-pj3p-xpg7-h7gw in the sibling `jse-eval`) is the *resolved-key* re-check,

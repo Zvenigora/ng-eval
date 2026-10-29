@@ -8,7 +8,6 @@ import { safeGetProperty, isDangerousProperty, isDangerousPrimitiveProperty } fr
 import { equalIgnoreCase } from './utils';
 import { getCachedCaseInsensitiveProperty } from './property-lookup-cache';
 import { markThisPositional } from './this-position';
-// import { getCachedVisitorResult, setCachedVisitorResult } from './visitor-result-cache';
 
 /**
  * Reconstructs the dotted source path of a member chain (`a.b.c`).
@@ -65,18 +64,7 @@ export const memberExpressionVisitor = (node: MemberExpression, st: EvalState, c
 
   beforeVisitor(node, st);
 
-  // Disable visitor result caching for now due to context sensitivity issues
-  // const cachedResult = getCachedVisitorResult(node, st.context);
-  // if (cachedResult !== undefined) {
-  //   pushVisitorResult(node, st, cachedResult);
-  //   afterVisitor(node, st);
-  //   return;
-  // }
-
   const [, , value] = evaluateMember(node, st, callback);
-
-  // Disable visitor result caching for now
-  // setCachedVisitorResult(node, st.context, value);
 
   pushVisitorResult(node, st, value);
 

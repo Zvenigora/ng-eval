@@ -309,8 +309,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.13.3. A45 part 1 closed with it, a part, so A45 stays live; F20 and F24 ship in no package | `021d5e4` | 2026-10-23 | 26 | 0 | 2: F20, F24 | 24 |
 | `eval-core` 0.14.0, `eval-signals` 0.7.0, `eval-forms` 0.7.0. F21 and F25 ship in no package | `0d305a3` | 2026-10-26 | 24 | 6: A48–A53 | 5: F21, F25, A44, A45, A52 | 25 |
 | `eval-forms` 0.7.1. F26, opened by 0.14.0's post-publish commit and fixed after it, ships in no package; F27 ships in no package but for one `eval-core` docblock | `69c3e0e` | 2026-10-29 | 25 | 4: F26–F29 | 2: F26, F27 | 27 |
-| *Unreleased*. F28, decided by Phase 11 and shipped in `eval-forms` 0.7.1, is retired by its post-publish commit, after the tag; A47 is fixed for `eval-core`'s next release | — | — | 27 | 0 | 2: F28, A47 | 25 |
-| **Since the register opened** | | | **42** | **71** | **88** | **25** |
+| *Unreleased*. F28, decided by Phase 11 and shipped in `eval-forms` 0.7.1, is retired by its post-publish commit, after the tag; A47 is fixed and A32 decided and deleted for `eval-core`'s next release | — | — | 27 | 0 | 3: F28, A47, A32 | 24 |
+| **Since the register opened** | | | **42** | **71** | **89** | **24** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -363,7 +363,7 @@ makes it that release's row, with its tag commit and date.
 | [A29](backlog-retired.md#a29) | `CompilerService` keys a compiled AST by type, start, end and `toString()` — two ASTs of one type and span share a compiled function | core | fix | **Retired — fixed 2026-10-10**; released 2026-10-10 in `eval-core` 0.11.1, tagged 7ee65fc. An AST is compiled on every call and never cached; a string is cached as before. Affected `eval-core` 0.2.1–0.11.0 |
 | [A30](#a30) | `ParserService.parserOptions` reaches `EvalService`, `CompilerService` and `DiscoveryService` for no acorn option | core | decision | Open — opened 2026-10-10 by the Phase 9 plan |
 | [A31](backlog-retired.md#a31) | The case-insensitive property cache keys an object by its key count and first five keys — objects sharing them share answers, process-wide | core | fix | **Retired — fixed 2026-10-10**; released 2026-10-10 in `eval-core` 0.11.1, tagged 7ee65fc. Keyed by the object itself, a cached key re-checked as the object's own; a colliding entry no longer turns a case-variant refusal into `undefined`. Affected `eval-core` 0.2.1–0.11.0 |
-| [A32](#a32) | The disabled visitor result cache keys a node without its operands — `a + b` and `c + d` share an entry | core | decision | Open — opened 2026-10-10 by A29's fix; latent, nothing calls it |
+| [A32](backlog-retired.md#a32) | The disabled visitor result cache keys a node without its operands — `a + b` and `c + d` share an entry | core | decision | **Retired — decided and deleted 2026-10-29**; unreleased, in `eval-core`'s next release, comments only: no code reached the bundle |
 | [A33](#a33) | The case-insensitive property cache keeps a miss while the own-key count is unchanged — a key added as another is deleted reads `undefined` by a case variant | core | fix | Open — opened 2026-10-10, after the `eval-core` 0.11.1 tag; a limit [A31](backlog-retired.md#a31)'s fix documents in a code comment. No refusal is skipped |
 | [A34](#a34) | The parse fingerprint's memo does not see options written in place — a write into `parserOptions`, a reused per-call object or `defaultParserOptions` keeps the old fingerprint | core | fix | Open — opened 2026-10-10 by [A26](backlog-retired.md#a26)'s fix, Phase 9 step 1; no worse than the text-only key it replaced |
 | [A35](backlog-retired.md#a35) | A dangerous function value reachable from the context is callable past the name-based call sandbox — by an alias, through `call` / `apply` / `bind`, and as a native callback (`map`, `Reflect.apply`, `then`); `eval("1+1")` is refused, `["1+1"].map(eval)` is `[2]` | core | decision, security | **Retired — fixed 2026-10-18**, as steps 2, 4, 7 and 8 of the [A35 plan](a35/plan.md). Steps 2 and 4 released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30, as partial hardening; steps 7 and 8, which close its last route, [A39](backlog-retired.md#a39), released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7; advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx). A host container stays a documented limit |
@@ -533,8 +533,8 @@ several of these visible at all. [A6](backlog-retired.md#a6) was surfaced by Pha
 ([`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.3), which keeps all three out of its scope
 (§ 3.1). [A29](backlog-retired.md#a29) and [A30](#a30) were surfaced by the Phase 9 plan's probes
 ([`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.3), which needs neither.
-[A31](backlog-retired.md#a31) and [A32](#a32) were found by A29's fix, grepping for other keys built
-from an object's shape. [A33](#a33) is a limit A31's fix left, and documented in the code; [A34](#a34)
+[A31](backlog-retired.md#a31) and [A32](backlog-retired.md#a32) were found by A29's fix, grepping for other keys built
+from an object's shape; A32 was decided by deleting the cache. [A33](#a33) is a limit A31's fix left, and documented in the code; [A34](#a34)
 is one A26's fix left, documented the same way. [A44](backlog-retired.md#a44)–[A47](backlog-retired.md#a47) were found by the
 [A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch: A44 by its
 `caseInsensitive` matrix, A45 while correcting `SECURITY.md`'s account of an assignment, and
@@ -931,29 +931,6 @@ never carrying `colonIdentifiers` (§ 1.2 finding 4).
 finding 4.
 *Verified*: measured 2026-10-10 at af81e24 by spying on `acorn.parse`, with a throwaway spec deleted the
 same day (that plan's § 1.3, P6).
-
-<a id="a32"></a>
-## A32 — The disabled visitor result cache keys a node by a subset of it
-
-**Package** core · **Kind** decision · **Status** Open. Opened 2026-10-10 by [A29](backlog-retired.md#a29)'s
-fix
-
-`visitor-result-cache.ts` keys a node by `generateNodeHash` — its type, its `name`, `value`,
-`operator` or property name if it has one, and its start — and a context by a hash of its JSON, or for
-an `EvalContext` its size and `Date.now()`. A node's operands are not in its key, so `a + b` and
-`c + d` both hash as `BinaryExpression_+_0`. Measured: `setCachedVisitorResult` for `a + b` over
-`{ a: 1, b: 2, c: 3, d: 4 }`, then `getCachedVisitorResult` for `c + d` over the same context, read `3`.
-
-**Latent, not live.** Both call sites are commented out (`binary-expression.ts:163`,
-`member-expression.ts:52`), and the module is imported only by `performance.spec.ts`, which asserts the
-cache stays empty. `CLAUDE.md` says not to re-enable it without making the key include the context;
-the node half of the key is a second reason, recorded nowhere until now.
-
-**The decision**: delete the module and the spec's two references to it, or redesign both halves of
-the key before anything calls it. Nothing calls it today.
-
-*Recorded*: this entry, by the grep the A29 fix ran for other keys built from an object's shape.
-*Verified*: measured 2026-10-10 at d839072 with a throwaway spec, deleted before A29's commit.
 
 <a id="a33"></a>
 ## A33 — The case-insensitive property cache keeps a miss across a same-count key swap

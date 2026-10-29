@@ -18,6 +18,9 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   a `finally`, and both no-op on an absent context. It said each site wrote `st.context?.push(...)`
   ([F27](../../docs/backlog-retired.md#f27)). Documentation only: the comment reaches the bundle,
   not the `.d.ts`.
+- The disabled visitor result cache is deleted ([A32](../../docs/backlog-retired.md#a32)). Nothing
+  called it or exported it. Documentation only: the bundle loses the commented-out import and call
+  sites in the binary and member visitors, and no code; the `.d.ts` is unchanged.
 
 ### Fixed
 - **Under `caseInsensitive`, an arrow's parameters are matched case-insensitively**, as a `let`

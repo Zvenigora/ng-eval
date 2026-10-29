@@ -1715,7 +1715,7 @@ red, nothing else; a key of type, start and end without `toString()` — the sam
 suite compiles an AST through the service.
 
 The fix's grep for other keys built from an object's shape found two, neither in `CompilerService`:
-[A31](#a31), the case-insensitive property cache, live, and fixed since; and [A32](backlog.md#a32), the
+[A31](#a31), the case-insensitive property cache, live, and fixed since; and [A32](#a32), the
 disabled visitor result cache.
 
 **The entry as it stood:**
@@ -1829,6 +1829,70 @@ deliberately.
 Opened 2026-10-10 by A29's fix.
 *Verified*: measured 2026-10-10 at d839072 with a throwaway spec, deleted before A29's commit; the
 refusal rows on A29's commit, with another, deleted the same day.
+
+<a id="a32"></a>
+## A32 — The disabled visitor result cache keys a node by a subset of it
+
+**Package** core · **Kind** decision · **Status** **Retired — decided and deleted 2026-10-29**;
+unreleased, in `eval-core`'s next release, comments only. Was Open. Opened 2026-10-10 by [A29](#a29)'s
+fix
+
+*Decided* 2026-10-29, as a one-commit item: deleted, not redesigned. `visitor-result-cache.ts` is gone,
+and so are the commented-out import and the two commented-out cache blocks, with their "Disable
+visitor result caching" lines, in `binary-expression.ts` and `member-expression.ts`. The module was
+disabled from the start: c087f69 added it with both call sites already commented out, so no
+published `eval-core` ever called it, and nothing exported it. A redesign would have had no caller to
+measure against. A future result cache starts from this entry: its key has to hold what the result
+depends on, the node itself rather than a description of it, as [A29](#a29) found for the compiler's
+cache, and every value of the context the node reads.
+
+**What ships.** Measured on the production bundle, before and after. Before, at bb61c42,
+`zvenigora-ng-eval-core.mjs` held 8 matches for `VisitorResultCache|generateNodeHash|CachedVisitorResult`,
+on 6 lines, every one of them a comment: the commented-out import and blocks, which ng-packagr keeps.
+The `.d.ts` held none. After, 0 and 0. The next release's bundle loses those comment lines and no
+code, so the item ships in `eval-core`'s next release as documentation, with an `[Unreleased]` line
+in its CHANGELOG. The item's prompt had predicted 0 before, as the witness that it shipped in no
+package, and was widened at its gate to that CHANGELOG. The deletion did nothing else: the module's
+own code, the class, its global instance and `generateNodeHash`, was never in the bundle, since only
+`performance.spec.ts` imported it.
+
+*Verified*: `performance.spec.ts` loses its import of the module, both `clearVisitorResultCache()`
+calls and the five `getVisitorResultCacheStats()` reads with their `size` expects, in the four
+former "Visitor Result Caching" cases and the `caseInsensitive` benchmark. The module they measured is
+gone, so none of them could fail. Every evaluation-result expect stays, and so does the benchmark's
+`propertyStats` expect. The describe is now "Repeated Evaluation", and its four cases are named for
+what they check: the same result twice, for a binary expression, a member expression and a literal,
+and a changed context re-read. No case was added or removed: `eval-core` 3154, `eval-signals` 444,
+`eval-forms` 380. The commented blocks were not code, so the equivalence is the build and the full
+suite.
+
+The sweep for the dead claim, by `visitor result cach`, `visitor-result-cache`, `VisitorResultCache`
+and `cache-key-includes-context` across the repository, and by `visitor.result.cach` as a regular
+expression, which alone finds the spelling `visitor-result cache`: `CLAUDE.md`'s "exists but is deliberately
+disabled … don't re-enable it without solving cache-key-includes-context", rewritten to say the cache
+was deleted; this entry's index row, retired; [A29](#a29)'s mention above, kept as history, its link
+re-pointed here; and two rows of [`phase-10-plan.md`](documentation/phase-10-plan.md) § 3.3, a design
+record, kept as written, which name A32 in plain text. Nothing else.
+
+**The entry as it stood**, but for one count corrected in place:
+
+`visitor-result-cache.ts` keys a node by `generateNodeHash` — its type, its `name`, `value`,
+`operator` or property name if it has one, and its start — and a context by a hash of its JSON, or for
+an `EvalContext` its size and `Date.now()`. A node's operands are not in its key, so `a + b` and
+`c + d` both hash as `BinaryExpression_+_0`. Measured: `setCachedVisitorResult` for `a + b` over
+`{ a: 1, b: 2, c: 3, d: 4 }`, then `getCachedVisitorResult` for `c + d` over the same context, read `3`.
+
+**Latent, not live.** Both call sites are commented out (`binary-expression.ts:163`,
+`member-expression.ts:52`), and the module is imported only by `performance.spec.ts`, which asserts the
+cache stays empty. `CLAUDE.md` says not to re-enable it without making the key include the context;
+the node half of the key is a second reason, recorded nowhere until now.
+
+**The decision**: delete the module and the spec's eight references to it, or redesign both halves of
+the key before anything calls it. Nothing calls it today. (Corrected 2026-10-29 from "two": the spec
+held an import, two clears and five reads, and the deletion removed all eight.)
+
+*Recorded*: this entry, by the grep the A29 fix ran for other keys built from an object's shape.
+*Verified*: measured 2026-10-10 at d839072 with a throwaway spec, deleted before A29's commit.
 
 <a id="a35"></a>
 ## A35 — A dangerous function value reachable from the context is callable past the name-based call sandbox
