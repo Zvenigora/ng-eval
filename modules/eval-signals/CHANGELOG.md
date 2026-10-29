@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- The comment on the recompute's scope-depth unwind in `eval-signal.ts` says every scope push site
+  in `eval-core` pops in a `finally`, and the arrow site, the one the unwind was written against,
+  since Phase 2 step 0 ([A9](../../docs/backlog-retired.md#a9)). It said "both visitor push sites",
+  a count from that step, when the second was `pattern.ts`, which no longer pushes a scope.
+  Documentation only: the comment reaches the bundle, not the `.d.ts`.
+
 ---
 
 ## [0.7.0] - 2026-10-26

@@ -332,8 +332,9 @@ export function createEvalSignal(
       // runs only when a leak happened.
       //
       // **Retained, not redundant.** `eval-core` closed its own half in Phase 2
-      // step 0 (backlog A9): both visitor push sites now pop in a
-      // `finally`, so the arrow-function leak this was written against no
+      // step 0 (backlog A9): every scope push site in `eval-core` now pops in
+      // a `finally`, and the arrow site, the one this loop was written
+      // against, has done so since that step. So the arrow-function leak no
       // longer happens on a current core - including the escaped-closure case
       // S 3.8.3 recorded as out of reach, whose push and pop now travel
       // together however long after this frame it is called. What keeps the
