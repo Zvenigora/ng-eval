@@ -181,7 +181,7 @@ carries A45 part 1 only. Its `.d.ts` is SHA-256-identical to 0.13.2's, and it is
 The A40/A41 batch is released as `eval-core` 0.13.2, alone, a patch, tagged at dc4302d and
 published 2026-10-22. It carries [A40](backlog-retired.md#a40), [A41](backlog-retired.md#a41),
 [A43](backlog-retired.md#a43) and [A46](backlog-retired.md#a46), and opened [A44](backlog-retired.md#a44), A45 and
-[A47](#a47). Its `.d.ts` is byte-identical to 0.13.1's, and no peer range moved, so neither
+[A47](backlog-retired.md#a47). Its `.d.ts` is byte-identical to 0.13.1's, and no peer range moved, so neither
 downstream package released.
 
 Phase 9, colon-joined identifiers, is complete: its
@@ -309,8 +309,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.13.3. A45 part 1 closed with it, a part, so A45 stays live; F20 and F24 ship in no package | `021d5e4` | 2026-10-23 | 26 | 0 | 2: F20, F24 | 24 |
 | `eval-core` 0.14.0, `eval-signals` 0.7.0, `eval-forms` 0.7.0. F21 and F25 ship in no package | `0d305a3` | 2026-10-26 | 24 | 6: A48–A53 | 5: F21, F25, A44, A45, A52 | 25 |
 | `eval-forms` 0.7.1. F26, opened by 0.14.0's post-publish commit and fixed after it, ships in no package; F27 ships in no package but for one `eval-core` docblock | `69c3e0e` | 2026-10-29 | 25 | 4: F26–F29 | 2: F26, F27 | 27 |
-| *Unreleased*. F28, decided by Phase 11 and shipped in `eval-forms` 0.7.1, is retired by its post-publish commit, after the tag | — | — | 27 | 0 | 1: F28 | 26 |
-| **Since the register opened** | | | **42** | **71** | **87** | **26** |
+| *Unreleased*. F28, decided by Phase 11 and shipped in `eval-forms` 0.7.1, is retired by its post-publish commit, after the tag; A47 is fixed for `eval-core`'s next release | — | — | 27 | 0 | 2: F28, A47 | 25 |
+| **Since the register opened** | | | **42** | **71** | **88** | **25** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -378,7 +378,7 @@ makes it that release's row, with its tag commit and date.
 | [A44](backlog-retired.md#a44) | Under `caseInsensitive`, a member write to a case variant creates a new key: `OBJ.X = 2`, `OBJ.X += 1` and `OBJ.X++` on `{ x: 1 }` leave `{ x: 1, X: 2 }` | core | fix | **Retired — fixed 2026-10-24**, as step 3 of the [A45 plan](a45/plan.md); released 2026-10-26 in `eval-core` 0.14.0, tagged 0d305a3. A member write and update reach the key the read matched; a key that matches nothing is written as spelled. The update spec's `caseInsensitive` matrix runs again spelled `OBJ.X` |
 | [A45](backlog-retired.md#a45) | An assignment evaluates its target as an operand and its right side unconditionally — a short-circuited `\|\|=` called its right side and wrote (part 1), a member target is evaluated twice, and `obj.fetch = 1` is refused at the read | core | fix | **Retired — fixed 2026-10-24**. Part 1 retired 2026-10-22, released 2026-10-23 in `eval-core` 0.13.3, tagged 021d5e4. Part 2 fixed in steps 2 and 3 of the [A45 plan](a45/plan.md), released 2026-10-26 in `eval-core` 0.14.0, tagged 0d305a3: a member target's object and key are evaluated once, `=` reads nothing, a compound or logical operator reads once, and read events follow the reads, which reopened Phase 1's decision. A breaking minor by behaviour |
 | [A46](backlog-retired.md#a46) | An expression can rebind `undefined` on a reused context — `undefined = 1`, then `x === undefined` is `false` — and under `caseInsensitive` a case variant of `undefined`, `null`, `true` or `false` | core | fix, decision | **Retired — fixed 2026-10-22**; released 2026-10-22 in `eval-core` 0.13.2, tagged dc4302d. Such a write throws `Assignment to read-only name`, unless a scope binds the name or the context resolves it; a context class that overrides `set` decides these writes itself. `NaN` and `Infinity` are outside the set, since the evaluator resolves neither |
-| [A47](#a47) | An arrow's parameter scope is pushed without the walk's options, so under `caseInsensitive` `(x => X)(1)` is `undefined`, and `X = 5` in the body can land on the consumer's context | core | fix | Open — opened 2026-10-22 by the A40/A41 batch's code review; predates it. The other three scope pushers pass the options. Not scheduled |
+| [A47](backlog-retired.md#a47) | An arrow's parameter scope is pushed without the walk's options, so under `caseInsensitive` `(x => X)(1)` is `undefined`, and `X = 5` in the body can land on the consumer's context | core | fix | **Retired — fixed 2026-10-28**; unreleased, in `eval-core`'s next release. The parameter scope is pushed with the walk's options, as the other three scope pushers push theirs. Opened 2026-10-22 by the A40/A41 batch's code review; predated it |
 | [A48](#a48) | Under `caseInsensitive`, a member read calls a prototype accessor twice: `c.g` reads its getter twice, and so does `c.g++` | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q2); predates it. The plan's characterisation spec holds three rows under it. Not scheduled |
 | [A49](#a49) | The context branch reads what it tests: `getThis` reads the value and `getKey` calls lookups, so `this.g = 1` calls a getter on the context | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q3); predates it. Its fix touches `EvalContext`, a published class. Not scheduled |
 | [A50](#a50) | Under `caseInsensitive`, `this.k = v` writes an own property onto the context's `Registry` copy, and the data is unchanged | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q4); predates it. Not scheduled |
@@ -535,11 +535,11 @@ several of these visible at all. [A6](backlog-retired.md#a6) was surfaced by Pha
 ([`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.3), which needs neither.
 [A31](backlog-retired.md#a31) and [A32](#a32) were found by A29's fix, grepping for other keys built
 from an object's shape. [A33](#a33) is a limit A31's fix left, and documented in the code; [A34](#a34)
-is one A26's fix left, documented the same way. [A44](backlog-retired.md#a44)–[A47](#a47) were found by the
+is one A26's fix left, documented the same way. [A44](backlog-retired.md#a44)–[A47](backlog-retired.md#a47) were found by the
 [A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch: A44 by its
 `caseInsensitive` matrix, A45 while correcting `SECURITY.md`'s account of an assignment, and
 [A46](backlog-retired.md#a46) and A47 by its code review. A46 is fixed and retired, and ships with
-the batch in `eval-core` 0.13.2.
+the batch in `eval-core` 0.13.2. A47 is fixed and retired, unreleased, in `eval-core`'s next release.
 
 **Identity-checked `exit`** (§ 3.8 of the Phase 1 plan) means the hook layer stays balanced in
 spite of [A1](backlog-retired.md#a1) and [A2](backlog-retired.md#a2), so neither was urgent — [A3](backlog-retired.md#a3)
@@ -1078,50 +1078,6 @@ write policy ([A36](backlog-retired.md#a36)). **It is not in 0.12.1.**
 `evaluate(parse(…), EvalState.fromContext(…))` against the built bundle, used a subclass of
 `EvalContext` whose `checkMemberWrite` refuses what the walk did not create, and ran the same tags
 natively beside it.
-
-<a id="a47"></a>
-## A47 — An arrow's parameter scope is pushed without the walk's options, so it is case-sensitive under `caseInsensitive`
-
-**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-22 by the code review of the
-[A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch (its N1). It predates that
-batch. Not scheduled
-
-`arrow-function-expression.ts:35` pushes the parameter scope as `contextPush(st.context, newContext)`,
-without `st.options`. So under `caseInsensitive` the scope is a plain record, read by exact key, while
-the context and every other scope are case-insensitive. The other three scope pushers pass the
-options: `program.ts:50`, `block-statement.ts:54` and `for-statement.ts:81` each call
-`contextPush(st.context, {}, st.options)`, and `block-statement.ts`'s comment says why: `fromContext`
-copies a plain record into a `Registry` only when the option reaches it.
-
-Measured 2026-10-22 against the production bundle, under `caseInsensitive`, through
-`EvalContext.fromContext(…, { caseInsensitive: true })`:
-
-| Expression | Context | Result | Context afterwards | JavaScript, read case-insensitively |
-| :--- | :--- | :--- | :--- | :--- |
-| `(x => X)(1)` | `{}` | `undefined` | unchanged | `1` |
-| `(x => (X = 5, x))(1)` | `{ x: 10 }` | `5`: the parameter was written | `x` still `10` | `5` |
-| `(x => (X = 5, x))(1)` | `{}` | `1`: the parameter was not written | `X` holds `5` | `5`, and the context unchanged |
-| `{ let x = 1; X }` | `{}` | `1` | unchanged | `1` |
-
-The second row writes the parameter only by way of the context: `getKey` corrects `X` to `x` through
-the context, and `assignToBinding` then finds `x` in the parameter scope. With nothing to correct it
-against, the third row writes the consumer's context. Before
-[A43](backlog-retired.md#a43)'s fallback it wrote the key `undefined` there. The last row is the
-contrast: a block scope, pushed with the options, matches the case variant. Every row leaves the
-scope stack empty.
-
-**Fidelity**: an arrow body reads and writes its own parameters case-sensitively in a mode that
-promises otherwise, and a write can land on the consumer's context instead of the parameter.
-
-**Since [A46](backlog-retired.md#a46), a literal-named parameter is the exception.** A case-variant
-write to one, `(undefined => (UNDEFINED = 2))(1)` or `(TRUE => (True = 2))(1)`, throws
-`Assignment to read-only name` instead of rebinding the literal on the consumer's context, the third
-row's outcome before A46. `read-only-names.spec.ts` pins the throw. This entry's fix turns it into a
-parameter write, and moves that pinned row.
-
-*Recorded*: this entry.
-*Verified*: found by the batch's code review. Re-measured 2026-10-22 with a throwaway script outside
-the repository, against the production bundle with the Angular compiler loaded.
 
 <a id="a48"></a>
 ## A48 — Under `caseInsensitive`, a member read calls a prototype accessor twice

@@ -2583,8 +2583,8 @@ the predicate `eval-context.ts`'s `spellingIn` also calls. Six cases pin it and 
 - `TRUE = 0` over the same store and walk writes, as an ordinary name;
 - `undefined = 1` over `{ undefined: undefined }`, case-sensitively, is refused;
 - under `caseInsensitive`, `(undefined => (UNDEFINED = 2))(1)` and `(TRUE => (True = 2))(1)` are
-  refused with no scope left, since [A47](backlog.md#a47)'s parameter scope does not match the case
-  variant.
+  refused with no scope left, since [A47](#a47)'s parameter scope does not match the case
+  variant. A47's fix, 2026-10-28, made both a parameter write, and moved the row.
 
 The store test dropped, the two refusal rows over that store failed and nothing else did.
 
@@ -2924,6 +2924,109 @@ Angular compiler loaded, each row run natively beside it.
 
 *Recorded*: this entry; `SECURITY.md`, "No write path refuses overwriting a listed function";
 `modules/eval-core/CHANGELOG.md`'s `[0.13.3]` › Fixed and `[0.14.0]` › Breaking.
+
+<a id="a47"></a>
+## A47 — An arrow's parameter scope is pushed without the walk's options, so it is case-sensitive under `caseInsensitive`
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-28**; unreleased, in
+`eval-core`'s next release. Was Open, not scheduled. Opened 2026-10-22 by the code review of the
+[A40](#a40) and [A41](#a41) batch (its N1); it predated that batch
+
+*Fixed* 2026-10-28, as a one-commit item. `arrow-function-expression.ts` pushes the parameter scope
+as `contextPush(st.context, newContext, st.options)`, as `program.ts`, `block-statement.ts` and
+`for-statement.ts` push theirs, so under `caseInsensitive` `fromContext` copies the parameter
+bindings into a case-insensitive `Registry`. No other source changed, and nothing on the published
+surface. Under `caseInsensitive` an arrow's parameters are now matched case-insensitively, and a
+case-variant write reaches the parameter, not the caller's context. A case-variant write to a
+parameter named like a literal is a parameter write: [A46](#a46)'s refusal needs no pushed scope to
+bind the name, and the scope now binds it.
+
+Re-measured 2026-10-28 against the production bundle, before and after the fix, over each of the
+three store shapes a caller hands the walk under `caseInsensitive` — a plain object, a
+`Registry.fromObject(…, { caseInsensitive: true })` and `EvalContext.fromContext(…,
+{ caseInsensitive: true })` — with the same result on each:
+
+| Expression | Context | Before | After |
+| :--- | :--- | :--- | :--- |
+| `(x => X)(1)` | `{}` | `undefined` | `1` |
+| `(x => X)(1)` | `{ x: 10 }` | `10`, the context's `x`; a dependency tracker records `X` | `1`; the tracker records nothing |
+| `(x => (X = 5, x))(1)` | `{}` | `1`, and `X` holds `5` on the context | `5`, the context empty |
+| `(x => (X = 5, x))(1)` | `{ x: 10 }` | `5`, `x` still `10` | the same |
+| `(({ a }) => A)({ a: 4 })` | `{}` | `undefined` | `4` |
+| `(undefined => (UNDEFINED = 2))(1)` | `{}` | throws `Assignment to read-only name "UNDEFINED".` | `2`, the context empty |
+| `(TRUE => (True = 2))(1)` | `{}` | throws `Assignment to read-only name "True".` | `2`, the context empty |
+
+Every row leaves the scope stack empty. A plain object's write lands on the `Registry` copy
+`fromContext` makes, never on the caller's own object, before the fix as after. The second row is
+the one the fix changes most: the caller's data was read where the parameter was meant, and with a
+dependency tracker, `items.map(item => ITEM.n)` over `{ items: [{ n: 1 }], item: { n: 9 } }` gave
+`[9]` and recorded `items`, `ITEM` and `ITEM.n`, and now gives `[1]` and records `items` alone. The
+read event itself is unchanged, the key `x` on the context; what changes is that it is a scope
+read. With `caseInsensitive` off, the same rows are unchanged by the fix: a case variant is
+another name, so `(x => X)(1)` is `undefined` and `X = 5` writes `X` on the caller's object. And a
+case-insensitive `EvalContext` walked case-sensitively, the split the README warns of, is unchanged
+too, since the scope follows the walk's options: there `(x => X)(1)` over `{ x: 10 }` gives `10`.
+
+*Verified*: test-first. `arrow-function-expression.spec.ts` gains 20 cases: the five rows above
+without the literal names, under `caseInsensitive` over each of the three store shapes, each
+asserting the value, an empty scope stack, the caller's own object and `context.original`, and the
+`{ x: 10 }` read the tracker's dependencies as well; the four sources with `caseInsensitive` off
+over a plain object, asserting the value and the caller's object; and the split shape's read. `read-only-names.spec.ts`'s
+two literal-named rows move from a refusal to a parameter write, reading the parameter back, as
+`(TRUE => (True = 2, TRUE))(1)`, and asserting `2`, an empty scope stack and an empty key list, with
+the same count. Against the visitor before the fix, 11 cases failed at first: the three
+`caseInsensitive` rows read over `{}`, on each of the three shapes, and the two moved rows. The
+`{ x: 10 }` write passes before the fix as after, on every shape, since the context corrects `X` to
+`x` through its own key; it pins that the fix keeps that route. The fix's code review (its W1)
+found the `{ x: 10 }` read, which no case had pinned, and its three cases were added red. It also
+found (its W2) that the moved rows asserted only the assignment's own value, which is `2` wherever
+the write lands, hence the read-back. Wrong implementations, each applied alone:
+- **the options dropped**, the fix reverted, against all of `eval-core`: 14 failed, the 11 and the
+  three `{ x: 10 }` reads, and nothing else did;
+- **the scope always pushed with `{ caseInsensitive: true }`**, against all of `eval-core`: the
+  four cases with `caseInsensitive` off and the split shape's failed, and nothing else did;
+- **`EvalContext.setInScope` reporting a write it did not make**, against the two specs alone,
+  since across `eval-core` it hung the run: 13 failed, among them both moved rows and the six
+  parameter writes above, the rest the existing shadowing rows of `read-only-names.spec.ts`.
+
+**The entry as it stood:**
+
+`arrow-function-expression.ts:35` pushes the parameter scope as `contextPush(st.context, newContext)`,
+without `st.options`. So under `caseInsensitive` the scope is a plain record, read by exact key, while
+the context and every other scope are case-insensitive. The other three scope pushers pass the
+options: `program.ts:50`, `block-statement.ts:54` and `for-statement.ts:81` each call
+`contextPush(st.context, {}, st.options)`, and `block-statement.ts`'s comment says why: `fromContext`
+copies a plain record into a `Registry` only when the option reaches it.
+
+Measured 2026-10-22 against the production bundle, under `caseInsensitive`, through
+`EvalContext.fromContext(…, { caseInsensitive: true })`:
+
+| Expression | Context | Result | Context afterwards | JavaScript, read case-insensitively |
+| :--- | :--- | :--- | :--- | :--- |
+| `(x => X)(1)` | `{}` | `undefined` | unchanged | `1` |
+| `(x => (X = 5, x))(1)` | `{ x: 10 }` | `5`: the parameter was written | `x` still `10` | `5` |
+| `(x => (X = 5, x))(1)` | `{}` | `1`: the parameter was not written | `X` holds `5` | `5`, and the context unchanged |
+| `{ let x = 1; X }` | `{}` | `1` | unchanged | `1` |
+
+The second row writes the parameter only by way of the context: `getKey` corrects `X` to `x` through
+the context, and `assignToBinding` then finds `x` in the parameter scope. With nothing to correct it
+against, the third row writes the consumer's context. Before
+[A43](#a43)'s fallback it wrote the key `undefined` there. The last row is the
+contrast: a block scope, pushed with the options, matches the case variant. Every row leaves the
+scope stack empty.
+
+**Fidelity**: an arrow body reads and writes its own parameters case-sensitively in a mode that
+promises otherwise, and a write can land on the consumer's context instead of the parameter.
+
+**Since [A46](#a46), a literal-named parameter is the exception.** A case-variant
+write to one, `(undefined => (UNDEFINED = 2))(1)` or `(TRUE => (True = 2))(1)`, throws
+`Assignment to read-only name` instead of rebinding the literal on the consumer's context, the third
+row's outcome before A46. `read-only-names.spec.ts` pins the throw. This entry's fix turns it into a
+parameter write, and moves that pinned row.
+
+*Recorded*: this entry; `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Fixed.
+*Verified* (as opened): found by the batch's code review. Re-measured 2026-10-22 with a throwaway
+script outside the repository, against the production bundle with the Angular compiler loaded.
 
 <a id="a52"></a>
 ## A52 — Under `caseInsensitive`, an identifier holding `null` reads as `undefined`

@@ -244,17 +244,15 @@ describe('read-only names', () => {
       expect(run('TRUE', context)).toBe(true);
     });
 
-    // A47: the parameter scope ignores caseInsensitive; A47's fix turns these
-    // into parameter writes, and moves this row.
-    it.each<[string, string]>([
-      ['(undefined => (UNDEFINED = 2))(1)', 'UNDEFINED'],
-      ['(TRUE => (True = 2))(1)', 'True'],
-    ])('should refuse %s, a case variant the parameter scope does not match', (source, name) => {
+    // Each reads the parameter back, so a write that went nowhere fails.
+    it.each<[string]>([
+      ['(undefined => (UNDEFINED = 2, undefined))(1)'],
+      ['(TRUE => (True = 2, TRUE))(1)'],
+    ])('should write the parameter for %s, a case variant the parameter scope matches', (source) => {
       const context = EvalContext.fromContext({}, options);
 
-      const error = caught(() => run(source, context));
+      expect(run(source, context)).toBe(2);
 
-      expect((error as Error).message).toBe(`Assignment to read-only name "${name}".`);
       expect(context.scopes.length).toBe(0);
       expect([...(context.original as Registry<unknown, unknown>).keys]).toEqual([]);
     });

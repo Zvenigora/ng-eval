@@ -32,7 +32,7 @@ export const arrowFunctionExpressionVisitor = (node: ArrowFunctionExpression, st
     // and - since this closure's body is a re-entrant `evaluate` that pushes
     // again - a plant that evaluates anything recurses until the stack is
     // gone, leaving a reused context unusable (`docs/backlog.md` A42).
-    contextPush(st.context, newContext);
+    contextPush(st.context, newContext, st.options);
     try {
       return evaluate(node.body, st);
     } finally {

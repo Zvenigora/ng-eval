@@ -19,6 +19,18 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   ([F27](../../docs/backlog-retired.md#f27)). Documentation only: the comment reaches the bundle,
   not the `.d.ts`.
 
+### Fixed
+- **Under `caseInsensitive`, an arrow's parameters are matched case-insensitively**, as a `let`
+  or `const` already was: `(x => X)(1)` gives `1` and `(({ a }) => A)({ a: 4 })` gives `4`, where
+  each gave `undefined`, or the context's own value when the context held the name in any
+  spelling: over `{ x: 10 }`, `(x => X)(1)` gave `10`. Such a read is now a scope read, so a
+  dependency tracker no longer records it as a dependency, where it recorded `X`. A case-variant
+  write reaches the parameter, not the caller's context:
+  `(x => (X = 5, x))(1)` over `{}` gives `5` and leaves the context empty, where it gave `1` and
+  wrote a key `X` there. A case-variant write to a parameter named like a literal,
+  `(TRUE => (True = 2))(1)`, writes the parameter, where since 0.13.2 it threw
+  `Assignment to read-only name` ([A47](../../docs/backlog-retired.md#a47)).
+
 ---
 
 ## [0.14.0] - 2026-10-26
