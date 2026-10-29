@@ -23,8 +23,9 @@ version. `eval-core` and `eval-signals` change in nothing:
   `readme-examples.spec.ts`'s `from`, its count case's title and its comment lines, and the
   CHANGELOG's `[Unreleased]`. No heading's text or level changes, and the `/signals` spec is not
   edited. *Done.*
-- **Step 3 is the release commit**, `eval-forms` 0.7.1; **step 4** the post-publish record, which
-  touches no file under `modules/` unless npm's publish date differs from the CHANGELOG's.
+- **Step 3 is the release commit**, `eval-forms` 0.7.1. *Done.*
+- **Step 4 is the post-publish record**, which touches no file under `modules/` unless npm's
+  publish date differs from the CHANGELOG's.
 
 A file outside the step's list is a stop-and-replan, not a wider step. A `package.json` in the diff
 before step 3 is a stop-and-replan.

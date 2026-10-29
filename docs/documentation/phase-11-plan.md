@@ -523,6 +523,16 @@ recorded at 0d305a3.
      (`git tag -a`).
   - Tests 0 / 0 / 0. doc-links: files unchanged; links reported.
 - **Category**: the release, one docs-only patch. No `.d.ts` change, no peer range moved.
+- **Outcome** (2026-10-29 UTC): done as listed; the gate green at 3134 / 444 / 380, doc-links 356
+  files, 2062 links, +1, the "Work in flight" paragraph's link to F29, release-tags 46 rows, 0
+  failing. The CHANGELOG heading carries 2026-10-29, the UTC date at the commit; step 4 corrects it
+  if npm's differs. The three built `.d.ts` match 0.7.0's tarball by SHA-256, and the built
+  `package.json` differs from 0.7.0's in `version` only. P3a: all three mismatch against 0.4.1's,
+  whose core `.d.ts` names `colonIdentifiers` 0 times to the build's 1. The built README and
+  CHANGELOG `cmp` silent against the repository's; P3b: 0.7.0's README differs at line 14, the
+  contents list. No correction to the plan. The code review found nothing Critical or Important; its
+  one Minor, "Work in flight" calling F29 "not scheduled" where its entry schedules it with the next
+  phase that moves `eval-forms`' rows, is folded in.
 
 ### Step 4 — Post-publish record, retrospect, F28 retired, phase closed
 

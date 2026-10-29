@@ -164,9 +164,13 @@ refusal on every identifier target (D11). A48–A51 and A53 are not scheduled.
 [F27](backlog-retired.md#f27) is fixed: the process and verification rules are in
 [`standing-rules.md`](standing-rules.md), imported by `CLAUDE.md`, and the copies cite it. It ships
 in no package but for one corrected `eval-core` docblock, an `[Unreleased]` line documentation only. It opened
-[F28](#f28), the consumer documents, which is in flight as Phase 11
-([plan](documentation/phase-11-plan.md)): `eval-forms`' README reordered by entry point, with a
-contents list, to ship as `eval-forms` 0.7.1, a docs-only patch.
+[F28](#f28), the consumer documents.
+
+**Phase 11 is in flight** ([plan](documentation/phase-11-plan.md)), F28's answer: `eval-forms`' README
+reordered by entry point, with a contents list. Steps 1 to 3 are done, and step 3, the release
+commit, is `eval-forms` 0.7.1, a docs-only patch, its three `.d.ts` byte-identical to 0.7.0's and no
+peer range moved, pending publish. Step 4, the post-publish record, is next; it retires F28.
+[F29](#f29), opened by step 2's code review, waits for the next phase that moves `eval-forms`' rows.
 
 `eval-core` 0.13.3 is released alone, a patch, tagged at 021d5e4 and published 2026-10-23. It
 carries A45 part 1 only. Its `.d.ts` is SHA-256-identical to 0.13.2's, and it is inside
