@@ -90,6 +90,12 @@ Workspace tooling: nothing here reaches a consumer, so nothing here is versioned
   advisories cover 7.x below 7.30.1; `nx`'s `undici` was already 7.30.1 and stays there, so the
   lockfile changes in the two updated entries alone. Dependabot showed five of the seven as open
   alerts; it had auto-dismissed the two `undici` moderates. `docs/backlog.md` F16.
+- **Dependency security, 2026-10-29**: `overrides.qs`'s floor rises from `^6.14.1` to `^6.14.2`, so
+  it excludes GHSA-w7fw-mjwx-w883, which covers `qs` up to 6.14.1. The lockfile already resolved
+  6.16.1 and did not change: a lockfile-only install and a clean `npm ci` left it byte-identical, and
+  audit reports nothing for `qs`. `deepmerge` 4.3.1, under `jest-config`, is recorded, not fixed:
+  GHSA-gcqx-w48m-w2h4 covers every release from 4.2.0, 4.3.1 is the latest, and it is dev-only.
+  `npm audit` stays at 11 low, all from it. `docs/backlog.md` F16.
 - **eval-core's tests no longer print ts-jest's TS151001 advice** once per worker. It is silenced
   in `modules/eval-core/jest.config.ts`; the reason is in the comment there.
 - **The README drift gates check every `@zvenigora/…` import**, 2026-10-03 — `docs/backlog.md`
