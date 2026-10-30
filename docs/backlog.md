@@ -64,7 +64,7 @@ fixed, retired and released. U3, the one advisory, is published as
 a repository advisory, and listed in `SECURITY.md`. It is not yet in GitHub's global Advisory
 Database, pending GitHub's review, so no Dependabot alert fires from it yet; a CVE is requested, and
 its ID lands in `SECURITY.md`'s CVE column when assigned.
-- Step 1 fixed [A36](backlog-retired.md#a36), released in 0.12.1, and its review opened [A38](#a38).
+- Step 1 fixed [A36](backlog-retired.md#a36), released in 0.12.1, and its review opened [A38](backlog-retired.md#a38).
 - Step 2 refuses a dangerous function by its value at the call, `new` and tag sites, released in
   0.12.1. That is [A35](backlog-retired.md#a35) at the callee.
 - Step 3 fixed [A37](backlog-retired.md#a37), released in 0.12.1: a sequence leaves one value on the
@@ -312,8 +312,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.14.0, `eval-signals` 0.7.0, `eval-forms` 0.7.0. F21 and F25 ship in no package | `0d305a3` | 2026-10-26 | 24 | 6: A48–A53 | 5: F21, F25, A44, A45, A52 | 25 |
 | `eval-forms` 0.7.1. F26, opened by 0.14.0's post-publish commit and fixed after it, ships in no package; F27 ships in no package but for one `eval-core` docblock | `69c3e0e` | 2026-10-29 | 25 | 4: F26–F29 | 2: F26, F27 | 27 |
 | `eval-core` 0.14.1. F28, decided by Phase 11 and shipped in `eval-forms` 0.7.1, was retired by 0.7.1's post-publish commit, after its tag; A47 is fixed, and A32 and A30 are decided, documentation only | `95932e6` | 2026-10-30 | 27 | 0 | 4: F28, A47, A32, A30 | 23 |
-| *Unreleased*. A27 is fixed for `eval-core`'s next release | — | — | 23 | 0 | 1: A27 | 22 |
-| **Since the register opened** | | | **42** | **71** | **91** | **22** |
+| *Unreleased*. A27 and A38 are fixed for `eval-core`'s next release | — | — | 23 | 0 | 2: A27, A38 | 21 |
+| **Since the register opened** | | | **42** | **71** | **92** | **21** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -372,7 +372,7 @@ makes it that release's row, with its tag commit and date.
 | [A35](backlog-retired.md#a35) | A dangerous function value reachable from the context is callable past the name-based call sandbox — by an alias, through `call` / `apply` / `bind`, and as a native callback (`map`, `Reflect.apply`, `then`); `eval("1+1")` is refused, `["1+1"].map(eval)` is `[2]` | core | decision, security | **Retired — fixed 2026-10-18**, as steps 2, 4, 7 and 8 of the [A35 plan](a35/plan.md). Steps 2 and 4 released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30, as partial hardening; steps 7 and 8, which close its last route, [A39](backlog-retired.md#a39), released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7; advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx). A host container stays a documented limit |
 | [A36](backlog-retired.md#a36) | A tagged template's tag is called with no sandbox check — `` Function`return 7`() `` gives 7 with `Function` under its own name | core | fix, security | **Retired — fixed 2026-10-15**, as step 1 of the [A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30; advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx). A tag is called as a callee is, through the call sandbox and the write policy; a member tag shares the member call's path, so its `this` is its object. Affected every published `eval-core` to 0.12.0 |
 | [A37](backlog-retired.md#a37) | `SequenceExpression` has no visitor: `(0, 1)` leaves a value on the stack | core | fix | **Retired — fixed 2026-10-15**, as step 3 of the [A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30. A sequence leaves one value on the stack, and raises one `before` and one `after` event and one trace entry; no evaluated value changes. Affected every published `eval-core` to 0.12.0 |
-| [A38](#a38) | A tag's strings array is not JavaScript's: not frozen, no `raw` — so `` String.raw`a\nb` `` throws — a new array per evaluation, and not recorded as created | core | fix | Open — opened 2026-10-15 by the code review of the A35 plan's step 1. Fidelity, not security; not in 0.12.1 |
+| [A38](backlog-retired.md#a38) | A tag's strings array is not JavaScript's: not frozen, no `raw` — so `` String.raw`a\nb` `` throws — a new array per evaluation, and not recorded as created | core | fix | **Retired — fixed 2026-10-30**; unreleased, in `eval-core`'s next release. A tag receives JavaScript's template object: frozen, a frozen `raw`, one per parsed site, cached by node; not recorded as created. Opened 2026-10-15 by the code review of the A35 plan's step 1 |
 | [A39](backlog-retired.md#a39) | Evaluating `this` lets native code reach a dangerous function the host placed in the context, past the funnel; mechanism and probes in the advisory | core | fix, security | **Retired — fixed 2026-10-18**, as steps 7 and 8 of the [A35 plan](a35/plan.md): `this` only as a member's object, and a guarded view as every receiver the evaluator resolves from the context. Released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7; advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx) |
 | [A40](backlog-retired.md#a40) | A postfix update of a listed function writes, then the funnel refuses the old value — the failed evaluation leaves its write behind | core | fix | **Retired — fixed 2026-10-22**, as a consequence of [A41](backlog-retired.md#a41)'s fix; released 2026-10-22 in `eval-core` 0.13.2, tagged dc4302d. The operand converts to `NaN` before the write, so `tools.eval++` gives `NaN` and writes `NaN`, as JavaScript does, and nothing throws |
 | [A41](backlog-retired.md#a41) | An update does not convert its operand to a number: `x++` on `"5"` writes `"51"`, on `{}` writes `"[object Object]1"`, and a postfix update gives the operand as read | core | fix | **Retired — fixed 2026-10-22**; released 2026-10-22 in `eval-core` 0.13.2, tagged dc4302d. The operand is converted once, natively, before anything is written: `"5"++` gives `5` and writes `6`, and a BigInt updates |
@@ -953,49 +953,6 @@ on the path the memo exists to keep cheap. Measure it if this is fixed.
 *Verified*: measured 2026-10-10 on A26's fix, uncommitted on 6e7fafb, through `ParserService.parse`
 and `EvalService.simpleEval`, with throwaway specs deleted the same day; (c) after the step's review
 found the per-call case.
-
-<a id="a38"></a>
-## A38 — A tag's strings array is not JavaScript's
-
-**Package** core · **Kind** fix · **Status** Open. Opened 2026-10-15 by the code review of the A35
-plan's step 1
-
-`tagged-template-expression.ts` passes a tag a plain array of the template's cooked strings, and
-builds it again on every evaluation (`templateArguments`). JavaScript passes the call site's
-template object instead. That object is frozen, carries a frozen `raw` array of the uncooked strings,
-and is the same object every time the site runs. Measured 2026-10-15 against `dist/modules/eval-core`
-built from step 1's tree, beside the same tags run natively:
-
-| Property | JavaScript | The evaluator |
-| :--- | :--- | :--- |
-| Frozen | `true` | `false` |
-| `raw`, for `` f`a\nb` `` | `["a\\nb"]`, frozen | `undefined` |
-| `` String.raw`a\nb` ``, with `String` bound | `"a\\nb"` | throws `TypeError: Cannot convert undefined or null to object` |
-| One site run twice, `` let g = () => f`x`; g() === g() `` | `true` | `false` |
-
-**Not recorded as created.** The walk builds the array but never adds it to `st.createdObjects`. A
-write policy is therefore told the walk did not create it. A policy that refuses such targets, as
-`eval-signals`' does, refuses a built-in that writes into its first argument when it is used as a tag.
-Measured under such a policy:
-- `` Object.assign`x` `` is refused, and the policy was asked with `createdByEvaluation: false`;
-- `Object.assign(["x"])` is allowed, asked with `true`.
-
-JavaScript freezes the array, so a write into it fails there too. Whether the array counts as
-created is part of the fix.
-
-**Fidelity, not security.** No check is skipped: a tag still goes through the call sandbox and the
-write policy ([A36](backlog-retired.md#a36)). **It is not in 0.12.1.**
-
-**A direction, not a decision**: build the array from `value.cooked`, and its `raw` from
-`value.raw`, freezing both. The fix also has to settle two questions:
-- whether one parsed node keeps one array, as a JavaScript call site does;
-- what a write policy is told about the array.
-
-*Recorded*: this entry. The policy rows were also the step's code review's N1.
-*Verified*: measured 2026-10-15 with a throwaway script outside the repository. It called
-`evaluate(parse(…), EvalState.fromContext(…))` against the built bundle, used a subclass of
-`EvalContext` whose `checkMemberWrite` refuses what the walk did not create, and ran the same tags
-natively beside it.
 
 <a id="a48"></a>
 ## A48 — Under `caseInsensitive`, a member read calls a prototype accessor twice

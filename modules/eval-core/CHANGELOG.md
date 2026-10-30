@@ -43,6 +43,19 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   `pushWalkBase`, `popWalkBase` and `unwindTo`, and `EvalOptions`' `maxIterations` and
   `maxTraceItems`, which now say a walk where they said `evaluate`. Neither downstream
   package reads `state.result`'s outcome.
+- **A tag receives JavaScript's template object** ([A38](../../docs/backlog-retired.md#a38)). It
+  was a plain array of the cooked strings, built again on every evaluation, with no `raw`. It is
+  now frozen, with a frozen, non-enumerable `raw` of the uncooked strings, and one object per
+  parsed template - the same each time a parsed or compiled expression runs, over any context;
+  two evaluations of one string share it only while the parse cache returns the same AST. So
+  `` String.raw`a\nb` `` gives `"a\\nb"` where it threw `TypeError: Cannot convert undefined or
+  null to object`, and `` let g = () => f`x`; g() === g() `` is `true`, while two templates with
+  the same text in one expression stay two objects. An invalid escape's cooked string is
+  `undefined`, where it was `null`. A tag that writes into the array now fails, as in strict-mode
+  JavaScript: `` (s => s.y = 1)`a` `` throws the engine's message wrapped with the key - in V8,
+  `Failed to set property "y": Cannot add property y, object is not extensible` - where it gave
+  `1`. The object is not recorded as created by the walk, as before, so a write policy is asked
+  about it with `createdByEvaluation` `false`. No exported shape or `.d.ts` change.
 
 ---
 

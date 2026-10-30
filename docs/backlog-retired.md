@@ -2401,6 +2401,103 @@ as a Fixed entry.
 *Recorded*: this entry; the A35 plan, § 1.2 finding 4. Opened 2026-10-14 by the A35 plan.
 *Verified*: the A35 plan's M3, a throwaway script against `dist/modules/eval-core` built from efe2803.
 
+<a id="a38"></a>
+## A38 — A tag's strings array is not JavaScript's
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-30**; unreleased, in
+`eval-core`'s next release. Was Open. Opened 2026-10-15 by the code review of the A35 plan's step 1
+
+*Fixed* 2026-10-30, as a one-commit item of a batch. `tagged-template-expression.ts` hands a tag
+JavaScript's template object: the cooked strings, an invalid escape's cooked string `undefined`
+where acorn gives `null`, with a non-enumerable `raw` of the uncooked strings, both arrays frozen.
+One object per `TemplateLiteral` node, cached in a module-level `WeakMap` keyed by the node and
+never cleared, as `dangerous-values.ts`' `exemptNodes` is, a weak map keyed by an object as
+`property-lookup-cache.ts` is. Unlike that cache it has no clear and no statistics, since an entry
+never goes stale for an AST its caller leaves alone. The object is shared by every walk of the node, over any state and
+context, and through the parse cache by every consumer parsing the same text with the same options;
+it is frozen and holds only the template's strings. **Not recorded as created**, which keeps
+`EvalMemberWrite.createdByEvaluation`'s JSDoc true as written: a write policy is asked about the
+object with `false`, as before, and a policy that refuses what the walk did not create, as
+`eval-signals`' does, still refuses `` Object.assign`x` ``. No exported shape or `.d.ts` change.
+
+Measured 2026-10-30 on the published 0.14.1 bundle, and by the spec rows against the fix, over
+`{ f: (s) => s, String, Object }`:
+
+| Row | 0.14.1 | Fixed |
+| :--- | :--- | :--- |
+| `` Object.isFrozen(f`a`) `` | `false` | `true` |
+| `` f`a\nb`.raw `` | `undefined` | `["a\\nb"]`, frozen |
+| `` String.raw`a\nb` `` | throws `TypeError` | `"a\\nb"` |
+| `` let g = () => f`x`; g() === g() `` | `false` | `true` |
+| `` f`x` === f`x` ``, two sites | `false` | `false` |
+| `` (s => s.y = 1)`a` `` | `1` | throws `Failed to set property "y": Cannot add property y, object is not extensible` |
+| `` f`\unicode`[0] ``; its `raw[0]` | `null`; — | `undefined`; `"\\unicode"` |
+| `` Object.assign`x` `` under a policy refusing what the walk did not create | refused, asked with `false` | the same |
+| one parsed node, evaluated over two contexts | two arrays | one object |
+| `` F`a` `` over `{ f }`, `caseInsensitive` | not frozen | frozen |
+
+The sixth row's message was predicted as the engine's bare `TypeError`; measured, it is an `Error`
+from `safeSetProperty` in `prototype-pollution-guard.ts`, which wraps the engine's message with the
+key.
+
+**`SECURITY.md`**, corrected in the same commit, since it was false now: it said a tag that is not a
+member "is called with the context as `this`". Since 0.13.0 the receiver is a guarded view, as its
+own "`this`, and the receiver of a call" section says.
+
+| Claim | Witness |
+| :--- | :--- |
+| A tag that is not a member is called with a guarded view of the context as `this`, as a bare call is | `tagged-template-expression.spec.ts` T6: `this` is not `state.context`, has no own key and a null prototype, and has a `push` |
+
+*Verified*: test-first. `tagged-template-expression.spec.ts` gains 10 cases, T13–T22, one per row
+above. Against master, 8 failed; T17, two sites, and T20, the policy, pass there, as the rows that do
+not move. Wrong implementations, each applied alone against all of `eval-core`:
+- **cached by the template's text**: 1 failed, T17, the two sites;
+- **cached per state**, a map on the walk's `EvalState`: 1 failed, T21, the node over two contexts;
+  T16, one site run twice in one walk, passes, as it would for any per-walk cache;
+- **`raw` not frozen**: 1 failed, T14;
+- **acorn's `null` kept for an invalid escape**: 1 failed, T19;
+- **the object recorded as created**: 1 failed, T20, the policy now allowing the tag;
+- **the strings array not frozen**: 3 failed, T13, T18 and T22.
+
+**The entry as it stood:**
+
+`tagged-template-expression.ts` passes a tag a plain array of the template's cooked strings, and
+builds it again on every evaluation (`templateArguments`). JavaScript passes the call site's
+template object instead. That object is frozen, carries a frozen `raw` array of the uncooked strings,
+and is the same object every time the site runs. Measured 2026-10-15 against `dist/modules/eval-core`
+built from step 1's tree, beside the same tags run natively:
+
+| Property | JavaScript | The evaluator |
+| :--- | :--- | :--- |
+| Frozen | `true` | `false` |
+| `raw`, for `` f`a\nb` `` | `["a\\nb"]`, frozen | `undefined` |
+| `` String.raw`a\nb` ``, with `String` bound | `"a\\nb"` | throws `TypeError: Cannot convert undefined or null to object` |
+| One site run twice, `` let g = () => f`x`; g() === g() `` | `true` | `false` |
+
+**Not recorded as created.** The walk builds the array but never adds it to `st.createdObjects`. A
+write policy is therefore told the walk did not create it. A policy that refuses such targets, as
+`eval-signals`' does, refuses a built-in that writes into its first argument when it is used as a tag.
+Measured under such a policy:
+- `` Object.assign`x` `` is refused, and the policy was asked with `createdByEvaluation: false`;
+- `Object.assign(["x"])` is allowed, asked with `true`.
+
+JavaScript freezes the array, so a write into it fails there too. Whether the array counts as
+created is part of the fix.
+
+**Fidelity, not security.** No check is skipped: a tag still goes through the call sandbox and the
+write policy ([A36](#a36)). **It is not in 0.12.1.**
+
+**A direction, not a decision**: build the array from `value.cooked`, and its `raw` from
+`value.raw`, freezing both. The fix also has to settle two questions:
+- whether one parsed node keeps one array, as a JavaScript call site does;
+- what a write policy is told about the array.
+
+*Recorded*: this entry. The policy rows were also the step's code review's N1.
+*Verified*: measured 2026-10-15 with a throwaway script outside the repository. It called
+`evaluate(parse(…), EvalState.fromContext(…))` against the built bundle, used a subclass of
+`EvalContext` whose `checkMemberWrite` refuses what the walk did not create, and ran the same tags
+natively beside it.
+
 <a id="a39"></a>
 ## A39 — a route through `this` reaches a dangerous function past the funnel
 

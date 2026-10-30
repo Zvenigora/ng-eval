@@ -1,4 +1,4 @@
-import { TaggedTemplateExpression } from 'acorn';
+import { TaggedTemplateExpression, TemplateLiteral } from 'acorn';
 import * as walk from 'acorn-walk';
 import { beforeVisitor } from './before-visitor';
 import { afterVisitor } from './after-visitor';
@@ -11,8 +11,53 @@ import { exemptFromFunnel } from './dangerous-values';
 import { guardedReceiver } from './context-receiver';
 
 /**
- * The tag's arguments: the template's cooked strings, then the value of each
- * of its expressions, evaluated in order.
+ * Each template site's template object, by its `TemplateLiteral` node.
+ *
+ * A module-level weak collection keyed by an AST node and never cleared, as
+ * `dangerous-values.ts`' `exemptNodes` is, and keyed by an object as
+ * `property-lookup-cache.ts` is: an entry lives exactly as long as its node,
+ * and nothing one node holds can be read for another. What it does not do,
+ * beside that cache: it has no clear and no statistics, and is never
+ * invalidated, since a node's strings do not change - for an AST its caller
+ * leaves alone; one that rewrites a node's `quasis` after a first evaluation
+ * keeps the old object, as `exemptNodes` keeps its marks. The object is shared
+ * by every walk of the node, over any state and context, and through a
+ * `ParserService`'s parse cache by every consumer of that service - in an
+ * application, the root singleton - parsing the same text with the same
+ * options. That is safe because the object is frozen and holds only the
+ * template's own strings.
+ */
+const templateObjects = new WeakMap<TemplateLiteral, readonly (string | undefined)[]>();
+
+/**
+ * The site's template object, as JavaScript builds it: the cooked strings,
+ * an invalid escape's cooked string `undefined`, with a non-enumerable `raw`
+ * of the uncooked strings, both frozen, and the same object every time the
+ * site runs (`docs/backlog-retired.md` A38). Up to 0.14.1 it was a plain array
+ * of the cooked strings, built on every evaluation, with no `raw`.
+ *
+ * Not added to `st.createdObjects`: the walk did not create it for the
+ * expression to hold, as `EvalMemberWrite.createdByEvaluation` defines
+ * created, so a write policy is asked about it as about any other object.
+ */
+const templateObject = (quasi: TemplateLiteral): readonly (string | undefined)[] => {
+  let strings = templateObjects.get(quasi);
+
+  if (!strings) {
+    const cooked = quasi.quasis.map((element) => element.value.cooked ?? undefined);
+    const raw = Object.freeze(quasi.quasis.map((element) => element.value.raw));
+    // Not writable, enumerable or configurable, as JavaScript defines it.
+    Object.defineProperty(cooked, 'raw', { value: raw });
+    strings = Object.freeze(cooked);
+    templateObjects.set(quasi, strings);
+  }
+
+  return strings;
+};
+
+/**
+ * The tag's arguments: the template object, then the value of each of its
+ * expressions, evaluated in order.
  */
 const templateArguments = (node: TaggedTemplateExpression, st: EvalState,
   callback: walk.WalkerCallback<EvalState>): unknown[] => {
@@ -22,9 +67,7 @@ const templateArguments = (node: TaggedTemplateExpression, st: EvalState,
     return popVisitorResult(node, st);
   });
 
-  const strings = node.quasi.quasis.map((templateElement) => templateElement.value.cooked);
-
-  return [strings, ...values];
+  return [templateObject(node.quasi), ...values];
 };
 
 /**

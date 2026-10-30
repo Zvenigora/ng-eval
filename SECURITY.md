@@ -110,8 +110,10 @@ A call is refused, with the message `'Function call blocked for security reasons
 
 A tagged template's tag goes through the same checks and the same write policy as a callee: a member
 tag is checked under its property name, a computed key included, and called with its object as
-`this`, and any other tag is called with the context as `this`, as a bare call is; pinned by
-[tagged-template-expression.spec.ts](modules/eval-core/src/lib/internal/visitors/tagged-template-expression.spec.ts).
+`this`, and any other tag is called with a guarded view of the context as `this`, as a bare call is
+([below](#this-and-the-receiver-of-a-call)); pinned by
+[tagged-template-expression.spec.ts](modules/eval-core/src/lib/internal/visitors/tagged-template-expression.spec.ts),
+whose case T6 is the guarded view.
 
 `new` has three checks of its own, and refuses with the message
 `'Constructor blocked for security reasons: <name>'`:

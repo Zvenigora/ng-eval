@@ -539,7 +539,7 @@ Three more of the review's findings were routed before the commit:
   since step 1's count was fixed at its gate. Step 2 now adds 21.
 - **A comment made stale by step 1**, in `member-write-policy.ts`, joins step 2's file list.
 - **The tag's strings array is not JavaScript's.** It is not frozen, has no `raw`, is built anew per
-  evaluation, and is not recorded as created. This is recorded as [A38](../backlog.md#a38), fidelity
+  evaluation, and is not recorded as created. This is recorded as [A38](../backlog-retired.md#a38), fidelity
   rather than security, and outside 0.12.1. This step's file list
 gains `.claude/skills/step/SKILL.md`, whose per-step counts the gate changed.
 

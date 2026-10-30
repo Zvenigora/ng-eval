@@ -9,12 +9,13 @@ import { evaluate, parse } from '../functions';
  * source-pattern test - and past the context's write policy. A member tag
  * shares the member call's path, so its checked name is the property name,
  * computed keys included, and its `this` is its object; any other tag is
- * called with the context as `this`, as a bare call is.
+ * called with a guarded view of the context as `this`, as a bare call is
+ * (T6). Up to 0.12.1 that was the context itself.
  *
  * Up to 0.12.0 the visitor applied the tag directly, with the context as
  * `this` and no check at all: `` Function`return 7`() `` gave 7 with
- * `Function` in the context (`docs/backlog-retired.md` A36). Every case below
- * but T6 and T11 is red against that visitor. T6, a benign identifier tag, is
+ * `Function` in the context (`docs/backlog-retired.md` A36). Every case in this
+ * block, T1-T12, but T6 and T11 is red against that visitor. T6, a benign identifier tag, is
  * green against both, and so is T11: that visitor evaluated the tag first too.
  * T11 and T12 pin what the fix kept and what it changed: the tag's order, and
  * the call's own error for a tag that is not a function.
@@ -186,5 +187,106 @@ describe('tagged template visitor - the tag through the call sandbox', () => {
   it('T12: should throw the call\'s own error for a tag that is not a function, member or not', () => {
     expect(() => run('s`x`', { s: 'str' })).toThrow(new Error('Value is not a function: string'));
     expect(() => run('obj.n`x`', { obj: { n: 5 } })).toThrow(new Error('Value is not a function: number'));
+  });
+});
+
+/**
+ * The tag's first argument is JavaScript's template object
+ * (`docs/backlog-retired.md` A38): frozen, with a frozen `raw` of the uncooked
+ * strings, and one object per template site, the same every time the site
+ * runs. Up to 0.14.1 it was a plain array of the cooked strings, built again
+ * on every evaluation, with no `raw`, so `` String.raw`a\nb` `` threw.
+ *
+ * A site is a parsed node: T21 evaluates one node over two contexts, which is
+ * what tells a cache on the node from one on the walk or the state - T16 alone
+ * runs one site twice in one walk. T17 is two sites with the same text.
+ */
+describe('tagged template visitor - the template object', () => {
+
+  const programOf = (source: string): AnyNode =>
+    parse(source, { ecmaVersion: 2020 }) as AnyNode;
+
+  const contextOf = () => ({ f: (strings: unknown) => strings, String, Object });
+
+  const run = (source: string, context: Context | EvalContext = contextOf(), options?: EvalOptions): unknown =>
+    evaluate(programOf(source), EvalState.fromContext(context, options));
+
+  it('T13: should hand the tag a frozen array', () => {
+    expect(run('Object.isFrozen(f`a`)')).toBe(true);
+  });
+
+  it('T14: should give it a frozen raw array of the uncooked strings', () => {
+    const strings = run('f`a\\nb${1}c`') as string[] & { raw: readonly string[] };
+
+    expect([...strings]).toEqual(['a\nb', 'c']);
+    expect(strings.raw).toEqual(['a\\nb', 'c']);
+    expect(Object.isFrozen(strings.raw)).toBe(true);
+    // As JavaScript defines it: not enumerable, so the array still reads as
+    // its strings alone.
+    expect(Object.keys(strings)).toEqual(['0', '1']);
+  });
+
+  it('T15: should let String.raw read it', () => {
+    expect(run('String.raw`a\\nb`')).toBe('a\\nb');
+  });
+
+  it('T16: should hand one site the same object every time it runs', () => {
+    expect(run('let g = () => f`x`; g() === g()')).toBe(true);
+  });
+
+  it('T17: should hand two sites with the same text two objects', () => {
+    expect(run('f`x` === f`x`')).toBe(false);
+  });
+
+  it('T18: should refuse a write into it, as the frozen object JavaScript passes does', () => {
+    // The engine's `TypeError`, wrapped by the evaluator's member write, which
+    // names the key - measured, where a bare `TypeError` was predicted.
+    expect(() => run('(s => s.y = 1)`a`')).toThrow(
+      new Error('Failed to set property "y": Cannot add property y, object is not extensible'));
+  });
+
+  it('T19: should cook an invalid escape to undefined, and keep it in raw', () => {
+    const strings = run('f`\\unicode`') as (string | undefined)[] & { raw: readonly string[] };
+
+    expect(strings.length).toBe(1);
+    expect(strings[0]).toBeUndefined();
+    expect(strings.raw[0]).toBe('\\unicode');
+  });
+
+  it('T20: should not record it as created, so a policy refusing what the walk did not create refuses a mutator tag', () => {
+    class Policed extends EvalContext {
+      readonly writes: EvalMemberWrite[] = [];
+
+      override checkMemberWrite(write: EvalMemberWrite): void {
+        this.writes.push(write);
+        if (!write.createdByEvaluation) {
+          throw new Error(`refused: ${String(write.method)}`);
+        }
+      }
+    }
+
+    const tagged = new Policed({ Object }, {});
+    expect(() => run('Object.assign`x`', tagged)).toThrow(new Error('refused: Object.assign'));
+    expect(tagged.writes.map((w) => [w.method, w.createdByEvaluation]))
+      .toEqual([['Object.assign', false]]);
+
+    const literal = new Policed({ Object }, {});
+    expect(run('Object.assign(["x"])', literal)).toEqual(['x']);
+    expect(literal.writes.map((w) => [w.method, w.createdByEvaluation]))
+      .toEqual([['Object.assign', true]]);
+  });
+
+  it('T21: should hand one parsed site the same object across walks over different contexts', () => {
+    const node = programOf('f`x`');
+
+    const first = evaluate(node, EvalState.fromContext(contextOf()));
+    const second = evaluate(node, EvalState.fromContext({ f: (strings: unknown) => strings }));
+
+    expect(Array.isArray(first)).toBe(true);
+    expect(second).toBe(first);
+  });
+
+  it('T22: should freeze it under caseInsensitive too', () => {
+    expect(run('Object.isFrozen(F`a`)', contextOf(), { caseInsensitive: true })).toBe(true);
   });
 });
