@@ -1,6 +1,10 @@
 # A24, A25 and D13 — the await track: `await` where its value is the result, and every refused statement reported (`@zvenigora/ng-eval-core`, then `eval-signals` and `eval-forms`)
 
 **Date**: October 30, 2026
+**Revision**: 2 — step 2: § 1.2 finding 2's discrepancy measured and settled for the code reading;
+§ 8's answers, given at step 2's confirmation gate, recorded, with pointers from § 3.3 and § 3.4;
+step 5's parity rows for `return`, `break` and `continue` given sources that parse; step 2's outcome.
+
 **Revision**: 1 — initial plan, with step 1's code review folded in before its commit. The review
 measured that § 3.2's first mechanism, a one-entry `funcs` over the frozen shared table, throws
 (§ 3.2), and found the retirements' inbound links missing from steps 3 and 6, and three row counts
@@ -44,8 +48,9 @@ evaluator uses.
   accepts at most one `await`, found by reading its root one level deep. Nothing is traversed and
   nothing is cached, so nothing is stored on `st` or written onto a node.
 - **A25's decided text overstated what reaches the caller** (§ 1.2 finding 2). `evaluateAsync`'s
-  `ensureError` converts any rejection that is not an `Error`, with or without an `await`, and that
-  conversion stays. Step 1 corrects the register ([SR4](../standing-rules.md#sr4)), and § 0 rule 1
+  `ensureError` converts any rejection that is not an `Error`, and that conversion stays. Under an
+  `await` the visitor's own `catch` converts first today, so `ensureError` converts such a rejection
+  under an `await` only from step 3. Step 1 corrects the register ([SR4](../standing-rules.md#sr4)), and § 0 rule 1
   is the lesson.
 - **`eval-signals` and `eval-forms` run against `eval-core`'s workspace source, not the published
   package** (§ 1.2 finding 1). So a behaviour change in `eval-core` moves their rows in the step
@@ -127,17 +132,20 @@ The baseline is the gate at d62eee4, run for that commit: `eval-core` 3187, `eva
    replaces anything else. The request of 2026-10-30 reports these as measured on 0.14.1 in a sandbox
    whose script is not recorded: `'x'` → `Error` `"x"`; `{k:1}` →
    `"Promise rejected with object: {\"k\":1}"`; `undefined` → `"Promise rejected with undefined"`.
-   They agree with `ensureError`'s code. Step 2's conversion rows are their recorded measurement.
-   That conversion is not A25's and stays. Step 1 corrects the register.
+   They agree with `ensureError`'s code. Step 3's rewritten conversion rows, group C's, are their
+   recorded measurement; step 2's record what an `await` gives today (below). That conversion is not A25's and stays. Step 1 corrects the register.
 
-   **One discrepancy between the request and the code, to be measured in step 2.** The request
-   gives those messages "with or without an await". Read from code at d62eee4, a non-`Error`
-   rejection under an `await` meets the visitor's own `catch` first (`await-expression.ts:62-64`),
-   so today it would read `Await expression failed: x at position 0-7`, an `Error`, which
-   `ensureError` then passes through unchanged. After step 3 that `catch` is gone and the three
-   messages above hold with an `await` too. Step 2's conversion rows record today's value, measured,
-   and step 3 flips them if the code reading is right. The correction in step 1 says only what both
-   readings agree on.
+   **One discrepancy between the request and the code, measured in step 2: the code reading is
+   right.** The request gave those messages "with or without an await", and that was wrong. A
+   non-`Error` rejection under an `await` meets the visitor's own `catch` first
+   (`await-expression.ts:62-64`) and becomes an `Error` there, which `ensureError` then passes through
+   unchanged. Reported at step 2's confirmation gate as measured on 0.14.1, again with no script
+   recorded: `'x'` under the `await` of `(async () => await r())()` reads `Await expression failed: x
+   at position 13-22`. The recorded measurement is step 2's group C, on d62eee4, under
+   `await rejecting()`: `Await expression failed: x at position
+   0-17`, `… [object Object] …` and `… undefined …`. After step 3 that `catch` is gone and the three
+   messages above hold with an `await` too, so group C's rows are marked `3`. The correction in step 1
+   says only what both readings agree on, and stays true.
 3. **On the sync path an accepted `await` will return the operand itself.** Today it returns the
    race, a new promise, even for a non-thenable: `(async () => await 1)()` is a promise resolving to
    `1`. After step 3 it is `1`, and `(async () => await p)()` is `p`. `async` stays ignored (§ 2), so
@@ -327,6 +335,8 @@ export function unsupportedStatement(node: ReturnType<typeof parse>): { statemen
 ```
 
 The parameter follows `guardIdentifiers`' precedent and is a placeholder until q1 is answered.
+*Answered at step 2's gate* (§ 8 q1): `findUnsupportedStatement`, over `AnyNode | undefined`, returning
+`{ statement: Statement | ModuleDeclaration; message: string } | undefined`. Step 5 applies it.
 
 It is exported through `internal/functions/public-api.ts`, beside `parse` and `extract`, and so reaches
 `src/public-api.ts` without a direct export there.
@@ -343,7 +353,8 @@ forgotten switch has exactly that shape at any depth. Any other statement is ref
 
 > `Expression '<rule>': it holds a <type> statement, which eval-core never evaluates: <eval-core's message>.`
 
-Its wording is settled at step 6 (§ 8 q5). The order stays: statements first, then identifiers, so
+Its wording is settled at step 6 (§ 8 q5). *Answered at step 2's gate*: § 8 q5's text replaces this
+one, and step 6 applies it. The order stays: statements first, then identifiers, so
 `Q1:1 && constructor` with the switch off is still the label's message
 (`guard-identifiers.spec.ts:281`).
 
@@ -443,7 +454,7 @@ step-4 flip rewrites a row in place and moves no count. Every row "moves" below 
   | **T**, the timer: one `await` evaluated through `evalAsync`; the same through `eval`; one expression evaluated twice | 3 | 3 | `3`: one `setTimeout` of 30 000 per evaluation of an `await`, no `clearTimeout`, become none |
   | **K**, the key: `__awaitTimeout: 1` on a plain object; on an `EvalContext`'s `original`; under `caseInsensitive` | 3 | 3 | `3`: the delay each `setTimeout` was armed with, 1, 1 and 30 000, becomes no timer |
   | **S**, the suffix: one rejection of a shared `Error`; the same `Error` through two evaluations | 2 | 2 | `3`: `later at position 0-17`, then `… at position 0-17 at position 0-17`, become `later` by identity |
-  | **C**, the conversion: rejections `'x'`, `{k:1}` and `undefined` under an `await` through `evalAsync` | 3 | 3 | `3` if § 1.2 finding 2's code reading is right; none if the request's is |
+  | **C**, the conversion: rejections `'x'`, `{k:1}` and `undefined` under an `await` through `evalAsync` | 3 | 3 | `3`: § 1.2 finding 2's code reading, measured right |
 
   63 cases. Async-path P rows also carry JavaScript's own value, run natively in an `async` function
   with the same bindings, so the outcome can say which of today's answers are wrong: predicted
@@ -466,6 +477,52 @@ step-4 flip rewrites a row in place and moves no count. Every row "moves" below 
   4. `git status --porcelain` lists the new spec and this document.
 - **Wrong**: a mark taken from the decision rather than from the prototype. Criterion 2 is its probe.
 - **Ships in**: no package.
+- **Outcome** (2026-10-30):
+  - **The spec**: 63 cases, green against d62eee4's library code. Every value the plan predicted was
+    measured as predicted, group C's code reading (§ 1.2 finding 2) and K3's 30 000 included, and
+    **no mark differed from its prediction**.
+  - **The prototypes**, pinned under `D:\repo.2026\ng-eval-base\a24-prototype\`, each applied alone
+    with `git apply` after its SHA-256 was checked, run over all three projects, and reverted with
+    `git apply -R` ([SR32](../standing-rules.md#sr32)):
+
+    | Patch | SHA-256 | What it is |
+    | :--- | :--- | :--- |
+    | `a25.patch` | `E5648C953E26A006746A9DFBA699E414FC6B187639BFD76B2899FB3A155F4182` | `await-expression.ts`: § 3.1's visitor, the operand popped and pushed unchanged |
+    | `a24.patch` | `B887A1210FF4912DDD6F00286A91DD4FDDC972518EAEFF14CF8EC3318E2BD5B5` | § 3.1 and § 3.2: the refusal above `beforeVisitor`; the accepted `await` read off the root one level deep; a fresh `Object.create(mergedVisitors(), { AwaitExpression })` only for a walk that has one; `walkWithoutResult`'s third parameter, set by the arrow's walk |
+
+  - **The red sets**:
+
+    | Patch | `eval-core` | `eval-signals` | `eval-forms` |
+    | :--- | :--- | :--- | :--- |
+    | `a25.patch` | 31 of 3250: the 30 cases marked `3` (group P's 18 sync, A2's sync, T1–T3, K1–K3, S1–S2, C1–C3) and `eval.service.await.spec.ts` "should still carry the position of the await expression" | 0 of 444 | 0 of 380 |
+    | `a24.patch` | 53 of 3250: the 52 cases marked `3` or `4` (30 and 32, ten of them marked both) and the same suffix pin | 1 of 444: `eval-signal-async.spec.ts` "should read a member off the promise in operand position, inside an async arrow too" | 0 of 380 |
+
+    So criterion 2 holds as written: no wrong mark and no missed pin.
+  - **The native arm** (criterion 3): with the evaluator's own value in its place, 8 cases went red,
+    P5, P6, P7 and P10 async, in both modes, and the arm was restored by hand. The plan named P7; P5,
+    P6 and P10 came from the spec's hand-written `js` column, a prediction until the native arm ran
+    it ([SR22](../standing-rules.md#sr22)), and the probe's red set matches that column exactly. Of today's answers, one is `await`'s: P7's `(await p) * 10` is `NaN` where JavaScript gives
+    20, and step 4 refuses it. P5's 2, P6's 1 and P10's 2 are an arrow's block body returning its
+    completion value where JavaScript returns `undefined`, `eval-core`'s documented statement semantics
+    (its README, "How statements differ from JavaScript"), not `await`'s; step 4 refuses P6 and P10.
+  - **One fixture finding**: the native arm's `AsyncFunction` is taken from source the engine compiles.
+    The spec's own `async` arrow is down-levelled through `tslib`'s `__awaiter` by the Jest transform,
+    so its `constructor` is plain `Function`, and the first run's six root and program native cases
+    threw `SyntaxError` on their `await`.
+  - **Counts**: `eval-core` 3187 → 3250; `eval-signals` 444 and `eval-forms` 380, unchanged.
+  - **Corrections in this step's commit** ([SR4](../standing-rules.md#sr4)): § 1.2 finding 2 and the
+    conclusion's bullet, the request's "with or without an await" measured wrong; group C's mark;
+    step 5's parity sources for `return`, `break` and `continue`.
+  - **Decisions recorded, not made, in this step**: § 8's six answers, given by the maintainer at
+    step 2's confirmation gate on 2026-10-30 and added to its scope there. They are recorded under § 8,
+    with pointers from § 3.3 and § 3.4, and steps 4–6 apply them.
+  - **Code review** (before the commit): no Critical finding. Folded in: finding 2's stale sentence on
+    the conversion rows, the source of § 8's answers, the revision header, this bullet's split of the
+    predicted from the found, the docblock's wording on the `caseInsensitive` leg and the identity
+    rows, and a setup check that P1's node is the bare `AwaitExpression` (asserted inside P1's cases,
+    so no count moves; its probe, `extractExpressions` off, turned red P1's four cases and no other). P4, P6 and P7 give 1, 1 and `NaN` whether or not `p` resolves, so their
+    `caseInsensitive` cases do not witness case correction; they are step-4 refusal rows, and the
+    other nine positions' do.
 
 ### Step 3 — A25: the operand passes through; and the failure order
 
@@ -567,6 +624,12 @@ step-4 flip rewrites a row in place and moves no count. Every row "moves" below 
     `var`, `let` and `const`. Acorn's `kind` union also has `using` and `await using`, which do not
     parse at `ecmaVersion` 2020, so they get no row and the spec says why. Each row's source, run
     through `simpleEval`, throws iff the export reports it, and with the same message.
+    *Corrected in step 2*: `return`, `break` and `continue` do not parse at the top level of a script,
+    so their rows' sources are ones that parse, and the spec says why for each: `return` in the block
+    body of an arrow the source calls, `(() => { return 1 })()`, whose throw the call passes through
+    unchanged; `break` and `continue` in a bounded `for`, the one loop `eval-core` evaluates, so the
+    row's throw is theirs and not the loop's, `for (let i = 0; i < 1; i++) { break }` and the same with
+    `continue`.
   - **The completeness case**, 1 case of its own: it reads the `Statement` union in acorn's `.d.ts`
     and fails on a member with no row and no stated reason. `ModuleDeclaration` types reach
     `dispatchStatement` only under a per-call `sourceType: 'module'`; the case names them as not
@@ -700,7 +763,8 @@ that stops at § 1 while none is active, which step 1 removed and `CLAUDE.md` st
 
 ## 8. Open questions
 
-Each is answered in the step named, with the answer recorded under it.
+Each is answered in the step named, with the answer recorded under it. All six were answered by the
+maintainer at step 2's confirmation gate, on 2026-10-30, and the step that names each applies it.
 
 1. **The D13 export's name and return shape** (step 5). § 3.3's working shape is
    `unsupportedStatement(node): { statement, message } | undefined`. Open: the name, beside `parse`,
@@ -708,10 +772,21 @@ Each is answered in the step named, with the answer recorded under it.
    parameter type, given that `eval-core` publishes no `AnyNode` (its `AnyNodeTypes` is the union of
    type-name strings), which is why `guardIdentifiers` takes `ReturnType<typeof parse>`. That it
    reports the first refused statement, not every one, is decided.
+
+   *Answered 2026-10-30, applied in step 5*:
+   `findUnsupportedStatement(node: AnyNode | undefined): { statement: Statement | ModuleDeclaration; message: string } | undefined`.
+   A verb, beside `parse`, `extract` and `evaluate`. The parameter is `evaluate`'s: acorn's `AnyNode`
+   is already in the published `.d.ts` there. It returns the node, for its source positions, and
+   `eval-core`'s message, so `eval-forms` quotes the message rather than copying it. Step 5 confirms
+   that `eval-forms` compiles reading only `.statement.type` and `.message`, with no `acorn` import
+   ([SR9](../standing-rules.md#sr9)).
 2. **Whether a refused `await`'s message suggests the two-signal form** (step 4). `eval-core` knows no
    signals, and its README is the message's only context, so the default is no. The alternative is a
    neutral clause, "resolve the value first and evaluate a second expression with it", which `eval-signals`'
    README could then quote.
+
+   *Answered 2026-10-30, applied in step 4*: no second sentence. `eval-signals`' README pairs the
+   message with the two-signal form, in step 8a.
 3. **The exact accepted-position rule for the walk's root when a caller passes a bare
    `AwaitExpression` node** (step 4). The decision's (a) accepts it, and § 3.2 accepts it for that
    walk only. Open:
@@ -724,6 +799,8 @@ Each is answered in the step named, with the answer recorded under it.
    - under `extractExpressions: true`, `parse('await p')` returns the `AwaitExpression` itself, so
      (a) is what accepts it there. Step 2's group P root row is that node, so step 4 adds no row for
      it.
+
+   *Answered 2026-10-30, applied in step 4*: all three working answers stand.
 4. **Whether the per-walk table is cached** (step 4). § 3.2 builds one object per walk that has an
    accepted `await`. The alternative is a module-level `WeakMap` from the accepted node to its table,
    keyed by node identity as `exemptNodes` and `templateObjects` are; the table holds nothing but the
@@ -732,11 +809,22 @@ Each is answered in the step named, with the answer recorded under it.
    and the request rules out the second. The choice is measured: the per-walk cost on
    `(async () => await p)()`, by [SR28](../standing-rules.md#sr28)'s method if `performance.spec.ts`
    cannot tell the two apart. A walk with no accepted `await` pays nothing either way.
+
+   *Answered 2026-10-30, applied in step 4*: no cache, and no [SR28](../standing-rules.md#sr28)
+   timing. The default path is unchanged, so `performance.spec.ts` covers it.
 5. **`eval-forms`' message for a refused statement that is not a label** (step 6). § 3.4 has a
    working text. Open: whether it names the statement's type, `eval-core`'s message, or both, and
    whether it says that the statement may sit in code that never runs.
+
+   *Answered 2026-10-30, applied in step 6*:
+
+   > `Expression '<rule>': it holds a <type>, which eval-core does not evaluate (<message>). A rule is refused for it wherever it sits, in a function or branch that may never run too.`
 6. **Which downstream rows A24 and A25 move beyond the one named** (steps 3 and 4). Finding 4 predicts
    none. A red row is a regression unless the step's prediction named it ([SR10](../standing-rules.md#sr10)).
+
+   *Answered 2026-10-30, applied in steps 3 and 4*: confirmed. A downstream red row the step does not
+   name is a regression, and the step stops ([SR10](../standing-rules.md#sr10)). Step 2's prototypes
+   measured it: neither turns a downstream row red beside the one finding 4 names (step 2's outcome).
 
 ## 9. Contract after this lands
 
