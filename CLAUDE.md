@@ -45,8 +45,10 @@ and its plan is `docs/documentation/phase-10-plan.md`. The A45 plan, `docs/a45/p
 part 2 and A44, assignment targets as JavaScript evaluates them — is complete: it shipped as
 `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms` 0.7.0. Phase 11, `eval-forms`' README
 by entry point (`docs/backlog.md` F28), is complete: it shipped as `eval-forms` 0.7.1, a docs-only
-patch, and its plan is `docs/documentation/phase-11-plan.md`. No plan is active. What `ROADMAP.md`
-has left is Phases 7 and 8, which it reserves without specifying them.
+patch, and its plan is `docs/documentation/phase-11-plan.md`. The active plan is
+`docs/a24/plan.md`, the await track — A25, A24 and D13 — for `eval-core` 0.15.0, `eval-signals` 0.8.0
+and `eval-forms` 0.8.0. What `ROADMAP.md` has left is Phases 7 and 8, which it reserves without
+specifying them.
 
 **Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left
 unfixed, decisions logged rather than made, gaps in what the suite can catch — is in
@@ -116,10 +118,10 @@ than one commit ([SR1](docs/standing-rules.md#sr1)) — as in `docs/a8/`, `docs/
   and A37 — is complete: it shipped as `eval-core` 0.12.1 and 0.13.0, and its advisory is
   GHSA-qrqj-3445-3rjx. Phase 10's plan is complete, and so are the A45 plan, `docs/a45/plan.md`,
   which shipped as `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms` 0.7.0, and Phase 11's,
-  `docs/documentation/phase-11-plan.md`, which shipped as `eval-forms` 0.7.1. No plan is active.
-  `.claude/skills/step/SKILL.md` targets the active plan,
-  and is retargeted with each new plan; while none is active it names none, and stops at its § 1 if
-  invoked.
+  `docs/documentation/phase-11-plan.md`, which shipped as `eval-forms` 0.7.1. The active plan is
+  `docs/a24/plan.md`, the await track: A25, A24 and D13. Its § 0 adds two rules to the standing
+  ones. `.claude/skills/step/SKILL.md` targets it, and is retargeted with each new plan; while none
+  is active it names none, and stops at its § 1 if invoked.
 - The completed plans are design records, not work in progress, and each remains the
   reference for its library — they record findings about this codebase that are not
   obvious from reading files in isolation:

@@ -8,21 +8,33 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: none active
-Target: none
+Plan document: `docs/a24/plan.md`
+Target: `@zvenigora/ng-eval-core` 0.15.0, then `eval-signals` 0.8.0 and `eval-forms` 0.8.0 — the await
+track: A25, A24 and D13
 Requested step: $ARGUMENTS
 
-**No plan is active.** The Phase 11 plan (`docs/documentation/phase-11-plan.md`), `eval-forms`' README
-by entry point, is complete: its four steps shipped as `eval-forms` 0.7.1, a docs-only patch, and its
-retrospect is its § 10. The next plan retargets this file when it is written. It names the plan
-above, says which projects each step reaches, and records the gate's counts its steps start from: at
-69c3e0e, the release commit, and unchanged by its post-publish record, `eval-core` 3134,
-`eval-signals` 444, `eval-forms` 380.
+**Which projects each step reaches** (the plan's § 4 table is the scope):
 
-**Invoked while no plan is active, this skill stops at § 1.** Run the baseline, report it, say that
-no plan is active, and do nothing else. Do not run a step of a completed plan, and do not treat a
-register entry as a plan: a one-commit item or a batch has its exit criteria in the prompt
-(`CLAUDE.md`, "Working from a plan").
+- **Step 2 is one new spec**, `internal/visitors/await-position.spec.ts`, and no other file under
+  `modules/`. Its probes apply two prototypes, pinned as patches outside the repository, and revert
+  them with `git apply -R`.
+- **Steps 3, 4 and 5 are `eval-core`**, with `[Unreleased]` lines in its CHANGELOG. Step 3 also
+  edits `SECURITY.md`, and step 4 moves one `eval-signals` spec,
+  `eval-signal-async.spec.ts:1388-1412`: the downstream specs run against `eval-core`'s workspace
+  source (the plan's § 1.2 finding 1), so a downstream row the step does not list is a regression.
+- **Step 6 is `eval-forms`**: `guardIdentifiers`, its spec, `evaluate-rule.ts`, the README and the
+  CHANGELOG.
+- **Steps 3 and 6 retire A25 and D13**, so each also re-points that entry's inbound links in design
+  records, link targets only (SR6), as its file list names.
+- **Steps 7a to 9b are the three releases**, each a release commit and, after the maintainer
+  publishes, its post-publish record. A `package.json` before step 7a is a stop-and-replan.
+- **Step 10 is the retrospect.**
+
+**The counts the steps start from**, the gate at d62eee4: `eval-core` 3187, `eval-signals` 444,
+`eval-forms` 380. `eval-core` reaches 3250 at step 2, 3252 at step 3, 3255 at step 4 and 3284 at
+step 5; `eval-forms` 386 at step 6; `eval-signals` does not move.
+
+**Step state**: step 1, the plan and its records, is done. Step 2 is next.
 
 **The standing rules load with `CLAUDE.md`** (`docs/standing-rules.md`), and the plan's § 0, where
 it has one, adds to them; read it first. Each step's file list in the plan's § 4 is its scope, and it

@@ -173,7 +173,12 @@ splits. It shipped as `eval-forms` 0.7.1, a docs-only patch tagged annotated at 
 2026-10-29, its three `.d.ts` byte-identical to 0.7.0's and no peer range moved. F28 is decided and
 retired. Its retrospect is the plan's § 10, which added [SR39](standing-rules.md#sr39) and corrected
 [SR3](standing-rules.md#sr3)'s check. [F29](#f29), opened by step 2's code review, waits for the next
-phase that moves `eval-forms`' rows. No plan is active.
+phase that moves `eval-forms`' rows.
+
+**The [A24 plan](a24/plan.md) is in flight**: the await track, [A25](#a25), [A24](#a24) and
+[D13](#d13), for `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0. It is at Revision
+1. Step 1, the plan and its records, is done, and step 2, the characterisation spec, is next. Step 1
+corrected A25's decided text: only an `Error` rejection reaches an `evalAsync` caller by identity.
 
 `eval-core` 0.13.3 is released alone, a patch, tagged at 021d5e4 and published 2026-10-23. It
 carries A45 part 1 only. Its `.d.ts` is SHA-256-identical to 0.13.2's, and it is inside
@@ -358,8 +363,8 @@ makes it that release's row, with its tag commit and date.
 | [A8](backlog-retired.md#a8) | `EvalService._activeStates` grows unboundedly | core | fix | **Retired — fixed 2026-09-25, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987, in two steps: `simpleEval`'s states ([`docs/a8/plan.md`](a8/plan.md)), then the set deleted ([`docs/a8/step-2-plan.md`](a8/step-2-plan.md)). Withdraws the published destroy-time registry clear |
 | [A9](backlog-retired.md#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [A23](backlog-retired.md#a23) | `safeSetProperty` defines the property instead of assigning it — setters never run, non-configurable properties cannot be written | core | decision, then fix | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-core` 0.10.0, tagged 0c3299e: a member write assigns, after the same refusals, so setters run |
-| [A24](#a24) | An `await` is a pass-through — inside an `async` arrow it hands the walk a promise as an operand, and the arrow returns no promise | core | decision, then fix | Open — **decided 2026-10-30**, to be planned with A24/A25/D13: an `await` is accepted only at the walk's root, as an arrow's concise body, or as the expression of the final statement of a program or an arrow's block body, and refused anywhere else. Opened 2026-10-07 by the Phase 5 plan; the `eval-signals` README states it since 0.5.0 |
-| [A25](#a25) | `awaitVisitor`'s timeout race — an uncleared 30 s timer per `await`, an undocumented `__awaitTimeout` key, and the caller's error mutated | core | fix | Open — **decided 2026-10-30**, to be planned with A24/A25/D13: no race, no timer, no key, no suffix; a rejection reaches the caller as their own value. Opened 2026-10-07 by the Phase 5 plan |
+| [A24](#a24) | An `await` is a pass-through — inside an `async` arrow it hands the walk a promise as an operand, and the arrow returns no promise | core | decision, then fix | Open — in flight as the [A24 plan](a24/plan.md), step 4; **decided 2026-10-30**: an `await` is accepted only at the walk's root, as an arrow's concise body, or as the expression of the final statement of a program or an arrow's block body, and refused anywhere else. Opened 2026-10-07 by the Phase 5 plan; the `eval-signals` README states it since 0.5.0 |
+| [A25](#a25) | `awaitVisitor`'s timeout race — an uncleared 30 s timer per `await`, an undocumented `__awaitTimeout` key, and the caller's error mutated | core | fix | Open — in flight as the [A24 plan](a24/plan.md), step 3; **decided 2026-10-30**: no race, no timer, no key, no suffix; a rejection reaches the caller as it was raised, so an `Error` by identity, while `evaluateAsync` still converts any other. Opened 2026-10-07 by the Phase 5 plan |
 | [A26](backlog-retired.md#a26) | The parse cache ignores parser options | core | fix | **Retired — fixed 2026-10-10**, as step 1 of the [Phase 9 plan](colon-identifiers/phase-9-plan.md); released 2026-10-14 in `eval-core` 0.12.0, tagged 3466c80. Keyed on the text and a fingerprint of the parse-relevant options; a callback or `program` bypasses the cache. `CompilerService`'s string cache is that plan's step 3. Affected every published `eval-core` to 0.11.1 |
 | [A27](backlog-retired.md#a27) | A nested `evaluate` writes the enclosing walk's `EvalResult` — and `start()` clears nothing, so a reused state shows the last run's outcome | core | decision | **Retired — decided and fixed 2026-10-30**; unreleased, in `eval-core`'s next release. An arrow's body walks without writing `state.result`, `start()` resets the outcome but not the trace, and each setter writes every outcome field. Opened 2026-10-08 by Phase 5 step 1 |
 | [A28](backlog-retired.md#a28) | `scoped` is documented as a scope pushed during this walk; the code asks the whole scope stack | core | docs | **Retired — fixed 2026-10-10**, documentation comments only; released 2026-10-10 in `eval-core` 0.11.1, tagged 7ee65fc. The `.d.ts` differs in four JSDoc blocks: every scope on the stack counts, whoever pushed it |
@@ -413,7 +418,7 @@ makes it that release's row, with its tag commit and date.
 | [D10](backlog-retired.md#d10) | `applyErrorPolicy` has no runnable README block | forms | docs | **Retired — fixed**, and it created [F3](backlog-retired.md#f3)'s third gate's subject |
 | [D11](backlog-retired.md#d11) | `/signals` has no worked example | forms | docs | **Retired — fixed 2026-10-03**, docs and tests only: [`docs/forms/worked-example-signals.md`](forms/worked-example-signals.md), every ` ```ts ` block executed and counted; released 2026-10-04 in `eval-forms` 0.3.1, tagged 3d56994 — the example ships in no package, the README's link to it does |
 | [D12](backlog-retired.md#d12) | ~20 specs discard the binding and never call `destroy()` | forms | test hygiene | **Retired — fixed 2026-09-28, test only**; `destroy()`'s release path is pinned by `field-schema.memory.spec.ts`, the net's by `field-schema.spec.ts`'s subscription count. Injector-path memory cases removed 2026-09-29: timing-dependent |
-| [D13](#d13) | A rule whose top-level statement `eval-core` refuses registers in both adapters and renders blank under the default policy | forms, core | decision, then fix | Open, narrowed — **decided 2026-10-30**, to be planned with A24/A25/D13: `eval-core` 0.15.0 exports a report of the first statement evaluation would refuse, and `eval-forms` refuses such a rule at registration, anywhere in it. Opened 2026-10-10 by the Phase 9 plan; a top-level label refused at registration since its step 6, released 2026-10-14 in `eval-forms` 0.5.0, tagged 3466c80. A label in a top-level block, `{ L: 1 }`, and every other such statement remain |
+| [D13](#d13) | A rule whose top-level statement `eval-core` refuses registers in both adapters and renders blank under the default policy | forms, core | decision, then fix | Open, narrowed — in flight as the [A24 plan](a24/plan.md), steps 5 and 6; **decided 2026-10-30**: `eval-core` 0.15.0 exports a report of the first statement evaluation would refuse, and `eval-forms` refuses such a rule at registration, anywhere in it. Opened 2026-10-10 by the Phase 9 plan; a top-level label refused at registration since its step 6, released 2026-10-14 in `eval-forms` 0.5.0, tagged 3466c80. A label in a top-level block, `{ L: 1 }`, and every other such statement remain |
 | [E1](#e1) | Form-state keys across both adapters | forms | phase | Open — **no phase reserved** |
 | [E2](#e2) | Arrays — `applyEach` at `/signals`, `FormArray` at `/reactive` | forms | phase | Open |
 | [E3](#e3) | `dependencies` introspection at form scale | forms | phase | Open |
@@ -795,8 +800,9 @@ short-lived reference without masking a kept one.
 <a id="a24"></a>
 ## A24 — An `await` is a pass-through: inside an `async` arrow it hands the walk a promise as an operand
 
-**Package** core · **Kind** decision, then fix · **Status** Open — **decided 2026-10-30**, to be
-planned with A24/A25/D13. Opened 2026-10-07 by the Phase 5 plan
+**Package** core · **Kind** decision, then fix · **Status** Open —
+in flight as the [A24 plan](a24/plan.md), step 4; **decided 2026-10-30**. Opened 2026-10-07 by the
+Phase 5 plan
 
 `awaitVisitor` pushes a promise — its operand raced against a timer ([A25](#a25)) — and the walk
 carries on with that promise as the value. Nothing waits for it. Only promises left in the result
@@ -856,8 +862,8 @@ findings 2 and 3.
 <a id="a25"></a>
 ## A25 — `awaitVisitor`'s timeout race: an uncleared timer, an undocumented key, a mutated error
 
-**Package** core · **Kind** fix · **Status** Open — **decided 2026-10-30**, to be planned with
-A24/A25/D13. Opened 2026-10-07 by the Phase 5 plan
+**Package** core · **Kind** fix · **Status** Open — in flight as the [A24 plan](a24/plan.md), step
+3; **decided 2026-10-30**. Opened 2026-10-07 by the Phase 5 plan
 
 Three defects in `await-expression.ts`, reached wherever `awaitVisitor` runs — an `async` arrow at
 default options ([A24](#a24)), or an AST the caller parsed with `allowAwaitOutsideFunction`:
@@ -884,7 +890,15 @@ CLAUDE.md requires.
 through an `async` arrow, exactly as the sync path does today. It adds no reach.
 
 **Decided 2026-10-30.** No race, no timer, no `__awaitTimeout`, no suffix: a rejection reaches the
-caller as their own value. `eval.service.await.spec.ts:82` moves to `rejects.toBe(e)` with the
+caller as it was raised. *Corrected 2026-10-30 by the [A24 plan](a24/plan.md)'s step 1*: this said
+"as their own value", which holds at the visitor and not at the caller. Only an `Error` rejection
+reaches an `evalAsync` caller by identity: `evaluateAsync`'s `ensureError` turns any other rejection
+into a new `Error`, a conversion that is not A25's and stays. Reported by the request of 2026-10-30
+as measured on 0.14.1, in a sandbox whose script is not recorded, and matching `ensureError`'s code:
+`'x'` becomes an `Error` `"x"`, `{k:1}` `"Promise rejected with object: {\"k\":1}"`, and `undefined`
+`"Promise rejected with undefined"`. Read from code at d62eee4, an `await` today converts first, to
+`Await expression failed: …` with the suffix, so those three hold under an `await` from A25's fix;
+the plan's step 2 measures it. `eval.service.await.spec.ts:82` moves to `rejects.toBe(e)` with the
 message `'later'`. The key at `eval.service.async-error-handling.spec.ts:188` is vacuous, since its
 expression has no `await`: the line goes and the case is renamed. 0.7.0's CHANGELOG line, "An
 asynchronous rejection still carries ` at position <start>-<end>`", stays as history. Released with
@@ -1201,8 +1215,9 @@ documented in the package README.
 <a id="d13"></a>
 ## D13 — A rule whose top-level statement `eval-core` refuses registers, and renders blank
 
-**Package** forms, core · **Kind** decision, then fix · **Status** Open, narrowed — **decided
-2026-10-30**, to be planned with A24/A25/D13. Opened 2026-10-10 by the Phase 9 plan; its step 6
+**Package** forms, core · **Kind** decision, then fix · **Status** Open, narrowed —
+in flight as the [A24 plan](a24/plan.md), steps 5 and 6; **decided 2026-10-30**. Opened 2026-10-10
+by the Phase 9 plan; its step 6
 refuses a top-level label, released 2026-10-14 in `eval-forms` 0.5.0, tagged 3466c80
 
 Both adapters accept any rule that parses: `/signals`' `prepare` parses, guards identifiers and
