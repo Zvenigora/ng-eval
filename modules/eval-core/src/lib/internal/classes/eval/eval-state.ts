@@ -211,10 +211,9 @@ export class EvalState {
   }
 
   /**
-   * How many `evaluate` / `evaluateAsync` calls on this state are currently on
-   * the JavaScript stack: 0 between evaluations, 1 during an ordinary walk, and
-   * more while a nested walk runs - an arrow-function body is re-entrant
-   * `evaluate` on this same state.
+   * How many walks on this state are currently on the JavaScript stack: 0
+   * between evaluations, 1 during an ordinary walk, and more while a nested
+   * walk runs - an arrow-function body is a re-entrant walk on this same state.
    *
    * Maintained by {@link enterWalk} / {@link exitWalk}, which the entry points
    * pair around their walk, the exit in a `finally` so a throw still restores
@@ -252,7 +251,7 @@ export class EvalState {
     const depth = ++this._walkDepth;
 
     // § 3.4's refill, and the 0 -> 1 test is the whole of it. A nested walk -
-    // an arrow-function body, which re-enters `evaluate` on this same state -
+    // an arrow-function body, which re-enters the walk on this same state -
     // shares whatever the enclosing walk has left, so an escaped closure cannot
     // buy itself a fresh budget by being called again. The options are re-read
     // per outermost walk rather than in the constructor because they are a

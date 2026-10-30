@@ -54,8 +54,8 @@ describe('the shared visitor table', () => {
   });
 
   it('should stay correct across a nested walk on the same state', () => {
-    // `arrow-function-expression.ts` re-enters `evaluate`, so the inner walk
-    // takes the shared table too.
+    // `arrow-function-expression.ts` re-enters the walk, `walkWithoutResult`,
+    // so the inner walk takes the shared table too.
     expect(run('(x => x + 1)(1)')).toBe(2);
     expect(run('2 + 3 * a')).toBe(32);
   });

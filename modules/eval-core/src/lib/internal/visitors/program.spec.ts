@@ -223,8 +223,8 @@ describe('programVisitor', () => {
       expect(context.scopes.length).toBe(0);
     });
 
-    it('should keep the scope balanced when an arrow body re-enters evaluate', () => {
-      // `arrow-function-expression.ts` calls `evaluate` on the same state from
+    it('should keep the scope balanced when an arrow body re-enters the walk', () => {
+      // `arrow-function-expression.ts` walks its body on the same state from
       // inside the closure, so this walk runs a nested walk that pushes a scope
       // of its own. Both pops have to happen.
       const context = contextOf();
@@ -263,7 +263,7 @@ describe('programVisitor', () => {
       }, {});
       state.hooks.on('after', 'Program', () => undefined);
 
-      // The arrow body re-enters `evaluate` on this state, so the inner walk
+      // The arrow body re-enters the walk on this state, so the inner walk
       // pushes a second base at the depth the outer walk had open.
       evaluate(programOf('(x => bases())(1)'), state);
 
@@ -280,7 +280,7 @@ describe('programVisitor', () => {
         depth: () => { seen.push(state.walkDepth); return 0; },
       }, {});
 
-      // The outer walk is depth 1; the arrow body re-enters `evaluate` on the
+      // The outer walk is depth 1; the arrow body re-enters the walk on the
       // same state, so the call inside it sees 2.
       evaluate(programOf('(x => depth())(1)'), state);
 

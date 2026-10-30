@@ -8,8 +8,8 @@ import { AnyNode } from 'acorn';
  * evaluation's return value.
  *
  * It is converted here, at the walk boundary, rather than in the `Program`
- * visitor. `arrow-function-expression.ts` calls `evaluate` on a
- * `BlockStatement` for a block-bodied arrow, so a conversion sited in `Program`
+ * visitor. `arrow-function-expression.ts` walks a `BlockStatement` for a
+ * block-bodied arrow, so a conversion sited in `Program`
  * would let `x => { }` hand the sentinel straight to a consumer. Converting
  * where the walk ends covers both entry points by construction.
  */
@@ -50,7 +50,7 @@ const completionValue = (value: unknown): unknown =>
  *   mutation into a throw. `getDefaultVisitors()` still returns a **fresh,
  *   mutable** object to anyone who calls it, so no caller loses anything.
  * - **Lazily** because a module-level `const` deadlocks the flattened bundle:
- *   `arrow-function-expression.ts` imports `evaluate`, so this module is
+ *   `arrow-function-expression.ts` imports `walkWithoutResult`, so this module is
  *   initialised first and `getDefaultVisitors()` at module scope reads that
  *   visitor before its binding exists. Measured, not guessed - the built
  *   package threw `Cannot access 'arrowFunctionExpressionVisitor' before
@@ -62,7 +62,77 @@ const mergedVisitors = (): walk.RecursiveVisitors<EvalState> =>
   (defaultVisitors ??= Object.freeze(walk.make<EvalState>(getDefaultVisitors())));
 
 /**
+ * Walks the node on the state and returns its completion value, recording no
+ * outcome: everything {@link evaluate} does except `state.result`'s `start`,
+ * `stop`, `setSuccess` and `setFailure`.
+ *
+ * **The arrow-function body's walk** (`arrow-function-expression.ts`). That
+ * body runs on the walk's own state, during the walk, after it, many times or
+ * never, and up to 0.14.1 it ran through `evaluate` - so every call of an arrow
+ * wrote its outcome, value and start time over the enclosing walk's result, and
+ * a closure called after the walk wrote over the finished one
+ * (`docs/backlog-retired.md` A27). The result now describes the entry-point walk alone.
+ *
+ * Not exported from the package: `functions/public-api.ts` does not list it.
+ *
+ * @param node The node to walk.
+ * @param state The evaluation state.
+ * @returns The node's completion value.
+ */
+export const walkWithoutResult = (node: AnyNode, state: EvalState): unknown => {
+
+  // The mark is recorded on the state as well as held here, so that
+  // `EvalHooks.exit` - called from a visitor, which has no route to this
+  // local - can tell a node open in this walk from one open only in an
+  // enclosing walk. Pushed under the same guard the mark is read under, and
+  // the local `hooked` keeps the pair symmetric if a hook is registered
+  // mid-walk.
+  const hooked = state.hasHooks;
+  const mark = hooked ? state.hooks.pushWalkBase(state) : 0;
+
+  // Unguarded, unlike the walk base above: the iteration budget refills on
+  // the outermost entry whether or not hooks are registered. See
+  // `EvalState.walkDepth` on why these are two fields and not one.
+  state.enterWalk();
+
+  try {
+    walk.recursive(node, state, {}, mergedVisitors());
+
+    return completionValue(popVisitorResult(node, state));
+  } catch (error) {
+    // A visitor that throws skips its afterVisitor, so close whatever this
+    // walk left open. Unwinding to the mark rather than to the bottom is what
+    // stops a nested walk - the arrow-function body runs on this same
+    // state - from draining the enclosing walk's open nodes.
+    // Reads `state.hasHooks` rather than the `hooked` local captured above,
+    // and the difference is deliberate but narrow: if a hook was registered
+    // *during* this walk then `hooked` is false, no base was pushed, `mark`
+    // is 0, and this unwinds the whole stack - including an enclosing walk's
+    // frames, which is the boundary crossing the walk base exists to stop.
+    // Left as it was rather than tightened here, because narrowing it would
+    // change what a mid-walk registration observes on an already-published
+    // path, which is not this step's to decide.
+    if (state.hasHooks) {
+      state.hooks.unwindTo(mark, error, state);
+    }
+    throw error;
+  } finally {
+    // Both in a `finally`: a walk that threw still has to restore the
+    // enclosing walk's bound and depth, or every later evaluation on this
+    // state carries this one's nesting.
+    state.exitWalk();
+    if (hooked) {
+      state.hooks.popWalkBase(state);
+    }
+  }
+}
+
+/**
  * Evaluates the given node and returns the result.
+ *
+ * Records the walk's outcome on `state.result`. An arrow function's body,
+ * walked on the same state whenever the function is called, records nothing
+ * there.
  *
  * @param node The node to evaluate.
  * @param state The evaluation state.
@@ -71,31 +141,14 @@ const mergedVisitors = (): walk.RecursiveVisitors<EvalState> =>
 export const evaluate = (node: AnyNode | undefined, state: EvalState)
   : unknown | undefined => {
 
+  // The `if (node)` guard comes first on purpose: callers reach the early
+  // return below with a bare state that has no result or hooks to read.
   if (node) {
 
     state.result.start();
 
-    // Captured inside the `if (node)` block on purpose: callers reach the early
-    // return above with a bare state that has no hooks to read. Do not hoist.
-    //
-    // The mark is recorded on the state as well as held here, so that
-    // `EvalHooks.exit` - called from a visitor, which has no route to this
-    // local - can tell a node open in this walk from one open only in an
-    // enclosing walk. Pushed under the same guard the mark is read under, and
-    // the local `hooked` keeps the pair symmetric if a hook is registered
-    // mid-walk.
-    const hooked = state.hasHooks;
-    const mark = hooked ? state.hooks.pushWalkBase(state) : 0;
-
-    // Unguarded, unlike the walk base above: the iteration budget refills on
-    // the outermost entry whether or not hooks are registered. See
-    // `EvalState.walkDepth` on why these are two fields and not one.
-    state.enterWalk();
-
     try {
-      walk.recursive(node, state, {}, mergedVisitors());
-
-      const value = completionValue(popVisitorResult(node, state))
+      const value = walkWithoutResult(node, state);
 
       state.result.stop();
 
@@ -104,31 +157,8 @@ export const evaluate = (node: AnyNode | undefined, state: EvalState)
       return value;
     } catch (error) {
       state.result.stop();
-      // A visitor that throws skips its afterVisitor, so close whatever this
-      // walk left open. Unwinding to the mark rather than to the bottom is what
-      // stops a nested evaluate - the arrow-function body runs on this same
-      // state - from draining the enclosing walk's open nodes.
-      // Reads `state.hasHooks` rather than the `hooked` local captured above,
-      // and the difference is deliberate but narrow: if a hook was registered
-      // *during* this walk then `hooked` is false, no base was pushed, `mark`
-      // is 0, and this unwinds the whole stack - including an enclosing walk's
-      // frames, which is the boundary crossing the walk base exists to stop.
-      // Left as it was rather than tightened here, because narrowing it would
-      // change what a mid-walk registration observes on an already-published
-      // path, which is not this step's to decide.
-      if (state.hasHooks) {
-        state.hooks.unwindTo(mark, error, state);
-      }
       state.result.setFailure(error);
       throw error;
-    } finally {
-      // Both in a `finally`: a walk that threw still has to restore the
-      // enclosing walk's bound and depth, or every later evaluation on this
-      // state carries this one's nesting.
-      state.exitWalk();
-      if (hooked) {
-        state.hooks.popWalkBase(state);
-      }
     }
   }
 
@@ -213,7 +243,8 @@ export const evaluateAsync = async (ast: AnyNode | undefined, state: EvalState)
   state.result.start();
 
   // Captured after the `!ast` early return above, for the same reason the sync
-  // entry point captures inside its `if (node)` block. Do not hoist.
+  // entry point captures only once it has a node, in `walkWithoutResult`. Do
+  // not hoist.
   const hooked = state.hasHooks;
   const mark = hooked ? state.hooks.pushWalkBase(state) : 0;
 

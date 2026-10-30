@@ -95,9 +95,10 @@ const entryPoints: [string, ContextEntryPoint][] = [
  * `@zvenigora/ng-eval-signals` rests on it (`docs/signals/phase-5-plan.md`
  * § 1.2 finding 1, and its step 1).
  *
- * The failure case pins one direction only. An arrow's body runs a nested
- * walk on the same state, which writes the same `state.result`, so a failure
- * recorded at return does not on its own mean the promise will reject.
+ * The failure case pins one direction only. Up to 0.14.1 an arrow's body ran a
+ * nested walk that wrote the same `state.result`, so a failure recorded at
+ * return did not on its own mean the promise would reject. It no longer writes
+ * it (`docs/backlog-retired.md` A27, `evaluate.result.spec.ts`).
  *
  * Every observation is taken in the synchronous instant after the call
  * returns, kept, and asserted only once the promise has settled. A deferred

@@ -264,7 +264,7 @@ describe('ifStatementVisitor', () => {
 
     it('should not leak the sentinel out of an arrow body whose if took no branch', () => {
       // The walk-boundary conversion again (§ 3.1 rule 4), reached through
-      // `arrow-function-expression.ts`'s `evaluate` call rather than through
+      // `arrow-function-expression.ts`'s walk rather than through
       // `Program`. An array literal holds whatever the call pushed, so
       // `Program`'s own filter never sees it.
       const state = EvalState.fromContext({}, {});

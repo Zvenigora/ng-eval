@@ -16,10 +16,10 @@ import { contextPop, contextPush } from './context-method';
  * statements the body holds. A block whose statements all produced nothing -
  * `{ }`, or `{ ; }` - pushes {@link EMPTY_COMPLETION} for its enclosing
  * statement list to skip over. The sentinel is converted to `undefined` at the
- * walk boundary in `evaluate`, which is why this visitor may return it to a
- * caller that is itself a walk root: `arrow-function-expression.ts` calls
- * `evaluate` on this node for a block-bodied arrow, so `x => { }` reaches a
- * consumer through the same conversion a `Program` does.
+ * walk boundary in `evaluate.ts`, which is why this visitor may return it to a
+ * caller that is itself a walk root: `arrow-function-expression.ts` walks this
+ * node for a block-bodied arrow, so `x => { }` reaches a consumer through the
+ * same conversion a `Program` does.
  *
  * **The block scope is unobservable in this step, and is pushed anyway.**
  * Nothing binds into it until `VariableDeclaration` lands, and an empty scope

@@ -4,7 +4,7 @@ import { beforeVisitor } from './before-visitor';
 import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
 import { pushVisitorResult } from './visitor-result';
-import { evaluate } from '../functions';
+import { walkWithoutResult } from '../functions/evaluate';
 import { evaluatePatterns } from '.';
 import { contextPop, contextPush } from './context-method';
 
@@ -18,7 +18,7 @@ export const arrowFunctionExpressionVisitor = (node: ArrowFunctionExpression, st
     // The scope stack lives on EvalContext, not on the per-walk EvalState, and
     // one EvalContext can back any number of evaluations - so a scope this
     // closure fails to pop outlives the walk and is read first by every later
-    // evaluation on the same context. The body is re-entrant `evaluate`, which
+    // evaluation on the same context. The body is a re-entrant walk, which
     // rethrows, so the pop needs `finally`.
     //
     // The `try` opens *after* the push, never around it. `contextPush` skips
@@ -29,12 +29,16 @@ export const arrowFunctionExpressionVisitor = (node: ArrowFunctionExpression, st
     // Both take the method from the context's class (`context-method.ts`).
     // This site is the one an expression could reach twice over: a planted
     // own `push` would be invoked here with the real context as its `this`,
-    // and - since this closure's body is a re-entrant `evaluate` that pushes
+    // and - since this closure's body is a re-entrant walk that pushes
     // again - a plant that evaluates anything recurses until the stack is
     // gone, leaving a reused context unusable (`docs/backlog.md` A42).
     contextPush(st.context, newContext, st.options);
     try {
-      return evaluate(node.body, st);
+      // `walkWithoutResult`, not `evaluate`: the body's walk records nothing
+      // on `st.result`, which describes the entry-point walk alone - during
+      // that walk and after it, however often this closure is called
+      // (`docs/backlog-retired.md` A27).
+      return walkWithoutResult(node.body, st);
     } finally {
       contextPop(st.context);
     }

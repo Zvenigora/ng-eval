@@ -61,7 +61,7 @@ export type EvalKnownOptions = {
    * returned a partial value is the failure this exists to prevent - so
    * exceeding it raises `Iteration budget exhausted after <n> iterations`.
    *
-   * **Per outermost `evaluate` call, not per loop and not per state.** Per loop
+   * **Per outermost walk, not per loop and not per state.** Per loop
    * would not be a bound at all: two nested loops at 100,000 each is 10^10
    * iterations. Per state would erode one budget across the independent
    * evaluations of the `createState` + repeated `eval` style, and would leave an
@@ -125,7 +125,7 @@ export type EvalKnownOptions = {
    * unbounded behaviour exactly. Both are honoured rather than treated as
    * falsy or as opt-outs, the same way {@link maxIterations} honours them.
    *
-   * Re-read on each outermost `evaluate` call rather than once, because the
+   * Re-read on each outermost walk rather than once, because the
    * options are a mutable record the caller keeps a reference to - the same
    * reason, and the same moment, as {@link maxIterations}' refill.
    */

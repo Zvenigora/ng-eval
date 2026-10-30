@@ -312,7 +312,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.14.0, `eval-signals` 0.7.0, `eval-forms` 0.7.0. F21 and F25 ship in no package | `0d305a3` | 2026-10-26 | 24 | 6: A48–A53 | 5: F21, F25, A44, A45, A52 | 25 |
 | `eval-forms` 0.7.1. F26, opened by 0.14.0's post-publish commit and fixed after it, ships in no package; F27 ships in no package but for one `eval-core` docblock | `69c3e0e` | 2026-10-29 | 25 | 4: F26–F29 | 2: F26, F27 | 27 |
 | `eval-core` 0.14.1. F28, decided by Phase 11 and shipped in `eval-forms` 0.7.1, was retired by 0.7.1's post-publish commit, after its tag; A47 is fixed, and A32 and A30 are decided, documentation only | `95932e6` | 2026-10-30 | 27 | 0 | 4: F28, A47, A32, A30 | 23 |
-| **Since the register opened** | | | **42** | **71** | **90** | **23** |
+| *Unreleased*. A27 is fixed for `eval-core`'s next release | — | — | 23 | 0 | 1: A27 | 22 |
+| **Since the register opened** | | | **42** | **71** | **91** | **22** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -360,7 +361,7 @@ makes it that release's row, with its tag commit and date.
 | [A24](#a24) | An `await` is a pass-through — inside an `async` arrow it hands the walk a promise as an operand, and the arrow returns no promise | core | decision, then fix | Open — opened 2026-10-07 by the Phase 5 plan; the `eval-signals` README states it since 0.5.0 |
 | [A25](#a25) | `awaitVisitor`'s timeout race — an uncleared 30 s timer per `await`, an undocumented `__awaitTimeout` key, and the caller's error mutated | core | fix | Open — opened 2026-10-07 by the Phase 5 plan |
 | [A26](backlog-retired.md#a26) | The parse cache ignores parser options | core | fix | **Retired — fixed 2026-10-10**, as step 1 of the [Phase 9 plan](colon-identifiers/phase-9-plan.md); released 2026-10-14 in `eval-core` 0.12.0, tagged 3466c80. Keyed on the text and a fingerprint of the parse-relevant options; a callback or `program` bypasses the cache. `CompilerService`'s string cache is that plan's step 3. Affected every published `eval-core` to 0.11.1 |
-| [A27](#a27) | A nested `evaluate` writes the enclosing walk's `EvalResult` — and `start()` clears nothing, so a reused state shows the last run's outcome | core | decision | Open — recorded, not scheduled; opened 2026-10-08 by Phase 5 step 1 |
+| [A27](backlog-retired.md#a27) | A nested `evaluate` writes the enclosing walk's `EvalResult` — and `start()` clears nothing, so a reused state shows the last run's outcome | core | decision | **Retired — decided and fixed 2026-10-30**; unreleased, in `eval-core`'s next release. An arrow's body walks without writing `state.result`, `start()` resets the outcome but not the trace, and each setter writes every outcome field. Opened 2026-10-08 by Phase 5 step 1 |
 | [A28](backlog-retired.md#a28) | `scoped` is documented as a scope pushed during this walk; the code asks the whole scope stack | core | docs | **Retired — fixed 2026-10-10**, documentation comments only; released 2026-10-10 in `eval-core` 0.11.1, tagged 7ee65fc. The `.d.ts` differs in four JSDoc blocks: every scope on the stack counts, whoever pushed it |
 | [A29](backlog-retired.md#a29) | `CompilerService` keys a compiled AST by type, start, end and `toString()` — two ASTs of one type and span share a compiled function | core | fix | **Retired — fixed 2026-10-10**; released 2026-10-10 in `eval-core` 0.11.1, tagged 7ee65fc. An AST is compiled on every call and never cached; a string is cached as before. Affected `eval-core` 0.2.1–0.11.0 |
 | [A30](backlog-retired.md#a30) | `ParserService.parserOptions` reaches `EvalService`, `CompilerService` and `DiscoveryService` for no acorn option | core | decision | **Retired — decided 2026-10-29: documented**; released 2026-10-30 in `eval-core` 0.14.1, tagged 95932e6, documentation only. The setter configures direct `ParserService.parse` calls, and its JSDoc says so |
@@ -871,42 +872,6 @@ through an `async` arrow, exactly as the sync path does today. It adds no reach.
 *Recorded*: this entry; [`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.2 finding 4.
 *Verified*: measured 2026-10-07 at d080707, with a throwaway spec deleted the same day (that plan's
 § 1.3, P2 and P2b).
-
-<a id="a27"></a>
-## A27 — A nested `evaluate` writes the enclosing walk's `EvalResult`
-
-**Package** core · **Kind** decision · **Status** Open — recorded, not scheduled. Opened 2026-10-08
-by Phase 5 step 1
-
-The arrow-function visitor calls `evaluate(node.body, st)` on the walk's own state
-(`arrow-function-expression.ts:29`), and `evaluate` ends in `setSuccess` or `setFailure` on
-`st.result`. So every call of an arrow overwrites the enclosing walk's flags and error, mid-walk. The
-sync entry points write their own outcome when the outer walk ends, so their flags are right on
-return; `evaluateAsync` writes its outcome only after its `await`, so between return and settlement
-`state.result` describes the last nested walk to finish.
-
-Measured (Phase 5 plan § 1.3, P7): `load(safe(() => fail()))`, where `safe` catches what its argument
-throws, has `isError` `true` and `error` the thrown object when `callAsync` returns, and resolves to
-`0`. A succeeding walk that called an arrow reports `isSuccess` `true` at return.
-
-**Related: `EvalResult.start()` clears nothing.** It records a start time and leaves the previous
-run's flags and error in place, and `setSuccess` does not clear `error` either. Measured 2026-10-08,
-on one state reused across `evaluateAsync` runs: after a run that rejected, a run that resolves to
-`20` reads `isError` `true`, and the first run's error, at return; once it settles, `isSuccess` is
-`true` and `error` is still the first run's. The sync path shows the second half on a fresh state:
-`safe(() => fail())` returns `0` with `isSuccess` `true` and `error` the throw `safe` caught.
-
-**Not scheduled, and nothing downstream needs it.** `eval-signals` does not read `state.result` at
-return: the Phase 5 plan's § 3.4 settles every outcome, a walk failure included, through the
-promise. Whether a nested walk gets its own result, and whether `start()` resets one, is a behaviour
-change on a published path — what `state.result` reports mid-walk and between return and
-settlement — so it is a decision before it is a fix.
-
-*Recorded*: this entry; [`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.2 finding 1 and
-§ 8 q5.
-*Verified*: measured 2026-10-08 against the gate-built `eval-core` bundle, by scripts outside the
-repo — P7 in that plan's § 1.3, and the reused-state and sync-path cases above. `eval-core`'s source
-is the same at cc0761e and 9d5715d.
 
 <a id="a33"></a>
 ## A33 — The case-insensitive property cache keeps a miss across a same-count key swap

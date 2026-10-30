@@ -109,8 +109,8 @@ Work through these in order. They are ranked by how badly they fail and how quie
    **An early exit out of a statement list is the shape `exit` cannot bound**
    (`docs/backlog.md` E6): it produces an `after` with no matching `before` in the same frame,
    which is what lets a flush cross a walk boundary — and the re-entrant
-   `evaluate(node.body, st)` in `arrowFunctionExpressionVisitor` puts a nested walk inside the
-   same state, so that boundary
+   `walkWithoutResult(node.body, st)` in `arrowFunctionExpressionVisitor` puts a nested walk
+   inside the same state, so that boundary
    is real rather than theoretical. E6 is a design constraint of the statements plan, not a
    defect to fix in passing: check the diff against the mark that plan specifies, and report
    its absence from the plan as the finding if there is none.
@@ -158,7 +158,8 @@ Work through these in order. They are ranked by how badly they fail and how quie
 
    **Correct placement on `EvalState` is necessary and not sufficient**, and control-flow state
    is where the gap opens. *(This half is eval-core only.)* `arrowFunctionExpressionVisitor`
-   calls `evaluate(node.body, st)` with the **same state**, from inside the closure it pushes
+   calls `walkWithoutResult(node.body, st)` — `evaluate`'s walk without its writes to
+   `state.result` (A27) — with the **same state**, from inside the closure it pushes
    as the arrow's value — so that nested walk runs whenever the arrow is called: during the
    outer walk, after it has returned, many times, or never. A completion sentinel — break,
    continue, return, "skip the rest of the block" — set by a nested arrow body, or cleared

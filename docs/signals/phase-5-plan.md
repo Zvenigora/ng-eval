@@ -784,7 +784,7 @@ own and which nothing currently pins. `eval-core` is changed first, and by a spe
 - **Category**: test-only. It ships in no package: no version bump, no CHANGELOG entry.
 - **Outcome** — done 2026-10-08, `9d5715d`. Sixteen cases; W1 failed all sixteen, and W2 the four
   failure cases and nothing else. Its review measured P7, which reversed § 3.4's synchronous
-  failure path (Revision 2). It opened [BL-A27](../backlog.md#a27), recorded in `6ade196`.
+  failure path (Revision 2). It opened [BL-A27](../backlog-retired.md#a27), recorded in `6ade196`.
 
 ### Step 2 — `createEvalSignalAsync`: the value, its status and its errors
 

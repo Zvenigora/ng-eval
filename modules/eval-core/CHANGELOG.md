@@ -12,6 +12,38 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Fixed
+- **`state.result` describes the walk the entry point ran, and nothing else**
+  ([A27](../../docs/backlog-retired.md#a27)). An arrow function's body runs a nested walk on the
+  same state, and up to 0.14.1 that walk recorded its own outcome over the enclosing one's: every
+  call of an arrow wrote `value`, `error`, the flags and the start time, mid-walk, and a closure
+  called after the walk wrote over the finished walk's result. The nested walk now records
+  nothing. So under `evalAsync`, `load(safe(() => fail()))`, where `safe` catches what its
+  argument throws, no longer reads `isError` `true` and `error` the caught throw at return, nor
+  `error` the caught throw once it has resolved to `0`; `safe(() => fail())` under `eval` reads no
+  `error`; `call(() => 1) + boom()` reads no `value` `1` after it throws; `duration` covers the
+  whole walk, where it ran from the last arrow call; and `fn = eval('x => x + 1', state)` leaves
+  `state.result.value` `fn` when `fn(41)` is called later, where it became `42`.
+- **`EvalResult.start()` resets the outcome**: `value`, `error`, `errorMessage`, `isSuccess`,
+  `isError`, `isUndefined` and `duration` read `undefined` until the walk ends. It reset nothing,
+  so on a state reused across runs an `evalAsync` after a rejected run read `isError` `true` and the
+  rejected run's error at return, and kept that error after resolving; and `duration` read the
+  previous run's end less the new start, a negative number, while a walk was pending. The trace,
+  `tracePushCount` and `traceTruncated` are left alone, as before
+  ([A15](../../docs/backlog.md#a15)).
+- **`setSuccess` and `setFailure` each write every outcome field.** `setSuccess` clears `error` and
+  `errorMessage`, and `setFailure` clears `value`, and its `errorMessage` is `undefined` for a
+  thrown value that is not an `Error`, where it kept the previous one. **`isUndefined` is
+  `value === undefined`**: it was `false` after every walk, so `eval('undefined')` now reads
+  `true`, and a failed walk, whose `value` is cleared, reads `true` as well.
+
+  No exported shape changes. The `.d.ts` differs in JSDoc only: `EvalResult`'s, which says what
+  the outcome describes; `evaluate`'s; and, where they said an arrow's body re-enters `evaluate`,
+  `EvalState.walkDepth`'s, `EvalHookBookkeeping.walkBases`', `EvalHooks`' `exit`, `depth`,
+  `pushWalkBase`, `popWalkBase` and `unwindTo`, and `EvalOptions`' `maxIterations` and
+  `maxTraceItems`, which now say a walk where they said `evaluate`. Neither downstream
+  package reads `state.result`'s outcome.
+
 ---
 
 ## [0.14.1] - 2026-10-30

@@ -1632,6 +1632,113 @@ with options of its own needs this first — the plan's option B is the worked c
 *Verified*: measured 2026-10-07 at d080707, with a throwaway spec deleted the same day (that plan's
 § 1.3, P5).
 
+<a id="a27"></a>
+## A27 — A nested `evaluate` writes the enclosing walk's `EvalResult`
+
+**Package** core · **Kind** decision · **Status** **Retired — decided and fixed 2026-10-30**;
+unreleased, in `eval-core`'s next release. Was Open — recorded, not scheduled. Opened 2026-10-08 by
+Phase 5 step 1
+
+*Decided and fixed* 2026-10-30, as a one-commit item of a batch. `state.result` describes the last
+entry-point walk on the state, and nothing else:
+- **An arrow's body walks without writing the result.** `walkWithoutResult`, internal to
+  `functions/evaluate.ts` and not exported, does everything `evaluate` did — the walk base,
+  `enterWalk` / `exitWalk`, the depth-mark unwind, the rethrow — except `start`, `stop`,
+  `setSuccess` and `setFailure`. `evaluate` calls it and writes the outcome around it, and
+  `arrow-function-expression.ts` calls it instead of `evaluate`. The exported `evaluate` and
+  `evaluateAsync` keep their signatures and their writes.
+- **`EvalResult.start()` resets the outcome**: `value`, `error`, `errorMessage`, `isSuccess`,
+  `isError`, `isUndefined` and the end time, so `duration` reads `undefined` while a walk is
+  pending, where on a reused state it read the previous end less the new start. It leaves the
+  trace, `tracePushCount` and `traceTruncated`, which span every evaluation on the state
+  ([A15](backlog.md#a15)).
+- **`setSuccess` and `setFailure` each write every outcome field**: `setSuccess` clears `error` and
+  `errorMessage`, `setFailure` clears `value` and sets `errorMessage` only from an `Error`.
+  `isUndefined` is `value === undefined`, so it is `true` after a failure too, since the failure
+  clears the value. It was never `true` before.
+
+No exported shape changes; `EvalResult`'s JSDoc says what the outcome describes, and the published
+JSDoc that said an arrow's body re-enters `evaluate` says it re-enters the walk. Neither downstream
+package reads the outcome, by grep of their source.
+
+Measured 2026-10-30 on the published 0.14.1 bundle, and by the spec rows against the fix
+(`load` resolves after 5 ms, `safe` catches and returns `0`, `fail` throws `Error('inner')`):
+
+| Row | 0.14.1 | Fixed |
+| :--- | :--- | :--- |
+| `evalAsync('load(safe(() => fail()))')`, at return | `isError` `true`, `error` `inner` | neither |
+| the same, once settled | `0`, `isSuccess` `true`, `error` `inner` | `0`, `isSuccess` `true`, no `error` |
+| one state: `evalAsync('r()')` rejecting `run1`, then `evalAsync('ok()')` resolving `20`, at return | `isError` `true`, `error` `run1` | neither |
+| the same, once settled | `error` `run1` | no `error` |
+| `eval('safe(() => fail())')` | `0`, `isSuccess` `true`, `error` `inner` | no `error` |
+| `eval('spin(() => 1)')`, `spin` busy-waiting 20 ms before calling its argument | `duration` 0.29 ms | `duration` ≥ 20 ms |
+| `fn = eval('x => x + 1', st); fn(41)` | `st.result.value` `42` | still `fn` |
+| `eval('undefined')`; `eval('1')` | `isUndefined` `false`; `false` | `true`; `false` |
+| `eval('call(() => 1) + boom()')`, `boom` throwing `outer` | throws `outer`, `value` `1` | throws `outer`, `value` `undefined`, `error` `outer` |
+
+The first row holds under `caseInsensitive` too, as `LOAD(SAFE(() => FAIL()))`. The sixth row is
+the witness for the README's "`state.result.duration` already provides one", which was false after
+any arrow call, and is true as the README states it.
+
+*Verified*: test-first. `functions/evaluate.result.spec.ts` gains 9 cases, one per row above with
+the first row's `caseInsensitive` leg, and the trace on a reused state still cumulative across two
+evaluations ([A15](backlog.md#a15)); `classes/eval/eval-result.spec.ts` gains 2, each setter after
+the other and `start()` after a finished, failed walk with a truncated trace. The at-return rows
+assert `isError` and `isSuccess` both `undefined`, a pending walk. Against master, 10 of the 11
+failed; the trace case passes there, as the guard it is. Wrong implementations, each applied alone
+against all of `eval-core`:
+- **the writes gated on `walkDepth > 0`**, the arrow calling `evaluate` again: 1 failed, the
+  function called after the walk, which runs at depth 0;
+- **`start()` clearing the trace**: 4 failed, the trace case, `start()`'s unit case and two existing
+  `trace-bound.spec.ts` cases that accumulate across walks;
+- **`start()` resetting nothing**: 2 failed, the reused-state row and `start()`'s unit case;
+- **`setSuccess` leaving the error**, and separately **`setFailure` leaving the value**: 1 failed
+  each, the setters' unit case. The entry points cannot show either, since `start()` resets first;
+- **`isUndefined` always `false`**: 1 failed, the `isUndefined` row;
+- **the arrow calling `evaluate` again, the setters fixed**: 4 failed, the first row's two legs,
+  `duration` and the later call. Predicted 6: the sync caught-throw row and the `boom` row pass,
+  since the outer walk's own setter now overwrites what the nested walk wrote, so each fails only
+  with both halves broken, as on master;
+- **`start()` keeping the end time**: 1 failed, `start()`'s unit case;
+- **`evaluateAsync` recording success at return**, before the promises settle: 3 failed, the
+  at-return rows.
+
+The fix's code review (its W1) found the sweep of "the arrow re-enters `evaluate`" incomplete,
+published JSDoc among the misses, and (W2) a class doc naming `duration` among the reset fields
+when `start()` left the end time; both were folded in, with the last two probes above.
+
+**The entry as it stood:**
+
+The arrow-function visitor calls `evaluate(node.body, st)` on the walk's own state
+(`arrow-function-expression.ts:29`), and `evaluate` ends in `setSuccess` or `setFailure` on
+`st.result`. So every call of an arrow overwrites the enclosing walk's flags and error, mid-walk. The
+sync entry points write their own outcome when the outer walk ends, so their flags are right on
+return; `evaluateAsync` writes its outcome only after its `await`, so between return and settlement
+`state.result` describes the last nested walk to finish.
+
+Measured (Phase 5 plan § 1.3, P7): `load(safe(() => fail()))`, where `safe` catches what its argument
+throws, has `isError` `true` and `error` the thrown object when `callAsync` returns, and resolves to
+`0`. A succeeding walk that called an arrow reports `isSuccess` `true` at return.
+
+**Related: `EvalResult.start()` clears nothing.** It records a start time and leaves the previous
+run's flags and error in place, and `setSuccess` does not clear `error` either. Measured 2026-10-08,
+on one state reused across `evaluateAsync` runs: after a run that rejected, a run that resolves to
+`20` reads `isError` `true`, and the first run's error, at return; once it settles, `isSuccess` is
+`true` and `error` is still the first run's. The sync path shows the second half on a fresh state:
+`safe(() => fail())` returns `0` with `isSuccess` `true` and `error` the throw `safe` caught.
+
+**Not scheduled, and nothing downstream needs it.** `eval-signals` does not read `state.result` at
+return: the Phase 5 plan's § 3.4 settles every outcome, a walk failure included, through the
+promise. Whether a nested walk gets its own result, and whether `start()` resets one, is a behaviour
+change on a published path — what `state.result` reports mid-walk and between return and
+settlement — so it is a decision before it is a fix.
+
+*Recorded*: this entry; [`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.2 finding 1 and
+§ 8 q5.
+*Verified*: measured 2026-10-08 against the gate-built `eval-core` bundle, by scripts outside the
+repo — P7 in that plan's § 1.3, and the reused-state and sync-path cases above. `eval-core`'s source
+is the same at cc0761e and 9d5715d.
+
 <a id="a28"></a>
 ## A28 — `scoped` is documented as a scope pushed during this walk; the code asks the whole scope stack
 

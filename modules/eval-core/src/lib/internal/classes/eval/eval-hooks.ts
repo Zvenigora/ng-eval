@@ -161,10 +161,10 @@ export interface EvalHookBookkeeping {
    */
   readonly timings: Map<AnyNodeTypes, EvalNodeTiming>;
   /**
-   * One entry per `evaluate` call currently on the JavaScript stack: the
-   * {@link open} depth that call found when it started, innermost last.
+   * One entry per walk currently on the JavaScript stack: the
+   * {@link open} depth that walk found when it started, innermost last.
    *
-   * `evaluate` already captured this as a local to hand to
+   * The walk already captured this as a local to hand to
    * {@link EvalHooks.unwindTo}; it lives here as well because {@link
    * EvalHooks.exit} needs it too and is called from a visitor, which has no
    * route to that local. Without it `exit` cannot tell "absent from this walk"
@@ -512,7 +512,7 @@ export class EvalHooks {
    * **"Open" means open in *this* walk.** Both routes below are bounded by the
    * current walk base ({@link EvalHookBookkeeping.walkBases}), so a node open
    * only in an enclosing walk falls into case 3 by either route - which is the
-   * behaviour case 3 already specifies for "not open at all". `evaluate` is
+   * behaviour case 3 already specifies for "not open at all". The walk is
    * re-entered with the same state from an arrow-function body, so without the
    * bound a nested walk closing a node it never opened would flush the
    * enclosing walk's frames under `completed: false` events a consumer reads as
@@ -574,7 +574,7 @@ export class EvalHooks {
 
   /**
    * How many nodes the state has open. Captured as a mark before a walk, since
-   * `evaluate` is re-entered with the same state from an arrow-function body.
+   * the walk is re-entered with the same state from an arrow-function body.
    *
    * This is a method rather than a getter because the stack it measures lives
    * on the state, not on this registry.
@@ -585,10 +585,11 @@ export class EvalHooks {
 
   /**
    * Records that a walk is starting at the state's current open depth, and
-   * returns that depth. Called by `evaluate` / `evaluateAsync` on entry, under
-   * their `hasHooks` guard, and paired with {@link popWalkBase} in a `finally`.
+   * returns that depth. Called on entry by every walk - `evaluate`'s, an
+   * arrow-function body's and `evaluateAsync`'s - under a `hasHooks` guard,
+   * and paired with {@link popWalkBase} in a `finally`.
    *
-   * The returned value is the same mark those entry points hand to
+   * The returned value is the same mark those walks hand to
    * {@link unwindTo}, so they capture it once rather than reading the depth
    * twice.
    */
@@ -600,9 +601,9 @@ export class EvalHooks {
   }
 
   /**
-   * Drops the innermost walk base. Called from the `finally` of the `evaluate`
-   * that pushed it, so an entry point whose walk threw still restores the
-   * enclosing walk's bound.
+   * Drops the innermost walk base. Called from the `finally` of the walk that
+   * pushed it, so a walk that threw still restores the enclosing walk's
+   * bound.
    */
   public popWalkBase(state: EvalState): void {
     state.hookBookkeeping.walkBases.pop();
@@ -623,12 +624,12 @@ export class EvalHooks {
 
   /**
    * Fires 'after' for every node the state has open above `mark`, innermost
-   * first, marked incomplete. Invoked from the catch in `evaluate`, so that a
+   * first, marked incomplete. Invoked from the catch of every walk, so that a
    * visitor which throws still leaves every 'before' matched by exactly one
    * 'after'.
    *
    * Unwinding to a mark rather than to the bottom is what keeps a nested
-   * `evaluate` from draining the enclosing walk's open nodes when a host
+   * walk from draining the enclosing walk's open nodes when a host
    * function swallows the nested throw.
    *
    * Idempotent, so the sync and async entry points can both call it.

@@ -119,7 +119,7 @@ describe('forStatementVisitor', () => {
 
     it('should not leak the sentinel out of an arrow body whose loop ran zero times', () => {
       // § 3.1 rule 4 through the *other* walk boundary:
-      // `arrow-function-expression.ts` calls `evaluate` on the `BlockStatement`,
+      // `arrow-function-expression.ts` walks the `BlockStatement`,
       // and the array literal holds whatever that call pushed, so `Program`'s
       // own filter never sees it.
       const state = EvalState.fromContext({}, {});
@@ -536,7 +536,7 @@ describe('forStatementVisitor', () => {
 
     it('should share the remaining budget with a nested walk', () => {
       // **The other half of the same rule, and the one a naive refill breaks.**
-      // `arrow-function-expression.ts` calls `evaluate` on this same state, so a
+      // `arrow-function-expression.ts` walks on this same state, so a
       // refill on *every* entry rather than on the 0 -> 1 transition would hand
       // the arrow body a fresh budget and make an escaped closure an unbounded
       // loop. 5 iterations before the call plus 8 inside it is 13 against a

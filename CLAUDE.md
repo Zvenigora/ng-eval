@@ -277,13 +277,14 @@ only awaits at the end, via `awaitAllPromises` which recursively resolves promis
 in the result. There is no `await` point inside any visitor. Any feature that needs to
 suspend mid-traversal requires redesigning the walker, not just the visitor.
 
-`evaluate()` is also **re-entrant, and the re-entry is deferred**.
-`arrow-function-expression.ts` calls `evaluate(node.body, st)` with the *same state*,
-from inside the closure it pushes as the arrow function's value — so that nested walk runs
-whenever the arrow function is called: during the outer walk, after it has returned, many
-times, or never. It is the only such re-entry in any visitor, and the *nested `evaluate`
-call* brings its own `try`/`catch` with it (distinct from the `try`/`finally` the visitor
-wraps that call in, which is the scope-stack pop above). Anything that accumulates per-walk
+The walk is also **re-entrant, and the re-entry is deferred**.
+`arrow-function-expression.ts` calls `walkWithoutResult(node.body, st)` — the walk `evaluate`
+runs, without its writes to `state.result` ([A27](docs/backlog-retired.md#a27)) — with the
+*same state*, from inside the closure it pushes as the arrow function's value — so that nested
+walk runs whenever the arrow function is called: during the outer walk, after it has returned,
+many times, or never. It is the only such re-entry in any visitor, and the *nested walk* brings
+its own `try`/`catch` with it (distinct from the `try`/`finally` the visitor wraps that call
+in, which is the scope-stack pop above). Anything that accumulates per-walk
 state on `EvalState` therefore cannot assume one `evaluate()` call means one walk, and
 cannot reset that state unconditionally in a catch — a nested call would clobber the outer
 walk's.

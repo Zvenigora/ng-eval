@@ -406,7 +406,7 @@ describe('EvalService - the evaluation context is not writable (A42)', () => {
 
     it('L3: an own push does not brick a context that is reused', () => {
       const context = built();
-      // An arrow would recurse through the re-entrant `evaluate` in
+      // An arrow would recurse through the re-entrant walk in
       // `arrow-function-expression.ts` until the stack was gone, and the own
       // property persists, so every later evaluation on this context would
       // throw. The context is reused here, as `eval-signals` reuses one.

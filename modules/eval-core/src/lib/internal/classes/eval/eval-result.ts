@@ -8,6 +8,22 @@ type UnknownValue = unknown | Promise<unknown>;
 
 /**
  * Represents the result of an evaluation.
+ *
+ * **The outcome describes the last entry-point walk on the state**: its
+ * {@link value}, {@link error}, {@link errorMessage}, {@link isSuccess},
+ * {@link isError}, {@link isUndefined} and {@link duration}. Each entry point
+ * resets the outcome when its walk starts and writes it when the walk ends - for
+ * `evalAsync` and its kin, once the result's promises have settled, so between
+ * return and settlement a walk that did not throw reports neither success nor
+ * failure. An arrow function's body runs a walk of its own on the same state,
+ * and it changes nothing here: not while the enclosing walk runs, and not when
+ * a function the walk built is called later. Up to 0.14.1 it overwrote all of it
+ * (`docs/backlog-retired.md` A27). Two `evalAsync` runs interleaved on one
+ * state share one outcome: the later start resets it, and the last to settle
+ * writes it.
+ *
+ * The {@link trace} is not part of the outcome: it spans every evaluation run on
+ * the state, and only {@link clearTrace} resets it.
  */
 export class EvalResult {
 
@@ -34,42 +50,50 @@ export class EvalResult {
   }
 
   /**
-   * Gets the evaluated value.
+   * Gets the evaluated value: the last entry-point walk's, and `undefined`
+   * once that walk failed or while it is pending.
    */
   public get value(): UnknownValue | undefined {
     return this._value;
   }
 
   /**
-   * Gets the error that occurred during evaluation.
+   * Gets the error the last entry-point walk failed with, and `undefined` once
+   * it succeeded or while it is pending. An error an arrow function's body
+   * threw and something in the walk caught is not the walk's.
    */
   public get error(): unknown | undefined {
     return this._error;
   }
 
   /**
-   * Gets the error message associated with the evaluation error.
+   * Gets {@link error}'s message when it is an `Error`, and `undefined`
+   * otherwise.
    */
   public get errorMessage(): string | undefined {
     return this._errorMessage;
   }
 
   /**
-   * Gets whether the evaluation resulted in an error.
+   * Gets whether the last entry-point walk failed: `undefined` while it is
+   * pending.
    */
   public get isError(): boolean | undefined {
     return this._isError;
   }
 
   /**
-   * Gets whether the evaluation was successful.
+   * Gets whether the last entry-point walk succeeded: `undefined` while it is
+   * pending.
    */
   public get isSuccess(): boolean | undefined {
     return this._isSuccess;
   }
 
   /**
-   * Gets whether the evaluated value is undefined.
+   * Gets whether {@link value} is `undefined`, once the last entry-point walk
+   * has ended - including after a failure, which clears the value. `undefined`
+   * while it is pending.
    */
   public get isUndefined(): boolean | undefined {
     return this._isUndefined;
@@ -126,7 +150,8 @@ export class EvalResult {
   }
 
   /**
-   * Gets the duration of the evaluation result.
+   * Gets the duration of the last entry-point walk, an arrow function's body
+   * called inside it included: `undefined` while it is pending.
    * @returns The duration in milliseconds.
    */
   public get duration(): number | undefined {
@@ -232,10 +257,24 @@ export class EvalResult {
   }
 
   /**
-   * Starts the evaluation process.
+   * Starts the evaluation process, and resets the outcome: {@link value},
+   * {@link error}, {@link errorMessage}, {@link isSuccess}, {@link isError},
+   * {@link isUndefined} and {@link duration} read `undefined` until the walk
+   * ends. Leaves the
+   * {@link trace}, {@link tracePushCount} and {@link traceTruncated} alone,
+   * since the trace spans every evaluation on the state (`docs/backlog.md`
+   * A15). Up to 0.14.1 it reset nothing, so a reused state reported the last
+   * run's error until something overwrote it (A27).
    */
   public start(): void {
     this._startDate = performance.now();
+    this._endDate = undefined;
+    this._value = undefined;
+    this._error = undefined;
+    this._errorMessage = undefined;
+    this._isSuccess = undefined;
+    this._isError = undefined;
+    this._isUndefined = undefined;
   }
 
   /**
@@ -247,29 +286,33 @@ export class EvalResult {
   }
 
   /**
-   * Sets the success value of the evaluation result.
+   * Sets the success value of the evaluation result, writing every outcome
+   * field: the error and its message are cleared.
    *
    * @param value The value to set as the success value.
    * @returns void
    */
   public setSuccess(value: UnknownValue): void {
     this._value = value;
+    this._error = undefined;
+    this._errorMessage = undefined;
     this._isSuccess = true;
     this._isError = false;
-    this._isUndefined = false;
+    this._isUndefined = value === undefined;
   }
 
   /**
-   * Sets the failure state of the evaluation result.
+   * Sets the failure state of the evaluation result, writing every outcome
+   * field: the value is cleared, and the message is the error's when it is an
+   * `Error`.
    * @param error The error object associated with the failure.
    */
   public setFailure(error: unknown): void {
+    this._value = undefined;
     this._error = error;
-    if (error instanceof Error) {
-      this._errorMessage = error.message;
-    }
+    this._errorMessage = error instanceof Error ? error.message : undefined;
     this._isSuccess = false;
     this._isError = true;
-    this._isUndefined = false;
+    this._isUndefined = true;
   }
 }

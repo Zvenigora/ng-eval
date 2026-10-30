@@ -16,9 +16,9 @@ import { contextPop, contextPush } from './context-method';
  * completion-value semantics, and pushes exactly one value however many
  * statements the body holds. A program whose statements all produced nothing -
  * `;`, or a source that is only whitespace - pushes {@link EMPTY_COMPLETION},
- * which the walk boundary in `evaluate` converts to `undefined`. The conversion
- * is deliberately not done here: `arrow-function-expression.ts` calls
- * `evaluate` on a `BlockStatement` for a block-bodied arrow, so a `Program`-side
+ * which the walk boundary in `evaluate.ts` converts to `undefined`. The
+ * conversion is deliberately not done here: `arrow-function-expression.ts`
+ * walks a `BlockStatement` for a block-bodied arrow, so a `Program`-side
  * conversion would leave that entry point handing the sentinel to a consumer.
  *
  * **The program-level scope is required.** It is the only scope a top-level

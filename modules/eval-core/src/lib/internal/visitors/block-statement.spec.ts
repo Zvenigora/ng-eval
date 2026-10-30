@@ -245,7 +245,7 @@ describe('blockStatementVisitor', () => {
     it('should return the block completion value', () => {
       // § 8.3's divergence, in the exact form a reader will look for - and it
       // returns `1` *today* as well, because the base walker pushes the one
-      // value and the inner `evaluate` pops it. Retained as documentation of the
+      // value and the inner walk pops it. Retained as documentation of the
       // settled behaviour; the case below is the one that can fail.
       const state = EvalState.fromContext({}, {});
 
@@ -266,7 +266,7 @@ describe('blockStatementVisitor', () => {
       // Pins `x => { }` and nothing more. It is **not** evidence for § 3.1's
       // rule-4 siting, which an earlier comment here claimed: move the
       // conversion into `Program` and this still passes, because the sentinel
-      // coming back from the inner `evaluate` is filtered again by
+      // coming back from the inner walk is filtered again by
       // `program.ts`'s own `value !== EMPTY_COMPLETION` test and converted
       // there. The case below is the one that can tell the two sitings apart.
       const state = EvalState.fromContext({}, {});
@@ -335,7 +335,7 @@ describe('blockStatementVisitor', () => {
       // `undefined` before step 2 (the base walker bound nothing), threw
       // `Unsupported statement type: VariableDeclaration` for one step, and now
       // returns the binding - so the block-bodied arrow reaches step 3's work
-      // through `arrow-function-expression.ts`'s `evaluate` call on this node,
+      // through `arrow-function-expression.ts`'s walk of this node,
       // not through `Program`.
       const state = EvalState.fromContext({}, {});
 
@@ -352,7 +352,7 @@ describe('blockStatementVisitor', () => {
 
     it('should pop both scopes when a block-bodied arrow throws', () => {
       // Two pushes on the way in - the arrow's parameter scope and the block's -
-      // and the arrow body re-enters `evaluate`, which rethrows.
+      // and the arrow body re-enters the walk, which rethrows.
       const context = contextOf();
 
       expect(() => runOn('(x => { boom() })(1)', context)).toThrow('boom');

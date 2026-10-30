@@ -746,7 +746,7 @@ describe('EvalHooks', () => {
   /**
    * The walk-base bound, and the three cases the Phase 2 plan § 3.3 specifies.
    *
-   * `evaluate` is re-entered with the same state from an arrow-function body,
+   * The walk is re-entered with the same state from an arrow-function body,
    * so a nested walk shares the open-node stack with the walk that started it.
    * Without a bound, a nested walk closing a node it never opened reaches down
    * into the enclosing walk's frames - measured once as a drain from depth 3 to
