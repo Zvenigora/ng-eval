@@ -39,10 +39,12 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
   stays, with any anchor a published README links. *Origin*: [the register](backlog.md#why-this-file-exists).
   *Red*: doc-links, on a link a retirement left dangling or a published anchor lost.
 - <a id="sr6"></a>**SR6 — Design records stay as written.** A completed plan or summary is not updated
-  to match the code, and its line citations refer to the commit that wrote it; the one edit allowed
-  turns a link that would dangle into a permalink at the target's last commit. A live document cites a
-  heading or a symbol, not a line, and names the document with a section number, as two plans have a
-  § 9. *Origin*: [Phase 10 § 3.8](documentation/phase-10-plan.md#38-links-and-mentions-what-is-re-pointed-and-what-stays-as-written).
+  to match the code, and its line citations refer to the commit that wrote it. Two edits are allowed,
+  both to a link that would dangle: a link into the register is re-pointed to the entry's place in
+  `backlog-retired.md`, and a link to a file that no longer exists anywhere in the tree becomes a
+  permalink at the target's last commit. A live document cites a heading or a symbol, not a line, and
+  names the document with a section number, as two plans have a § 9. *Origin*: [Phase 10 § 3.8](documentation/phase-10-plan.md#38-links-and-mentions-what-is-re-pointed-and-what-stays-as-written);
+  the register's links, [A30's retirement](backlog-retired.md#a30).
   *Red*: doc-links, on the dangling link.
 - <a id="sr7"></a>**SR7 — One retrospect per track**, no per-step summaries in new work. *Origin*: none. *Red*: nothing.
 
