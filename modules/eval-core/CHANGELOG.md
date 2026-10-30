@@ -12,6 +12,15 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+---
+
+## [0.14.1] - 2026-10-30
+
+**A patch that fixes [A47](../../docs/backlog-retired.md#a47)**, an arrow's parameter scope under
+`caseInsensitive`, with three changes that are documentation only; the `.d.ts` differs from
+0.14.0's only in the JSDoc of `ParserService.parserOptions`
+([A30](../../docs/backlog-retired.md#a30)).
+
 ### Changed
 - The internal `contextPush`'s JSDoc says what every scope push site does since
   [A42](../../docs/backlog-retired.md#a42): it calls `contextPush(st.context, …)`, its pop runs in

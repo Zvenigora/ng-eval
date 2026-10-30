@@ -1748,8 +1748,8 @@ finding 7. Opened 2026-10-10 by the Phase 9 plan.
 <a id="a30"></a>
 ## A30 — `ParserService.parserOptions` reaches the services for no acorn option
 
-**Package** core · **Kind** decision · **Status** **Retired — decided 2026-10-29: documented**; ships
-in `eval-core`'s next release, documentation only. Was Open. Opened 2026-10-10 by the Phase 9 plan
+**Package** core · **Kind** decision · **Status** **Retired — decided 2026-10-29: documented**;
+released in `eval-core` 0.14.1, pending publish, documentation only. Was Open. Opened 2026-10-10 by the Phase 9 plan
 
 *Decided* 2026-10-29, as a one-commit item: `ParserService.parserOptions` keeps its behaviour, and its
 JSDoc says what it configures. Making the services honour the setter would change behaviour on a
@@ -1971,7 +1971,7 @@ refusal rows on A29's commit, with another, deleted the same day.
 ## A32 — The disabled visitor result cache keys a node by a subset of it
 
 **Package** core · **Kind** decision · **Status** **Retired — decided and deleted 2026-10-29**;
-unreleased, in `eval-core`'s next release, comments only. Was Open. Opened 2026-10-10 by [A29](#a29)'s
+released in `eval-core` 0.14.1, pending publish, comments only. Was Open. Opened 2026-10-10 by [A29](#a29)'s
 fix
 
 *Decided* 2026-10-29, as a one-commit item: deleted, not redesigned. `visitor-result-cache.ts` is gone,
@@ -3129,8 +3129,8 @@ Angular compiler loaded, each row run natively beside it.
 <a id="a47"></a>
 ## A47 — An arrow's parameter scope is pushed without the walk's options, so it is case-sensitive under `caseInsensitive`
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-28**; unreleased, in
-`eval-core`'s next release. Was Open, not scheduled. Opened 2026-10-22 by the code review of the
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-28**; released in
+`eval-core` 0.14.1, pending publish. Was Open, not scheduled. Opened 2026-10-22 by the code review of the
 [A40](#a40) and [A41](#a41) batch (its N1); it predated that batch
 
 *Fixed* 2026-10-28, as a one-commit item. `arrow-function-expression.ts` pushes the parameter scope
@@ -3225,7 +3225,7 @@ write to one, `(undefined => (UNDEFINED = 2))(1)` or `(TRUE => (True = 2))(1)`, 
 row's outcome before A46. `read-only-names.spec.ts` pins the throw. This entry's fix turns it into a
 parameter write, and moves that pinned row.
 
-*Recorded*: this entry; `modules/eval-core/CHANGELOG.md`'s `[Unreleased]` › Fixed.
+*Recorded*: this entry; `modules/eval-core/CHANGELOG.md`'s `[0.14.1]` › Fixed.
 *Verified* (as opened): found by the batch's code review. Re-measured 2026-10-22 with a throwaway
 script outside the repository, against the production bundle with the Angular compiler loaded.
 
@@ -7213,7 +7213,8 @@ before 0.14.0's post-publish commit. Not probed then: no lightweight tag was mad
 ## F27 — The standing rules were copied, and the copies had drifted — **Retired, fixed**
 
 **Package** repo, core · **Kind** docs · **Status** **Retired — fixed 2026-10-27**, in no package but
-for one `eval-core` docblock, which ships in its next release, documentation only. Opened and fixed in
+for one `eval-core` docblock, released in `eval-core` 0.14.1, pending publish, documentation only.
+Opened and fixed in
 the same commit, from an inventory made first
 
 *Found* 2026-10-27, by an inventory at 54f1d6d of every process and verification rule in `CLAUDE.md`'s
