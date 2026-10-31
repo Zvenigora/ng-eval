@@ -36,7 +36,8 @@ Requested step: $ARGUMENTS
 
 **The counts the steps start from**, the gate at d62eee4: `eval-core` 3187, `eval-signals` 444,
 `eval-forms` 380. `eval-core` reaches 3250 at step 2, 3252 at step 3, 3259 at step 4 and 3288 at
-step 5; `eval-forms` 386 at step 6; `eval-signals` does not move. No count moves from step 7a on.
+step 5; `eval-forms` 386 at step 6; `eval-signals` 449 at F30's commit, between 7a and 7b, five
+rows witnessing 0.8.0's `await` claims. No other count moves from step 7a on.
 
 **Step state**: read it from the plan, not from here. The last step in its § 4 with a recorded
 **Outcome** is done, and the next is the step after it in § 4's table.

@@ -7881,6 +7881,67 @@ Phase 10 plan's D6 and § 8 q2, `tools/published-links.txt`, the count case's do
 against the repository's, and `git cat-file -t eval-forms@0.7.1` giving `tag` (the plan's step 4
 criteria 2 and 3).
 
+<a id="f30"></a>
+## F30 — `eval-signals` 0.8.0's `await` claims were measured through it, not tested — **Retired, fixed**
+
+**Package** signals · **Kind** test gap · **Status** **Retired — fixed 2026-10-31**, in no package:
+five rows, committed after the release commit 67486ab and before the publish, so the tarballs and
+the tags stay at 67486ab. Was Open — opened 2026-10-31 by the code review of the
+[A24 plan](a24/plan.md)'s step 7a
+
+*Fixed* 2026-10-31, as a commit of its own between the A24 plan's steps 7a and 7b. `eval-signals`
+444 → 449. Each row asserts the full value or message ([SR18](standing-rules.md#sr18)):
+- `eval-signal.spec.ts`, "should throw the refusal on read for an await whose value is an operand":
+  `createEvalSignal` over `(async () => (await p) * 10)()` throws the refusal in full on read, under
+  the default `onError`;
+- `eval-signal.spec.ts`, "should read an accepted await's operand itself on the sync path":
+  `(async () => await p)()` reads `p` by `toBe`, and `(async () => await 1)()` reads `1`;
+- `eval-signal-async.spec.ts`, "should resolve an accepted await to the loader's value, arming no
+  timer": the async signal over `(async () => await loadUser(id))()` resolves to the loader's own
+  object, by `toBe`, and no `setTimeout` of 30 000 ms is armed. The value alone resolved under
+  0.14.1's race as well, so the timer is what the row tells apart; it witnesses the CHANGELOG's
+  "No `await` arms a timer it never clears" too;
+- `eval-signal-async.spec.ts`, "should deliver an Error rejection behind an accepted await by
+  identity, its message unchanged", and, for the CHANGELOG's "`onError` sees the same", a function
+  `onError` called once with the caller's own `Error`, its result what the read returns;
+- `eval-signal-async.spec.ts`, "should deliver a rejection that is not an Error behind an accepted
+  await as Error(it)": `'x'` arrives as `Error('x')`.
+
+*Probes*, each applied alone against every project's `test`, reverted by hand, `git grep PROBE --
+modules` empty after each. P1 and P2 were run first, as the request named them, and again after the
+code review strengthened the resolve and rejection rows; P3–P5 were added at that review
+([SR15](standing-rules.md#sr15)):
+
+| Probe | Predicted in `eval-signals` | Red: `eval-signals` / `eval-forms` / `eval-core` |
+| :--- | :--- | :--- |
+| P1, `await-expression.ts`: the operand re-wrapped, `Promise.race([value])` | the sync identity row; no async row, since none asserts identity | 1, that row / 0 / 14, `await-position.spec.ts`' identity rows P1, P2, P3 and P5 in both modes, R1, R2, Q1–Q3 and A2 sync; the same both runs |
+| P2, the same file: ` at position <start>-<end>` appended to an `Error` rejection's message, the operand pushed unchanged | the `Error` rejection row | 1, that row / 0 / 3, S1, S2 and `eval.service.await.spec.ts`' "should reject with the caller's own Error, its message unchanged"; the same both runs |
+| P3, the same file: no `await` refused | the refusal row, and the moved row "should read a member off the promise in operand position, and refuse an await there" | 2, those / 0 / 36, all in `await-position.spec.ts` |
+| P4, the same file: a 30 000 ms `setTimeout` armed per accepted `await` | the resolve row | 1, that row / 0 / 6, T1–T3 and K1–K3 |
+| P5, `evaluate.ts`' `ensureError`: a string rejection wrapped as `Promise rejected: <it>` | the `'x'` row | 2 / 0 / 1, C1. The `'x'` row, and "should hand the mapper a non-Error rejection wrapped, as evaluateAsync rejects with it", which the prediction missed: it reads the same conversion with no `await` |
+
+**The entry as it stood:**
+
+> `eval-signals` 0.8.0's README, "An `async` arrow's `await` is evaluated only where its value is the
+> result", and its CHANGELOG say what a signal sees from `eval-core` 0.15.0. One of those claims has
+> a row in this package: the async signal's refusal, `eval-signal-async.spec.ts`' "should read a
+> member off the promise in operand position, and refuse an await there", `status()` `'error'` and
+> the message in full. **Four have none**, and `eval-core`'s `await-position.spec.ts` witnesses each
+> only below the signal: a `createEvalSignal` over a refused `await` throws the refusal on read under
+> the default `onError`; on the sync signal an accepted `await` reads its operand, `p` by identity
+> and `1`, where `eval-signal.spec.ts`' "should evaluate an async arrow" reads a type, which passes
+> against 0.14.1's raced promise too; the async signal over `(async () => await loadUser(id))()`
+> resolves to the loader's value; and a rejection behind an accepted `await` reaches the async
+> signal as raised, an `Error` by identity with its message unchanged, and `'x'` as `Error('x')`.
+> Each was run once through `eval-signals` on the working tree of step 7a, in a throwaway spec run
+> alone and deleted, 5 of 5 green.
+
+The Register history counts the release at 67486ab, where this entry was open, and its closure in the
+*Unreleased* row after it.
+
+*Recorded*: the entry; the A24 plan's step 7a Outcome, its claim → witness table, and the record of
+this commit there.
+
 ---
 
 # Retired

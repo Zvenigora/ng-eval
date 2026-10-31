@@ -1415,6 +1415,71 @@ describe('createEvalSignalAsync', () => {
           'Unsupported await position: an await is evaluated only as the result of the expression - the whole expression, an arrow function\'s expression body, or the last statement of a program or of an arrow function\'s block body.'));
       });
 
+      // The same README paragraph's accepted `await`, and the CHANGELOG's
+      // 0.8.0 Fixed lines: a rejection behind it arrives as it was raised
+      // (`docs/backlog-retired.md` F30).
+
+      it('should resolve an accepted await to the loader\'s value, arming no timer', async () => {
+        const id = signal(1);
+        const ada = { name: 'Ada' };
+        const loadUser = (): Promise<{ name: string }> => Promise.resolve(ada);
+        // Up to 0.7.0 the `await` raced its operand against a 30 000 ms
+        // `setTimeout` it never cleared, and the value resolved all the same,
+        // so the timer is what this row tells apart.
+        const timers = jest.spyOn(globalThis, 'setTimeout');
+
+        try {
+          const user = create('(async () => await loadUser(id))()', { id, loadUser });
+
+          expect(user()).toBeUndefined();
+          await flush();
+          expect(user.status()).toBe('resolved');
+          expect(user()).toBe(ada);
+          expect(timers.mock.calls.filter(([, ms]) => ms === 30000)).toEqual([]);
+        } finally {
+          timers.mockRestore();
+        }
+      });
+
+      it('should deliver an Error rejection behind an accepted await by identity, its message unchanged', async () => {
+        const raised = new Error('boom');
+        const fail = (): Promise<never> => Promise.reject(raised);
+
+        const user = create('(async () => await fail())()', { fail });
+
+        expect(user()).toBeUndefined();
+        await flush();
+        expect(user.status()).toBe('error');
+        const error = caught(user);
+        expect(error).toBe(raised);
+        // Up to 0.7.0, ` at position <start>-<end>` was appended to it.
+        expect((error as Error).message).toBe('boom');
+
+        // The CHANGELOG's "`onError` sees the same": a function policy is handed
+        // the caller's own `Error`, its message unchanged.
+        const onError = jest.fn((e: unknown) => (e as Error).message);
+        const mapped = create('(async () => await fail())()', { fail }, { onError });
+
+        expect(mapped()).toBeUndefined();
+        await flush();
+        expect(mapped()).toBe('boom');
+        expect(onError).toHaveBeenCalledTimes(1);
+        expect(onError).toHaveBeenCalledWith(raised);
+      });
+
+      it('should deliver a rejection that is not an Error behind an accepted await as Error(it)', async () => {
+        const fail = (): Promise<never> => Promise.reject('x');
+
+        const user = create('(async () => await fail())()', { fail });
+
+        expect(user()).toBeUndefined();
+        await flush();
+        expect(user.status()).toBe('error');
+        // As `evaluateAsync` wraps it with no `await`. Up to 0.7.0 it was
+        // `Await expression failed: x at position <start>-<end>`.
+        expect(caught(user)).toEqual(new Error('x'));
+      });
+
     });
 
   });

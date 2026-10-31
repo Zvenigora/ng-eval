@@ -1011,6 +1011,29 @@ describe('createEvalSignal', () => {
       expect(() => create('await load(id)', { id: signal(1), load })).toThrow();
     });
 
+    // README, "An `async` arrow's `await` is evaluated only where its value is
+    // the result", since 0.8.0, and the CHANGELOG's 0.8.0 Breaking lines
+    // (`docs/backlog-retired.md` F30). The row above reads a promise that
+    // resolves, which a promise racing the operand passes too, so identity is
+    // asserted here.
+
+    it('should throw the refusal on read for an await whose value is an operand', () => {
+      const value = create('(async () => (await p) * 10)()', { p: signal(Promise.resolve(2)) });
+
+      // The default `onError`, 'throw': the walk refuses the `await` when it
+      // reaches it, so the compile succeeds and the read throws.
+      expect(() => value()).toThrow(new Error(
+        'Unsupported await position: an await is evaluated only as the result of the expression - the whole expression, an arrow function\'s expression body, or the last statement of a program or of an arrow function\'s block body.'));
+    });
+
+    it('should read an accepted await\'s operand itself on the sync path', () => {
+      const p = Promise.resolve(2);
+
+      // Up to 0.7.0 each read a new promise racing the operand.
+      expect(create('(async () => await p)()', { p: signal(p) })()).toBe(p);
+      expect(create('(async () => await 1)()', {})()).toBe(1);
+    });
+
     it('should not route a rejection through onError', async () => {
       const onError = jest.fn(() => 'mapped');
       const rejected = Promise.reject(new Error('boom'));

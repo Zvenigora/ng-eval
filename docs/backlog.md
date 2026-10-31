@@ -177,11 +177,15 @@ phase that moves `eval-forms`' rows.
 
 **The [A24 plan](a24/plan.md) is in flight**: the await track, [A25](backlog-retired.md#a25),
 [A24](backlog-retired.md#a24) and [D13](backlog-retired.md#d13), for `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0. It
-is at Revision 7. Steps 1 to 7a are done: the plan and its records, the characterisation spec, A25,
+is at Revision 8. Steps 1 to 7a are done: the plan and its records, the characterisation spec, A25,
 A24, D13 in `eval-core` and then in `eval-forms`, all three retired as fixed, and the release
 commit of all three packages. Step 7a merged the plan's three release steps into one, since the
 workspace lint reads each downstream peer range against the workspace `eval-core`, so a split
-release would leave `master` red between them. Its code review opened [F30](#f30). Step 1 corrected A25's decided text: only an `Error`
+release would leave `master` red between them. Its code review opened
+[F30](backlog-retired.md#f30), which a commit of its own after the release commit fixed, in no
+package: five `eval-signals` rows witnessing 0.8.0's `await` claims, 444 → 449. The Register
+history counts the release at 67486ab, where F30 was open, and F30's closure in the *Unreleased* row
+after it. Step 1 corrected A25's decided text: only an `Error`
 rejection reaches an `evalAsync` caller by identity.
 
 **`eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0 are released together, pending
@@ -337,8 +341,9 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.14.0, `eval-signals` 0.7.0, `eval-forms` 0.7.0. F21 and F25 ship in no package | `0d305a3` | 2026-10-26 | 24 | 6: A48–A53 | 5: F21, F25, A44, A45, A52 | 25 |
 | `eval-forms` 0.7.1. F26, opened by 0.14.0's post-publish commit and fixed after it, ships in no package; F27 ships in no package but for one `eval-core` docblock | `69c3e0e` | 2026-10-29 | 25 | 4: F26–F29 | 2: F26, F27 | 27 |
 | `eval-core` 0.14.1. F28, decided by Phase 11 and shipped in `eval-forms` 0.7.1, was retired by 0.7.1's post-publish commit, after its tag; A47 is fixed, and A32 and A30 are decided, documentation only | `95932e6` | 2026-10-30 | 27 | 0 | 4: F28, A47, A32, A30 | 23 |
-| *Unreleased*: `eval-core` 0.15.0, `eval-signals` 0.8.0, `eval-forms` 0.8.0, pending publish. A27 and A38 are fixed, and A25, A24 and D13 by the A24 plan, all released in them; F30 opened by step 7a's code review | — | — | 23 | 1: F30 | 5: A27, A38, A25, A24, D13 | 19 |
-| **Since the register opened** | | | **42** | **72** | **95** | **19** |
+| `eval-core` 0.15.0, `eval-signals` 0.8.0, `eval-forms` 0.8.0, pending publish and tag; its post-publish commit gives the date. A27 and A38 are fixed, and A25, A24 and D13 by the A24 plan, all released in them; F30 opened by the release commit's code review | `67486ab` | — | 23 | 1: F30 | 5: A27, A38, A25, A24, D13 | 19 |
+| *Unreleased*. F30, fixed after the release commit, in no package | — | — | 19 | 0 | 1: F30 | 18 |
+| **Since the register opened** | | | **42** | **72** | **96** | **18** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -474,7 +479,7 @@ makes it that release's row, with its tag commit and date.
 | [F27](backlog-retired.md#f27) | The process and verification rules were copied across `CLAUDE.md`, the `step` skill, the `code-reviewer`, `CONTRIBUTING.md` and four plans' rule sections, and the copies had drifted: twenty divergences, among them three different gate commands | repo, core | docs | **Retired — fixed 2026-10-27**: [`docs/standing-rules.md`](standing-rules.md), SR1–SR38, imported by `CLAUDE.md`; the copies cite it. In no package, but for `contextPush`'s docblock, released 2026-10-30 in `eval-core` 0.14.1, tagged 95932e6, documentation only |
 | [F28](backlog-retired.md#f28) | The consumer documents Phase 10 left out: whether the package READMEs split into guides, where a guide lives and whether it ships; `eval-forms`' README, at 893 lines, by entry point first | repo, core, signals, forms | decision | **Retired — decided 2026-10-27, released 2026-10-29** as Phase 11: one README per package and no guide files; `eval-forms`' ordered by entry point, with a contents list, in `eval-forms` 0.7.1, docs-only |
 | [F29](#f29) | The README's "a rule that does not parse throws at registration, whatever the policy" is witnessed at both adapters under the default policy only; a function policy, the other one that swallows an error, is unwitnessed | forms | test gap | Open; opened 2026-10-28 by Phase 11 step 2's code review |
-| [F30](#f30) | `eval-signals` 0.8.0's `await` claims — the sync signal's throw on a refused `await` and its operand by identity, the async signal resolving an accepted one, a rejection as raised — are measured through the package once, and witnessed by no row of it | signals | test gap | Open; opened 2026-10-31 by the A24 plan's step 7a code review. Not scheduled |
+| [F30](backlog-retired.md#f30) | `eval-signals` 0.8.0's `await` claims — the sync signal's throw on a refused `await` and its operand by identity, the async signal resolving an accepted one, a rejection as raised — are measured through the package once, and witnessed by no row of it | signals | test gap | **Retired — fixed 2026-10-31**, in no package: five rows, `eval-signals` 444 → 449, committed after the release commit 67486ab and before the publish. Opened the same day by the A24 plan's step 7a code review |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -1658,34 +1663,3 @@ Scheduled with the next phase that moves `eval-forms`' rows; Phase 11 holds them
 
 *Recorded*: this entry; the Phase 11 plan's step 2 Outcome. *Verified*: read 2026-10-28 — the two
 witnesses, `rules.ts` and `field-schema.ts` at the lines cited, and the M4 probe's record.
-
-<a id="f30"></a>
-## F30 — `eval-signals` 0.8.0's `await` claims are measured through it, not tested
-
-**Package** signals · **Kind** test gap · **Status** Open. Opened 2026-10-31 by the code review of the
-[A24 plan](a24/plan.md)'s step 7a
-
-`eval-signals` 0.8.0's README, "An `async` arrow's `await` is evaluated only where its value is the
-result", and its CHANGELOG say what a signal sees from `eval-core` 0.15.0. One of those claims has
-a row in this package: the async signal's refusal, `eval-signal-async.spec.ts`' "should read a
-member off the promise in operand position, and refuse an await there", `status()` `'error'` and
-the message in full. **Four have none**, and `eval-core`'s `await-position.spec.ts` witnesses each
-only below the signal:
-- a `createEvalSignal` over a refused `await`, `(async () => (await p) * 10)()`, throws the refusal
-  on read under the default `onError`;
-- on the sync signal an accepted `await` reads its operand, `(async () => await p)()` `p` by
-  identity and `(async () => await 1)()` `1`. `eval-signal.spec.ts`' "should evaluate an async
-  arrow" reads `toBeInstanceOf(Promise)` and a resolved value, which pass against 0.14.1's raced
-  promise too (the plan's § 0 rule 2);
-- the async signal over `(async () => await loadUser(id))()` resolves to the loader's value;
-- a rejection behind an accepted `await` reaches the async signal as raised: an `Error` by identity
-  with its message unchanged, and `'x'` as `Error('x')`.
-
-**Measured, not tested.** Each was run once through `eval-signals` on the working tree of step 7a, in
-a throwaway spec run alone and deleted, 5 of 5 green.
-
-**Fix**: those five rows, committed, each asserting the full value or message
-([SR18](standing-rules.md#sr18)), the sync identity row with `toBe`, each probed by a prototype that
-re-wraps the operand or appends the suffix. Not scheduled: the A24 plan holds `eval-signals` at 444.
-
-*Recorded*: this entry; the A24 plan's step 7a Outcome, its claim → witness table.

@@ -1,6 +1,10 @@
 # A24, A25 and D13 — the await track: `await` where its value is the result, and every refused statement reported (`@zvenigora/ng-eval-core`, then `eval-signals` and `eval-forms`)
 
 **Date**: October 30, 2026
+**Revision**: 8 — after step 7a: F30's commit, five `eval-signals` rows witnessing 0.8.0's `await`
+claims ([SR21](../standing-rules.md#sr21)), recorded in § 4, § 6 and under step 7a, `eval-signals`
+at 449 from it.
+
 **Revision**: 7 — step 7a: the three releases merged into one release commit, 7a, and one
 post-publish record, 7b, and steps 8a to 9b removed, since a split release leaves `master` red at
 the workspace lint (§ 4's preamble); the root `CHANGELOG.md` leaves the release's file list, since
@@ -430,11 +434,12 @@ release would leave `master` red between its steps.
 | 5 | D13 in `eval-core` | `statement-support.ts` (new), `dispatch-statement.ts`, `variable-declaration.ts`, `functions/unsupported-statement.ts` (new) and its spec (new), `functions/public-api.ts`, `README.md`, `readme-examples.spec.ts`, `CHANGELOG.md` | **+29** / 0 / 0 | `eval-core` 0.15.0 |
 | 6 | D13 in `eval-forms` | `guard-identifiers.ts`, `guard-identifiers.spec.ts`, `evaluate-rule.ts`, `README.md`, `CHANGELOG.md`, the register; D13's link targets in the Phase 9 plan and summary, `docs/README.md` and this document | 0 / 0 / **+6** | `eval-forms` 0.8.0 |
 | 7a | `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0, the release commit (*merged in step 7a*) | each package's `package.json` and `CHANGELOG.md`; `eval-signals`' `README.md`, its Install peer line and floor paragraph and its `await` paragraph, the moved row's comment in `eval-signal-async.spec.ts`, and `tools/published-links.txt`; `eval-forms`' `README.md`, its peer lines and its Versions floor paragraph; the register, the skill (*corrected in step 7a*: not the root `CHANGELOG.md`) | 0 / 0 / 0 | the release |
-| 7b | The post-publish record of all three | the register's Publication status, its *Unreleased* row made the release's, "Work in flight", and the released entries' statuses in the index and in `backlog-retired.md`; `CLAUDE.md`'s published versions; the three tags; a CHANGELOG date if npm's differs, the skill, this document (*widened in step 7a*) | 0 / 0 / 0 | no package |
+| F30 | `eval-signals` 0.8.0's `await` claims witnessed, a commit between 7a and 7b, before the publish (*added after step 7a*) | `eval-signal.spec.ts`, `eval-signal-async.spec.ts`, the register (F30 retired), the skill, this document | 0 / **+5** / 0 | no package; the tarballs and tags stay at 67486ab |
+| 7b | The post-publish record of all three | the register's Publication status, its release row's date (*corrected after step 7a*), "Work in flight", and the released entries' statuses in the index and in `backlog-retired.md`; `CLAUDE.md`'s published versions; the three tags; a CHANGELOG date if npm's differs, the skill, this document (*widened in step 7a*) | 0 / 0 / 0 | no package |
 | 10 | Retrospect | this document's § 10, `CLAUDE.md`, `docs/README.md`, the register, the skill | 0 / 0 / 0 | no package |
 
 From 3187 / 444 / 380, `eval-core` is at 3250 after step 2, 3252 after step 3, 3259 after step 4 and
-3288 after step 5 (*corrected in step 4*: 3255 and 3284, before its four `preserveParens` rows); `eval-forms` is at 386 from step 6; `eval-signals` stays at 444. A step-3 or
+3288 after step 5 (*corrected in step 4*: 3255 and 3284, before its four `preserveParens` rows); `eval-forms` is at 386 from step 6; `eval-signals` stays at 444 until F30's commit, after step 7a, and is at 449 from it (*corrected after step 7a*). A step-3 or
 step-4 flip rewrites a row in place and moves no count. Every row "moves" below means rewritten 1:1.
 
 ### Step 1 — This plan and its records
@@ -1144,8 +1149,9 @@ and 7b's below, and their sections are removed.
 - **7b**, after the maintainer publishes all three: the Publication status rows and the three
   annotated tags, which `tools/release-tags.mjs` checks; a CHANGELOG date if npm's UTC date differs;
   the skill; this document. *Widened in step 7a* ([SR4](../standing-rules.md#sr4)), as 0.14.1's
-  post-publish commit, 34bebbd, did: the register's *Unreleased* row becomes the release's row, with
-  its tag commit and date; "Work in flight"; the "pending publish" statuses of A24, A25, A27, A38 and
+  post-publish commit, 34bebbd, did: the register's release row gets its date (*corrected after
+  step 7a*: F30's commit split the *Unreleased* row, so the release's row already names 67486ab, and
+  the *Unreleased* row after it, F30's, stays); "Work in flight"; the "pending publish" statuses of A24, A25, A27, A38 and
   D13, in the index and in `backlog-retired.md`, gain the date and the tag; and `CLAUDE.md`'s
   "Published at" lines move to 0.15.0, 0.8.0 and 0.8.0.
 - **Rows**: none. **Ships in**: 7a is the release; 7b in no package.
@@ -1189,7 +1195,7 @@ and 7b's below, and their sections are removed.
     21 live, from A38's commit; steps 3, 4 and 6 retired A25, A24 and D13 without moving it. It now
     reads 5 closed, A27, A38, A25, A24 and D13, and 18 live, and the total 95 and 18. Counted by a
     script outside the repository over the index's status cells, as step 1's criterion 4 counted:
-    121 rows, 18 live. The merged release's code review then opened [F30](../backlog.md#f30), so
+    121 rows, 18 live. The merged release's code review then opened [F30](../backlog-retired.md#f30), so
     the row reads 1 opened and 19 live, and the totals 72 opened and 19 live: 122 rows, 19 live.
   - **The `.d.ts`** (CONTRIBUTING; § 6's Surface gate): the gate-built
     `dist/modules/eval-core/types/zvenigora-ng-eval-core.d.ts` against 0.14.1's tarball from
@@ -1235,12 +1241,12 @@ and 7b's below, and their sections are removed.
     | `eval-core` gives the walk the operand itself | `await-position.spec.ts` group P's accepted rows, `theOperand`, by identity; P3-1 |
     | Accepted as the whole expression, an arrow's expression body, or a program's or an arrow block's last statement | group P's accepted rows, both modes; group Q under `preserveParens` |
     | `(async () => await loadUser(id))()` is accepted and its value is the returned promise | group P's arrow-body row, by identity; `eval-signal.spec.ts`' "should evaluate an async arrow", which reads a promise resolving to the loader's value, a type, not identity |
-    | The async signal resolves it | `eval-core`'s `evalAsync` rows in group P; through this package, this step's throwaway row only, not committed ([F30](../backlog.md#f30)) |
+    | The async signal resolves it | `eval-core`'s `evalAsync` rows in group P; through this package, this step's throwaway row only, not committed ([F30](../backlog-retired.md#f30)) |
     | Anywhere else the walk throws the quoted message | group P's refused rows, both paths, the message in full |
     | `(async () => (await loadUser(id)).name)()` puts the async signal in `'error'` | `eval-signal-async.spec.ts`' moved row, "should read a member off the promise in operand position, and refuse an await there": `status()` `'error'` and the message in full |
-    | A `createEvalSignal` over it throws on read under the default `onError` | no row of this package: group P's sync refusal, and the sync signal's default `onError` rethrowing a walk's throw on read; through this package, SR24's A24 row and this step's throwaway row, neither committed ([F30](../backlog.md#f30)) |
-    | The CHANGELOG: on the sync path an accepted `await` reads the operand, `p` by identity and `1` | group P's sync rows, by identity; through this package, this step's throwaway row only; `eval-signal.spec.ts`' async-arrow row reads a type and passes either way ([F30](../backlog.md#f30)) |
-    | The CHANGELOG: a rejection arrives as raised, an `Error` by identity, `'x'` as `Error('x')` | group S and C; through this package, this step's throwaway rows only ([F30](../backlog.md#f30)) |
+    | A `createEvalSignal` over it throws on read under the default `onError` | no row of this package: group P's sync refusal, and the sync signal's default `onError` rethrowing a walk's throw on read; through this package, SR24's A24 row and this step's throwaway row, neither committed ([F30](../backlog-retired.md#f30)) |
+    | The CHANGELOG: on the sync path an accepted `await` reads the operand, `p` by identity and `1` | group P's sync rows, by identity; through this package, this step's throwaway row only; `eval-signal.spec.ts`' async-arrow row reads a type and passes either way ([F30](../backlog-retired.md#f30)) |
+    | The CHANGELOG: a rejection arrives as raised, an `Error` by identity, `'x'` as `Error('x')` | group S and C; through this package, this step's throwaway rows only ([F30](../backlog-retired.md#f30)) |
     | The two-signal form | `readme-examples.spec.ts`' "should derive from the async signal in a second one, tracking both" |
     | No `await` is bounded in time | group T and K's rows, no timer |
     | Up to 0.7.0 the expression was `undefined`, and `(await p) * 10` `NaN` | history: step 2's characterisation rows before steps 3 and 4 moved them |
@@ -1256,8 +1262,45 @@ and 7b's below, and their sections are removed.
     through; the README says only the two arrow positions occur through this package; § 4's row 7a
     names both floor paragraphs; step 4's sentence on the moved row's comment, in the past tense;
     and two register wordings. Recorded, not fixed: the claims no committed row of `eval-signals`
-    witnesses, as [F30](../backlog.md#f30).
+    witnesses, as [F30](../backlog-retired.md#f30), fixed by the commit below.
   - **Counts**: 3288 / 444 / 386, unchanged; the gate is run after every edit above.
+- **Outcome of F30's commit** (2026-10-31), between 7a and 7b, before the publish (*added after step
+  7a*, [SR4](../standing-rules.md#sr4)). The reason: 0.8.0's README and CHANGELOG are published
+  claims, and [SR21](../standing-rules.md#sr21) gives each a witness or removes it; the table above
+  names four with no committed `eval-signals` row. The commit ships in no package: the tarballs and
+  the tags stay at 67486ab, the release commit.
+  - **The rows**, `eval-signals` 444 → 449, each asserting the full value or message
+    ([SR18](../standing-rules.md#sr18)). `eval-signal.spec.ts`: "should throw the refusal on read for
+    an await whose value is an operand", and "should read an accepted await's operand itself on the
+    sync path", `toBe(p)` and `1`. `eval-signal-async.spec.ts`, beside the moved row: "should resolve
+    an accepted await to the loader's value, arming no timer", the loader's object by `toBe` and no
+    30 000 ms `setTimeout`; "should deliver an Error rejection behind an accepted await by identity,
+    its message unchanged", with a function `onError` leg handed the same `Error`; and "should
+    deliver a rejection that is not an Error behind an accepted await as Error(it)".
+  - **The probes**, each applied alone against every project's `test`, and reverted by hand
+    ([SR16](../standing-rules.md#sr16), [SR32](../standing-rules.md#sr32)); P1 and P2 run twice,
+    before and after the code review strengthened the resolve and rejection rows
+    ([SR26](../standing-rules.md#sr26)), with the same red sets; P3–P5 added at that review:
+
+    | Probe | Predicted in `eval-signals` | Red: `eval-signals` / `eval-forms` / `eval-core` |
+    | :--- | :--- | :--- |
+    | P1, `await-expression.ts`: the operand re-wrapped, `Promise.race([value])` | the sync identity row; no async row, since none asserts identity | 1, that row / 0 / 14, `await-position.spec.ts`' identity rows P1, P2, P3 and P5 in both modes, R1, R2, Q1–Q3 and A2 sync |
+    | P2, the same file: ` at position <start>-<end>` appended to an `Error` rejection, the operand pushed unchanged | the `Error` rejection row | 1, that row / 0 / 3, S1, S2 and `eval.service.await.spec.ts`' caller's-own-`Error` row |
+    | P3, the same file: no `await` refused | the refusal row and the moved row | 2, those / 0 / 36, all `await-position.spec.ts` |
+    | P4, the same file: a 30 000 ms `setTimeout` per accepted `await` | the resolve row | 1, that row / 0 / 6, T1–T3 and K1–K3 |
+    | P5, `evaluate.ts`' `ensureError`: a string wrapped as `Promise rejected: <it>` | the `'x'` row | 2 / 0 / 1, C1: the `'x'` row, and the existing "should hand the mapper a non-Error rejection wrapped", which the prediction missed, since it reads the same conversion with no `await` |
+  - **The table above, after it**: the four claims with no committed row are each witnessed by one of
+    these rows, and the CHANGELOG's timer and `onError` lines by the resolve and rejection rows; F30
+    retires.
+  - **The Register history** ([SR31](../standing-rules.md#sr31)): the row this step left as
+    *Unreleased* is split, since a row counts the index at the release's tag commit, 67486ab, where
+    F30 was open. The release's row reads 1 opened, 5 closed, 19 live, at 67486ab with its date to
+    come; an *Unreleased* row after it, F30's closure, 19 → 18. Step 7b gives the release's row its
+    date and leaves the *Unreleased* row as it is.
+  - **Code review**: no Critical finding. Folded in: the history row's split and the register's
+    Revision number; P3–P5; the resolve row's timer assertion and `toBe`, and the rejection row's
+    `onError` leg.
+  - **Counts**: 3288 / 449 / 386.
 
 ### Step 10 — Retrospect
 
@@ -1283,7 +1326,7 @@ that stops at § 1 while none is active, which step 1 removed and `CLAUDE.md` st
 | :--- | :--- | :--- |
 | Everything | `npx nx run-many -t lint test build --skip-nx-cache --output-style=static` ([SR8](../standing-rules.md#sr8)) | Green, every step |
 | `eval-core` rows | in the above | 3187 → 3250 (2) → 3252 (3) → 3259 (4) → 3288 (5), then unchanged |
-| `eval-signals` / `eval-forms` rows | in the above | 444 throughout; 380, then 386 from step 6 |
+| `eval-signals` / `eval-forms` rows | in the above | 444, then 449 from F30's commit after step 7a; 380, then 386 from step 6 |
 | Performance | `internal/performance.spec.ts` | Green and untouched every step |
 | Scope | `git status --porcelain` | The step's file list ([SR3](../standing-rules.md#sr3)) |
 | Surface | the built `.d.ts` against the last tarball | Step 7a, each package's (*was 7a, 8a, 9a*) |
