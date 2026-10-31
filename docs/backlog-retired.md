@@ -5428,6 +5428,108 @@ They get collected at TestBed teardown through the `DestroyRef` net, which is an
 
 *Recorded*: [`forms/step-5-summary.md` § 5.2](forms/step-5-summary.md).
 
+<a id="d13"></a>
+## D13 — A rule whose top-level statement `eval-core` refuses registers, and renders blank
+
+**Package** forms, core · **Kind** decision, then fix · **Status** **Retired — decided 2026-10-30,
+fixed 2026-10-31**, as steps 5 and 6 of the [A24 plan](a24/plan.md); unreleased, in `eval-core`
+0.15.0 and `eval-forms` 0.8.0. Was Open, narrowed. Opened 2026-10-10 by the Phase 9 plan, whose
+step 6 refused a top-level label, released 2026-10-14 in `eval-forms` 0.5.0, tagged 3466c80
+
+*Fixed* 2026-10-31, in two halves. `eval-core`'s `findUnsupportedStatement`, step 5, reports the
+first statement in a tree, in source order, that evaluation would refuse, with the message evaluation
+throws, read from the one table `dispatchStatement` and the `var` kind check use
+(`statement-support.ts`). `guardIdentifiers`, step 6, calls it before its identifier walk, in place
+of its loop over the program's own statements (that plan's § 3.4), so both adapters refuse such a
+rule at registration wherever the statement sits, a function body and an untaken branch included,
+and still statements first, then identifiers. A label keeps its message, with the
+`colonIdentifiers` hint, at any depth. Any other statement gets that plan's § 8 q5 message:
+
+> `Expression '<rule>': it holds a <type>, which eval-core does not evaluate (<message>). A rule is refused for it wherever it sits, in a function or branch that may never run too.`
+
+**This reverses the Phase 9 plan's § 3.8**, which refused a label among the program's own
+statements only and left one in a function body alone, since the function may never be called;
+that plan stays as written. With `eval-core` reporting from its own table nothing is copied, and code
+that can never evaluate is an authoring error. `guardIdentifiers` reads the report's
+`statement.type`, the `label.name` that type narrows a `LabeledStatement` to, and `message`, and
+`eval-forms` imports nothing from `acorn` for it.
+
+| Rule, through both adapters, the switch on and off | Up to `eval-forms` 0.7.1, measured at `/reactive`; `/signals` calls the same guard | Fixed |
+| :--- | :--- | :--- |
+| `[1].map(() => { L: 1 })` | registered, `visible` `false` | the label's message, label `L` |
+| `{ L: 1 }` | registered, `visible` `false` | the label's message, label `L` |
+| `while (false) {}` | registered, `visible` `false` | the message above, `WhileStatement` |
+| `if (false) { while (1) {} }` | registered, `visible` `false` | the message above, `WhileStatement` |
+| `[1].map(() => { switch (1) {} })` | registered, `visible` `false` | the message above, `SwitchStatement` |
+
+*Verified*: `modules/eval-forms/signals/src/lib/guard-identifiers.spec.ts`, inside its
+`describe.each` over the switch on and off, each row through `/reactive`'s `bindFieldProperties` and
+`/signals`' `form()`, asserting the message in full. The two rows that pinned the old bound move in
+place to the label's message, and three rows are new, the last three above: `eval-forms` 380 → 386,
+`eval-core` 3288 and `eval-signals` 444 unchanged. The label-before-identifier row,
+`Q1:1 && constructor` with the switch off, is unmodified and green. Wrong implementations, each
+applied alone against `eval-forms` and reverted, each red set as measured:
+- **today's loop**, the program's own statements, labels only: 10, the five rows in both modes;
+- **every type, but only among the program's own statements**: 8, the same less the top-level
+  `while`, in both modes;
+- **the generic message for a label**: 16, every label row of the file, 15, and `rules.spec.ts`'
+  factory-override row;
+- **the guard skipped in `/reactive`**: 30, the 19 cases of the file whose `/reactive` half expects a
+  refusal, `field-schema.spec.ts`' ten expression-identifier rows, and the `/signals`
+  `readme-examples.spec.ts` case that binds the README's "Expressions are validated too" rule
+  through `/reactive`.
+
+**The entry as it stood:**
+
+**Status** Open, narrowed — in flight as the [A24 plan](a24/plan.md), steps 5 and 6; **decided
+2026-10-30**.
+
+Both adapters accept any rule that parses: `/signals`' `prepare` parses, guards identifiers and
+compiles; `/reactive`'s `validate` does the same before `createEvalSignal` compiles. Neither asks
+whether `eval-core` will evaluate the statements it parsed, and `dispatchStatement` throws
+`Unsupported statement type` for everything outside its six (`dispatch-statement.ts:66`) — a label, a
+`while`, a `switch` — on every evaluation. Under the default `onError: 'undefined'` that is a blank
+field, with nothing reported.
+
+Measured for a label, which is what a legacy rule starting with a colon name parses as: `/reactive`
+bound `visible: 'Q1:1 == 1'` and read `visible()` `false` and `text()` `''`; `/signals` registered
+`evalVisible(p.city, 'Q1:1 == 1')` and the field read `hidden()` `true`. The other statement types take
+the same path by construction.
+
+**Phase 9 step 6 closed the top-level label case**, released 2026-10-14 in `eval-forms` 0.5.0:
+`guardIdentifiers` refuses a `LabeledStatement` among the program's own statements, at both entry
+points, since a forgotten `colonIdentifiers` switch is exactly that shape (that plan's § 3.8). A label
+nested in a function body is left alone, since the function may never be called.
+
+**What remains.** A label inside a top-level block — `{ L: 1 }`, or `{a:b}` with the switch off —
+still registers and renders blank: the block always runs and the label in it throws, but only the
+program's own statements are checked. So does every other statement `eval-core` refuses. **The rest
+is the decision**: refusing every unsupported top-level statement at registration needs
+`eval-core`'s list of supported statements, which it does not publish, and a copy in this package
+would drift — the problem the Phase 5 plan's § 3.6 solved for `abortSignalKey` by asking `eval-core`
+instead of copying its list.
+
+**Decided 2026-10-30.** `eval-core` 0.15.0 adds an export that reports the first statement anywhere
+in a tree that evaluation would refuse, with the message evaluation throws, derived from the same
+check `dispatchStatement` and the `var` kind check use, so there is one source. `eval-forms` refuses
+such a rule at registration through both adapters, anywhere in the rule, function bodies and untaken
+branches included. A label keeps its `colonIdentifiers` hint. This reverses Phase 9 § 3.8's "left
+alone in a function body": with `eval-core` reporting its own list nothing needs to be copied, and
+code that can never evaluate is an authoring error. `guard-identifiers.spec.ts:308` and `:317` move.
+Releases: `eval-core` 0.15.0 with [A24](#a24) and [A25](#a25), then `eval-signals` and `eval-forms`
+minors for their peer ranges.
+
+*Measured 2026-10-30* on the published 0.14.1 bundle, in a sandbox: `while`, `var`, `switch`, `return`
+and `function` all throw at evaluation, and untaken branches and uncalled bodies pass.
+
+*Recorded*: this entry; [`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.2
+finding 10; narrowed by that plan's step 6 (Revision 8).
+*Verified*: measured 2026-10-10 at af81e24 for a label, through both adapters, with a throwaway spec
+deleted the same day (that plan's § 1.3, F1). The refusal and its bound are pinned by
+`modules/eval-forms/signals/src/lib/guard-identifiers.spec.ts`, through both adapters with the switch
+on and off: a top-level label refused, a label in a function body and one in a top-level block
+`{ L: 1 }` registered, both reading blank.
+
 ---
 
 # E. Deferred to phases that are not yet defined

@@ -21,7 +21,7 @@ where it stands, as q1 and q2 are. Each step's outcome is recorded under it.
 
 **Revision**: 8 — step 6, in its own commit. Its file list gains `modules/eval-forms/CHANGELOG.md`, for
 the `[Unreleased]` lines that land with the change, as step 5's did; and `docs/backlog.md` may edit
-[D13](../backlog.md#d13)'s entry as well as its "Work in flight" paragraph: D13 stays open, narrowed
+[D13](../backlog-retired.md#d13)'s entry as well as its "Work in flight" paragraph: D13 stays open, narrowed
 to what the top-level refusal leaves. "Their specs" names the guard's, which is under `/signals`. The
 confirmation gate fixed the refusal's wording, added criterion 4's spaced-label row, kept the README
 to prose, and settled where `/reactive` resolves `ParserService`: after the `EnvironmentInjector` it
@@ -269,7 +269,7 @@ that shows it.
     `false` and `text()` `''`; `/signals` registered `evalVisible(p.city, 'Q1:1 == 1')` and the field
     read `hidden()` `true`. A colon name anywhere else — `x + Q1:1 > 0` — is a `SyntaxError` at
     registration in both. The phase changes neither unless the option is on; § 3.8 closes the silent
-    half. The general case, any statement `eval-core` refuses, is [BL-D13](../backlog.md#d13).
+    half. The general case, any statement `eval-core` refuses, is [BL-D13](../backlog-retired.md#d13).
 
 11. **`/reactive`'s guard depends on its two parsers agreeing** (F2). With `ParserService` emulating
     the switch and `validate` left on the free `parse`: `x > 0 || constructor` was refused at bind, as
@@ -354,7 +354,7 @@ switch (S1, F2). C1 ran in Node against the installed acorn. D1 read the `acorn@
   wildcard. Nothing splits it.
 - **`defaultParserOptions`** — unchanged, and § 1.2 finding 4 is why it must stay so.
 - **A per-signal parser option in `eval-signals`** — § 8 q5.
-- [BL-A30](../backlog-retired.md#a30), [BL-D13](../backlog.md#d13) — found by this plan's probes, recorded,
+- [BL-A30](../backlog-retired.md#a30), [BL-D13](../backlog-retired.md#d13) — found by this plan's probes, recorded,
   and not needed by it. A third, [BL-A29](../backlog-retired.md#a29), was fixed on its own after this
   plan was written (Revision 2).
 - **A source rewrite** — any approach that edits the text before acorn sees it (§ 3.5).
@@ -742,7 +742,7 @@ also refuses a `LabeledStatement` among the program's top-level statements, nami
 that colon names need `colonIdentifiers`. It refuses nothing that evaluated: `dispatchStatement` throws
 `Unsupported statement type` for every label (`dispatch-statement.ts:66`), and a top-level statement
 always runs. A label nested in a function body is left alone — the function may never be called. Every
-other unsupported statement stays [BL-D13](../backlog.md#d13)'s.
+other unsupported statement stays [BL-D13](../backlog-retired.md#d13)'s.
 
 **So one rule string is refused at both entry points or at neither**, given the same setting: with it
 on, both evaluate `Q1:1 == 1`; with it off, both refuse it at registration.
@@ -1043,7 +1043,7 @@ failure count for each, reading which cases failed rather than that the suite di
   in prose and inline code only, since each entry point's `readme-examples.spec.ts` counts the fenced
   blocks and is not on this list: executed blocks are step 7's (*decided at the gate*);
   `docs/backlog.md` — its "Work in flight" paragraph (Revision 6; step 7 edits the file anyway) and,
-  *corrected at the gate*, [D13](../backlog.md#d13)'s entry, open and narrowed (Revision 8);
+  *corrected at the gate*, [D13](../backlog-retired.md#d13)'s entry, open and narrowed (Revision 8);
   `modules/eval-forms/CHANGELOG.md` — `[Unreleased]` lines: Breaking, the refusal; Added, the
   `/signals` option and `/reactive`'s reach; Changed, `validate`'s parse. *Corrected at the gate*, as
   step 5's list was: the refusal is published behaviour, so its line lands with it (Revision 8).
@@ -1088,7 +1088,7 @@ failure count for each, reading which cases failed rather than that the suite di
     the factory's `colonIdentifiers` — *Wrong*: a registration's options replacing the factory's whole;
     a label that is not the program's first statement, refused — *Wrong*: only the first checked; and
     a pinned known limit, `{ L: 1 }`, a label in a top-level block, registering and reading blank in
-    both adapters, which is [D13](../backlog.md#d13)'s.
+    both adapters, which is [D13](../backlog-retired.md#d13)'s.
   - *Added by the step's review* (Revision 8): an empty rule binding at `/reactive` and reading blank —
     `ParserService.parse` answers `undefined` for it, so it is the rule that reaches
     `guardIdentifiers`' `undefined` branch, which no spec covered — *Wrong*: the branch removed; and,

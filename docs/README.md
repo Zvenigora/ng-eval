@@ -33,8 +33,8 @@ that anchor, `<a id="…"></a>` in the first cell.
 ## Active plan
 
 - [`a24/plan.md`](a24/plan.md) — the await track: [A25](backlog-retired.md#a25), an `await` passes its
-  operand through; [A24](backlog.md#a24), an `await` only where its value is the result; and
-  [D13](backlog.md#d13), every statement evaluation refuses reported by `eval-core` and refused at
+  operand through; [A24](backlog-retired.md#a24), an `await` only where its value is the result; and
+  [D13](backlog-retired.md#d13), every statement evaluation refuses reported by `eval-core` and refused at
   registration by `eval-forms`. For `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0.
   Its § 2 quotes the decisions, § 3 designs them, and § 8 holds the questions its steps answer.
 

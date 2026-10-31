@@ -1,6 +1,12 @@
 # A24, A25 and D13 — the await track: `await` where its value is the result, and every refused statement reported (`@zvenigora/ng-eval-core`, then `eval-signals` and `eval-forms`)
 
 **Date**: October 30, 2026
+**Revision**: 6 — step 6: criterion 4 names the label's name, which the type's narrowing reads;
+P6-1's and P6-3's predicted red sets corrected, measured, and P6-1b added; the file list widened at
+its gate by the sweep of the dispatcher's `default` and the `docs/README.md` link, and at its code
+change by `bindFieldProperties`' `@param schema` ([SR31](../standing-rules.md#sr31)), and at its
+code review by two more `eval-core` spec comments, also SR31; step 6's outcome.
+
 **Revision**: 5 — step 5: § 8 q1's `eval-forms` compile check moved to step 6, whose build makes it;
 step 6's list gains `docs/README.md`'s link to `backlog.md#a24`; P5-1's, P5-3's and P5-5's
 predicted red sets corrected, measured; the README's `return` sentence corrected at the code
@@ -29,7 +35,7 @@ The register's decisions name these releases.
   no `__awaitTimeout` key and no suffix.
 - [A24](../backlog-retired.md#a24), in step 4: an `await` is accepted only where its value is the result,
   and refused anywhere else.
-- [D13](../backlog.md#d13), in steps 5 and 6: `eval-core` reports the first statement anywhere in a
+- [D13](../backlog-retired.md#d13), in steps 5 and 6: `eval-core` reports the first statement anywhere in a
   tree that evaluation would refuse, and both `eval-forms` adapters refuse such a rule at
   registration.
 - The failure order of `evaluateAsync` (step 3): hook cleanup reads `duration` as `undefined` on
@@ -978,6 +984,12 @@ step-4 flip rewrites a row in place and moves no count. Every row "moves" below 
   `docs/README.md`'s "Active plan" entry, and this document's. *Widened in step 5*
   ([SR4](../standing-rules.md#sr4)): beside D13's, that entry's link to `backlog.md#a24`, which step 4
   left resolving to the index row, is re-pointed to `backlog-retired.md#a24`.
+- **Edit, widened in step 6** ([SR4](../standing-rules.md#sr4)): at its gate, the `eval-core`
+  comments the sweep of the dispatcher's `default` rewrites — `for-statement.ts`, `if-statement.ts`,
+  `empty-statement.ts`, `statement-semantics.spec.ts`, `empty-statement.spec.ts` and
+  `for-statement.spec.ts`; at its code change ([SR31](../standing-rules.md#sr31)),
+  `modules/eval-forms/reactive/src/lib/field-schema.ts`' `@param schema`; at its code review
+  (SR31), `block-statement.spec.ts` and `if-statement.spec.ts`, two more such comments.
 - **Rows**: `guard-identifiers.spec.ts:308-311` and `:317-320` move in place, to the label's message
   through both adapters. **New**, each through both adapters, beside them inside the
   `describe.each` over the switch on and off (`:254-257`), so 3 rows and 6 cases (`eval-forms` +6):
@@ -990,14 +1002,105 @@ step-4 flip rewrites a row in place and moves no count. Every row "moves" below 
      the top level is checked ([SR25](../standing-rules.md#sr25)).
   4. *Moved from step 5* (§ 8 q1): `guardIdentifiers` reads only the export's `.statement.type` and
      `.message`, and `eval-forms` imports nothing from `acorn` for it; the gate's `build` compiles it
-     ([SR9](../standing-rules.md#sr9)).
+     ([SR9](../standing-rules.md#sr9)). *Corrected in step 6* ([SR4](../standing-rules.md#sr4)):
+     and, for a label, the `.statement.label.name` that `.type`'s narrowing to `LabeledStatement`
+     reads, which today's message names and § 3.4 keeps; it needs no `acorn` import either.
 - **Probes**, each alone:
   - **P6-1** *Wrong*: today's loop kept, over the program's own statements. Red: the two moved rows,
-    and the branch and function-body rows.
+    and the branch and function-body rows, and the top-level `while` row, which today's loop, labels
+    only, does not refuse either; in both modes, 10 (*corrected in step 6*).
+  - **P6-1b** *Wrong* (*added in step 6*): every type, but only among the program's own statements.
+    Red: P6-1's less the top-level `while` row, 8.
   - **P6-2** *Wrong*: the generic message for a label. Red: every label row.
-  - **P6-3** *Wrong*: the guard skipped in `/reactive`. Red: each row's `/reactive` half.
+  - **P6-3** *Wrong*: the guard skipped in `/reactive`. Red: each row's `/reactive` half, and every
+    case elsewhere that expects `/reactive` to refuse a rule's identifier (*corrected in step 6*).
 - **Ships in**: `eval-forms` 0.8.0, which step 9a releases with the `eval-core` floor that has the
   export.
+- **Outcome** (2026-10-31):
+  - **The code**: `guardIdentifiers` calls `findUnsupportedStatement(node)` before its identifier
+    walk, in place of its loop over `node.body`. A `LabeledStatement` throws today's message, with
+    the `colonIdentifiers` hint, naming `statement.label.name`; any other statement throws § 8 q5's,
+    with `statement.type` and the export's `message`. The order stays: statements, then identifiers.
+    The import is `import { type parse, findUnsupportedStatement } from '@zvenigora/ng-eval-core'`,
+    `rules.ts`' form.
+  - **The two messages, as written**:
+    - `Expression '<rule>': it parses as a statement labeled '<label>', which never evaluates. A colon-joined key needs colonIdentifiers on and no space around the colon - provideColonIdentifiers() in the application's root providers for /reactive, or the colonIdentifiers rule option for /signals.`
+    - `Expression '<rule>': it holds a <type>, which eval-core does not evaluate (<message>). A rule is refused for it wherever it sits, in a function or branch that may never run too.`
+  - **The rows**, `guard-identifiers.spec.ts`, inside the `describe.each` over the switch: the two
+    moved in place, `[1].map(() => { L: 1 })` and `{ L: 1 }`, to the label's message; and one
+    `it.each` of three, `while (false) {}`, `if (false) { while (1) {} }` and
+    `[1].map(() => { switch (1) {} })`, each asserting the full message with the type and
+    `eval-core`'s message written out, through `viaReactive` and `viaSignals`. The
+    `describe`'s docblock says why those rows sit with the colon-joined ones.
+  - **The probes**, each applied alone against `eval-forms`' `test`, pinned as a patch under
+    `D:\repo.2026\ng-eval-base\a24-prototype\`, SHA-256 checked before its apply and reverted by
+    `git apply -R` ([SR32](../standing-rules.md#sr32)); `git grep PROBE -- modules` found nothing
+    afterwards. Only `eval-forms` was run: no other project imports it.
+
+    | Probe | SHA-256 | Predicted | Red |
+    | :--- | :--- | :--- | :--- |
+    | P6-1, today's loop | `a96658a027103475bf0b1b75365b23e489c5c51bee845984c153dfe2c46f00c5` | 10: the five rows, both modes | 10, as predicted; each read `{ visible: false }` at its `/reactive` half |
+    | P6-1b, every type, top level only | `f75a183b9a2d791f357def3b7f252dda39c584be4cbba26767488c0718b40feb` | 8: P6-1's less the top-level `while` | 8, as predicted |
+    | P6-2, the generic message for a label | `100b7fb3d526870bcfbb5663c2b14371a2e5c656d9dbe9cc9ca6a8e8ce7eb7aa` | 16: the file's 15 label cases, and `rules.spec.ts`' factory-override row | 16, as predicted |
+    | P6-3, the guard skipped in `/reactive` | `297d3af5e922573fda20726215f7065e07fc66fdd0e66aabd8664a626b1634aa` | 29: the file's 19 `/reactive` refusals, `field-schema.spec.ts`' 10 | 30: those, and the `/signals` `readme-examples.spec.ts` case that binds "Expressions are validated too" through `/reactive`; corrected above |
+
+  - **Criteria**: 1, the five rows assert the full message, in both modes, and P6-1 and P6-2 turn
+    them red; 2, `Q1:1 && constructor`'s row is not in the diff and is green; 3,
+    `git grep -n "top-level\|own statements" modules/eval-forms/README.md` prints `:894` only, a
+    model key holding a signal, not a statement check; 4, `git grep -n "from 'acorn'" modules/eval-forms`
+    prints `guard-identifiers.ts:99`, the `@param node` sentence, at HEAD as before, and the gate's
+    `eval-forms` build compiles the narrowing.
+  - **Counts**: `eval-forms` 380 → 386; `eval-core` 3288 and `eval-signals` 444, unchanged.
+  - **Corrections in this step's commit** ([SR4](../standing-rules.md#sr4)): criterion 4, P6-1 and
+    P6-3 above, and P6-1b. Widened at the gate: `docs/README.md`'s `backlog.md#a24` link, and the
+    sweep below. Widened at the code change ([SR31](../standing-rules.md#sr31)):
+    `modules/eval-forms/reactive/src/lib/field-schema.ts`, whose `@param schema` named "a top-level
+    labeled statement" as what `guardIdentifiers` refuses, false after this step and printed in the
+    `.d.ts`, as finding 8 found of README `:176`.
+  - **The sweep** ([SR25](../standing-rules.md#sr25)) of "the dispatcher's `switch`/`default`",
+    since step 5 left `dispatchStatement` with no `switch`:
+    ``git grep -n -E "dispatchStatement\`?'s \`?(default|switch)|the dispatcher's \`?(default|switch)|switch\`?'s \`?default|throwing \`default\`" -- modules/eval-core``
+    found 5 and finds 0 after: `for-statement.ts:16`, `if-statement.ts:64`,
+    `statement-semantics.spec.ts:225`, `empty-statement.spec.ts:11` and `for-statement.spec.ts:52`,
+    each rewritten to the dispatcher's refusal of a type outside its table; and, read beside them,
+    `for-statement.ts:21` and `:42` and `empty-statement.ts:13`, rewritten the same way.
+    `dispatch-statement.ts:24`, "a `switch` whose `default` threw until then", is history and kept.
+    Three more the pattern misses, each across a line break or on another noun, were false now and
+    are rewritten under [SR31](../standing-rules.md#sr31), widened at the code review:
+    `block-statement.spec.ts:118`, "the same `switch`", now "the same table", its measurement kept
+    as made while the table was a `switch`; `:190`, "the `default` is reached", now "the refusal";
+    and `if-statement.spec.ts:29-30`, "the dispatcher's `default`", now "the dispatcher's refusal".
+    `for-statement.spec.ts:256` and `variable-declaration.spec.ts:402`, "switches on node *type*",
+    are still true as a verb, and kept. `statement-support.ts:35-36`'s "(`docs/backlog.md` D13)" is
+    kept: D13's index row stays in `backlog.md`, as `dispatch-statement.ts`' plain-text A2 citation
+    stayed when A2 retired. Each is an `eval-core` comment made stale inside unreleased 0.15.0, so
+    none has a CHANGELOG line.
+  - **The README's lines and the CHANGELOG's** ([SR21](../standing-rules.md#sr21)):
+
+    | Claim | Witness |
+    | :--- | :--- |
+    | A label is refused anywhere, inside a block or a function the rule defines | the two moved rows; P6-1, P6-1b |
+    | Every other statement `eval-core` does not evaluate is refused, a `while` or a `switch` | the three new rows; P6-1 |
+    | In a branch or a function that never runs too | `if (false) { while (1) {} }`, and `[1].map(…)` before `map` runs; P6-1b |
+    | The message names the type and quotes `eval-core`'s message, as the CHANGELOG quotes it | the three new rows, the message in full |
+    | A label keeps its message, naming the label and each switch | the moved rows; P6-2 |
+    | At `bindFieldProperties` and from `form()` | each row's two halves; P6-3 for `/reactive` |
+    | Up to 0.7.1 only a top-level label was refused, and the rest registered and read blank | P6-1's red set, each reading `{ visible: false }` at its `/reactive` half, the first assertion, so Jest ran no `/signals` half; that half is by construction, since both adapters call the one guard and `/signals`' default policy renders a throw hidden |
+    | A rule whose refused statement sat in code that never ran rendered a value, and now fails to bind | `if (false) { while (1) {} }` under P6-1, which registered; the branch row |
+    | No symbol changes shape | the gate's `build`; `guardIdentifiers`' signature is not in the diff |
+
+  - **Behaviour beside the rows**, held by review: a rule with a refused statement before a
+    top-level label, `while (x) {}; Q1:1 == 1`, now gets the generic message, since the first in
+    source order is reported; it was refused either way. And a non-`Program` node, which neither
+    caller passes, is now checked too.
+  - **Code review** (before the commit): no Critical finding. Folded in: README `:380`'s reason,
+    "it never evaluates", false for a statement in code that never runs, now says why that is
+    refused ([SR31](../standing-rules.md#sr31)), and the CHANGELOG's Breaking line says such a rule
+    rendered a value and now fails to bind; README `:176`, which read as if a label were new in
+    0.8.0; § 8 q1's answer, given criterion 4's correction; the three spec comments above; and the
+    `/signals` half of the "up to 0.7.1" claim, unmeasured, now said to be by construction, here and
+    in D13's retired entry. Kept, with its reason above: `statement-support.ts`' plain-text D13
+    citation. The gate's `build` and counts were predictions until it ran.
 
 ### Steps 7a and 7b — `eval-core` 0.15.0
 
@@ -1094,7 +1197,8 @@ maintainer at step 2's confirmation gate, on 2026-10-30, and the step that names
    `eval-core`'s message, so `eval-forms` quotes the message rather than copying it. Step 6 confirms
    that `eval-forms` compiles reading only `.statement.type` and `.message`, with no `acorn` import
    ([SR9](../standing-rules.md#sr9)). *Moved in step 5* ([SR4](../standing-rules.md#sr4)): this said
-   step 5, which writes no `eval-forms` code; step 6's build is what compiles it.
+   step 5, which writes no `eval-forms` code; step 6's build is what compiles it. *Corrected in
+   step 6*: and, for a label, `.statement.label.name`, through the narrowing (step 6's criterion 4).
 2. **Whether a refused `await`'s message suggests the two-signal form** (step 4). `eval-core` knows no
    signals, and its README is the message's only context, so the default is no. The alternative is a
    neutral clause, "resolve the value first and evaluate a second expression with it", which `eval-signals`'

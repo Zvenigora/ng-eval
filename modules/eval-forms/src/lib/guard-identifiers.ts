@@ -1,9 +1,9 @@
-import type { parse } from '@zvenigora/ng-eval-core';
+import { type parse, findUnsupportedStatement } from '@zvenigora/ng-eval-core';
 import { simple } from 'acorn-walk';
 
 /**
- * Throws if the expression parses as a labeled statement at its top level
- * (`docs/colon-identifiers/phase-9-plan.md` S 3.8), or names an identifier
+ * Throws if the expression holds a statement `eval-core` does not evaluate,
+ * anywhere in it (`docs/backlog-retired.md` D13), or names an identifier
  * that is an own property of `Object.prototype` (`docs/forms/phase-6-plan.md`
  * S 3.8). Both adapters call it, before compiling: the
  * `/signals` registrars between `parse` and `compile`, and `/reactive`'s
@@ -74,18 +74,22 @@ import { simple } from 'acorn-walk';
  * A hand-rolled scan over every node would reject `user.constructor` too,
  * which is the difference the borrow is checked at.
  *
- * **A top-level label is refused first, and only a top-level one**
- * (`docs/colon-identifiers/phase-9-plan.md` S 3.8). `eval-core` evaluates no
- * labeled statement - it throws `Unsupported statement type` every time - and a
- * top-level statement always runs, so such a rule never produced a value:
- * under the default `onError` it rendered a blank. It is the shape a
- * colon-joined name takes when `eval-core`'s `colonIdentifiers` is off - `Q1:1
- * == 1` is the label `Q1` over `1 == 1` - so the message names the label and
- * the switch for each adapter, and it is checked before the identifiers: with
- * the switch off, the label is the first thing wrong. A label nested in a
- * function body is left alone, since the function may never be called; so is
- * one in a top-level block, and every other statement `eval-core` refuses
- * (`docs/backlog.md` D13).
+ * **A statement `eval-core` does not evaluate is refused first, wherever it
+ * sits** (`docs/backlog-retired.md` D13). `eval-core` throws for one - a
+ * label, a `while`, a `switch` - each time its walk reaches it, and
+ * under the default `onError` the field renders a blank; one in a function
+ * never called, or a branch never taken, throws nothing and is still code that
+ * can never evaluate. `eval-core`'s `findUnsupportedStatement` reads the whole
+ * tree against the table its evaluator uses, so this package keeps no copy of
+ * that table, and the message quotes `eval-core`'s own. That reverses
+ * `docs/colon-identifiers/phase-9-plan.md` S 3.8, which refused a label at the
+ * top level only and left one in a function body alone.
+ *
+ * A label keeps its own message, at any depth. It is the shape a colon-joined
+ * name takes when `eval-core`'s `colonIdentifiers` is off - `Q1:1 == 1` is the
+ * label `Q1` over `1 == 1` - so the message names the label and the switch for
+ * each adapter. Statements are checked before the identifiers: with the switch
+ * off, the label is the first thing wrong.
  *
  * @param expression the source, named in the message so an author can tell
  * which of a schema's rules to fix
@@ -118,22 +122,31 @@ export const guardIdentifiers = (expression: string, node: ReturnType<typeof par
     return;
   }
 
-  // The program's own statements, not a walk: a label anywhere below the top
-  // level runs only if what holds it does. Only a `Program` has them - a
-  // caller extracting the expression has a single `ExpressionStatement`'s
-  // expression, and no statement to check.
-  if (node.type === 'Program') {
-    for (const statement of node.body) {
-      if (statement.type === 'LabeledStatement') {
-        throw new Error(
-          `Expression '${expression}': it parses as a statement labeled ` +
-          `'${statement.label.name}', which never evaluates. A colon-joined key needs ` +
-          `colonIdentifiers on and no space around the colon - provideColonIdentifiers() ` +
-          `in the application's root providers for /reactive, or the colonIdentifiers ` +
-          `rule option for /signals.`
-        );
-      }
+  // The whole tree, function bodies and untaken branches included, against
+  // `eval-core`'s own table: the first statement in source order that its
+  // evaluator would refuse, or `undefined`. Nothing is read off it but its
+  // type, the label a `LabeledStatement`'s type narrows to, and `eval-core`'s
+  // message, so this package needs no `acorn` import for it.
+  const unsupported = findUnsupportedStatement(node);
+
+  if (unsupported !== undefined) {
+    const { statement, message } = unsupported;
+
+    if (statement.type === 'LabeledStatement') {
+      throw new Error(
+        `Expression '${expression}': it parses as a statement labeled ` +
+        `'${statement.label.name}', which never evaluates. A colon-joined key needs ` +
+        `colonIdentifiers on and no space around the colon - provideColonIdentifiers() ` +
+        `in the application's root providers for /reactive, or the colonIdentifiers ` +
+        `rule option for /signals.`
+      );
     }
+
+    throw new Error(
+      `Expression '${expression}': it holds a ${statement.type}, which eval-core does not ` +
+      `evaluate (${message}). A rule is refused for it wherever it sits, in a function or ` +
+      `branch that may never run too.`
+    );
   }
 
   const check = (identifier: { name: string }): void => {

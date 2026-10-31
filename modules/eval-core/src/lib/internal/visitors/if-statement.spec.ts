@@ -27,7 +27,7 @@ describe('ifStatementVisitor', () => {
       // § 1.1's row, and the headline behavioural change: measured **`2`** before
       // Phase 2 with 2 stranded, because the base walker visited *both* branches
       // and the `else` value was pushed last. Since step 1 it throws from the
-      // dispatcher's `default`.
+      // dispatcher's refusal.
       //
       // **Alone, this case does not discriminate** - a visitor that walks both
       // branches and then selects by the test passes it. The "untaken branch"

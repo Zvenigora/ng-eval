@@ -176,10 +176,11 @@ retired. Its retrospect is the plan's § 10, which added [SR39](standing-rules.m
 phase that moves `eval-forms`' rows.
 
 **The [A24 plan](a24/plan.md) is in flight**: the await track, [A25](backlog-retired.md#a25),
-[A24](backlog-retired.md#a24) and [D13](#d13), for `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0. It
-is at Revision 4. Steps 1 to 4 are done: the plan and its records, the characterisation spec, A25
-and A24, both retired as fixed and unreleased. Step 5, D13 in `eval-core`, is next. Step 1 corrected
-A25's decided text: only an `Error` rejection reaches an `evalAsync` caller by identity.
+[A24](backlog-retired.md#a24) and [D13](backlog-retired.md#d13), for `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0. It
+is at Revision 6. Steps 1 to 6 are done: the plan and its records, the characterisation spec, A25,
+A24, and D13 in `eval-core` and then in `eval-forms`; all three are retired as fixed and unreleased.
+Step 7a, the `eval-core` 0.15.0 release commit, is next. Step 1 corrected A25's decided text: only
+an `Error` rejection reaches an `evalAsync` caller by identity.
 
 `eval-core` 0.13.3 is released alone, a patch, tagged at 021d5e4 and published 2026-10-23. It
 carries A45 part 1 only. Its `.d.ts` is SHA-256-identical to 0.13.2's, and it is inside
@@ -195,7 +196,7 @@ Phase 9, colon-joined identifiers, is complete: its
 [plan](colon-identifiers/phase-9-plan.md), at Revision 9, and its retrospect,
 [`colon-identifiers/phase-9-summary.md`](colon-identifiers/phase-9-summary.md), are design records,
 and it shipped as `eval-core` 0.12.0, `eval-signals` 0.5.1 and `eval-forms` 0.5.0, tagged at
-3466c80. It fixed [A26](backlog-retired.md#a26), opened [A34](#a34) and narrowed [D13](#d13). The
+3466c80. It fixed [A26](backlog-retired.md#a26), opened [A34](#a34) and narrowed [D13](backlog-retired.md#d13). The
 corpus stays synthetic until real expressions arrive as data; the plan's § 8 q1, q2 and q4 wait on
 them. `eval-core` 0.11.1, with the [A29](backlog-retired.md#a29) and
 [A31](backlog-retired.md#a31) fixes, is published and tagged at 7ee65fc. Phase 5 is complete: its
@@ -239,7 +240,7 @@ release, not a free change. Each package's release notes are in its own
 | `@zvenigora/ng-eval-core` | 0.12.1 | The [A35 plan](a35/plan.md)'s first release: partial hardening that does not close every route, with `SECURITY.md` leading with the mitigations. [A36](backlog-retired.md#a36) fix: a tagged template's tag goes through the call sandbox and the write policy, and a member tag's `this` is its object. [A35](backlog-retired.md#a35), which 0.12.1 left open: a dangerous function value is refused by its value at the call, `new` and tag sites, and at every other read the walk makes but `typeof`'s operand. Two routes past the walk's own values stayed open in 0.12.1, a container the host provides and a route through `this` ([A39](backlog-retired.md#a39)), the second closed in 0.13.0. [A37](backlog-retired.md#a37) fix: a sequence leaves one value on the stack and shows one node to hooks. Every published version to 0.12.0 is affected. A patch although a read of a dangerous function now throws: the `.d.ts` is byte-identical to 0.12.0's. Peer ranges unchanged; `eval-signals` 0.5.1 (`>=0.11.0 <0.13.0`) and `eval-forms` 0.5.0 (`>=0.12.0 <0.13.0`) admit it. No advisory is published for it: one follows 0.13.0. Tagged `eval-core@0.12.1` at 7cc8d30, published 2026-10-17 (npm: 13:49 UTC) |
 | `@zvenigora/ng-eval-core` | 0.12.0 | Phase 9 ([plan](colon-identifiers/phase-9-plan.md)): `ParserOptions.colonIdentifiers` and `provideColonIdentifiers()`, opt-in — a colon-joined name such as `Q1:1:3` parses as one `Identifier` whose `name` is the key; with the option off, the default, a parse is acorn's own. `CompilerService` keys a compiled string on the options its parse uses. [A26](backlog-retired.md#a26) fix: `ParserService` serves a cached AST only to a parse whose parse-relevant options match the one that cached it, and a parse carrying an acorn callback or `program` bypasses the cache; every published version to 0.11.1 is affected. A minor: no exported symbol changes shape, and the `.d.ts` differs from 0.11.1 by the two additions, their `EnvironmentProviders` import, documentation comments and a private member each on `ParserService` and `CompilerService`. Peer ranges unchanged, `acorn ^8.11.2` included, tested at 8.11.2 (the plan's § 8 q3). `eval-signals` 0.5.1 and `eval-forms` 0.5.0 admit it; `eval-signals` 0.4.0–0.5.0 and `eval-forms` 0.4.x declare `>=0.11.0 <0.12.0` and do not. Tagged `eval-core@0.12.0` at 3466c80, published 2026-10-14 (npm: 01:06 UTC) |
 | `@zvenigora/ng-eval-signals` | 0.5.1 | Phase 9 ([plan](colon-identifiers/phase-9-plan.md)): `createEvalSignalAsync`'s `abortSignalKey` refusal says the key must be a plain identifier, and that a colon-joined name is refused even under `eval-core`'s `colonIdentifiers`; what is refused is unchanged. A patch: the `.d.ts` differs from 0.5.0 in the `abortSignalKey` documentation comment only. Peer range on `eval-core` widened to `>=0.11.0 <0.13.0`, which admits 0.12.0; the floor is unchanged, since nothing here needs 0.12. Tagged `eval-signals@0.5.1` at 3466c80, published 2026-10-14 (npm: 01:09 UTC) |
-| `@zvenigora/ng-eval-forms` | 0.5.0 | Phase 9 ([plan](colon-identifiers/phase-9-plan.md)): `/signals`' `ExpressionRuleOptions.colonIdentifiers`, and `/reactive` follows `eval-core`'s `provideColonIdentifiers()`, its bind-time check parsing a rule as its compile does. [D13](#d13) narrowed: a rule that parses as a top-level label, which rendered blank, is refused at registration at both entry points. A breaking minor: the three `.d.ts` files differ from 0.4.1's by `ExpressionRuleOptions.colonIdentifiers` and documentation comments. Peer ranges raised: `eval-core` to `>=0.12.0 <0.13.0`, which adds the option `/signals` passes it, and `eval-signals` to `>=0.5.1 <0.6.0`, since every earlier `eval-signals` requires `eval-core` below 0.12.0. Tagged `eval-forms@0.5.0` at 3466c80, published 2026-10-14 (npm: 01:13 UTC) |
+| `@zvenigora/ng-eval-forms` | 0.5.0 | Phase 9 ([plan](colon-identifiers/phase-9-plan.md)): `/signals`' `ExpressionRuleOptions.colonIdentifiers`, and `/reactive` follows `eval-core`'s `provideColonIdentifiers()`, its bind-time check parsing a rule as its compile does. [D13](backlog-retired.md#d13) narrowed: a rule that parses as a top-level label, which rendered blank, is refused at registration at both entry points. A breaking minor: the three `.d.ts` files differ from 0.4.1's by `ExpressionRuleOptions.colonIdentifiers` and documentation comments. Peer ranges raised: `eval-core` to `>=0.12.0 <0.13.0`, which adds the option `/signals` passes it, and `eval-signals` to `>=0.5.1 <0.6.0`, since every earlier `eval-signals` requires `eval-core` below 0.12.0. Tagged `eval-forms@0.5.0` at 3466c80, published 2026-10-14 (npm: 01:13 UTC) |
 | `@zvenigora/ng-eval-core` | 0.11.1 | [A29](backlog-retired.md#a29) fix: `CompilerService` compiles an AST on every call and caches none, so two ASTs of one type and span no longer share a compiled function; a string is cached as before. [A31](backlog-retired.md#a31) fix: the case-insensitive property cache is keyed by the object itself, so under `caseInsensitive` a member read no longer resolves another object's spelling, and a case variant of a blocked name is refused rather than read as `undefined`; a regression table pins the 15 spellings refused after a colliding entry. Both caches came in with 0.2.1, so every version from it to 0.11.0 is affected. [A28](backlog-retired.md#a28): `scoped`'s documentation comments say every scope on the stack counts. A patch: the `.d.ts` differs from 0.11.0 in documentation comments only. Peer ranges unchanged; `eval-signals` 0.4.0–0.5.0 and `eval-forms` 0.4.x already admit it with `>=0.11.0 <0.12.0`, so their users get both fixes on install. Tagged `eval-core@0.11.1` at 7ee65fc, published 2026-10-10 (npm: 23:40 UTC) |
 | `@zvenigora/ng-eval-signals` | 0.5.0 | Phase 5 ([plan](signals/phase-5-plan.md)): `createEvalSignalAsync`, `EvalSignalAsync`, `EvalSignalAsyncOptions`, `EvalSignalStatus` and `EvalSignalService.createAsync`. A minor, additions only: the `.d.ts` differs from 0.4.0 by those and their documentation comments. Peer ranges unchanged. Tested at Angular 19.2, 20.3, 21.2 and 22.2 (the plan's § 8 q1). [C6](backlog-retired.md#c6) retired by its README, which gives the `resource` composition for Angular 19 too. Tagged `eval-signals@0.5.0` at 577c4f0, published 2026-10-10 (npm: 02:07 UTC) |
 | `@zvenigora/ng-eval-forms` | 0.4.1 | Peer range on `eval-signals` widened to `>=0.4.0 <0.6.0`, which admits 0.5.0; no code changes. A patch: all three `.d.ts` files byte-identical to 0.4.0's. The README's "Anything asynchronous" bullet names `eval-signals`' `createEvalSignalAsync`, and its quoted peer range follows the manifest. Tagged `eval-forms@0.4.1` at 577c4f0, published 2026-10-10 (npm: 02:15 UTC) |
@@ -419,7 +420,7 @@ makes it that release's row, with its tag commit and date.
 | [D10](backlog-retired.md#d10) | `applyErrorPolicy` has no runnable README block | forms | docs | **Retired — fixed**, and it created [F3](backlog-retired.md#f3)'s third gate's subject |
 | [D11](backlog-retired.md#d11) | `/signals` has no worked example | forms | docs | **Retired — fixed 2026-10-03**, docs and tests only: [`docs/forms/worked-example-signals.md`](forms/worked-example-signals.md), every ` ```ts ` block executed and counted; released 2026-10-04 in `eval-forms` 0.3.1, tagged 3d56994 — the example ships in no package, the README's link to it does |
 | [D12](backlog-retired.md#d12) | ~20 specs discard the binding and never call `destroy()` | forms | test hygiene | **Retired — fixed 2026-09-28, test only**; `destroy()`'s release path is pinned by `field-schema.memory.spec.ts`, the net's by `field-schema.spec.ts`'s subscription count. Injector-path memory cases removed 2026-09-29: timing-dependent |
-| [D13](#d13) | A rule whose top-level statement `eval-core` refuses registers in both adapters and renders blank under the default policy | forms, core | decision, then fix | Open, narrowed — in flight as the [A24 plan](a24/plan.md), steps 5 and 6; **decided 2026-10-30**: `eval-core` 0.15.0 exports a report of the first statement evaluation would refuse, and `eval-forms` refuses such a rule at registration, anywhere in it. Opened 2026-10-10 by the Phase 9 plan; a top-level label refused at registration since its step 6, released 2026-10-14 in `eval-forms` 0.5.0, tagged 3466c80. A label in a top-level block, `{ L: 1 }`, and every other such statement remain |
+| [D13](backlog-retired.md#d13) | A rule whose top-level statement `eval-core` refuses registers in both adapters and renders blank under the default policy | forms, core | decision, then fix | **Retired — decided 2026-10-30, fixed 2026-10-31**, as steps 5 and 6 of the [A24 plan](a24/plan.md); unreleased, in `eval-core` 0.15.0 and `eval-forms` 0.8.0. `eval-core`'s `findUnsupportedStatement` reports the first statement evaluation would refuse, from the table the evaluator reads, and both `eval-forms` adapters refuse such a rule at registration wherever the statement sits, a label with its `colonIdentifiers` hint. Reverses the Phase 9 plan's § 3.8. Opened 2026-10-10 by the Phase 9 plan; a top-level label refused since its step 6, released 2026-10-14 in `eval-forms` 0.5.0, tagged 3466c80 |
 | [E1](#e1) | Form-state keys across both adapters | forms | phase | Open — **no phase reserved** |
 | [E2](#e2) | Arrays — `applyEach` at `/signals`, `FormArray` at `/reactive` | forms | phase | Open |
 | [E3](#e3) | `dependencies` introspection at form scale | forms | phase | Open |
@@ -1097,60 +1098,6 @@ case is fixed. The nested case, where the diagnostic does not reach `/signals`, 
 documented in the package README.
 
 *Recorded*: [`forms/phase-4-plan.md` § 3.5.6](forms/phase-4-plan.md).
-
-<a id="d13"></a>
-## D13 — A rule whose top-level statement `eval-core` refuses registers, and renders blank
-
-**Package** forms, core · **Kind** decision, then fix · **Status** Open, narrowed —
-in flight as the [A24 plan](a24/plan.md), steps 5 and 6; **decided 2026-10-30**. Opened 2026-10-10
-by the Phase 9 plan; its step 6
-refuses a top-level label, released 2026-10-14 in `eval-forms` 0.5.0, tagged 3466c80
-
-Both adapters accept any rule that parses: `/signals`' `prepare` parses, guards identifiers and
-compiles; `/reactive`'s `validate` does the same before `createEvalSignal` compiles. Neither asks
-whether `eval-core` will evaluate the statements it parsed, and `dispatchStatement` throws
-`Unsupported statement type` for everything outside its six (`dispatch-statement.ts:66`) — a label, a
-`while`, a `switch` — on every evaluation. Under the default `onError: 'undefined'` that is a blank
-field, with nothing reported.
-
-Measured for a label, which is what a legacy rule starting with a colon name parses as: `/reactive`
-bound `visible: 'Q1:1 == 1'` and read `visible()` `false` and `text()` `''`; `/signals` registered
-`evalVisible(p.city, 'Q1:1 == 1')` and the field read `hidden()` `true`. The other statement types take
-the same path by construction.
-
-**Phase 9 step 6 closed the top-level label case**, released 2026-10-14 in `eval-forms` 0.5.0:
-`guardIdentifiers` refuses a `LabeledStatement` among the program's own statements, at both entry
-points, since a forgotten `colonIdentifiers` switch is exactly that shape (that plan's § 3.8). A label
-nested in a function body is left alone, since the function may never be called.
-
-**What remains.** A label inside a top-level block — `{ L: 1 }`, or `{a:b}` with the switch off —
-still registers and renders blank: the block always runs and the label in it throws, but only the
-program's own statements are checked. So does every other statement `eval-core` refuses. **The rest
-is the decision**: refusing every unsupported top-level statement at registration needs
-`eval-core`'s list of supported statements, which it does not publish, and a copy in this package
-would drift — the problem the Phase 5 plan's § 3.6 solved for `abortSignalKey` by asking `eval-core`
-instead of copying its list.
-
-**Decided 2026-10-30.** `eval-core` 0.15.0 adds an export that reports the first statement anywhere
-in a tree that evaluation would refuse, with the message evaluation throws, derived from the same
-check `dispatchStatement` and the `var` kind check use, so there is one source. `eval-forms` refuses
-such a rule at registration through both adapters, anywhere in the rule, function bodies and untaken
-branches included. A label keeps its `colonIdentifiers` hint. This reverses Phase 9 § 3.8's "left
-alone in a function body": with `eval-core` reporting its own list nothing needs to be copied, and
-code that can never evaluate is an authoring error. `guard-identifiers.spec.ts:308` and `:317` move.
-Releases: `eval-core` 0.15.0 with [A24](backlog-retired.md#a24) and [A25](backlog-retired.md#a25), then `eval-signals` and `eval-forms`
-minors for their peer ranges.
-
-*Measured 2026-10-30* on the published 0.14.1 bundle, in a sandbox: `while`, `var`, `switch`, `return`
-and `function` all throw at evaluation, and untaken branches and uncalled bodies pass.
-
-*Recorded*: this entry; [`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.2
-finding 10; narrowed by that plan's step 6 (Revision 8).
-*Verified*: measured 2026-10-10 at af81e24 for a label, through both adapters, with a throwaway spec
-deleted the same day (that plan's § 1.3, F1). The refusal and its bound are pinned by
-`modules/eval-forms/signals/src/lib/guard-identifiers.spec.ts`, through both adapters with the switch
-on and off: a top-level label refused, a label in a function body and one in a top-level block
-`{ L: 1 }` registered, both reading blank.
 
 ---
 

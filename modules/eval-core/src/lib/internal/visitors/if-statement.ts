@@ -61,7 +61,7 @@ import { EMPTY_COMPLETION, EvalState } from '../classes/eval';
  * declaration is not a legal bare statement body; `if (a) var x = 1` does parse,
  * reaches the dispatcher as a `VariableDeclaration`, and is rejected on `kind`
  * inside `variableDeclarationVisitor`; and `if (a) function f() { }` parses
- * under Annex B and is rejected by `dispatchStatement`'s throwing `default`.
+ * under Annex B and is rejected by `dispatchStatement`, whose table omits it.
  *
  * **The fourth is closed by the dispatcher and not by anything here**, which is
  * the one a later phase can reopen: a phase that registers `FunctionDeclaration`

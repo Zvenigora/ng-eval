@@ -115,9 +115,10 @@ describe('blockStatementVisitor', () => {
     it('should dispatch a nested block rather than reject it', () => {
       // A nested block reaches the dispatcher from `blockStatementVisitor`
       // rather than from `programVisitor`, which is the only thing this case
-      // adds over the top-level ones: **both** go through the same `switch`, so
-      // without the `BlockStatement` case the whole file raises, top-level rows
-      // included. Measured - removing that case reddens ~20 cases here, not one.
+      // adds over the top-level ones: **both** go through the same table, so
+      // without `BlockStatement` in it the whole file raises, top-level rows
+      // included. Measured while the table was a `switch` - removing that case
+      // reddened ~20 cases here, not one.
       const context = contextOf();
 
       expect(() => runOn('{ { a } }', context)).not.toThrow();
@@ -187,7 +188,7 @@ describe('blockStatementVisitor', () => {
       // The dispatcher throws from inside the `try`, which is an exit path the
       // body-throws case does not cover: the throw originates in
       // `dispatchStatement` rather than inside a child walk. `a` is still walked
-      // first - the `default` is reached on the second statement, not the first.
+      // first - the refusal is reached on the second statement, not the first.
       const context = contextOf();
 
       expect(() => runOn('{ a; while (false) { 1 } }', context))

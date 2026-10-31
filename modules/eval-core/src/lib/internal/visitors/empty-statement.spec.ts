@@ -8,8 +8,8 @@ const programOf = (source: string): AnyNode =>
 describe('emptyStatementVisitor', () => {
 
   it('should exist so that a stray semicolon is not an unsupported statement', () => {
-    // Its whole reason for being: the dispatcher's default throws, so without
-    // this visitor `a;;b` would raise rather than evaluate.
+    // Its whole reason for being: the dispatcher throws for a type outside its
+    // table, so without this visitor `a;;b` would raise rather than evaluate.
     const state = EvalState.fromContext({ a: 'A', b: 'B' }, {});
 
     expect(evaluate(programOf('a;;b'), state)).toBe('B');

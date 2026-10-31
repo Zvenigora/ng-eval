@@ -9,10 +9,10 @@ import { EMPTY_COMPLETION, EvalState } from '../classes/eval';
  * {@link EMPTY_COMPLETION} and an enclosing statement list keeps whatever
  * preceded it.
  *
- * One line of behaviour, and it exists because the statement dispatcher's
- * `default` throws: without it `a;;b` and `if (x) ;` would start raising
- * "unsupported statement type", which is a divergence from JavaScript nobody
- * chose.
+ * One line of behaviour, and it exists because the statement dispatcher
+ * throws for a type outside its table: without it `a;;b` and `if (x) ;` would
+ * start raising "unsupported statement type", which is a divergence from
+ * JavaScript nobody chose.
  */
 export const emptyStatementVisitor = (node: EmptyStatement, st: EvalState) => {
 

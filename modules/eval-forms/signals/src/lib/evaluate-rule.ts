@@ -68,8 +68,9 @@ import { EvalContext, EvalOptions, EvalState, call, stateCallback } from '@zveni
  *
  * The unwind is a loop to a **depth mark**, not a single `pop()`: one throw
  * can leave more than one scope open, and unwinding to the bottom would drain
- * scopes this call did not push - `evaluate()` is re-entrant through the arrow
- * closure, so the depth on entry is not reliably zero.
+ * scopes this call did not push - the walk is re-entrant through the arrow
+ * closure, whose body runs `eval-core`'s `walkWithoutResult` on the same
+ * state, so the depth on entry is not reliably zero.
  *
  * This helper deliberately does **not** apply the error policy. The throw
  * propagates, and `applyErrorPolicy` sits outside this call in the `LogicFn`

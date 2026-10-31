@@ -222,7 +222,8 @@ describe('statement semantics (plan § 1.1)', () => {
     });
 
     it('should keep the last non-empty value across an empty statement', () => {
-      // `EmptyStatement` exists only because the dispatcher's default throws.
+      // `EmptyStatement` exists only because the dispatcher throws for a type
+      // outside its table.
       expect(run('a;;b', { a: 'A', b: 'B' })).toEqual({ value: 'B', stranded: 0 });
       expect(run('a;;', { a: 'A' })).toEqual({ value: 'A', stranded: 0 });
     });

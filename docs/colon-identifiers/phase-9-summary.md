@@ -65,7 +65,7 @@ the installed acorn. Step 7 widened the helper's parameter type, so a future run
 - **A per-signal parser option in `eval-signals`** — § 8 q5, decided: not provided in Phase 9,
   and reopened only by a consumer that mixes colon and non-colon parsing in one application.
 - **Every unsupported top-level statement refused** — only a label; the rest is
-  [D13](../backlog.md#d13), open, because `eval-core` does not publish its list of supported
+  [D13](../backlog-retired.md#d13), open, because `eval-core` does not publish its list of supported
   statements.
 - **[A30](../backlog-retired.md#a30)** — `ParserService.parserOptions` reaching the services for no acorn
   option — recorded by the plan's probes, not needed by it, open.
@@ -77,7 +77,7 @@ as corpus data, in their rewritten JavaScript form; q1 counts by the expression'
 error text (§ 8 q1).
 
 Opened along the way and still live: [A34](../backlog.md#a34) (step 1), with its second memo (step
-3). Narrowed: [D13](../backlog.md#d13) (step 6). Closed: [A26](../backlog-retired.md#a26) (step 1)
+3). Narrowed: [D13](../backlog-retired.md#d13) (step 6). Closed: [A26](../backlog-retired.md#a26) (step 1)
 and, before step 1, [A29](../backlog-retired.md#a29).
 
 ## 4. What is left after this commit
@@ -95,7 +95,7 @@ rows and the Register history row — [`CONTRIBUTING.md`](../../CONTRIBUTING.md)
   [A29](../backlog-retired.md#a29) and [A31](../backlog-retired.md#a31) still say "not yet
   released", though `eval-core` 0.11.1 released them at `7ee65fc`. Step 7 left them to it, since
   that commit writes release status anyway;
-- turns [D13](../backlog.md#d13)'s "ships in `eval-forms` 0.5.0" into "released … tagged".
+- turns [D13](../backlog-retired.md#d13)'s "ships in `eval-forms` 0.5.0" into "released … tagged".
 
 Step 4's record asked for the `Jest did not exit one second after the test run has completed`
 message to be rechecked once the corpus was in. Step 7's gate runs, each with the corpus, did not

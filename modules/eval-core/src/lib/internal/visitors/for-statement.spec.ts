@@ -49,7 +49,7 @@ describe('forStatementVisitor', () => {
       // § 1.1's row: measured **`NaN`** with **3 stranded** before Phase 2. The
       // base walker walked the declarator's `id` as a read, so `i` resolved to
       // nothing and `i < 3` was `undefined < 3`; since step 1 the row throws
-      // from the dispatcher's `default`. This is the step that returns `2`.
+      // from the dispatcher's refusal. This is the step that returns `2`.
       const state = EvalState.fromContext({}, {});
 
       expect(evaluate(programOf('for (let i = 0; i < 3; i++) { i }'), state)).toBe(2);

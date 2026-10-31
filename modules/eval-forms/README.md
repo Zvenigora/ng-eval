@@ -173,7 +173,7 @@ depends on it directly.
 | `toVisible(value)` / `toText(value)` | core | The two coercions, exported so an adapter or a test can apply the same rule. |
 | `ExpressionErrorPolicy` | core | `'throw' \| 'undefined' \| ((error) => unknown)`. |
 | `applyErrorPolicy(run, policy?)` | core | Runs `run` under a policy, **new in 0.2.0**. Rethrows a `SignalContextWriteError` whatever the policy says — see [When a rule fails](#when-a-rule-fails). Exported so an adapter applies the rule rather than reimplementing it. |
-| `guardIdentifiers(expression, node)` | core | Throws if a parsed expression names a member of `Object.prototype` as an identifier, **new in 0.3.0**, or parses as a top-level labeled statement — see [Colon-joined names](#colon-joined-names). Both adapters call it before compiling — see [Prototype-shadowed identifiers are rejected](#prototype-shadowed-identifiers-are-rejected). Exported for the same reason as `applyErrorPolicy`. |
+| `guardIdentifiers(expression, node)` | core | Throws if a parsed expression names a member of `Object.prototype` as an identifier, **new in 0.3.0**, or holds a statement `eval-core` does not evaluate anywhere in it — a label at the top level since 0.5.0, and anywhere, with every other such statement, **since 0.8.0** — see [Colon-joined names](#colon-joined-names). Both adapters call it before compiling — see [Prototype-shadowed identifiers are rejected](#prototype-shadowed-identifiers-are-rejected). Exported for the same reason as `applyErrorPolicy`. |
 | `createExpressionRules(model, options?)` | `/signals` | The primary API. Binds one model signal and returns `evalVisible` / `evalText` / `evalDisabled`. |
 | `ExpressionRules` | `/signals` | The three registrars, each `(path, expression, options?) => void`. |
 | `ExpressionRuleOptions` | `/signals` | `{ eval?: EvalOptions; onError?: ExpressionErrorPolicy; colonIdentifiers?: boolean }`, accepted by the factory and per registration. |
@@ -377,7 +377,7 @@ later as an evaluation result nobody can trace:
 | A field name that is a member of `Object.prototype` | See below. |
 | A control in the group that is not a `FormControl` | Nested groups and `FormArray` are out of scope; the alternative is a group's *aggregate object* arriving where a value was expected. |
 | An expression naming a member of `Object.prototype` | The same failure as the name, reached through the expression — see [Expressions are validated too](#expressions-are-validated-too). |
-| An expression that parses as a labeled statement | It never evaluates, so it would render blank. A rule that starts with a colon-joined name parses that way when colon-joined names are off — see [Colon-joined names](#colon-joined-names). |
+| An expression holding a statement `eval-core` does not evaluate — a label, a `while`, a `switch` — anywhere in it, a function body or an untaken branch included | Such a statement throws each time evaluation reaches it, so the rule would render blank; one in a branch or a function that never runs is code that can never evaluate, and is refused at the bind rather than left to a later evaluation. A rule that starts with a colon-joined name parses as a label when colon-joined names are off — see [Colon-joined names](#colon-joined-names). |
 
 A rule that does not parse ([When a rule fails](#when-a-rule-fails)) throws from
 `bindFieldProperties` too, after the fields before it are built, and the binding
@@ -516,10 +516,14 @@ binding.fields['comments'].visible?.();   // => true
 `Q1:1 == 1` is JavaScript's label `Q1` over `1 == 1`, which `eval-core` never evaluates: up to 0.4.x
 such a rule bound, and under the default `onError` the field rendered blank, with nothing reported.
 `bindFieldProperties` now throws instead, naming the rule, the label and the switch. So it does for
-a label written with a space, `Q1: 1`, which is a label with the switch on too. Only a label among
-the rule's own statements is refused: one inside a function the rule defines is not, since that
-function may never be called, and nor is one inside a block. A colon-joined name anywhere else —
-`x + Q1:1 > 0` — is a syntax error with the switch off, thrown when the rule is compiled, as before.
+a label written with a space, `Q1: 1`, which is a label with the switch on too. Since 0.8.0 a label
+is refused anywhere in the rule, inside a block or a function the rule defines as well, and so is
+every other statement `eval-core` does not evaluate, with a message that names its type and quotes
+the message `eval-core`'s `findUnsupportedStatement` reports: such a statement throws each time
+evaluation reaches it,
+and one in a branch or a function that never runs is still code that can never evaluate. A
+colon-joined name anywhere else — `x + Q1:1 > 0` — is a syntax error with the switch off, thrown
+when the rule is compiled, as before.
 
 ## Reactivity, and its two holes
 
@@ -870,10 +874,10 @@ options it is given, and has no injector to resolve a service with. So an applic
 it for `/reactive` sets this option too, for one rule string to mean the same thing at both entry
 points.
 
-As at `/reactive`, a rule that parses as a labeled statement is refused at registration — from
-`form()`, like the identifier check — naming the rule, the label and the switch. With the option
-off, that is what a rule starting with a colon-joined name parses as; see
-[Colon-joined names](#colon-joined-names).
+As at `/reactive`, a rule holding a labeled statement, anywhere in it, is refused at registration —
+from `form()`, like the identifier check — naming the rule, the label and the switch, and so is a
+rule holding any other statement `eval-core` does not evaluate. With the option off, a label is what
+a rule starting with a colon-joined name parses as; see [Colon-joined names](#colon-joined-names).
 
 ### Two things that are not available here
 

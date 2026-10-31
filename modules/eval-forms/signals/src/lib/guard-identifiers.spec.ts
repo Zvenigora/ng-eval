@@ -189,6 +189,10 @@ describe('guardIdentifiers', () => {
  * `readme-examples.spec.ts` beside this file reaches it. Every form and model
  * holds `Q1:1` and `x` as `1`, so an evaluated rule reads `true` and a blank -
  * what a label rendered before the refusal (F1) - reads `false`.
+ *
+ * Since D13 (`docs/a24/plan.md` step 6) a label is refused anywhere in the
+ * rule, and so is every other statement `eval-core` does not evaluate; those
+ * rows are here too, for the same two harnesses and the same two settings.
  */
 describe('guardIdentifiers over colon-joined names, at both entry points', () => {
 
@@ -209,6 +213,11 @@ describe('guardIdentifiers over colon-joined names, at both entry points', () =>
     `which never evaluates. A colon-joined key needs colonIdentifiers on and no space ` +
     `around the colon - provideColonIdentifiers() in the application's root providers ` +
     `for /reactive, or the colonIdentifiers rule option for /signals.`;
+
+  const unevaluated = (expression: string, type: string, message: string): string =>
+    `Error: Expression '${expression}': it holds a ${type}, which eval-core does not ` +
+    `evaluate (${message}). A rule is refused for it wherever it sits, in a function or ` +
+    `branch that may never run too.`;
 
   // The switch is the provider, configured per block below; the binding is
   // released before the outcome is returned.
@@ -301,22 +310,48 @@ describe('guardIdentifiers over colon-joined names, at both entry points', () =>
       expect(viaSignals('x; L: 1', on)).toEqual({ thrown: labeled('x; L: 1', 'L') });
     });
 
-    // Criterion 4's bound: a label inside a function body is left alone, since
-    // the function may never be called. This one is - `map` calls it, and the
-    // label throws there, under the default policy a blank - but whether a
-    // nested statement runs is not the guard's to decide.
-    it('should not refuse a label nested in a function body', () => {
-      expect(viaReactive('[1].map(() => { L: 1 })')).toEqual({ visible: false });
-      expect(viaSignals('[1].map(() => { L: 1 })', on)).toEqual({ visible: false });
+    // A label anywhere in the rule, with the label's own message (D13, which
+    // reverses Phase 9 S 3.8's bound). Up to 0.7.x both of these registered
+    // and read blank: only the program's own statements were checked, so the
+    // label in a function body, and the one in a top-level block, threw at
+    // every evaluation instead.
+    it('should refuse a label nested in a function body', () => {
+      expect(viaReactive('[1].map(() => { L: 1 })'))
+        .toEqual({ thrown: labeled('[1].map(() => { L: 1 })', 'L') });
+      expect(viaSignals('[1].map(() => { L: 1 })', on))
+        .toEqual({ thrown: labeled('[1].map(() => { L: 1 })', 'L') });
     });
 
-    // A pinned known limit, not a design: a block at the top level always
-    // runs, and the label in it throws there, but only the program's own
-    // statements are checked - so this registers and renders blank, as every
-    // other statement `eval-core` refuses does (`docs/backlog.md` D13).
-    it('should leave a label inside a top-level block to D13', () => {
-      expect(viaReactive('{ L: 1 }')).toEqual({ visible: false });
-      expect(viaSignals('{ L: 1 }', on)).toEqual({ visible: false });
+    it('should refuse a label inside a top-level block', () => {
+      expect(viaReactive('{ L: 1 }')).toEqual({ thrown: labeled('{ L: 1 }', 'L') });
+      expect(viaSignals('{ L: 1 }', on)).toEqual({ thrown: labeled('{ L: 1 }', 'L') });
+    });
+
+    // Every other statement `eval-core` does not evaluate, with its type and
+    // `eval-core`'s message written out rather than read from the export, so a
+    // wrong message from either library fails here. The top-level `while` is
+    // the one a check of the program's own statements would also catch; the
+    // branch and the function body are the two it would not. Up to 0.7.x the
+    // branch registered and read `false`, since it is never taken, and the
+    // function body registered and threw when `map` called it, at every
+    // evaluation - under the default policy, a blank.
+    it.each<[string, string, string]>([
+      ['while (false) {}', 'WhileStatement', 'Unsupported statement type: WhileStatement'],
+      [
+        'if (false) { while (1) {} }',
+        'WhileStatement',
+        'Unsupported statement type: WhileStatement',
+      ],
+      [
+        '[1].map(() => { switch (1) {} })',
+        'SwitchStatement',
+        'Unsupported statement type: SwitchStatement',
+      ],
+    ])('should refuse %s at both entry points', (expression, type, message) => {
+      const expected = { thrown: unevaluated(expression, type, message) };
+
+      expect(viaReactive(expression)).toEqual(expected);
+      expect(viaSignals(expression, on)).toEqual(expected);
     });
   });
 

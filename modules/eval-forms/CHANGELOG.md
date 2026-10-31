@@ -8,6 +8,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Breaking
+- **A rule holding a statement `eval-core` does not evaluate is refused at registration, wherever
+  the statement sits, at both entry points** ([D13](../../docs/backlog-retired.md#d13)) —
+  `guardIdentifiers` asks `eval-core`'s `findUnsupportedStatement`, new in `eval-core` 0.15.0,
+  before it checks identifiers, in place of its own look at the rule's top-level statements for a
+  label. Up to 0.7.1 only a top-level label was refused. A label inside a block or inside a function
+  the rule defines, and every other such statement, a `while` or a `switch`, registered: it threw
+  each time evaluation reached it, a blank under the default `onError`, and in an untaken branch or
+  a function never called it threw nothing, so such a rule evaluated normally. Each now throws at
+  `bindFieldProperties` and from `form()`: a rule whose refused statement sat in code that never
+  ran, and which rendered a value, now fails to bind. A label keeps its message, which names the label and each entry point's switch. Any
+  other statement's names the rule and the statement's type, and quotes `eval-core`'s message:
+  `Expression 'while (false) {}': it holds a WhileStatement, which eval-core does not evaluate
+  (Unsupported statement type: WhileStatement). A rule is refused for it wherever it sits, in a
+  function or branch that may never run too.` This reverses the
+  [Phase 9 plan](../../docs/colon-identifiers/phase-9-plan.md)'s § 3.8, which left a label in a
+  function body alone. No symbol changes shape.
+
+### Changed
+- `guardIdentifiers`' JSDoc, `bindFieldProperties`' `@param schema` and the README say what is
+  refused: every statement `eval-core` does not evaluate, anywhere in the rule, not only a top-level
+  label. `evaluateRule`'s comment, internal to `/signals`, says an arrow function's body runs
+  `eval-core`'s `walkWithoutResult`, not `evaluate()`, as it has since `eval-core` 0.15.0.
+  Documentation only.
+
 ---
 
 ## [0.7.1] - 2026-10-29
@@ -138,7 +163,7 @@ release passes it, and the `eval-signals` floor to 0.5.1, the first that can sit
   with a colon-joined name parses as when `colonIdentifiers` is off — `Q1:1 == 1` is the label
   `Q1` over `1 == 1` — so the message names the rule, the label and each entry point's switch.
   A label inside a function the rule defines, or inside a block, is not refused; the other
-  statements `eval-core` does not evaluate are [D13](../../docs/backlog.md#d13).
+  statements `eval-core` does not evaluate are [D13](../../docs/backlog-retired.md#d13).
 
 ### Added
 - **`/signals`: `ExpressionRuleOptions.colonIdentifiers`**, on the factory and per registration,

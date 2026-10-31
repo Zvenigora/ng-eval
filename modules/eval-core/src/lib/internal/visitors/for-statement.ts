@@ -13,12 +13,12 @@ import { contextPop, contextPush } from './context-method';
  * § 1.1's row measured **`NaN`** with three stranded values before Phase 2: the
  * base walker handed the declarator's `id` to `identifierVisitor`, so `i`
  * resolved against the context rather than binding, and `i < 3` compared
- * `undefined`. Since step 1 the row throws from `dispatchStatement`'s `default`;
- * this visitor is what returns `2`.
+ * `undefined`. Since step 1 the row throws from `dispatchStatement`, which
+ * refuses a type outside its table; this visitor is what returns `2`.
  *
  * `for…of`, `for…in`, `while` and `do…while` stay out of the phase (§ 2) and
- * keep throwing - they are separate node types and reach the dispatcher's
- * `default` unchanged.
+ * keep throwing - they are separate node types, outside the dispatcher's table,
+ * and are refused unchanged.
  *
  * **One scope for the loop, not one per iteration.** A draft of the plan
  * specified a fresh scope per iteration, seeded from the head and copied back
@@ -38,10 +38,10 @@ import { contextPop, contextPush } from './context-method';
  * through `dispatchStatement`; `for (i = 0; …)` parses it as an `Expression` and
  * takes a raw `callback`. Both pop exactly one - the declaration's `EMPTY`, or
  * the expression's value - so § 3.1's arithmetic is identical for the two and
- * the split is invisible to it. What depends on the split is the throwing
- * `default`: only the `dispatchStatement` route has one, so an `init` that is a
- * statement type this library does not implement is rejected rather than handed
- * to the base walker. `body` is a `Statement` and dispatches for the same
+ * the split is invisible to it. What depends on the split is the refusal of a
+ * type outside the table: only the `dispatchStatement` route has one, so an
+ * `init` that is a statement type this library does not implement is rejected
+ * rather than handed to the base walker. `body` is a `Statement` and dispatches for the same
  * reason; `test` and `update` are expressions and do not.
  *
  * Arithmetic (§ 3.1): pops 1 for `init` when present, then per iteration 1 for

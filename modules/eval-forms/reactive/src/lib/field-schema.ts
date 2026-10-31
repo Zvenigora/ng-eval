@@ -359,9 +359,10 @@ const validate = (
  *                 an evaluation result nobody can trace. So does a rule that
  *                 `guardIdentifiers` refuses, parsed as it is compiled: one
  *                 naming a member of `Object.prototype` as an identifier
- *                 (since 0.3.0), or one that parses as a top-level labeled
- *                 statement (since 0.5.0), which is what a rule starting with
- *                 a colon-joined name is when `eval-core`'s
+ *                 (since 0.3.0), or one holding a statement `eval-core` does
+ *                 not evaluate, anywhere in it (since 0.8.0; a top-level label
+ *                 since 0.5.0) - a label is what a rule starting with a
+ *                 colon-joined name is when `eval-core`'s
  *                 `provideColonIdentifiers()` is absent. A rule that does not
  *                 parse throws from its compile, later in this call.
  * @param group - A flat `FormGroup` of `FormControl`s.
