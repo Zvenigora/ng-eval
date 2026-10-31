@@ -12,6 +12,21 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+---
+
+## [0.15.0] - 2026-10-31
+
+**An `await` gives JavaScript's answer or throws.** A minor carrying breaking changes
+([A25](../../docs/backlog-retired.md#a25), [A24](../../docs/backlog-retired.md#a24); the
+[A24 plan](../../docs/a24/plan.md)), with [A27](../../docs/backlog-retired.md#a27)'s and
+[A38](../../docs/backlog-retired.md#a38)'s fixes and one export, `findUnsupportedStatement`
+([D13](../../docs/backlog-retired.md#d13), the first half). No exported symbol changes shape: the
+`.d.ts` differs from 0.14.1's by that function and its `acorn` types, and otherwise in JSDoc only,
+A27's. What changes is behaviour — an `await` passes its operand through, with no timer, and is
+refused where its value is not the result; `state.result` describes the walk the entry point ran;
+and a tag receives JavaScript's frozen template object. `eval-signals` 0.8.0 and `eval-forms` 0.8.0
+raise their floors to it.
+
 ### Breaking
 - **An `await` gives its operand itself** ([A25](../../docs/backlog-retired.md#a25)). It gave a
   new promise racing the operand, even for one that is not thenable. So on the sync path — `eval`,

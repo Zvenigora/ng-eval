@@ -1514,8 +1514,8 @@ definition as it refuses an assignment, so that row pins the message and not the
 ## A24 — An `await` is a pass-through: inside an `async` arrow it hands the walk a promise as an operand
 
 **Package** core · **Kind** decision, then fix · **Status** **Retired — decided and fixed 2026-10-30**,
-as step 4 of the [A24 plan](a24/plan.md); unreleased, in `eval-core` 0.15.0. Was Open. Opened
-2026-10-07 by the Phase 5 plan
+as step 4 of the [A24 plan](a24/plan.md); released in `eval-core` 0.15.0, pending publish. Was Open.
+Opened 2026-10-07 by the Phase 5 plan
 
 *Fixed* 2026-10-30. An `await` is accepted only where its value is the walk's result (that plan's
 § 3.2): as the walk's root, which an arrow's expression body is for the arrow's own walk, or as the
@@ -1632,8 +1632,8 @@ findings 2 and 3.
 ## A25 — `awaitVisitor`'s timeout race: an uncleared timer, an undocumented key, a mutated error
 
 **Package** core · **Kind** fix · **Status** **Retired — decided and fixed 2026-10-30**, as step 3 of
-the [A24 plan](a24/plan.md); unreleased, in `eval-core` 0.15.0. Was Open. Opened 2026-10-07 by the
-Phase 5 plan
+the [A24 plan](a24/plan.md); released in `eval-core` 0.15.0, pending publish. Was Open. Opened
+2026-10-07 by the Phase 5 plan
 
 *Fixed* 2026-10-30. `awaitVisitor` walks its operand, pops it and pushes it unchanged (that plan's
 § 3.1). `createTimeoutPromise`, `ensurePromise`, `DEFAULT_AWAIT_TIMEOUT`, the `__awaitTimeout` read
@@ -1849,8 +1849,8 @@ with options of its own needs this first — the plan's option B is the worked c
 ## A27 — A nested `evaluate` writes the enclosing walk's `EvalResult`
 
 **Package** core · **Kind** decision · **Status** **Retired — decided and fixed 2026-10-30**;
-unreleased, in `eval-core`'s next release. Was Open — recorded, not scheduled. Opened 2026-10-08 by
-Phase 5 step 1
+released in `eval-core` 0.15.0, pending publish. Was Open — recorded, not scheduled. Opened
+2026-10-08 by Phase 5 step 1
 
 *Decided and fixed* 2026-10-30, as a one-commit item of a batch. `state.result` describes the last
 entry-point walk on the state, and nothing else:
@@ -2617,8 +2617,9 @@ as a Fixed entry.
 <a id="a38"></a>
 ## A38 — A tag's strings array is not JavaScript's
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-30**; unreleased, in
-`eval-core`'s next release. Was Open. Opened 2026-10-15 by the code review of the A35 plan's step 1
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-10-30**; released in
+`eval-core` 0.15.0, pending publish. Was Open. Opened 2026-10-15 by the code review of the A35 plan's
+step 1
 
 *Fixed* 2026-10-30, as a one-commit item of a batch. `tagged-template-expression.ts` hands a tag
 JavaScript's template object: the cooked strings, an invalid escape's cooked string `undefined`
@@ -5432,9 +5433,10 @@ They get collected at TestBed teardown through the `DestroyRef` net, which is an
 ## D13 — A rule whose top-level statement `eval-core` refuses registers, and renders blank
 
 **Package** forms, core · **Kind** decision, then fix · **Status** **Retired — decided 2026-10-30,
-fixed 2026-10-31**, as steps 5 and 6 of the [A24 plan](a24/plan.md); unreleased, in `eval-core`
-0.15.0 and `eval-forms` 0.8.0. Was Open, narrowed. Opened 2026-10-10 by the Phase 9 plan, whose
-step 6 refused a top-level label, released 2026-10-14 in `eval-forms` 0.5.0, tagged 3466c80
+fixed 2026-10-31**, as steps 5 and 6 of the [A24 plan](a24/plan.md); released in
+`eval-core` 0.15.0 and `eval-forms` 0.8.0, pending publish. Was Open, narrowed. Opened 2026-10-10
+by the Phase 9 plan, whose step 6 refused a top-level label, released 2026-10-14 in `eval-forms`
+0.5.0, tagged 3466c80
 
 *Fixed* 2026-10-31, in two halves. `eval-core`'s `findUnsupportedStatement`, step 5, reports the
 first statement in a tree, in source order, that evaluation would refuse, with the message evaluation

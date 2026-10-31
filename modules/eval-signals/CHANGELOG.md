@@ -8,7 +8,54 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+---
+
+## [0.8.0] - 2026-10-31
+
+**An `await` is evaluated only where its value is the result, and the `eval-core` range moves to
+0.15.** A breaking minor: no symbol of this package changes shape, and **no shipped code of it
+changes**, so the `.d.ts` is byte-identical to 0.7.0's. What changes is the behaviour it forwards
+from `@zvenigora/ng-eval-core` 0.15.0 ([A24](../../docs/backlog-retired.md#a24),
+[A25](../../docs/backlog-retired.md#a25); the [A24 plan](../../docs/a24/plan.md)). That release
+also carries [A27](../../docs/backlog-retired.md#a27) and [A38](../../docs/backlog-retired.md#a38),
+measured through this package: `[1, 2].map(x => x * k)` recomputes to `[3, 6]`, and
+`` String.raw`a\nb` `` gives `"a\\nb"`, while `` Object.assign`x` `` is still refused by the write
+guard.
+
+### Breaking
+- **The `eval-core` range is `>=0.15.0 <0.16.0`**, where it was `>=0.14.0 <0.15.0`: the behaviour
+  below exists only in 0.15.0.
+- **An `await` anywhere but the result is refused.** Up to 0.7.0 an `await` handed the walk a
+  promise wherever it sat, so as an operand it gave a wrong value:
+  `(async () => (await loadUser(id)).name)()` was `undefined`, and `(async () => (await p) * 10)()`
+  `NaN`. Each now throws `Unsupported await position: an await is evaluated only as the result of
+  the expression - …`. The async signal's run rejects with it, and `status()` reads `'error'`; a
+  `createEvalSignal` over it throws on read under the default `onError`. So do forms that resolved
+  before, since in none is the `await`'s value the result, such as `(async () => [await p])()` and
+  `(async () => f(await p))()`; `eval-core` 0.15.0's CHANGELOG lists them.
+- **An accepted `await` gives its operand itself on the sync path.** `createEvalSignal` over
+  `(async () => await p)()` reads `p`, the caller's promise, where it read a new promise racing it,
+  and over `(async () => await 1)()` reads `1`, where it read a promise resolving to `1`. The async
+  signal's resolved value is unchanged.
+- **No `await` is bounded in time.** Each raced its operand against a 30-second timer, which
+  rejected the run if the operand had not settled within it. Nothing arms a timer now; a host that
+  wants a bound wraps its own promise.
+
+### Fixed
+- **A rejection behind an accepted `await` reaches the async signal as it was raised.** An `Error`
+  arrives by identity with its message unchanged, where ` at position <start>-<end>` was appended
+  to it once per evaluation that saw it; one that is not an `Error` arrives wrapped as it does with
+  no `await`, `'x'` as an `Error` `"x"`, where it was `Await expression failed: x at position …`.
+  `onError` sees the same.
+- **No `await` arms a timer it never clears.** Each armed a 30 000 ms `setTimeout`, cleared by
+  nothing, so under Angular's zone an application waiting for stability, server rendering
+  included, waited out 30 s per `await` evaluated, beside the run's own pending task
+  ([Stability](README.md#stability)).
+
 ### Changed
+- The README's "An `async` arrow's `await` is a pass-through" is rewritten for the behaviour above:
+  where an `await` is accepted, the refusal's message, and the two-signal form for a value used as
+  an operand. Its link to `eval-core`'s A24 follows the entry to `docs/backlog-retired.md`.
 - The comment on the recompute's scope-depth unwind in `eval-signal.ts` says every scope push site
   in `eval-core` pops in a `finally`, and the arrow site, the one the unwind was written against,
   since Phase 2 step 0 ([A9](../../docs/backlog-retired.md#a9)). It said "both visitor push sites",

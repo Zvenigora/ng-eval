@@ -1,6 +1,12 @@
 # A24, A25 and D13 — the await track: `await` where its value is the result, and every refused statement reported (`@zvenigora/ng-eval-core`, then `eval-signals` and `eval-forms`)
 
 **Date**: October 30, 2026
+**Revision**: 7 — step 7a: the three releases merged into one release commit, 7a, and one
+post-publish record, 7b, and steps 8a to 9b removed, since a split release leaves `master` red at
+the workspace lint (§ 4's preamble); the root `CHANGELOG.md` leaves the release's file list, since
+its list names packages, not versions; 7b's list widened at the code review to what 0.14.1's
+post-publish commit changed; step 7a's outcome.
+
 **Revision**: 6 — step 6: criterion 4 names the label's name, which the type's narrowing reads;
 P6-1's and P6-3's predicted red sets corrected, measured, and P6-1b added; the file list widened at
 its gate by the sweep of the dispatcher's `default` and the `docs/README.md` link, and at its code
@@ -385,7 +391,7 @@ one, and step 6 applies it. The order stays: statements first, then identifiers,
 | `modules/eval-core/README.md`, `### How statements differ from JavaScript` | 5 | The export, in a code span and one executed block |
 | `modules/eval-forms/README.md:176`, `:380`, `:515-522`, `:873-876` | 6 | Every refused statement, anywhere in the rule, not only a top-level label |
 | `guardIdentifiers`' JSDoc, `evaluate-rule.ts:69-72` | 6 | The same; and the nested walk is `walkWithoutResult` |
-| `modules/eval-signals/README.md:414-418` | 8 | "An `async` arrow's `await` is a pass-through" becomes the accepted positions and the refusal |
+| `modules/eval-signals/README.md:414-418` | 7a (*was 8; moved in step 7a*) | "An `async` arrow's `await` is a pass-through" becomes the accepted positions and the refusal |
 
 The `### Breaking` entry for 0.15.0 names the forms that resolved and are now refused (§ 1.2 finding
 5), the sync path's operand in place of a promise (finding 3), and the 30 s bound that is gone.
@@ -406,6 +412,15 @@ post-publish record", and steps 8 and 9 as releases. A publish by the maintainer
 commit and its record, and one step is one commit ([SR34](../standing-rules.md#sr34)), so each release
 step is two: 7a and 7b, 8a and 8b, 9a and 9b. The numbering of the request's steps is kept.
 
+**The three releases are one** (*corrected in step 7a*, [SR4](../standing-rules.md#sr4)). Step 7a
+releases `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0 in one commit, as the A45
+plan's 0d305a3 did, and step 7b is the one post-publish record, which tags all three; steps 8a, 8b,
+9a and 9b are removed, and step 10 keeps its number. The workspace lint's `@nx/dependency-checks`
+reads each downstream package's peer range against the workspace `eval-core`, so `eval-core` at
+0.15.0 beside a downstream range of `>=0.14.0 <0.15.0` fails `eval-signals:lint` and
+`eval-forms:lint`: measured at step 7a's first gate, with `eval-core` alone at 0.15.0. A split
+release would leave `master` red between its steps.
+
 | Step | Subject | Files | Rows: `eval-core` / `eval-signals` / `eval-forms` | Ships in |
 | :--- | :--- | :--- | :--- | :--- |
 | 1 | This plan and its records | `docs/a24/plan.md` (new), `docs/README.md`, `CLAUDE.md`, `.claude/skills/step/SKILL.md`, `docs/backlog.md` | 0 / 0 / 0 | no package |
@@ -414,12 +429,8 @@ step is two: 7a and 7b, 8a and 8b, 9a and 9b. The numbering of the request's ste
 | 4 | A24 | `await-expression.ts`, `evaluate.ts`, `arrow-function-expression.ts`, `recursive-visitors.ts` if the table's entry changes, the spec's step-4 rows, `README.md`, `CHANGELOG.md`, `eval-signal-async.spec.ts`, the register | **+7** / 0 / 0 | `eval-core` 0.15.0 |
 | 5 | D13 in `eval-core` | `statement-support.ts` (new), `dispatch-statement.ts`, `variable-declaration.ts`, `functions/unsupported-statement.ts` (new) and its spec (new), `functions/public-api.ts`, `README.md`, `readme-examples.spec.ts`, `CHANGELOG.md` | **+29** / 0 / 0 | `eval-core` 0.15.0 |
 | 6 | D13 in `eval-forms` | `guard-identifiers.ts`, `guard-identifiers.spec.ts`, `evaluate-rule.ts`, `README.md`, `CHANGELOG.md`, the register; D13's link targets in the Phase 9 plan and summary, `docs/README.md` and this document | 0 / 0 / **+6** | `eval-forms` 0.8.0 |
-| 7a | `eval-core` 0.15.0, the release commit | `package.json`, `CHANGELOG.md`, the root `CHANGELOG.md`, the register, the skill | 0 / 0 / 0 | the release |
-| 7b | Its post-publish record | the register's Publication status, the CHANGELOG date if npm's differs, the skill, this document | 0 / 0 / 0 | no package |
-| 8a | `eval-signals` 0.8.0 | `package.json`, `CHANGELOG.md`, `README.md`, the root `CHANGELOG.md`, the register, the skill | 0 / 0 / 0 | the release |
-| 8b | Its post-publish record | as 7b | 0 / 0 / 0 | no package |
-| 9a | `eval-forms` 0.8.0 | `package.json`, `CHANGELOG.md`, `README.md`'s peer lines, the root `CHANGELOG.md`, the register, the skill | 0 / 0 / 0 | the release |
-| 9b | Its post-publish record | as 7b | 0 / 0 / 0 | no package |
+| 7a | `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0, the release commit (*merged in step 7a*) | each package's `package.json` and `CHANGELOG.md`; `eval-signals`' `README.md`, its Install peer line and floor paragraph and its `await` paragraph, the moved row's comment in `eval-signal-async.spec.ts`, and `tools/published-links.txt`; `eval-forms`' `README.md`, its peer lines and its Versions floor paragraph; the register, the skill (*corrected in step 7a*: not the root `CHANGELOG.md`) | 0 / 0 / 0 | the release |
+| 7b | The post-publish record of all three | the register's Publication status, its *Unreleased* row made the release's, "Work in flight", and the released entries' statuses in the index and in `backlog-retired.md`; `CLAUDE.md`'s published versions; the three tags; a CHANGELOG date if npm's differs, the skill, this document (*widened in step 7a*) | 0 / 0 / 0 | no package |
 | 10 | Retrospect | this document's § 10, `CLAUDE.md`, `docs/README.md`, the register, the skill | 0 / 0 / 0 | no package |
 
 From 3187 / 444 / 380, `eval-core` is at 3250 after step 2, 3252 after step 3, 3259 after step 4 and
@@ -675,11 +686,12 @@ step-4 flip rewrites a row in place and moves no count. Every row "moves" below 
 - **Rows that move**: the 32 cases marked `4`; `eval-signal-async.spec.ts:1388-1412`, rewritten
   in place to assert § 3.2's message in full ([SR18](../standing-rules.md#sr18)), so `eval-signals`
   stays at 444.
-- **`eval-signals`' README is left as it is until step 8a.** From this step its
+- **`eval-signals`' README is left as it is until step 7a** (*was 8a; renumbered in step 7a*). From this step its
   `:414-418` (`NaN` and `undefined` for an operand `await`) no longer describes the workspace, while
   the moved row asserts the refusal. It stays true of every published combination, since 0.7.0
   declares `eval-core` `<0.15.0`, so it is not false now in [SR31](../standing-rules.md#sr31)'s sense;
-  the moved row's comment says that it mirrors the paragraph step 8a writes.
+  the moved row's comment said that it mirrors the paragraph step 8a would write, the paragraph
+  step 7a wrote.
 - **Exit criteria**:
   1. Every case marked `4` throws § 3.2's message, asserted in full ([SR18](../standing-rules.md#sr18)).
   2. A1's rows and `hooks.spec.ts:296-378` are green and unmodified, as in step 3.
@@ -706,7 +718,7 @@ step-4 flip rewrites a row in place and moves no count. Every row "moves" below 
   - **P4-8** *Wrong*: unwrap one level instead of looping. Red: the block row, the one with two
     levels.
 - **Ships in**: `eval-core` 0.15.0. The `eval-signals` spec ships in no package; its README waits for
-  step 8a.
+  step 7a.
 - **Outcome** (2026-10-30):
   - **The code is `a24.patch`'s § 3.2 hunks**, applied by hand onto step 3's visitor after the patch's
     SHA-256 was checked ([SR32](../standing-rules.md#sr32)): the accepted-position table
@@ -736,7 +748,8 @@ step-4 flip rewrites a row in place and moves no count. Every row "moves" below 
     their native arm. `eval-signal-async.spec.ts:1388-1412` is rewritten in place and renamed
     "should read a member off the promise in operand position, and refuse an await there": its
     `arrow` is `'error'` after the flush and its read throws an `Error` equal to the message in full.
-    Its comment says the README paragraph it contradicts stays until step 8a, and why.
+    Its comment said the README paragraph it contradicts stays until step 8a, and why; step 7a,
+    which took 8a's work, rewrote both.
   - **The new rows**, `await-position.spec.ts`: R1 and R2, the `await` of `(await p) * 10` walked
     alone (accepted, `p` itself) and inside the program (refused), in both orders; H1, the program
     under a wildcard hook, which sees `BinaryExpression` opened, no `before` for the `await`, and
@@ -1014,8 +1027,8 @@ step-4 flip rewrites a row in place and moves no count. Every row "moves" below 
   - **P6-2** *Wrong*: the generic message for a label. Red: every label row.
   - **P6-3** *Wrong*: the guard skipped in `/reactive`. Red: each row's `/reactive` half, and every
     case elsewhere that expects `/reactive` to refuse a rule's identifier (*corrected in step 6*).
-- **Ships in**: `eval-forms` 0.8.0, which step 9a releases with the `eval-core` floor that has the
-  export.
+- **Ships in**: `eval-forms` 0.8.0, which step 7a (*was 9a*) releases with the `eval-core` floor
+  that has the export.
 - **Outcome** (2026-10-31):
   - **The code**: `guardIdentifiers` calls `findUnsupportedStatement(node)` before its identifier
     walk, in place of its loop over `node.body`. A `LabeledStatement` throws today's message, with
@@ -1102,40 +1115,149 @@ step-4 flip rewrites a row in place and moves no count. Every row "moves" below 
     in D13's retired entry. Kept, with its reason above: `statement-support.ts`' plain-text D13
     citation. The gate's `build` and counts were predictions until it ran.
 
-### Steps 7a and 7b — `eval-core` 0.15.0
+### Steps 7a and 7b — `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0
 
-- **7a** follows CONTRIBUTING's Releasing: `package.json` to 0.15.0, the `[Unreleased]` entry under its
-  heading, the root `CHANGELOG.md`'s list, the register's "Work in flight", the skill's state. The built
-  `.d.ts` is compared with 0.14.1's tarball: it differs by the export and by JSDoc, A27's and this
-  plan's. The release is breaking by behaviour (§ 1.2 findings 3 and 5), not by shape
-  ([SR12](../standing-rules.md#sr12)).
-- **7b**, after the maintainer publishes: the Publication status row and the annotated tag, which
-  `tools/release-tags.mjs` checks; the CHANGELOG date if npm's UTC date differs; the skill; this
-  document.
+*Merged in step 7a* ([SR4](../standing-rules.md#sr4); § 4's preamble): this section held
+`eval-core` alone, and steps 8a and 8b `eval-signals`, 9a and 9b `eval-forms`. Their work is 7a's
+and 7b's below, and their sections are removed.
+
+- **7a** follows CONTRIBUTING's Releasing for the three packages at once, as 0d305a3 did:
+  - `eval-core`: `package.json` to 0.15.0, the `[Unreleased]` entry under its heading. The built
+    `.d.ts` is compared with 0.14.1's tarball: it differs by the export and by JSDoc, A27's and this
+    plan's. The release is breaking by behaviour (§ 1.2 findings 3 and 5), not by shape
+    ([SR12](../standing-rules.md#sr12)).
+  - `eval-signals` (*was 8a*): the version to 0.8.0 and the peer `@zvenigora/ng-eval-core` to
+    `>=0.15.0 <0.16.0`, in `package.json` and in every README line that quotes it
+    (`public-api.spec.ts`' peer case is the witness); the README's "An `async` arrow's `await` is a
+    pass-through" (`:414-418`) rewritten to § 3.2's positions and the refusal, with the two-signal
+    form (§ 8 q2), its link to A24 re-pointed to `backlog-retired.md#a24` and that URL added to
+    `tools/published-links.txt` beside the old one, which 0.7.0's README still prints; the
+    `[Unreleased]` documentation line under the version's heading. A breaking minor by behaviour
+    forwarded: the `.d.ts` is byte-identical to 0.7.0's.
+  - `eval-forms` (*was 9a*): the version to 0.8.0, the peers to `@zvenigora/ng-eval-core`
+    `>=0.15.0 <0.16.0` and `@zvenigora/ng-eval-signals` `>=0.8.0 <0.9.0`, with the README's peer
+    lines; the `[Unreleased]` entry from step 6 under its heading. The `.d.ts` differs in
+    `guardIdentifiers`' JSDoc.
+  - The register's statuses and "Work in flight", and the skill. (*Corrected in step 7a*
+    ([SR4](../standing-rules.md#sr4)): this listed "the root `CHANGELOG.md`'s list", which names the
+    three packages and their changelogs, not their versions, so a release changes nothing in it.)
+- **7b**, after the maintainer publishes all three: the Publication status rows and the three
+  annotated tags, which `tools/release-tags.mjs` checks; a CHANGELOG date if npm's UTC date differs;
+  the skill; this document. *Widened in step 7a* ([SR4](../standing-rules.md#sr4)), as 0.14.1's
+  post-publish commit, 34bebbd, did: the register's *Unreleased* row becomes the release's row, with
+  its tag commit and date; "Work in flight"; the "pending publish" statuses of A24, A25, A27, A38 and
+  D13, in the index and in `backlog-retired.md`, gain the date and the tag; and `CLAUDE.md`'s
+  "Published at" lines move to 0.15.0, 0.8.0 and 0.8.0.
 - **Rows**: none. **Ships in**: 7a is the release; 7b in no package.
+- **Outcome of 7a** (2026-10-31):
+  - **The merge** ([SR4](../standing-rules.md#sr4)): the step's first gate, with `eval-core` alone at
+    0.15.0, failed `eval-signals:lint` and `eval-forms:lint` on `@nx/dependency-checks`, "The version
+    specifier does not contain the installed version of "@zvenigora/ng-eval-core" package: 0.15.0",
+    at each manifest's `eval-core` peer line; every other target was green. So the three releases
+    are one commit, decided at that gate (§ 4's preamble).
+  - **The files**:
+    - `eval-core`: `package.json`, 0.14.1 → 0.15.0; `CHANGELOG.md`, `[Unreleased]` moved under
+      `## [0.15.0] - 2026-10-31`, the expected npm UTC date, which 7b corrects if npm's differs,
+      with a summary paragraph.
+    - `eval-signals`: `package.json`, 0.7.0 → 0.8.0 and its `eval-core` peer; `README.md`, the
+      Install peer line and floor, and the `await` paragraph; `CHANGELOG.md`, `[0.8.0] - 2026-10-31`
+      with a summary, the Breaking lines and the existing documentation line;
+      `eval-signal-async.spec.ts`, the moved row's comment, which said the README still described
+      the pass-through and that step 8a would rewrite it, false once this commit rewrites it
+      ([SR31](../standing-rules.md#sr31)), so a comment moves and no row; and
+      `tools/published-links.txt`, the README's new absolute link to `backlog-retired.md#a24`.
+    - `eval-forms`: `package.json`, 0.7.1 → 0.8.0 and both `@zvenigora` peers; `README.md`, the
+      Install peer line, the Versions manifest block and its floor paragraph; `CHANGELOG.md`,
+      `[0.8.0] - 2026-10-31` with a summary and the floors line.
+    - The register, `docs/backlog.md` and `docs/backlog-retired.md`: A24, A25, A27, A38 and D13
+      "released in … pending publish", in the index and in the entries, the "Work in flight"
+      paragraphs, and the Register history's *Unreleased* row.
+    - `.claude/skills/step/SKILL.md`: the target, the merged releases, the post-publish record's
+      scope, and that no count moves from step 7a on. This document.
+  - **Against 0d305a3**, the A45 plan's three-package release commit, which changed the skill, its
+    plan, `docs/backlog.md`, and each package's `package.json`, `CHANGELOG.md` and (downstream)
+    `README.md`, and `signal-context.spec.ts`: this commit changes the same files of each package and
+    the same records, with four differences. `docs/backlog-retired.md`, since A24, A25, A27, A38 and
+    D13 are retired before the release and their status lines live there, as 95932e6's did.
+    `eval-signal-async.spec.ts` in place of `signal-context.spec.ts`: 0d305a3 added a case at its
+    gate (A44's write error); this commit adds none and corrects a comment. `tools/published-links.txt`,
+    since the `eval-signals` README prints a new repository link, which doc-links requires recorded
+    before it is published. And `docs/a24/plan.md` in place of `docs/a45/plan.md`. Neither touches
+    the root `CHANGELOG.md`; nor did 0.14.1's 95932e6 or 0.7.1's 69c3e0e. The last release commit
+    that did, 8dc528b, added a workspace line, F7's, and none is pending.
+  - **The *Unreleased* row, corrected** ([SR31](../standing-rules.md#sr31)): it counted 2 closed and
+    21 live, from A38's commit; steps 3, 4 and 6 retired A25, A24 and D13 without moving it. It now
+    reads 5 closed, A27, A38, A25, A24 and D13, and 18 live, and the total 95 and 18. Counted by a
+    script outside the repository over the index's status cells, as step 1's criterion 4 counted:
+    121 rows, 18 live. The merged release's code review then opened [F30](../backlog.md#f30), so
+    the row reads 1 opened and 19 live, and the totals 72 opened and 19 live: 122 rows, 19 live.
+  - **The `.d.ts`** (CONTRIBUTING; § 6's Surface gate): the gate-built
+    `dist/modules/eval-core/types/zvenigora-ng-eval-core.d.ts` against 0.14.1's tarball from
+    `npm pack @zvenigora/ng-eval-core@0.14.1`, by `diff -u`. SHA-256
+    `7c348622a8b7987dd1fe7cb8a4148014d647ce78beac114a300ef79643c7ab0f` (0.14.1) and
+    `88ebbb83cf41ef9f9ca1b92306d1bb20140cf7ec974a3af70222b650ce8aa25b` (the build). 17 hunks, 123 changed lines. The 9 that are not comment lines are
+    the `acorn` import gaining `Statement` and `ModuleDeclaration`, `findUnsupportedStatement`'s
+    four-line declaration and a blank line, and the export list gaining the name. The 114 comment
+    lines are A27's JSDoc, on `EvalResult` and its outcome getters, `start`, `setSuccess` and
+    `setFailure`, `EvalState.walkDepth`, `EvalHookBookkeeping.walkBases`, `EvalHooks`' `exit`,
+    `depth`, `pushWalkBase`, `popWalkBase` and `unwindTo`, `EvalOptions`' `maxIterations` and
+    `maxTraceItems`, and `evaluate`; and `findUnsupportedStatement`'s own. No declaration changes
+    shape. The same result as the measurement at 1e8e377, before this step.
+  - **The downstream `.d.ts`**, the gate's build against `npm pack` of `eval-signals` 0.7.0 and
+    `eval-forms` 0.7.1, by `diff -u`, SHA-256 before and after: `zvenigora-ng-eval-signals.d.ts`
+    `743ce484…ce31401`, identical; `zvenigora-ng-eval-forms-signals.d.ts` `3a9cf281…e48add`,
+    identical; `zvenigora-ng-eval-forms.d.ts` `9cdb2816…3e7314` → `69585d6a…a6d85b`, 32 changed
+    lines, all comment, `guardIdentifiers`' JSDoc; `zvenigora-ng-eval-forms-reactive.d.ts`
+    `f2570daa…ba691b` → `d4a64016…87677b`, 7 changed lines, all comment, `bindFieldProperties`'
+    `@param schema`, step 6's widening. No code line changes in any. The same result as the
+    measurement at 1e8e377 but for `/reactive`'s, which that measurement did not name.
+  - **The downstream rows** ([SR24](../standing-rules.md#sr24)), one per fix, run before this step
+    through `eval-signals` on the workspace build at 1e8e377, in a throwaway spec since deleted, and
+    not re-run here: A25, an async signal over an `await` resolves with no 30 000 ms timer armed;
+    A24, a refused `await` gives the async signal status `'error'`, and throws through the sync
+    signal; A27, `[1, 2].map(x => x * k)` recomputes to `[3, 6]`; A38, `` String.raw`a\nb` `` gives
+    `"a\\nb"`, and `` Object.assign`x` `` is still refused by the write guard. D13 is witnessed in
+    `eval-forms` by step 6's rows.
+  - **Run in this step**, at the code review, through `eval-signals` on the working tree, in a
+    throwaway spec run alone and deleted (`git grep THROWAWAY -- modules` finds nothing), 5 of 5
+    green: 8a's suffix row, an `Error` rejection behind an accepted `await` reaching the async
+    signal by identity with its message unchanged; a `'x'` rejection reaching it as `Error('x')`;
+    on the sync signal, `(async () => await p)()` reading `p` by identity and
+    `(async () => await 1)()` reading `1`; the sync signal over `(async () => (await p) * 10)()`
+    throwing the refusal in full on read under the default `onError`; and the async signal over
+    `(async () => await loadUser(id))()` resolving to `{ name: 'Ada' }`. Not run: 9a's rows through
+    `eval-forms`' adapters. Its CHANGELOG points to `eval-core`'s for what a rule passes through,
+    and names no example, since none is measured through `eval-forms`.
+  - **`eval-signals`' rewritten paragraph** ([SR21](../standing-rules.md#sr21)):
 
-### Steps 8a and 8b — `eval-signals` 0.8.0
+    | Claim | Witness |
+    | :--- | :--- |
+    | `eval-core` gives the walk the operand itself | `await-position.spec.ts` group P's accepted rows, `theOperand`, by identity; P3-1 |
+    | Accepted as the whole expression, an arrow's expression body, or a program's or an arrow block's last statement | group P's accepted rows, both modes; group Q under `preserveParens` |
+    | `(async () => await loadUser(id))()` is accepted and its value is the returned promise | group P's arrow-body row, by identity; `eval-signal.spec.ts`' "should evaluate an async arrow", which reads a promise resolving to the loader's value, a type, not identity |
+    | The async signal resolves it | `eval-core`'s `evalAsync` rows in group P; through this package, this step's throwaway row only, not committed ([F30](../backlog.md#f30)) |
+    | Anywhere else the walk throws the quoted message | group P's refused rows, both paths, the message in full |
+    | `(async () => (await loadUser(id)).name)()` puts the async signal in `'error'` | `eval-signal-async.spec.ts`' moved row, "should read a member off the promise in operand position, and refuse an await there": `status()` `'error'` and the message in full |
+    | A `createEvalSignal` over it throws on read under the default `onError` | no row of this package: group P's sync refusal, and the sync signal's default `onError` rethrowing a walk's throw on read; through this package, SR24's A24 row and this step's throwaway row, neither committed ([F30](../backlog.md#f30)) |
+    | The CHANGELOG: on the sync path an accepted `await` reads the operand, `p` by identity and `1` | group P's sync rows, by identity; through this package, this step's throwaway row only; `eval-signal.spec.ts`' async-arrow row reads a type and passes either way ([F30](../backlog.md#f30)) |
+    | The CHANGELOG: a rejection arrives as raised, an `Error` by identity, `'x'` as `Error('x')` | group S and C; through this package, this step's throwaway rows only ([F30](../backlog.md#f30)) |
+    | The two-signal form | `readme-examples.spec.ts`' "should derive from the async signal in a second one, tracking both" |
+    | No `await` is bounded in time | group T and K's rows, no timer |
+    | Up to 0.7.0 the expression was `undefined`, and `(await p) * 10` `NaN` | history: step 2's characterisation rows before steps 3 and 4 moved them |
+    | The A24 link resolves | doc-links, with the URL in `tools/published-links.txt` |
 
-- **8a**: the peer `@zvenigora/ng-eval-core` to `>=0.15.0 <0.16.0`, in `package.json` and in every
-  README line that quotes it (`public-api.spec.ts`' peer case is the witness); the README's "An `async`
-  arrow's `await` is a pass-through" (`:414-418`) rewritten to § 3.2's positions and the refusal; the
-  `[Unreleased]` documentation line rides along under the version's heading. A breaking minor by
-  behaviour forwarded: the `.d.ts` is byte-identical to 0.7.0's.
-  Before the entry says what changed, one row of each defect the release forwards runs through
-  `createEvalSignal` ([SR24](../standing-rules.md#sr24)): an operand `await`, an accepted `await`, and
-  the suffix.
-- **8b**: as 7b.
-- **Rows**: none predicted; the README's rewritten paragraph is mirrored by
-  `eval-signal-async.spec.ts:1388-1412`, moved in step 4, whose comment names it.
-
-### Steps 9a and 9b — `eval-forms` 0.8.0
-
-- **9a**: the peers to `@zvenigora/ng-eval-core` `>=0.15.0 <0.16.0` and `@zvenigora/ng-eval-signals`
-  `>=0.8.0 <0.9.0`, with the README's peer lines; the `[Unreleased]` entry from step 6 under its
-  heading. The `.d.ts` differs in `guardIdentifiers`' JSDoc. One row of each forwarded defect through
-  both adapters before the entry is written, as in 8a.
-- **9b**: as 7b.
-- **Rows**: none.
+  - **Code review** (before the commit): no Critical finding, on the `eval-core`-only change. Folded
+    in: 7b's file list, widened to what 34bebbd changed ([SR4](../standing-rules.md#sr4)); the
+    CHANGELOG summary's behaviour sentence, which left out A38; and the skill's count line. The
+    merged change was reviewed again: its Critical was that the gate had not yet run on the merged
+    tree, which it then did. Folded in: `eval-signals`' CHANGELOG gains a Fixed section for A25's
+    rejection and timer, measured by the throwaway rows above, and its timer line says "if the
+    operand had not settled"; `eval-forms`' CHANGELOG points to `eval-core`'s for what a rule passes
+    through; the README says only the two arrow positions occur through this package; § 4's row 7a
+    names both floor paragraphs; step 4's sentence on the moved row's comment, in the past tense;
+    and two register wordings. Recorded, not fixed: the claims no committed row of `eval-signals`
+    witnesses, as [F30](../backlog.md#f30).
+  - **Counts**: 3288 / 444 / 386, unchanged; the gate is run after every edit above.
 
 ### Step 10 — Retrospect
 
@@ -1164,7 +1286,7 @@ that stops at § 1 while none is active, which step 1 removed and `CLAUDE.md` st
 | `eval-signals` / `eval-forms` rows | in the above | 444 throughout; 380, then 386 from step 6 |
 | Performance | `internal/performance.spec.ts` | Green and untouched every step |
 | Scope | `git status --porcelain` | The step's file list ([SR3](../standing-rules.md#sr3)) |
-| Surface | the built `.d.ts` against the last tarball | Steps 7a, 8a, 9a |
+| Surface | the built `.d.ts` against the last tarball | Step 7a, each package's (*was 7a, 8a, 9a*) |
 
 ## 7. Risks
 
@@ -1205,7 +1327,7 @@ maintainer at step 2's confirmation gate, on 2026-10-30, and the step that names
    README could then quote.
 
    *Answered 2026-10-30, applied in step 4*: no second sentence. `eval-signals`' README pairs the
-   message with the two-signal form, in step 8a.
+   message with the two-signal form, in step 7a (*was 8a*).
 3. **The exact accepted-position rule for the walk's root when a caller passes a bare
    `AwaitExpression` node** (step 4). The decision's (a) accepts it, and § 3.2 accepts it for that
    walk only. Open:

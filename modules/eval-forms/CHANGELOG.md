@@ -8,6 +8,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+---
+
+## [0.8.0] - 2026-10-31
+
+**A rule holding a statement `eval-core` does not evaluate is refused at registration, and both
+`@zvenigora` floors rise.** A breaking minor ([D13](../../docs/backlog-retired.md#d13); the
+[A24 plan](../../docs/a24/plan.md)): no symbol of this package changes shape. Its core `.d.ts`
+differs from 0.7.1's in `guardIdentifiers`' JSDoc and its `/reactive` `.d.ts` in
+`bindFieldProperties`' `@param schema`, documentation only; its `/signals` `.d.ts` is
+byte-identical. `guardIdentifiers` calls `@zvenigora/ng-eval-core` 0.15.0's new
+`findUnsupportedStatement`, so this release needs it. Both entry points evaluate a rule with
+that release, so its changes reach a rule too, an `await` and a tagged template among them; its
+CHANGELOG lists them.
+
 ### Breaking
 - **A rule holding a statement `eval-core` does not evaluate is refused at registration, wherever
   the statement sits, at both entry points** ([D13](../../docs/backlog-retired.md#d13)) —
@@ -32,6 +46,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   label. `evaluateRule`'s comment, internal to `/signals`, says an arrow function's body runs
   `eval-core`'s `walkWithoutResult`, not `evaluate()`, as it has since `eval-core` 0.15.0.
   Documentation only.
+- **Both `@zvenigora` floors raised.** `@zvenigora/ng-eval-core`: `>=0.14.0 <0.15.0` →
+  `>=0.15.0 <0.16.0`. `@zvenigora/ng-eval-signals`: `>=0.7.0 <0.8.0` → `>=0.8.0 <0.9.0`. **The
+  floors rise rather than only the ceilings**: `findUnsupportedStatement` exists only in `eval-core`
+  0.15.0, and `eval-signals` below 0.8.0 requires `eval-core` below 0.15.0, so it cannot sit beside
+  this release. The README's Install and Versions quote both.
 
 ---
 

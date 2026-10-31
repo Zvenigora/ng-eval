@@ -12,11 +12,12 @@ recomputes **exactly** when a key the expression actually read has changed.
 npm install @zvenigora/ng-eval-signals @zvenigora/ng-eval-core
 ```
 
-Peer dependencies: `@angular/core >=19.0.0` and `@zvenigora/ng-eval-core >=0.14.0 <0.15.0`. The floor
-is 0.14.0 since 0.7.0: an assignment records only the reads `eval-core` 0.14.0 makes for it, so
-`count = 5` records no dependency and `x++` records `x`, and that behaviour exists only there. The
-guarded receiver a source function's `this` is, which raised the floor to 0.13.0 in 0.6.0, holds in
-0.14.0 as well. This version also carries the write guard, which needs `eval-core` 0.11.0 to ask
+Peer dependencies: `@angular/core >=19.0.0` and `@zvenigora/ng-eval-core >=0.15.0 <0.16.0`. The floor
+is 0.15.0 since 0.8.0: an `await` is evaluated only where its value is the result, refused anywhere
+else, and bounded by no timer — see [Two signals instead of `await`](#two-signals-instead-of-await)
+— and that behaviour exists only there. The reads an assignment records, which raised the floor to
+0.14.0 in 0.7.0, and the guarded receiver a source function's `this` is, which raised it to 0.13.0
+in 0.6.0, hold in 0.15.0 as well. This version also carries the write guard, which needs `eval-core` 0.11.0 to ask
 about a built-in method's write as well as a member write — see
 [Writes are not supported](#writes-are-not-supported).
 
@@ -411,12 +412,21 @@ evaluates, but the arrow runs when the promise resolves — after the walk, outs
 context — so `role` is not tracked, and changing it starts no run. In the two-signal form every
 read is made by a walk.
 
-**An `async` arrow's `await` is a pass-through.** `(async () => await loadUser(id))()` parses
-and evaluates, but `eval-core` does not suspend at the `await`: it hands the walk the promise as
-an operand, and the walk carries on. That is right only where the `await` is the arrow's
-result, as here. `(async () => (await loadUser(id)).name)()` is `undefined`, and
-`(async () => (await p) * 10)()` is `NaN`; write those as two signals too. This is `eval-core`'s
-[BL-A24](https://github.com/zvenigora/ng-eval/blob/master/docs/backlog.md#a24).
+**An `async` arrow's `await` is evaluated only where its value is the result** (since 0.8.0).
+`eval-core` does not suspend at an `await`: it gives the walk the operand itself, so an `await`
+is right only where nothing reads that value as an operand. It accepts one as the whole
+expression, as an arrow function's expression body, or as the last statement of a program or of
+an arrow function's block body; through this package only the two arrow positions occur, since a
+top-level `await` does not parse (above). `(async () => await loadUser(id))()` is accepted, and its value is
+the promise `loadUser(id)` returned, which the async signal resolves. Anywhere else the walk throws
+`Unsupported await position: an await is evaluated only as the result of the expression - the whole expression, an arrow function's expression body, or the last statement of a program or of an arrow function's block body.`
+— so `(async () => (await loadUser(id)).name)()` puts the async signal in `'error'`, and a
+`createEvalSignal` over it throws on read under the default `onError`. Write a value used as an
+operand as two signals, as above: the first resolves `loadUser(id)`, and the second reads `.name`
+off it. No `await` is bounded in time. Up to 0.7.0, with `eval-core` 0.14, an `await` handed the
+walk a promise racing its operand against a 30-second timer, wherever it sat, so the expression
+above was `undefined` and `(async () => (await p) * 10)()` was `NaN`. This was `eval-core`'s
+[A24](https://github.com/zvenigora/ng-eval/blob/master/docs/backlog-retired.md#a24).
 
 ### What is resolved
 

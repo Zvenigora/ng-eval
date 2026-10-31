@@ -177,10 +177,28 @@ phase that moves `eval-forms`' rows.
 
 **The [A24 plan](a24/plan.md) is in flight**: the await track, [A25](backlog-retired.md#a25),
 [A24](backlog-retired.md#a24) and [D13](backlog-retired.md#d13), for `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0. It
-is at Revision 6. Steps 1 to 6 are done: the plan and its records, the characterisation spec, A25,
-A24, and D13 in `eval-core` and then in `eval-forms`; all three are retired as fixed and unreleased.
-Step 7a, the `eval-core` 0.15.0 release commit, is next. Step 1 corrected A25's decided text: only
-an `Error` rejection reaches an `evalAsync` caller by identity.
+is at Revision 7. Steps 1 to 7a are done: the plan and its records, the characterisation spec, A25,
+A24, D13 in `eval-core` and then in `eval-forms`, all three retired as fixed, and the release
+commit of all three packages. Step 7a merged the plan's three release steps into one, since the
+workspace lint reads each downstream peer range against the workspace `eval-core`, so a split
+release would leave `master` red between them. Its code review opened [F30](#f30). Step 1 corrected A25's decided text: only an `Error`
+rejection reaches an `evalAsync` caller by identity.
+
+**`eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0 are released together, pending
+publish**, each a minor breaking by behaviour. `eval-core` carries A25, A24 and D13's `eval-core`
+half, and [A27](backlog-retired.md#a27) and [A38](backlog-retired.md#a38), fixed before the plan.
+Its `.d.ts` differs from 0.14.1's tarball in code by `findUnsupportedStatement`'s declaration, the
+`Statement` and `ModuleDeclaration` its `acorn` import gains, and the export list, and otherwise in
+JSDoc only. `eval-signals` forwards it, its `.d.ts` byte-identical to 0.7.0's, with its README's
+`await` paragraph rewritten. `eval-forms` carries D13's `eval-forms` half; its `.d.ts` files differ
+from 0.7.1's in two JSDoc blocks, and not in code. Both raise their `eval-core` floor to
+`>=0.15.0 <0.16.0`, and `eval-forms` its `eval-signals` floor to `>=0.8.0 <0.9.0`. One row of each
+fix was run through `eval-signals` on the workspace build at 1e8e377: an async signal over an
+`await` resolves with no 30 000 ms timer armed (A25); a refused `await` gives the async signal
+status `'error'`, and throws through the sync signal (A24); `[1, 2].map(x => x * k)` recomputes to
+`[3, 6]` (A27); and `` String.raw`a\nb` `` gives `"a\\nb"` while `` Object.assign`x` `` is still
+refused by the write guard (A38). D13's `eval-forms` half is witnessed by step 6's rows. Publishing
+and tagging are the maintainer's; step 7b, the post-publish record of all three, is next.
 
 `eval-core` 0.13.3 is released alone, a patch, tagged at 021d5e4 and published 2026-10-23. It
 carries A45 part 1 only. Its `.d.ts` is SHA-256-identical to 0.13.2's, and it is inside
@@ -319,8 +337,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.14.0, `eval-signals` 0.7.0, `eval-forms` 0.7.0. F21 and F25 ship in no package | `0d305a3` | 2026-10-26 | 24 | 6: A48–A53 | 5: F21, F25, A44, A45, A52 | 25 |
 | `eval-forms` 0.7.1. F26, opened by 0.14.0's post-publish commit and fixed after it, ships in no package; F27 ships in no package but for one `eval-core` docblock | `69c3e0e` | 2026-10-29 | 25 | 4: F26–F29 | 2: F26, F27 | 27 |
 | `eval-core` 0.14.1. F28, decided by Phase 11 and shipped in `eval-forms` 0.7.1, was retired by 0.7.1's post-publish commit, after its tag; A47 is fixed, and A32 and A30 are decided, documentation only | `95932e6` | 2026-10-30 | 27 | 0 | 4: F28, A47, A32, A30 | 23 |
-| *Unreleased*. A27 and A38 are fixed for `eval-core`'s next release | — | — | 23 | 0 | 2: A27, A38 | 21 |
-| **Since the register opened** | | | **42** | **71** | **92** | **21** |
+| *Unreleased*: `eval-core` 0.15.0, `eval-signals` 0.8.0, `eval-forms` 0.8.0, pending publish. A27 and A38 are fixed, and A25, A24 and D13 by the A24 plan, all released in them; F30 opened by step 7a's code review | — | — | 23 | 1: F30 | 5: A27, A38, A25, A24, D13 | 19 |
+| **Since the register opened** | | | **42** | **72** | **95** | **19** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -365,10 +383,10 @@ makes it that release's row, with its tag commit and date.
 | [A8](backlog-retired.md#a8) | `EvalService._activeStates` grows unboundedly | core | fix | **Retired — fixed 2026-09-25, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987, in two steps: `simpleEval`'s states ([`docs/a8/plan.md`](a8/plan.md)), then the set deleted ([`docs/a8/step-2-plan.md`](a8/step-2-plan.md)). Withdraws the published destroy-time registry clear |
 | [A9](backlog-retired.md#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [A23](backlog-retired.md#a23) | `safeSetProperty` defines the property instead of assigning it — setters never run, non-configurable properties cannot be written | core | decision, then fix | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-core` 0.10.0, tagged 0c3299e: a member write assigns, after the same refusals, so setters run |
-| <a id="a24"></a>[A24](backlog-retired.md#a24) | An `await` is a pass-through — inside an `async` arrow it hands the walk a promise as an operand, and the arrow returns no promise | core | decision, then fix | **Retired — decided and fixed 2026-10-30**, as step 4 of the [A24 plan](a24/plan.md); unreleased, in `eval-core` 0.15.0. An `await` is accepted only at the walk's root, as an arrow's concise body, or as the expression of the final statement of a program or an arrow's block body, and refused anywhere else with a message naming `await` and the rule. Opened 2026-10-07 by the Phase 5 plan; the `eval-signals` README states the pass-through since 0.5.0, and its 0.8.0 rewrites that paragraph |
-| [A25](backlog-retired.md#a25) | `awaitVisitor`'s timeout race — an uncleared 30 s timer per `await`, an undocumented `__awaitTimeout` key, and the caller's error mutated | core | fix | **Retired — decided and fixed 2026-10-30**, as step 3 of the [A24 plan](a24/plan.md); unreleased, in `eval-core` 0.15.0. No race, no timer, no key, no suffix: the operand passes through, so a rejection reaches the caller as it was raised, an `Error` by identity, while `evaluateAsync` still converts any other. Opened 2026-10-07 by the Phase 5 plan |
+| <a id="a24"></a>[A24](backlog-retired.md#a24) | An `await` is a pass-through — inside an `async` arrow it hands the walk a promise as an operand, and the arrow returns no promise | core | decision, then fix | **Retired — decided and fixed 2026-10-30**, as step 4 of the [A24 plan](a24/plan.md); released in `eval-core` 0.15.0, pending publish. An `await` is accepted only at the walk's root, as an arrow's concise body, or as the expression of the final statement of a program or an arrow's block body, and refused anywhere else with a message naming `await` and the rule. Opened 2026-10-07 by the Phase 5 plan; the `eval-signals` README states the pass-through since 0.5.0, and its 0.8.0 rewrites that paragraph |
+| [A25](backlog-retired.md#a25) | `awaitVisitor`'s timeout race — an uncleared 30 s timer per `await`, an undocumented `__awaitTimeout` key, and the caller's error mutated | core | fix | **Retired — decided and fixed 2026-10-30**, as step 3 of the [A24 plan](a24/plan.md); released in `eval-core` 0.15.0, pending publish. No race, no timer, no key, no suffix: the operand passes through, so a rejection reaches the caller as it was raised, an `Error` by identity, while `evaluateAsync` still converts any other. Opened 2026-10-07 by the Phase 5 plan |
 | [A26](backlog-retired.md#a26) | The parse cache ignores parser options | core | fix | **Retired — fixed 2026-10-10**, as step 1 of the [Phase 9 plan](colon-identifiers/phase-9-plan.md); released 2026-10-14 in `eval-core` 0.12.0, tagged 3466c80. Keyed on the text and a fingerprint of the parse-relevant options; a callback or `program` bypasses the cache. `CompilerService`'s string cache is that plan's step 3. Affected every published `eval-core` to 0.11.1 |
-| [A27](backlog-retired.md#a27) | A nested `evaluate` writes the enclosing walk's `EvalResult` — and `start()` clears nothing, so a reused state shows the last run's outcome | core | decision | **Retired — decided and fixed 2026-10-30**; unreleased, in `eval-core`'s next release. An arrow's body walks without writing `state.result`, `start()` resets the outcome but not the trace, and each setter writes every outcome field. Opened 2026-10-08 by Phase 5 step 1 |
+| [A27](backlog-retired.md#a27) | A nested `evaluate` writes the enclosing walk's `EvalResult` — and `start()` clears nothing, so a reused state shows the last run's outcome | core | decision | **Retired — decided and fixed 2026-10-30**; released in `eval-core` 0.15.0, pending publish. An arrow's body walks without writing `state.result`, `start()` resets the outcome but not the trace, and each setter writes every outcome field. Opened 2026-10-08 by Phase 5 step 1 |
 | [A28](backlog-retired.md#a28) | `scoped` is documented as a scope pushed during this walk; the code asks the whole scope stack | core | docs | **Retired — fixed 2026-10-10**, documentation comments only; released 2026-10-10 in `eval-core` 0.11.1, tagged 7ee65fc. The `.d.ts` differs in four JSDoc blocks: every scope on the stack counts, whoever pushed it |
 | [A29](backlog-retired.md#a29) | `CompilerService` keys a compiled AST by type, start, end and `toString()` — two ASTs of one type and span share a compiled function | core | fix | **Retired — fixed 2026-10-10**; released 2026-10-10 in `eval-core` 0.11.1, tagged 7ee65fc. An AST is compiled on every call and never cached; a string is cached as before. Affected `eval-core` 0.2.1–0.11.0 |
 | [A30](backlog-retired.md#a30) | `ParserService.parserOptions` reaches `EvalService`, `CompilerService` and `DiscoveryService` for no acorn option | core | decision | **Retired — decided 2026-10-29: documented**; released 2026-10-30 in `eval-core` 0.14.1, tagged 95932e6, documentation only. The setter configures direct `ParserService.parse` calls, and its JSDoc says so |
@@ -379,7 +397,7 @@ makes it that release's row, with its tag commit and date.
 | [A35](backlog-retired.md#a35) | A dangerous function value reachable from the context is callable past the name-based call sandbox — by an alias, through `call` / `apply` / `bind`, and as a native callback (`map`, `Reflect.apply`, `then`); `eval("1+1")` is refused, `["1+1"].map(eval)` is `[2]` | core | decision, security | **Retired — fixed 2026-10-18**, as steps 2, 4, 7 and 8 of the [A35 plan](a35/plan.md). Steps 2 and 4 released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30, as partial hardening; steps 7 and 8, which close its last route, [A39](backlog-retired.md#a39), released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7; advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx). A host container stays a documented limit |
 | [A36](backlog-retired.md#a36) | A tagged template's tag is called with no sandbox check — `` Function`return 7`() `` gives 7 with `Function` under its own name | core | fix, security | **Retired — fixed 2026-10-15**, as step 1 of the [A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30; advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx). A tag is called as a callee is, through the call sandbox and the write policy; a member tag shares the member call's path, so its `this` is its object. Affected every published `eval-core` to 0.12.0 |
 | [A37](backlog-retired.md#a37) | `SequenceExpression` has no visitor: `(0, 1)` leaves a value on the stack | core | fix | **Retired — fixed 2026-10-15**, as step 3 of the [A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30. A sequence leaves one value on the stack, and raises one `before` and one `after` event and one trace entry; no evaluated value changes. Affected every published `eval-core` to 0.12.0 |
-| [A38](backlog-retired.md#a38) | A tag's strings array is not JavaScript's: not frozen, no `raw` — so `` String.raw`a\nb` `` throws — a new array per evaluation, and not recorded as created | core | fix | **Retired — fixed 2026-10-30**; unreleased, in `eval-core`'s next release. A tag receives JavaScript's template object: frozen, a frozen `raw`, one per parsed site, cached by node; not recorded as created. Opened 2026-10-15 by the code review of the A35 plan's step 1 |
+| [A38](backlog-retired.md#a38) | A tag's strings array is not JavaScript's: not frozen, no `raw` — so `` String.raw`a\nb` `` throws — a new array per evaluation, and not recorded as created | core | fix | **Retired — fixed 2026-10-30**; released in `eval-core` 0.15.0, pending publish. A tag receives JavaScript's template object: frozen, a frozen `raw`, one per parsed site, cached by node; not recorded as created. Opened 2026-10-15 by the code review of the A35 plan's step 1 |
 | [A39](backlog-retired.md#a39) | Evaluating `this` lets native code reach a dangerous function the host placed in the context, past the funnel; mechanism and probes in the advisory | core | fix, security | **Retired — fixed 2026-10-18**, as steps 7 and 8 of the [A35 plan](a35/plan.md): `this` only as a member's object, and a guarded view as every receiver the evaluator resolves from the context. Released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7; advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx) |
 | [A40](backlog-retired.md#a40) | A postfix update of a listed function writes, then the funnel refuses the old value — the failed evaluation leaves its write behind | core | fix | **Retired — fixed 2026-10-22**, as a consequence of [A41](backlog-retired.md#a41)'s fix; released 2026-10-22 in `eval-core` 0.13.2, tagged dc4302d. The operand converts to `NaN` before the write, so `tools.eval++` gives `NaN` and writes `NaN`, as JavaScript does, and nothing throws |
 | [A41](backlog-retired.md#a41) | An update does not convert its operand to a number: `x++` on `"5"` writes `"51"`, on `{}` writes `"[object Object]1"`, and a postfix update gives the operand as read | core | fix | **Retired — fixed 2026-10-22**; released 2026-10-22 in `eval-core` 0.13.2, tagged dc4302d. The operand is converted once, natively, before anything is written: `"5"++` gives `5` and writes `6`, and a BigInt updates |
@@ -420,7 +438,7 @@ makes it that release's row, with its tag commit and date.
 | [D10](backlog-retired.md#d10) | `applyErrorPolicy` has no runnable README block | forms | docs | **Retired — fixed**, and it created [F3](backlog-retired.md#f3)'s third gate's subject |
 | [D11](backlog-retired.md#d11) | `/signals` has no worked example | forms | docs | **Retired — fixed 2026-10-03**, docs and tests only: [`docs/forms/worked-example-signals.md`](forms/worked-example-signals.md), every ` ```ts ` block executed and counted; released 2026-10-04 in `eval-forms` 0.3.1, tagged 3d56994 — the example ships in no package, the README's link to it does |
 | [D12](backlog-retired.md#d12) | ~20 specs discard the binding and never call `destroy()` | forms | test hygiene | **Retired — fixed 2026-09-28, test only**; `destroy()`'s release path is pinned by `field-schema.memory.spec.ts`, the net's by `field-schema.spec.ts`'s subscription count. Injector-path memory cases removed 2026-09-29: timing-dependent |
-| [D13](backlog-retired.md#d13) | A rule whose top-level statement `eval-core` refuses registers in both adapters and renders blank under the default policy | forms, core | decision, then fix | **Retired — decided 2026-10-30, fixed 2026-10-31**, as steps 5 and 6 of the [A24 plan](a24/plan.md); unreleased, in `eval-core` 0.15.0 and `eval-forms` 0.8.0. `eval-core`'s `findUnsupportedStatement` reports the first statement evaluation would refuse, from the table the evaluator reads, and both `eval-forms` adapters refuse such a rule at registration wherever the statement sits, a label with its `colonIdentifiers` hint. Reverses the Phase 9 plan's § 3.8. Opened 2026-10-10 by the Phase 9 plan; a top-level label refused since its step 6, released 2026-10-14 in `eval-forms` 0.5.0, tagged 3466c80 |
+| [D13](backlog-retired.md#d13) | A rule whose top-level statement `eval-core` refuses registers in both adapters and renders blank under the default policy | forms, core | decision, then fix | **Retired — decided 2026-10-30, fixed 2026-10-31**, as steps 5 and 6 of the [A24 plan](a24/plan.md); released in `eval-core` 0.15.0 and `eval-forms` 0.8.0, pending publish. `eval-core`'s `findUnsupportedStatement` reports the first statement evaluation would refuse, from the table the evaluator reads, and both `eval-forms` adapters refuse such a rule at registration wherever the statement sits, a label with its `colonIdentifiers` hint. Reverses the Phase 9 plan's § 3.8. Opened 2026-10-10 by the Phase 9 plan; a top-level label refused since its step 6, released 2026-10-14 in `eval-forms` 0.5.0, tagged 3466c80 |
 | [E1](#e1) | Form-state keys across both adapters | forms | phase | Open — **no phase reserved** |
 | [E2](#e2) | Arrays — `applyEach` at `/signals`, `FormArray` at `/reactive` | forms | phase | Open |
 | [E3](#e3) | `dependencies` introspection at form scale | forms | phase | Open |
@@ -456,6 +474,7 @@ makes it that release's row, with its tag commit and date.
 | [F27](backlog-retired.md#f27) | The process and verification rules were copied across `CLAUDE.md`, the `step` skill, the `code-reviewer`, `CONTRIBUTING.md` and four plans' rule sections, and the copies had drifted: twenty divergences, among them three different gate commands | repo, core | docs | **Retired — fixed 2026-10-27**: [`docs/standing-rules.md`](standing-rules.md), SR1–SR38, imported by `CLAUDE.md`; the copies cite it. In no package, but for `contextPush`'s docblock, released 2026-10-30 in `eval-core` 0.14.1, tagged 95932e6, documentation only |
 | [F28](backlog-retired.md#f28) | The consumer documents Phase 10 left out: whether the package READMEs split into guides, where a guide lives and whether it ships; `eval-forms`' README, at 893 lines, by entry point first | repo, core, signals, forms | decision | **Retired — decided 2026-10-27, released 2026-10-29** as Phase 11: one README per package and no guide files; `eval-forms`' ordered by entry point, with a contents list, in `eval-forms` 0.7.1, docs-only |
 | [F29](#f29) | The README's "a rule that does not parse throws at registration, whatever the policy" is witnessed at both adapters under the default policy only; a function policy, the other one that swallows an error, is unwitnessed | forms | test gap | Open; opened 2026-10-28 by Phase 11 step 2's code review |
+| [F30](#f30) | `eval-signals` 0.8.0's `await` claims — the sync signal's throw on a refused `await` and its operand by identity, the async signal resolving an accepted one, a rejection as raised — are measured through the package once, and witnessed by no row of it | signals | test gap | Open; opened 2026-10-31 by the A24 plan's step 7a code review. Not scheduled |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -1639,3 +1658,34 @@ Scheduled with the next phase that moves `eval-forms`' rows; Phase 11 holds them
 
 *Recorded*: this entry; the Phase 11 plan's step 2 Outcome. *Verified*: read 2026-10-28 — the two
 witnesses, `rules.ts` and `field-schema.ts` at the lines cited, and the M4 probe's record.
+
+<a id="f30"></a>
+## F30 — `eval-signals` 0.8.0's `await` claims are measured through it, not tested
+
+**Package** signals · **Kind** test gap · **Status** Open. Opened 2026-10-31 by the code review of the
+[A24 plan](a24/plan.md)'s step 7a
+
+`eval-signals` 0.8.0's README, "An `async` arrow's `await` is evaluated only where its value is the
+result", and its CHANGELOG say what a signal sees from `eval-core` 0.15.0. One of those claims has
+a row in this package: the async signal's refusal, `eval-signal-async.spec.ts`' "should read a
+member off the promise in operand position, and refuse an await there", `status()` `'error'` and
+the message in full. **Four have none**, and `eval-core`'s `await-position.spec.ts` witnesses each
+only below the signal:
+- a `createEvalSignal` over a refused `await`, `(async () => (await p) * 10)()`, throws the refusal
+  on read under the default `onError`;
+- on the sync signal an accepted `await` reads its operand, `(async () => await p)()` `p` by
+  identity and `(async () => await 1)()` `1`. `eval-signal.spec.ts`' "should evaluate an async
+  arrow" reads `toBeInstanceOf(Promise)` and a resolved value, which pass against 0.14.1's raced
+  promise too (the plan's § 0 rule 2);
+- the async signal over `(async () => await loadUser(id))()` resolves to the loader's value;
+- a rejection behind an accepted `await` reaches the async signal as raised: an `Error` by identity
+  with its message unchanged, and `'x'` as `Error('x')`.
+
+**Measured, not tested.** Each was run once through `eval-signals` on the working tree of step 7a, in
+a throwaway spec run alone and deleted, 5 of 5 green.
+
+**Fix**: those five rows, committed, each asserting the full value or message
+([SR18](standing-rules.md#sr18)), the sync identity row with `toBe`, each probed by a prototype that
+re-wraps the operand or appends the suffix. Not scheduled: the A24 plan holds `eval-signals` at 444.
+
+*Recorded*: this entry; the A24 plan's step 7a Outcome, its claim → witness table.

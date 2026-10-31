@@ -1390,10 +1390,9 @@ describe('createEvalSignalAsync', () => {
         // `eval-core`'s member read off a promise. And `eval-core`'s A24: since
         // its 0.15.0 an `await` in operand position is refused, where up to
         // 0.14.1 it passed the promise through and this read `undefined`.
-        // The README's "An `async` arrow's `await` is a pass-through" still
-        // says the latter, true of every published pairing since this
-        // package's peer range stops below 0.15.0; this half mirrors the
-        // paragraph the A24 plan's step 8a writes in its place.
+        // This half mirrors the README's "An `async` arrow's `await` is
+        // evaluated only where its value is the result", since this package's
+        // 0.8.0, whose peer range starts at 0.15.0: the refusal, in full.
         const id = signal(1);
         const loadUser = (): Promise<{ name: string }> => Promise.resolve({ name: 'Ada' });
 

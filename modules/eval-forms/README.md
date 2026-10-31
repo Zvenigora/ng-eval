@@ -56,8 +56,8 @@ npm install @zvenigora/ng-eval-forms @zvenigora/ng-eval-signals @zvenigora/ng-ev
 ```
 
 Peer dependencies: `@angular/core >=19.0.0`, `@angular/forms >=19.0.0`, `rxjs ^7.8.0`,
-`acorn-walk ^8.3.0`, `@zvenigora/ng-eval-core >=0.14.0 <0.15.0` and
-`@zvenigora/ng-eval-signals >=0.7.0 <0.8.0`. [Versions](#versions) gives the manifest, the reasons
+`acorn-walk ^8.3.0`, `@zvenigora/ng-eval-core >=0.15.0 <0.16.0` and
+`@zvenigora/ng-eval-signals >=0.8.0 <0.9.0`. [Versions](#versions) gives the manifest, the reasons
 for its Angular, `eval-core`, `eval-signals` and `acorn-walk` entries, and why it cannot say that
 `/signals` requires Angular 22.
 
@@ -128,8 +128,8 @@ set of ranges covering both adapters:
   "@angular/forms": ">=19.0.0",
   "rxjs": "^7.8.0",
   "acorn-walk": "^8.3.0",
-  "@zvenigora/ng-eval-core": ">=0.14.0 <0.15.0",
-  "@zvenigora/ng-eval-signals": ">=0.7.0 <0.8.0"
+  "@zvenigora/ng-eval-core": ">=0.15.0 <0.16.0",
+  "@zvenigora/ng-eval-signals": ">=0.8.0 <0.9.0"
 }
 ```
 
@@ -140,15 +140,15 @@ diagnostic for an entry point they do not import. An older consumer importing `/
 `Cannot find module '@angular/forms/signals'` from Angular's own `exports` map rather than
 anything this library declares.
 
-**The `eval-core` floor is 0.14.0, since 0.7.0.** That release evaluates an assignment's target
-as JavaScript does: a case-sensitive rule that only assigns to a key no longer reads it, so it is
-not recomputed when that key changes. On `/signals` under `caseInsensitive`, a key holding `null`
-reads as `null`, and a case-variant member write names the key its target holds. This version's
-behaviour exists only there. The `eval-signals` floor is 0.7.0 for the same release, and that
-reason is transitive: every earlier `eval-signals` requires `eval-core` below 0.14.0, so none can
-be installed beside it. From 0.6.0 to 0.6.1 the floors were 0.13.0 and 0.6.0, for the release that
-closed a route by which a rule reached its evaluation context through `this`; 0.14.0 keeps that
-route closed. Before 0.6.0 they were 0.12.0 and 0.5.1 — the first set directly by `/signals`'
+**The `eval-core` floor is 0.15.0, since 0.8.0.** `guardIdentifiers` asks that release's
+`findUnsupportedStatement`, which no earlier one exports, for a statement `eval-core` does not
+evaluate anywhere in a rule. The `eval-signals` floor is 0.8.0 for the same release, and that
+reason is transitive: every earlier `eval-signals` requires `eval-core` below 0.15.0, so none can
+be installed beside it. From 0.7.0 to 0.7.1 the floors were 0.14.0 and 0.7.0, for the release that
+evaluates an assignment's target as JavaScript does: a case-sensitive rule that only assigns to a
+key no longer reads it, so it is not recomputed when that key changes. From 0.6.0 to 0.6.1 they
+were 0.13.0 and 0.6.0, for the release that closed a route by which a rule reached its evaluation
+context through `this`. 0.15.0 keeps both. Before 0.6.0 they were 0.12.0 and 0.5.1 — the first set directly by `/signals`'
 `colonIdentifiers` option, which 0.11 would have ignored, and the second transitively, as now.
 
 **`acorn-walk` is new in 0.2.0 and imposes no new install.** Both adapters walk the parsed

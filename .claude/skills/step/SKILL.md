@@ -9,8 +9,8 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 # Execute one plan step
 
 Plan document: `docs/a24/plan.md`
-Target: `@zvenigora/ng-eval-core` 0.15.0, then `eval-signals` 0.8.0 and `eval-forms` 0.8.0 — the await
-track: A25, A24 and D13
+Target: `@zvenigora/ng-eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0, released
+together — the await track: A25, A24 and D13
 Requested step: $ARGUMENTS
 
 **Which projects each step reaches** (the plan's § 4 table is the scope):
@@ -26,13 +26,17 @@ Requested step: $ARGUMENTS
   CHANGELOG.
 - **Steps 3 and 6 retire A25 and D13**, so each also re-points that entry's inbound links in design
   records, link targets only (SR6), as its file list names.
-- **Steps 7a to 9b are the three releases**, each a release commit and, after the maintainer
-  publishes, its post-publish record. A `package.json` before step 7a is a stop-and-replan.
+- **Step 7a is the release commit of all three packages, and 7b their one post-publish record**,
+  after the maintainer publishes and tags all three. The plan merged its three releases in step 7a:
+  the workspace lint reads each downstream peer range against the workspace `eval-core`, so a
+  split release leaves `master` red. A `package.json` before step 7a is a stop-and-replan. Step 7b
+  touches no file under `modules/` unless npm's UTC publish date differs from a CHANGELOG heading,
+  and its tag check needs `git fetch --tags` first. There are no steps 8 and 9.
 - **Step 10 is the retrospect.**
 
 **The counts the steps start from**, the gate at d62eee4: `eval-core` 3187, `eval-signals` 444,
 `eval-forms` 380. `eval-core` reaches 3250 at step 2, 3252 at step 3, 3259 at step 4 and 3288 at
-step 5; `eval-forms` 386 at step 6; `eval-signals` does not move.
+step 5; `eval-forms` 386 at step 6; `eval-signals` does not move. No count moves from step 7a on.
 
 **Step state**: read it from the plan, not from here. The last step in its § 4 with a recorded
 **Outcome** is done, and the next is the step after it in § 4's table.
