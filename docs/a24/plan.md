@@ -1,6 +1,9 @@
 # A24, A25 and D13 — the await track: `await` where its value is the result, and every refused statement reported (`@zvenigora/ng-eval-core`, then `eval-signals` and `eval-forms`)
 
 **Date**: October 30, 2026
+**Revision**: 9 — step 7b: the post-publish record of all three, and its outcome; the tag paragraph's
+counts in the register, stale since 0.14.1's record, corrected.
+
 **Revision**: 8 — after step 7a: F30's commit, five `eval-signals` rows witnessing 0.8.0's `await`
 claims ([SR21](../standing-rules.md#sr21)), recorded in § 4, § 6 and under step 7a, `eval-signals`
 at 449 from it.
@@ -1301,6 +1304,33 @@ and 7b's below, and their sections are removed.
     Revision number; P3–P5; the resolve row's timer assertion and `toBe`, and the rejection row's
     `onError` leg.
   - **Counts**: 3288 / 449 / 386.
+- **Outcome of 7b** (2026-10-31):
+  - **Published**, by npm's `time` in UTC: `@zvenigora/ng-eval-core` 0.15.0 at
+    2026-10-31T21:47:26.487Z, `@zvenigora/ng-eval-signals` 0.8.0 at 22:02:24.376Z and
+    `@zvenigora/ng-eval-forms` 0.8.0 at 22:09:58.222Z. All three CHANGELOG headings read
+    2026-10-31 already, so no file under `modules/` changes. The published tarballs, compared with
+    the build at 05f9a69, whose shipped content is 67486ab's: every `.mjs` and `.d.ts` is
+    byte-identical, and `README.md`, `CHANGELOG.md` and `LICENSE` differ only by CRLF line endings.
+  - **The tags**, annotated at 67486ab in `eval-core@0.14.1`'s message form, `<project> <version>`:
+    `eval-core@0.15.0` (tag object a6b6266), `eval-signals@0.8.0` (5d9e33e) and `eval-forms@0.8.0`
+    (700f8bc), pushed before this commit; `git ls-remote --tags origin` lists each, peeling to
+    67486ab.
+  - **The files**, 34bebbd's list for three packages: `docs/backlog.md`, the three Publication
+    status rows, first; the release's Register history row dated, its *Unreleased* row, F30's, left
+    as it is; A24, A25, A27, A38 and D13 in the index, released 2026-10-31 and tagged 67486ab; and
+    "Work in flight", where the pending-publish paragraph goes and the plan's paragraph says nothing
+    is in flight and step 10 is next. `docs/backlog-retired.md`, the same five status lines.
+    `CLAUDE.md`, the three "Published at" lines. The skill, whose 7b line said the maintainer tags,
+    and this document.
+  - **The tag paragraph, corrected** ([SR31](../standing-rules.md#sr31)): under Publication status it
+    read "the forty-seven above" and "fifty-seven", and its list named no tag at 95932e6: 0.14.1's
+    record, 34bebbd, added the row and the tag and left the paragraph, so the gate before this step
+    read 48 rows and 58 tags. It now reads fifty-one and sixty-one, with three tags at 67486ab and
+    one at 95932e6 in its list, the count `tools/release-tags.mjs` reports.
+  - **Code review**: not run. The step changes no file under `modules/` or `tools/`
+    ([SR33](../standing-rules.md#sr33)), and neither the plan nor the request asks for it.
+  - **Counts**: 3288 / 449 / 386, unchanged; release-tags 51 rows and 61 release tags, all
+    annotated.
 
 ### Step 10 — Retrospect
 

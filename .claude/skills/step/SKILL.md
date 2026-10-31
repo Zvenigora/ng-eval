@@ -27,7 +27,8 @@ Requested step: $ARGUMENTS
 - **Steps 3 and 6 retire A25 and D13**, so each also re-points that entry's inbound links in design
   records, link targets only (SR6), as its file list names.
 - **Step 7a is the release commit of all three packages, and 7b their one post-publish record**,
-  after the maintainer publishes and tags all three. The plan merged its three releases in step 7a:
+  after the maintainer publishes all three; 7b writes their three annotated tags at 67486ab and
+  pushes them before its commit. The plan merged its three releases in step 7a:
   the workspace lint reads each downstream peer range against the workspace `eval-core`, so a
   split release leaves `master` red. A `package.json` before step 7a is a stop-and-replan. Step 7b
   touches no file under `modules/` unless npm's UTC publish date differs from a CHANGELOG heading,
