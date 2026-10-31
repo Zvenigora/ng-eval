@@ -265,8 +265,10 @@ The project has been tested with the following node types:
  - `CallExpression` *potentially unsafe*
  - `AwaitExpression` — only where its value is the result: the whole expression, an arrow
    function's expression body, or the last statement of a program or of an arrow function's
-   block body. Anywhere else it throws `Unsupported await position`, since 0.15.0; up to 0.14.1
-   it was evaluated there, wrongly as an operand. Its operand passes through unchanged, and
+   block body. Anywhere else it throws `Unsupported await position`, since 0.15.0. Up to 0.14.1
+   it handed the walk a promise there: as an operand that gave a wrong answer, and elsewhere, as
+   an element, an argument or an initializer among others, `evalAsync` resolved the promise once
+   it reached the result. Its operand passes through unchanged, and
    `evalAsync` resolves a promise that reaches the result
    ([Async evaluation and compilation](#async-evaluation-and-compilation))
  - `ConditionalExpression`
@@ -329,12 +331,14 @@ whatever it pushed on the value stack — so `throw 1` evaluated to `1` and thre
 
 `WhileStatement`, `DoWhileStatement`, `ForInStatement`, `ForOfStatement`, `SwitchStatement`,
 `TryStatement`, `ThrowStatement`, `LabeledStatement`, `BreakStatement`, `ContinueStatement`,
-`FunctionDeclaration` and `ClassDeclaration` are among the rejected types. The three that
-imply **abrupt completion** and are reachable — `break`, `continue`, `throw` — are out by
+`FunctionDeclaration` and `ClassDeclaration` are among the rejected types. The four that
+imply **abrupt completion** — `break`, `continue`, `throw` and `return` — are out by
 design rather than by schedule: the evaluator has no completion record to carry them, and
-adding one is a redesign of the walker rather than another visitor. `return` never reaches
-the evaluator at all: an expression is parsed outside any function, so `return 1` is a parse
-error (`'return' outside of function`) both before and after 0.4.0.
+adding one is a redesign of the walker rather than another visitor. An expression is parsed
+outside any function, so a `return` at its top level is a parse error
+(`'return' outside of function`) both before and after 0.4.0; in an arrow function's block
+body it parses, and is rejected as the other three are: `(() => { return 1 })()` throws
+`Unsupported statement type: ReturnStatement`.
 
 ### How statements differ from JavaScript
 
@@ -364,6 +368,29 @@ Seven deliberate divergences, each a documented rule rather than an accident:
    from inside a called arrow function was re-wrapped, so this one arrived as
    `Function call error: Access to dangerous property "toString" is blocked…`; since 0.7.0
    it arrives as thrown, without the prefix.
+
+**A refused statement throws only when the walk reaches it**, so one in an arrow function's body
+that is never called, or in a branch not taken, throws nothing. To refuse an expression before it
+runs, `findUnsupportedStatement(ast)`, since 0.15.0, reads the whole tree, function bodies and
+untaken branches included, against the table evaluation uses. It returns
+`{ statement, message }` for the first statement in source order that evaluation would refuse,
+where `message` is what evaluation throws for it, or `undefined` when there is none. Pass it the
+`Program` that `parse` returns with `extractExpressions` off, as the services parse.
+
+```javascript
+import { EvalService, findUnsupportedStatement, parse } from '@zvenigora/ng-eval-core';
+
+const service = inject(EvalService);
+
+const text = 'let f = () => { while (true) {} }; 1';
+service.simpleEval(text);                        // 1 - the body is never called
+
+const found = findUnsupportedStatement(parse(text, { ecmaVersion: 2020 }));
+found.statement.type;                            // 'WhileStatement'
+found.message;                                   // 'Unsupported statement type: WhileStatement'
+
+findUnsupportedStatement(parse('let x = 1; x', { ecmaVersion: 2020 }));   // undefined
+```
 
 ## Options
 

@@ -12,6 +12,7 @@ import { Context } from '../classes/common';
 import { setContextValue } from '../classes/common/context';
 import { contextScopeHolding, contextSet, contextSetInScope, prototypeMethod } from './context-method';
 import { isLiteralName } from './literal-names';
+import { declarationKindRefusal } from './statement-support';
 
 /**
  * The scope a declaration binds into: the innermost one on the stack.
@@ -110,7 +111,7 @@ const bindDeclarator = (declarator: VariableDeclarator,
  * **`var` is rejected here, not by the statement dispatcher.** The dispatcher
  * switches on node *type*, and `var x = 1` is a `VariableDeclaration` exactly as
  * `let x = 1` is - so registering this visitor is what stopped `var` reaching the
- * throwing `default:`. Function-scoped hoisting is a second scoping model beside
+ * dispatcher's throw. Function-scoped hoisting is a second scoping model beside
  * block scoping and is out of scope for this phase, so the rejection had to move
  * rather than disappear.
  *
@@ -127,8 +128,11 @@ export const variableDeclarationVisitor = (node: VariableDeclaration, st: EvalSt
   // from opening a frame it never closes. The others are covered the way every
   // throwing visitor in this library is: `evaluate`'s `catch` unwinds the open
   // nodes to its walk base.
-  if (node.kind !== 'let' && node.kind !== 'const') {
-    throw new Error(`Unsupported variable declaration kind: ${node.kind}`);
+  // The kinds are `statement-support.ts`' table, which
+  // `findUnsupportedStatement` reads too.
+  const refusal = declarationKindRefusal(node);
+  if (refusal !== undefined) {
+    throw new Error(refusal);
   }
 
   beforeVisitor(node, st);

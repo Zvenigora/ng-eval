@@ -37,6 +37,16 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   on the context set the delay. Both are gone: nothing arms a timer and nothing reads the key. A host
   that wants a bound wraps its own promise.
 
+### Added
+- **`findUnsupportedStatement(node)`**, which reports the first statement in a tree that evaluation
+  would refuse, in source order, as `{ statement, message }`, where `message` is what evaluation
+  throws for it, or `undefined` when there is none (D13, the first half). Evaluation
+  refuses a statement only when the walk reaches it, so one in an arrow function's body never
+  called, or in a branch not taken, throws nothing; this reads the whole tree, function bodies and
+  untaken branches included. It and the evaluator read one table of the statement types and
+  declaration kinds evaluation supports, so the two cannot disagree, and each refusal's message is
+  unchanged. The `.d.ts` gains the function.
+
 ### Fixed
 - **An `await` arms no timer and leaves the caller's error as it was raised**
   ([A25](../../docs/backlog-retired.md#a25)). Each evaluation of an `await` armed a `setTimeout`

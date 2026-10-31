@@ -13,11 +13,13 @@ import {
   EvalService,
   ParserService,
   createTimingHook,
+  findUnsupportedStatement,
+  parse,
   provideColonIdentifiers,
 } from '../public-api';
 
 /** The ` ```javascript ` fences in `modules/eval-core/README.md`, indented ones included. */
-const README_JAVASCRIPT_BLOCKS = 25;
+const README_JAVASCRIPT_BLOCKS = 26;
 
 /** The ` ```sh ` fences: `## Install`'s. */
 const README_SH_BLOCKS = 1;
@@ -65,7 +67,8 @@ const README_JSON_BLOCKS = 1;
  * **step 7 a second**, the section's writing rules, which continues the
  * first's `service` and so is the same case. **Phase 10 step 3 added seven**,
  * the root README's API sections moved here, each covered by a case of its
- * own. Sections
+ * own. **The A24 plan's step 5 added one**, the `findUnsupportedStatement`
+ * block, covered by a case of its own. Sections
  * whose later blocks continue an earlier one are a single case, split only
  * where the document declares a fresh start by re-declaring its own bindings.
  *
@@ -79,6 +82,7 @@ const README_JSON_BLOCKS = 1;
  * | Async compilation | the `simpleCallAsync` block, which re-declares `service` — **Phase 10 step 3** |
  * | Discovery | `### Discovery` |
  * | Scopes | `### Scopes` |
+ * | A refused statement never reached | the `findUnsupportedStatement` block under `### How statements differ from JavaScript` — **the A24 plan's step 5** |
  * | Case-insensitive evaluation | `### Case-insensitive evaluation` — **Phase 10 step 3** |
  * | Evaluation with state | `### Evaluation with state` — **Phase 10 step 3** |
  * | Colon-joined names | `### Colon-joined names` — **Phase 9 step 3** **+** the section's second block, the consequent and the quoted key — **step 7** |
@@ -181,7 +185,9 @@ const README_JSON_BLOCKS = 1;
  *    `expressions?.length`. And `compiler.call`'s result is cast to
  *    `() => Promise<unknown>` where the block calls `arrow()` directly. Neither
  *    changes a claim, and both are here because the enumeration is worth more
- *    than its tidiness.
+ *    than its tidiness. The `findUnsupportedStatement` case reads `found?.`
+ *    where its block reads `found.`, for the first reason: the export returns
+ *    `… | undefined`.
  *
  * 9. **`TestBed`'s providers for `appConfig`.** The `### Colon-joined names`
  *    block declares the application's root providers; the case hands the same
@@ -376,6 +382,20 @@ describe('documented examples', () => {
     // with `thisArg: cat`, as up to 0.6.x, the case passed whether or not it
     // was applied (`docs/backlog-retired.md` A7).
     expect(result).toBe('Mister Whiskers says meow 3 times');
+  });
+
+  it('should find a refused statement the walk never reaches', () => {
+    // The `findUnsupportedStatement` block under `### How statements differ
+    // from JavaScript`. The `while` sits in a body never called, so the first
+    // line is what makes the export's answer one evaluation cannot give.
+    const text = 'let f = () => { while (true) {} }; 1';
+    expect(service.simpleEval(text)).toBe(1);
+
+    const found = findUnsupportedStatement(parse(text, { ecmaVersion: 2020 }));
+    expect(found?.statement.type).toBe('WhileStatement');
+    expect(found?.message).toBe('Unsupported statement type: WhileStatement');
+
+    expect(findUnsupportedStatement(parse('let x = 1; x', { ecmaVersion: 2020 }))).toBeUndefined();
   });
 
   it('should resolve identifiers and member names case-insensitively', () => {

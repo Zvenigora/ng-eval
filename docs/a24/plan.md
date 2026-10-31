@@ -1,6 +1,11 @@
 # A24, A25 and D13 — the await track: `await` where its value is the result, and every refused statement reported (`@zvenigora/ng-eval-core`, then `eval-signals` and `eval-forms`)
 
 **Date**: October 30, 2026
+**Revision**: 5 — step 5: § 8 q1's `eval-forms` compile check moved to step 6, whose build makes it;
+step 6's list gains `docs/README.md`'s link to `backlog.md#a24`; P5-1's, P5-3's and P5-5's
+predicted red sets corrected, measured; the README's `return` sentence corrected at the code
+review; step 5's outcome.
+
 **Revision**: 4 — step 4: widened at its code review to unwrap `preserveParens` in the accepted
 positions, with four rows and probes P4-7 and P4-8, so `eval-core` reaches 3259 at step 4 and 3288
 at step 5; step 4's outcome; the `step` skill's state line made step-independent.
@@ -851,13 +856,115 @@ step-4 flip rewrites a row in place and moves no count. Every row "moves" below 
      ([SR21](../standing-rules.md#sr21)).
 - **Probes**, each alone:
   - **P5-1** *Wrong*: a second list in the export that admits `WhileStatement`. Red: the parity row
-    for `while`.
+    for `while`, and the uncalled-body row and the README block, whose sources hold a `while`
+    (*corrected in step 5*).
   - **P5-2** *Wrong*: the dispatcher's old `switch` restored beside the table, with `SwitchStatement`
     added to it. Red: the parity row for `switch`, which now evaluates.
-  - **P5-3** *Wrong*: the walk skips function bodies. Red: the uncalled-body row.
+  - **P5-3** *Wrong*: the walk skips function bodies. Red: the uncalled-body row, the README block,
+    and the `return` parity row, whose `return` is in an arrow's body (*corrected in step 5*).
   - **P5-4** *Wrong*: report the last in source order. Red: the order row.
-  - **P5-5** The README's code span for the export removed. Red: `export-list.spec.ts`' F10 case.
+  - **P5-5** The README's code span for the export removed. Red: `export-list.spec.ts`' F10 case,
+    which runs twice (*corrected in step 5*: `public-api.spec.ts` imports `./export-list.spec`, so
+    Jest registers its cases in that suite too).
 - **Ships in**: `eval-core` 0.15.0.
+- **Outcome** (2026-10-31):
+  - **The table** is `statement-support.ts`: the six types `dispatchStatement` walks and the two
+    kinds the declaration visitor binds, each a `Set`, read by `statementTypeRefusal` and
+    `declarationKindRefusal`, the only place either message is written. `dispatchStatement` throws
+    the first's message in place of its `switch`, and `variable-declaration.ts` the second's above
+    `beforeVisitor`, where its check was; the comments that explained the `switch` moved with the
+    list. Each message, and where it is thrown, is unchanged.
+  - **The export** is `functions/unsupported-statement.ts`, as § 8 q1 answered it:
+    `findUnsupportedStatement(node: AnyNode | undefined): { statement: Statement | ModuleDeclaration; message: string } | undefined`,
+    exported beside `extract` in `functions/public-api.ts`. It runs `walk.full` over the whole tree
+    and keeps the refused statement with the lowest `start`: `walk.full` calls back in post-order,
+    so the first visited is the innermost, not the first in the source. A node is a statement when
+    its type ends in `Statement` or `Declaration`, true of every member of acorn's `Statement` and
+    `ModuleDeclaration` unions and of no other node type; the parity rows and the completeness case
+    hold it for every member. That is a classification, not a second list of what is supported:
+    every refusal is the table's.
+  - **The rows**, `unsupported-statement.spec.ts`: the parity table's 23 cases, each asserting the
+    statement type the export reports, or `undefined`, and that `simpleEval`'s thrown message is the
+    export's, or both `undefined`; the completeness case, which reads the `Statement`, `Declaration`
+    and `ModuleDeclaration` unions from acorn's `.d.ts`, fails on a member with no row and a row
+    naming no member, and for each `ModuleDeclaration` asserts its source is a `SyntaxError` at the
+    services' options and is reported, parsed as a module, with the table's message; and the four
+    tree cases — `let f = () => { while (true) {} }; 1`, `if (false) { switch (1) {} } 2`,
+    `do { throw 1 } while (false); debugger` (the walk visits the `throw` first, the `debugger` is
+    last; the `do` is reported) and a tree with none, with `undefined` as the node beside it. The
+    README block's case is in `readme-examples.spec.ts`, which counts 26 `javascript` blocks.
+  - **The probes**, each applied alone, against all four projects' `test`, pinned as a patch outside
+    the repository and reverted by `git apply -R` after its SHA-256 was checked
+    ([SR32](../standing-rules.md#sr32)); `git grep PROBE` found nothing afterwards:
+
+    | Probe | Predicted | Red |
+    | :--- | :--- | :--- |
+    | P5-1, a second list admitting `WhileStatement` | 3: the `while` parity row; the uncalled-body row and the README block, whose `while` the export now admits | 3, as predicted |
+    | P5-2, the dispatcher's `switch` restored with `SwitchStatement` | 1: the `switch` parity row; no other spec evaluates a `switch` | 1, as predicted |
+    | P5-3, `walk.full` over a base whose `Function` walks nothing | 3: the uncalled-body row, the README block, and the `return` parity row, whose `return` is in an arrow's body | 3, as predicted |
+    | P5-4, the highest `start` kept | 1: the order row | 1, as predicted |
+    | P5-5, the README's code span removed | 1: F10's "names every export" case | 2: that case in `export-list.spec.ts`, and again in `public-api.spec.ts`, which imports it; corrected above |
+
+    `eval-signals` and `eval-forms` stayed at 444 and 380 under every probe.
+  - **Criteria**: 1, `git grep -c "Unsupported statement type" -- modules/eval-core/src/lib/internal ':!*.spec.ts' ':!*.test.ts'`
+    prints `statement-support.ts:1`, and so does the same grep for `Unsupported variable declaration kind`;
+    2, the statement specs are not in the diff and are green;
+    3, the built `.d.ts` holds the declaration, `export-list.spec.ts` and `public-api.spec.ts` are
+    green, and the README block's import of `findUnsupportedStatement` from
+    `@zvenigora/ng-eval-core` resolves through `public-api.spec.ts`' import case, as the case's import
+    from `../public-api` compiles.
+  - **Counts**: `eval-core` 3259 → 3288; `eval-signals` 444 and `eval-forms` 380, unchanged.
+  - **Corrections in this step's commit** ([SR4](../standing-rules.md#sr4)), given at its gate:
+    § 8 q1's check that `eval-forms` compiles reading only `.statement.type` and `.message` moves to
+    step 6, as its criterion 4, since this step writes no `eval-forms` code; step 6's list gains
+    `docs/README.md`'s link to `backlog.md#a24`; and the README's `AwaitExpression` line, which said
+    an `await` outside an accepted position "was evaluated there, wrongly as an operand" up to
+    0.14.1, false of the element, argument and initializer forms that resolved under `evalAsync`
+    ([SR31](../standing-rules.md#sr31)), now says what the corrected Breaking line says.
+  - **Not linked**: the CHANGELOG's `### Added` line names D13 without a link, as its `[Unreleased]`
+    names A27 once: step 6 retires D13 and re-points the links its list names, and this one is not
+    among them.
+  - **The README's lines** ([SR21](../standing-rules.md#sr21)):
+
+    | Claim | Witness |
+    | :--- | :--- |
+    | Up to 0.14.1 an `await` outside the accepted positions handed the walk a promise | step 2's sync P cases at d62eee4, each a promise other than `p` |
+    | As an operand that gave a wrong answer | step 2's P7 at d62eee4, `NaN`; P7's native arm, 20 |
+    | As an element, an argument or an initializer, `evalAsync` resolved it | step 2's P8, P9 and P10 async at d62eee4, `[2]`, `2` and `2`, and their native arms |
+    | A refused statement throws only when the walk reaches it | the README block case's `simpleEval(text)` `1`; the uncalled-body and untaken-branch rows |
+    | The export reads the whole tree, function bodies and untaken branches included | those two rows and the `return` parity row; P5-3 |
+    | Against the table evaluation uses | the parity table; P5-1, P5-2 |
+    | `{ statement, message }`, `message` what evaluation throws | every refused parity row; the README block case |
+    | The first in source order | the order row; P5-4 |
+    | `undefined` when there is none | the supported parity rows, the none row, the README block case |
+    | Pass it the `Program` that `parse` returns with `extractExpressions` off, as the services parse | held by review: `EvalService` parses with `defaultParserOptions`, whose `extractExpressions` is `false`; the rows parse with it, the README block with `{ ecmaVersion: 2020 }`, which leaves it unset |
+    | In an arrow function's block body a `return` parses and is rejected, `(() => { return 1 })()` throwing `Unsupported statement type: ReturnStatement` | the `return` parity row, which asserts that type reported and evaluation's message equal to it; it replaces "`return` never reaches the evaluator at all", false since 0.4.0. The top-level parse error beside it is unchanged, and no row pins it |
+
+  - **The CHANGELOG's line** ([SR21](../standing-rules.md#sr21)):
+
+    | Claim | Witness |
+    | :--- | :--- |
+    | First in source order, `{ statement, message }`, or `undefined` | as the README's rows |
+    | Untaken branches and uncalled bodies threw nothing, and are read | the uncalled-body and untaken-branch rows |
+    | One table, so the two cannot disagree | the parity table; P5-1 and P5-2 |
+    | Each refusal's message is unchanged | the statement specs that assert them, unmodified and green: `statement-semantics.spec.ts`, `program.spec.ts`, `block-statement.spec.ts`, `for-statement.spec.ts`, `if-statement.spec.ts`, `variable-declaration.spec.ts` |
+    | The `.d.ts` gains the function | the gate's `build`, read in `dist/modules/eval-core` |
+
+  - **Code review** (before the commit): no Critical finding. Folded in: the README's "`return`
+    never reaches the evaluator at all", which this step's `return` row shows false since 0.4.0
+    ([SR31](../standing-rules.md#sr31)), now says a top-level `return` does not parse and one in an
+    arrow's block body is rejected as `break`, `continue` and `throw` are; P5-1's and P5-3's probe
+    lines, which predicted one row each where the outcome's three were derived; criterion 1's count;
+    and the CHANGELOG's "threw nothing", which is present behaviour. The `.d.ts` claim was a
+    prediction until the gate's `build` ran, and is read there. Noted, not changed, each outside
+    this step's list ([SR3](../standing-rules.md#sr3)): the comments that still call the
+    dispatcher's throw its `default` (`for-statement.ts`, `if-statement.ts`, `empty-statement.ts`,
+    and in `for-statement.spec.ts`, `if-statement.spec.ts` and `block-statement.spec.ts`, which
+    criterion 2 keeps unmodified), kept, since they still name the throw they mean; at an
+    `ecmaVersion` past the services' 2020 the export reports a statement in a class's static
+    block, which evaluation never reaches, since `ClassExpression` has no visitor and the base
+    walker passes the block by — the conservative direction, and the A2 family's on the evaluator's
+    side; and the register's D13 entry citing `dispatch-statement.ts:66`, which step 6 retires.
 
 ### Step 6 — D13 in `eval-forms`: refused at registration
 
@@ -868,7 +975,9 @@ step-4 flip rewrites a row in place and moves no count. Every row "moves" below 
   register, D13 retired, recording that it reverses the Phase 9 plan's § 3.8.
 - **Edit, link targets only** ([SR6](../standing-rules.md#sr6)'s re-point): D13's inbound links —
   `docs/colon-identifiers/phase-9-plan.md` (6), `docs/colon-identifiers/phase-9-summary.md` (3),
-  `docs/README.md`'s "Active plan" entry, and this document's.
+  `docs/README.md`'s "Active plan" entry, and this document's. *Widened in step 5*
+  ([SR4](../standing-rules.md#sr4)): beside D13's, that entry's link to `backlog.md#a24`, which step 4
+  left resolving to the index row, is re-pointed to `backlog-retired.md#a24`.
 - **Rows**: `guard-identifiers.spec.ts:308-311` and `:317-320` move in place, to the label's message
   through both adapters. **New**, each through both adapters, beside them inside the
   `describe.each` over the switch on and off (`:254-257`), so 3 rows and 6 cases (`eval-forms` +6):
@@ -879,6 +988,9 @@ step-4 flip rewrites a row in place and moves no count. Every row "moves" below 
   2. `guard-identifiers.spec.ts:281`'s row, the label before the identifier, is green and unmodified.
   3. `git grep -n "top-level\|own statements" modules/eval-forms/README.md` finds no claim that only
      the top level is checked ([SR25](../standing-rules.md#sr25)).
+  4. *Moved from step 5* (§ 8 q1): `guardIdentifiers` reads only the export's `.statement.type` and
+     `.message`, and `eval-forms` imports nothing from `acorn` for it; the gate's `build` compiles it
+     ([SR9](../standing-rules.md#sr9)).
 - **Probes**, each alone:
   - **P6-1** *Wrong*: today's loop kept, over the program's own statements. Red: the two moved rows,
     and the branch and function-body rows.
@@ -979,9 +1091,10 @@ maintainer at step 2's confirmation gate, on 2026-10-30, and the step that names
    `findUnsupportedStatement(node: AnyNode | undefined): { statement: Statement | ModuleDeclaration; message: string } | undefined`.
    A verb, beside `parse`, `extract` and `evaluate`. The parameter is `evaluate`'s: acorn's `AnyNode`
    is already in the published `.d.ts` there. It returns the node, for its source positions, and
-   `eval-core`'s message, so `eval-forms` quotes the message rather than copying it. Step 5 confirms
+   `eval-core`'s message, so `eval-forms` quotes the message rather than copying it. Step 6 confirms
    that `eval-forms` compiles reading only `.statement.type` and `.message`, with no `acorn` import
-   ([SR9](../standing-rules.md#sr9)).
+   ([SR9](../standing-rules.md#sr9)). *Moved in step 5* ([SR4](../standing-rules.md#sr4)): this said
+   step 5, which writes no `eval-forms` code; step 6's build is what compiles it.
 2. **Whether a refused `await`'s message suggests the two-signal form** (step 4). `eval-core` knows no
    signals, and its README is the message's only context, so the default is no. The alternative is a
    neutral clause, "resolve the value first and evaluate a second expression with it", which `eval-signals`'
