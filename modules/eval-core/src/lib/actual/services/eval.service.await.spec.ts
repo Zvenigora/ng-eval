@@ -75,11 +75,15 @@ describe('EvalService - await', () => {
 
   describe('an asynchronous rejection', () => {
 
-    it('should still carry the position of the await expression', async () => {
-      const context = { rejecting: () => Promise.reject(new Error('later')) };
+    it('should reject with the caller\'s own Error, its message unchanged', async () => {
+      // Up to 0.14.1 the visitor appended ` at position 0-17` to the
+      // caller's message (`docs/backlog-retired.md` A25).
+      const e = new Error('later');
+      const context = { rejecting: () => Promise.reject(e) };
 
       await expect(service.simpleEvalAsync(programOf('await rejecting()'), context))
-        .rejects.toThrow('later at position 0-17');
+        .rejects.toBe(e);
+      expect(e.message).toBe('later');
     });
   });
 });

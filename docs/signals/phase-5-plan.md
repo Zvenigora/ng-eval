@@ -149,7 +149,7 @@ that shows it.
    so it is recorded as [BL-A24](../backlog.md#a24), not solved here (§ 3.1 says why).
 
 4. **`awaitVisitor` carries three hazards of its own** — handed finding 2, reproduced (P2, P2b).
-   Recorded as [BL-A25](../backlog.md#a25); what each design option does to them is in § 3.1.
+   Recorded as [BL-A25](../backlog-retired.md#a25); what each design option does to them is in § 3.1.
    - **A 30 s timer per `await`, never cleared.** One `setTimeout(…, 30000)` per evaluation of the
      node and no `clearTimeout` (`await-expression.ts:14-20`, `:56-59`). Under Angular's zone the
      timer outlives the evaluation: `NgZone.hasPendingMacrotasks` was `true` after the result had
@@ -290,7 +290,7 @@ the repo against the `eval-core` bundle the gate built at `cc0761e`.
 
 - **Top-level `await`, and any change to what `await` means** — § 3.1 decides it. The `async`-arrow
   path stays as it is; [BL-A24](../backlog.md#a24) owns it.
-- **Any `eval-core` source change.** [BL-A25](../backlog.md#a25) and [BL-A26](../backlog-retired.md#a26) are
+- **Any `eval-core` source change.** [BL-A25](../backlog-retired.md#a25) and [BL-A26](../backlog-retired.md#a26) are
   `eval-core` defects that Phase 5 neither needs fixed nor makes more reachable (§ 3.1). If a step
   finds it needs a core change, that is a stop-and-replan, as it was in Phase 3 § 2.
 - **`defaultParserOptions`** — unchanged; finding 10 is why that matters beyond this package.
@@ -363,7 +363,7 @@ plain-object property value in it, a conditional's branches, the last operand of
   an `eval-core` behaviour change.
 - *Finding 4's hazards*: made **more** reachable. Every recompute of an expression with a top-level
   `await` would start a 30 s timer, and under zone.js hold the application unstable for 30 s after each
-  one (P2b). B would need [BL-A25](../backlog.md#a25) fixed in `eval-core` first, as a step of its own.
+  one (P2b). B would need [BL-A25](../backlog-retired.md#a25) fixed in `eval-core` first, as a step of its own.
 
 **Option C — keep `await` out, and close the gap differently.** Top-level `await` stays a
 `SyntaxError`. A promise enters the walk as a call's return value, the walk finishes, and
@@ -385,7 +385,7 @@ found" and the walk as `undefined` — hence the conditional.
   async signals, or one with the dependency written inside a consumer function.
 - *Finding 4's hazards*: unreachable from a top-level expression; reachable through an `async` arrow
   exactly as today, on the sync path and this one alike. Phase 5 neither adds nor removes reach, so
-  they stay [BL-A25](../backlog.md#a25)'s.
+  they stay [BL-A25](../backlog-retired.md#a25)'s.
 
 **Decision: C.** A is a rewrite of the evaluator that still cannot deliver tracked reads after an
 `await`; B is a static check that buys syntax and costs a core fix. C's two-signal form tracks every
@@ -1176,7 +1176,7 @@ because an async assertion has one more way to be vacuous:
 | A future `eval-core` change adds an `await` before the walk | Low | Step 1's spec |
 | Object-valued results never dedupe, because `awaitAllPromises` rebuilds them | **Certain**, low severity | README (§ 3.7); `equal` is forwarded |
 | `eval-forms` consumers cannot install `eval-signals` 0.5.0 | Certain without the patch | Step 4 releases `eval-forms` 0.4.1; `eval-forms:lint` fails until it does |
-| [BL-A24](../backlog.md#a24) / [BL-A25](../backlog.md#a25) reached through an `async` arrow in the new primitive | Medium | Not this phase's to fix (§ 3.1); the README states it (step 4) |
+| [BL-A24](../backlog.md#a24) / [BL-A25](../backlog-retired.md#a25) reached through an `async` arrow in the new primitive | Medium | Not this phase's to fix (§ 3.1); the README states it (step 4) |
 
 ---
 

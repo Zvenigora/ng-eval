@@ -379,10 +379,8 @@ evaluation's trace can take. Implemented in
   `maxIterations` is. Neither is the time a host function takes.
 - **Calls and arrow functions are marked potentially unsafe** in the list of supported syntax, for
   the reasons above.
-- **Open register entries that bear on this**:
-  [A25](docs/backlog.md#a25), each `await` starts a 30-second timer that is never cleared; and
-  [A33](docs/backlog.md#a33), under `caseInsensitive` a cached miss can hide a key added later — no
-  refusal is skipped.
+- **Open register entry that bears on this**: [A33](docs/backlog.md#a33), under `caseInsensitive`
+  a cached miss can hide a key added later — no refusal is skipped.
 
 ## Advisories
 

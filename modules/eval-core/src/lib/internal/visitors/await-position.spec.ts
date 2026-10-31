@@ -6,14 +6,15 @@ import { Context } from '../classes/common';
 import { evaluate, evaluateAsync, parse } from '../functions';
 
 /**
- * Today's `await`, pinned case by case before A25 and A24 change it
+ * `await`, pinned case by case before A25 and A24 change it
  * (`docs/a24/plan.md` step 2, [SR27](../../../../../../docs/standing-rules.md#sr27)).
  *
- * Every case asserts the value measured at d62eee4 and carries a mark in its
- * title: `[3]` for a case step 3 (A25, the pass-through) rewrites, `[4]` for one
- * step 4 (A24, the accepted position) rewrites, both, or `[-]` for neither. The
- * marks were measured, not taken from the decisions: each was read off the red
- * set of a prototype of that step, applied alone (the plan's step 2 outcome).
+ * Every case carries a mark in its title: `[3]` for a case step 3 (A25, the
+ * pass-through) rewrote, `[4]` for one step 4 (A24, the accepted position)
+ * rewrites, both, or `[-]` for neither. A case marked `3` asserts the value
+ * since step 3; every other case, the value measured at d62eee4. The marks
+ * were measured, not taken from the decisions: each was read off the red set
+ * of a prototype of that step, applied alone (the plan's step 2 outcome).
  *
  * - **P**, the positions: twelve places an `await` can sit, each on the sync
  *   and the async path, case-sensitive and under `caseInsensitive`. Under
@@ -22,16 +23,19 @@ import { evaluate, evaluateAsync, parse } from '../functions';
  *   than by its exact key. P4, P6 and P7 give 1, 1 and `NaN` whether or not
  *   `p` resolves, so their `caseInsensitive` cases witness nothing more.
  * - **A**, `async` ignored, and a non-thenable operand.
- * - **T**, the timer: one `setTimeout` per evaluation of an `await`.
- * - **K**, the `__awaitTimeout` key, read off the context's `original`.
- * - **S**, the position suffix, appended to the caller's own `Error`.
- * - **C**, the conversion of a rejection that is not an `Error`.
+ * - **T**, the timer: one `setTimeout` per evaluation of an `await`, up to
+ *   0.14.1, and none since.
+ * - **K**, the `__awaitTimeout` key, read off the context's `original` up to
+ *   0.14.1, and read by nothing since.
+ * - **S**, the position suffix, appended to the caller's own `Error` up to
+ *   0.14.1, and to nothing since.
+ * - **C**, the conversion of a rejection that is not an `Error`: the visitor's
+ *   own up to 0.14.1, and `evaluateAsync`'s `ensureError` since.
  *
  * **A sync case pins a pass-through by identity, never by type**
  * (`docs/a24/plan.md` § 0 rule 2): a promise is a `Promise` whether or not the
  * visitor re-wrapped it, so each one whose value is or holds a promise
- * asserts it is *not* `p`. A2's operand, `1`, is not thenable, so its type
- * alone already fails once the operand passes through.
+ * asserts it *is* `p`. A2's operand, `1`, is not thenable, so it asserts `1`.
  *
  * **The native arm.** Each async P case also runs the same bindings through
  * JavaScript itself, in an `AsyncFunction` built from the row's source, so its
@@ -44,7 +48,7 @@ import { evaluate, evaluateAsync, parse } from '../functions';
  * Top-level `await` needs `allowAwaitOutsideFunction`, which the services'
  * default parser options leave off, so every case parses its source itself.
  */
-describe('await - its position, the timer, the key, the suffix and the conversion, today', () => {
+describe('await - its position, the timer, the key, the suffix and the conversion', () => {
 
   const programOf = (source: string): AnyNode =>
     parse(source, { ecmaVersion: 2020, allowAwaitOutsideFunction: true }) as AnyNode;
@@ -82,17 +86,15 @@ describe('await - its position, the timer, the key, the suffix and the conversio
 
   type SyncExpectation = (value: unknown, b: Bindings) => Promise<void>;
 
-  /** Today's race: a promise resolving to `resolved`, and not `p`. */
-  const aNewPromiseOf = (resolved: unknown): SyncExpectation => async (value, { p }) => {
-    expect(value).toBeInstanceOf(Promise);
-    expect(value).not.toBe(p);
-    await expect(value).resolves.toBe(resolved);
+  /** The operand itself: `p`, by identity. */
+  const theOperand: SyncExpectation = async (value, { p }) => {
+    expect(value).toBe(p);
   };
 
-  const anArrayOfANewPromise: SyncExpectation = async (value, b) => {
+  const anArrayOfTheOperand: SyncExpectation = async (value, b) => {
     expect(Array.isArray(value)).toBe(true);
     expect(value).toHaveLength(1);
-    await aNewPromiseOf(2)((value as unknown[])[0], b);
+    await theOperand((value as unknown[])[0], b);
   };
 
   const exactly = (expected: unknown): SyncExpectation => async (value) => {
@@ -118,17 +120,17 @@ describe('await - its position, the timer, the key, the suffix and the conversio
   const positions: Position[] = [
     {
       id: 'P1 root', source: 'await p', node: expressionOf,
-      sync: aNewPromiseOf(2), syncMark: '3', async: 2, asyncMark: '-',
+      sync: theOperand, syncMark: '3', async: 2, asyncMark: '-',
       native: 'return await p', js: 2,
     },
     {
       id: 'P2 expression body', source: '(async () => await p)()', node: programOf,
-      sync: aNewPromiseOf(2), syncMark: '3', async: 2, asyncMark: '-',
+      sync: theOperand, syncMark: '3', async: 2, asyncMark: '-',
       native: 'return (async () => await p)()', js: 2,
     },
     {
       id: 'P3 program, last', source: '1; await p', node: programOf,
-      sync: aNewPromiseOf(2), syncMark: '3', async: 2, asyncMark: '-',
+      sync: theOperand, syncMark: '3', async: 2, asyncMark: '-',
       native: '1; return await p', js: 2,
     },
     {
@@ -138,7 +140,7 @@ describe('await - its position, the timer, the key, the suffix and the conversio
     },
     {
       id: 'P5 block, last', source: '(async () => { 1; await p })()', node: programOf,
-      sync: aNewPromiseOf(2), syncMark: '3', async: 2, asyncMark: '-',
+      sync: theOperand, syncMark: '3', async: 2, asyncMark: '-',
       native: 'return (async () => { 1; await p })()', js: undefined,
     },
     {
@@ -153,27 +155,27 @@ describe('await - its position, the timer, the key, the suffix and the conversio
     },
     {
       id: 'P8 element', source: '(async () => [await p])()', node: programOf,
-      sync: anArrayOfANewPromise, syncMark: '3, 4', async: [2], asyncMark: '4',
+      sync: anArrayOfTheOperand, syncMark: '3, 4', async: [2], asyncMark: '4',
       native: 'return (async () => [await p])()', js: [2],
     },
     {
       id: 'P9 argument', source: '(async () => f(await p))()', node: programOf,
-      sync: aNewPromiseOf(2), syncMark: '3, 4', async: 2, asyncMark: '4',
+      sync: theOperand, syncMark: '3, 4', async: 2, asyncMark: '4',
       native: 'return (async () => f(await p))()', js: 2,
     },
     {
       id: 'P10 initializer', source: '(async () => { let x = await p; x })()', node: programOf,
-      sync: aNewPromiseOf(2), syncMark: '3, 4', async: 2, asyncMark: '4',
+      sync: theOperand, syncMark: '3, 4', async: 2, asyncMark: '4',
       native: 'return (async () => { let x = await p; x })()', js: undefined,
     },
     {
       id: 'P11 branch', source: '(async () => c ? await p : 0)()', node: programOf,
-      sync: aNewPromiseOf(2), syncMark: '3, 4', async: 2, asyncMark: '4',
+      sync: theOperand, syncMark: '3, 4', async: 2, asyncMark: '4',
       native: 'return (async () => c ? await p : 0)()', js: 2,
     },
     {
       id: 'P12 nested', source: '(async () => await await p)()', node: programOf,
-      sync: aNewPromiseOf(2), syncMark: '3, 4', async: 2, asyncMark: '4',
+      sync: theOperand, syncMark: '3, 4', async: 2, asyncMark: '4',
       native: 'return (async () => await await p)()', js: 2,
     },
   ];
@@ -221,11 +223,8 @@ describe('await - its position, the timer, the key, the suffix and the conversio
       expect(await evaluateAsync(programOf('(async () => 1)()'), EvalState.fromContext({}))).toBe(1);
     });
 
-    it('A2 (async () => await 1)(), sync [3]: a new promise resolving to 1', async () => {
-      const value = evaluate(programOf('(async () => await 1)()'), EvalState.fromContext({}));
-
-      expect(value).toBeInstanceOf(Promise);
-      await expect(value).resolves.toBe(1);
+    it('A2 (async () => await 1)(), sync [3]: 1', () => {
+      expect(evaluate(programOf('(async () => await 1)()'), EvalState.fromContext({}))).toBe(1);
     });
 
     it('A2 (async () => await 1)(), async [-]: 1', async () => {
@@ -253,9 +252,9 @@ describe('await - its position, the timer, the key, the suffix and the conversio
     });
 
     describe('T and K, the timer and the key', () => {
-      // Replaced, not wrapped, so no case arms a real timer: the race then
-      // settles with its operand, as it does today whenever the operand
-      // settles first.
+      // Replaced, not wrapped, so no case arms a real timer. Up to 0.14.1 the
+      // race then settled with its operand, as it did whenever the operand
+      // settled first; since step 3 nothing arms one.
       let setTimeoutSpy: jest.SpyInstance;
       let clearTimeoutSpy: jest.SpyInstance;
 
@@ -274,71 +273,70 @@ describe('await - its position, the timer, the key, the suffix and the conversio
         clearTimeoutSpy.mockRestore();
       });
 
-      it('T1 one await through evalAsync [3]: one timer of 30 000, never cleared', async () => {
+      it('T1 one await through evalAsync [3]: no timer', async () => {
         const p = Promise.resolve(2);
 
         await expect(service.evalAsync(programOf('await p'), service.createState({ p }))).resolves.toBe(2);
 
-        expect(delays()).toEqual([30000]);
+        expect(delays()).toEqual([]);
         expect(clearTimeoutSpy).not.toHaveBeenCalled();
       });
 
-      it('T2 one await through eval [3]: one timer of 30 000, never cleared', async () => {
+      it('T2 one await through eval [3]: no timer', async () => {
         const p = Promise.resolve(2);
 
         const value = service.eval(programOf('await p'), service.createState({ p }));
 
         await expect(value).resolves.toBe(2);
-        expect(delays()).toEqual([30000]);
+        expect(delays()).toEqual([]);
         expect(clearTimeoutSpy).not.toHaveBeenCalled();
       });
 
-      it('T3 one expression evaluated twice [3]: a timer per evaluation', async () => {
+      it('T3 one expression evaluated twice [3]: no timer for either', async () => {
         const p = Promise.resolve(2);
         const node = programOf('await p');
 
         await expect(service.evalAsync(node, service.createState({ p }))).resolves.toBe(2);
         await expect(service.evalAsync(node, service.createState({ p }))).resolves.toBe(2);
 
-        expect(delays()).toEqual([30000, 30000]);
+        expect(delays()).toEqual([]);
         expect(clearTimeoutSpy).not.toHaveBeenCalled();
       });
 
-      it('K1 __awaitTimeout on a plain object [3]: the timer is armed with it', async () => {
+      it('K1 __awaitTimeout on a plain object [3]: no timer', async () => {
         const p = Promise.resolve(2);
 
         await expect(service.evalAsync(programOf('await p'),
           service.createState({ p, __awaitTimeout: 1 }))).resolves.toBe(2);
 
-        expect(delays()).toEqual([1]);
+        expect(delays()).toEqual([]);
       });
 
-      it('K2 __awaitTimeout on an EvalContext\'s original [3]: the timer is armed with it', async () => {
+      it('K2 __awaitTimeout on an EvalContext\'s original [3]: no timer', async () => {
         const p = Promise.resolve(2);
         const context = new EvalContext({ p, __awaitTimeout: 1 }, {});
 
         await expect(service.evalAsync(programOf('await p'), service.createState(context))).resolves.toBe(2);
 
-        expect(delays()).toEqual([1]);
+        expect(delays()).toEqual([]);
       });
 
-      it('K3 __awaitTimeout under caseInsensitive [3]: the copied Registry hides it, so 30 000', async () => {
-        // `fromContext` copies a plain record into a `Registry` under
-        // `caseInsensitive`, and the visitor reads the key off `original` by
-        // index, which a `Registry` does not answer.
+      it('K3 __awaitTimeout under caseInsensitive [3]: no timer', async () => {
+        // Up to 0.14.1 `fromContext`'s `Registry` copy hid the key, which the
+        // visitor read off `original` by index, so the timer was 30 000.
         const p = Promise.resolve(2);
         const context = { p, __awaitTimeout: 1 };
 
         await expect(service.evalAsync(programOf('await p'),
           service.createState(context, { caseInsensitive: true }))).resolves.toBe(2);
 
-        expect(delays()).toEqual([30000]);
+        expect(delays()).toEqual([]);
       });
     });
 
     describe('S, the suffix', () => {
 
-      it('S1 one rejection of the caller\'s Error [3]: the same Error, its message suffixed', async () => {
+      it('S1 one rejection of the caller\'s Error [3]: the same Error, its message unchanged', async () => {
         const e = new Error('later');
         const context = { rejecting: () => Promise.reject(e) };
 
@@ -346,10 +344,10 @@ describe('await - its position, the timer, the key, the suffix and the conversio
 
         expect(outcome.rejected).toBe(true);
         expect(outcome.error).toBe(e);
-        expect(e.message).toBe('later at position 0-17');
+        expect(e.message).toBe('later');
       });
 
-      it('S2 the same Error through two evaluations [3]: suffixed twice', async () => {
+      it('S2 the same Error through two evaluations [3]: unchanged by either', async () => {
         const e = new Error('later');
         const context = { rejecting: () => Promise.reject(e) };
         const node = programOf('await rejecting()');
@@ -359,17 +357,17 @@ describe('await - its position, the timer, the key, the suffix and the conversio
 
         expect(first.error).toBe(e);
         expect(second.error).toBe(e);
-        expect(e.message).toBe('later at position 0-17 at position 0-17');
+        expect(e.message).toBe('later');
       });
     });
 
     describe('C, the conversion of a rejection that is not an Error', () => {
 
       it.each([
-        ['C1 a string', 'x', 'Await expression failed: x at position 0-17'],
-        ['C2 an object', { k: 1 }, 'Await expression failed: [object Object] at position 0-17'],
-        ['C3 undefined', undefined, 'Await expression failed: undefined at position 0-17'],
-      ])('%s [3]: the visitor\'s own Error, suffixed', async (_name, rejection, message) => {
+        ['C1 a string', 'x', 'x'],
+        ['C2 an object', { k: 1 }, 'Promise rejected with object: {"k":1}'],
+        ['C3 undefined', undefined, 'Promise rejected with undefined'],
+      ])('%s [3]: evaluateAsync\'s ensureError, as with no await', async (_name, rejection, message) => {
         const context = { rejecting: () => Promise.reject(rejection) };
 
         const outcome = await settle(service.evalAsync(programOf('await rejecting()'), service.createState(context)));

@@ -173,19 +173,16 @@ describe('EvalService - Async Error Handling', () => {
         })
       };
       
-      // Without explicit timeout configuration, operations should complete normally
+      // A promise the result holds resolves normally
       const result = await service.simpleEvalAsync('longRunning()', context);
       expect(result).toBe('completed');
-      
-      // Note: Timeout functionality would be implemented in the await-expression visitor
     });
 
-    it('should handle operations within timeout limit', async () => {
+    it('should resolve a promise the result holds within its own delay', async () => {
       const context = {
         quickOperation: () => new Promise(resolve => {
           setTimeout(() => resolve('quick'), 100); // 100ms delay
-        }),
-        __awaitTimeout: 1000 // 1 second timeout
+        })
       };
       
       const result = await service.simpleEvalAsync('quickOperation()', context);

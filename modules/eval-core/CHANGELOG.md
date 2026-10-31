@@ -12,7 +12,34 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Breaking
+- **An `await` gives its operand itself** ([A25](../../docs/backlog-retired.md#a25)). It gave a
+  new promise racing the operand, even for one that is not thenable. So on the sync path — `eval`,
+  `simpleEval`, `CompilerService`'s `call` and `simpleCall`, and the exported `evaluate` and `call` —
+  `(async () => await p)()` is `p`, and `(async () => await 1)()` is `1`, where it was a promise
+  resolving to `1`. On both paths an `await` of a value that is not thenable gives the value
+  wherever it sits: `(async () => (await 1) + 1)()` is `2`, where it was `"[object Promise]1"`, and
+  `(async () => (await o).k)()` is `o.k`, where it was `undefined`. `evalAsync` resolves a promise
+  that reaches the result, as before.
+- **No `await` is bounded in time.** Up to 0.14.1 each `await` raced its operand against a 30-second
+  timer that rejected with `Await expression timed out after <ms>ms`, and a `__awaitTimeout` number
+  on the context set the delay. Both are gone: nothing arms a timer and nothing reads the key. A host
+  that wants a bound wraps its own promise.
+
 ### Fixed
+- **An `await` arms no timer and leaves the caller's error as it was raised**
+  ([A25](../../docs/backlog-retired.md#a25)). Each evaluation of an `await` armed a `setTimeout`
+  of 30 000 ms and never cleared it, so under Angular's zone an application waiting for stability,
+  server rendering included, waited out 30 s per `await` evaluated. The delay was read from
+  `__awaitTimeout` on the context's `original`, documented nowhere, and missed under
+  `caseInsensitive`. A rejection that is an `Error` reaches the caller by identity with its message
+  unchanged, where ` at position <start>-<end>` was appended to it once per evaluation that saw it.
+  One that is not an `Error` is converted by `evalAsync` as it is with no `await`: `'x'` rejects
+  with an `Error` `"x"`, where the `await` made it `Await expression failed: x at position 0-17`.
+  0.7.0's line on the position, below, stays as history. No exported shape or `.d.ts` change.
+- **A hook firing during an `evalAsync` failure's cleanup reads `duration` as `undefined`**, as one
+  under `eval` has since A27: the walk has not ended. `evalAsync` stopped the clock before closing
+  the nodes the failure left open, so such a hook read a number.
 - **`state.result` describes the walk the entry point ran, and nothing else**
   ([A27](../../docs/backlog-retired.md#a27)). An arrow function's body runs a nested walk on the
   same state, and up to 0.14.1 that walk recorded its own outcome over the enclosing one's: every

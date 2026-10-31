@@ -162,6 +162,36 @@ describe('the evaluation result', () => {
     expect(state.result.errorMessage).toBe('outer');
   });
 
+  // A hook that fires while a failed walk's open nodes are closed reads the
+  // walk as not yet ended. The sync path has unwound before `stop()` since
+  // A27; up to 0.14.1 `evaluateAsync` called `stop()` first, so its hook read
+  // a number.
+  it('should read duration undefined in a hook during an eval failure\'s cleanup', () => {
+    const boom = new Error('boom');
+    const state = service.createState({ boom: (): never => { throw boom; } });
+    const durations: unknown[] = [];
+    state.hooks.on('after', 'CallExpression', (event) => {
+      if (!event.completed) durations.push(event.state.result.duration);
+    });
+
+    expect(() => service.eval('boom()', state)).toThrow(boom);
+
+    expect(durations).toEqual([undefined]);
+  });
+
+  it('should read duration undefined in a hook during an evalAsync failure\'s cleanup', async () => {
+    const boom = new Error('boom');
+    const state = service.createState({ boom: (): never => { throw boom; } });
+    const durations: unknown[] = [];
+    state.hooks.on('after', 'CallExpression', (event) => {
+      if (!event.completed) durations.push(event.state.result.duration);
+    });
+
+    await expect(service.evalAsync('boom()', state)).rejects.toBe(boom);
+
+    expect(durations).toEqual([undefined]);
+  });
+
   it('should keep the trace across evaluations on one state, as A15 has it', () => {
     const state = service.createState({});
 

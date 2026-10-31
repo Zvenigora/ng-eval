@@ -1510,6 +1510,101 @@ and C1's `lastIndex` row. The frozen-object row stays green, as it must: a froze
 definition as it refuses an assignment, so that row pins the message and not the mechanism.
 `eval-signals`: 2 failed, exactly the two regex rows.
 
+<a id="a25"></a>
+## A25 — `awaitVisitor`'s timeout race: an uncleared timer, an undocumented key, a mutated error
+
+**Package** core · **Kind** fix · **Status** **Retired — decided and fixed 2026-10-30**, as step 3 of
+the [A24 plan](a24/plan.md); unreleased, in `eval-core` 0.15.0. Was Open. Opened 2026-10-07 by the
+Phase 5 plan
+
+*Fixed* 2026-10-30. `awaitVisitor` walks its operand, pops it and pushes it unchanged (that plan's
+§ 3.1). `createTimeoutPromise`, `ensurePromise`, `DEFAULT_AWAIT_TIMEOUT`, the `__awaitTimeout` read
+and the `catch` that converted and suffixed a rejection are deleted. So nothing races the operand,
+nothing arms a timer, nothing reads the key and nothing is written onto the caller's error. A
+non-thenable is not wrapped, so the sync path gives `1` for `(async () => await 1)()`, and a
+rejection that is not an `Error` is converted by `evaluateAsync`'s `ensureError` at the caller, as
+it is with no `await`. Nothing replaces the 30 s bound. In the same commit `evaluateAsync`'s outer
+`catch` calls `stop()` after `unwindTo`, the sync order, so a hook that fires during a failure's
+cleanup reads `duration` `undefined` on both paths. That had no entry: [A27](#a27)'s batch found it
+and recorded it in its report.
+
+| Row | 0.14.1 | Fixed |
+| :--- | :--- | :--- |
+| `(async () => await p)()` under `eval`, `p` resolving to 2 | a new promise resolving to 2 | `p` |
+| `(async () => await 1)()` under `eval` | a promise resolving to `1` | `1` |
+| `await p` under `evalAsync` or `eval` | one `setTimeout` of 30 000, no `clearTimeout` | no timer |
+| the same with `__awaitTimeout: 1` on a plain object; on an `EvalContext`'s `original`; under `caseInsensitive` | delays 1; 1; 30 000 | no timer |
+| `await rejecting()`, rejecting the caller's `Error('later')`, once; through two evaluations | `later at position 0-17`; `later at position 0-17 at position 0-17` | `later`, by identity |
+| the same rejecting `'x'`; `{k:1}`; `undefined` | `Await expression failed: x at position 0-17`; `… [object Object] …`; `… undefined …` | `x`; `Promise rejected with object: {"k":1}`; `Promise rejected with undefined` |
+| a hook during an `evalAsync` failure's cleanup | reads `duration` a number | reads `undefined`, as under `eval` |
+
+*Verified*: test-first, by the plan's step 2. `visitors/await-position.spec.ts`'s 30 cases marked
+`3` and `eval.service.await.spec.ts`'s suffix case were red against the pinned `a25.patch` (that
+step's outcome), and are rewritten in place to the values above; the key line of
+`eval.service.async-error-handling.spec.ts`'s case, vacuous since its expression has no `await`, is
+deleted and the case renamed. `functions/evaluate.result.spec.ts` gains 2 cases, a hook during the
+cleanup under `eval`, a guard green before the fix, and under `evalAsync`, red before it. `eval-core`
+3250 → 3252; `eval-signals` 444 and `eval-forms` 380 unchanged. Wrong implementations, each applied
+alone against all three projects, and none moved a downstream row:
+- **the operand re-wrapped**, `Promise.race([value])`: 19 failed, group P's 18 sync identity cases
+  and A2's sync case;
+- **the race kept, with the key's delay, its timer cleared once the operand settles**: 25 failed,
+  group T's three and group K's three, which saw delays of 30 000, 30 000, 30 000 twice, and 1, 1
+  and 30 000, and the first probe's 19;
+- **the suffix dropped by wrapping**, `new Error(message, { cause })`: 21 failed, the moved
+  `eval.service.await.spec.ts` case, group S's two, and group P's 18 sync identity cases, since a
+  visitor intercepts a rejection only by chaining a new promise. The plan predicted the three;
+- **`stop()` restored before `unwindTo`**: 1 failed, the `evalAsync` duration row.
+
+**The entry as it stood:**
+
+Three defects in `await-expression.ts`, reached wherever `awaitVisitor` runs — an `async` arrow at
+default options ([A24](backlog.md#a24)), or an AST the caller parsed with `allowAwaitOutsideFunction`:
+
+- **A 30 s timer per `await`, never cleared** (`:14-20`, `:56-59`). Each evaluation of the node races
+  its operand against a `setTimeout`, and nothing clears it when the operand settles first. Measured:
+  one `setTimeout(…, 30000)` and no `clearTimeout`. Under Angular's zone the timer outlives the
+  evaluation — `NgZone.hasPendingMacrotasks` was `true` after the result had settled and `false` only
+  once the timeout elapsed — so an application waiting for stability, server rendering included,
+  waits out 30 s per `await` evaluated. The race does not cancel the operand either.
+- **An undocumented context key** (`:50-53`). The timeout is read from
+  `context.original['__awaitTimeout']`, documented nowhere and sitting in the consumer's own data
+  namespace. Measured from a plain-object context and from an `EvalContext`'s `original`.
+- **The caller's error is mutated** (`:67-69`). On a rejection that is an `Error` — the caller's own
+  object, by identity — `" at position …"` is appended to its `message`, once per evaluation that sees
+  it: a shared error read `boom at position 0-12 at position 0-12` after two.
+
+**A fix has a pinned spec to move.** `eval.service.await.spec.ts:82` asserts the suffix
+(`'later at position 0-17'`), so a fix that stops mutating decides where the position goes — a
+wrapping error with `cause`, say — and updates that assertion deliberately, raising it first as
+CLAUDE.md requires.
+
+**Why not Phase 5**: its async signal keeps `await` out (plan § 3.1), so it reaches this visitor only
+through an `async` arrow, exactly as the sync path does today. It adds no reach.
+
+**Decided 2026-10-30.** No race, no timer, no `__awaitTimeout`, no suffix: a rejection reaches the
+caller as it was raised. *Corrected 2026-10-30 by the [A24 plan](a24/plan.md)'s step 1*: this said
+"as their own value", which holds at the visitor and not at the caller. Only an `Error` rejection
+reaches an `evalAsync` caller by identity: `evaluateAsync`'s `ensureError` turns any other rejection
+into a new `Error`, a conversion that is not A25's and stays. Reported by the request of 2026-10-30
+as measured on 0.14.1, in a sandbox whose script is not recorded, and matching `ensureError`'s code:
+`'x'` becomes an `Error` `"x"`, `{k:1}` `"Promise rejected with object: {\"k\":1}"`, and `undefined`
+`"Promise rejected with undefined"`. Read from code at d62eee4, an `await` today converts first, to
+`Await expression failed: …` with the suffix, so those three hold under an `await` from A25's fix;
+the plan's step 2 measures it. `eval.service.await.spec.ts:82` moves to `rejects.toBe(e)` with the
+message `'later'`. The key at `eval.service.async-error-handling.spec.ts:188` is vacuous, since its
+expression has no `await`: the line goes and the case is renamed. 0.7.0's CHANGELOG line, "An
+asynchronous rejection still carries ` at position <start>-<end>`", stays as history. Released with
+[A24](backlog.md#a24) in `eval-core` 0.15.0.
+
+*Measured 2026-10-30* on the published 0.14.1 bundle, in a sandbox: the sync path arms the timer
+too; under `caseInsensitive` the key is ignored, since `original` is then the `Registry` copy; and a
+rejection that is not an `Error` is replaced by a new `Error`.
+
+*Recorded*: this entry; [`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.2 finding 4.
+*Verified*: measured 2026-10-07 at d080707, with a throwaway spec deleted the same day (that plan's
+§ 1.3, P2 and P2b).
+
 <a id="a26"></a>
 ## A26 — The parse cache ignores parser options
 

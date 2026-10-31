@@ -286,7 +286,6 @@ export const evaluateAsync = async (ast: AnyNode | undefined, state: EvalState)
     
     return value;
   } catch (error) {
-    state.result.stop();
     // The walk here is synchronous too, so it strands open nodes on a throw
     // exactly as the sync entry point does. This catch also receives the
     // rethrow from the awaitAllPromises handler above; in that case the walk
@@ -295,6 +294,9 @@ export const evaluateAsync = async (ast: AnyNode | undefined, state: EvalState)
     if (state.hasHooks) {
       state.hooks.unwindTo(mark, error, state);
     }
+    // After the unwind, as on the sync path, so a hook that fires during the
+    // cleanup reads `duration` `undefined` there too: the walk has not ended.
+    state.result.stop();
     state.result.setFailure(error);
     throw error;
   }

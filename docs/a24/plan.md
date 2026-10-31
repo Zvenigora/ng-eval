@@ -1,6 +1,8 @@
 # A24, A25 and D13 — the await track: `await` where its value is the result, and every refused statement reported (`@zvenigora/ng-eval-core`, then `eval-signals` and `eval-forms`)
 
 **Date**: October 30, 2026
+**Revision**: 3 — step 3: P3-3's predicted red set corrected, measured; step 3's outcome.
+
 **Revision**: 2 — step 2: § 1.2 finding 2's discrepancy measured and settled for the code reading;
 § 8's answers, given at step 2's confirmation gate, recorded, with pointers from § 3.3 and § 3.4;
 step 5's parity rows for `return`, `break` and `continue` given sources that parse; step 2's outcome.
@@ -14,7 +16,7 @@ off their own row lists: step 5 is +29 and step 6 +6.
 `@zvenigora/ng-eval-forms` **0.8.0**, whose `eval-core` ranges, `>=0.14.0 <0.15.0`, do not admit it.
 The register's decisions name these releases.
 **Fixes**:
-- [A25](../backlog.md#a25), in step 3: an `await` passes its operand through, with no race, no timer,
+- [A25](../backlog-retired.md#a25), in step 3: an `await` passes its operand through, with no race, no timer,
   no `__awaitTimeout` key and no suffix.
 - [A24](../backlog.md#a24), in step 4: an `await` is accepted only where its value is the result,
   and refused anywhere else.
@@ -562,9 +564,81 @@ step-4 flip rewrites a row in place and moves no count. Every row "moves" below 
     timer armed with 1, 1 and 30 000, and P3-1's 19. It witnesses K's rows; no narrower probe of the
     key exists once the race is gone, since nothing reads it.
   - **P3-3** *Wrong*: drop the suffix by wrapping, `new Error('later', { cause })`. Red: the moved
-    `eval.service.await.spec.ts` case and group S's two.
+    `eval.service.await.spec.ts` case and group S's two, and P3-1's 18 group-P sync cases: a
+    visitor intercepts a rejection only by chaining a new promise onto the operand, which re-wraps
+    it, while A2's `1` is not thenable and is not wrapped. *Corrected in step 3*
+    ([SR4](../standing-rules.md#sr4)): this predicted the three alone, and the probe measured 21.
   - **P3-4** *Wrong*: restore `stop()` before `unwindTo`. Red: the `evalAsync` duration row only.
 - **Ships in**: `eval-core` 0.15.0, but `SECURITY.md` in no package.
+- **Outcome** (2026-10-30):
+  - **The visitor is `a25.patch`'s**, applied after its SHA-256 was checked
+    ([SR32](../standing-rules.md#sr32)), with one difference: the patch's comment, "A25 prototype:
+    the operand passes through, unraced and unwrapped", is replaced by one that names what is gone
+    and cites the retired entry, since the prototype's label would ship. The code is the patch's,
+    line for line. The failure order is added on top, in `evaluate.ts`.
+  - **The flips**: the 30 cases marked `3` and `eval.service.await.spec.ts`'s suffix case, exactly
+    the patch's red set in step 2, each rewritten in place. The marked rows assert the operand by
+    identity (`toBe(p)`, group P's sync cases; `1`, A2's), no timer (T and K), the caller's `Error`
+    with its message `later` (S), and `ensureError`'s messages `x`,
+    `Promise rejected with object: {"k":1}` and `Promise rejected with undefined` (C). T2 keeps its
+    value assertion, that the promise resolves to 2, so that P3-1's red set stays the group-P and A2
+    cases it was predicted from. `eval.service.async-error-handling.spec.ts`'s case is renamed
+    "should resolve a promise the result holds within its own delay", its key line deleted.
+  - **The two duration rows** are in `evaluate.result.spec.ts`. A hook on `CallExpression`'s
+    `after` records `duration` from each event with `completed` `false`, and the row asserts exactly
+    `[undefined]`, so a hook that never fired fails it as well ([SR17](../standing-rules.md#sr17)).
+    The `eval` row is a guard; the `evalAsync` row is red with d62eee4's order, which is P3-4.
+  - **The probes**, each applied alone against all three projects and reverted by hand; no probe
+    moved a downstream row:
+
+    | Probe | Predicted | Red |
+    | :--- | :--- | :--- |
+    | P3-1 | 19: group P's 18 sync cases, A2 sync | 19, as predicted |
+    | P3-2 | 25: T's 3, K's 3, P3-1's 19 | 25, as predicted; K's delays 1, 1 and 30 000, T's 30 000 per evaluation |
+    | P3-3 | 3: the moved case, S1, S2 | 21: those 3 and group P's 18 sync cases (corrected above) |
+    | P3-4 | 1: the `evalAsync` duration row | 1, as predicted |
+
+  - **Counts**: `eval-core` 3250 → 3252; `eval-signals` 444 and `eval-forms` 380, unchanged.
+  - **Records**: `SECURITY.md`'s "Open register entries" names A33 alone; the CHANGELOG's
+    `[Unreleased]` gains `### Breaking`, the operand itself and the bound that is gone, and two
+    `### Fixed` lines, A25 and the failure order; A25 is retired to `backlog-retired.md` with its rows
+    and probes, its index row and every inbound link pointing there.
+  - **`SECURITY.md`'s sentence** (criterion 3), as written: "**Open register entry that bears on
+    this**: [A33](../backlog.md#a33), under `caseInsensitive` a cached miss can hide a key added
+    later — no refusal is skipped." ([SR21](../standing-rules.md#sr21)):
+
+    | Claim | Witness |
+    | :--- | :--- |
+    | A33 is the one open entry that bears on this | doc-links, on `docs/backlog.md#a33`, which dangles when A33 retires unless the line is re-pointed; A33's index row reads `Open` |
+    | A25 no longer bears on it: no `await` arms a timer | `await-position.spec.ts` T1–T3 and K1–K3, probed by P3-2; the old line's link into the register's A25 would dangle, so doc-links fails if it is restored |
+    | A cached miss can hide a key added later | unchanged text: A33's measured rows in the register; no spec pins it |
+    | No refusal is skipped | unchanged text: `eval.service.case-variant-guard.spec.ts`, the resolved-key re-check |
+
+  - **The CHANGELOG's lines** ([SR21](../standing-rules.md#sr21)):
+
+    | Claim | Witness |
+    | :--- | :--- |
+    | Breaking: on the sync path `(async () => await p)()` is `p`, `(async () => await 1)()` is `1` | group P's 18 sync cases and A2's sync case, probed by P3-1 |
+    | Breaking: the sync entry points it names | held by review: each reaches `evaluate`, which the P rows call; T2 goes through `eval` |
+    | Breaking: a non-thenable `await` gives the value wherever it sits, `(await 1) + 1` is `2` and `(await o).k` is `o.k`, on both paths | measured in this step by a throwaway spec, deleted before the gate: `"[object Promise]1"` and `undefined` with `a25.patch` reversed, `2` and `5` with it; no row, since step 4 refuses those positions and rewrites the line |
+    | Breaking: `evalAsync` resolves a promise that reaches the result, as before | group P's async cases marked `-`, green through the step |
+    | Breaking: no timer, no key | T1–T3 and K1–K3, probed by P3-2 |
+    | Breaking: a host that wants a bound wraps its own promise | held by review: advice, no behaviour |
+    | Fixed: one 30 000 ms timer per evaluation, never cleared; the key missed under `caseInsensitive` | step 2's T and K rows at d62eee4, K3's 30 000 |
+    | Fixed: the zone waits out 30 s per `await` | the register's measurement of 2026-10-07 (the Phase 5 plan's § 1.3, P2); no row |
+    | Fixed: an `Error` rejection by identity, its message unchanged | S1, S2 and `eval.service.await.spec.ts`'s moved case, probed by P3-3 |
+    | Fixed: `'x'` rejects with an `Error` `"x"`, where it was `Await expression failed: x at position 0-17` | C1 now, and step 2's C1 at d62eee4 |
+    | Fixed: no exported shape or `.d.ts` change | the gate's `build`; no exported declaration in `git diff`; `await-expression.ts` is under `internal/visitors`, outside the published surface |
+    | Fixed: a hook during an `evalAsync` failure's cleanup reads `duration` `undefined`, as under `eval` | `evaluate.result.spec.ts`'s `evalAsync` row, probed by P3-4; its `eval` row, the guard |
+
+  - **Code review** (before the commit): one Critical, folded in: criterion 3's claim → witness
+    table, and the CHANGELOG's, were missing from this outcome. Folded in as well: the Breaking line
+    named `eval` and `simpleEval` alone, where every sync entry point gives the operand; a
+    non-thenable `await` changing value in every position, on both paths, which the line did not say,
+    measured above; the neighbouring case's comment in
+    `eval.service.async-error-handling.spec.ts`, that timeout functionality "would be implemented in
+    the await-expression visitor", deleted; and A24's entry, which said the visitor pushes a
+    promise.
 
 ### Step 4 — A24: the accepted position, and the refusal
 
