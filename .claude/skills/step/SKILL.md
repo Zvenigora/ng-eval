@@ -31,10 +31,11 @@ Requested step: $ARGUMENTS
 - **Step 10 is the retrospect.**
 
 **The counts the steps start from**, the gate at d62eee4: `eval-core` 3187, `eval-signals` 444,
-`eval-forms` 380. `eval-core` reaches 3250 at step 2, 3252 at step 3, 3255 at step 4 and 3284 at
+`eval-forms` 380. `eval-core` reaches 3250 at step 2, 3252 at step 3, 3259 at step 4 and 3288 at
 step 5; `eval-forms` 386 at step 6; `eval-signals` does not move.
 
-**Step state**: step 1, the plan and its records, is done. Step 2 is next.
+**Step state**: read it from the plan, not from here. The last step in its § 4 with a recorded
+**Outcome** is done, and the next is the step after it in § 4's table.
 
 **The standing rules load with `CLAUDE.md`** (`docs/standing-rules.md`), and the plan's § 0, where
 it has one, adds to them; read it first. Each step's file list in the plan's § 4 is its scope, and it

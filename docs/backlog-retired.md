@@ -1510,6 +1510,124 @@ and C1's `lastIndex` row. The frozen-object row stays green, as it must: a froze
 definition as it refuses an assignment, so that row pins the message and not the mechanism.
 `eval-signals`: 2 failed, exactly the two regex rows.
 
+<a id="a24"></a>
+## A24 — An `await` is a pass-through: inside an `async` arrow it hands the walk a promise as an operand
+
+**Package** core · **Kind** decision, then fix · **Status** **Retired — decided and fixed 2026-10-30**,
+as step 4 of the [A24 plan](a24/plan.md); unreleased, in `eval-core` 0.15.0. Was Open. Opened
+2026-10-07 by the Phase 5 plan
+
+*Fixed* 2026-10-30. An `await` is accepted only where its value is the walk's result (that plan's
+§ 3.2): as the walk's root, which an arrow's expression body is for the arrow's own walk, or as the
+expression of the last statement of a `Program` or of an arrow's `BlockStatement` body.
+`acceptedAwait` reads that `await` off the root one level deep, stripping `preserveParens`' wrappers
+from the root and from the last statement's expression, and nowhere else. A walk that has one dispatches
+through a fresh `Object.create` over the shared visitor table, with an own `AwaitExpression` entry
+that accepts that node alone, and the shared entry refuses every `await`. So nothing is stored on
+the state or on a node, and nothing is cached (that plan's § 8 q4). The refusal sits above
+`beforeVisitor`, as the `var` kind check does, so a refused `await` fires no hook and leaves no trace
+entry. Its message names `await` and the rule, with no second sentence (§ 8 q2):
+
+> `Unsupported await position: an await is evaluated only as the result of the expression - the whole expression, an arrow function's expression body, or the last statement of a program or of an arrow function's block body.`
+
+An accepted `await` keeps its hook and trace events and passes its operand through
+([A25](#a25)). `async` stays ignored, and `eval-core`'s README now says so: the arrow returns no
+promise of its own.
+
+| Row, `p` resolving to 2 | 0.14.1, under `evalAsync` | Fixed |
+| :--- | :--- | :--- |
+| `(async () => (await p) * 10)()` | `NaN`, on both paths | the refusal, on both paths |
+| `await p; 1`; `(async () => { await p; 1 })()` | `1`, on both paths | the refusal |
+| `(async () => [await p])()`; `(async () => { let x = await p; x })()` | `[2]`; `2` | the refusal |
+| `(async () => f(await p))()`; `(async () => c ? await p : 0)()`; `(async () => await await p)()` | `2` | the refusal |
+| `await p`; `(async () => await p)()`; `1; await p`; `(async () => { 1; await p })()` | `2` | `2`; on the sync path `p` itself, since A25 |
+| one `AwaitExpression` node walked alone, and inside `(await p) * 10` | — | accepted alone and refused inside, in either order |
+| under `preserveParens`: `(async () => (await p))()`; `(async () => { 1; ((await p)) })()`; `(await p)`; `(async () => ((await p)) * 10)()` | — | `2`, `2` and `2`; the refusal |
+
+*Verified*: test-first, by the plan's step 2. `visitors/await-position.spec.ts`'s 32 cases marked
+`4`, eight positions on both paths and in both modes, were red against the pinned `a24.patch` (that
+step's outcome), and are rewritten in place to assert the message in full, as is
+`eval-signal-async.spec.ts`'s operand row, red against it too. The spec gains 7 cases: R1 and R2,
+one node walked as a root and as an operand, in both orders; H1, a refused `await` under a hook,
+which sees no `before` for it and every node opened above it unwound with the refusal; and Q1 to Q4,
+the four `preserveParens` rows above, each over both paths. `eval-core` 3252 → 3259; `eval-signals`
+444 and `eval-forms` 380 unchanged. Wrong implementations, each applied alone against all three
+projects, each red set as predicted:
+- **every `await` in an arrow's walk accepted**, the enclosing arrow's `async` read as permission:
+  29 failed, the 28 cases of P6 to P12 and the `eval-signals` operand row; run again on `eval-core`
+  after the Q rows, Q4 as well;
+- **an `await` accepted as any statement of the root's body**: 8, P4 and P6, the statements that
+  are not the last;
+- **the position passed through a conditional's branches**: 4, P11;
+- **the accepted node marked in a module-level `WeakSet`**: 1, R1, where the node is accepted
+  first;
+- **the refusal below `beforeVisitor`**: 1, H1;
+- **every `await` refused**, option C: 39. In `eval-core` 38: the spec's 16 accepted P cases, A2's
+  two, T's, K's and C's three each, S's two, R1 and R2; `eval.service.await.spec.ts`'s four, A1's
+  three rows and the asynchronous rejection; two of `hooks.spec.ts`'s four `await` rows, the throw
+  and the unwound order; and `readme-examples.spec.ts`' synthesised-failure example. In
+  `eval-signals` 1, `eval-signal.spec.ts`'s tail-position row. Run again on `eval-core` after the Q
+  rows, Q1 to Q3 as well;
+- **no unwrap under `preserveParens`**: 3, Q1 to Q3;
+- **one level unwrapped instead of all**: 1, Q2, the one with two levels.
+
+**The entry as it stood:**
+
+`awaitVisitor` pushes its operand — up to 0.14.1 a new promise racing it against a timer
+([A25](#a25)) — and the walk carries on with a promise operand as the value. Nothing waits for it. Only promises left in the result
+tree are resolved, by `evaluateAsync`, after the walk; the sync entry points resolve nothing. So an
+`await` gives the right answer only where its value reaches the result unchanged.
+
+**Reachable today at default parser options.** Top-level `await` is a `SyntaxError` there, but an
+`async` arrow parses at `ecmaVersion: 2020`, and the arrow visitor builds a plain closure that
+ignores `async`. Measured 2026-10-07:
+
+| Expression | `simpleEval` | `simpleEvalAsync` |
+| :--- | :--- | :--- |
+| `(async () => await p)()`, `p` resolving to 2 | a promise | `2` |
+| `(async () => (await p) * 10)()` | `NaN` | `NaN` |
+| `(async () => await p + await q)()` | `"[object Promise][object Promise]"` | — |
+| `(async () => (await u).name)()`, `u` resolving to `{ name }` | — | `undefined` |
+| `(async () => 1)()` | `1`, not a promise | — |
+
+The same table at top level, with `allowAwaitOutsideFunction` set, is the Phase 5 plan's § 1.2
+finding 2. Up to `eval-signals` 0.4.0 its README offered the `async`-arrow form as the way to use
+`await` in an expression, and `eval-signal.spec.ts:998-1012` pins it in tail position, where it is
+right. **Since 0.5.0 the README says what this entry does**: under "Async expressions", in "Two
+signals instead of `await`", an `async` arrow's `await` is a pass-through, right only as the
+arrow's result, with `(async () => (await loadUser(id)).name)()` as `undefined` and a second
+signal as the tracked way to use a resolved value.
+
+**Two ways out, and leaving it is not one of them**, since it ships silent wrong answers:
+
+- **Refuse**: an `await` that is not in a result position throws, at parse or at walk time, and an
+  `async` arrow either does the same or returns a promise. A behavioural `eval-core` release.
+- **Implement**: a suspending walk. The Phase 5 plan costs it (§ 3.1, option A) as a rewrite of the
+  walker and every visitor, and finds that it still loses Angular's tracking for every read after the
+  first `await`.
+
+**Why not Phase 5**: that plan keeps `await` out of its async signal (§ 3.1, option C), and this path
+exists whatever Phase 5 decides. Its step 4 rewrote the README line above to say the `await` is a
+pass-through — documentation of the defect, not a fix, so the entry stays Open.
+
+**Decided 2026-10-30.** An `await` is accepted only (a) as the walk's root, (b) as an arrow's concise
+body, or (c) as the expression of the final `ExpressionStatement` of a `Program` or of an arrow's
+block body. Anywhere else it throws a refusal naming `await` when the walk reaches it. An accepted
+`await` passes its operand through unchanged ([A25](#a25)). `async` stays ignored, and documented,
+and the arrow returns no promise. The hook and trace events of an accepted `await` stay as they
+are. Option C, refusing every `await`, was declined: it breaks the documented tail form for no gain
+in correctness. Releases: `eval-core` 0.15.0, a minor breaking by behaviour, then `eval-signals` and
+`eval-forms` minors for their peer ranges.
+
+*Measured 2026-10-30* on the published 0.14.1 bundle, in a sandbox: `(async () => [await p])()`,
+`(async () => { await p })()` and `let x = await p; x` resolve correctly on the async path today, and
+`(await p) * 10` is `NaN` under `caseInsensitive` too.
+
+*Recorded*: this entry; the evidence is [`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.2
+findings 2 and 3.
+*Verified*: measured 2026-10-07 at d080707, with a throwaway spec deleted the same day (that plan's
+§ 1.3, P1 and P1c).
+
 <a id="a25"></a>
 ## A25 — `awaitVisitor`'s timeout race: an uncleared timer, an undocumented key, a mutated error
 
@@ -1559,7 +1677,7 @@ alone against all three projects, and none moved a downstream row:
 **The entry as it stood:**
 
 Three defects in `await-expression.ts`, reached wherever `awaitVisitor` runs — an `async` arrow at
-default options ([A24](backlog.md#a24)), or an AST the caller parsed with `allowAwaitOutsideFunction`:
+default options ([A24](#a24)), or an AST the caller parsed with `allowAwaitOutsideFunction`:
 
 - **A 30 s timer per `await`, never cleared** (`:14-20`, `:56-59`). Each evaluation of the node races
   its operand against a `setTimeout`, and nothing clears it when the operand settles first. Measured:
@@ -1595,7 +1713,7 @@ the plan's step 2 measures it. `eval.service.await.spec.ts:82` moves to `rejects
 message `'later'`. The key at `eval.service.async-error-handling.spec.ts:188` is vacuous, since its
 expression has no `await`: the line goes and the case is renamed. 0.7.0's CHANGELOG line, "An
 asynchronous rejection still carries ` at position <start>-<end>`", stays as history. Released with
-[A24](backlog.md#a24) in `eval-core` 0.15.0.
+[A24](#a24) in `eval-core` 0.15.0.
 
 *Measured 2026-10-30* on the published 0.14.1 bundle, in a sandbox: the sync path arms the timer
 too; under `caseInsensitive` the key is ignored, since `original` is then the `Registry` copy; and a

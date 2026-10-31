@@ -176,10 +176,10 @@ retired. Its retrospect is the plan's § 10, which added [SR39](standing-rules.m
 phase that moves `eval-forms`' rows.
 
 **The [A24 plan](a24/plan.md) is in flight**: the await track, [A25](backlog-retired.md#a25),
-[A24](#a24) and [D13](#d13), for `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0. It
-is at Revision 3. Steps 1 to 3 are done: the plan and its records, the characterisation spec, and
-A25, retired as fixed and unreleased. Step 4, A24, is next. Step 1 corrected A25's decided text: only
-an `Error` rejection reaches an `evalAsync` caller by identity.
+[A24](backlog-retired.md#a24) and [D13](#d13), for `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0. It
+is at Revision 4. Steps 1 to 4 are done: the plan and its records, the characterisation spec, A25
+and A24, both retired as fixed and unreleased. Step 5, D13 in `eval-core`, is next. Step 1 corrected
+A25's decided text: only an `Error` rejection reaches an `evalAsync` caller by identity.
 
 `eval-core` 0.13.3 is released alone, a patch, tagged at 021d5e4 and published 2026-10-23. It
 carries A45 part 1 only. Its `.d.ts` is SHA-256-identical to 0.13.2's, and it is inside
@@ -364,7 +364,7 @@ makes it that release's row, with its tag commit and date.
 | [A8](backlog-retired.md#a8) | `EvalService._activeStates` grows unboundedly | core | fix | **Retired — fixed 2026-09-25, released 2026-09-26**; `eval-core` 0.6.0, tagged f26f987, in two steps: `simpleEval`'s states ([`docs/a8/plan.md`](a8/plan.md)), then the set deleted ([`docs/a8/step-2-plan.md`](a8/step-2-plan.md)). Withdraws the published destroy-time registry clear |
 | [A9](backlog-retired.md#a9) | The arrow-scope leak's root cause — no `try`/`finally` at either push site | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [A23](backlog-retired.md#a23) | `safeSetProperty` defines the property instead of assigning it — setters never run, non-configurable properties cannot be written | core | decision, then fix | **Retired — decided and fixed 2026-10-03**; released 2026-10-04 in `eval-core` 0.10.0, tagged 0c3299e: a member write assigns, after the same refusals, so setters run |
-| [A24](#a24) | An `await` is a pass-through — inside an `async` arrow it hands the walk a promise as an operand, and the arrow returns no promise | core | decision, then fix | Open — in flight as the [A24 plan](a24/plan.md), step 4; **decided 2026-10-30**: an `await` is accepted only at the walk's root, as an arrow's concise body, or as the expression of the final statement of a program or an arrow's block body, and refused anywhere else. Opened 2026-10-07 by the Phase 5 plan; the `eval-signals` README states it since 0.5.0 |
+| <a id="a24"></a>[A24](backlog-retired.md#a24) | An `await` is a pass-through — inside an `async` arrow it hands the walk a promise as an operand, and the arrow returns no promise | core | decision, then fix | **Retired — decided and fixed 2026-10-30**, as step 4 of the [A24 plan](a24/plan.md); unreleased, in `eval-core` 0.15.0. An `await` is accepted only at the walk's root, as an arrow's concise body, or as the expression of the final statement of a program or an arrow's block body, and refused anywhere else with a message naming `await` and the rule. Opened 2026-10-07 by the Phase 5 plan; the `eval-signals` README states the pass-through since 0.5.0, and its 0.8.0 rewrites that paragraph |
 | [A25](backlog-retired.md#a25) | `awaitVisitor`'s timeout race — an uncleared 30 s timer per `await`, an undocumented `__awaitTimeout` key, and the caller's error mutated | core | fix | **Retired — decided and fixed 2026-10-30**, as step 3 of the [A24 plan](a24/plan.md); unreleased, in `eval-core` 0.15.0. No race, no timer, no key, no suffix: the operand passes through, so a rejection reaches the caller as it was raised, an `Error` by identity, while `evaluateAsync` still converts any other. Opened 2026-10-07 by the Phase 5 plan |
 | [A26](backlog-retired.md#a26) | The parse cache ignores parser options | core | fix | **Retired — fixed 2026-10-10**, as step 1 of the [Phase 9 plan](colon-identifiers/phase-9-plan.md); released 2026-10-14 in `eval-core` 0.12.0, tagged 3466c80. Keyed on the text and a fingerprint of the parse-relevant options; a callback or `program` bypasses the cache. `CompilerService`'s string cache is that plan's step 3. Affected every published `eval-core` to 0.11.1 |
 | [A27](backlog-retired.md#a27) | A nested `evaluate` writes the enclosing walk's `EvalResult` — and `start()` clears nothing, so a reused state shows the last run's outcome | core | decision | **Retired — decided and fixed 2026-10-30**; unreleased, in `eval-core`'s next release. An arrow's body walks without writing `state.result`, `start()` resets the outcome but not the trace, and each setter writes every outcome field. Opened 2026-10-08 by Phase 5 step 1 |
@@ -538,7 +538,7 @@ scoped to be additive.
 — the first consumer to reuse one `EvalContext` across many evaluations, which is what makes
 several of these visible at all. [A6](backlog-retired.md#a6) was surfaced by Phase 6 step 3. [A8](backlog-retired.md#a8) and
 [A9](backlog-retired.md#a9) were never recorded in the roadmap at all. [A23](backlog-retired.md#a23) was surfaced by
-[C1](backlog-retired.md#c1)'s fix. [A24](#a24), [A25](backlog-retired.md#a25) and [A26](backlog-retired.md#a26) were surfaced by the Phase 5 plan's probes
+[C1](backlog-retired.md#c1)'s fix. [A24](backlog-retired.md#a24), [A25](backlog-retired.md#a25) and [A26](backlog-retired.md#a26) were surfaced by the Phase 5 plan's probes
 ([`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.3), which keeps all three out of its scope
 (§ 3.1). [A29](backlog-retired.md#a29) and [A30](backlog-retired.md#a30) were surfaced by the Phase 9 plan's probes
 ([`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.3), which needs neither;
@@ -797,68 +797,6 @@ retention planted in `simpleEvalAsync` still fails exactly 1.4 and 1.5, so the r
 short-lived reference without masking a kept one.
 
 ---
-
-<a id="a24"></a>
-## A24 — An `await` is a pass-through: inside an `async` arrow it hands the walk a promise as an operand
-
-**Package** core · **Kind** decision, then fix · **Status** Open —
-in flight as the [A24 plan](a24/plan.md), step 4; **decided 2026-10-30**. Opened 2026-10-07 by the
-Phase 5 plan
-
-`awaitVisitor` pushes its operand — up to 0.14.1 a new promise racing it against a timer
-([A25](backlog-retired.md#a25)) — and the walk carries on with a promise operand as the value. Nothing waits for it. Only promises left in the result
-tree are resolved, by `evaluateAsync`, after the walk; the sync entry points resolve nothing. So an
-`await` gives the right answer only where its value reaches the result unchanged.
-
-**Reachable today at default parser options.** Top-level `await` is a `SyntaxError` there, but an
-`async` arrow parses at `ecmaVersion: 2020`, and the arrow visitor builds a plain closure that
-ignores `async`. Measured 2026-10-07:
-
-| Expression | `simpleEval` | `simpleEvalAsync` |
-| :--- | :--- | :--- |
-| `(async () => await p)()`, `p` resolving to 2 | a promise | `2` |
-| `(async () => (await p) * 10)()` | `NaN` | `NaN` |
-| `(async () => await p + await q)()` | `"[object Promise][object Promise]"` | — |
-| `(async () => (await u).name)()`, `u` resolving to `{ name }` | — | `undefined` |
-| `(async () => 1)()` | `1`, not a promise | — |
-
-The same table at top level, with `allowAwaitOutsideFunction` set, is the Phase 5 plan's § 1.2
-finding 2. Up to `eval-signals` 0.4.0 its README offered the `async`-arrow form as the way to use
-`await` in an expression, and `eval-signal.spec.ts:998-1012` pins it in tail position, where it is
-right. **Since 0.5.0 the README says what this entry does**: under "Async expressions", in "Two
-signals instead of `await`", an `async` arrow's `await` is a pass-through, right only as the
-arrow's result, with `(async () => (await loadUser(id)).name)()` as `undefined` and a second
-signal as the tracked way to use a resolved value.
-
-**Two ways out, and leaving it is not one of them**, since it ships silent wrong answers:
-
-- **Refuse**: an `await` that is not in a result position throws, at parse or at walk time, and an
-  `async` arrow either does the same or returns a promise. A behavioural `eval-core` release.
-- **Implement**: a suspending walk. The Phase 5 plan costs it (§ 3.1, option A) as a rewrite of the
-  walker and every visitor, and finds that it still loses Angular's tracking for every read after the
-  first `await`.
-
-**Why not Phase 5**: that plan keeps `await` out of its async signal (§ 3.1, option C), and this path
-exists whatever Phase 5 decides. Its step 4 rewrote the README line above to say the `await` is a
-pass-through — documentation of the defect, not a fix, so the entry stays Open.
-
-**Decided 2026-10-30.** An `await` is accepted only (a) as the walk's root, (b) as an arrow's concise
-body, or (c) as the expression of the final `ExpressionStatement` of a `Program` or of an arrow's
-block body. Anywhere else it throws a refusal naming `await` when the walk reaches it. An accepted
-`await` passes its operand through unchanged ([A25](backlog-retired.md#a25)). `async` stays ignored, and documented,
-and the arrow returns no promise. The hook and trace events of an accepted `await` stay as they
-are. Option C, refusing every `await`, was declined: it breaks the documented tail form for no gain
-in correctness. Releases: `eval-core` 0.15.0, a minor breaking by behaviour, then `eval-signals` and
-`eval-forms` minors for their peer ranges.
-
-*Measured 2026-10-30* on the published 0.14.1 bundle, in a sandbox: `(async () => [await p])()`,
-`(async () => { await p })()` and `let x = await p; x` resolve correctly on the async path today, and
-`(await p) * 10` is `NaN` under `caseInsensitive` too.
-
-*Recorded*: this entry; the evidence is [`signals/phase-5-plan.md`](signals/phase-5-plan.md) § 1.2
-findings 2 and 3.
-*Verified*: measured 2026-10-07 at d080707, with a throwaway spec deleted the same day (that plan's
-§ 1.3, P1 and P1c).
 
 <a id="a33"></a>
 ## A33 — The case-insensitive property cache keeps a miss across a same-count key swap
@@ -1200,7 +1138,7 @@ such a rule at registration through both adapters, anywhere in the rule, functio
 branches included. A label keeps its `colonIdentifiers` hint. This reverses Phase 9 § 3.8's "left
 alone in a function body": with `eval-core` reporting its own list nothing needs to be copied, and
 code that can never evaluate is an authoring error. `guard-identifiers.spec.ts:308` and `:317` move.
-Releases: `eval-core` 0.15.0 with [A24](#a24) and [A25](backlog-retired.md#a25), then `eval-signals` and `eval-forms`
+Releases: `eval-core` 0.15.0 with [A24](backlog-retired.md#a24) and [A25](backlog-retired.md#a25), then `eval-signals` and `eval-forms`
 minors for their peer ranges.
 
 *Measured 2026-10-30* on the published 0.14.1 bundle, in a sandbox: `while`, `var`, `switch`, `return`

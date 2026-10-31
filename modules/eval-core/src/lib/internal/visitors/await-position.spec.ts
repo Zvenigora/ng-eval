@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
-import { AnyNode } from 'acorn';
+import { AnyNode, BinaryExpression, ExpressionStatement, Program } from 'acorn';
 import { EvalService } from '../../actual/services';
-import { EvalContext, EvalOptions, EvalState } from '../classes/eval';
+import { EvalContext, EvalHooks, EvalNodeHookEvent, EvalOptions, EvalState } from '../classes/eval';
 import { Context } from '../classes/common';
 import { evaluate, evaluateAsync, parse } from '../functions';
 
@@ -11,17 +11,19 @@ import { evaluate, evaluateAsync, parse } from '../functions';
  *
  * Every case carries a mark in its title: `[3]` for a case step 3 (A25, the
  * pass-through) rewrote, `[4]` for one step 4 (A24, the accepted position)
- * rewrites, both, or `[-]` for neither. A case marked `3` asserts the value
- * since step 3; every other case, the value measured at d62eee4. The marks
- * were measured, not taken from the decisions: each was read off the red set
- * of a prototype of that step, applied alone (the plan's step 2 outcome).
+ * rewrote, both, or `[-]` for neither. A case marked `4` asserts the refusal
+ * since step 4, one marked `3` alone the value since step 3, and one marked
+ * `-` the value measured at d62eee4. The marks were measured, not taken from
+ * the decisions: each was read off the red set of a prototype of that step,
+ * applied alone (the plan's step 2 outcome).
  *
  * - **P**, the positions: twelve places an `await` can sit, each on the sync
  *   and the async path, case-sensitive and under `caseInsensitive`. Under
  *   `caseInsensitive` the context's keys are upper-case, so every row whose
  *   value depends on a binding reads it through the case correction rather
- *   than by its exact key. P4, P6 and P7 give 1, 1 and `NaN` whether or not
- *   `p` resolves, so their `caseInsensitive` cases witness nothing more.
+ *   than by its exact key. Eight of the twelve are refused since step 4 (A24),
+ *   with the whole message; up to then P4, P6 and P7 gave 1, 1 and `NaN`
+ *   whether or not `p` resolved.
  * - **A**, `async` ignored, and a non-thenable operand.
  * - **T**, the timer: one `setTimeout` per evaluation of an `await`, up to
  *   0.14.1, and none since.
@@ -31,6 +33,10 @@ import { evaluate, evaluateAsync, parse } from '../functions';
  *   0.14.1, and to nothing since.
  * - **C**, the conversion of a rejection that is not an `Error`: the visitor's
  *   own up to 0.14.1, and `evaluateAsync`'s `ensureError` since.
+ * - **R**, **Q** and **H**, added by step 4: the accepted `await` belongs to
+ *   the walk, not to the node; parentheses under `preserveParens` neither
+ *   refuse an accepted one nor accept an operand; and a refused one opens no
+ *   hook bracket.
  *
  * **A sync case pins a pass-through by identity, never by type**
  * (`docs/a24/plan.md` § 0 rule 2): a promise is a `Promise` whether or not the
@@ -43,7 +49,9 @@ import { evaluate, evaluateAsync, parse } from '../functions';
  * `await` and an async function has no completion value, so the root and
  * program rows' native bodies `return` the last statement's expression - the
  * completion value `eval` gives a script. Where the native value differs from
- * the evaluator's, the evaluator's answer is not JavaScript's.
+ * the evaluator's, the evaluator's answer is not JavaScript's. A refused
+ * position keeps its native arm: it records what JavaScript gives where
+ * `eval-core` refuses.
  *
  * Top-level `await` needs `allowAwaitOutsideFunction`, which the services'
  * default parser options leave off, so every case parses its source itself.
@@ -91,15 +99,14 @@ describe('await - its position, the timer, the key, the suffix and the conversio
     expect(value).toBe(p);
   };
 
-  const anArrayOfTheOperand: SyncExpectation = async (value, b) => {
-    expect(Array.isArray(value)).toBe(true);
-    expect(value).toHaveLength(1);
-    await theOperand((value as unknown[])[0], b);
-  };
+  /**
+   * Step 4's refusal (A24), written out rather than imported, so that a
+   * changed message fails here ([SR18](../../../../../../docs/standing-rules.md#sr18)).
+   */
+  const REFUSAL = 'Unsupported await position: an await is evaluated only as the result of the expression - the whole expression, an arrow function\'s expression body, or the last statement of a program or of an arrow function\'s block body.';
 
-  const exactly = (expected: unknown): SyncExpectation => async (value) => {
-    expect(value).toBe(expected);
-  };
+  /** A position step 4 refuses: both paths throw {@link REFUSAL}. */
+  const REFUSED = Symbol('refused');
 
   type Mark = '-' | '3' | '4' | '3, 4';
 
@@ -107,7 +114,7 @@ describe('await - its position, the timer, the key, the suffix and the conversio
     readonly id: string;
     readonly source: string;
     readonly node: (source: string) => AnyNode;
-    readonly sync: SyncExpectation;
+    readonly sync: SyncExpectation | typeof REFUSED;
     readonly syncMark: Mark;
     readonly async: unknown;
     readonly asyncMark: Mark;
@@ -135,7 +142,7 @@ describe('await - its position, the timer, the key, the suffix and the conversio
     },
     {
       id: 'P4 program, not last', source: 'await p; 1', node: programOf,
-      sync: exactly(1), syncMark: '4', async: 1, asyncMark: '4',
+      sync: REFUSED, syncMark: '4', async: REFUSED, asyncMark: '4',
       native: 'await p; return 1', js: 1,
     },
     {
@@ -145,37 +152,37 @@ describe('await - its position, the timer, the key, the suffix and the conversio
     },
     {
       id: 'P6 block, not last', source: '(async () => { await p; 1 })()', node: programOf,
-      sync: exactly(1), syncMark: '4', async: 1, asyncMark: '4',
+      sync: REFUSED, syncMark: '4', async: REFUSED, asyncMark: '4',
       native: 'return (async () => { await p; 1 })()', js: undefined,
     },
     {
       id: 'P7 operand', source: '(async () => (await p) * 10)()', node: programOf,
-      sync: exactly(NaN), syncMark: '4', async: NaN, asyncMark: '4',
+      sync: REFUSED, syncMark: '4', async: REFUSED, asyncMark: '4',
       native: 'return (async () => (await p) * 10)()', js: 20,
     },
     {
       id: 'P8 element', source: '(async () => [await p])()', node: programOf,
-      sync: anArrayOfTheOperand, syncMark: '3, 4', async: [2], asyncMark: '4',
+      sync: REFUSED, syncMark: '3, 4', async: REFUSED, asyncMark: '4',
       native: 'return (async () => [await p])()', js: [2],
     },
     {
       id: 'P9 argument', source: '(async () => f(await p))()', node: programOf,
-      sync: theOperand, syncMark: '3, 4', async: 2, asyncMark: '4',
+      sync: REFUSED, syncMark: '3, 4', async: REFUSED, asyncMark: '4',
       native: 'return (async () => f(await p))()', js: 2,
     },
     {
       id: 'P10 initializer', source: '(async () => { let x = await p; x })()', node: programOf,
-      sync: theOperand, syncMark: '3, 4', async: 2, asyncMark: '4',
+      sync: REFUSED, syncMark: '3, 4', async: REFUSED, asyncMark: '4',
       native: 'return (async () => { let x = await p; x })()', js: undefined,
     },
     {
       id: 'P11 branch', source: '(async () => c ? await p : 0)()', node: programOf,
-      sync: theOperand, syncMark: '3, 4', async: 2, asyncMark: '4',
+      sync: REFUSED, syncMark: '3, 4', async: REFUSED, asyncMark: '4',
       native: 'return (async () => c ? await p : 0)()', js: 2,
     },
     {
       id: 'P12 nested', source: '(async () => await await p)()', node: programOf,
-      sync: theOperand, syncMark: '3, 4', async: 2, asyncMark: '4',
+      sync: REFUSED, syncMark: '3, 4', async: REFUSED, asyncMark: '4',
       native: 'return (async () => await await p)()', js: 2,
     },
   ];
@@ -197,19 +204,123 @@ describe('await - its position, the timer, the key, the suffix and the conversio
       const b = bindings();
       const state = EvalState.fromContext(mode.context(b), mode.options);
 
-      const value = evaluate(row.node(row.source), state);
+      const run = (): unknown => evaluate(row.node(row.source), state);
 
-      await row.sync(value, b);
+      if (row.sync === REFUSED) {
+        expect(run).toThrow(new Error(REFUSAL));
+      } else {
+        await row.sync(run(), b);
+      }
     });
 
     it.each(positions)('$id, async [$asyncMark]: $source', async (row) => {
       const b = bindings();
       const state = EvalState.fromContext(mode.context(b), mode.options);
 
-      const value = await evaluateAsync(row.node(row.source), state);
+      const value = evaluateAsync(row.node(row.source), state);
 
-      expect(value).toEqual(row.async);
+      if (row.async === REFUSED) {
+        await expect(value).rejects.toThrow(new Error(REFUSAL));
+      } else {
+        expect(await value).toEqual(row.async);
+      }
       expect(await runNatively(row, b)).toEqual(row.js);
+    });
+  });
+
+  describe('R, the accepted await is the walk\'s, not the node\'s', () => {
+
+    // At the top level, `(await p) * 10`'s `await` is an operand: the
+    // program's last statement is a multiplication. Walked alone, the same
+    // node is the walk's root and its value is the result.
+    const treeAndOperand = (): { tree: AnyNode, operand: AnyNode } => {
+      const tree = programOf('(await p) * 10');
+      const statement = (tree as Program).body[0] as ExpressionStatement;
+      const operand = (statement.expression as BinaryExpression).left as AnyNode;
+      expect(operand.type).toBe('AwaitExpression');
+      return { tree, operand };
+    };
+
+    it('R1 the same node as a root, then as an operand [4]: accepted, then refused', () => {
+      const { p } = bindings();
+      const { tree, operand } = treeAndOperand();
+
+      expect(evaluate(operand, EvalState.fromContext({ p }))).toBe(p);
+      expect(() => evaluate(tree, EvalState.fromContext({ p }))).toThrow(new Error(REFUSAL));
+    });
+
+    it('R2 the same node as an operand, then as a root [4]: refused, then accepted', () => {
+      const { p } = bindings();
+      const { tree, operand } = treeAndOperand();
+
+      expect(() => evaluate(tree, EvalState.fromContext({ p }))).toThrow(new Error(REFUSAL));
+      expect(evaluate(operand, EvalState.fromContext({ p }))).toBe(p);
+    });
+  });
+
+  describe('Q, under preserveParens', () => {
+
+    // Parentheses arrive as `ParenthesizedExpression` nodes under the option,
+    // so a check on the root's or the last statement's type sees the wrapper.
+    // Each case runs one source on both paths.
+    const parenthesised = (source: string, extractExpressions = false): AnyNode =>
+      parse(source, { ecmaVersion: 2020, allowAwaitOutsideFunction: true, preserveParens: true, extractExpressions }) as AnyNode;
+
+    const accepted = async (node: () => AnyNode): Promise<void> => {
+      const { p } = bindings();
+
+      expect(evaluate(node(), EvalState.fromContext({ p }))).toBe(p);
+      expect(await evaluateAsync(node(), EvalState.fromContext({ p }))).toBe(2);
+    };
+
+    it('Q1 an expression body, (async () => (await p))() [4]: accepted', async () => {
+      await accepted(() => parenthesised('(async () => (await p))()'));
+    });
+
+    it('Q2 a block\'s last statement, (async () => { 1; ((await p)) })() [4]: accepted', async () => {
+      await accepted(() => parenthesised('(async () => { 1; ((await p)) })()'));
+    });
+
+    it('Q3 the root, (await p) [4]: accepted', async () => {
+      await accepted(() => {
+        const node = parenthesised('(await p)', true);
+        expect(node.type).toBe('ParenthesizedExpression');
+        return node;
+      });
+    });
+
+    it('Q4 an operand, (async () => ((await p)) * 10)() [4]: refused', async () => {
+      const { p } = bindings();
+      const node = (): AnyNode => parenthesised('(async () => ((await p)) * 10)()');
+
+      expect(() => evaluate(node(), EvalState.fromContext({ p }))).toThrow(new Error(REFUSAL));
+      await expect(evaluateAsync(node(), EvalState.fromContext({ p }))).rejects.toThrow(new Error(REFUSAL));
+    });
+  });
+
+  describe('H, a refused await under a hook', () => {
+
+    it('H1 (await p) * 10 [4]: no before for the await, and every node opened above it unwound', () => {
+      const hooks = new EvalHooks();
+      const before: EvalNodeHookEvent[] = [];
+      const after: EvalNodeHookEvent[] = [];
+      hooks.on('before', '*', (e) => before.push(e));
+      hooks.on('after', '*', (e) => after.push(e));
+      const state = EvalState.fromContext({ p: bindings().p }, { hooks });
+
+      expect(() => evaluate(programOf('(await p) * 10'), state)).toThrow(new Error(REFUSAL));
+
+      // The hook fired, so the absence below is the refusal's and not a hook
+      // that never ran.
+      const opened = before.map((e) => e.node.type);
+      expect(opened).toContain('BinaryExpression');
+      expect(opened).not.toContain('AwaitExpression');
+      expect(after.map((e) => e.node.type)).toEqual([...opened].reverse());
+      for (const event of after) {
+        expect(event.completed).toBe(false);
+        expect((event.error as Error).message).toBe(REFUSAL);
+      }
+      expect(hooks.depth(state)).toBe(0);
     });
   });
 

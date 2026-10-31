@@ -17,10 +17,21 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   new promise racing the operand, even for one that is not thenable. So on the sync path — `eval`,
   `simpleEval`, `CompilerService`'s `call` and `simpleCall`, and the exported `evaluate` and `call` —
   `(async () => await p)()` is `p`, and `(async () => await 1)()` is `1`, where it was a promise
-  resolving to `1`. On both paths an `await` of a value that is not thenable gives the value
-  wherever it sits: `(async () => (await 1) + 1)()` is `2`, where it was `"[object Promise]1"`, and
-  `(async () => (await o).k)()` is `o.k`, where it was `undefined`. `evalAsync` resolves a promise
-  that reaches the result, as before.
+  resolving to `1`. `evalAsync` resolves a promise that reaches the result, as before.
+- **An `await` is evaluated only where its value is the result** ([A24](../../docs/backlog-retired.md#a24)):
+  as the whole expression, as an arrow function's expression body, or as the last statement of a
+  program or of an arrow function's block body. Anywhere else it throws `Unsupported await position:
+  an await is evaluated only as the result of the expression - …` when the walk reaches it, on
+  every entry point, and fires no hook. Up to 0.14.1 every `await` handed the walk a promise as its
+  value. As an operand that gave a wrong answer: `(async () => (await p) * 10)()` was `NaN`,
+  `(async () => (await u).name)()` was `undefined`, and `(async () => (await 1) + 1)()` was
+  `"[object Promise]1"`. Elsewhere `evalAsync` resolved the promise once it reached the result, so
+  these forms resolved, and are refused too, since in none of them is the `await`'s value the
+  result: `(async () => [await p])()`, `(async () => f(await p))()`,
+  `(async () => c ? await p : 0)()`, `(async () => await await p)()`, `await p; 1` and
+  `(async () => { let x = await p; x })()`. An accepted `await` keeps its hook and trace events.
+  `async` stays ignored: an `async` arrow returns no promise of its own. No exported shape or
+  `.d.ts` change.
 - **No `await` is bounded in time.** Up to 0.14.1 each `await` raced its operand against a 30-second
   timer that rejected with `Await expression timed out after <ms>ms`, and a `__awaitTimeout` number
   on the context set the delay. Both are gone: nothing arms a timer and nothing reads the key. A host

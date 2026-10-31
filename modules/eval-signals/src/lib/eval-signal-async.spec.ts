@@ -1385,11 +1385,15 @@ describe('createEvalSignalAsync', () => {
         expect(label()).toBe('Grace (owner)');
       });
 
-      it('should read a member off the promise in operand position, inside an async arrow too', async () => {
+      it('should read a member off the promise in operand position, and refuse an await there', async () => {
         // README, "Two signals instead of `await`": its opening paragraph,
-        // and its "An `async` arrow's `await` is a pass-through". `eval-core`'s:
-        // a member read off a promise, and an `await` that passes the promise
-        // through (BL-A24).
+        // `eval-core`'s member read off a promise. And `eval-core`'s A24: since
+        // its 0.15.0 an `await` in operand position is refused, where up to
+        // 0.14.1 it passed the promise through and this read `undefined`.
+        // The README's "An `async` arrow's `await` is a pass-through" still
+        // says the latter, true of every published pairing since this
+        // package's peer range stops below 0.15.0; this half mirrors the
+        // paragraph the A24 plan's step 8a writes in its place.
         const id = signal(1);
         const loadUser = (): Promise<{ name: string }> => Promise.resolve({ name: 'Ada' });
 
@@ -1407,8 +1411,9 @@ describe('createEvalSignalAsync', () => {
         // Resolved, not pending: the `undefined` is the run's value.
         expect(member.status()).toBe('resolved');
         expect(member()).toBeUndefined();
-        expect(arrow.status()).toBe('resolved');
-        expect(arrow()).toBeUndefined();
+        expect(arrow.status()).toBe('error');
+        expect(caught(arrow)).toEqual(new Error(
+          'Unsupported await position: an await is evaluated only as the result of the expression - the whole expression, an arrow function\'s expression body, or the last statement of a program or of an arrow function\'s block body.'));
       });
 
     });

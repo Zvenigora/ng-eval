@@ -37,8 +37,10 @@ export const arrowFunctionExpressionVisitor = (node: ArrowFunctionExpression, st
       // `walkWithoutResult`, not `evaluate`: the body's walk records nothing
       // on `st.result`, which describes the entry-point walk alone - during
       // that walk and after it, however often this closure is called
-      // (`docs/backlog-retired.md` A27).
-      return walkWithoutResult(node.body, st);
+      // (`docs/backlog-retired.md` A27). As an arrow's body, it accepts the
+      // `await` of an expression body or of a block body's last statement
+      // (`docs/backlog-retired.md` A24).
+      return walkWithoutResult(node.body, st, true);
     } finally {
       contextPop(st.context);
     }

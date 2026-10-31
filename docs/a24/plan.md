@@ -1,6 +1,10 @@
 # A24, A25 and D13 — the await track: `await` where its value is the result, and every refused statement reported (`@zvenigora/ng-eval-core`, then `eval-signals` and `eval-forms`)
 
 **Date**: October 30, 2026
+**Revision**: 4 — step 4: widened at its code review to unwrap `preserveParens` in the accepted
+positions, with four rows and probes P4-7 and P4-8, so `eval-core` reaches 3259 at step 4 and 3288
+at step 5; step 4's outcome; the `step` skill's state line made step-independent.
+
 **Revision**: 3 — step 3: P3-3's predicted red set corrected, measured; step 3's outcome.
 
 **Revision**: 2 — step 2: § 1.2 finding 2's discrepancy measured and settled for the code reading;
@@ -18,7 +22,7 @@ The register's decisions name these releases.
 **Fixes**:
 - [A25](../backlog-retired.md#a25), in step 3: an `await` passes its operand through, with no race, no timer,
   no `__awaitTimeout` key and no suffix.
-- [A24](../backlog.md#a24), in step 4: an `await` is accepted only where its value is the result,
+- [A24](../backlog-retired.md#a24), in step 4: an `await` is accepted only where its value is the result,
   and refused anywhere else.
 - [D13](../backlog.md#d13), in steps 5 and 6: `eval-core` reports the first statement anywhere in a
   tree that evaluation would refuse, and both `eval-forms` adapters refuse such a rule at
@@ -259,7 +263,8 @@ is open there, so no hook fires.
 
 (b) is (a) for the arrow's own walk: `arrow-function-expression.ts` runs
 `walkWithoutResult(node.body, st)`, so the expression body is that walk's root. The table needs no
-traversal, only the root's own fields. So there is nothing to cache, and the precedents for caching
+traversal, only the root's own fields; under `preserveParens` they are unwrapped first, a widening
+step 4's outcome records. So there is nothing to cache, and the precedents for caching
 by node identity, `exemptNodes` and `templateObjects`, are not needed: a cache keyed by the node would
 add a lookup to save a property read.
 
@@ -395,7 +400,7 @@ step is two: 7a and 7b, 8a and 8b, 9a and 9b. The numbering of the request's ste
 | 1 | This plan and its records | `docs/a24/plan.md` (new), `docs/README.md`, `CLAUDE.md`, `.claude/skills/step/SKILL.md`, `docs/backlog.md` | 0 / 0 / 0 | no package |
 | 2 | Characterisation | `internal/visitors/await-position.spec.ts` (new); this document's outcome | **+63** / 0 / 0 | no package |
 | 3 | A25, and the failure order | `await-expression.ts`, `evaluate.ts`, the spec's step-3 rows, `eval.service.await.spec.ts`, `eval.service.async-error-handling.spec.ts`, `evaluate.result.spec.ts`, `SECURITY.md`, `CHANGELOG.md`, the register; A25's link targets in the Phase 5 plan and summary, `docs/README.md` and this document | **+2** / 0 / 0 | `eval-core` 0.15.0; `SECURITY.md` no package |
-| 4 | A24 | `await-expression.ts`, `evaluate.ts`, `arrow-function-expression.ts`, `recursive-visitors.ts` if the table's entry changes, the spec's step-4 rows, `README.md`, `CHANGELOG.md`, `eval-signal-async.spec.ts`, the register | **+3** / 0 / 0 | `eval-core` 0.15.0 |
+| 4 | A24 | `await-expression.ts`, `evaluate.ts`, `arrow-function-expression.ts`, `recursive-visitors.ts` if the table's entry changes, the spec's step-4 rows, `README.md`, `CHANGELOG.md`, `eval-signal-async.spec.ts`, the register | **+7** / 0 / 0 | `eval-core` 0.15.0 |
 | 5 | D13 in `eval-core` | `statement-support.ts` (new), `dispatch-statement.ts`, `variable-declaration.ts`, `functions/unsupported-statement.ts` (new) and its spec (new), `functions/public-api.ts`, `README.md`, `readme-examples.spec.ts`, `CHANGELOG.md` | **+29** / 0 / 0 | `eval-core` 0.15.0 |
 | 6 | D13 in `eval-forms` | `guard-identifiers.ts`, `guard-identifiers.spec.ts`, `evaluate-rule.ts`, `README.md`, `CHANGELOG.md`, the register; D13's link targets in the Phase 9 plan and summary, `docs/README.md` and this document | 0 / 0 / **+6** | `eval-forms` 0.8.0 |
 | 7a | `eval-core` 0.15.0, the release commit | `package.json`, `CHANGELOG.md`, the root `CHANGELOG.md`, the register, the skill | 0 / 0 / 0 | the release |
@@ -406,8 +411,8 @@ step is two: 7a and 7b, 8a and 8b, 9a and 9b. The numbering of the request's ste
 | 9b | Its post-publish record | as 7b | 0 / 0 / 0 | no package |
 | 10 | Retrospect | this document's § 10, `CLAUDE.md`, `docs/README.md`, the register, the skill | 0 / 0 / 0 | no package |
 
-From 3187 / 444 / 380, `eval-core` is at 3250 after step 2, 3252 after step 3, 3255 after step 4 and
-3284 after step 5; `eval-forms` is at 386 from step 6; `eval-signals` stays at 444. A step-3 or
+From 3187 / 444 / 380, `eval-core` is at 3250 after step 2, 3252 after step 3, 3259 after step 4 and
+3288 after step 5 (*corrected in step 4*: 3255 and 3284, before its four `preserveParens` rows); `eval-forms` is at 386 from step 6; `eval-signals` stays at 444. A step-3 or
 step-4 flip rewrites a row in place and moves no count. Every row "moves" below means rewritten 1:1.
 
 ### Step 1 — This plan and its records
@@ -649,9 +654,13 @@ step-4 flip rewrites a row in place and moves no count. Every row "moves" below 
   `modules/eval-signals/src/lib/eval-signal-async.spec.ts:1388-1412`, whose `arrow` now asserts the
   refusal, and whose comment says why; the register, A24 retired, its index row keeping
   `<a id="a24"></a>` in its first cell.
-- **New rows** (`eval-core` +3): the same `AwaitExpression` node evaluated as a root, then the tree
+- **New rows** (`eval-core` +7): the same `AwaitExpression` node evaluated as a root, then the tree
   holding it as an operand: accepted, then refused; the reverse order; and a refused `await` under a
-  hook: no `before` for it, and the enclosing nodes unwound.
+  hook: no `before` for it, and the enclosing nodes unwound. *Widened in step 4*
+  ([SR4](../standing-rules.md#sr4)), at the maintainer's answer to its code review: four rows under
+  `preserveParens`, each one case over both paths — an expression body `(async () => (await p))()`,
+  a block's last statement `(async () => { 1; ((await p)) })()` and the root `(await p)`, accepted;
+  an operand `(async () => ((await p)) * 10)()`, refused. This was +3.
 - **Rows that move**: the 32 cases marked `4`; `eval-signal-async.spec.ts:1388-1412`, rewritten
   in place to assert § 3.2's message in full ([SR18](../standing-rules.md#sr18)), so `eval-signals`
   stays at 444.
@@ -681,8 +690,127 @@ step-4 flip rewrites a row in place and moves no count. Every row "moves" below 
     `eval.service.await.spec.ts:78-83`, and every step-2 case that evaluates an accepted `await`: the
     16 accepted P cases and groups A's `await 1`, T, K, S and C. It is the probe that A1's rows
     witness acceptance.
+  - **P4-7** *Wrong*, added in step 4 with the `preserveParens` rows: no unwrap. Red: the three
+    accepted `preserveParens` rows only.
+  - **P4-8** *Wrong*: unwrap one level instead of looping. Red: the block row, the one with two
+    levels.
 - **Ships in**: `eval-core` 0.15.0. The `eval-signals` spec ships in no package; its README waits for
   step 8a.
+- **Outcome** (2026-10-30):
+  - **The code is `a24.patch`'s § 3.2 hunks**, applied by hand onto step 3's visitor after the patch's
+    SHA-256 was checked ([SR32](../standing-rules.md#sr32)): the accepted-position table
+    (`acceptedAwait`, `lastStatementAwait`), the per-walk override (`visitorsFor`, and
+    `walkWithoutResult`'s third parameter, which the arrow's walk sets), and the refusal above
+    `beforeVisitor`. § 8 q2, q3 and q4 are applied: one sentence, the working answers, no cache.
+    Every code line is the patch's, with these differences: the message constant is not exported,
+    since nothing imports it and the specs write the message out ([SR18](../standing-rules.md#sr18));
+    and the patch's four "A24 prototype" comments are replaced by ones that say what the code does
+    and cite the retired entry, with a JSDoc for `acceptedAwait` and `visitorsFor`, `@param arrowBody`
+    on `walkWithoutResult`, and a sentence on the arrow's call, since the prototype's labels would
+    ship. `recursive-visitors.ts` is not edited: its entry is `awaitVisitor` with `accepted`
+    defaulting to `false`, so the shared table refuses every `await` as it stands.
+  - **One behavioural difference from the patch**, decided by the maintainer at the code review's
+    finding: `acceptedAwait` strips `preserveParens`' wrappers with the existing `unwrapParentheses`
+    (`visitors/utils.ts`) from the root and from the last statement's expression, through a new
+    `asAwait`, as the assignment, update and `this`-position checks do ([SR29](../standing-rules.md#sr29)).
+    The patch compared the type as it came, so under `preserveParens` `(async () => (await p))()`,
+    accepted without the option, was refused. At 0.14.1 it resolved, held by reading and not
+    measured: `acorn-walk`'s base visitor passes a `ParenthesizedExpression` through, so the race
+    reached the result as it did without the parentheses. What it does not do: it unwraps
+    only those two places, never an operand, so `((await p)) * 10` is still refused; and it reads no
+    option, since without `preserveParens` acorn produces no wrapper to strip.
+  - **The flips**: the 32 cases marked `4`, P4 and P6 to P12 on both paths and in both modes, each
+    rewritten in place to `toThrow(new Error(REFUSAL))`, or `rejects.toThrow` for the async path,
+    which compares the whole message. `REFUSAL` is written out in the spec. The refused rows keep
+    their native arm. `eval-signal-async.spec.ts:1388-1412` is rewritten in place and renamed
+    "should read a member off the promise in operand position, and refuse an await there": its
+    `arrow` is `'error'` after the flush and its read throws an `Error` equal to the message in full.
+    Its comment says the README paragraph it contradicts stays until step 8a, and why.
+  - **The new rows**, `await-position.spec.ts`: R1 and R2, the `await` of `(await p) * 10` walked
+    alone (accepted, `p` itself) and inside the program (refused), in both orders; H1, the program
+    under a wildcard hook, which sees `BinaryExpression` opened, no `before` for the `await`, and
+    every opened node unwound, innermost first, `completed` `false`, with the refusal as its error.
+    Q1 to Q4, under `preserveParens` ([SR19](../standing-rules.md#sr19): the path now has a leg the
+    option reaches), each one case asserting `p` itself on the sync path and `2` under
+    `evaluateAsync`, or the refusal on both: Q1 `(async () => (await p))()`; Q2
+    `(async () => { 1; ((await p)) })()`; Q3 the root `(await p)`, parsed under `extractExpressions`
+    and checked to be a `ParenthesizedExpression`; Q4 `(async () => ((await p)) * 10)()`, refused.
+  - **The probes**, each applied alone by hand against all three projects and reverted by hand;
+    `git grep PROBE` found nothing afterwards:
+
+    | Probe | Predicted | Red |
+    | :--- | :--- | :--- |
+    | P4-1 | 28: P6 to P12, both paths, both modes; and beside them the moved `eval-signals` row, an operand `await` in an `async` arrow, which the plan's list did not name: 29 | 29, as predicted |
+    | P4-2 | 8: P4 and P6 | 8, as predicted |
+    | P4-3 | 4: P11 | 4, as predicted |
+    | P4-4 | 1: R1 | 1, as predicted |
+    | P4-5 | 1: H1 | 1, as predicted |
+    | P4-6 | `eval-core` 38: the 16 accepted P cases, A2's two, T, K and C's three each, S's two, R1 and R2, which the plan's list predates; `eval.service.await.spec.ts`' four; of `hooks.spec.ts:296-378`'s four, the two that read the operand's throw, "should throw and leave nothing open" and "should close every open node as failed"; `readme-examples.spec.ts:620-638`. `eval-signals` 1, `eval-signal.spec.ts:998-1012` | 38 and 1, as predicted |
+    | P4-7 | 3: Q1, Q2, Q3 | 3, as predicted |
+    | P4-8 | 1: Q2; Q3's source has one level | 1, as predicted |
+
+    P4-1 accepted every `await` in an arrow's walk, which for these sources is every `await` in an
+    `async` arrow: acorn parses an `await` nowhere else. P4-2 accepted the expression of every
+    statement in the root's body. P4-3 read a root `ConditionalExpression`'s branches. P4-6 kept the
+    override and passed `false` from it. P4-1 to P4-6 ran before the Q rows existed. P4-1 and P4-6
+    reach them, so both were run again on `eval-core` after the unwrap, the probed code being the
+    same downstream: P4-1 29, the 28 and Q4, and P4-6 41, the 38 and Q1 to Q3, each as predicted.
+    P4-2's to P4-5's code leaves the Q rows as they are.
+  - **Criteria**: 1, the 32 cases and the moved row; 2, `git diff` shows no line of
+    `eval.service.await.spec.ts` or `hooks.spec.ts`; 3, the diff adds no assignment to a property of
+    `st` or a node, read by hand, and the `WeakMap`/`WeakSet` grep finds nothing; 4,
+    `performance.spec.ts` green and untouched.
+  - **Counts**: `eval-core` 3252 → 3259; `eval-signals` 444 and `eval-forms` 380, unchanged.
+  - **Records**: the README's "Async evaluation and compilation" gains the rule, and its
+    `AwaitExpression` and `ArrowFunctionExpression` lines say where an `await` is accepted and that
+    `async` is ignored. The CHANGELOG's `[Unreleased]` `### Breaking` gains A24's line, and A25's line
+    loses its two examples of a non-thenable `await` in operand position, which this step refuses;
+    A24's line carries one of them as the old value. A24 is retired to `backlog-retired.md` with its
+    rows and probes; its index row keeps `<a id="a24"></a>` in its first cell, which
+    `tools/published-links.txt:26` needs, and the register's own links point to the retired entry.
+    The links into `backlog.md#a24` elsewhere resolve to that index row and are left as they are.
+  - **Correction in this step's commit** ([SR4](../standing-rules.md#sr4)): `.claude/skills/step/SKILL.md`'s
+    state line named the next step and went stale at every step; step 3 left it reading "Step 2 is
+    next". It now names none: the last step in § 4 with a recorded outcome is done, and the next is
+    the one after it.
+  - **The README's lines** ([SR21](../standing-rules.md#sr21)):
+
+    | Claim | Witness |
+    | :--- | :--- |
+    | Accepted as the whole expression, an arrow's expression body, a program's or a block body's last statement | P1, P2, P3 and P5, both paths, both modes; P4-6 turns them red |
+    | A top-level `await` parses only with `allowAwaitOutsideFunction`, off in the services' options | `parser.service.spec.ts`' criterion 1 and (b) rows, `Unexpected token (1:6)` |
+    | Refused anywhere else, by name, when the walk reaches it | the 32 cases; P4-1, P4-2 and P4-3 |
+    | A refused `await` fires no hook | H1; P4-5 |
+    | Up to 0.14.1 an `await` handed the walk a promise as its value | step 2's sync P cases at d62eee4, each a promise other than `p`; A25's retired rows |
+    | Up to 0.14.1 `(async () => (await p) * 10)()` was `NaN`, where JavaScript gives 20 | step 2's P7 at d62eee4; P7's native arm, still run, gives 20 |
+    | Elsewhere `evalAsync` resolved it: `(async () => f(await p))()` gave 2 | step 2's P9 async at d62eee4, `2`, and its native arm |
+    | The operand passes through; on the sync path `eval` returns `p` | P2's sync case, `toBe(p)`, probed by step 3's P3-1 |
+    | `async` is ignored; `(async () => 1)()` is `1` | A1, both paths |
+    | The walk does not suspend | held by review: `evaluateAsync` awaits only after `walk.recursive` returns |
+
+  - **The CHANGELOG's line** ([SR21](../standing-rules.md#sr21)):
+
+    | Claim | Witness |
+    | :--- | :--- |
+    | The accepted positions, and the refusal elsewhere, by its message | as the README's first and third rows |
+    | On every entry point | held by review: every entry point reaches `walkWithoutResult` or `evaluateAsync`, both of which build `visitorsFor`; the rows call `evaluate`, `evaluateAsync`, `EvalService` and `createEvalSignalAsync` |
+    | Fires no hook | H1; P4-5 |
+    | Every `await` handed the walk a promise | as the README's row |
+    | Was `NaN`; was `undefined`; was `"[object Promise]1"` | step 2's P7; the register's table measured 2026-10-07 and the `eval-signals` row before this step; step 3's throwaway measurement at d62eee4 |
+    | Six forms resolved under `evalAsync`, and are refused | step 2's P8, P9, P11, P12, P4 and P10 async, `[2]`, `2`, `2`, `2`, `1` and `2`, at d62eee4; their step-4 cases now |
+    | An accepted `await` keeps its hook and trace events | `hooks.spec.ts:296-378`, unmodified and green; P4-6 turns two of its rows red |
+    | No exported shape or `.d.ts` change | the gate's `build`; `acceptedAwait` and `awaitVisitor` are under `internal/visitors`, which `src/public-api.ts` does not re-export, and `walkWithoutResult` is not in `functions/public-api.ts` |
+
+  - **Code review** (before the commit): no Critical finding. Folded in: the README's and the
+    CHANGELOG's "gave a wrong answer up to 0.14.1" for every refused position, false of all but the
+    operand ([SR31](../standing-rules.md#sr31)) — step 2 measured P4, P8, P9, P11 and P12 giving
+    JavaScript's value under `evaluateAsync` — so the Breaking line now names the six forms that
+    resolved, and "handed the walk its operand", false of 0.14.1, which handed it the race; the
+    `preserveParens` gap, decided by the maintainer as above, with its four rows and P4-7 and P4-8;
+    and this outcome's count of the prototype's comments, four, not three. Noted, not changed: a walk
+    with an accepted `await` allocates its override per walk, so per call of such an arrow, as
+    § 8 q4 decided; and `docs/README.md`'s "Active plan" entry still links `backlog.md#a24`, which
+    resolves to the index row and is outside this step's file list.
 
 ### Step 5 — D13 in `eval-core`: one check, exported
 
@@ -817,7 +945,7 @@ that stops at § 1 while none is active, which step 1 removed and `CLAUDE.md` st
 | Gate | Command | Expected |
 | :--- | :--- | :--- |
 | Everything | `npx nx run-many -t lint test build --skip-nx-cache --output-style=static` ([SR8](../standing-rules.md#sr8)) | Green, every step |
-| `eval-core` rows | in the above | 3187 → 3250 (2) → 3252 (3) → 3255 (4) → 3284 (5), then unchanged |
+| `eval-core` rows | in the above | 3187 → 3250 (2) → 3252 (3) → 3259 (4) → 3288 (5), then unchanged |
 | `eval-signals` / `eval-forms` rows | in the above | 444 throughout; 380, then 386 from step 6 |
 | Performance | `internal/performance.spec.ts` | Green and untouched every step |
 | Scope | `git status --porcelain` | The step's file list ([SR3](../standing-rules.md#sr3)) |

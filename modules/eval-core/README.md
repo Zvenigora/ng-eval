@@ -116,6 +116,8 @@ const value = service.simpleCall(fn, context, options); // 3
 
 Asynchronous evaluation is limited, and based on promises. The walk itself is synchronous, and a promise is awaited once it has finished, wherever it sits in the result: the result itself, or an element or property of an array or object the expression builds.
 
+**An `await` is evaluated only where its value is the result**, since 0.15.0. The walk does not suspend at it: the operand passes through unchanged, and `evalAsync` resolves a promise that reaches the result. So an `await` is accepted in three places: as the whole expression, `await p`; as an arrow function's expression body, `(async () => await p)()`; or as the last statement of a program or of an arrow function's block body, `1; await p` or `(async () => { 1; await p })()`. A top-level `await` parses only with `allowAwaitOutsideFunction`, which the services' parser options leave off. Anywhere else, as an operand, an element, an argument, an initializer, a branch, a statement that is not the last, or the operand of another `await`, it throws `Unsupported await position: an await is evaluated only as the result of the expression - …` when the walk reaches it, and fires no hook. Up to 0.14.1 an `await` there handed the walk a promise as its value: as an operand that gave a wrong answer, `(async () => (await p) * 10)()` was `NaN` where JavaScript gives 20, and elsewhere `evalAsync` resolved the promise once it reached the result, so `(async () => f(await p))()` gave 2. On the sync path an accepted `await` gives the operand itself, so `eval` returns `p` for `(async () => await p)()`. `async` is ignored: an `async` arrow is a plain function and returns no promise of its own.
+
 ```javascript
 import { EvalService } from '@zvenigora/ng-eval-core';
 
@@ -261,7 +263,12 @@ The project has been tested with the following node types:
  - `Identifier`
  - `Literal`
  - `CallExpression` *potentially unsafe*
- - `AwaitExpression`
+ - `AwaitExpression` — only where its value is the result: the whole expression, an arrow
+   function's expression body, or the last statement of a program or of an arrow function's
+   block body. Anywhere else it throws `Unsupported await position`, since 0.15.0; up to 0.14.1
+   it was evaluated there, wrongly as an operand. Its operand passes through unchanged, and
+   `evalAsync` resolves a promise that reaches the result
+   ([Async evaluation and compilation](#async-evaluation-and-compilation))
  - `ConditionalExpression`
  - `MemberExpression`
  - `ArrayExpression`
@@ -292,7 +299,9 @@ The project has been tested with the following node types:
    `caseInsensitive` a member update writes the key its read matched, since 0.14.0: `OBJ.X++`
    on `{ obj: { x: 1 } }` writes `x`
  - `ArrowFunctionExpression` *potentially unsafe* (AssignmentPattern is not implemented, so a
-   destructuring default — `({ a = 1 }) => a` — is rejected rather than defaulted)
+   destructuring default — `({ a = 1 }) => a` — is rejected rather than defaulted). `async` is
+   ignored: the arrow is a plain function and returns no promise of its own, so
+   `(async () => 1)()` is `1`
  - `SequenceExpression` — each expression in order, the value the last one's
 
 Object and array destructuring bind the names JavaScript binds, in parameter lists and in

@@ -1,7 +1,8 @@
 import { EMPTY_COMPLETION, EvalState } from '../classes/eval';
 import * as walk from 'acorn-walk';
 import { getDefaultVisitors, popVisitorResult } from '../visitors';
-import { AnyNode } from 'acorn';
+import { AnyNode, AwaitExpression } from 'acorn';
+import { acceptedAwait, awaitVisitor } from '../visitors/await-expression';
 
 /**
  * Applies § 3.1's rule 4: the empty-completion sentinel never leaves an
@@ -62,6 +63,32 @@ const mergedVisitors = (): walk.RecursiveVisitors<EvalState> =>
   (defaultVisitors ??= Object.freeze(walk.make<EvalState>(getDefaultVisitors())));
 
 /**
+ * The table a walk rooted at `root` dispatches through: the shared one, whose
+ * `AwaitExpression` entry refuses every `await`, or - when the root has an
+ * accepted `await` (`acceptedAwait`) - a fresh object over it whose own entry
+ * accepts that node alone (`docs/backlog-retired.md` A24).
+ *
+ * The answer travels with the walk, not on the state or the node: the arrow
+ * function's nested walk builds its own from its own root, so an enclosing
+ * walk's accepted `await` is never in scope where it is not one. The entry is
+ * defined, not assigned: `walk.make` would assign a `funcs` key onto an object
+ * over the frozen table, which throws in strict mode. A walk with no accepted
+ * `await` takes the shared table and pays nothing; one that has one builds a
+ * single object, uncached.
+ */
+const visitorsFor = (root: AnyNode, arrowBody: boolean): walk.RecursiveVisitors<EvalState> => {
+  const accepted = acceptedAwait(root, arrowBody);
+  return accepted
+    ? Object.create(mergedVisitors(), {
+      AwaitExpression: {
+        value: (n: AwaitExpression, s: EvalState, c: walk.WalkerCallback<EvalState>) =>
+          awaitVisitor(n, s, c, n === accepted),
+      },
+    })
+    : mergedVisitors();
+};
+
+/**
  * Walks the node on the state and returns its completion value, recording no
  * outcome: everything {@link evaluate} does except `state.result`'s `start`,
  * `stop`, `setSuccess` and `setFailure`.
@@ -77,9 +104,11 @@ const mergedVisitors = (): walk.RecursiveVisitors<EvalState> =>
  *
  * @param node The node to walk.
  * @param state The evaluation state.
+ * @param arrowBody Whether the node is an arrow function's body, which
+ * decides the `await` it accepts (`visitorsFor`).
  * @returns The node's completion value.
  */
-export const walkWithoutResult = (node: AnyNode, state: EvalState): unknown => {
+export const walkWithoutResult = (node: AnyNode, state: EvalState, arrowBody = false): unknown => {
 
   // The mark is recorded on the state as well as held here, so that
   // `EvalHooks.exit` - called from a visitor, which has no route to this
@@ -96,7 +125,7 @@ export const walkWithoutResult = (node: AnyNode, state: EvalState): unknown => {
   state.enterWalk();
 
   try {
-    walk.recursive(node, state, {}, mergedVisitors());
+    walk.recursive(node, state, {}, visitorsFor(node, arrowBody));
 
     return completionValue(popVisitorResult(node, state));
   } catch (error) {
@@ -260,7 +289,7 @@ export const evaluateAsync = async (ast: AnyNode | undefined, state: EvalState)
     // evaluation that interleaved on this state looking like a nested walk -
     // and § 3.4's budget refills only on the outermost entry.
     try {
-      walk.recursive(ast, state, {}, mergedVisitors());
+      walk.recursive(ast, state, {}, visitorsFor(ast, false));
 
       value = completionValue(popVisitorResult(ast, state));
     } finally {
