@@ -1,6 +1,11 @@
 # A24, A25 and D13 — the await track: `await` where its value is the result, and every refused statement reported (`@zvenigora/ng-eval-core`, then `eval-signals` and `eval-forms`)
 
 **Date**: October 30, 2026
+**Revision**: 10 — step 10: § 9, the contract, and § 10, the retrospect; § 0's two rules promoted as
+[SR40](../standing-rules.md#sr40) and [SR41](../standing-rules.md#sr41), with
+[SR42](../standing-rules.md#sr42) new and [SR8](../standing-rules.md#sr8) amended; step 10's outcome.
+The plan is complete.
+
 **Revision**: 9 — step 7b: the post-publish record of all three, and its outcome; the tag paragraph's
 counts in the register, stale since 0.14.1's record, corrected.
 
@@ -439,7 +444,7 @@ release would leave `master` red between its steps.
 | 7a | `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0, the release commit (*merged in step 7a*) | each package's `package.json` and `CHANGELOG.md`; `eval-signals`' `README.md`, its Install peer line and floor paragraph and its `await` paragraph, the moved row's comment in `eval-signal-async.spec.ts`, and `tools/published-links.txt`; `eval-forms`' `README.md`, its peer lines and its Versions floor paragraph; the register, the skill (*corrected in step 7a*: not the root `CHANGELOG.md`) | 0 / 0 / 0 | the release |
 | F30 | `eval-signals` 0.8.0's `await` claims witnessed, a commit between 7a and 7b, before the publish (*added after step 7a*) | `eval-signal.spec.ts`, `eval-signal-async.spec.ts`, the register (F30 retired), the skill, this document | 0 / **+5** / 0 | no package; the tarballs and tags stay at 67486ab |
 | 7b | The post-publish record of all three | the register's Publication status, its release row's date (*corrected after step 7a*), "Work in flight", and the released entries' statuses in the index and in `backlog-retired.md`; `CLAUDE.md`'s published versions; the three tags; a CHANGELOG date if npm's differs, the skill, this document (*widened in step 7a*) | 0 / 0 / 0 | no package |
-| 10 | Retrospect | this document's § 10, `CLAUDE.md`, `docs/README.md`, the register, the skill | 0 / 0 / 0 | no package |
+| 10 | Retrospect | this document's § 9 and § 10, `docs/standing-rules.md` (*named in step 10*: its section text promotes § 0's rules there), `CLAUDE.md`, `docs/README.md`, the register, the skill | 0 / 0 / 0 | no package |
 
 From 3187 / 444 / 380, `eval-core` is at 3250 after step 2, 3252 after step 3, 3259 after step 4 and
 3288 after step 5 (*corrected in step 4*: 3255 and 3284, before its four `preserveParens` rows); `eval-forms` is at 386 from step 6; `eval-signals` stays at 444 until F30's commit, after step 7a, and is at 449 from it (*corrected after step 7a*). A step-3 or
@@ -1339,6 +1344,29 @@ register's "Work in flight", and the skill, which names no plan again and gets b
 that stops at § 1 while none is active, which step 1 removed and `CLAUDE.md` still describes. Each
 § 0 rule is promoted to
 `standing-rules.md` or dropped with its reason. **Ships in**: no package.
+- **Outcome** (2026-10-31):
+  - **§ 9 and § 10 written.** Both § 0 rules are promoted: rule 1 as
+    [SR40](../standing-rules.md#sr40) and rule 2 as [SR41](../standing-rules.md#sr41). The
+    single-commit release is new, as [SR42](../standing-rules.md#sr42). [SR8](../standing-rules.md#sr8)
+    now says that the gate covers the committed tree. `standing-rules.md`'s old-numberings table maps
+    § 0 rules 1–2.
+  - **Records**: `CLAUDE.md` says no plan is active, lists this document among the completed design
+    records, and cites SR40–SR42 where their subjects are. `docs/README.md` has no active plan and
+    lists this one under Completed tracks. The skill names no plan and stops at its § 1 again. The
+    register's "Work in flight" calls the plan complete. § 4's step-10 row now names
+    `standing-rules.md`, which this section's text already named ([SR4](../standing-rules.md#sr4)).
+  - **Code review** (before the commit): no Critical finding. Folded in:
+    - § 10.2's tally of where the corrections came from, recounted, and P6-3's history.
+    - § 10.3 split into two kinds: the step's prediction missed, or the plan's probe line was stale.
+      This adds P4-1 and P6-1.
+    - SR41's *Red*, which named a probe where nothing goes red when the rule is broken.
+    - The skill's and `docs/README.md`'s "run once", which SR8's amendment makes stale; SR8's own
+      "once" went with them.
+    - Also: § 9 item 3's event values; § 9's opening, since item 8 is `eval-forms`' own; § 10.4's
+      account of the split and of 0d305a3, plus `eval-forms`' `eval-signals` range as inferred;
+      § 10.5's step-4 sentence, worded as recorded; the `a24/` row's place in `docs/README.md`'s
+      table; and `CLAUDE.md`'s SR42 sentence.
+  - **Counts**: 3288 / 449 / 386, unchanged.
 
 ---
 
@@ -1442,8 +1470,184 @@ maintainer at step 2's confirmation gate, on 2026-10-30, and the step that names
 
 ## 9. Contract after this lands
 
-Written at step 10, from what the steps measured.
+Written at step 10, from what the steps measured. `eval-core` 0.15.0 provides items 1–7, and
+`eval-signals` 0.8.0 and `eval-forms` 0.8.0 forward them. Item 8 is `eval-forms` 0.8.0's own.
+
+1. **An `await` is accepted only where its value is the walk's result**: as the walk's root; as an
+   arrow's expression body, the root of the arrow's nested walk; or as the expression of the last
+   statement of a `Program` or of an arrow's block body, when that statement is an
+   `ExpressionStatement`. Under `preserveParens` the wrappers are stripped at the root and at that
+   expression, never at an operand. The accepted `await` is read off each walk's root, one level
+   deep. Nothing is stored on `st`, on a node or in a cache.
+2. **Anywhere else it throws** `Unsupported await position: an await is evaluated only as the result
+   of the expression - the whole expression, an arrow function's expression body, or the last
+   statement of a program or of an arrow function's block body.` The check sits above
+   `beforeVisitor`, so the refused `await` fires no hook event and leaves no trace entry. The walk
+   unwinds the nodes open above it, as it does for any throw.
+3. **An accepted `await` passes its operand through unchanged.** On the sync path
+   `(async () => await p)()` is `p`, by identity, and `(async () => await 1)()` is `1`. Under
+   `evalAsync` the promise reaches the result and `awaitAllPromises` resolves it. Nothing races it,
+   arms a timer or reads `__awaitTimeout`, and nothing is appended to an error. Nothing bounds how
+   long it waits. It fires 0.14.1's hook and trace events in 0.14.1's order. The value they carry is
+now the operand, where it was the race.
+4. **A rejection reaches `evalAsync`'s caller as raised when it is an `Error`**, by identity, with
+   its message unchanged. Any other rejection passes through `ensureError`, so `'x'` arrives as
+   `Error('x')`.
+5. **`async` is ignored**: an arrow returns no promise.
+6. **A hook that fires during an `evaluateAsync` failure's cleanup reads `duration` as `undefined`**,
+   as it does under `evaluate`.
+7. **`findUnsupportedStatement(node)` reports the first statement, in source order, that evaluation
+   would refuse**, anywhere in the tree, function bodies and untaken branches included. It returns
+   the statement and the message evaluation throws, or `undefined`. It and the evaluator read one
+   table, `statement-support.ts`.
+8. **`eval-forms` refuses such a rule at registration through both adapters**, wherever the
+   statement sits. A label keeps its message, with the `colonIdentifiers` hint. Statements are
+   checked before identifiers.
+9. **Not provided**: a walk that suspends; an `async` arrow that returns a promise; a time limit on
+   an `await`, so a host that wants one wraps its own promise; a check of unsupported *expressions*;
+   a cache of the per-walk table (§ 8 q4). At an `ecmaVersion` past the services' 2020,
+   `findUnsupportedStatement` reports a statement in a class's static block, which evaluation never
+   reaches. That errs on the side of refusing (step 5's code review).
 
 ## 10. Retrospect
 
-Written at step 10 ([SR7](../standing-rules.md#sr7)).
+Written in step 10, 2026-10-31 ([SR7](../standing-rules.md#sr7)). Like the A45 plan's, it keeps what a
+later plan can reuse. It does not summarise the steps: their outcomes in § 4 do that.
+
+### 10.1 What shipped
+
+`eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0 were released together at 67486ab,
+tagged annotated there, and published 2026-10-31. Each is a minor release that breaks by behaviour.
+Every `@zvenigora` floor was raised. The published tarballs' `.mjs` and `.d.ts` files are the
+build's, byte for byte (step 7b).
+
+- **Closed**: [A25](../backlog-retired.md#a25) (step 3), [A24](../backlog-retired.md#a24) (step 4)
+  and [D13](../backlog-retired.md#d13) (steps 5 and 6). [A27](../backlog-retired.md#a27) and
+  [A38](../backlog-retired.md#a38) were fixed before the plan and shipped in 0.15.0.
+  [F30](../backlog-retired.md#f30) was opened by step 7a's code review and fixed after the release
+  commit, in no package.
+- **The register**: 23 live at 0.14.1, 19 at 67486ab (F30 opened, five closed), and 18 after F30's
+  commit.
+- **The rows**: 3187 / 444 / 380 → 3288 / 449 / 386. `eval-core` gained the 63-case
+  characterisation spec, 7 rows for A24 and 29 for D13, and 2 for the failure order; `eval-forms`
+  gained 6 and `eval-signals` F30's 5.
+
+### 10.2 Plan corrections, by step and revision
+
+- **Revision 1, step 1.** The code review measured § 3.2's first mechanism, a one-entry `funcs` over
+  the frozen shared table: it throws in `acorn-walk`'s `make`. The plan now uses `Object.create` and a
+  defined property. The same review added the retirements' inbound links to steps 3 and 6. It also
+  corrected three row counts that did not match their own row lists: step 5 is +29 and step 6 +6.
+- **Revision 2, step 2.** The request's "with or without an await" was measured wrong, and § 1.2
+  finding 2's reading of the code right. Step 5's parity sources for `return`, `break` and
+  `continue` were replaced with ones that parse. § 8's six answers were recorded.
+- **Revision 3, step 3.** P3-3's red set (§ 10.3).
+- **Revision 4, step 4.** The code review found that the prototype refused
+  `(async () => (await p))()` under `preserveParens`, so the step was widened to strip the wrappers.
+  That added four rows and P4-7 and P4-8, which moved `eval-core` to 3259 and 3288. The skill's
+  state line, stale at every step, was made step-independent.
+- **Revision 5, step 5.** § 8 q1's compile check moved to step 6, whose `build` makes it. Step 6's
+  file list gained `docs/README.md`'s `#a24` link. P5-1, P5-3 and P5-5 (§ 10.3). Two README sentences
+  were found false now and fixed ([SR31](../standing-rules.md#sr31)): "`return` never reaches the
+  evaluator at all", false since 0.4.0, and the `AwaitExpression` line.
+- **Revision 6, step 6.** Criterion 4 now names `.statement.label.name`, which the narrowing reads.
+  P6-1 was corrected before it ran. P6-3 was corrected before it ran and again after it (§ 10.3).
+  P6-1b was added. The file list was widened three times: at the gate, by the sweep of the
+  dispatcher's `default`; at the code change, by `field-schema.ts`' `@param schema`, which the `.d.ts`
+  prints; and at the code review, by three more spec comments in two files.
+- **Revision 7, step 7a.** The three releases were merged into one (§ 10.4). The root `CHANGELOG.md`
+  left the file list, since its list names packages, not versions. 7b's list was widened to what
+  34bebbd changed.
+- **Revision 8, after step 7a.** F30's commit was added, and `eval-signals` moved to 449.
+- **Revision 9, step 7b.** The register's tag paragraph read 47 and 57, stale since 0.14.1's record.
+  It now reads 51 and 61.
+
+Most of these corrections came from a code review, not from an exit criterion:
+- Revision 1's three: the mechanism, the inbound links and the row counts.
+- `preserveParens`.
+- The `return` sentence and the P5-1 and P5-3 probe lines.
+- The spec comments.
+- 7b's list.
+
+Other sources supplied the rest:
+- **The gate**: the merge.
+- **A step's confirmation gate**: q1's move and Revision 6's first widening.
+- **Measurement**: the probe and count corrections.
+- **Reading the file it named**: the root `CHANGELOG.md`.
+
+### 10.3 Each probe prediction that missed, and why
+
+The misses fall into two kinds.
+
+**The step's own prediction missed the measurement.**
+
+| Probe | Predicted | Red | What the prediction left out |
+| :--- | :--- | :--- | :--- |
+| P3-3, the suffix dropped by wrapping | 3 | 21 | A visitor can intercept a rejection only by chaining a new promise onto the operand, which re-wraps it. So every group-P sync identity row, 18, went red too |
+| P5-5, the README's code span removed | 1 | 2 | `public-api.spec.ts` imports `./export-list.spec`, so Jest registers F10's case in both suites |
+| P6-3, the guard skipped in `/reactive` | 29 | 30 | `/signals`' `readme-examples.spec.ts` binds "Expressions are validated too" through `/reactive` |
+| F30's P5, `ensureError` changed | 1 | 2 | The existing mapper row, "should hand the mapper a non-Error rejection wrapped", goes through the same conversion with no `await` |
+
+**The plan's probe line was stale when the step ran.** The step predicted the red set correctly, but
+the line written earlier had not.
+
+| Probe | Line | Step | What the line left out |
+| :--- | :--- | :--- | :--- |
+| P4-1, every `await` in an `async` arrow accepted | 28 | 29, as predicted | The moved `eval-signals` row, an operand `await` in an `async` arrow |
+| P5-1, a second list admitting `while` | 1 | 3, as predicted | The uncalled-body row and the README block also hold a `while` |
+| P5-3, function bodies skipped | 1 | 3, as predicted | The README block, and the `return` parity row, whose `return` step 2 moved into an arrow's body so that it parses |
+| P6-1, today's loop kept | 8 | 10, as predicted | The top-level `while` row, which today's loop, labels only, does not refuse either |
+
+Both kinds have the same shape. A prediction counted the rows *about* the claim. The red set counted
+every row whose evaluation *passes through* the changed code. [SR16](../standing-rules.md#sr16)
+already says to predict from what the probe changes. The first kind was measured, corrected in its
+step and recorded. The second kind was caught before the probe ran, by the step deriving its own
+set. P5-3 names its cause: step 2 corrected the `return` row's source and left the step-5 probe line
+that names the row as it was. **A correction to a row's source re-reads every probe line that names
+the row.** That falls under [SR26](../standing-rules.md#sr26)'s re-run and
+[SR16](../standing-rules.md#sr16)'s derivation, and the step's own derivation caught it, so no new
+rule follows. P5-5 is a fact about the suite to remember: a spec that imports another runs its cases
+twice.
+
+### 10.4 The 7a replan
+
+The request listed three releases, steps 7, 8 and 9. § 4 split each into a release commit and its
+post-publish record, 7a/7b, 8a/8b and 9a/9b. Step 7a's first gate, with `eval-core` alone at 0.15.0,
+failed `eval-signals:lint` and `eval-forms:lint` on `@nx/dependency-checks`, at each manifest's
+`eval-core` peer line. Every other target was green.
+
+§ 1.2 finding 1 had already shown that the downstream specs resolve `eval-core` to the workspace
+source. The lint does the same: it reads each downstream peer range against the workspace version.
+The A45 plan's release commit, 0d305a3, had already released all three packages at once. Neither its
+message nor that plan records why, and both downstream packages had breaking changes of their own
+there. The lint would have required one commit anyway, and nobody looked at that precedent when the
+step shape was set.
+
+The cost was one red gate, a replan inside step 7a, Revision 7 and four steps removed. Nothing was
+published in the wrong order, because the gate stopped the split. Any plan that moves `eval-core`
+past a downstream peer range meets this again, which is why it is now
+[SR42](../standing-rules.md#sr42). The same lint covers `eval-forms`' `eval-signals` range by its
+configuration (`modules/eval-forms/eslint.config.mjs`). That case is inferred, not measured, so SR42
+names only the measured one.
+
+### 10.5 Rules weighed
+
+- **§ 0 rule 1 is promoted, as [SR40](../standing-rules.md#sr40).** The violation was in the
+  decision text itself, before any code. A25's decided text said "a rejection reaches the caller as
+  their own value". That was true of the visitor once its catch was gone and false at `evalAsync`,
+  whose `ensureError` sits between them. The next change behind a converting layer, such as an
+  adapter, a policy or a mapper, meets the same trap.
+- **§ 0 rule 2 is promoted, as [SR41](../standing-rules.md#sr41).** Since Phase 3 it had been a
+  docblock comment in `eval-signal.spec.ts`, and a comment did not stop the trap. 0.8.0's sync
+  identity claim had no `eval-signals` witness until F30's second row, because the async-arrow row
+  reads a type and passes either way. P3-1 is the rule's probe: it re-wraps the operand, and only the
+  identity rows go red.
+- **The single release is new, as [SR42](../standing-rules.md#sr42)** (§ 10.4).
+- **The gate covers the committed tree. This amends [SR8](../standing-rules.md#sr8) rather than
+  adding a rule.** SR8 said "run once after every step and before every commit". It did not say that
+  the run must be of the tree being committed. Step 4's code review, which the skill runs after the
+  gate, folded prose into the README and the CHANGELOG. Neither the step's outcome nor its commit
+  records a gate run after that fold. Step 7a's merged change reached its second review before
+  the gate had run on it, and that was the review's Critical. Prose is not inert to the gate:
+  doc-links, the `readme-examples.spec.ts` counts and `public-api.spec.ts`' document cases all read
+  it. As in Phase 11's correction to SR3, a new ID would have left two rules for one check.

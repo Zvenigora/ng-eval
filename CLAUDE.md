@@ -45,10 +45,10 @@ and its plan is `docs/documentation/phase-10-plan.md`. The A45 plan, `docs/a45/p
 part 2 and A44, assignment targets as JavaScript evaluates them — is complete: it shipped as
 `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms` 0.7.0. Phase 11, `eval-forms`' README
 by entry point (`docs/backlog.md` F28), is complete: it shipped as `eval-forms` 0.7.1, a docs-only
-patch, and its plan is `docs/documentation/phase-11-plan.md`. The active plan is
-`docs/a24/plan.md`, the await track — A25, A24 and D13 — for `eval-core` 0.15.0, `eval-signals` 0.8.0
-and `eval-forms` 0.8.0. What `ROADMAP.md` has left is Phases 7 and 8, which it reserves without
-specifying them.
+patch, and its plan is `docs/documentation/phase-11-plan.md`. The A24 plan, `docs/a24/plan.md` —
+the await track, A25, A24 and D13 — is complete: it shipped as `eval-core` 0.15.0, `eval-signals`
+0.8.0 and `eval-forms` 0.8.0. No plan is active. What `ROADMAP.md` has left is Phases 7 and 8,
+which it reserves without specifying them.
 
 **Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left
 unfixed, decisions logged rather than made, gaps in what the suite can catch — is in
@@ -118,10 +118,11 @@ than one commit ([SR1](docs/standing-rules.md#sr1)) — as in `docs/a8/`, `docs/
   and A37 — is complete: it shipped as `eval-core` 0.12.1 and 0.13.0, and its advisory is
   GHSA-qrqj-3445-3rjx. Phase 10's plan is complete, and so are the A45 plan, `docs/a45/plan.md`,
   which shipped as `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms` 0.7.0, and Phase 11's,
-  `docs/documentation/phase-11-plan.md`, which shipped as `eval-forms` 0.7.1. The active plan is
-  `docs/a24/plan.md`, the await track: A25, A24 and D13. Its § 0 adds two rules to the standing
-  ones. `.claude/skills/step/SKILL.md` targets it, and is retargeted with each new plan; while none
-  is active it names none, and stops at its § 1 if invoked.
+  `docs/documentation/phase-11-plan.md`, which shipped as `eval-forms` 0.7.1, and the A24 plan,
+  `docs/a24/plan.md`, which shipped as `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms`
+  0.8.0. No plan is active. `.claude/skills/step/SKILL.md` targets the active plan, and is
+  retargeted with each new plan; while none is active it names none, and stops at its § 1 if
+  invoked.
 - The completed plans are design records, not work in progress, and each remains the
   reference for its library — they record findings about this codebase that are not
   obvious from reading files in isolation:
@@ -158,6 +159,12 @@ than one commit ([SR1](docs/standing-rules.md#sr1)) — as in `docs/a8/`, `docs/
     as `eval-forms` 0.7.1, docs-only; its § 3.1 is D1–D6, why each package keeps one README and no
     guide file exists, § 3.2 the README's order, § 3.5 its contents list, § 9 the contract after it
     landed — its headings are 0.7.0's word for word — and § 10 the retrospect.
+  - `docs/a24/plan.md` — the A24 track, the await track: A25, A24 and D13, shipped as `eval-core`
+    0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0. Its § 3.2 is the accepted-position design:
+    the accepted `await` is read off each walk's root and carried in that walk's visitor table, never
+    on `st` or a node. § 3.3 is the statement table that `findUnsupportedStatement` and the evaluator
+    share, § 9 the contract after it landed, and § 10 the retrospect. Its § 0's two rules are now
+    [SR40](docs/standing-rules.md#sr40) and [SR41](docs/standing-rules.md#sr41).
 
   Their open questions are settled unless the document says otherwise. They stay as written,
   and their line citations, and those in their summaries, refer to the code at the commits that
@@ -366,8 +373,10 @@ These apply to all three libraries.
 - Match the existing per-visitor spec style — read a neighbouring spec before writing a
   new one.
 - Test-first, assertions, probes and the setup check are
-  [SR13](docs/standing-rules.md#sr13)–[SR19](docs/standing-rules.md#sr19), and the
-  documentation specs [SR30](docs/standing-rules.md#sr30).
+  [SR13](docs/standing-rules.md#sr13)–[SR19](docs/standing-rules.md#sr19), a pass-through's
+  identity [SR41](docs/standing-rules.md#sr41), and the documentation specs
+  [SR30](docs/standing-rules.md#sr30). A claim about what the caller receives is measured at the
+  entry point ([SR40](docs/standing-rules.md#sr40)).
 
 ## Public API discipline
 
@@ -380,6 +389,9 @@ These apply to all three libraries.
   goes in **its own `modules/<name>/CHANGELOG.md`**, headed `## [<version>] - <date>` with no
   package prefix and npm's publish date in UTC, by `CONTRIBUTING.md`'s Releasing. The root
   `CHANGELOG.md` only lists the three, plus workspace changes that ship in no package.
+- When the workspace's `eval-core` leaves a downstream package's peer range, that package releases
+  in the same commit ([SR42](docs/standing-rules.md#sr42)): the workspace lint reads the range
+  against the workspace version.
 
 ## Conventions
 

@@ -175,22 +175,24 @@ retired. Its retrospect is the plan's § 10, which added [SR39](standing-rules.m
 [SR3](standing-rules.md#sr3)'s check. [F29](#f29), opened by step 2's code review, waits for the next
 phase that moves `eval-forms`' rows.
 
-**The [A24 plan](a24/plan.md)**, the await track, [A25](backlog-retired.md#a25),
+**The [A24 plan](a24/plan.md) is complete**: the await track, [A25](backlog-retired.md#a25),
 [A24](backlog-retired.md#a24) and [D13](backlog-retired.md#d13), shipped as `eval-core` 0.15.0,
 `eval-signals` 0.8.0 and `eval-forms` 0.8.0, each a minor breaking by behaviour, tagged annotated at
 67486ab and published 2026-10-31, every `@zvenigora` floor raised. With them shipped
 [A27](backlog-retired.md#a27) and [A38](backlog-retired.md#a38), fixed before the plan. It is at
-Revision 9. Steps 1 to 7b are done: the plan and its records, the characterisation spec, A25, A24,
+Revision 10. Steps 1 to 7b and 10 are done: the plan and its records, the characterisation spec, A25, A24,
 D13 in `eval-core` and then in `eval-forms`, all three retired as fixed, the release commit of all
-three packages, and its post-publish record. Step 7a merged the plan's three release steps into one, since the
+three packages, its post-publish record, and the retrospect. Step 7a merged the plan's three release steps into one, since the
 workspace lint reads each downstream peer range against the workspace `eval-core`, so a split
 release would leave `master` red between them. Its code review opened
 [F30](backlog-retired.md#f30), which a commit of its own after the release commit fixed, in no
 package: five `eval-signals` rows witnessing 0.8.0's `await` claims, 444 → 449. The Register
 history counts the release at 67486ab, where F30 was open, and F30's closure in the *Unreleased* row
 after it. Step 1 corrected A25's decided text: only an `Error`
-rejection reaches an `evalAsync` caller by identity. Nothing is in flight; step 10, the retrospect,
-is next.
+rejection reaches an `evalAsync` caller by identity. Its retrospect is the plan's § 10, which
+promoted § 0's two rules as [SR40](standing-rules.md#sr40) and [SR41](standing-rules.md#sr41), added
+[SR42](standing-rules.md#sr42), a downstream release in the `eval-core` release's commit, and amended
+[SR8](standing-rules.md#sr8): the gate covers the committed tree. Nothing is in flight.
 
 `eval-core` 0.13.3 is released alone, a patch, tagged at 021d5e4 and published 2026-10-23. It
 carries A45 part 1 only. Its `.d.ts` is SHA-256-identical to 0.13.2's, and it is inside

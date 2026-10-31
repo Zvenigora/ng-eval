@@ -51,13 +51,16 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
 ## The gate and what ships
 
 - <a id="sr8"></a>**SR8 — The gate** is `npx nx run-many -t lint test build --skip-nx-cache
-  --output-style=static`, run once after every step and before every commit. Its root `test` target
+  --output-style=static`, run after every step and before every commit. Its root `test` target
   runs doc-links and release-tags; `npm run lint`, `npm test` and `npm run build` run the same targets
   cached, and the `step` skill's `lint test` run is its baseline, not the gate. Never filter it with
   `-p`, which drops a missing project silently, and never run it in parallel with another nx or Jest
-  run: parallel runs hung the maintainer's machine, RAM and disk exhausted. *Origin*:
-  [Phase 10 § 6](documentation/phase-10-plan.md#6-verification-gates). *Red*: it is the gate; a `-p`
-  or a parallel run — nothing, held by review.
+  run: parallel runs hung the maintainer's machine, RAM and disk exhausted. The gate covers the
+  committed tree, so any edit after a green gate re-runs it. That includes prose: doc-links, the README
+  counts and the document cases read it. *Origin*:
+  [Phase 10 § 6](documentation/phase-10-plan.md#6-verification-gates); the committed tree, step 4's
+  post-gate prose edits and step 7a's review Critical ([A24 plan § 10.5](a24/plan.md#105-rules-weighed)).
+  *Red*: it is the gate; a `-p`, a parallel run or an edit after it — nothing, held by review.
 - <a id="sr9"></a>**SR9 — A green `test` is not a type-check.** Jest compiles each spec file through
   `tsconfig.spec.json` and is more permissive than the build. The gate's `build` runs each project's
   default `production` configuration, through `tsconfig.lib.prod.json`, which extends
@@ -76,6 +79,14 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
   so changing an exported symbol's shape needs an explicit callout, a version bump and an entry in that
   package's own CHANGELOG. Prefer additive changes. *Origin*: none recorded. *Red*: nothing in the gate:
   `export-list.spec.ts` and `public-api.spec.ts` catch an undocumented export, not a changed shape.
+- <a id="sr42"></a>**SR42 — A downstream package releases in the same commit as the `eval-core` that
+  leaves its range.** If the workspace's `eval-core` version falls outside a downstream package's
+  peer range, that package releases in the same commit, with its range raised. The workspace lint
+  reads each peer range against the workspace version, so a release split across commits leaves
+  `master` red between them. *Origin*: [the A24 plan's § 10.4](a24/plan.md#104-the-7a-replan),
+  step 7a's red gate; the A45 plan's 0d305a3 as the precedent. *Red*: lint's `@nx/dependency-checks`,
+  "The version specifier does not contain the installed version", at the downstream manifest's peer
+  line.
 
 ## Tests and probes
 
@@ -112,6 +123,15 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
   Re-check the fixture under each leg, and assert the caller's own object beside the store: under
   `caseInsensitive`, `fromContext` copies a plain context into a `Registry`. *Origin*:
   [the A35 plan's second § 1.2](a35/plan.md#12-standing-rules-from-revision-16). *Red*: nothing.
+- <a id="sr41"></a>**SR41 — A row that pins a pass-through asserts identity, never type.** Assert a
+  value that passes through with `toBe` against the value that went in. A `toBeInstanceOf(Promise)`
+  check, or awaiting the result, passes for a re-wrapped promise as well as for the original. Probing
+  with `Promise.resolve` has the same trap: it returns a native promise unchanged, so it breaks only a
+  non-thenable's row. *Origin*: [the A24 plan's § 0](a24/plan.md#0-failure-modes-added-by-this-plan)
+  rule 2; P3-1; F30's second row, needed because `eval-signal.spec.ts`' async-arrow row read a type
+  ([§ 10.5](a24/plan.md#105-rules-weighed)). *Red*: nothing — held by review. Its instance in that
+  plan is witnessed by `await-position.spec.ts`' identity rows, which P3-1, re-wrapping the operand
+  in `Promise.race([value])`, turns red.
 
 ## Claims and measurements
 
@@ -182,6 +202,13 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
   directional word pointing the wrong way. A grep for `above` or `below` finds the last of these
   only. *Origin*: [Phase 11 § 10](documentation/phase-11-plan.md#10-retrospect). *Red*: nothing —
   held by review.
+- <a id="sr40"></a>**SR40 — A claim about what the caller receives is measured at the entry point.**
+  Measure it where the caller stands, through every layer between the changed code and the caller,
+  not at the layer being changed. *Origin*: [the A24 plan's § 1.2](a24/plan.md#12-findings-that-shape-the-plan)
+  finding 2. A25's decided text said a rejection reaches the caller "as their own value". That was
+  true of the visitor once its catch was gone, and false at `evalAsync`, whose `ensureError` turns
+  any rejection that is not an `Error` into a new one. *Red*: nothing — held by review. Its one
+  instance is witnessed by the A24 plan's group C rows, which assert at `evalAsync`.
 
 ## Hygiene
 
@@ -218,6 +245,7 @@ Design records keep their own numbering ([SR6](#sr6)); this resolves it.
 
 | Old rule | SR |
 | :--- | :--- |
+| [A24 plan § 0](a24/plan.md#0-failure-modes-added-by-this-plan) rules 1–2 | SR40, SR41 |
 | [A45 plan § 0](a45/plan.md#0-failure-modes-carried-forward) rules 1–7 | SR20, SR22, SR23, SR25, SR21, SR18, SR19 |
 | A45 plan § 0 rules 8–13 | SR16; SR15 and SR30; SR27; SR28; SR29; SR24 |
 | [Phase 2 § 0.1](statements/phase-2-plan.md#01-a-rule-this-document-applies-to-specs-and-did-not-apply-to-itself) | SR20 |

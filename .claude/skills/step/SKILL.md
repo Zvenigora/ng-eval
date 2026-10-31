@@ -8,37 +8,21 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: `docs/a24/plan.md`
-Target: `@zvenigora/ng-eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0, released
-together — the await track: A25, A24 and D13
+Plan document: none active
+Target: none
 Requested step: $ARGUMENTS
 
-**Which projects each step reaches** (the plan's § 4 table is the scope):
+**No plan is active.** The A24 plan (`docs/a24/plan.md`), the await track — A25, A24 and D13 — is
+complete: it shipped as `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0, and its
+retrospect is its § 10. The next plan retargets this file when it is written. It names the plan
+above, says which projects each step reaches, and records the gate's counts its steps start from: at
+05f9a69, F30's commit after the release commit, and unchanged by the post-publish record and the
+retrospect, `eval-core` 3288, `eval-signals` 449, `eval-forms` 386.
 
-- **Step 2 is one new spec**, `internal/visitors/await-position.spec.ts`, and no other file under
-  `modules/`. Its probes apply two prototypes, pinned as patches outside the repository, and revert
-  them with `git apply -R`.
-- **Steps 3, 4 and 5 are `eval-core`**, with `[Unreleased]` lines in its CHANGELOG. Step 3 also
-  edits `SECURITY.md`, and step 4 moves one `eval-signals` spec,
-  `eval-signal-async.spec.ts:1388-1412`: the downstream specs run against `eval-core`'s workspace
-  source (the plan's § 1.2 finding 1), so a downstream row the step does not list is a regression.
-- **Step 6 is `eval-forms`**: `guardIdentifiers`, its spec, `evaluate-rule.ts`, the README and the
-  CHANGELOG.
-- **Steps 3 and 6 retire A25 and D13**, so each also re-points that entry's inbound links in design
-  records, link targets only (SR6), as its file list names.
-- **Step 7a is the release commit of all three packages, and 7b their one post-publish record**,
-  after the maintainer publishes all three; 7b writes their three annotated tags at 67486ab and
-  pushes them before its commit. The plan merged its three releases in step 7a:
-  the workspace lint reads each downstream peer range against the workspace `eval-core`, so a
-  split release leaves `master` red. A `package.json` before step 7a is a stop-and-replan. Step 7b
-  touches no file under `modules/` unless npm's UTC publish date differs from a CHANGELOG heading,
-  and its tag check needs `git fetch --tags` first. There are no steps 8 and 9.
-- **Step 10 is the retrospect.**
-
-**The counts the steps start from**, the gate at d62eee4: `eval-core` 3187, `eval-signals` 444,
-`eval-forms` 380. `eval-core` reaches 3250 at step 2, 3252 at step 3, 3259 at step 4 and 3288 at
-step 5; `eval-forms` 386 at step 6; `eval-signals` 449 at F30's commit, between 7a and 7b, five
-rows witnessing 0.8.0's `await` claims. No other count moves from step 7a on.
+**Invoked while no plan is active, this skill stops at § 1.** Run the baseline, report it, say that
+no plan is active, and do nothing else. Do not run a step of a completed plan, and do not treat a
+register entry as a plan: a one-commit item or a batch has its exit criteria in the prompt
+(`CLAUDE.md`, "Working from a plan").
 
 **Step state**: read it from the plan, not from here. The last step in its § 4 with a recorded
 **Outcome** is done, and the next is the step after it in § 4's table.
@@ -122,7 +106,8 @@ After I confirm:
 npx nx run-many -t lint test build --skip-nx-cache --output-style=static
 ```
 
-This is the gate ([SR8](../../../docs/standing-rules.md#sr8)), run once. All must be clean, with the
+This is the gate ([SR8](../../../docs/standing-rules.md#sr8)), run alone and on the tree you will
+commit: any edit after it, prose included, runs it again. All must be clean, with the
 same exception § 1 allows and on the same terms, and the test rows move exactly as the plan says
 ([SR10](../../../docs/standing-rules.md#sr10)). The report gives doc-links' file and link counts, and
 release-tags' row and tag counts.
@@ -152,7 +137,8 @@ the report gives each command and its output.
 
 Before writing your report, invoke the `code-reviewer` subagent on this step's changes, as
 [SR33](../../../docs/standing-rules.md#sr33) requires, and include its findings. If it raises anything
-Critical, stop and surface it rather than closing out the step. A step that changes no file under
+Critical, stop and surface it rather than closing out the step. A finding folded in after § 4's gate
+re-runs the gate ([SR8](../../../docs/standing-rules.md#sr8)). A step that changes no file under
 `modules/` or `tools/` runs it where the plan or the prompt says; when it does not, its report gives the step's
 one-off checks instead, and says that the reviewer was not run and why.
 
