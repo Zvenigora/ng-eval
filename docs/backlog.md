@@ -458,7 +458,7 @@ makes it that release's row, with its tag commit and date.
 | [F13](backlog-retired.md#f13) | Nothing gates the README block count `readme-examples.spec.ts` claims | core, signals, forms | test gap | **Retired — fixed 2026-09-27**, test only; all four specs gated. The gate's first run found `eval-core`'s count wrong a third time |
 | [F14](backlog-retired.md#f14) | Six sites cite the retired `^0.3.0` range, two of them in published READMEs | signals, forms | fix (comments, docs) | **Retired — fixed, Phase 2 step 8**; filed as four sites, was six |
 | [F15](backlog-retired.md#f15) | The downstream peer ranges exclude `eval-core` 0.6.0 — **latent until the bump, then both downstream `lint` targets fail** | signals, forms | fix (release coordination) | **Retired — fixed and released 2026-09-26**; both ranges widened to `>=0.3.0 <0.7.0`, and both packages released: `eval-signals` 0.1.3 and `eval-forms` 0.2.3, tagged f26f987 |
-| [F16](#f16) | Workspace dependency advisories — 9 moderate on the workspace's Angular 22.0.8, and a **temporary override under `nx`**, now `undici`'s; beside it, the **`qs` override**, whose floor `^6.14.2` excludes GHSA-w7fw-mjwx-w883 since 2026-10-29; and **`deepmerge`** 4.3.1, under `jest-config`, GHSA-gcqx-w48m-w2h4 with no patched release | repo | fix | Open — **part 2's `brace-expansion`, `smol-toml` and `axios` overrides retired 2026-10-23** with `nx` 23.3.0 ([F21](backlog-retired.md#f21)); part 2 now holds `overrides.nx.undici` only, until a stable `nx` no longer pins `undici` below 7.30.1. **Part 1 retired 2026-09-27**: `nx` 23.2.1, Angular 22.1.8 / 22.1.9, `npm audit` 0 at every severity. Part 2, the override, is live until a stable `nx` depends on `smol-toml >= 1.7.1`. **Re-audited 2026-09-30: 22 (14 high, 8 moderate)**, none reaching a published package; **fixed the same day**: Angular 22.2.1 / 22.2.0, two more `overrides.nx` entries, `verdaccio` removed, `npm audit` 0. **`qs` recorded 2026-10-14**: the override was added for GHSA-6rw7-vpxm-498p, not prototype pollution; raising its floor is held here. **Re-audited 2026-10-20 at 7741395**: `qs` resolves 6.16.0, past both advisories, and audit reports nothing for it. **Re-audited 2026-10-26 at f78fca2: 2 (1 high, 1 moderate)**, seven `undici` and `fast-uri` advisories, dev-only; **fixed the same day** in range: `undici` 8.12.3, `fast-uri` 3.1.9, and `overrides.nx.undici`'s floor raised to `^7.30.1`, `npm audit` 0. **2026-10-29**: the `qs` floor raised to `^6.14.2`, the lockfile unchanged; `deepmerge` recorded, 11 low, dev-only, open until a release past 4.3.1 or a `jest-config` without it |
+| [F16](#f16) | Workspace dependency advisories — 9 moderate on the workspace's Angular 22.0.8, and a **temporary override under `nx`**, now `undici`'s; beside it, the **`qs` override**, whose floor `^6.14.2` excludes GHSA-w7fw-mjwx-w883 since 2026-10-29; and **`deepmerge`** 4.3.1, under `jest-config`, GHSA-gcqx-w48m-w2h4 with no patched release | repo | fix | Open — **part 2's `brace-expansion`, `smol-toml` and `axios` overrides retired 2026-10-23** with `nx` 23.3.0 ([F21](backlog-retired.md#f21)); part 2 now holds `overrides.nx.undici` only, until a stable `nx` no longer pins `undici` below 7.30.1. **Part 1 retired 2026-09-27**: `nx` 23.2.1, Angular 22.1.8 / 22.1.9, `npm audit` 0 at every severity. Part 2, the override, is live until a stable `nx` depends on `smol-toml >= 1.7.1`. **Re-audited 2026-09-30: 22 (14 high, 8 moderate)**, none reaching a published package; **fixed the same day**: Angular 22.2.1 / 22.2.0, two more `overrides.nx` entries, `verdaccio` removed, `npm audit` 0. **`qs` recorded 2026-10-14**: the override was added for GHSA-6rw7-vpxm-498p, not prototype pollution; raising its floor is held here. **Re-audited 2026-10-20 at 7741395**: `qs` resolves 6.16.0, past both advisories, and audit reports nothing for it. **Re-audited 2026-10-26 at f78fca2: 2 (1 high, 1 moderate)**, seven `undici` and `fast-uri` advisories, dev-only; **fixed the same day** in range: `undici` 8.12.3, `fast-uri` 3.1.9, and `overrides.nx.undici`'s floor raised to `^7.30.1`, `npm audit` 0. **2026-10-29**: the `qs` floor raised to `^6.14.2`, the lockfile unchanged; `deepmerge` recorded, 11 low, dev-only, open until a release past 4.3.1 or a `jest-config` without it. **Re-audited 2026-10-31 at cc40f9e: 50 (1 high, 48 moderate, 1 low)**, four advisories, dev-only; `follow-redirects` **lifted the same day** in range to 1.16.2, the lockfile alone; `minimatch` and `glob` recorded, no patched release in their dependents' ranges, open beside `deepmerge` |
 | [F17](#f17) | An unhandled rejection reaches no channel a spec would normally watch — only zone.js's `unhandledPromiseRejectionHandler` hook sees it | repo | test gap | Open — opened 2026-10-08 by Phase 5 step 2 |
 | [F18](backlog-retired.md#f18) | `eval-signal.ts` line citations in `eval-forms` comments and completed plans are stale | forms, repo | docs | **Retired — fixed 2026-10-10** in live source; completed records kept as written, per `CLAUDE.md`. The three `eval-forms` comments cite symbols; `applyErrorPolicy`'s ships in the core `.d.ts` |
 | [F19](backlog-retired.md#f19) | `CLAUDE.md` cites the resolved-key re-check as `member-expression.ts:188`; it was at `:211`, and is at `:244` | repo | docs | **Retired — fixed 2026-10-21** by Phase 10 step 6: `CLAUDE.md` cites `isDangerousProperty(foundKey)` in `member-expression.ts` by symbol, as the entry's fix recorded |
@@ -1164,7 +1164,10 @@ narrowed 2026-10-23 to the `undici` override. A re-audit 2026-09-30 found 22 new
 were fixed the same day (below). A re-audit 2026-10-26 found 2, from seven `undici` and `fast-uri`
 advisories, fixed in range the same day (below). On 2026-10-29 the `qs` override's floor was raised,
 and `deepmerge`, which has no patched release, was recorded; it holds the entry open with `undici`.
-Recorded 2026-09-26, by the commit that cleared the Dependabot high alert
+A re-audit 2026-10-31 found 50, from four advisories: `follow-redirects` was lifted in range the same
+day (below), and `minimatch` and `glob`, which have no patched release in range, were recorded; they
+hold the entry open with `deepmerge` and `undici`. Recorded 2026-09-26, by the commit that cleared the
+Dependabot high alert
 
 **None of this reaches a consumer.** Every package below is a root workspace dependency. No
 `modules/*/package.json` depends on `nx` or `smol-toml`. The published peer ranges
@@ -1504,6 +1507,43 @@ the test runner's config loader.
 it. Either clears the 11 findings by an update in range. Until then it holds this entry open beside
 part 2's `undici` override.
 
+**Re-audit 2026-10-31.** Dependabot reported 3 alerts on the push of cc40f9e: 1 high, 1 moderate and
+1 low. `npm audit --package-lock-only` at cc40f9e reported 50 findings, 1 high, 48 moderate and
+1 low, from four root advisories, all `development` scope:
+
+| Package (installed) | Advisory | Dependabot | Under |
+| :--- | :--- | :--- | :--- |
+| `follow-redirects` 1.16.1 | GHSA-mrwp-f3q8-3g9p (high; cross-realm `sensitiveHeaders` arrays are discarded, and custom credentials can follow redirects), `>=1.16.0 <=1.16.1` | #351 | `@nx/angular` → `@nx/web` → `http-server` → `http-proxy`, which declares `^1.0.0` |
+| `minimatch` 3.1.5, 9.0.9, 10.2.5 | GHSA-g3hv-75wg-m249 (moderate; denial of service via globparts amplification), `<11.0.1` | #353 | 3.1.5: `eslint` and its `@eslint/config-array` and `@eslint/eslintrc`, `postcss-url`, and `jest` 30.3.0's `test-exclude` 6.0.0. 9.0.9: `glob` 10.5.0. 10.2.5: `nx`, `@nx/devkit`, `@nx/jest`, `typescript-eslint`'s `typescript-estree`, `glob` 13.0.6 and `test-exclude` 7.0.2 |
+| `glob` 10.5.0, 13.0.6 | GHSA-3g3m-2fjr-6pw4 (moderate; `AbortSignal` cancellation bypass allows filesystem traversal after the timeout), `>=9.0.0 <=14.0.1` | #352, `auto_dismissed` | 10.5.0: `jest` 30.3.0's `@jest/reporters`, `jest-config` and `jest-runtime`, and `ts-jest`'s `test-exclude` 7.0.2. 13.0.6: `@nx/jest`'s `jest-config`, `@jest/reporters` and `jest-runtime`. `glob` 7.2.3, under `test-exclude` 6.0.0, is outside the range and flagged through `minimatch` only |
+| `deepmerge` 4.3.1 | GHSA-gcqx-w48m-w2h4 (low), recorded above | #350 | as above |
+
+So Dependabot's one moderate is `minimatch`'s: `glob`'s alert was created with it and
+`auto_dismissed`, as two `undici` alerts were on 2026-10-26. `deepmerge` now counts 1 low, not 11:
+its ten dependents are flagged moderate through `minimatch` or `glob` as well, and audit counts each
+package once, at its highest severity.
+
+**`follow-redirects` lifted in range to 1.16.2 by the lockfile alone.** `npm update
+follow-redirects` changed `node_modules/follow-redirects`' `version`, `resolved` and `integrity` and
+nothing else; `package.json` is unchanged, and there is no override. A clean `npm ci` left the
+lockfile as the update wrote it. Audit then reported 49, 48 moderate and 1 low, 0 high, from the other
+three roots.
+
+**`minimatch` and `glob` recorded: no patched release in the ranges the tree's dependents accept; npm
+proposes only semver-major changes.** `minimatch` is patched only in 11.0.1 and later (11.0.3 is the
+latest), while its dependents declare `^3.0.4`, `^3.1.1`, `^3.1.5`, `^9.0.4`, `^10.2.2` and `nx`'s
+exact `10.2.5`. `glob` is patched past 14.0.1 (14.0.3 is the latest), while its dependents declare
+`^7.1.4`, `^10.4.1`, `^10.5.0` and `^13.0.6`. Every fix `npm audit` offers is one it marks
+`isSemVerMajor`: `typescript-eslint` 8.14.0, `@nx/angular`, `@nx/workspace` and `@nx/eslint-plugin`
+18.3.5, `jest` 29.7.0, `jest-preset-angular` 14.6.2, `postcss-url` 5.0.2 and `eslint-config-prettier`
+6.15.0, and none for the `angular-eslint` packages. None was taken.
+
+**None of the four reaches a consumer**, as this entry's opening argues: each is reached only through
+root workspace dev dependencies, the lint, test and build toolchain, and no
+`modules/*/package.json` depends on any package in their chains. **What reopens them**: a release
+of the dependents above whose range admits a patched `minimatch` or `glob`. Until then they hold this
+entry open with `deepmerge` and part 2's `undici` override.
+
 *Recorded*: this entry; `package.json` `overrides.nx` and `overrides.qs`.
 *Verified*: `npm audit --package-lock-only`, 2026-09-26. Before the override: 12 high, 9 moderate.
 After: 0 high, 0 critical, 9 moderate, as listed above. Again 2026-09-27, after part 1: 0 at every
@@ -1539,7 +1579,15 @@ a clean `npm ci`, after which the lockfile's diff was the update's six lines cha
 the floor, on top of that lockfile (452707e): `npm install`, then `node_modules` deleted and a clean
 `npm ci`, with `git diff 452707e -- package-lock.json` empty after each; `npm ls undici
 --package-lock-only --all` gives 7.30.1 under `nx` and 8.12.3 under `jsdom`; audit 0 at every
-severity; the gate green at 3134 / 444 / 380, with doc-links and release-tags green.
+severity; the gate green at 3134 / 444 / 380, with doc-links and release-tags green. Again
+2026-10-31 at cc40f9e, npm 12.0.1 on Node 26.4.0: `npm audit --package-lock-only --json` before,
+50 (1 high, 48 moderate, 1 low), its four root advisories read from the `via` objects; `npm ls
+<package> --all` for each root's installed versions and chain; the lockfile's dependency entries
+read for the ranges declared on `minimatch`, `glob` and `follow-redirects`, and `npm view` for each
+one's latest; Dependabot's alerts #350–#353 read with `gh api`. After `npm update follow-redirects`:
+`git diff package.json` empty, the lockfile's diff that one entry's three lines, unchanged by a clean
+`npm ci`; `npm ls follow-redirects --all` gives 1.16.2; audit 49 (48 moderate, 1 low), with no
+`follow-redirects` finding.
 
 <a id="f17"></a>
 ## F17 — An unhandled rejection reaches no channel a spec would normally watch
