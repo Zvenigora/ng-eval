@@ -34,7 +34,7 @@ that anchor, `<a id="…"></a>` in the first cell.
 
 | Track | Documents | Subject |
 | :--- | :--- | :--- |
-| `a33/` | [plan](a33/plan.md) | [A33](backlog.md#a33), the case-insensitive lookup cache's miss re-validated by name, fixed; [A34](backlog.md#a34), the parse memo and options written in place, decided a documented limit; to ship as `eval-core` 0.15.1. Active |
+| `a33/` | [plan](a33/plan.md) | [A33](backlog-retired.md#a33), the case-insensitive lookup cache's miss re-validated by name, fixed; [A34](backlog.md#a34), the parse memo and options written in place, decided a documented limit; to ship as `eval-core` 0.15.1. Active |
 
 ## Completed phases
 

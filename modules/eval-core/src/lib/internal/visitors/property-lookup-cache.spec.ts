@@ -67,6 +67,40 @@ describe('case-insensitive property cache', () => {
     expect(service.simpleEval('o.name', { o }, ci)).toBe('late');
   });
 
+  // `docs/backlog-retired.md` A33. Each fixture deletes one key and adds
+  // another between two lookups, so the own-key count is as it was and only
+  // the names tell the cached miss is stale.
+  it('should find a property added in the same interval as another is deleted, after a cached miss', () => {
+    const o: Record<string, unknown> = { a: 1, b: 2 };
+
+    expect(service.simpleEval('o.C', { o }, ci)).toBeUndefined();
+    delete o['a'];
+    o['c'] = 3;
+    expect(service.simpleEval('o.C', { o }, ci)).toBe(3);
+  });
+
+  it('should write a case variant to a key added in the same interval as another is deleted', () => {
+    const w: Record<string, unknown> = { a: 1, b: 2 };
+
+    expect(service.simpleEval('w.C', { w }, ci)).toBeUndefined();
+    delete w['a'];
+    w['c'] = 3;
+    expect(service.simpleEval('w.C = 9', { w }, ci)).toBe(9);
+    expect(Object.keys(w)).toEqual(['b', 'c']);
+    expect(w['c']).toBe(9);
+  });
+
+  it('should update a case variant of a key added in the same interval as another is deleted', () => {
+    const u: Record<string, unknown> = { a: 1, b: 2 };
+
+    expect(service.simpleEval('u.C', { u }, ci)).toBeUndefined();
+    delete u['a'];
+    u['c'] = 3;
+    expect(service.simpleEval('u.C += 1', { u }, ci)).toBe(4);
+    expect(Object.keys(u)).toEqual(['b', 'c']);
+    expect(u['c']).toBe(4);
+  });
+
   it('should re-scan when a cached key is no longer the object\'s own', () => {
     const o: Record<string, unknown> = { Name: 'before' };
 

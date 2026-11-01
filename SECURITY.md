@@ -379,8 +379,10 @@ evaluation's trace can take. Implemented in
   `maxIterations` is. Neither is the time a host function takes.
 - **Calls and arrow functions are marked potentially unsafe** in the list of supported syntax, for
   the reasons above.
-- **Open register entry that bears on this**: [A33](docs/backlog.md#a33), under `caseInsensitive`
-  a cached miss can hide a key added later — no refusal is skipped.
+- **Open register entry that bears on this**: [A54](docs/backlog.md#a54), under
+  `caseInsensitive` a cached hit can answer a case variant with an own name that a fresh lookup
+  would not choose, and a fresh lookup's refusal is then skipped; the blocked property's value is
+  neither returned nor written.
 
 ## Advisories
 

@@ -340,10 +340,11 @@ applied by the `member`, `assignment`, `update`, and `object` expression visitor
 sandboxing is in `call-expression.ts`. `visitors/property-lookup-cache.ts` remembers, under
 `caseInsensitive`, which own key a name resolved to, in a `WeakMap` keyed by the object
 ([A31](docs/backlog-retired.md#a31)). A found key is reused while it is still an own key of the
-object, and a miss while the object's own-key count is unchanged, so a key added as another is
-deleted can read as a miss — a wrong `undefined`, never a skipped refusal
-([A33](docs/backlog.md#a33)). A repeated hit is O(1); a repeated miss still lists the object's
-own names, though it skips comparing them. A visitor result cache, disabled since it was
+object, and a miss while the object's own names are the ones it was made from, in order: any
+difference, a key added as another is deleted included, and the object's answers are made afresh
+([A33](docs/backlog-retired.md#a33)). A repeated hit is O(1); a repeated miss still lists the
+object's own names, and compares them with the names its miss was made from, with `===`, not
+with `equalIgnoreCase`. A visitor result cache, disabled since it was
 written, was **deleted** ([A32](docs/backlog-retired.md#a32)): its key held none of the node's
 operands, so `a + b` and `c + d` over one context shared an entry, and of the `EvalContext` the
 visitors passed it held only the size and the time. A future result cache starts from A32's

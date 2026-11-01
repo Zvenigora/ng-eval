@@ -56,11 +56,12 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-**The [A33 plan](a33/plan.md) is active**, steps 1 to 6: [A33](#a33), the case-insensitive lookup
-cache's miss re-validated by name, fixed, and [A34](#a34), the parse memo and options written in
-place, decided a documented limit, to ship as `eval-core` 0.15.1, a patch. `eval-signals` and
-`eval-forms` do not release: their peer range, `>=0.15.0 <0.16.0`, takes it. It is at Revision 1.
-Step 1, the plan, its measurements and decisions, is done, and step 2, A33, is next.
+**The [A33 plan](a33/plan.md) is active**, steps 1 to 6: [A33](backlog-retired.md#a33), the
+case-insensitive lookup cache's miss re-validated by name, fixed, and [A34](#a34), the parse memo
+and options written in place, decided a documented limit, to ship as `eval-core` 0.15.1, a patch.
+`eval-signals` and `eval-forms` do not release: their peer range, `>=0.15.0 <0.16.0`, takes it. It
+is at Revision 2. Step 1, the plan, its measurements and decisions, is done, and so is step 2, A33,
+fixed and retired; step 3, A34, is next.
 
 **The A35 plan is complete**: [`docs/a35/plan.md`](a35/plan.md), at Revision 16, steps 1 to 11 and
 U3. `eval-core` 0.12.1 and 0.13.0 are published, with `eval-signals` 0.6.0 and `eval-forms` 0.6.0;
@@ -341,8 +342,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-forms` 0.7.1. F26, opened by 0.14.0's post-publish commit and fixed after it, ships in no package; F27 ships in no package but for one `eval-core` docblock | `69c3e0e` | 2026-10-29 | 25 | 4: F26–F29 | 2: F26, F27 | 27 |
 | `eval-core` 0.14.1. F28, decided by Phase 11 and shipped in `eval-forms` 0.7.1, was retired by 0.7.1's post-publish commit, after its tag; A47 is fixed, and A32 and A30 are decided, documentation only | `95932e6` | 2026-10-30 | 27 | 0 | 4: F28, A47, A32, A30 | 23 |
 | `eval-core` 0.15.0, `eval-signals` 0.8.0, `eval-forms` 0.8.0. A27 and A38 are fixed, and A25, A24 and D13 by the A24 plan, all released in them; F30 opened by the release commit's code review | `67486ab` | 2026-10-31 | 23 | 1: F30 | 5: A27, A38, A25, A24, D13 | 19 |
-| *Unreleased*. F30, fixed after the release commit, in no package; A53, decided, in no package | — | — | 19 | 0 | 2: F30, A53 | 17 |
-| **Since the register opened** | | | **42** | **72** | **97** | **17** |
+| *Unreleased*. F30, fixed after the release commit, in no package; A53, decided, in no package; A33, fixed, for `eval-core` 0.15.1; A54 opened by step 2's code review | — | — | 19 | 1: A54 | 3: F30, A53, A33 | 17 |
+| **Since the register opened** | | | **42** | **73** | **98** | **17** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -396,7 +397,7 @@ makes it that release's row, with its tag commit and date.
 | [A30](backlog-retired.md#a30) | `ParserService.parserOptions` reaches `EvalService`, `CompilerService` and `DiscoveryService` for no acorn option | core | decision | **Retired — decided 2026-10-29: documented**; released 2026-10-30 in `eval-core` 0.14.1, tagged 95932e6, documentation only. The setter configures direct `ParserService.parse` calls, and its JSDoc says so |
 | [A31](backlog-retired.md#a31) | The case-insensitive property cache keys an object by its key count and first five keys — objects sharing them share answers, process-wide | core | fix | **Retired — fixed 2026-10-10**; released 2026-10-10 in `eval-core` 0.11.1, tagged 7ee65fc. Keyed by the object itself, a cached key re-checked as the object's own; a colliding entry no longer turns a case-variant refusal into `undefined`. Affected `eval-core` 0.2.1–0.11.0 |
 | [A32](backlog-retired.md#a32) | The disabled visitor result cache keys a node without its operands — `a + b` and `c + d` share an entry | core | decision | **Retired — decided and deleted 2026-10-29**; released 2026-10-30 in `eval-core` 0.14.1, tagged 95932e6, comments only: no code reached the bundle |
-| [A33](#a33) | The case-insensitive property cache keeps a miss while the own-key count is unchanged — a key added as another is deleted reads `undefined` by a case variant | core | fix | Open. Scheduled — the [A33 plan](a33/plan.md), step 2. Opened 2026-10-10, after the `eval-core` 0.11.1 tag; a limit [A31](backlog-retired.md#a31)'s fix documents in a code comment. No refusal is skipped |
+| [A33](backlog-retired.md#a33) | The case-insensitive property cache keeps a miss while the own-key count is unchanged — a key added as another is deleted reads `undefined` by a case variant | core | fix | **Retired — fixed 2026-11-01**, as step 2 of the [A33 plan](a33/plan.md); ships in `eval-core` 0.15.1. A cached miss stands only while the object's own names are those it was made from, in order. The stale miss also skipped a refusal, of a blocked own name that is not an own property of the object's immediate prototype — `prototype` on a plain object, every blocked name but `constructor` on an instance of a class that declares none of them, any on a null-prototype one — which read `undefined` and wrote a sibling key; the blocked value was neither returned nor written. Opened 2026-10-10, after the `eval-core` 0.11.1 tag |
 | [A34](#a34) | The parse fingerprint's memo does not see options written in place — a write into `parserOptions`, a reused per-call object or `defaultParserOptions` keeps the old fingerprint | core | fix | Open. Scheduled — the [A33 plan](a33/plan.md), step 3. Opened 2026-10-10 by [A26](backlog-retired.md#a26)'s fix, Phase 9 step 1; no worse than the text-only key it replaced |
 | [A35](backlog-retired.md#a35) | A dangerous function value reachable from the context is callable past the name-based call sandbox — by an alias, through `call` / `apply` / `bind`, and as a native callback (`map`, `Reflect.apply`, `then`); `eval("1+1")` is refused, `["1+1"].map(eval)` is `[2]` | core | decision, security | **Retired — fixed 2026-10-18**, as steps 2, 4, 7 and 8 of the [A35 plan](a35/plan.md). Steps 2 and 4 released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30, as partial hardening; steps 7 and 8, which close its last route, [A39](backlog-retired.md#a39), released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7; advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx). A host container stays a documented limit |
 | [A36](backlog-retired.md#a36) | A tagged template's tag is called with no sandbox check — `` Function`return 7`() `` gives 7 with `Function` under its own name | core | fix, security | **Retired — fixed 2026-10-15**, as step 1 of the [A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30; advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx). A tag is called as a callee is, through the call sandbox and the write policy; a member tag shares the member call's path, so its `this` is its object. Affected every published `eval-core` to 0.12.0 |
@@ -417,6 +418,7 @@ makes it that release's row, with its tag commit and date.
 | [A51](#a51) | A member write to an `EvalScope` held as a value lands on the instance, never through `EvalScope.set`, and can replace its `_context` and `_options` | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q4); predates it. A write policy can refuse it. Not scheduled |
 | [A52](backlog-retired.md#a52) | Under `caseInsensitive`, an identifier holding `null` reads as `undefined`: `x === null` is `false`, and `x += 1` writes `NaN` | core | fix | **Retired — fixed 2026-10-24**, as step 2 of the [A45 plan](a45/plan.md) (its D10); released 2026-10-26 in `eval-core` 0.14.0, tagged 0d305a3. The literals fallback is taken only for `undefined`, in one read the visitor and the target read share. Opened 2026-10-23 by the plan's Revision 2; predated it |
 | [A53](backlog-retired.md#a53) | Under `caseInsensitive`, on one machine (Windows, Node 26.4.0), almost every process of the A45 plan's timing harness, 175 of 180, slows 5–9× about 2.7 s into its timed loop, in both bundles and on every path; a cloud run on Linux did not | core | decision, then fix | **Retired — decided 2026-10-31: a limit of the harness on one machine, not the library**; ships in no package. The slowdown is an episode that reaches a case-sensitive process too and none pinned to the performance cores; none on Linux with Node 26.4.0. [SR28](standing-rules.md#sr28) amended |
+| [A54](#a54) | Under `caseInsensitive`, a cached hit outlives an earlier own name that also matches — a case variant keeps answering a later own name, and a fresh lookup's refusal of the earlier one is skipped | core | fix | Open — opened 2026-11-01 by the code review of the [A33 plan](a33/plan.md)'s step 2; present in `eval-core` 0.15.0 and unchanged by A33's fix. The blocked value is neither returned nor written. Not scheduled |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -568,7 +570,7 @@ several of these visible at all. [A6](backlog-retired.md#a6) was surfaced by Pha
 ([`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.3), which needs neither;
 A30 was decided by documenting what the setter configures.
 [A31](backlog-retired.md#a31) and [A32](backlog-retired.md#a32) were found by A29's fix, grepping for other keys built
-from an object's shape; A32 was decided by deleting the cache. [A33](#a33) is a limit A31's fix left, and documented in the code; [A34](#a34)
+from an object's shape; A32 was decided by deleting the cache. [A33](backlog-retired.md#a33) is a limit A31's fix left, and documented in the code; [A34](#a34)
 is one A26's fix left, documented the same way. [A44](backlog-retired.md#a44)–[A47](backlog-retired.md#a47) were found by the
 [A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch: A44 by its
 `caseInsensitive` matrix, A45 while correcting `SECURITY.md`'s account of an assignment, and
@@ -822,40 +824,6 @@ short-lived reference without masking a kept one.
 
 ---
 
-<a id="a33"></a>
-## A33 — The case-insensitive property cache keeps a miss across a same-count key swap
-
-**Package** core · **Kind** fix · **Status** Open. Scheduled — the [A33 plan](a33/plan.md), step 2.
-Opened 2026-10-10, after the `eval-core` 0.11.1 tag, from a limit [A31](backlog-retired.md#a31)'s
-fix documents
-
-Since A31's fix, `getCachedCaseInsensitiveProperty` keeps an object's answers until its own-key count
-changes, and returns a cached miss while the count is unchanged (`property-lookup-cache.ts:59-65`). A
-key added in the same interval as another is deleted leaves the count as it was, so the miss outlives
-the new key: under `caseInsensitive`, a case variant of it is not found. The function's doc comment
-says so (`property-lookup-cache.ts:37-38`): "Not caught: a key added in the same interval as another is
-deleted, which leaves the count as it was, so a cached miss can outlive it."
-
-Measured: over `x = { a: 1, b: 2 }`, `x.C` reads `undefined`, as it should. After `delete x.a` and
-`x.c = 3`, `x.C` still reads `undefined`, while `x.c` reads `3`. Adding `c` without the delete changes
-the count, and `x.C` reads `3`.
-
-**Impact: a wrong `undefined`, never a skipped refusal.** On a cached miss the member visitor falls
-back to the key as written, then to the prototype's names (`member-expression.ts:190-208`), so the read
-returns `undefined` for the new key unless the spelling as written exists. The resolved-key re-check
-(`member-expression.ts:211`) runs on whatever key that fallback reads: with an own `constructor`
-swapped in the same way, `x.CONSTRUCTOR` was refused before the swap and after it.
-
-**Fix**: compare the own key names, not only their count, on every cached miss. The miss path already
-lists them (`property-lookup-cache.ts:57`); the cost is a stored copy per object and the comparison,
-on the path A31's measurements timed at 1.5 µs for a miss on a 50-key object. Measure it if this is
-fixed.
-
-*Recorded*: this entry; the doc comment at `property-lookup-cache.ts:35-38`, written by A31's fix
-(8ace46d).
-*Verified*: measured 2026-10-10 at 7ee65fc through `EvalService.simpleEval` with `caseInsensitive:
-true`, with a throwaway spec deleted the same day.
-
 <a id="a34"></a>
 ## A34 — The parse fingerprint's memo does not see options written in place
 
@@ -1027,6 +995,31 @@ asked first. The A45 plan's prototype gave the same rows. Its characterisation s
 *Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M1h and M1i.
 *Verified*: measured 2026-10-23 with a throwaway script outside the repository, against the
 production bundle built at db287da and the A45 plan's prototype, with the Angular compiler loaded.
+
+<a id="a54"></a>
+## A54 — Under `caseInsensitive`, a cached hit outlives an earlier own name that also matches
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-11-01 by the code review of the
+[A33 plan](a33/plan.md)'s step 2. Present in `eval-core` 0.15.0 and unchanged by
+[A33](backlog-retired.md#a33)'s fix. Not scheduled
+
+A found key is reused while it is still an own key of the object (`property-lookup-cache.ts`, the
+hit path), with no scan. A fresh lookup answers the first own name, in own-name order, that matches.
+So after `y = { Prototype: 1 }` and a read of `y.PROTOTYPE`, then `y.prototype = 7; delete
+y.Prototype; y.Prototype = 1`, which leaves the order `prototype, Prototype`, `y.PROTOTYPE` reads `1`
+and `y.PROTOTYPE = 2` writes `Prototype`, where on a fresh object of that order the read and the
+write are both refused "prototype" (measured, `arms-A.json` and `arms-B1.json`), and `Prototype`
+keeps its value.
+
+**Impact: a skipped refusal**, as A33's was. The blocked property's value is neither returned nor
+written: `prototype` stays `7`.
+
+**Fix**, if ever: re-validate a hit as A33's fix re-validates a miss, which costs the hit its O(1);
+measure it ([SR28](standing-rules.md#sr28)).
+
+*Recorded*: this entry.
+*Verified*: measured 2026-11-01 on the production bundles of 0.15.0's code and of A33's fix, with
+`i3m3.mjs` and `arms.mjs`, pinned in the A33 plan's prototype folder, and by the reviewer.
 
 ---
 

@@ -12,11 +12,11 @@
  */
 
 /**
- * One object's answers, by lower-cased search key, and its own-key count when
- * they were made.
+ * One object's answers, by lower-cased search key, and its own-key names, in
+ * order, when they were made.
  */
 interface PropertyLookupCacheEntry {
-  keyCount: number;
+  keys: string[];
   found: Map<string, string | null>;
 }
 
@@ -32,10 +32,10 @@ let entriesCreated = 0;
  *
  * A key found before is still the answer while it is still an own key of the
  * object, which is checked without a scan. One deleted or renamed since is
- * scanned for again. A miss stays a miss while the object's own-key count is
- * unchanged; a key added since changes the count, and the object's answers
- * are made afresh. Not caught: a key added in the same interval as another is
- * deleted, which leaves the count as it was, so a cached miss can outlive it.
+ * scanned for again. A miss stays a miss while the object's own names are the
+ * ones it was made from, in order; any difference, a key added in the same
+ * interval as another is deleted included, and the object's answers are made
+ * afresh (`docs/backlog-retired.md` A33).
  */
 export function getCachedCaseInsensitiveProperty(
   obj: Record<PropertyKey, unknown>,
@@ -56,8 +56,8 @@ export function getCachedCaseInsensitiveProperty(
 
   const ownKeys = Object.getOwnPropertyNames(obj);
 
-  if (!entry || entry.keyCount !== ownKeys.length) {
-    entry = { keyCount: ownKeys.length, found: new Map() };
+  if (!entry || !sameNames(entry.keys, ownKeys)) {
+    entry = { keys: ownKeys, found: new Map() };
     propertyLookupCache.set(obj, entry);
     entriesCreated++;
   } else if (cached === null) {
@@ -70,6 +70,18 @@ export function getCachedCaseInsensitiveProperty(
   return foundKey;
 }
 
+const sameNames = (a: string[], b: string[]): boolean => {
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) {
+      return false;
+    }
+  }
+  return true;
+};
+
 /**
  * Clears the property lookup cache (for testing or memory management)
  */
@@ -79,8 +91,9 @@ export function clearPropertyLookupCache(): void {
 }
 
 /**
- * Gets current property lookup cache statistics: the number of objects given
- * an entry since the last clear, live or collected.
+ * Gets current property lookup cache statistics: the number of entries made
+ * since the last clear, live or collected; an object gets a new one when a
+ * lookup that is not a cached hit finds its own names changed.
  */
 export function getPropertyLookupCacheStats(): { size: number } {
   return {

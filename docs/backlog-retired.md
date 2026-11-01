@@ -2214,7 +2214,8 @@ while it is still an own property of the object, which `hasOwnProperty` checks w
 deleted or renamed since is scanned for again. A cached miss stands while the own-key count is
 unchanged, and a changed count makes the object's answers afresh. The one change it does not see is a
 key added in the same interval as another is deleted, which leaves the count as it was, so a cached
-miss can outlive it; catching that would mean comparing every name on every miss. An entry lives as
+miss can outlive it; catching that would mean comparing every name on every miss ([A33](#a33),
+fixed since by that comparison). An entry lives as
 long as its object, so nothing one object answered is read for another, and the old five-minute expiry
 and thousand-entry bound go with the shape key. `getPropertyLookupCacheStats` now counts the entries
 made since the last clear, the one figure a `WeakMap` can give; only `performance.spec.ts` reads it,
@@ -2350,6 +2351,111 @@ held an import, two clears and five reads, and the deletion removed all eight.)
 
 *Recorded*: this entry, by the grep the A29 fix ran for other keys built from an object's shape.
 *Verified*: measured 2026-10-10 at d839072 with a throwaway spec, deleted before A29's commit.
+
+<a id="a33"></a>
+## A33 — The case-insensitive property cache keeps a miss across a same-count key swap
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-11-01**; ships in `eval-core`
+0.15.1. Was Open. Opened 2026-10-10, after the `eval-core` 0.11.1 tag, from a limit
+[A31](#a31)'s fix documents
+
+*Fixed* 2026-11-01, as step 2 of the [A33 plan](a33/plan.md). The cache entry keeps the own-key
+names its answers were made from, the array the miss path already lists, in place of their count.
+A cached miss stands only while the object's own names are those names, in the same order, each
+compared with `===`; any difference, a key added as another is deleted included, and the object's
+answers are made afresh. The code is the plan's candidate B1, pinned by SHA-256, with its doc
+comments rewritten. No exported shape or `.d.ts` change.
+
+**The stale miss also skipped a refusal.** A case variant of a blocked own name that is not an own
+property of the object's immediate prototype — `prototype` on a plain object, every blocked name but
+`constructor` on an instance of a class that declares none of them, any on an object made by
+`Object.create(null)` or `Object.create({})` — is found only by the own-name scan, since the
+fallback reads the immediate prototype's own names alone. After a cached miss and the swap it read
+`undefined`, and a write through it made a sibling key, where it is refused when no miss was cached.
+The blocked property's value was neither returned nor written. Both are now refused: an expression
+that read `undefined` there now throws.
+
+**Its cost in memory**, recorded rather than designed out (the plan's D1 and § 7): the entry keeps
+the names array for as long as its object lives, for every object a `caseInsensitive` member access
+with a string key reaches, where every lookup that was not a cached hit used to drop it after the
+call. About 8 to 9 bytes per own name, and about 32 per index name of an array of a million elements.
+
+**The evidence** is the plan's [§ 1.3](a33/plan.md#13-measurements-run-for-this-plan) and
+[§ 1.4](a33/plan.md#14-the-measurements): the probe rows on the production bundles of 509b007 and
+B1, the write and guard legs among them, and the timed runs under rules written before them, in
+which B1 cost +1.6% on a miss on a 50-key object and +1.4% on `a.map` over a 100-element array,
+against a +10% rule, with the hit path, unchanged, at −1.0%; and the memory measurement, made after
+the decision and outside its rule.
+
+Nine rows, written first and run on the unfixed code:
+
+| Row | Spec | Unfixed | Fixed |
+| :--- | :--- | :--- | :--- |
+| R1: `o.C` after `delete o.a; o.c = 3`, a miss cached | `property-lookup-cache.spec.ts` | red: `undefined` | `3` |
+| R2: `w.C = 9` after the same swap; `Object.keys(w)`, `w.c` | the same | red: keys `b`, `c`, `C` | `9`; `b`, `c`; `9` |
+| R3: `u.C += 1` after the same swap | the same | red: `NaN` | `4`; `b`, `c`; `4` |
+| R4: `y.CONSTRUCTOR`, before and after an own `constructor` takes `a`'s place | `eval.service.case-variant-guard.spec.ts` | refused, refused | the same |
+| R5: `y.CONSTRUCTOR = 1` after that swap; `y.constructor` | the same | refused; `7` | the same |
+| R6r: plain `{ a: 1, b: 2 }`, `y.PROTOTYPE` read, then an own `prototype` of `7` takes `a`'s place; `y.PROTOTYPE`, `Object.keys(y)`, `y.prototype` | the same | `undefined` first; red: the read `undefined` | `undefined` first; refused; `b`, `prototype`; `7` |
+| R6w: the same object and swap, its own; `y.PROTOTYPE = 1`, `Object.keys(y)`, `y.prototype` | the same | `undefined` first; red: the write not refused, a sibling key made | `undefined` first; refused; `b`, `prototype`; `7` |
+| R7r, R7w: the same two over `Object.create(null)`, with `constructor` | the same | the same, red | the same |
+
+Each refusal asserts its message, `Access to dangerous property "<name>" is blocked for security
+reasons`. Probes, each applied alone to the fixed code and reverted, every `eval-core` case read:
+
+| Probe | What it breaks | Red |
+| :--- | :--- | :--- |
+| P2-1 | `sameNames` reduced to its length test, the count check this replaces | 7: R1, R2, R3, R6r, R6w, R7r, R7w; nothing else |
+| P2-2 | the read path's resolved-key re-check, `isDangerousProperty(foundKey)`, never true | 26: R4; R5 at its first line, the read that caches the miss; R6r and R7r, the read giving `7`; the guard spec's five advisory-chain rows and fifteen colliding-entry rows, and `eval.service.colon-identifiers.spec.ts`' two criterion 7 refusals. R6w and R7w stay green |
+| P2-3 | `resolveMemberTarget`'s resolved-key re-check never true | 1: `assignment-target.spec.ts`' `o.CONSTRUCTOR = f()`, the check before the right side. R5, R6w and R7w stay green: `safeSetProperty` refuses with the same message |
+| P2-3b | P2-3, and `safeSetProperty`'s `isDangerousProperty(key)` never true | 8: R5, R6w and R7w, the write succeeding; `assignment-target.spec.ts`' two `o.CONSTRUCTOR` rows and three in `variable-declaration.spec.ts`. R6r and R7r stay green |
+
+The write refusals of R5, R6w and R7w are witnessed by the two write layers together, not by either
+alone.
+P2-2's prediction had R5 green: the guard probe it came from asserted no refusal before the swap, and
+R5's first line is a read, which only the read path refuses.
+
+**The entry as it stood**, with one correction appended:
+
+Since A31's fix, `getCachedCaseInsensitiveProperty` keeps an object's answers until its own-key count
+changes, and returns a cached miss while the count is unchanged (`property-lookup-cache.ts:59-65`). A
+key added in the same interval as another is deleted leaves the count as it was, so the miss outlives
+the new key: under `caseInsensitive`, a case variant of it is not found. The function's doc comment
+says so (`property-lookup-cache.ts:37-38`): "Not caught: a key added in the same interval as another is
+deleted, which leaves the count as it was, so a cached miss can outlive it."
+
+Measured: over `x = { a: 1, b: 2 }`, `x.C` reads `undefined`, as it should. After `delete x.a` and
+`x.c = 3`, `x.C` still reads `undefined`, while `x.c` reads `3`. Adding `c` without the delete changes
+the count, and `x.C` reads `3`.
+
+**Impact: a wrong `undefined`, never a skipped refusal.** On a cached miss the member visitor falls
+back to the key as written, then to the prototype's names (`member-expression.ts:190-208`), so the read
+returns `undefined` for the new key unless the spelling as written exists. The resolved-key re-check
+(`member-expression.ts:211`) runs on whatever key that fallback reads: with an own `constructor`
+swapped in the same way, `x.CONSTRUCTOR` was refused before the swap and after it.
+
+*Corrected 2026-11-01*: the impact was wider than a wrong `undefined`. On the write path the miss
+made a second own key: after the swap, `w.C = 9` wrote a new `C` beside `c`, and `u.C += 1` wrote
+`NaN` to a new `C`. Measured at 509b007 on the production bundle (`write-probe-A.json`, in the
+plan's pinned folder); earlier releases were not measured. And "never a skipped refusal" was false:
+the paragraph's one fixture was a name the plain object's prototype holds, so the prototype scan
+refused it either way. A blocked own name that is not an own property of the immediate prototype,
+`prototype` on a plain object or `constructor` on an object made by `Object.create(null)` or
+`Object.create({})`, read `undefined` after the swap and a write through it made a sibling key, the
+blocked value neither returned nor written (`crit-A.json`, the same folder). The code review of the
+fix measured an instance of a class that declares none of the blocked names the same way on the
+unfixed bundle: every blocked name but `constructor` behaved so.
+
+**Fix**: compare the own key names, not only their count, on every cached miss. The miss path already
+lists them (`property-lookup-cache.ts:57`); the cost is a stored copy per object and the comparison,
+on the path A31's measurements timed at 1.5 µs for a miss on a 50-key object. Measure it if this is
+fixed.
+
+*Recorded*: this entry; the doc comment at `property-lookup-cache.ts:35-38`, written by A31's fix
+(8ace46d).
+*Verified*: measured 2026-10-10 at 7ee65fc through `EvalService.simpleEval` with `caseInsensitive:
+true`, with a throwaway spec deleted the same day. The fix: the nine rows above, red then green as
+the table says, and the four probes; `eval-core` 3288 → 3297.
 
 <a id="a35"></a>
 ## A35 — A dangerous function value reachable from the context is callable past the name-based call sandbox

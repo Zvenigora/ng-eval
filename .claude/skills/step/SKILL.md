@@ -29,7 +29,7 @@ Requested step: $ARGUMENTS
   retrospect**.
 
 **The counts the steps start from**, the gate at 509b007: `eval-core` 3288, `eval-signals` 449,
-`eval-forms` 386. `eval-core` reaches 3291 at step 2 and 3293 at step 3; `eval-signals` and
+`eval-forms` 386. `eval-core` reaches 3297 at step 2 and 3299 at step 3; `eval-signals` and
 `eval-forms` do not move unless step 4's § 8 q1 adds a downstream row.
 
 **Step state**: read it from the plan, not from here. The last step in its § 4 with a recorded

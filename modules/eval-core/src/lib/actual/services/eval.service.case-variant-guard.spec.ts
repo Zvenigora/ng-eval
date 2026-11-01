@@ -181,6 +181,84 @@ describe('EvalService - case-variant property guard (GHSA-pj3p-xpg7-h7gw)', () =
     });
   });
 
+  // `docs/backlog-retired.md` A33. The first read leaves a cached miss among
+  // the object's own names; an own blocked name then takes a deleted key's
+  // place, so the own-key count is unchanged. On a plain object the variant of
+  // `constructor` resolves to the prototype's before the swap and to the
+  // object's own after it, and both are refused on the key the lookup matched.
+  // A blocked name that is not an own name of the immediate prototype -
+  // `prototype` on a plain object, `constructor` on a null-prototype one - is
+  // found only by the own-name scan, so up to 0.15.0 a stale miss read it as
+  // `undefined` and wrote a sibling key.
+  describe('after an own key is swapped in at the same count, caseInsensitive: true', () => {
+    const blocked = (name: string): string => `Access to dangerous property "${name}" is blocked for security reasons`;
+
+    const swapIn = (y: Record<string, unknown>, name: string): void => {
+      delete y['a'];
+      Object.defineProperty(y, name, { value: 7, enumerable: true, writable: true, configurable: true });
+    };
+
+    it('should refuse a read of the variant before and after the swap', () => {
+      const y: Record<string, unknown> = { a: 1, b: 2 };
+
+      expect(() => service.simpleEval('y.CONSTRUCTOR', { y }, { caseInsensitive: true })).toThrow(blocked('constructor'));
+      swapIn(y, 'constructor');
+      expect(() => service.simpleEval('y.CONSTRUCTOR', { y }, { caseInsensitive: true })).toThrow(blocked('constructor'));
+    });
+
+    it('should refuse a write through the variant after the swap', () => {
+      const y: Record<string, unknown> = { a: 1, b: 2 };
+
+      expect(() => service.simpleEval('y.CONSTRUCTOR', { y }, { caseInsensitive: true })).toThrow(blocked('constructor'));
+      swapIn(y, 'constructor');
+      expect(() => service.simpleEval('y.CONSTRUCTOR = 1', { y }, { caseInsensitive: true })).toThrow(blocked('constructor'));
+      expect(y['constructor']).toBe(7);
+    });
+
+    // Read and write each get their own object: a write first would leave the
+    // read a cached hit, and on the unfixed code its sibling key changes the
+    // count, so the read would re-scan and be refused either way.
+    it('should refuse a read of an own `prototype` swapped in, which the prototype does not hold, after a cached miss', () => {
+      const y: Record<string, unknown> = { a: 1, b: 2 };
+
+      expect(service.simpleEval('y.PROTOTYPE', { y }, { caseInsensitive: true })).toBeUndefined();
+      swapIn(y, 'prototype');
+      expect(() => service.simpleEval('y.PROTOTYPE', { y }, { caseInsensitive: true })).toThrow(blocked('prototype'));
+      expect(Object.keys(y)).toEqual(['b', 'prototype']);
+      expect(y['prototype']).toBe(7);
+    });
+
+    it('should refuse a write to an own `prototype` swapped in, which the prototype does not hold, after a cached miss', () => {
+      const y: Record<string, unknown> = { a: 1, b: 2 };
+
+      expect(service.simpleEval('y.PROTOTYPE', { y }, { caseInsensitive: true })).toBeUndefined();
+      swapIn(y, 'prototype');
+      expect(() => service.simpleEval('y.PROTOTYPE = 1', { y }, { caseInsensitive: true })).toThrow(blocked('prototype'));
+      expect(Object.keys(y)).toEqual(['b', 'prototype']);
+      expect(y['prototype']).toBe(7);
+    });
+
+    it('should refuse a read of an own `constructor` swapped into a null-prototype object, after a cached miss', () => {
+      const y: Record<string, unknown> = Object.assign(Object.create(null), { a: 1, b: 2 });
+
+      expect(service.simpleEval('y.CONSTRUCTOR', { y }, { caseInsensitive: true })).toBeUndefined();
+      swapIn(y, 'constructor');
+      expect(() => service.simpleEval('y.CONSTRUCTOR', { y }, { caseInsensitive: true })).toThrow(blocked('constructor'));
+      expect(Object.keys(y)).toEqual(['b', 'constructor']);
+      expect(y['constructor']).toBe(7);
+    });
+
+    it('should refuse a write to an own `constructor` swapped into a null-prototype object, after a cached miss', () => {
+      const y: Record<string, unknown> = Object.assign(Object.create(null), { a: 1, b: 2 });
+
+      expect(service.simpleEval('y.CONSTRUCTOR', { y }, { caseInsensitive: true })).toBeUndefined();
+      swapIn(y, 'constructor');
+      expect(() => service.simpleEval('y.CONSTRUCTOR = 1', { y }, { caseInsensitive: true })).toThrow(blocked('constructor'));
+      expect(Object.keys(y)).toEqual(['b', 'constructor']);
+      expect(y['constructor']).toBe(7);
+    });
+  });
+
   // `docs/backlog-retired.md` A31. Each row first reads the variant as data,
   // from an object holding that exact spelling - the case above - and then from
   // a second object with the same key count and the same first five names. Up

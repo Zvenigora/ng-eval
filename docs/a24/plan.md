@@ -644,7 +644,7 @@ step-4 flip rewrites a row in place and moves no count. Every row "moves" below 
     `### Fixed` lines, A25 and the failure order; A25 is retired to `backlog-retired.md` with its rows
     and probes, its index row and every inbound link pointing there.
   - **`SECURITY.md`'s sentence** (criterion 3), as written: "**Open register entry that bears on
-    this**: [A33](../backlog.md#a33), under `caseInsensitive` a cached miss can hide a key added
+    this**: [A33](../backlog-retired.md#a33), under `caseInsensitive` a cached miss can hide a key added
     later — no refusal is skipped." ([SR21](../standing-rules.md#sr21)):
 
     | Claim | Witness |

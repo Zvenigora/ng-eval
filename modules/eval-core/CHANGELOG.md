@@ -12,6 +12,21 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Fixed
+- **Under `caseInsensitive`, a property added in the same interval as another is deleted is
+  found by a case variant of its name.** The lookup cache kept an earlier miss while the object's
+  own-key count was unchanged: after `delete x.a; x.c = 3`, `x.C` read `undefined`, and `x.C = 9`
+  or `x.C += 1` made a second own key `C` beside `c`. The same miss skipped a refusal: a case
+  variant of a blocked own name that is not an own property of the object's immediate prototype —
+  `prototype` on a plain object, every blocked name but `constructor` on an instance of a class that
+  declares none of them, any on an object made by `Object.create(null)` or `Object.create({})` —
+  read `undefined` and wrote a sibling key, where it is refused when no miss was cached. The blocked
+  property's value was neither returned nor written. Both are now refused, and a cached miss stands
+  only while the object's own names are those it was made from
+  ([A33](../../docs/backlog-retired.md#a33)). The cache now keeps each object's own names for as long
+  as the object lives, for every object a `caseInsensitive` member access with a string key reaches:
+  about 8 to 9 bytes per own name, and about 32 per index name of an array of a million elements.
+
 ---
 
 ## [0.15.0] - 2026-10-31
