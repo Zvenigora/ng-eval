@@ -3699,6 +3699,78 @@ against the prototype.
 *Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M9; `modules/eval-core/CHANGELOG.md`'s
 `[0.14.0]` › Fixed.
 
+<a id="a53"></a>
+## A53 — Under `caseInsensitive`, a timing harness's processes slow 5–9× about 2.7 s in, on one machine
+
+**Package** core · **Kind** decision, then fix · **Status** **Retired — decided 2026-10-31: a limit of
+the harness on one machine, not the library**; ships in no package. Was Open. Opened 2026-10-25 by the
+[A45 plan](a45/plan.md)'s step 5, from its step 4's timing. Present in 0.13.3's code and 0.14.0's
+alike, so it predates the plan
+
+On one machine, Windows with Node 26.4.0, almost every `caseInsensitive` process in the A45 plan's
+step 4 harness slowed 5–9× partway through its timed rounds. That held in both bundles, the plan
+commit's (db287da) and step 3's (93d76b2), and on every path, the identifier read included. A
+process's slow round is its first round above twice the fastest of its first three. Measured
+2026-10-25, the harness and machine as the plan's step 4 outcome records them:
+- **(a) By elapsed time, not by evaluation count.** 175 of 180 processes slowed. The time to a
+  process's first slow round, its warm-up estimated as 20,000 × round 1's µs plus its preceding
+  rounds, was 2.50–3.29 s, median 2.72 s. Each bundle and path's median lay between 2.54 s and
+  2.80 s. So db287da's member write, at about 6.7 µs per evaluation, slowed at round 7 or 8, and step
+  3's, at about 3.9 µs, at round 12 or 13: the same time, after different counts. The five processes
+  that never slowed ran 3.10–6.32 s in total, three of them in one rotation.
+- **(b) One case-sensitive member write, 60 rounds of 60,000, run alone**: 0.747–0.832 µs in every
+  round, with no rising trend, through 2.87 s of timed evaluation. 150 of the 175 had slowed by that
+  point. No case-sensitive process in the pass ran longer than 0.81 s.
+- **(c) A cloud run**, as reported: Linux, Node 22.22.0 and 26.12.1, both bundles, `obj.x = 1` and
+  `obj.x` under `caseInsensitive`, 20,000 + 15 × 60,000. No slowdown, and the heap flat at 22–40 MB.
+
+So what the bundles differ in decides only how many evaluations a process makes before the
+slowdown, not whether it comes. No arm separates the two candidate causes: the platform or Node
+version, and something the `caseInsensitive` path builds per evaluation. **First decide which it
+is**; a cause in the library is then a fix, and one in the platform a documented limit of the
+harness. [A48](backlog.md#a48) records an earlier harness's bimodal `caseInsensitive` write medians (the
+plan's M7), which may be the same effect.
+
+**Lead, unverified: allocation-driven garbage collection from the per-evaluation `Registry` copy.**
+Under `caseInsensitive`, `EvalContext.fromContext` copies a plain context into a `Registry` on every
+evaluation ([SR19](standing-rules.md#sr19), the plan's § 0 rule 7). If collecting those copies triggers the slowdown, its onset
+would follow allocation over time rather than evaluation count. That would look the same across
+bundles, as (a) does. No run has tested it.
+
+**To verify** — this entry's runs, not yet made, each one process at a time with nothing else
+running:
+1. **The case-sensitive member write as one process**, 300 rounds of 60,000 (about 14 s): per-round
+   µs, and when, if ever, it slows. (b) ran only 2.87 s, inside the 2.50–3.29 s window of (a), so it
+   did not settle whether a case-sensitive process slows too.
+2. **One `caseInsensitive` member-write process**, 30 rounds, with `process.memoryUsage().heapUsed`
+   recorded after each round: whether the heap grows until the slowdown.
+
+*Recorded*: this entry; the [A45 plan](a45/plan.md)'s step 4 outcome, "The `caseInsensitive`
+slowdown, measured and not explained".
+*Verified*: (a) from step 4's per-round data, with no new run; (b) a run after step 4's passes, its
+bundle rebuilt from db287da and hash-equal to the run's; (c) reported from a cloud session, not
+re-run here.
+
+**Decided 2026-10-31: a limit of the harness on one machine, not the library.** Measured
+2026-10-31 at 03bcb94, one process at a time, A45 § 3.8's loop with `heapUsed` read after each
+round, the bundle built on both machines hash-equal (`F49E097E…19DB0D97`), and the decision rule
+stated before the run. On Linux with Node 26.4.0: `caseInsensitive` `obj.x = 1`, 30 rounds, twice,
+ran at 4.7–6.5 µs with no slow round in about 10 s; the case-sensitive write, 300 rounds, had none
+in 16.4 s; the heap was a flat sawtooth, 22–38 MB. On this machine: (1) the case-sensitive write,
+300 rounds, ran 0.62–1.31 µs, then slowed at round 298, 12.5 s of timed evaluation in, to 2.35,
+6.90 and 4.31 µs. This is "To verify" run 1, and a case-sensitive process slows too, later.
+(2) `caseInsensitive`, 30 rounds, slowed at round 10, 2.59 s in, to 14.3–33.9 µs for four
+rounds, then ran 3.95–5.36 µs to the end. The heap was a 22–37 MB sawtooth, with no growth
+before the slowdown. This is run 2. (3) The same, pinned to logical CPUs 0–11 (the performance
+cores), had no slow round in 30, at 4.0–5.8 µs. (4) Pinned to 12–19 (the efficiency cores), it
+ran 10.5–14.7 µs throughout. So the slowdown is an episode that passes, not a state: the A45
+harness's 15 rounds ended inside one. It reaches a case-sensitive process too, pinning to the
+performance cores removes it, and Linux with the same Node and bundle shows none. **Not
+explained**: why a `caseInsensitive` process meets its first episode about 2.6 s in and the one
+case-sensitive process at 12.5 s, and why the episode's 34 µs is slower than the efficiency
+cores' 10.5–14.7 µs (scheduling on them at a reduced clock would fit; not measured). Neither
+changes the decision. [SR28](standing-rules.md#sr28) now pins timed processes on such a machine.
+
 ---
 
 # B. `eval-core` — security and hygiene
@@ -7757,7 +7829,7 @@ distinct rules and twenty divergences between copies, among them:
 *Fixed* 2026-10-27: [`docs/standing-rules.md`](standing-rules.md) holds SR1–SR38, each with its
 statement, its origin and what goes red, and a table resolving the older plans' rule numbers.
 `CLAUDE.md` imports it with an `@docs/standing-rules.md` line. `CLAUDE.md`, the `step` skill, the
-`code-reviewer`, `CONTRIBUTING.md`, `docs/README.md` and [A53](backlog.md#a53) cite an SR link in place
+`code-reviewer`, `CONTRIBUTING.md`, `docs/README.md` and [A53](#a53) cite an SR link in place
 of their copies; the design records keep their own numbering. The maintainer decided each divergence:
 the gate is the full command and the `npm run` scripts are its targets cached (SR8); a vacuous case
 is removed with its reason and count, approved at a gate or in a prompt (SR14); the reviewer runs

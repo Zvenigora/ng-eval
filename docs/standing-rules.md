@@ -178,7 +178,9 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
 - <a id="sr28"></a>**SR28 — A timing is paired, signed and sized by time.** It pairs within each
   rotation of one run, counts the signs, carries an A/A control and meets a decision rule stated in
   advance. Its processes run one at a time, and a long run is sized by elapsed time, not by rounds
-  ([A53](backlog.md#a53)). *Origin*:
+  ([A53](backlog-retired.md#a53)). On a machine with performance and efficiency cores, each timed
+  process is pinned to the performance cores, its affinity read back and reported, or the timing runs
+  on a machine without them ([A53](backlog-retired.md#a53)). *Origin*:
   [A45 § 3.8](a45/plan.md#38-performance--the-decision-rule-stated-in-advance). *Red*: nothing.
 - <a id="sr29"></a>**SR29 — Reuse a mechanism, and list what it does not do.** Prefer one the
   repository already exercises, and say what makes a case different where it deviates. Reusing one,

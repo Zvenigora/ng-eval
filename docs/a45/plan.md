@@ -63,7 +63,7 @@ downstream witnesses with their counts unchanged (M4).
 **Opens**: [A48](../backlog.md#a48)–[A51](../backlog.md#a51) (Revision 2), for defects the plan
 measured and does not fix. The characterisation spec holds their rows. [A52](../backlog-retired.md#a52),
 opened with them, the plan fixes in step 2 (D10). Step 5 opens
-[A53](../backlog.md#a53), step 4's unexplained `caseInsensitive` slowdown.
+[A53](../backlog-retired.md#a53), step 4's unexplained `caseInsensitive` slowdown.
 **Reopens**: Phase 1's decision that assignment and update targets emit read events
 ([`side-effects/phase-1-plan.md`](../side-effects/phase-1-plan.md):274-280), for assignment
 targets only (§ 2, D2).

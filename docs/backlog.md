@@ -149,14 +149,14 @@ annotated at 0d305a3 and published 2026-10-26, every `@zvenigora` floor raised. 
   both visitors.
 - Step 4 timed the result: no regression on any path.
 - Step 5 wrote `SECURITY.md`, the README and the CHANGELOG, retired A44, A45 and A52, and opened
-  [A53](#a53), step 4's unexplained `caseInsensitive` slowdown.
+  [A53](backlog-retired.md#a53), step 4's unexplained `caseInsensitive` slowdown.
 - Step 6 decided § 8 q7, the downstream versions, by measurement, and wrote the release commit.
 - Step 7 recorded the release and opened [F26](backlog-retired.md#f26): `tools/release-tags.mjs` did
   not check that a tag is annotated. F26 is fixed since, in no package.
 
 Revision 2 decided three of its open questions as D7–D9 and opened [A48](#a48)–A52 for the defects
 it found. Revision 3 brought A52 into the plan's step 2 (D10), and Revision 4 kept the `this`
-refusal on every identifier target (D11). A48–A51 and A53 are not scheduled.
+refusal on every identifier target (D11). A48–A51 are not scheduled; [A53](backlog-retired.md#a53) is decided.
 [F20](backlog-retired.md#f20), [F21](backlog-retired.md#f21),
 [F24](backlog-retired.md#f24), [F25](backlog-retired.md#f25) and F26 are fixed, and ship in no package; F21's toolchain bump left one
 `overrides.nx` entry, `undici`, which [F16](#f16) part 2 holds.
@@ -335,8 +335,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-forms` 0.7.1. F26, opened by 0.14.0's post-publish commit and fixed after it, ships in no package; F27 ships in no package but for one `eval-core` docblock | `69c3e0e` | 2026-10-29 | 25 | 4: F26–F29 | 2: F26, F27 | 27 |
 | `eval-core` 0.14.1. F28, decided by Phase 11 and shipped in `eval-forms` 0.7.1, was retired by 0.7.1's post-publish commit, after its tag; A47 is fixed, and A32 and A30 are decided, documentation only | `95932e6` | 2026-10-30 | 27 | 0 | 4: F28, A47, A32, A30 | 23 |
 | `eval-core` 0.15.0, `eval-signals` 0.8.0, `eval-forms` 0.8.0. A27 and A38 are fixed, and A25, A24 and D13 by the A24 plan, all released in them; F30 opened by the release commit's code review | `67486ab` | 2026-10-31 | 23 | 1: F30 | 5: A27, A38, A25, A24, D13 | 19 |
-| *Unreleased*. F30, fixed after the release commit, in no package | — | — | 19 | 0 | 1: F30 | 18 |
-| **Since the register opened** | | | **42** | **72** | **96** | **18** |
+| *Unreleased*. F30, fixed after the release commit, in no package; A53, decided, in no package | — | — | 19 | 0 | 2: F30, A53 | 17 |
+| **Since the register opened** | | | **42** | **72** | **97** | **17** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -410,7 +410,7 @@ makes it that release's row, with its tag commit and date.
 | [A50](#a50) | Under `caseInsensitive`, `this.k = v` writes an own property onto the context's `Registry` copy, and the data is unchanged | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q4); predates it. Not scheduled |
 | [A51](#a51) | A member write to an `EvalScope` held as a value lands on the instance, never through `EvalScope.set`, and can replace its `_context` and `_options` | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q4); predates it. A write policy can refuse it. Not scheduled |
 | [A52](backlog-retired.md#a52) | Under `caseInsensitive`, an identifier holding `null` reads as `undefined`: `x === null` is `false`, and `x += 1` writes `NaN` | core | fix | **Retired — fixed 2026-10-24**, as step 2 of the [A45 plan](a45/plan.md) (its D10); released 2026-10-26 in `eval-core` 0.14.0, tagged 0d305a3. The literals fallback is taken only for `undefined`, in one read the visitor and the target read share. Opened 2026-10-23 by the plan's Revision 2; predated it |
-| [A53](#a53) | Under `caseInsensitive`, on one machine (Windows, Node 26.4.0), almost every process of the A45 plan's timing harness, 175 of 180, slows 5–9× about 2.7 s into its timed loop, in both bundles and on every path; a cloud run on Linux did not | core | decision, then fix | Open — opened 2026-10-25 by the [A45 plan](a45/plan.md)'s step 5, from its step 4; present in 0.13.3's code and 0.14.0's alike. Cause open: the platform or Node version, or the per-evaluation `Registry` copy. Not a release blocker. Not scheduled |
+| [A53](backlog-retired.md#a53) | Under `caseInsensitive`, on one machine (Windows, Node 26.4.0), almost every process of the A45 plan's timing harness, 175 of 180, slows 5–9× about 2.7 s into its timed loop, in both bundles and on every path; a cloud run on Linux did not | core | decision, then fix | **Retired — decided 2026-10-31: a limit of the harness on one machine, not the library**; ships in no package. The slowdown is an episode that reaches a case-sensitive process too and none pinned to the performance cores; none on Linux with Node 26.4.0. [SR28](standing-rules.md#sr28) amended |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -923,8 +923,9 @@ plan's resolver for `=` matches the key with `in` and reads nothing, which is on
 **The `caseInsensitive` path cannot be timed with the plan's harness** (the plan's M7). Every path
 costs about 5.5–6 µs, a bare identifier read included, because the context is copied per evaluation.
 The write path's medians were bimodal in the harness, 6.7–66 µs at the same settings, while three
-standalone runs measured 10.5–11 µs with no heap growth. That is unexplained, so a fix here cannot be
-shown to be free by that harness, and needs one of its own.
+standalone runs measured 10.5–11 µs with no heap growth. Since [A53](backlog-retired.md#a53)'s
+decision, those medians are most likely its slowdown episodes, not re-measured. A timing pinned to the
+performance cores as [SR28](standing-rules.md#sr28) asks, or run on Linux, can time this path.
 
 *Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M1f and M7.
 *Verified*: measured 2026-10-23 with a throwaway script outside the repository, against the
@@ -1019,57 +1020,6 @@ asked first. The A45 plan's prototype gave the same rows. Its characterisation s
 *Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M1h and M1i.
 *Verified*: measured 2026-10-23 with a throwaway script outside the repository, against the
 production bundle built at db287da and the A45 plan's prototype, with the Angular compiler loaded.
-
-<a id="a53"></a>
-## A53 — Under `caseInsensitive`, a timing harness's processes slow 5–9× about 2.7 s in, on one machine
-
-**Package** core · **Kind** decision, then fix · **Status** Open. Opened 2026-10-25 by the
-[A45 plan](a45/plan.md)'s step 5, from its step 4's timing. Present in 0.13.3's code and 0.14.0's
-alike, so it predates the plan. Not a release blocker. Not scheduled
-
-On one machine, Windows with Node 26.4.0, almost every `caseInsensitive` process in the A45 plan's
-step 4 harness slowed 5–9× partway through its timed rounds. That held in both bundles, the plan
-commit's (db287da) and step 3's (93d76b2), and on every path, the identifier read included. A
-process's slow round is its first round above twice the fastest of its first three. Measured
-2026-10-25, the harness and machine as the plan's step 4 outcome records them:
-- **(a) By elapsed time, not by evaluation count.** 175 of 180 processes slowed. The time to a
-  process's first slow round, its warm-up estimated as 20,000 × round 1's µs plus its preceding
-  rounds, was 2.50–3.29 s, median 2.72 s. Each bundle and path's median lay between 2.54 s and
-  2.80 s. So db287da's member write, at about 6.7 µs per evaluation, slowed at round 7 or 8, and step
-  3's, at about 3.9 µs, at round 12 or 13: the same time, after different counts. The five processes
-  that never slowed ran 3.10–6.32 s in total, three of them in one rotation.
-- **(b) One case-sensitive member write, 60 rounds of 60,000, run alone**: 0.747–0.832 µs in every
-  round, with no rising trend, through 2.87 s of timed evaluation. 150 of the 175 had slowed by that
-  point. No case-sensitive process in the pass ran longer than 0.81 s.
-- **(c) A cloud run**, as reported: Linux, Node 22.22.0 and 26.12.1, both bundles, `obj.x = 1` and
-  `obj.x` under `caseInsensitive`, 20,000 + 15 × 60,000. No slowdown, and the heap flat at 22–40 MB.
-
-So what the bundles differ in decides only how many evaluations a process makes before the
-slowdown, not whether it comes. No arm separates the two candidate causes: the platform or Node
-version, and something the `caseInsensitive` path builds per evaluation. **First decide which it
-is**; a cause in the library is then a fix, and one in the platform a documented limit of the
-harness. [A48](#a48) records an earlier harness's bimodal `caseInsensitive` write medians (the
-plan's M7), which may be the same effect.
-
-**Lead, unverified: allocation-driven garbage collection from the per-evaluation `Registry` copy.**
-Under `caseInsensitive`, `EvalContext.fromContext` copies a plain context into a `Registry` on every
-evaluation ([SR19](standing-rules.md#sr19), the plan's § 0 rule 7). If collecting those copies triggers the slowdown, its onset
-would follow allocation over time rather than evaluation count. That would look the same across
-bundles, as (a) does. No run has tested it.
-
-**To verify** — this entry's runs, not yet made, each one process at a time with nothing else
-running:
-1. **The case-sensitive member write as one process**, 300 rounds of 60,000 (about 14 s): per-round
-   µs, and when, if ever, it slows. (b) ran only 2.87 s, inside the 2.50–3.29 s window of (a), so it
-   did not settle whether a case-sensitive process slows too.
-2. **One `caseInsensitive` member-write process**, 30 rounds, with `process.memoryUsage().heapUsed`
-   recorded after each round: whether the heap grows until the slowdown.
-
-*Recorded*: this entry; the [A45 plan](a45/plan.md)'s step 4 outcome, "The `caseInsensitive`
-slowdown, measured and not explained".
-*Verified*: (a) from step 4's per-round data, with no new run; (b) a run after step 4's passes, its
-bundle rebuilt from db287da and hash-equal to the run's; (c) reported from a cloud session, not
-re-run here.
 
 ---
 
