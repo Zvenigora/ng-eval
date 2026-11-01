@@ -8,7 +8,7 @@ one retrospect, and step 7's record (§ 5); the plan holds each step's outcome i
 | Step | Commit | What |
 | ---- | ------ | ---- |
 | — | `adfc7af` | [A29](../backlog-retired.md#a29), fixed on its own before any step: `CompilerService` caches strings only, so step 3 had one key to rewrite (Revision 2) |
-| 1 | `56e2049` | [A26](../backlog-retired.md#a26): `ParserService` keys its AST cache on a fingerprint of the parse-relevant options; [A34](../backlog.md#a34) opened for the memo's limit |
+| 1 | `56e2049` | [A26](../backlog-retired.md#a26): `ParserService` keys its AST cache on a fingerprint of the parse-relevant options; [A34](../backlog-retired.md#a34) opened for the memo's limit |
 | 2 | `0718796` | `ParserOptions.colonIdentifiers` and the grammar, an acorn plugin with five overrides, chosen per parse |
 | 3 | `cf8fb1c` | `provideColonIdentifiers()`, read by `ParserService` at construction, and `CompilerService`'s string key on the same fingerprint |
 | 4 | `3ac8d1a` | the corpus: `colon-identifiers.corpus.json` and its runner, 114 synthetic cases, test only |
@@ -76,7 +76,7 @@ and its counts say nothing about legacy expressions. Each is settled by real exp
 as corpus data, in their rewritten JavaScript form; q1 counts by the expression's shape, not by the
 error text (§ 8 q1).
 
-Opened along the way and still live: [A34](../backlog.md#a34) (step 1), with its second memo (step
+Opened along the way and still live: [A34](../backlog-retired.md#a34) (step 1), with its second memo (step
 3). Narrowed: [D13](../backlog-retired.md#d13) (step 6). Closed: [A26](../backlog-retired.md#a26) (step 1)
 and, before step 1, [A29](../backlog-retired.md#a29).
 

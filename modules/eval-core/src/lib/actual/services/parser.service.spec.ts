@@ -234,6 +234,43 @@ describe('ParserService cache keyed on parse-relevant options (A26)', () => {
     expect(parser.parse('k + 1')).toMatchObject(asProgram);
   });
 
+  // `docs/backlog-retired.md` A34: the fingerprint is remembered by the
+  // options object's identity, so a value written into one is not seen by the
+  // key. The rows pin that documented limit; criterion 3, the setter, is the
+  // contrast.
+  it('A34: a write into the getter\'s object is not seen for a text parsed before with no call options', () => {
+    expect(parser.parse('k + 1')).toMatchObject({ type: 'BinaryExpression' });
+    parser.parserOptions.extractExpressions = false;
+    expect(parser.parse('k + 1')).toMatchObject({ type: 'BinaryExpression' });
+  });
+
+  it('A34: a text parsed after a write into the getter\'s object is cached as if the options were unchanged', () => {
+    expect(parser.parse('k + 1')).toMatchObject({ type: 'BinaryExpression' });
+    parser.parserOptions.extractExpressions = false;
+    const after = parser.parse('k + 2');
+    expect(after).toMatchObject(asProgram);
+    expect(parser.parse('k + 2', { extractExpressions: true })).toBe(after);
+    // The control: a text no parse has cached reads the call's options.
+    expect(parser.parse('k + 3', { extractExpressions: true }))
+      .toMatchObject({ type: 'BinaryExpression' });
+  });
+
+  it('A34: a write into a caller\'s options object passed again is not seen for a text it parsed before', () => {
+    const options: ParserOptions = { extractExpressions: true };
+    expect(parser.parse('k + 4', options)).toMatchObject({ type: 'BinaryExpression' });
+    options.extractExpressions = false;
+    expect(parser.parse('k + 4', options)).toMatchObject({ type: 'BinaryExpression' });
+  });
+
+  // The contrast: the write is not reliably unseen either. A call-options
+  // object no parse has passed is fingerprinted with the values written.
+  it('A34: a new call-options object sees a write into the getter\'s object', () => {
+    expect(parser.parse('k + 1')).toMatchObject({ type: 'BinaryExpression' });
+    parser.parserOptions.extractExpressions = false;
+    expect(parser.parse('k + 1')).toMatchObject({ type: 'BinaryExpression' });
+    expect(parser.parse('k + 1', {})).toMatchObject(asProgram);
+  });
+
   // acorn reads a key present as `undefined` apart from a missing one: a
   // missing `checkPrivateFields` defaults to `true`. The service's own options
   // carry every acorn key, so the setter installs options without it.

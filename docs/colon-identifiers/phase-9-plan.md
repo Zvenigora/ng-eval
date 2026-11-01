@@ -802,7 +802,7 @@ failure count for each, reading which cases failed rather than that the suite di
   barrel.
 - **Edit**: `actual/services/parser.service.ts`; `parser.service.spec.ts`; `docs/backlog.md` and
   `docs/backlog-retired.md` — A26 retired as fixed, not yet released, its index row re-pointed, and
-  [A34](../backlog.md#a34), the limit of its identity memo, opened; `modules/eval-core/CHANGELOG.md`
+  [A34](../backlog-retired.md#a34), the limit of its identity memo, opened; `modules/eval-core/CHANGELOG.md`
   — the fix under `[Unreleased]`; `ROADMAP.md`, `docs/signals/phase-5-plan.md` and
   `docs/signals/phase-5-summary.md` — their links to A26 re-pointed to `backlog-retired.md`, which
   the doc-links gate requires once the entry moves. The last four were added by step 1 (Revision 3).
@@ -829,7 +829,7 @@ failure count for each, reading which cases failed rather than that the suite di
 - **Outcome** — done, `56e2049`, under Revision 3. Seventeen cases in `parser.service.spec.ts`,
   written first; fourteen wrong implementations, each red on the cases it targets. A fifteenth, the
   digest cut to 4 hex characters, stayed green: no two option sets the suite compares collide in
-  16 bits. It opened [A34](../backlog.md#a34).
+  16 bits. It opened [A34](../backlog-retired.md#a34).
 
 ### Step 2 — `eval-core`: the grammar, per call
 

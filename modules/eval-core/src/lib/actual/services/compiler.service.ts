@@ -115,7 +115,7 @@ export class CompilerService extends BaseEval implements OnDestroy {
    * the `ParserService.parserOptions` setter reaches a string compiled before
    * it (`docs/colon-identifiers/phase-9-plan.md` § 3.2). The memo is
    * `ParserService`'s kind, and a write in place goes unseen here as there
-   * (`docs/backlog.md` A34). `null` when that parse bypasses `ParserService`'s
+   * (`docs/backlog-retired.md` A34). `null` when that parse bypasses `ParserService`'s
    * cache - a callback or a `program` among its options, or a value JSON
    * cannot hold - and this cache then bypasses too, since a cached function
    * runs no callback.

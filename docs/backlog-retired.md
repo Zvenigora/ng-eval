@@ -1751,7 +1751,7 @@ every published `eval-core` to 0.11.1 is affected.
 the text alone and never asks the parser again (that plan's § 1.2 finding 6). Nothing observable can
 vary its parse until `colonIdentifiers` exists; that plan's step 3 keys it on the same fingerprint.
 And a write into an options object in place keeps its remembered fingerprint:
-[A34](backlog.md#a34), opened by this fix.
+[A34](#a34), opened by this fix.
 
 *Verified*: test-first, seventeen cases in `parser.service.spec.ts`, "ParserService cache keyed on
 parse-relevant options (A26)", against that plan's step 1 criteria: criterion 1, the permissive parse
@@ -2456,6 +2456,118 @@ fixed.
 *Verified*: measured 2026-10-10 at 7ee65fc through `EvalService.simpleEval` with `caseInsensitive:
 true`, with a throwaway spec deleted the same day. The fix: the nine rows above, red then green as
 the table says, and the four probes; `eval-core` 3288 → 3297.
+
+<a id="a34"></a>
+## A34 — The parse fingerprint's memo does not see options written in place
+
+**Package** core · **Kind** fix · **Status** **Retired — decided 2026-11-01: a documented limit**;
+ships in `eval-core` 0.15.1, documentation only. Was Open. Opened 2026-10-10 by [A26](#a26)'s fix,
+Phase 9 step 1
+
+*Decided* 2026-11-01, as step 3 of the [A33 plan](a33/plan.md): no code fix. The memo stays keyed by
+the options objects' identity, and the limit is written where a consumer reads it: the
+`ParserService.parserOptions` getter's JSDoc, `parse`'s `@param options`, a new JSDoc on
+`defaultParserOptions`, and a sentence in the README's colon-identifier section after the setter's.
+The contract each states is that a value written into an options object is not reliably seen;
+replace the object instead. The getter's JSDoc and this entry give the mechanism. The memo holds one
+digest per pair of objects, the service's options and the call's, built the first time the pair is
+parsed. A later parse through a pair fingerprinted before the write keeps that digest: a text still
+cached under it keeps its earlier reading, and a new text is parsed with the written values and
+cached under it, as if the options had not changed. `EvalService` and `CompilerService` always parse
+through one pair, passing `defaultParserOptions` itself. A parse through a new call-options object
+builds its digest from the values as written, and so sees the write (W6). So does a parse of a text
+evicted from `ParserService`'s cache since, read from the code, not measured: a text evicted by its
+limit of 100 entries, or by its five-minute cleanup, which clears the cache when it is over 80% full,
+is parsed again with the current values. A string `CompilerService` evicts, by its own limits, is
+compiled again through `ParserService.parse` and the same pair, so it sees the write only if that
+parse does; read from the code, not measured. Neither eviction is published: "not reliably seen"
+covers it without stating the cache's policy. `parseFingerprint`'s and `CompilerService`'s doc comments keep
+their text and point here. Freezing was not taken: it refuses a write a consumer can make today, a
+breaking change, and does not reach a caller's own options object.
+
+*Corrected before the step's commit*, by its code review: the first wording said a written value "is
+not seen for a text parsed or compiled before", which a new call-options object makes false. W6
+pins that half.
+
+**The evidence** is the plan's [§ 1.4](a33/plan.md#14-the-measurements). Its candidate V, a memo
+entry that keeps a snapshot of both objects' keys and values and checks it on every lookup, flipped
+every symptom below on the production bundle (`probe-V.json`), and cost +7.0% on
+`EvalService.simpleEval('a + 1', { a: 1 })`, 12 of 12 positive, about 0.4 µs a call, in the rerun
+its rules required after run 1 was void on that path. The rule, written before any timed run, shipped
+V at +5% or less.
+
+Six witness rows pin the documented contract, green on the code as it is, each measured first on
+the production bundle (`a34doc-A.json` and `a34doc2-A.json`, in the plan's pinned folder):
+
+| Row | Spec | Claim | Assertions |
+| :--- | :--- | :--- | :--- |
+| W1 | `parser.service.spec.ts` | the getter's object, a text parsed before | `parse('k + 1')` a `BinaryExpression`; `parserOptions.extractExpressions = false` written in place; `parse('k + 1')` still a `BinaryExpression` |
+| W2 | the same | the getter's object, a text parsed after | after the same write, `parse('k + 2')` a `Program`; `parse('k + 2', { extractExpressions: true })` served that `Program`; `parse('k + 3', { extractExpressions: true })` a `BinaryExpression`, the control |
+| W3 | the same | an object passed again | `o = { extractExpressions: true }`; `parse('k + 4', o)` a `BinaryExpression`; `o.extractExpressions = false`; `parse('k + 4', o)` still a `BinaryExpression` |
+| W4 | `compiler.service.spec.ts` | compiled strings | `compile('Q1:1 == 1')` throws `Unsupported statement type: LabeledStatement` when called; `colonIdentifiers = true` written into `ParserService`'s object; `compile('Q1:1 == 1')` the same function, still throwing; `compile('Q1:1 == 2')` with `{ 'Q1:1': 2 }` is `true` |
+| W5 | `eval.service.spec.ts` | `defaultParserOptions` | `simpleEval('await p', { p: 1 })` throws `Unexpected token (1:6)`; 2022 and `allowAwaitOutsideFunction` written in; `simpleEval('await q', { q: 1 })` is `1`; both written back; `await q` still `1`, `await r` throws again; restored in a `finally` |
+| W6 | `parser.service.spec.ts` | not reliably: a new object sees the write | after `parse('k + 1')` and the getter's `extractExpressions = false` written in place, `parse('k + 1')` a `BinaryExpression`, and `parse('k + 1', {})` a `Program` |
+
+The setter's rows, `parser.service.spec.ts`' and `compiler.service.spec.ts`' "criterion 3", are the
+other contrast: a new object installed through the setter is seen, for a text parsed before as for
+a new one. A memo validated by value, V, fails W1–W5, each at its own claim's line; it also fails
+W6, but only at W6's first line, which repeats W1's read, and W6's own line, `parse('k + 1', {})` a
+`Program`, holds under V, which sees the write too. W6's claim is witnessed against a cache keyed by
+the text alone, which fails it at that line, and fails the setter's rows. The probe,
+`parse-fingerprint.ts` made to the pinned V's code and reverted by hand: W1–W6 red as just said, and
+every other case green but one. The exception was F10's "allowlists no name
+the package README names", red with or without the probe: the README's new code span documents
+`defaultParserOptions`, so its allowlist entry in `export-list.spec.ts` came off.
+
+**The entry as it stood**:
+
+A26's fix keys `ParserService`'s cache on a fingerprint of the parse-relevant options, built once per
+pair of option objects, the service's `parserOptions` and the call's, and remembered by identity
+(`parse-fingerprint.ts`, `parseFingerprint`). A change made by writing into one of those objects keeps
+the old fingerprint. Three kinds of object are open to it: the one the `parserOptions` getter returns,
+written in place rather than replaced through the setter; an options object a direct
+`ParserService.parse` caller passes again after writing into it; and the exported
+`defaultParserOptions`, which `EvalService` and `CompilerService` pass on every parse.
+`parseFingerprint`'s doc comment says so.
+
+Measured: (a) after `ParserService.parse('k + 1')`, a `BinaryExpression`, and
+`parserOptions.extractExpressions = false` written in place, `parse('k + 1')` was still a
+`BinaryExpression` and `parse('k + 2')` a `Program`. That `Program` is cached under the old
+fingerprint, so a caller whose own options produce that fingerprint is served it:
+`parse('k + 2', { extractExpressions: true })` returned the `Program`, where
+`parse('k + 3', { extractExpressions: true })` returned a `BinaryExpression`. (b) With
+`defaultParserOptions` written in place to `ecmaVersion: 2022` and `allowAwaitOutsideFunction: true`,
+`EvalService.simpleEval('await p')` returned a promise; with both values written back, it still did.
+The permissive AST stays cached under the default fingerprint, which is A26's own symptom. (c) With
+`o = { ecmaVersion: 2020 }`, `parse('await p', o)` threw a `SyntaxError`; with `o` written in place to
+`ecmaVersion: 2022` and `allowAwaitOutsideFunction: true`, `parse('await p', o)` was an
+`AwaitExpression`, and so was `parse('await p', { ecmaVersion: 2020 })`, which shares `o`'s old
+fingerprint.
+
+**No worse than before A26's fix**: with the text-only key, every read above gives the same answer.
+Cached text is served with the old options, and new text is parsed with the new ones. Nothing in this
+repository writes into either object (`git grep`).
+
+**A second memo, since Phase 9 step 3.** `CompilerService` keys a compiled string on the same
+fingerprint, over `ParserService.parserOptions` and its own per-call options, in a memo of its own, so
+a write in place into either leaves a string it compiled before serving the old function. Read, not
+measured. No worse than before either: its key was the text alone, and ignored every change.
+
+**Fix, if ever**: freeze the options the service stores, or validate the memo cheaply, for instance
+by comparing a stored copy of the values on each lookup. Freezing `defaultParserOptions` or the
+getter's object would refuse a write a consumer can make today; a comparison runs on every parse,
+on the path the memo exists to keep cheap. Measure it if this is fixed.
+
+*Recorded*: this entry; `parseFingerprint`'s doc comment, written by A26's fix.
+*Verified*: measured 2026-10-10 on A26's fix, uncommitted on 6e7fafb, through `ParserService.parse`
+and `EvalService.simpleEval`, with throwaway specs deleted the same day; (c) after the step's review
+found the per-call case.
+
+*Corrected 2026-11-01*: (b)'s "returned a promise" is what the sync path gave up to 0.14.1, when an
+`await` handed the walk a promise; since 0.15.0 it gives its operand itself, so W5 reads `1`. The
+cached reading the measurement showed is unchanged. "Read, not measured" of the second memo: W4
+measures it. And "Three kinds of object are open to it" holds only for a pair parsed before the
+write: a new call-options object sees it (W6).
 
 <a id="a35"></a>
 ## A35 — A dangerous function value reachable from the context is callable past the name-based call sandbox
@@ -3618,7 +3730,7 @@ the funnel's refusal there stays, as it does for `fetch || 1`. Part 1's spec pin
 **Logical assignment is unreachable downstream today**, because `CompilerService`, `/reactive` and
 `/signals` pass `defaultParserOptions`, at `ecmaVersion: 2020`, on every call. Whoever raises the
 default `ecmaVersion` to 2021, or writes into `defaultParserOptions` in place (the route
-[A34](backlog.md#a34) records), has to revisit the downstream sites that call a
+[A34](#a34) records), has to revisit the downstream sites that call a
 `SignalContextWriteError` "illegal on every recompute with every dataset": a short-circuit makes that
 write error depend on the data. `git grep` on 2026-10-22 finds three in source (`eval-signal.ts` and
 `error-policy.ts` twice), four in specs (`eval-signal.spec.ts`, `field-schema.spec.ts`,

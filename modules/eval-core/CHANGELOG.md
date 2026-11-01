@@ -12,6 +12,15 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Changed
+- `ParserService.parserOptions`' and `parse`'s JSDoc, a new JSDoc on `defaultParserOptions`, and
+  the README's colon-identifier section say that a value written into an options object is not
+  reliably seen: the parse cache and `CompilerService`'s remember options objects by identity, so a
+  later parse or compile may keep a text's reading from before the write, or cache one made after it
+  as if nothing had changed; replace the object instead ([A34](../../docs/backlog-retired.md#a34)). No
+  behaviour changes. Documentation only: the JSDoc reaches the `.d.ts` and the bundle, the README
+  the tarball.
+
 ### Fixed
 - **Under `caseInsensitive`, a property added in the same interval as another is deleted is
   found by a case variant of its name.** The lookup cache kept an earlier miss while the object's
@@ -604,7 +613,7 @@ grammar's spec and corpus pass at 8.11.2 (the plan's § 8 q3). `eval-signals` 0.
   keys an AST, so a text compiled before `ParserService.parserOptions` was replaced through its
   setter — with `colonIdentifiers` turned on, for one — is compiled again rather than served the
   old function. A write in place into that object is not seen, as it is not for an AST
-  ([A34](../../docs/backlog.md#a34)). Two narrower
+  ([A34](../../docs/backlog-retired.md#a34)). Two narrower
   changes: a subclass that sets `CompilerService`'s protected per-call options is served a function
   for its current ones, compiled on every call when they carry an acorn callback or `program`, and
   a value JSON cannot hold, set in `ParserService.parserOptions` under a key `defaultParserOptions`
@@ -622,7 +631,7 @@ grammar's spec and corpus pass at 8.11.2 (the plan's § 8 q3). `eval-signals` 0.
   carrying a callback or a `program` neither reads nor writes the cache, so the callback runs on
   every parse. A change made through the `parserOptions` setter is honoured for text already
   cached; a write in place into an options object, the service's or one passed again, is not
-  ([A34](../../docs/backlog.md#a34)). Every published version to 0.11.1 is affected.
+  ([A34](../../docs/backlog-retired.md#a34)). Every published version to 0.11.1 is affected.
 
 ---
 

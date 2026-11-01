@@ -596,7 +596,6 @@ const UNDOCUMENTED: Readonly<Record<string, UndocumentedReason>> = {
   // What `CompilerService`, `EvalService`, `ParserService` and
   // `DiscoveryService` call. The free functions the README names under
   // `## Exported entry points` are not here.
-  defaultParserOptions: 'function-form',
   extractExpression: 'function-form',
 
   // `### Per-node timing`'s second block imports and calls it.

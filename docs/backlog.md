@@ -57,11 +57,12 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 ### Work in flight
 
 **The [A33 plan](a33/plan.md) is active**, steps 1 to 6: [A33](backlog-retired.md#a33), the
-case-insensitive lookup cache's miss re-validated by name, fixed, and [A34](#a34), the parse memo
-and options written in place, decided a documented limit, to ship as `eval-core` 0.15.1, a patch.
-`eval-signals` and `eval-forms` do not release: their peer range, `>=0.15.0 <0.16.0`, takes it. It
-is at Revision 2. Step 1, the plan, its measurements and decisions, is done, and so is step 2, A33,
-fixed and retired; step 3, A34, is next.
+case-insensitive lookup cache's miss re-validated by name, fixed, and [A34](backlog-retired.md#a34),
+the parse memo and options written in place, decided a documented limit, to ship as `eval-core`
+0.15.1, a patch. `eval-signals` and `eval-forms` do not release: their peer range,
+`>=0.15.0 <0.16.0`, takes it. It is at Revision 3. Step 1, the plan, its measurements and
+decisions, is done; so is step 2, A33, fixed and retired, and step 3, A34, documented and retired;
+step 4, the release commit, is next.
 
 **The A35 plan is complete**: [`docs/a35/plan.md`](a35/plan.md), at Revision 16, steps 1 to 11 and
 U3. `eval-core` 0.12.1 and 0.13.0 are published, with `eval-signals` 0.6.0 and `eval-forms` 0.6.0;
@@ -215,7 +216,7 @@ Phase 9, colon-joined identifiers, is complete: its
 [plan](colon-identifiers/phase-9-plan.md), at Revision 9, and its retrospect,
 [`colon-identifiers/phase-9-summary.md`](colon-identifiers/phase-9-summary.md), are design records,
 and it shipped as `eval-core` 0.12.0, `eval-signals` 0.5.1 and `eval-forms` 0.5.0, tagged at
-3466c80. It fixed [A26](backlog-retired.md#a26), opened [A34](#a34) and narrowed [D13](backlog-retired.md#d13). The
+3466c80. It fixed [A26](backlog-retired.md#a26), opened [A34](backlog-retired.md#a34) and narrowed [D13](backlog-retired.md#d13). The
 corpus stays synthetic until real expressions arrive as data; the plan's § 8 q1, q2 and q4 wait on
 them. `eval-core` 0.11.1, with the [A29](backlog-retired.md#a29) and
 [A31](backlog-retired.md#a31) fixes, is published and tagged at 7ee65fc. Phase 5 is complete: its
@@ -342,8 +343,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-forms` 0.7.1. F26, opened by 0.14.0's post-publish commit and fixed after it, ships in no package; F27 ships in no package but for one `eval-core` docblock | `69c3e0e` | 2026-10-29 | 25 | 4: F26–F29 | 2: F26, F27 | 27 |
 | `eval-core` 0.14.1. F28, decided by Phase 11 and shipped in `eval-forms` 0.7.1, was retired by 0.7.1's post-publish commit, after its tag; A47 is fixed, and A32 and A30 are decided, documentation only | `95932e6` | 2026-10-30 | 27 | 0 | 4: F28, A47, A32, A30 | 23 |
 | `eval-core` 0.15.0, `eval-signals` 0.8.0, `eval-forms` 0.8.0. A27 and A38 are fixed, and A25, A24 and D13 by the A24 plan, all released in them; F30 opened by the release commit's code review | `67486ab` | 2026-10-31 | 23 | 1: F30 | 5: A27, A38, A25, A24, D13 | 19 |
-| *Unreleased*. F30, fixed after the release commit, in no package; A53, decided, in no package; A33, fixed, for `eval-core` 0.15.1; A54 opened by step 2's code review | — | — | 19 | 1: A54 | 3: F30, A53, A33 | 17 |
-| **Since the register opened** | | | **42** | **73** | **98** | **17** |
+| *Unreleased*. F30, fixed after the release commit, in no package; A53, decided, in no package; A33, fixed, for `eval-core` 0.15.1; A54 opened by step 2's code review; A34, decided a documented limit, for `eval-core` 0.15.1 | — | — | 19 | 1: A54 | 4: F30, A53, A33, A34 | 16 |
+| **Since the register opened** | | | **42** | **73** | **99** | **16** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -398,7 +399,7 @@ makes it that release's row, with its tag commit and date.
 | [A31](backlog-retired.md#a31) | The case-insensitive property cache keys an object by its key count and first five keys — objects sharing them share answers, process-wide | core | fix | **Retired — fixed 2026-10-10**; released 2026-10-10 in `eval-core` 0.11.1, tagged 7ee65fc. Keyed by the object itself, a cached key re-checked as the object's own; a colliding entry no longer turns a case-variant refusal into `undefined`. Affected `eval-core` 0.2.1–0.11.0 |
 | [A32](backlog-retired.md#a32) | The disabled visitor result cache keys a node without its operands — `a + b` and `c + d` share an entry | core | decision | **Retired — decided and deleted 2026-10-29**; released 2026-10-30 in `eval-core` 0.14.1, tagged 95932e6, comments only: no code reached the bundle |
 | [A33](backlog-retired.md#a33) | The case-insensitive property cache keeps a miss while the own-key count is unchanged — a key added as another is deleted reads `undefined` by a case variant | core | fix | **Retired — fixed 2026-11-01**, as step 2 of the [A33 plan](a33/plan.md); ships in `eval-core` 0.15.1. A cached miss stands only while the object's own names are those it was made from, in order. The stale miss also skipped a refusal, of a blocked own name that is not an own property of the object's immediate prototype — `prototype` on a plain object, every blocked name but `constructor` on an instance of a class that declares none of them, any on a null-prototype one — which read `undefined` and wrote a sibling key; the blocked value was neither returned nor written. Opened 2026-10-10, after the `eval-core` 0.11.1 tag |
-| [A34](#a34) | The parse fingerprint's memo does not see options written in place — a write into `parserOptions`, a reused per-call object or `defaultParserOptions` keeps the old fingerprint | core | fix | Open. Scheduled — the [A33 plan](a33/plan.md), step 3. Opened 2026-10-10 by [A26](backlog-retired.md#a26)'s fix, Phase 9 step 1; no worse than the text-only key it replaced |
+| [A34](backlog-retired.md#a34) | The parse fingerprint's memo does not see options written in place — a write into `parserOptions`, a reused per-call object or `defaultParserOptions` keeps the old fingerprint | core | fix | **Retired — decided 2026-11-01: a documented limit**, as step 3 of the [A33 plan](a33/plan.md); ships in `eval-core` 0.15.1, documentation only. The getter's and `parse`'s JSDoc, a new JSDoc on `defaultParserOptions` and the README say an options object is remembered by identity, and to replace one rather than write into it. Opened 2026-10-10 by [A26](backlog-retired.md#a26)'s fix, Phase 9 step 1 |
 | [A35](backlog-retired.md#a35) | A dangerous function value reachable from the context is callable past the name-based call sandbox — by an alias, through `call` / `apply` / `bind`, and as a native callback (`map`, `Reflect.apply`, `then`); `eval("1+1")` is refused, `["1+1"].map(eval)` is `[2]` | core | decision, security | **Retired — fixed 2026-10-18**, as steps 2, 4, 7 and 8 of the [A35 plan](a35/plan.md). Steps 2 and 4 released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30, as partial hardening; steps 7 and 8, which close its last route, [A39](backlog-retired.md#a39), released 2026-10-20 in `eval-core` 0.13.0, tagged f7f27f7; advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx). A host container stays a documented limit |
 | [A36](backlog-retired.md#a36) | A tagged template's tag is called with no sandbox check — `` Function`return 7`() `` gives 7 with `Function` under its own name | core | fix, security | **Retired — fixed 2026-10-15**, as step 1 of the [A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30; advisory [GHSA-qrqj-3445-3rjx](https://github.com/Zvenigora/ng-eval/security/advisories/GHSA-qrqj-3445-3rjx). A tag is called as a callee is, through the call sandbox and the write policy; a member tag shares the member call's path, so its `this` is its object. Affected every published `eval-core` to 0.12.0 |
 | [A37](backlog-retired.md#a37) | `SequenceExpression` has no visitor: `(0, 1)` leaves a value on the stack | core | fix | **Retired — fixed 2026-10-15**, as step 3 of the [A35 plan](a35/plan.md); released 2026-10-17 in `eval-core` 0.12.1, tagged 7cc8d30. A sequence leaves one value on the stack, and raises one `before` and one `after` event and one trace entry; no evaluated value changes. Affected every published `eval-core` to 0.12.0 |
@@ -570,8 +571,8 @@ several of these visible at all. [A6](backlog-retired.md#a6) was surfaced by Pha
 ([`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) § 1.3), which needs neither;
 A30 was decided by documenting what the setter configures.
 [A31](backlog-retired.md#a31) and [A32](backlog-retired.md#a32) were found by A29's fix, grepping for other keys built
-from an object's shape; A32 was decided by deleting the cache. [A33](backlog-retired.md#a33) is a limit A31's fix left, and documented in the code; [A34](#a34)
-is one A26's fix left, documented the same way. [A44](backlog-retired.md#a44)–[A47](backlog-retired.md#a47) were found by the
+from an object's shape; A32 was decided by deleting the cache. [A33](backlog-retired.md#a33) is a limit A31's fix left, fixed by the
+[A33 plan](a33/plan.md); [A34](backlog-retired.md#a34) is one A26's fix left, decided by the same plan a documented limit. [A44](backlog-retired.md#a44)–[A47](backlog-retired.md#a47) were found by the
 [A40](backlog-retired.md#a40) and [A41](backlog-retired.md#a41) batch: A44 by its
 `caseInsensitive` matrix, A45 while correcting `SECURITY.md`'s account of an assignment, and
 [A46](backlog-retired.md#a46) and A47 by its code review. A46 is fixed and retired, and ships with
@@ -823,54 +824,6 @@ retention planted in `simpleEvalAsync` still fails exactly 1.4 and 1.5, so the r
 short-lived reference without masking a kept one.
 
 ---
-
-<a id="a34"></a>
-## A34 — The parse fingerprint's memo does not see options written in place
-
-**Package** core · **Kind** fix · **Status** Open. Scheduled — the [A33 plan](a33/plan.md), step 3.
-Opened 2026-10-10 by [A26](backlog-retired.md#a26)'s fix, Phase 9 step 1
-
-A26's fix keys `ParserService`'s cache on a fingerprint of the parse-relevant options, built once per
-pair of option objects, the service's `parserOptions` and the call's, and remembered by identity
-(`parse-fingerprint.ts`, `parseFingerprint`). A change made by writing into one of those objects keeps
-the old fingerprint. Three kinds of object are open to it: the one the `parserOptions` getter returns,
-written in place rather than replaced through the setter; an options object a direct
-`ParserService.parse` caller passes again after writing into it; and the exported
-`defaultParserOptions`, which `EvalService` and `CompilerService` pass on every parse.
-`parseFingerprint`'s doc comment says so.
-
-Measured: (a) after `ParserService.parse('k + 1')`, a `BinaryExpression`, and
-`parserOptions.extractExpressions = false` written in place, `parse('k + 1')` was still a
-`BinaryExpression` and `parse('k + 2')` a `Program`. That `Program` is cached under the old
-fingerprint, so a caller whose own options produce that fingerprint is served it:
-`parse('k + 2', { extractExpressions: true })` returned the `Program`, where
-`parse('k + 3', { extractExpressions: true })` returned a `BinaryExpression`. (b) With
-`defaultParserOptions` written in place to `ecmaVersion: 2022` and `allowAwaitOutsideFunction: true`,
-`EvalService.simpleEval('await p')` returned a promise; with both values written back, it still did.
-The permissive AST stays cached under the default fingerprint, which is A26's own symptom. (c) With
-`o = { ecmaVersion: 2020 }`, `parse('await p', o)` threw a `SyntaxError`; with `o` written in place to
-`ecmaVersion: 2022` and `allowAwaitOutsideFunction: true`, `parse('await p', o)` was an
-`AwaitExpression`, and so was `parse('await p', { ecmaVersion: 2020 })`, which shares `o`'s old
-fingerprint.
-
-**No worse than before A26's fix**: with the text-only key, every read above gives the same answer.
-Cached text is served with the old options, and new text is parsed with the new ones. Nothing in this
-repository writes into either object (`git grep`).
-
-**A second memo, since Phase 9 step 3.** `CompilerService` keys a compiled string on the same
-fingerprint, over `ParserService.parserOptions` and its own per-call options, in a memo of its own, so
-a write in place into either leaves a string it compiled before serving the old function. Read, not
-measured. No worse than before either: its key was the text alone, and ignored every change.
-
-**Fix, if ever**: freeze the options the service stores, or validate the memo cheaply, for instance
-by comparing a stored copy of the values on each lookup. Freezing `defaultParserOptions` or the
-getter's object would refuse a write a consumer can make today; a comparison runs on every parse,
-on the path the memo exists to keep cheap. Measure it if this is fixed.
-
-*Recorded*: this entry; `parseFingerprint`'s doc comment, written by A26's fix.
-*Verified*: measured 2026-10-10 on A26's fix, uncommitted on 6e7fafb, through `ParserService.parse`
-and `EvalService.simpleEval`, with throwaway specs deleted the same day; (c) after the step's review
-found the per-call case.
 
 <a id="a48"></a>
 ## A48 — Under `caseInsensitive`, a member read calls a prototype accessor twice

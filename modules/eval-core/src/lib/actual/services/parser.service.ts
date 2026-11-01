@@ -28,6 +28,15 @@ export class ParserService implements OnDestroy {
   /**
    * Gets the parser options: the constructor's, or the last value given to
    * the setter.
+   *
+   * Replace the object through the setter rather than write into the one this
+   * returns: a value written into it is not reliably seen. The parse cache,
+   * and `CompilerService`'s cache of compiled strings, remember each pair of
+   * options objects, this one and a call's, by identity, not by their values.
+   * A later parse through a pair seen before the write, as `EvalService`'s and
+   * `CompilerService`'s are, keeps a cached text's earlier reading and caches
+   * a new text as if the options had not changed; a parse through a new
+   * call-options object sees the write (`docs/backlog-retired.md` A34).
    */
   get parserOptions(): ParserOptions {
     return this._parserOptions;
@@ -131,7 +140,10 @@ export class ParserService implements OnDestroy {
    * @description
    * Parses expression and returns ES6/ES2023 AST.
    * @param expr expression to parse
-   * @param options optional parser options
+   * @param options optional parser options, merged over `parserOptions`. Pass
+   * a new object for new options: a value written into an object already
+   * passed is not reliably seen, since the cache remembers the object by
+   * identity (`docs/backlog-retired.md` A34).
    * @returns The parsed AST (Abstract Syntax Tree).
    */
   public parse(expr: string, options?: ParserOptions)

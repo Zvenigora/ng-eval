@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { EvalService } from './eval.service';
 import { AnyNode } from 'acorn';
+import { defaultParserOptions } from '../../internal/classes/eval';
 
 describe('EvalService', () => {
   let service: EvalService;
@@ -56,6 +57,30 @@ describe('EvalService', () => {
     } as unknown as AnyNode;
     const result = service.simpleEval(expression);
     expect(result).toEqual(4);
+  });
+
+  // `docs/backlog-retired.md` A34: the parse cache remembers
+  // `defaultParserOptions`, which this service passes on every parse, by
+  // identity, so a text parsed while it held a written value keeps that
+  // reading after it is written back. It is a module-level export every later
+  // spec reads, so the `finally` restores it.
+  it('A34: a text parsed while defaultParserOptions held a written value keeps that reading after it is written back', () => {
+    const { ecmaVersion, allowAwaitOutsideFunction } = defaultParserOptions;
+    try {
+      expect(() => service.simpleEval('await p', { p: 1 })).toThrow('Unexpected token (1:6)');
+
+      defaultParserOptions.ecmaVersion = 2022;
+      defaultParserOptions.allowAwaitOutsideFunction = true;
+      expect(service.simpleEval('await q', { q: 1 })).toBe(1);
+
+      defaultParserOptions.ecmaVersion = ecmaVersion;
+      defaultParserOptions.allowAwaitOutsideFunction = allowAwaitOutsideFunction;
+      expect(service.simpleEval('await q', { q: 1 })).toBe(1);
+      expect(() => service.simpleEval('await r', { r: 1 })).toThrow('Unexpected token (1:6)');
+    } finally {
+      defaultParserOptions.ecmaVersion = ecmaVersion;
+      defaultParserOptions.allowAwaitOutsideFunction = allowAwaitOutsideFunction;
+    }
   });
 
   // it('should throw an error if evaluation fails', () => {

@@ -78,7 +78,7 @@ export const buildParseFingerprint = (options: ParserOptions): string | null => 
  * object the `parserOptions` getter returns, an options object a caller passes
  * again after writing into it, or the exported `defaultParserOptions`. A change
  * through the `parserOptions` setter installs a new object, and is seen
- * (`docs/backlog.md` A34).
+ * (`docs/backlog-retired.md` A34).
  */
 export const parseFingerprint = (memo: ParseFingerprintMemo,
                                  serviceOptions: ParserOptions,

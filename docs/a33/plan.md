@@ -1,11 +1,11 @@
 # A33 and A34 — the lookup cache's miss and the parse memo's options, decided by measurement (`@zvenigora/ng-eval-core`)
 
 **Date**: October 31, 2026
-**Revision**: 2 — step 2.
+**Revision**: 3 — step 3.
 
 Two `eval-core` entries recorded in 0.12.0 with the same instruction, "measure it if this is
 fixed": [A33](../backlog-retired.md#a33), the case-insensitive property cache keeping a miss across a
-same-count key swap, and [A34](../backlog.md#a34), the parse fingerprint's memo not seeing options
+same-count key swap, and [A34](../backlog-retired.md#a34), the parse fingerprint's memo not seeing options
 written in place. Each had one candidate fix whose cost was on a hot path. This plan records the
 prototypes, the decision rules written before any timed run ([SR28](../standing-rules.md#sr28)),
 the runs, and what they decided: **A33 is fixed; A34 is decided a documented limit.** Both ship in
@@ -181,7 +181,9 @@ array's names cost more was not measured. The cost is recorded, not designed out
   claim with a witness row (SR21). The internal comments keep their text and point at the retired
   entry.
 - **D4. One release, `eval-core` 0.15.1**, a patch: a fix and documentation, no API change. The
-  `.d.ts` changes by the three JSDoc blocks only; the step diffs it against 0.15.0's tarball.
+  `.d.ts` changes by JSDoc blocks only, three changed and one added (*corrected in step 3*: "the
+  three JSDoc blocks"; the private `generateCacheKey`'s comment is emitted too, and its re-point
+  changes it); the step diffs it against 0.15.0's tarball.
 
 ## 3. Design
 
@@ -194,10 +196,14 @@ was made from, in order. No other file changes in `src/`.
 
 ### 3.2 A34 (step 3)
 
-No code. Three JSDoc blocks and one README sentence, each saying the same thing in its place: the
-parse cache remembers an options object by identity, so a value written into it — the object the
-getter returns, an object passed to `parse` again, or `defaultParserOptions` — is not seen, and a
-text parsed before keeps its earlier reading; replace the object instead. `parseFingerprint`'s and
+No code. Two public JSDoc blocks changed and one added (*corrected in step 3*: "Three JSDoc blocks",
+where `defaultParserOptions` had none; with `generateCacheKey`'s re-pointed comment, three change in
+the `.d.ts`), and one README sentence, each saying the same thing in its place: a value written into
+an options object — the one the getter returns, one passed to `parse` again, or
+`defaultParserOptions` — is not reliably seen, since the parse cache remembers options objects by
+identity; replace the object instead. The getter's JSDoc and the retired entry give the mechanism
+(*corrected in step 3*: this said a written value "is not seen, and a text parsed before keeps its
+earlier reading", which a new call-options object makes false, as the step's code review measured). `parseFingerprint`'s and
 `CompilerService`'s comments re-point from `docs/backlog.md` to `docs/backlog-retired.md` A34.
 
 ## 4. Work breakdown
@@ -213,12 +219,13 @@ so step 2 was requested by number.
 | :--- | :--- | :--- | :--- | :--- |
 | 1 | This plan and its records | `docs/a33/plan.md` (new), `docs/README.md`, `docs/backlog.md`, `CLAUDE.md`, `.claude/skills/step/SKILL.md` | 0 / 0 / 0 | no package |
 | 2 | A33: the miss is re-validated by name | `property-lookup-cache.ts`, `property-lookup-cache.spec.ts`, `eval.service.case-variant-guard.spec.ts`, `CHANGELOG.md`, `CLAUDE.md`, the register, the skill, this document; `SECURITY.md`, `docs/README.md` and the A24 plan, A33's links (*widened in step 2*) | **+9** / 0 / 0 | `eval-core` 0.15.1; `SECURITY.md` no package |
-| 3 | A34: documented where a consumer reads | the three JSDoc blocks' files, `README.md`, `parse-fingerprint.ts` and `compiler.service.ts`' comments, `parser.service.spec.ts`, `CHANGELOG.md`, the register, the skill, this document | **+2** / 0 / 0 | `eval-core` 0.15.1 |
+| 3 | A34: documented where a consumer reads | `parser.service.ts`, `parser-options.ts`, `README.md`, `parse-fingerprint.ts` and `compiler.service.ts`' comments, `parser.service.spec.ts`, `compiler.service.spec.ts`, `eval.service.spec.ts`, `CHANGELOG.md`, the register, the skill, this document; `docs/README.md` and the Phase 9 plan and summary, A34's links (*corrected in step 3*); `export-list.spec.ts`, an allowlist entry (*widened in step 3*) | **+6** / 0 / 0 | `eval-core` 0.15.1 |
 | 4 | The release commit, `eval-core` 0.15.1 | `package.json`, `CHANGELOG.md`, the register, the skill, this document; a downstream row if § 8 q1 adds one | 0 / 0 / 0, unless q1 adds a row | the release |
 | 5 | The post-publish record | the register, `CLAUDE.md`, the tag, the skill, this document | 0 / 0 / 0 | no package |
 | 6 | Retrospect | this document's § 9 and § 10, `docs/standing-rules.md` if a rule stands, `CLAUDE.md`, `docs/README.md`, the register, the skill | 0 / 0 / 0 | no package |
 
-From 3288 / 449 / 386, `eval-core` is at 3297 after step 2 and 3299 after step 3.
+From 3288 / 449 / 386, `eval-core` is at 3297 after step 2 and 3303 after step 3 (*corrected in
+step 3*: 3299).
 
 ### Step 1 — This plan and its records
 
@@ -386,18 +393,144 @@ From 3288 / 449 / 386, `eval-core` is at 3297 after step 2 and 3299 after step 3
 
 ### Step 3 — A34: documented where a consumer reads
 
-- **Witness rows** (SR21), in `parser.service.spec.ts`: a value written into the getter's object is
-  not seen for a text parsed before; the same change made by setting a new object is seen, for that
-  text and a new one. Both green on today's code, since they pin today's behaviour as the documented
-  contract (Status "Covered" until retirement).
-- **Edit**: the getter's JSDoc, `parse`'s `@param options`, `defaultParserOptions`' JSDoc; the
-  README sentence after the setter's ("Setting `ParserService.parserOptions` to a new object…"); the
-  two internal comments re-pointed; `CHANGELOG.md` `[Unreleased]` `### Documentation`; A34 retired,
-  "decided: documented", with § 1.4 as its evidence.
-- **Claim → witness** (SR21), written in the step: each of the four new sentences against the
-  row that fails if it is false. The step names the wrong implementation each row catches
-  ([SR20](../standing-rules.md#sr20)): a cache keyed by text alone passes the "seen through the
-  setter" row for a new text and fails it for a text parsed before.
+*Corrected in step 3* ([SR4](../standing-rules.md#sr4)): this step named two witness rows, both in
+`parser.service.spec.ts`, the second the setter's, which "criterion 3" already pins. Each documented
+claim needs its own row, so there are six, four of them in `parser.service.spec.ts`, and the
+setter's existing rows are a contrast. The CHANGELOG section was `### Documentation`, which this
+CHANGELOG does not use; 0.14.1's documentation lines are under `### Changed`, placed before
+`### Fixed` as in every other entry. After the code review, below, the documented contract is "not
+reliably seen", W3 is reshaped and W6 is added. *Widened in step 3* ([SR3](../standing-rules.md#sr3)):
+`modules/eval-core/src/export-list.spec.ts`. The README's new sentence names `defaultParserOptions`
+in a code span, which documents it, so its `function-form` allowlist entry comes off, as the spec's
+own comment prescribes: "A name the README documents comes off the list". Nothing else in the spec
+changes, and no row count moves.
+
+- **Witness rows first** ([SR21](../standing-rules.md#sr21)), green on today's code, since they pin
+  the documented contract. Each in its file's style, a fresh root injector per case, its value
+  asserted exactly. Measured first on the production bundle of ede0c6b by `a34doc.mjs`
+  (`25ABF1EA…C046796C`, pinned beside the rest, `a34doc-A.json`):
+  - W1, `parser.service.spec.ts`, the getter's object written in place is not seen for a text
+    parsed before with no call options: `parse('k + 1')` a `BinaryExpression`; `parserOptions.extractExpressions = false`;
+    `parse('k + 1')` still a `BinaryExpression`.
+  - W2, the same file, a text parsed after such a write is cached as if the options were unchanged:
+    after the same write, `parse('k + 2')` a `Program`, and `parse('k + 2', { extractExpressions:
+    true })` served that `Program`, while `parse('k + 3', { extractExpressions: true })` is a
+    `BinaryExpression`, the control.
+  - W3, the same file, a caller's own options object passed again after a write (*reshaped after
+    the code review*, measured by `a34doc2.mjs`, `B3B1CB64…35C87872`, `a34doc2-A.json`):
+    `o = { extractExpressions: true }`; `parse('k + 4', o)` a `BinaryExpression`;
+    `o.extractExpressions = false`; `parse('k + 4', o)` still a `BinaryExpression`. It was an
+    `await p` row whose first parse threw, so nothing was cached before the write and the row
+    witnessed only the "parsed after" half.
+  - W4, `compiler.service.spec.ts`, in "the string key under the parse fingerprint", a write into
+    `ParserService`'s options object reaches no string compiled before: `before = compile('Q1:1 ==
+    1')` throws `Unsupported statement type: LabeledStatement` when called;
+    `parserOptions.colonIdentifiers = true` written in place; `compile('Q1:1 == 1')` is `before`, and
+    still throws; `compile('Q1:1 == 2')` called with `{ 'Q1:1': 2 }` is `true`. The setter's rows
+    beside it ("criterion 3") are the contrast.
+  - W5, `eval.service.spec.ts`, `defaultParserOptions` written and written back: `simpleEval('await
+    p', { p: 1 })` throws `Unexpected token (1:6)`; `ecmaVersion` 2022 and `allowAwaitOutsideFunction`
+    written in; `simpleEval('await q', { q: 1 })` is `1`; both written back; `await q` still `1`, and
+    `await r` throws again. `defaultParserOptions` restored in a `finally`: it is a module-level export
+    every later spec reads.
+  - W6, `parser.service.spec.ts`, the contrast (*added after the code review*, `a34doc2-A.json`):
+    after `parse('k + 1')` and `parserOptions.extractExpressions = false` written in place,
+    `parse('k + 1')` a `BinaryExpression`, and `parse('k + 1', {})` a `Program`.
+- **Probes** ([SR15](../standing-rules.md#sr15)), each applied alone and reverted by hand:
+  - V: `parse-fingerprint.ts` made to the pinned V's code (`0EDC5C4E…2555258A`), the doc comment
+    left re-pointed. Predicted from `a34doc-V.json`, `a34doc2-V.json` and `probe-V.json`: W1–W5 red,
+    W6 and the setter's existing rows green.
+  - F10: the code span around `defaultParserOptions` dropped from the new README sentence.
+    Predicted: "names every export in a code span of the package README, or allowlists it" red,
+    naming `defaultParserOptions`.
+- **Edit** ([SR36](../standing-rules.md#sr36)): the getter's JSDoc and `parse`'s `@param options`
+  (`parser.service.ts`); a new JSDoc on `defaultParserOptions` (`parser-options.ts`); the README
+  sentence after the setter's ("…while a function already compiled keeps the reading it was compiled
+  with."), with no link, since the README is published; `parse-fingerprint.ts`' and
+  `compiler.service.ts`' references re-pointed to `docs/backlog-retired.md` A34, their text kept;
+  `CHANGELOG.md` `[Unreleased]` `### Changed`; A34 retired, "decided: a documented limit", with
+  § 1.4 and W1–W6 as its evidence, every inbound `#a34` link re-pointed (design records the link
+  only, [SR6](../standing-rules.md#sr6)); `export-list.spec.ts`' `defaultParserOptions` allowlist
+  entry removed (*widened in step 3*).
+- **Claim → witness** ([SR21](../standing-rules.md#sr21)) and the wrong implementations
+  ([SR20](../standing-rules.md#sr20)), in the Outcome.
+- **Kill-list** ([SR25](../standing-rules.md#sr25)): `` backlog.md` A34 ``, `backlog.md#a34`,
+  `Not caught`.
+- **Review**: the `code-reviewer` ([SR33](../standing-rules.md#sr33)).
+- **Outcome** (2026-11-01):
+  - **The pins**: `a33-prototype-add5.zip` (`D235C1D1…59C7818`) and, after the code review,
+    `a33-prototype-add6.zip` (`666FD41F…3F31F58B73`), each extracted beside the rest, their six
+    hashes appended to `SHA256SUMS.txt`; `sha256sum -c` 56 of 56.
+  - **The rows**, written before any documentation: W1–W5 green on ede0c6b's code, as measured;
+    `eval-core` 3302 of 3302. After the review, W3 reshaped and W6 added, all six green; 3303 of
+    3303.
+  - **The first probe of V**, on the five rows, every `eval-core` case read: 5 red of 3302, W1–W5
+    and nothing else, as predicted.
+  - **The code review's Critical.** The first wording said a written value "is not seen for a text
+    parsed or compiled before, and a text parsed after the write is cached as if the options had not
+    changed", in the getter's JSDoc, `parse`'s and `defaultParserOptions`', the README, the CHANGELOG
+    and the retired entry. That was false now ([SR31](../standing-rules.md#sr31)). The memo holds one
+    digest per pair of objects, so a parse through a new call-options object builds its digest from
+    the written values: after the write, `parse('k + 1', {})` is a `Program`. A text evicted from the
+    cache is also parsed again with the written values. Rewritten everywhere as "not reliably seen",
+    with the mechanism in the getter's JSDoc and the retired entry; W6 pins the contrast. The
+    review's Important: W3 and W5 each began with a parse that threw, so neither cached a text before
+    the write, and the table gave them the "parsed before" claim; W3 is reshaped. Its Minors: the
+    `.d.ts` changes in three blocks, plus one added, since the private `generateCacheKey`'s comment
+    is emitted (D4, § 3.2, § 5); `### Changed` placed before `### Fixed`; `defaultParserOptions`'
+    JSDoc names `ParserService`'s copy; and "the values it held before" is gone with the rewording.
+  - **The re-review of the delta**: no Critical. I-a: the retired entry said a string `CompilerService`
+    evicts sees the write, but it is compiled again through `ParserService.parse` and the same pair,
+    so it sees the write only if that parse does; corrected. I-b: the getter's JSDoc said "a parse …
+    of a text evicted since, sees the write", and no row witnessed it. The clause is dropped rather
+    than witnessed: it would have published the cache's eviction policy, and "not reliably seen"
+    covers eviction without it. The retired entry keeps eviction in its mechanism paragraph, marked
+    read from the code, not measured; it is not published, so no row is owed. No W7, and `eval-core`
+    stays at 3303. M-a: V's red on W6 is at W1's read, which W6 repeats, so it is no evidence about
+    W6's claim ([SR23](../standing-rules.md#sr23)); the table and the retired entry say so. M-b: the
+    README's and the CHANGELOG's "the reading it made before the write", whose "it" was the later
+    parse, become "a text's reading from before the write".
+  - **The probes**, every `eval-core` case read, each reverted by hand:
+
+    | Probe | Red | Against the prediction |
+    | :--- | :--- | :--- |
+    | V | W1–W5, each at its own claim's line: W1 at the second `parse('k + 1')`; W2 at the served `toBe`; W3 at the second `parse('k + 4', o)`; W4 at `toBe(before)`; W5 at the written-back `await q`, which threw. W6 at W1's read, which it repeats; its own line is green under V ([SR23](../standing-rules.md#sr23)). Also F10's "allowlists no name the package README names", twice, once in each file that runs it; that came from the README's new code span, not from the probe | W6 red, predicted green |
+    | F10 | 2: "names every export in a code span of the package README, or allowlists it", naming `defaultParserOptions`, in `export-list.spec.ts` and in `public-api.spec.ts`, which imports its cases | as predicted, run twice |
+
+    W6's miss: its first assertion after the write is W1's read, and `a34doc2-V.json`'s
+    `X_no_call_options` is a `Program` under V, so the row's own measurement predicted it red. V's
+    red there is no evidence about W6's claim, since `parse('k + 1', {})` is a `Program` under V as
+    well; that line is witnessed against the text-only key. The row is kept as written. After the V
+    probe, `parse-fingerprint.ts`' diff is the one re-pointed line.
+  - **Claim → witness**:
+
+    | Claim | Where it is written | Witness |
+    | :--- | :--- | :--- |
+    | A later parse or compile may keep the reading made before the write | the getter's JSDoc; `parse`'s and `defaultParserOptions`' JSDoc; the README; the CHANGELOG | W1, W3 |
+    | A text parsed after the write may be cached as if nothing had changed | the same | W2, W5 |
+    | A string compiled before the write keeps its reading | the getter's JSDoc ("`CompilerService`'s cache of compiled strings"); the README | W4 |
+    | Not reliably: a new call-options object sees the write | the getter's JSDoc; the README's "not reliably seen"; the retired entry | W6 |
+    | A new object through the setter is seen, of a text seen before as of a new one | the getter's JSDoc ("through the setter"); the README's sentence before | `parser.service.spec.ts`' and `compiler.service.spec.ts`' "criterion 3" rows |
+    | `defaultParserOptions` is documented in the README | the README's code span | F10's two rows, by the F10 probe |
+
+    The wrong implementations: a memo validated by value, V, fails W1–W5, as the probe shows; a cache
+    keyed by the text alone fails W6, at `parse('k + 1', {})`, and the setter's rows, which pin that a
+    text parsed before is re-parsed after the setter.
+  - **Kill-list**, `git grep -n` on the final tree: `` backlog.md` A34 ``, none, the two code
+    comments re-pointed; `backlog.md#a34`, none. Besides the index row, Work in flight and the
+    A-section summary, rewritten with the retirement, the eleven links doc-links listed are
+    re-pointed: `docs/README.md`'s Active plan row; this document's opening; two in
+    `backlog-retired.md`, A26's and A45's entries; Work in flight's Phase 9 paragraph in
+    `backlog.md`; two in the Phase 9 plan and two in its summary, design records, the link only; and
+    two in the CHANGELOG's 0.12.0 entry, the link only. `Not caught`, 6: A33's entry as it stood,
+    kept as history, and five unrelated, in the Phase 5 plan and the three CHANGELOGs. The A-section
+    summary's "A33 is a limit A31's fix left, and documented in the code" was false since step 2,
+    and is rewritten in the sentence A34's link sat in ([SR31](../standing-rules.md#sr31)). The
+    review's dead claim, by `not seen for a text`, `remember an options object by identity`, `is
+    remembered by identity`, `values it held before` and `keeps its earlier reading`: W1's and W3's
+    names narrowed to their setups, "with no call options" and "a text it parsed"; the rest are this
+    document's and the retired entry's quotations of the old wording, the retired entry's mechanism,
+    and A34's index row, which states the mechanism, kept.
 
 ### Step 4 — Release commit, `eval-core` 0.15.1
 
@@ -417,13 +550,14 @@ with the register history row and the publication status.
 
 ## 5. Public API surface
 
-Unchanged. Three JSDoc blocks change in the `.d.ts`.
+Unchanged. Three JSDoc blocks change in the `.d.ts`, the private `generateCacheKey`'s among them,
+and one is added, on `defaultParserOptions`.
 
 ## 6. Verification gates
 
 [SR8](../standing-rules.md#sr8) after every step, on the committed tree. Counts rise by step 2's
-nine rows and step 3's two in `eval-core` (*corrected in step 2*: three), to 3297 and 3299;
-`eval-signals` and `eval-forms` unchanged.
+nine rows and step 3's six in `eval-core` (*corrected in step 2*: three; *in step 3*: two), to 3297
+and 3303; `eval-signals` and `eval-forms` unchanged.
 
 ## 7. Risks
 

@@ -19,8 +19,9 @@ Requested step: $ARGUMENTS
   "Security-relevant code" paragraph, and A33 retired. Its probe P2-1 is a variant of the pinned
   prototype `property-lookup-cache.B1.ts`, under `D:\repo.2026\ng-eval-base\a33-prototype\` beside its
   `SHA256SUMS.txt` (SR32).
-- **Step 3 is `eval-core`**: three JSDoc blocks, one README sentence, two internal comments
-  re-pointed, two witness rows in `parser.service.spec.ts`, an `[Unreleased]` line in its CHANGELOG,
+- **Step 3 is `eval-core`**: two JSDoc blocks changed and one added, one README sentence, two
+  internal comments re-pointed, six witness rows in `parser.service.spec.ts`,
+  `compiler.service.spec.ts` and `eval.service.spec.ts`, an `[Unreleased]` line in its CHANGELOG,
   and A34 retired. No code changes.
 - **Step 4 is the release commit**, `eval-core` 0.15.1 alone, with the plan's § 8 q1 decided first.
   `eval-signals` and `eval-forms` do not release: their peer range, `>=0.15.0 <0.16.0`, takes the
@@ -29,7 +30,7 @@ Requested step: $ARGUMENTS
   retrospect**.
 
 **The counts the steps start from**, the gate at 509b007: `eval-core` 3288, `eval-signals` 449,
-`eval-forms` 386. `eval-core` reaches 3297 at step 2 and 3299 at step 3; `eval-signals` and
+`eval-forms` 386. `eval-core` reaches 3297 at step 2 and 3303 at step 3; `eval-signals` and
 `eval-forms` do not move unless step 4's § 8 q1 adds a downstream row.
 
 **Step state**: read it from the plan, not from here. The last step in its § 4 with a recorded

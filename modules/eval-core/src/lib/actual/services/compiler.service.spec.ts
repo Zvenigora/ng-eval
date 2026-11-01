@@ -145,6 +145,23 @@ describe('CompilerService', () => {
       expect(await service.simpleCallAsync(after, { Q1: 1 })).toBe(false);
     });
 
+    // `docs/backlog-retired.md` A34: the contrast to criterion 3. The key's
+    // fingerprint is remembered by the options object's identity, so a value
+    // written into `ParserService`'s object reaches no string compiled before;
+    // a string compiled after is parsed under the values written.
+    it('A34: a write into ParserService\'s options object reaches no string compiled before', () => {
+      const before = service.compile('Q1:1 == 1');
+      expect(() => service.simpleCall(before, { 'Q1:1': 1 }))
+        .toThrow('Unsupported statement type: LabeledStatement');
+
+      TestBed.inject(ParserService).parserOptions.colonIdentifiers = true;
+      const again = service.compile('Q1:1 == 1');
+      expect(again).toBe(before);
+      expect(() => service.simpleCall(again, { 'Q1:1': 1 }))
+        .toThrow('Unsupported statement type: LabeledStatement');
+      expect(service.simpleCall(service.compile('Q1:1 == 2'), { 'Q1:1': 2 })).toBe(true);
+    });
+
     // A parse that bypasses `ParserService`'s cache bypasses this one: a cached
     // function runs no callback. A callback on `ParserService`'s own options
     // cannot show it - the service's per-call `defaultParserOptions` carries
