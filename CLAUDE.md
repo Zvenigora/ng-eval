@@ -47,8 +47,9 @@ part 2 and A44, assignment targets as JavaScript evaluates them — is complete:
 by entry point (`docs/backlog.md` F28), is complete: it shipped as `eval-forms` 0.7.1, a docs-only
 patch, and its plan is `docs/documentation/phase-11-plan.md`. The A24 plan, `docs/a24/plan.md` —
 the await track, A25, A24 and D13 — is complete: it shipped as `eval-core` 0.15.0, `eval-signals`
-0.8.0 and `eval-forms` 0.8.0. No plan is active. What `ROADMAP.md` has left is Phases 7 and 8,
-which it reserves without specifying them.
+0.8.0 and `eval-forms` 0.8.0. The active plan is `docs/a33/plan.md`, A33 and A34: A33 fixed and
+A34 decided a documented limit, for `eval-core` 0.15.1. What `ROADMAP.md` has left is Phases 7
+and 8, which it reserves without specifying them.
 
 **Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left
 unfixed, decisions logged rather than made, gaps in what the suite can catch — is in
@@ -120,7 +121,8 @@ than one commit ([SR1](docs/standing-rules.md#sr1)) — as in `docs/a8/`, `docs/
   which shipped as `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms` 0.7.0, and Phase 11's,
   `docs/documentation/phase-11-plan.md`, which shipped as `eval-forms` 0.7.1, and the A24 plan,
   `docs/a24/plan.md`, which shipped as `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms`
-  0.8.0. No plan is active. `.claude/skills/step/SKILL.md` targets the active plan, and is
+  0.8.0. The active plan is `docs/a33/plan.md`, A33 and A34: A33 fixed and A34 decided a
+  documented limit, for `eval-core` 0.15.1. `.claude/skills/step/SKILL.md` targets it, and is
   retargeted with each new plan; while none is active it names none, and stops at its § 1 if
   invoked.
 - The completed plans are design records, not work in progress, and each remains the

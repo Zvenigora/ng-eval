@@ -8,21 +8,29 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: none active
-Target: none
+Plan document: `docs/a33/plan.md`
+Target: `@zvenigora/ng-eval-core` 0.15.1, a patch — A33 fixed, A34 decided a documented limit
 Requested step: $ARGUMENTS
 
-**No plan is active.** The A24 plan (`docs/a24/plan.md`), the await track — A25, A24 and D13 — is
-complete: it shipped as `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0, and its
-retrospect is its § 10. The next plan retargets this file when it is written. It names the plan
-above, says which projects each step reaches, and records the gate's counts its steps start from: at
-05f9a69, F30's commit after the release commit, and unchanged by the post-publish record and the
-retrospect, `eval-core` 3288, `eval-signals` 449, `eval-forms` 386.
+**Which projects each step reaches** (the plan's § 4 is the scope):
 
-**Invoked while no plan is active, this skill stops at § 1.** Run the baseline, report it, say that
-no plan is active, and do nothing else. Do not run a step of a completed plan, and do not treat a
-register entry as a plan: a one-commit item or a batch has its exit criteria in the prompt
-(`CLAUDE.md`, "Working from a plan").
+- **Step 2 is `eval-core`**: `property-lookup-cache.ts`, its spec and
+  `eval.service.case-variant-guard.spec.ts`, an `[Unreleased]` line in its CHANGELOG, `CLAUDE.md`'s
+  "Security-relevant code" paragraph, and A33 retired. Its probe P2-1 is a variant of the pinned
+  prototype `property-lookup-cache.B1.ts`, under `D:\repo.2026\ng-eval-base\a33-prototype\` beside its
+  `SHA256SUMS.txt` (SR32).
+- **Step 3 is `eval-core`**: three JSDoc blocks, one README sentence, two internal comments
+  re-pointed, two witness rows in `parser.service.spec.ts`, an `[Unreleased]` line in its CHANGELOG,
+  and A34 retired. No code changes.
+- **Step 4 is the release commit**, `eval-core` 0.15.1 alone, with the plan's § 8 q1 decided first.
+  `eval-signals` and `eval-forms` do not release: their peer range, `>=0.15.0 <0.16.0`, takes the
+  patch. A `package.json` before step 4 is a stop-and-replan.
+- **Step 5 is the post-publish record**, after the maintainer publishes, and **step 6 the
+  retrospect**.
+
+**The counts the steps start from**, the gate at 509b007: `eval-core` 3288, `eval-signals` 449,
+`eval-forms` 386. `eval-core` reaches 3291 at step 2 and 3293 at step 3; `eval-signals` and
+`eval-forms` do not move unless step 4's § 8 q1 adds a downstream row.
 
 **Step state**: read it from the plan, not from here. The last step in its § 4 with a recorded
 **Outcome** is done, and the next is the step after it in § 4's table.
