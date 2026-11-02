@@ -26,8 +26,9 @@ Requested step: $ARGUMENTS
 - **Step 4 is the release commit**, `eval-core` 0.15.1 alone, with the plan's § 8 q1 decided first.
   `eval-signals` and `eval-forms` do not release: their peer range, `>=0.15.0 <0.16.0`, takes the
   patch. A `package.json` before step 4 is a stop-and-replan.
-- **Step 5 is the post-publish record**, after the maintainer publishes, and **step 6 the
-  retrospect**.
+- **Step 5 is the post-publish record**, done: `eval-core` 0.15.1 published 2026-11-02 and tagged
+  at 9e88d18. **Step 6, the retrospect, is next**: the plan's § 9 and § 10, and any rule its
+  process earned.
 
 **The counts the steps start from**, the gate at 509b007: `eval-core` 3288, `eval-signals` 449,
 `eval-forms` 386. `eval-core` reaches 3297 at step 2 and 3303 at step 3; `eval-signals` reaches

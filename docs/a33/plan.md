@@ -1,7 +1,7 @@
 # A33 and A34 — the lookup cache's miss and the parse memo's options, decided by measurement (`@zvenigora/ng-eval-core`)
 
 **Date**: October 31, 2026
-**Revision**: 4 — step 4.
+**Revision**: 5 — step 5, the post-publish record.
 
 Two `eval-core` entries recorded in 0.12.0 with the same instruction, "measure it if this is
 fixed": [A33](../backlog-retired.md#a33), the case-insensitive property cache keeping a miss across a
@@ -604,6 +604,26 @@ checked against 95932e6's, the last core-only release; the `.d.ts` diffed agains
 
 Mikhail publishes `eval-core` 0.15.1; the annotated tag at the release commit; `docs(release):`
 with the register history row and the publication status.
+
+- **Outcome** (2026-11-01):
+  - **Published**: `npm view @zvenigora/ng-eval-core@0.15.1 version` is 0.15.1, and npm's `time`
+    gives 2026-11-02T01:49:38.704Z, so the CHANGELOG heading's 2026-11-02 stands and no file under
+    `modules/` changes.
+  - **The tag**: `eval-core@0.15.1`, written by the maintainer, is annotated (`git cat-file -t` is
+    `tag`, tag object 6fd39ad, message `eval-core 0.15.1`, in `eval-core@0.14.1`'s form) and peels to
+    9e88d1848a9619e587d253b3080c25599510f510, the release commit; `git ls-remote --tags origin`
+    lists it, peeling to the same.
+  - **The files**, 34bebbd's list: `docs/backlog.md`, the Publication status row, first, in the
+    0.14.1 row's form; the *Unreleased* history row made 0.15.1's, at 9e88d18 and 2026-11-02, its
+    counts unchanged, and no new *Unreleased* row, since nothing has moved since the tag; A33's and
+    A34's index rows, released 2026-11-02 and tagged 9e88d18; the tag paragraph, fifty-two rows and
+    sixty-two tags, one at 9e88d18; and Work in flight, Revision 5, step 6 next.
+    `docs/backlog-retired.md`, A33's and A34's Status lines. `CLAUDE.md`, `eval-core`'s "Published
+    at". The skill and this document.
+  - **Code review**: not run. The step changes no file under `modules/` or `tools/`
+    ([SR33](../standing-rules.md#sr33)), and neither this plan nor the request asks for it.
+  - **The gate**: `eval-core` 3303, `eval-signals` 450, `eval-forms` 386, unchanged; doc-links 0
+    dangling; release-tags 52 rows, 62 release tags, all annotated, 0 failing.
 
 ### Step 6 — Retrospect
 
