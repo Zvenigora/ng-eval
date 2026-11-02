@@ -237,6 +237,23 @@ describe('createEvalSignal', () => {
       expect(create('PRICE', { price: signal(10) })()).toBeUndefined();
     });
 
+    it('should find a property added in the same interval as another is deleted, under a single caseInsensitive (eval-core A33)', () => {
+      // `x` is a plain value in the source, so the write in place below is
+      // not seen by the signal graph; `n` is what recomputes. The first walk
+      // caches a miss for `C` on `x`, and the swap keeps the own-key count.
+      const x: Record<string, unknown> = { a: 1, b: 2 };
+      const n = signal(1);
+      const value = create('[x.C, n]', { x, n }, { eval: { caseInsensitive: true } });
+
+      expect(value()).toEqual([undefined, 1]);
+
+      delete x['a'];
+      x['c'] = 3;
+      n.set(2);
+
+      expect(value()).toEqual([3, 2]);
+    });
+
   });
 
   describe('a pre-built EvalContext', () => {

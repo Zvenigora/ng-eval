@@ -12,6 +12,16 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+---
+
+## [0.15.1] - 2026-11-02
+
+**A patch that fixes [A33](../../docs/backlog-retired.md#a33)**, the case-insensitive lookup
+cache's miss across a same-count key swap, and documents [A34](../../docs/backlog-retired.md#a34),
+an options object remembered by identity. The `.d.ts` differs from 0.15.0's only in JSDoc.
+`eval-signals` 0.8.0 and `eval-forms` 0.8.0 take it through their peer range; for `eval-signals` a
+row witnesses it. A33's lower bound is not measured.
+
 ### Changed
 - `ParserService.parserOptions`' and `parse`'s JSDoc, a new JSDoc on `defaultParserOptions`, and
   the README's colon-identifier section say that a value written into an options object is not

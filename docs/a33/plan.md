@@ -1,7 +1,7 @@
 # A33 and A34 — the lookup cache's miss and the parse memo's options, decided by measurement (`@zvenigora/ng-eval-core`)
 
 **Date**: October 31, 2026
-**Revision**: 3 — step 3.
+**Revision**: 4 — step 4.
 
 Two `eval-core` entries recorded in 0.12.0 with the same instruction, "measure it if this is
 fixed": [A33](../backlog-retired.md#a33), the case-insensitive property cache keeping a miss across a
@@ -220,12 +220,12 @@ so step 2 was requested by number.
 | 1 | This plan and its records | `docs/a33/plan.md` (new), `docs/README.md`, `docs/backlog.md`, `CLAUDE.md`, `.claude/skills/step/SKILL.md` | 0 / 0 / 0 | no package |
 | 2 | A33: the miss is re-validated by name | `property-lookup-cache.ts`, `property-lookup-cache.spec.ts`, `eval.service.case-variant-guard.spec.ts`, `CHANGELOG.md`, `CLAUDE.md`, the register, the skill, this document; `SECURITY.md`, `docs/README.md` and the A24 plan, A33's links (*widened in step 2*) | **+9** / 0 / 0 | `eval-core` 0.15.1; `SECURITY.md` no package |
 | 3 | A34: documented where a consumer reads | `parser.service.ts`, `parser-options.ts`, `README.md`, `parse-fingerprint.ts` and `compiler.service.ts`' comments, `parser.service.spec.ts`, `compiler.service.spec.ts`, `eval.service.spec.ts`, `CHANGELOG.md`, the register, the skill, this document; `docs/README.md` and the Phase 9 plan and summary, A34's links (*corrected in step 3*); `export-list.spec.ts`, an allowlist entry (*widened in step 3*) | **+6** / 0 / 0 | `eval-core` 0.15.1 |
-| 4 | The release commit, `eval-core` 0.15.1 | `package.json`, `CHANGELOG.md`, the register, the skill, this document; a downstream row if § 8 q1 adds one | 0 / 0 / 0, unless q1 adds a row | the release |
+| 4 | The release commit, `eval-core` 0.15.1 | `package.json`, `CHANGELOG.md`, the register, the skill, this document; `eval-signal.spec.ts`, the row § 8 q1 adds (*corrected in step 4*: "a downstream row if § 8 q1 adds one") | 0 / **+1** / 0 (*corrected in step 4*: "0 / 0 / 0, unless q1 adds a row") | the release; the row no package |
 | 5 | The post-publish record | the register, `CLAUDE.md`, the tag, the skill, this document | 0 / 0 / 0 | no package |
 | 6 | Retrospect | this document's § 9 and § 10, `docs/standing-rules.md` if a rule stands, `CLAUDE.md`, `docs/README.md`, the register, the skill | 0 / 0 / 0 | no package |
 
 From 3288 / 449 / 386, `eval-core` is at 3297 after step 2 and 3303 after step 3 (*corrected in
-step 3*: 3299).
+step 3*: 3299), and `eval-signals` at 450 after step 4.
 
 ### Step 1 — This plan and its records
 
@@ -539,6 +539,67 @@ expected UTC date, the register "pending publish", Work in flight; the release c
 checked against 95932e6's, the last core-only release; the `.d.ts` diffed against 0.15.0's tarball
 (D4); § 8 q1 decided first.
 
+- **Outcome** (2026-11-01):
+  - **The pin**: `a33-prototype-add7.zip` (`2EF46152…D884C5`) extracted beside the rest, its five
+    hashes appended to `SHA256SUMS.txt` (`text-only-key.patch` `6E529EFD…60370188`); `sha256sum -c`
+    61 of 61.
+  - **Step 3's missing probe** (*a correction to step 3's probe set*, [SR4](../standing-rules.md#sr4)):
+    V leaves W6's own line green by design, so no probe had turned it red. `text-only-key.patch`, a
+    `parseFingerprint` that returns `'text-only'` on every call, applied alone with its hash checked
+    first, every `eval-core` case read, reverted with `git apply -R`: **77 red of 3303**, in four
+    files.
+    - Predicted, and red: W6 at its own line, `parse('k + 1', {})` a `BinaryExpression` (line 271);
+      `parser.service.spec.ts`' criterion 3 setter row; `compiler.service.spec.ts`' two criterion 3
+      setter rows. W1–W5 green, as predicted.
+    - Not predicted, and red, 73 existing rows that pin A26's key, which the patch undoes: the rest
+      of `parser.service.spec.ts`' A26 block, twelve (criterion 1, criterion 2's two, the
+      key-present-as-`undefined` row, criterion 4's seven and criterion 6), its A30 block's seven
+      ((b), (c) and (d)) and its Phase 9 step 3 criterion 2; `compiler.service.spec.ts`' callback
+      row, uncached; 51 of the 96 rows of `colon-identifiers.spec.ts`' case table, all through
+      `ParserService.parse`, the free parse having no cache, 18 at the option-on read
+      after the option-off ones (line 292) and 33 at the option-off read after it (line 295); and `readme-examples.spec.ts`' "should parse an expression into an
+      ESTree AST". Some of the 73 are red because the patch also returns before the callback bypass,
+      not only because the key is the text. The prediction came from the sandbox's
+      `a34doc-T.json` and `a34doc2-T.json`, which run only the A34 rows and the setter's, not from
+      what the probe changes ([SR16](../standing-rules.md#sr16)): a text-only key is the key A26
+      replaced, and every A26 row pins it.
+    - `git apply -R` left the file with CRLF endings where it had LF (`core.autocrlf` is `true`):
+      no content diff, but `git status` listed it. Restored to HEAD's bytes with
+      `git -c core.autocrlf=false checkout --` on that one file, its SHA-256 then equal to the
+      blob's.
+  - **§ 8 q1, decided: one downstream row.** In `eval-signal.spec.ts`' "forwarding options.eval to
+    both halves", D1, "should find a property added in the same interval as another is deleted,
+    under a single caseInsensitive (eval-core A33)": `x = { a: 1, b: 2 }`, a plain value in the
+    source, and `n = signal(1)`; `[x.C, n]` under `{ eval: { caseInsensitive: true } }` is
+    `[undefined, 1]`; after `delete x['a']; x['c'] = 3; n.set(2)`, `[3, 2]`. Green, `eval-signals`
+    450 of 450. P2-1, `sameNames` reduced to the length test, applied alone by hand and reverted by
+    hand: 1 red of 450, D1 at its last line, received `undefined`, as predicted; the file's
+    SHA-256 after the revert equals the blob's. The row ships in no package.
+  - **The `.d.ts`** (D4): `npm pack @zvenigora/ng-eval-core@0.15.0` into a folder outside the
+    repository, against the production build of this tree: four hunks, all JSDoc, no declaration —
+    `defaultParserOptions`' block added, the `parserOptions` getter's and `parse`'s `@param
+    options` changed, and `generateCacheKey`'s reference re-pointed to `docs/backlog-retired.md`
+    A34. The README differs by the passage step 3 appended to the setter's paragraph, and nothing
+    else.
+  - **The release**, by CONTRIBUTING's Releasing, its files checked against 95932e6's four
+    (`modules/eval-core/package.json`, `modules/eval-core/CHANGELOG.md`, `docs/backlog.md`,
+    `docs/backlog-retired.md`), with this document, the skill and `eval-signal.spec.ts`:
+    `package.json` 0.15.0 → 0.15.1, no other `package.json` changed, since `>=0.15.0 <0.16.0` takes
+    it; the CHANGELOG's `[Unreleased]` moves under `## [0.15.1] - 2026-11-02`, npm's UTC date at
+    release time, which step 5 corrects if npm's differs, with a lead paragraph in 0.14.1's form;
+    A33's and A34's Status lines and index rows say "released in `eval-core` 0.15.1, pending
+    publish"; the *Unreleased* history row names the release; Work in flight records the step. A54's
+    entry states no 0.15.1 status, and is unchanged.
+  - **The code review**: no Critical. I1, the CHANGELOG lead's "A33's lower bound is not measured:
+    the count rule dates from 0.11.1", read as if releases before 0.11.1 were unaffected, while the
+    cache before A31's fix (8ace46d's parent) kept a miss while the own-key count and the first five
+    own names were unchanged, a narrower form of the same defect, read from the code and not
+    measured. The clause is dropped; the sentence keeps "not measured", as the retired entry does.
+    M1, the case table's row count, and M2, the q1 measurement's arm, P2-1, corrected here and in
+    § 8; M3, Work in flight names the Publication status row among step 5's records.
+  - **The gate**: `eval-core` 3303, `eval-signals` 450, `eval-forms` 386; doc-links 0 dangling;
+    release-tags 51 rows, 61 tags.
+
 ### Step 5 — Post-publish record
 
 Mikhail publishes `eval-core` 0.15.1; the annotated tag at the release commit; `docs(release):`
@@ -557,7 +618,8 @@ and one is added, on `defaultParserOptions`.
 
 [SR8](../standing-rules.md#sr8) after every step, on the committed tree. Counts rise by step 2's
 nine rows and step 3's six in `eval-core` (*corrected in step 2*: three; *in step 3*: two), to 3297
-and 3303; `eval-signals` and `eval-forms` unchanged.
+and 3303, and by step 4's one in `eval-signals`, to 450; `eval-forms` unchanged (*corrected in
+step 4*: "`eval-signals` and `eval-forms` unchanged").
 
 ## 7. Risks
 
@@ -580,7 +642,12 @@ and 3303; `eval-signals` and `eval-forms` unchanged.
   `caseInsensitive` reaches `eval-signals` and both `eval-forms` adapters. The defect needs an
   object written in place between two reads; a signal re-evaluates only when a tracked signal
   changes, so the step first measures whether any downstream entry point reaches it, and adds a row
-  where one does. Decided in step 4, before the release commit.
+  where one does. **Decided in step 4: one `eval-signals` row.** A plain object in a
+  `createEvalSignal` source is read in place, so a recompute driven by another signal reaches the
+  stale miss: measured at 13c8475 through Jest with P2-1 standing in for 0.15.0's count rule
+  (`zz-a33-reach.result.txt`, both rows `undefined`), and pinned as D1 (step 4's Outcome). The same
+  measurement's second route, an object in a signal re-set to itself with `equal: () => false`, is
+  not pinned. `eval-forms` is not measured; nothing claims it.
 
 ## 9. Contract after this lands
 

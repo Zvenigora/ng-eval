@@ -2355,8 +2355,8 @@ held an import, two clears and five reads, and the deletion removed all eight.)
 <a id="a33"></a>
 ## A33 — The case-insensitive property cache keeps a miss across a same-count key swap
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-11-01**; ships in `eval-core`
-0.15.1. Was Open. Opened 2026-10-10, after the `eval-core` 0.11.1 tag, from a limit
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-11-01**; released in `eval-core`
+0.15.1, pending publish. Was Open. Opened 2026-10-10, after the `eval-core` 0.11.1 tag, from a limit
 [A31](#a31)'s fix documents
 
 *Fixed* 2026-11-01, as step 2 of the [A33 plan](a33/plan.md). The cache entry keeps the own-key
@@ -2461,7 +2461,7 @@ the table says, and the four probes; `eval-core` 3288 → 3297.
 ## A34 — The parse fingerprint's memo does not see options written in place
 
 **Package** core · **Kind** fix · **Status** **Retired — decided 2026-11-01: a documented limit**;
-ships in `eval-core` 0.15.1, documentation only. Was Open. Opened 2026-10-10 by [A26](#a26)'s fix,
+released in `eval-core` 0.15.1, pending publish, documentation only. Was Open. Opened 2026-10-10 by [A26](#a26)'s fix,
 Phase 9 step 1
 
 *Decided* 2026-11-01, as step 3 of the [A33 plan](a33/plan.md): no code fix. The memo stays keyed by
