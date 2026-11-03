@@ -8,34 +8,24 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: `docs/a33/plan.md`
-Target: `@zvenigora/ng-eval-core` 0.15.1, a patch — A33 fixed, A34 decided a documented limit
+Plan document: none active
+Target: none
 Requested step: $ARGUMENTS
 
-**Which projects each step reaches** (the plan's § 4 is the scope):
+**No plan is active.** The A33 plan (`docs/a33/plan.md`), A33 and A34, is complete: it shipped as
+`eval-core` 0.15.1, a patch, and its retrospect is its § 10. The next plan retargets this file when it
+is written. It names the plan above, says which projects each step reaches, and records the gate's
+counts its steps start from: at 9e88d18, the release commit, and unchanged by the post-publish record
+and the retrospect, `eval-core` 3303, `eval-signals` 450, `eval-forms` 386.
 
-- **Step 2 is `eval-core`**: `property-lookup-cache.ts`, its spec and
-  `eval.service.case-variant-guard.spec.ts`, an `[Unreleased]` line in its CHANGELOG, `CLAUDE.md`'s
-  "Security-relevant code" paragraph, and A33 retired. Its probe P2-1 is a variant of the pinned
-  prototype `property-lookup-cache.B1.ts`, under `D:\repo.2026\ng-eval-base\a33-prototype\` beside its
-  `SHA256SUMS.txt` (SR32).
-- **Step 3 is `eval-core`**: two JSDoc blocks changed and one added, one README sentence, two
-  internal comments re-pointed, six witness rows in `parser.service.spec.ts`,
-  `compiler.service.spec.ts` and `eval.service.spec.ts`, an `[Unreleased]` line in its CHANGELOG,
-  and A34 retired. No code changes.
-- **Step 4 is the release commit**, `eval-core` 0.15.1 alone, with the plan's § 8 q1 decided first.
-  `eval-signals` and `eval-forms` do not release: their peer range, `>=0.15.0 <0.16.0`, takes the
-  patch. A `package.json` before step 4 is a stop-and-replan.
-- **Step 5 is the post-publish record**, done: `eval-core` 0.15.1 published 2026-11-02 and tagged
-  at 9e88d18. **Step 6, the retrospect, is next**: the plan's § 9 and § 10, and any rule its
-  process earned.
-
-**The counts the steps start from**, the gate at 509b007: `eval-core` 3288, `eval-signals` 449,
-`eval-forms` 386. `eval-core` reaches 3297 at step 2 and 3303 at step 3; `eval-signals` reaches
-450 at step 4, whose § 8 q1 added one downstream row; `eval-forms` does not move.
+**Invoked while no plan is active, this skill stops at § 1.** Run the baseline, report it, say that
+no plan is active, and do nothing else. Do not run a step of a completed plan, and do not treat a
+register entry as a plan: a one-commit item or a batch has its exit criteria in the prompt
+(`CLAUDE.md`, "Working from a plan").
 
 **Step state**: read it from the plan, not from here. The last step in its § 4 with a recorded
-**Outcome** is done, and the next is the step after it in § 4's table.
+**Outcome** is done, and the next is the step after it in § 4's table. A plan's step 1 records its
+Outcome, and § 4 carries its table from Revision 1; a plan with neither cannot be read by this rule.
 
 **The standing rules load with `CLAUDE.md`** (`docs/standing-rules.md`), and the plan's § 0, where
 it has one, adds to them; read it first. Each step's file list in the plan's § 4 is its scope, and it

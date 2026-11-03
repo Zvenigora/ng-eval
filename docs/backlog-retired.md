@@ -2214,9 +2214,9 @@ while it is still an own property of the object, which `hasOwnProperty` checks w
 deleted or renamed since is scanned for again. A cached miss stands while the own-key count is
 unchanged, and a changed count makes the object's answers afresh. The one change it does not see is a
 key added in the same interval as another is deleted, which leaves the count as it was, so a cached
-miss can outlive it; catching that would mean comparing every name on every miss ([A33](#a33),
-fixed since by that comparison). An entry lives as
-long as its object, so nothing one object answered is read for another, and the old five-minute expiry
+miss can outlive it; catching that would mean comparing every name on every miss. *Noted 2026-11-01*, as
+step 2 of the [A33 plan](a33/plan.md): [A33](#a33) made that comparison, and a cached miss now stands only
+while the object's own names are the ones it was made from. An entry lives as long as its object, so nothing one object answered is read for another, and the old five-minute expiry
 and thousand-entry bound go with the shape key. `getPropertyLookupCacheStats` now counts the entries
 made since the last clear, the one figure a `WeakMap` can give; only `performance.spec.ts` reads it,
 and no barrel exports the module.

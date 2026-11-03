@@ -56,17 +56,15 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-**The [A33 plan](a33/plan.md) is active**, steps 1 to 6: [A33](backlog-retired.md#a33), the
-case-insensitive lookup cache's miss re-validated by name, fixed, and [A34](backlog-retired.md#a34),
-the parse memo and options written in place, decided a documented limit, released as `eval-core`
-0.15.1, a patch, tagged annotated at 9e88d18 and published 2026-11-02. `eval-signals` and
-`eval-forms` do not release: their peer range, `>=0.15.0 <0.16.0`, takes it. It is at Revision 5.
-Steps 1 to 5 are done: the plan, its measurements and decisions; A33, fixed and retired; A34,
-documented and retired; the release commit; and its post-publish record. Its `.d.ts` differs from
-0.15.0's only in JSDoc: A34's three blocks and one re-pointed reference. The plan's § 8 q1 is
-decided by one `eval-signals` row, a `createEvalSignal` over a plain object in its source under
-`caseInsensitive`, which A33's fix turns from `undefined` to the added property; it ships in no
-package. Step 6, the retrospect, is next.
+**The [A33 plan](a33/plan.md) is complete**, at Revision 6, steps 1 to 6: [A33](backlog-retired.md#a33),
+the case-insensitive lookup cache's miss re-validated by name, fixed, and [A34](backlog-retired.md#a34),
+the options a parse remembers by identity, decided a documented limit, released as `eval-core` 0.15.1,
+a patch, tagged annotated at 9e88d18 and published 2026-11-02. `eval-signals` and `eval-forms` do not
+release: their peer range, `>=0.15.0 <0.16.0`, takes it. Its `.d.ts` differs from 0.15.0's only in
+JSDoc. The plan's § 8 q1 is decided by one `eval-signals` row, a `createEvalSignal` over a plain object
+in its source under `caseInsensitive`, which A33's fix turns from `undefined` to the added property; it
+ships in no package. Its retrospect, § 10, weighs the rules it earned: SR43 and SR44 are new, and SR15,
+SR16, SR19, SR28 and SR32 are amended.
 
 **The A35 plan is complete**: [`docs/a35/plan.md`](a35/plan.md), at Revision 16, steps 1 to 11 and
 U3. `eval-core` 0.12.1 and 0.13.0 are published, with `eval-signals` 0.6.0 and `eval-forms` 0.6.0;

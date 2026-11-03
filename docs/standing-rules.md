@@ -102,13 +102,22 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
 - <a id="sr15"></a>**SR15 — Every check gets a probe.** A check that would pass without the code it
   tests is worse than none. Every new check, and every existing assertion a change relies on as its
   witness, gets a probe that breaks what it claims to catch and is seen to fail; [SR16](#sr16) says how.
-  *Origin*: [Phase 1 step 3](side-effects/step-3-summary.md#2-the-critical-found-mid-step-positional-popping).
-  *Red*: nothing — held by review.
+  A contrast row, green on the change by design, is probed by its own wrong implementation, since the
+  change's probe leaves it green. *Origin*: [Phase 1 step 3](side-effects/step-3-summary.md#2-the-critical-found-mid-step-positional-popping);
+  [A33 plan § 10.2](a33/plan.md#102-plan-corrections-by-step-and-revision), Revision 4; the A33 plan's
+  W6, green under the change's probe until the text-only patch
+  ([§ 10.3](a33/plan.md#103-each-probe-prediction-that-missed-and-why)). *Red*: nothing — held by review.
+  Its instance is witnessed by the text-only patch, which turns the A33 plan's W6 red at its own line.
 - <a id="sr16"></a>**SR16 — Probes are applied alone and read case by case.** Apply each alone, against
   every case, and revert it; read which cases went red, and predict them from what the probe changes,
   not from which step owns the rows. A probe that removes a whole call cannot show which test inside it
-  carries the load, so probe each test. *Origin*:
-  [A45 § 10.2](a45/plan.md#102-each-corrected-prediction-and-why-it-was-wrong). *Red*: nothing.
+  carries the load, so probe each test. A probe changes only the mechanism its row claims: a patch that
+  also changes a second mechanism, such as an early return that bypasses a callback, makes the cause of
+  the red set unreadable. The prediction names every existing row that pins the same mechanism, read from
+  the specs, not from the rows a measurement file happened to run. *Origin*:
+  [A45 § 10.2](a45/plan.md#102-each-corrected-prediction-and-why-it-was-wrong);
+  [A33 plan § 10.3](a33/plan.md#103-each-probe-prediction-that-missed-and-why), the text-only patch,
+  whose 73 rows were predicted from the A34 rows alone. *Red*: nothing — held by review.
 - <a id="sr17"></a>**SR17 — Check the setup separately.** Before writing an assertion, describe the
   setup in which the invariant is false and confirm the fixture can reach it. The usual vacuous shapes:
   a hook never registered, a guard whose absence changes nothing for one callback,
@@ -121,8 +130,13 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
 - <a id="sr19"></a>**SR19 — Every option and store shape gets a leg.** Every option the code path
   reads, `caseInsensitive` included, and every store shape it accepts gets a leg, not only the default.
   Re-check the fixture under each leg, and assert the caller's own object beside the store: under
-  `caseInsensitive`, `fromContext` copies a plain context into a `Registry`. *Origin*:
-  [the A35 plan's second § 1.2](a35/plan.md#12-standing-rules-from-revision-16). *Red*: nothing.
+  `caseInsensitive`, `fromContext` copies a plain context into a `Registry`. A refusal row's fixtures
+  include a blocked name the object's prototype holds and one it does not, and a null-prototype object:
+  a check that falls back to the prototype refuses only the names the prototype holds. *Origin*:
+  [the A35 plan's second § 1.2](a35/plan.md#12-standing-rules-from-revision-16);
+  [A33 plan § 10.4](a33/plan.md#104-reviewer-findings-that-changed-dictated-text), step 2's Critical,
+  whose characterisation tried only names the prototype holds. *Red*: nothing — held by review. Its
+  instance is witnessed by the A33 plan's R6r, R6w, R7r and R7w, red under the count rule.
 - <a id="sr41"></a>**SR41 — A row that pins a pass-through asserts identity, never type.** Assert a
   value that passes through with `toBe` against the value that went in. A `toBeInstanceOf(Promise)`
   check, or awaiting the result, passes for a re-wrapped promise as well as for the original. Probing
@@ -132,6 +146,16 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
   ([§ 10.5](a24/plan.md#105-rules-weighed)). *Red*: nothing — held by review. Its instance in that
   plan is witnessed by `await-position.spec.ts`' identity rows, which P3-1, re-wrapping the operand
   in `Promise.race([value])`, turns red.
+- <a id="sr43"></a>**SR43 — A row's later assertion does not depend on state an earlier one changed.**
+  A row runs its assertions in order over one fixture, so a later one can pass or fail because an
+  earlier one cached a value, made a key, or threw before writing; then it tests nothing the earlier one
+  did not. Give each assertion a setup of its own, or split the row. SR17's shared fixture is the
+  comparison case, and this is the sequence within one row. Read a probe's red by case and by arm: a red
+  at an earlier line is evidence only for the claim on that line. *Origin*:
+  [A33 plan § 10.4](a33/plan.md#104-reviewer-findings-that-changed-dictated-text), step 2's third review
+  (a write-first read) and step 3's Important (W3's first parse threw, so nothing was cached), with
+  [§ 10.3](a33/plan.md#103-each-probe-prediction-that-missed-and-why), V's red at W6. *Red*: nothing —
+  held by review.
 
 ## Claims and measurements
 
@@ -180,8 +204,12 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
   advance. Its processes run one at a time, and a long run is sized by elapsed time, not by rounds
   ([A53](backlog-retired.md#a53)). On a machine with performance and efficiency cores, each timed
   process is pinned to the performance cores, its affinity read back and reported, or the timing runs
-  on a machine without them ([A53](backlog-retired.md#a53)). *Origin*:
-  [A45 § 3.8](a45/plan.md#38-performance--the-decision-rule-stated-in-advance). *Red*: nothing.
+  on a machine without them ([A53](backlog-retired.md#a53)). A change to a cache states the retained
+  memory it adds in that decision rule, as an arm with its own figure: a timing arm cannot show a cost
+  it does not time. *Origin*: [A45 § 3.8](a45/plan.md#38-performance--the-decision-rule-stated-in-advance);
+  A33's decision rule had no memory arm, so its cost of about 8 to 9 bytes per own name was measured
+  after the decision, outside the rule ([A33 plan § 1.4](a33/plan.md#14-the-measurements)). *Red*: nothing
+  — held by review.
 - <a id="sr29"></a>**SR29 — Reuse a mechanism, and list what it does not do.** Prefer one the
   repository already exercises, and say what makes a case different where it deviates. Reusing one,
   list what it does not do; removing one, what it did incidentally. *Origin*:
@@ -211,6 +239,15 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
   true of the visitor once its catch was gone, and false at `evalAsync`, whose `ensureError` turns
   any rejection that is not an `Error` into a new one. *Red*: nothing — held by review. Its one
   instance is witnessed by the A24 plan's group C rows, which assert at `evalAsync`.
+- <a id="sr44"></a>**SR44 — A documented limit states the contract that holds on every path.** A limit
+  is written as what every path keeps, not as the mechanism that usually causes it. Before a stronger
+  wording is written, the paths that contradict it are measured, and a contrast row pins a path that
+  contradicts the stronger wording. A path the contract does not promise is left unstated, not witnessed. [SR31](#sr31) fixes a
+  claim once it is false; this rule keeps it from being written false. *Origin*:
+  [A33 plan § 10.4](a33/plan.md#104-reviewer-findings-that-changed-dictated-text), step 3's Critical (a
+  written value "is not seen for a text parsed or compiled before", false for a new call-options object)
+  and its re-review's I-b (an eviction clause no row witnessed). *Red*: nothing — held by review. Its
+  instance is witnessed by W6, which the stronger wording fails.
 
 ## Hygiene
 
@@ -218,7 +255,12 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
   is pinned as patch files outside the repository, SHA-256 checked before each apply, never rebuilt
   from a description. Revert a patch with `git apply -R` and a probe edit by hand, since `git restore`
   on a directory restores its tracked specs too; never probe by mutating shared AST state, such as
-  `markThisPositional`'s marks (A45 step 3). *Origin*: [A45 § 10.3](a45/plan.md#103-process-traps). *Red*: nothing.
+  `markThisPositional`'s marks (A45 step 3). After a revert, `git status --porcelain` lists nothing for
+  the file. Under `core.autocrlf`, `git apply -R` can leave CRLF endings where the file had LF, and git
+  then lists it with no content change: restore that file with `git -c core.autocrlf=false checkout -- <file>`,
+  and check its hash against the blob's. *Origin*: [A45 § 10.3](a45/plan.md#103-process-traps);
+  [A33 plan § 10.5](a33/plan.md#105-process-traps), step 4. *Red*: nothing — `git status --porcelain`,
+  read by hand after each revert.
 - <a id="sr33"></a>**SR33 — Review before commit.** The `code-reviewer` runs before every commit — a
   plan step, a one-commit item, or an item of a batch — that changes a file under `modules/` or
   `tools/`; anything else runs it where the plan or the prompt says. A Critical finding stops the

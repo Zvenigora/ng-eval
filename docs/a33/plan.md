@@ -1,7 +1,7 @@
 # A33 and A34 — the lookup cache's miss and the parse memo's options, decided by measurement (`@zvenigora/ng-eval-core`)
 
 **Date**: October 31, 2026
-**Revision**: 5 — step 5, the post-publish record.
+**Revision**: 6 — step 6, the retrospect. The plan is complete.
 
 Two `eval-core` entries recorded in 0.12.0 with the same instruction, "measure it if this is
 fixed": [A33](../backlog-retired.md#a33), the case-insensitive property cache keeping a miss across a
@@ -222,7 +222,7 @@ so step 2 was requested by number.
 | 3 | A34: documented where a consumer reads | `parser.service.ts`, `parser-options.ts`, `README.md`, `parse-fingerprint.ts` and `compiler.service.ts`' comments, `parser.service.spec.ts`, `compiler.service.spec.ts`, `eval.service.spec.ts`, `CHANGELOG.md`, the register, the skill, this document; `docs/README.md` and the Phase 9 plan and summary, A34's links (*corrected in step 3*); `export-list.spec.ts`, an allowlist entry (*widened in step 3*) | **+6** / 0 / 0 | `eval-core` 0.15.1 |
 | 4 | The release commit, `eval-core` 0.15.1 | `package.json`, `CHANGELOG.md`, the register, the skill, this document; `eval-signal.spec.ts`, the row § 8 q1 adds (*corrected in step 4*: "a downstream row if § 8 q1 adds one") | 0 / **+1** / 0 (*corrected in step 4*: "0 / 0 / 0, unless q1 adds a row") | the release; the row no package |
 | 5 | The post-publish record | the register, `CLAUDE.md`, the tag, the skill, this document | 0 / 0 / 0 | no package |
-| 6 | Retrospect | this document's § 9 and § 10, `docs/standing-rules.md` if a rule stands, `CLAUDE.md`, `docs/README.md`, the register, the skill | 0 / 0 / 0 | no package |
+| 6 | Retrospect | this document's § 9 and § 10, `docs/standing-rules.md` if a rule stands, `CLAUDE.md`, `docs/README.md`, the register, the skill; `docs/backlog-retired.md`, A31's dated note (*widened in step 6*: the prompt asks for it) | 0 / 0 / 0 | no package |
 
 From 3288 / 449 / 386, `eval-core` is at 3297 after step 2 and 3303 after step 3 (*corrected in
 step 3*: 3299), and `eval-signals` at 450 after step 4.
@@ -629,6 +629,12 @@ with the register history row and the publication status.
 
 § 10, and any rule this plan's process earned.
 
+- **Outcome** (2026-11-02):
+  - **The rules**: [SR19](../standing-rules.md#sr19), [SR15](../standing-rules.md#sr15), [SR16](../standing-rules.md#sr16), [SR28](../standing-rules.md#sr28) and [SR32](../standing-rules.md#sr32) amended; [SR43](../standing-rules.md#sr43) and [SR44](../standing-rules.md#sr44) added. Their texts are in `docs/standing-rules.md`, and § 10.6 weighs each candidate. None was declined.
+  - **The records**: `docs/README.md`, `CLAUDE.md` and the skill name no active plan, and the register's Work in flight says this plan is complete. A31's entry gains the dated note, *Noted 2026-11-01*, for the aside step 2 added. This document: § 9, § 10, and this Outcome.
+  - **Code review**: not run. The step changes no file under `modules/` or `tools/` ([SR33](../standing-rules.md#sr33)).
+  - **The gate**: `eval-core` 3303, `eval-signals` 450, `eval-forms` 386; doc-links 0 dangling; release-tags 52 rows, 62 tags, all annotated.
+
 ## 5. Public API surface
 
 Unchanged. Three JSDoc blocks change in the `.d.ts`, the private `generateCacheKey`'s among them,
@@ -671,8 +677,177 @@ step 4*: "`eval-signals` and `eval-forms` unchanged").
 
 ## 9. Contract after this lands
 
-*Written by step 6.*
+Written by step 6, from the code at 9e88d18 and the measurements in § 1. `eval-core` 0.15.1 provides
+items 1 to 5. `eval-signals` reaches items 1 to 4 through its `caseInsensitive` option, and item 6 is
+its one row, D1, which ships in no package. `eval-forms` is not measured, and nothing here claims it.
+
+1. **A cached miss stands only while the object's own names are the ones it was made from.** The
+   names are kept in order and compared with `===`. Any difference, a key added in the same interval
+   as another is deleted included, makes the object's answers afresh (`property-lookup-cache.ts`;
+   R1–R3). The stored array is the one the miss path already built.
+2. **A cached hit stands while its key is still an own property of the object**, checked without a
+   scan. A key deleted or renamed since is scanned for again. A hit is not compared with the names, so
+   a blocked own name added before it in own-name order is not seen, and a fresh lookup's refusal of it
+   is skipped. That is [A54](../backlog.md#a54), open and not scheduled, and this contract does not
+   cover it.
+3. **The cache's retained memory.** An entry keeps its names array for as long as its object lives,
+   where a lookup that was not a cached hit used to drop it after the call. Measured on the production
+   bundles (§ 1.4): about 8 to 9 bytes more per own name; one array of 1,000,000 numbers, 2.25 MB to
+   32.76 MB at `v.map`; 1,000 arrays of 1,000 numbers, 2.79 MB to 10.49 MB; 10,000 objects of 50 keys,
+   2.71 MB to 6.98 MB. Recorded, not designed out (D1, § 7). The hit path is unchanged.
+4. **An options object is remembered by identity, so a value written into it is not reliably seen.**
+   The parse cache, and `CompilerService`'s cache of compiled strings, key each pair of options objects,
+   the parser's and a call's, by identity, and a reading made for a pair holds for that pair. So a value
+   written into the getter's object, into an object passed to `parse`, or into `defaultParserOptions`
+   may not reach a later parse made through a pair seen before the write. A parse through a new
+   call-options object sees it (W6). Replace the object rather than write into it: the setter takes a
+   new one, and a new object through the setter is seen (the setter rows, criterion 3). What happens to
+   a text evicted from the cache is not part of this contract. The retired entry gives it from the code,
+   unmeasured, and no row pins it.
+5. **The witnesses.** W1 to W3 and W6 are in `parser.service.spec.ts`, W4 in `compiler.service.spec.ts`
+   and W5 in `eval.service.spec.ts`; the setter rows are the contrast. The wording is in the getter's
+   JSDoc, `parse`'s `@param options`, `defaultParserOptions`' JSDoc and the README's sentence after the
+   setter's. The README's code span for `defaultParserOptions` is pinned by F10, in `export-list.spec.ts`
+   and `public-api.spec.ts`.
+6. **`eval-signals`: D1.** A `createEvalSignal` over a plain object in its source, under
+   `caseInsensitive`, finds a property added as another is deleted, after a recompute driven by another
+   signal (`eval-signal.spec.ts`; P2-1 turns it red, received `undefined`). The same measurement's
+   second route, an object re-set to itself with `equal: () => false`, is not pinned (§ 8 q1).
 
 ## 10. Retrospect
 
-*Written by step 6.*
+Written in step 6, 2026-11-02 ([SR7](../standing-rules.md#sr7)). Like the A24 plan's, it keeps what a
+later plan can reuse. Each step's outcome in § 4 says what that step did.
+
+### 10.1 What shipped
+
+`eval-core` 0.15.1, a patch, at 9e88d18: A33 fixed, A34 documented, and `eval-signals`' D1 as one row
+in no package. The tag is `eval-core@0.15.1`, annotated (object 6fd39ad), and npm's time is
+2026-11-02T01:49:38.704Z, so the CHANGELOG's date stood. `eval-signals` and `eval-forms` do not
+release: `>=0.15.0 <0.16.0` takes the patch.
+
+- **Closed**: [A33](../backlog-retired.md#a33) and [A34](../backlog-retired.md#a34). **Opened**:
+  [A54](../backlog.md#a54), by step 2's review, open and not scheduled. The register's history row reads
+  19 live at 9e88d18, one opened, four closed (F30, A53, A33, A34), 16 after.
+- **The rows**: 3288 / 449 / 386 to 3303 / 450 / 386. `eval-core` gained 9 in step 2 and 6 in step 3;
+  `eval-signals` gained 1 in step 4.
+- **The `.d.ts`**: four JSDoc hunks and no declaration, against 0.15.0's tarball (D4).
+- **Release tags**: 52 rows and 62 tags at the gate, all annotated.
+
+### 10.2 Plan corrections, by step and revision
+
+The revision is the step's number: each step's commit is the revision it wrote.
+
+- **Revision 1, step 1.** The step skill's state rule could not read this plan. It reads state from § 4's
+  table and the last recorded Outcome, and Revision 1 had neither, so step 2 was requested by number.
+  Step 2 added both.
+- **Revision 2, step 2.** § 1.1 named `resolveMemberWriteKey`, which the code does not have; the read path
+  and `resolveMemberTarget` do. § 1.3's "all six refused" and "refused, refused" were true only of names a
+  plain object's prototype holds, so no arm there could show a skipped refusal (SR23); `crit.mjs` replaces
+  that claim. The row counts in § 4 and § 6 said three for step 2 and two for step 3, where the steps add
+  nine and six. The file list was widened for `SECURITY.md`, `docs/README.md`, the A24 plan's link, and
+  A54's opening. The characterisation rows went from three to nine, with R6r, R6w, R7r and R7w split out
+  after the review. § 1.4 gained the memory measurement, and § 7 its risk.
+- **Revision 3, step 3.** The witness rows went from two to six: the setter's row is a contrast, not a
+  witness for the documented claim. The CHANGELOG section is `### Changed`, placed before `### Fixed`,
+  since this CHANGELOG has no `### Documentation`. The documented contract changed from "is not seen" to
+  "not reliably seen" after the review. W3 was reshaped and W6 added. § 3.2 and D4 went from two changed
+  JSDoc blocks to three, plus the added one, because the private `generateCacheKey`'s comment is emitted.
+  `export-list.spec.ts` was widened for the allowlist entry.
+- **Revision 4, step 4.** § 4's step 4 row said "0 / 0 / 0, unless q1 adds a row"; the row landed, so it
+  reads +1. `eval-signal.spec.ts` was widened for it. § 8 q1's measurement arm was corrected (M2), the case
+  table's row count was corrected (M1), and Work in flight's step-5 records were named (M3). The
+  reviewer's I1 dropped a lower-bound clause (§ 10.4).
+- **Revision 5, step 5.** The post-publish record's own Outcome is its only change. Its CHANGELOG date stood.
+- **Revision 6, step 6.** This revision. § 4's step 6 row was widened to `docs/backlog-retired.md` for A31's
+  dated note, which the prompt asked for ([SR3](../standing-rules.md#sr3)).
+
+### 10.3 Each probe prediction that missed, and why
+
+| Probe | Predicted | Red | What the prediction left out |
+| :--- | :--- | :--- | :--- |
+| P2-2, the read path's re-check never true | R4, R6r, R7r red; R5, R6w, R7w green | 26: R4; R5; R6r and R7r; the guard spec's five advisory-chain and fifteen colliding-entry rows; two `eval.service.colon-identifiers.spec.ts` refusals. R6w and R7w green | R5's first line is the read that caches the miss, and only the read path refuses it. `read-guard.mjs` asserted no refusal before the swap, so its P22 result had the write's refusal alone. The prediction named the pinning rows and did not count them |
+| P2-3, `resolveMemberTarget`'s check never true | R5, R6w, R7w green | One more: `assignment-target.spec.ts`'s `o.CONSTRUCTOR = f()`, whose check runs before the right side | An existing row pins the same check's position, and was not read |
+| P2-3b, P2-3 and `safeSetProperty`'s check never true | R5, R6w, R7w red; R6r, R7r green | 8: those three and five existing rows, two in `assignment-target.spec.ts` and three in `variable-declaration.spec.ts` | The existing rows that pin the same write mechanism, its `__proto__` binding rows and its scope balance |
+| V, the memo validated by value | W1–W5 red | W1–W5 red, and W6 red at its own W1 read; F10's two rows also turned red, which the outcome attributes to the README's new code span | W6's first assertion is W1's read, which caches the text. Under V, `parse('k + 1', {})` is a `Program` too, so V's red there is no evidence about W6's claim (SR23) |
+| The text-only patch, a key that is the text alone (step 4) | W6, criterion 3's setter row, and compiler's two setter rows: 4 | 77 | The prediction came from `a34doc-T.json` and `a34doc2-T.json`, which run only the A34 and setter rows, not from the probe's mechanism. A text-only key is the key A26 replaced, and 73 existing rows pin A26's key: twelve in `parser.service.spec.ts`' A26 block, seven in its A30 block, one Phase 9 criterion 2 row, the compiler callback row, 51 of `colon-identifiers.spec.ts`' 96 cases, and `readme-examples.spec.ts`' AST row. Some of the 73 also come from the patch returning before the callback bypass, a second mechanism |
+
+P2-1 matched its prediction, and F10's probe was predicted as red and was.
+
+Most of the misses are predictions made from the rows the step wrote, not from the rows that pin the
+mechanism, which [SR16](../standing-rules.md#sr16) already says to derive. The text-only patch was the
+clearest case: its prediction read the A34 rows, not the probe's mechanism. Two misses are of another
+kind. P2-2's R5 first line is the read that caches the state its second line tests, so the row's later
+assertion depended on the earlier one's state, which [SR43](../standing-rules.md#sr43) now names. V's red
+at W6 is the same shape, a later assertion's red at an earlier line, which is no evidence for its own claim.
+
+### 10.4 Reviewer findings that changed dictated text
+
+- **Step 2, Critical.** "No refusal was skipped, before or after" was false in the CHANGELOG line, the
+  register row and the retired entry. The characterisation and the guard scripts tried only names a plain
+  object's prototype holds, which the prototype scan refuses with or without a stale miss, so no arm could
+  show the negation ([SR23](../standing-rules.md#sr23)). The claim was rewritten everywhere; R6 and R7 were
+  added. Measured: 5 red of 3295 on the old cache, the fixed one 3295 of 3295. Candidate
+  [SR19](../standing-rules.md#sr19), amended.
+- **Step 2, I-1 (third review).** With the write first, the unfixed write made a sibling key, so the
+  read re-scanned and was refused either way; the read could not fail on the unfixed code. The cause was
+  one fixture shared by a write and a read in one row, the read's outcome depending on the write's state.
+  R6 and R7 were split into R6r, R6w, R7r and R7w, each with its own object, miss and swap. Candidate
+  [SR43](../standing-rules.md#sr43), new.
+- **Step 2, the memory (the review's Important).** The names array now lives as long as its object. Recorded,
+  not designed out (§ 1.4, § 7).
+- **Step 2, second review (no Critical).** Two sentences were corrected: the memory sentence named only
+  objects a miss was answered for, and "the prototype does not hold" read as inherited names where the
+  fallback reads the immediate prototype's own names only.
+- **Step 3, Critical.** The wording "is not seen for a text parsed or compiled before, and a text parsed
+  after the write is cached as if the options had not changed" was false. The memo holds one digest per
+  pair, so a new call-options object builds its digest from the written values, and `parse('k + 1', {})`
+  is a `Program` after the write. The wording became "not reliably seen", everywhere, and W6 pins the
+  contrast. The cause: the claim came from the mechanism (an identity-keyed memo) without measuring the
+  new-object path that contradicts it. Candidate [SR44](../standing-rules.md#sr44), new.
+- **Step 3, Important.** W3 and W5 each began with a parse that threw, so nothing was cached before the
+  write. The table gave W3 the "parsed before" claim, and W3 was reshaped. W5's claim is "parsed after",
+  which W2 and W5 witness, so it stood.
+- **Step 3, re-review.** I-a: the retired entry said that a string `CompilerService` evicts sees the write.
+  It is compiled again through `ParserService.parse` and the same pair, so it sees the write only when that
+  parse does. Corrected. I-b: the getter's JSDoc said a text evicted since sees the write, and no row
+  witnessed it. The clause was dropped rather than witnessed, since it would have published the cache's
+  eviction policy. Candidate [SR44](../standing-rules.md#sr44), which leaves unpromised paths unstated.
+  M-a: V's red on W6 is at W1's read, which is no evidence about W6 (§ 10.3).
+- **Step 4, code review, I1.** The CHANGELOG lead said "A33's lower bound is not measured: the count rule
+  dates from 0.11.1", which read as if releases before 0.11.1 were unaffected. The cache before A31's fix
+  kept a miss while the count and first five names matched, which the review read from the code. The clause
+  was dropped, and the sentence keeps "not measured", as the retired entry does.
+
+### 10.5 Process traps
+
+- **The step skill's state rule.** It reads a plan's state from § 4's table and the last recorded Outcome,
+  and Revision 1 had neither. The skill's note now says what a plan's step 1 records and when § 4 carries its
+  table.
+- **`core.autocrlf`.** The maintainer's checkout sets it to `true`. `git apply -R` in step 4 left the probed
+  file with CRLF endings where HEAD has LF: no content diff, but `git status` listed it. It was restored with
+  `git -c core.autocrlf=false checkout --` on that one file, and its hash checked against the blob's. [SR32](../standing-rules.md#sr32)
+  is amended to say so.
+- **The confirmation gate was skipped at step 5, not the SR8 gate.** Step 5 ran the SR8 gate, and its
+  Outcome's counts are from that run. What was skipped is the step skill's confirmation gate: the prompt's
+  full scope was taken as the confirmation, though it did not say so. The rule this records: a prompt that
+  pre-answers a `/step` gate says so explicitly, and one that does not is not an answer. Step 5's text
+  stays as written ([SR6](../standing-rules.md#sr6)).
+
+### 10.6 Rules weighed
+
+Each candidate was weighed against the failures in §§ 10.2–10.5. The rule texts are in
+`docs/standing-rules.md`, in the file's form, each with its *Origin* and *Red*.
+
+| Candidate | Decision | Reason | *Origin* in this plan |
+| :--- | :--- | :--- | :--- |
+| SR19: a refusal row's fixtures include a blocked name the object's prototype holds and one it does not, and a null-prototype object | **Amend SR19** | The store shape and the name class were the legs the refusal rows lacked. SR19 already asks for every shape and option; the step 2 Critical came from missing exactly these | § 10.4, step 2 Critical |
+| New SR43: a row's later assertion does not depend on state an earlier one changed; probes read one arm per case | **Promote, SR43** | SR17 names one fixture shared by both arms of a comparison, not sequence within one row. The shape recurred three times here: I-1's read after its write, W3 and W5's throws leaving nothing cached, and V's red at W6's W1 read | § 10.3, P2-2 and V; § 10.4, I-1 and step 3, Important |
+| SR28: a change to a cache states its retained memory in the decision rule | **Amend SR28** | SR23 already says to name the arm that would show the claim's negation, but the timing rule had no memory arm, so the cost was measured after the decision | § 1.4, the memory; § 10.4, step 2, the memory |
+| New SR44: a documented limit states the contract that holds on every path; the paths that contradict a stronger wording are measured first | **Promote, SR44** | SR31 fixes a claim false now; SR44 stops one being written false. Step 3's Critical was written from the mechanism, not from a measured path | § 10.4, step 3 Critical and re-review I-b |
+| SR15: a contrast row's probe is its own wrong implementation, not the change's probe | **Amend SR15** | W6 is green under the change's probe by design, so only the text-only patch turned it red, found at step 4 | § 10.2, Revision 4; § 10.3, the text-only patch |
+| SR16: a probe changes only the mechanism its row claims; the prediction names the existing rows that pin the same mechanism | **Amend SR16** | The text-only patch's 73 unpredicted rows came from predicting off the A34 rows, and the patch changed a second mechanism as well | § 10.3, the text-only patch |
+| SR32: after a revert, `git status` shows the file clean; under `core.autocrlf`, restore it with `git -c core.autocrlf=false checkout --` | **Amend SR32** | `git apply -R` left a CRLF file that `git status` listed, with no content change | § 10.5, `core.autocrlf` |
+
+Nothing was declined. Each new or amended rule names the rule it overlaps: SR43 says how it differs from
+SR17's shape, SR28 relies on SR23's arm, and SR44 says what it adds to SR31, so no two rules hold one check.

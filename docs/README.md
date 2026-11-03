@@ -32,9 +32,7 @@ that anchor, `<a id="…"></a>` in the first cell.
 
 ## Active plan
 
-| Track | Documents | Subject |
-| :--- | :--- | :--- |
-| `a33/` | [plan](a33/plan.md) | [A33](backlog-retired.md#a33), the case-insensitive lookup cache's miss re-validated by name, fixed; [A34](backlog-retired.md#a34), the parse memo and options written in place, decided a documented limit; to ship as `eval-core` 0.15.1. Active |
+None. The next plan is linked here when it is written.
 
 ## Completed phases
 
@@ -67,6 +65,7 @@ Work on one register entry, or a group of them, that needed more than one commit
 | `a24/` | [plan](a24/plan.md) | The await track: [A25](backlog-retired.md#a25), an `await` passes its operand through; [A24](backlog-retired.md#a24), an `await` only where its value is the result; and [D13](backlog-retired.md#d13), every statement evaluation refuses reported by `eval-core` and refused at registration by `eval-forms`. Released as `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0. Its § 3.2 is the accepted-position design, § 3.3 the statement table, § 9 the contract after it landed, and § 10 the retrospect. Its § 0's two rules are now [SR40](standing-rules.md#sr40) and [SR41](standing-rules.md#sr41) |
 | `a35/` | [plan](a35/plan.md) | [A35](backlog-retired.md#a35), with A36, A37, A39 and A42: dangerous function values past the call sandbox. Its § 3.1 is the identity set, § 3.3 the funnel, § 3.4 what stays open, and § 9 the contract after it landed. The second of its two § 1.2s holds the two probe rules that are now [SR18](standing-rules.md#sr18) and [SR19](standing-rules.md#sr19) |
 | `a45/` | [plan](a45/plan.md) | [A45](backlog-retired.md#a45) part 2 and [A44](backlog-retired.md#a44), with [A52](backlog-retired.md#a52): assignment targets as JavaScript evaluates them, released as `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms` 0.7.0. Its § 0 collects thirteen rules, now [standing rules](standing-rules.md#old-numberings); § 1.4 holds the measurements, § 9 the contract after it landed, and § 10 the retrospect |
+| `a33/` | [plan](a33/plan.md) | [A33](backlog-retired.md#a33), the case-insensitive lookup cache's miss re-validated by name, fixed; [A34](backlog-retired.md#a34), the options a parse remembers by identity, decided a documented limit. Released as `eval-core` 0.15.1. Its § 9 is the contract after it landed, and § 10 the retrospect |
 | `gates/` | [plan](gates/plan.md), [step 1](gates/step-1-summary.md), [step 2](gates/step-2-summary.md), [step 3](gates/step-3-summary.md), [step 4](gates/step-4-summary.md), [retrospect](gates/summary.md) | The documentation and CI gates |
 | `trace-surface/` | [plan](trace-surface/plan.md) | The trace surface: A15, A16 and A19 decided |
 | `trace2/` | [step 1, the bound](trace2/step-1.md), [step 2, the reset](trace2/step-2.md), [step 3, docs and records](trace2/step-3.md) | [A12](backlog-retired.md#a12): the trace bound and its reset, as step records without a plan |
