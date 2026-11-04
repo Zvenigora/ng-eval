@@ -12,16 +12,6 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
-### Changed
-- **The README states what a member write through `this` reaches when a scope supplies `thisArg`, and
-  what a `caseInsensitive` copy keeps**: it said only the call's receiver changes. When `k` resolves
-  to a global scope that supplies `thisArg`, `this.k = 2` writes to `thisArg`, while `k` and `this.k`
-  go on reading the scope's `k`; when that scope supplies no `thisArg`, the same write is refused.
-  And `EvalContext.fromContext`'s copy takes the object's own enumerable string keys and reads an
-  accessor once, when the copy is made; what the object inherits, such as a class's accessors and
-  methods, and its non-enumerable and symbol keys are not copied. No code change
-  ([A56](../../docs/backlog.md#a56), [A57](../../docs/backlog.md#a57)).
-
 ---
 
 ## [0.15.1] - 2026-11-02
