@@ -56,6 +56,11 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
+**The [A48 plan](a48/plan.md) is in flight**, at Revision 1, with step 1, its plan and records, done.
+It schedules [A48](#a48), [A50](#a50), [A51](#a51) and [F29](#f29); decides [A49](#a49) a documented
+limit; and opens [A55](#a55), which it schedules, and registers [A56](#a56) and [A57](#a57), correcting
+their README sentences in step 1 and scheduling neither fix. Its gate counts start from 3303, 450 and 386 at `9bf1bc8`.
+
 **The [A33 plan](a33/plan.md) is complete**, at Revision 6, steps 1 to 6: [A33](backlog-retired.md#a33),
 the case-insensitive lookup cache's miss re-validated by name, fixed, and [A34](backlog-retired.md#a34),
 the options a parse remembers by identity, decided a documented limit, released as `eval-core` 0.15.1,
@@ -166,7 +171,7 @@ annotated at 0d305a3 and published 2026-10-26, every `@zvenigora` floor raised. 
 
 Revision 2 decided three of its open questions as D7–D9 and opened [A48](#a48)–A52 for the defects
 it found. Revision 3 brought A52 into the plan's step 2 (D10), and Revision 4 kept the `this`
-refusal on every identifier target (D11). A48–A51 are not scheduled; [A53](backlog-retired.md#a53) is decided.
+refusal on every identifier target (D11). A48–A51 were not scheduled; the [A48 plan](a48/plan.md) schedules them, and [A53](backlog-retired.md#a53) is decided.
 [F20](backlog-retired.md#f20), [F21](backlog-retired.md#f21),
 [F24](backlog-retired.md#f24), [F25](backlog-retired.md#f25) and F26 are fixed, and ship in no package; F21's toolchain bump left one
 `overrides.nx` entry, `undici`, which [F16](#f16) part 2 holds.
@@ -182,8 +187,8 @@ F28's answer. `eval-forms`' README is ordered by entry point, with a contents li
 splits. It shipped as `eval-forms` 0.7.1, a docs-only patch tagged annotated at 69c3e0e and published
 2026-10-29, its three `.d.ts` byte-identical to 0.7.0's and no peer range moved. F28 is decided and
 retired. Its retrospect is the plan's § 10, which added [SR39](standing-rules.md#sr39) and corrected
-[SR3](standing-rules.md#sr3)'s check. [F29](#f29), opened by step 2's code review, waits for the next
-phase that moves `eval-forms`' rows.
+[SR3](standing-rules.md#sr3)'s check. [F29](#f29), opened by step 2's code review, is scheduled in the [A48 plan](a48/plan.md)'s step 7, which moves
+`eval-forms`' rows with its release.
 
 **The [A24 plan](a24/plan.md) is complete**: the await track, [A25](backlog-retired.md#a25),
 [A24](backlog-retired.md#a24) and [D13](backlog-retired.md#d13), shipped as `eval-core` 0.15.0,
@@ -347,7 +352,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.14.1. F28, decided by Phase 11 and shipped in `eval-forms` 0.7.1, was retired by 0.7.1's post-publish commit, after its tag; A47 is fixed, and A32 and A30 are decided, documentation only | `95932e6` | 2026-10-30 | 27 | 0 | 4: F28, A47, A32, A30 | 23 |
 | `eval-core` 0.15.0, `eval-signals` 0.8.0, `eval-forms` 0.8.0. A27 and A38 are fixed, and A25, A24 and D13 by the A24 plan, all released in them; F30 opened by the release commit's code review | `67486ab` | 2026-10-31 | 23 | 1: F30 | 5: A27, A38, A25, A24, D13 | 19 |
 | `eval-core` 0.15.1. A33 is fixed and A34 decided, documented, both released in it; F30 and A53 closed in no package; A54 opened by step 2's review | `9e88d18` | 2026-11-02 | 19 | 1: A54 | 4: F30, A53, A33, A34 | 16 |
-| **Since the register opened** | | | **42** | **73** | **99** | **16** |
+| *Unreleased* since `eval-core` 0.15.1. The [A48 plan](a48/plan.md), step 1, opens A55, A56 and A57; A48, A49, A50, A51 and F29 are scheduled or decided, and stay live | — | — | 16 | 3: A55, A56, A57 | 0 | 19 |
+| **Since the register opened** | | | **42** | **76** | **99** | **19** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -416,13 +422,16 @@ makes it that release's row, with its tag commit and date.
 | [A45](backlog-retired.md#a45) | An assignment evaluates its target as an operand and its right side unconditionally — a short-circuited `\|\|=` called its right side and wrote (part 1), a member target is evaluated twice, and `obj.fetch = 1` is refused at the read | core | fix | **Retired — fixed 2026-10-24**. Part 1 retired 2026-10-22, released 2026-10-23 in `eval-core` 0.13.3, tagged 021d5e4. Part 2 fixed in steps 2 and 3 of the [A45 plan](a45/plan.md), released 2026-10-26 in `eval-core` 0.14.0, tagged 0d305a3: a member target's object and key are evaluated once, `=` reads nothing, a compound or logical operator reads once, and read events follow the reads, which reopened Phase 1's decision. A breaking minor by behaviour |
 | [A46](backlog-retired.md#a46) | An expression can rebind `undefined` on a reused context — `undefined = 1`, then `x === undefined` is `false` — and under `caseInsensitive` a case variant of `undefined`, `null`, `true` or `false` | core | fix, decision | **Retired — fixed 2026-10-22**; released 2026-10-22 in `eval-core` 0.13.2, tagged dc4302d. Such a write throws `Assignment to read-only name`, unless a scope binds the name or the context resolves it; a context class that overrides `set` decides these writes itself. `NaN` and `Infinity` are outside the set, since the evaluator resolves neither |
 | [A47](backlog-retired.md#a47) | An arrow's parameter scope is pushed without the walk's options, so under `caseInsensitive` `(x => X)(1)` is `undefined`, and `X = 5` in the body can land on the consumer's context | core | fix | **Retired — fixed 2026-10-28**; released 2026-10-30 in `eval-core` 0.14.1, tagged 95932e6. The parameter scope is pushed with the walk's options, as the other three scope pushers push theirs. Opened 2026-10-22 by the A40/A41 batch's code review; predated it |
-| [A48](#a48) | Under `caseInsensitive`, a member read calls a prototype accessor twice: `c.g` reads its getter twice, and so does `c.g++` | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q2); predates it. The plan's characterisation spec holds three rows under it. Not scheduled |
-| [A49](#a49) | The context branch reads what it tests: `getThis` reads the value and `getKey` calls lookups, so `this.g = 1` calls a getter on the context | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q3); predates it. Its fix touches `EvalContext`, a published class. Not scheduled |
-| [A50](#a50) | Under `caseInsensitive`, `this.k = v` writes an own property onto the context's `Registry` copy, and the data is unchanged | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q4); predates it. Not scheduled |
-| [A51](#a51) | A member write to an `EvalScope` held as a value lands on the instance, never through `EvalScope.set`, and can replace its `_context` and `_options` | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q4); predates it. A write policy can refuse it. Not scheduled |
+| [A48](#a48) | Under `caseInsensitive`, a member read calls a prototype accessor twice: `c.g` reads its getter twice, and so does `c.g++` | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q2); predates it. The A45 plan's characterisation spec holds three rows under it. Scheduled: the [A48 plan](a48/plan.md), step 3 |
+| [A49](#a49) | The context branch reads what it tests: `getThis` reads the value and `getKey` calls lookups, so `this.g = 1` calls a getter on the context | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q3); predates it. Decided a documented limit (the [A48 plan](a48/plan.md)'s D5), step 6; its fix would touch `EvalContext`, a published class |
+| [A50](#a50) | A member write through `this` writes an own property onto a `Registry` that is the context — the `caseInsensitive` copy, or a host's own, in either mode — and the map is unchanged | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q4); predates it. Scheduled: the [A48 plan](a48/plan.md), step 4 |
+| [A51](#a51) | A member write to an `EvalScope` held as a value lands on the instance, never through `EvalScope.set`, and can replace its `_context` and `_options` | core | fix | Open — opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (§ 8 q4); predates it. A write policy can refuse it. Scheduled: the [A48 plan](a48/plan.md), step 4 |
 | [A52](backlog-retired.md#a52) | Under `caseInsensitive`, an identifier holding `null` reads as `undefined`: `x === null` is `false`, and `x += 1` writes `NaN` | core | fix | **Retired — fixed 2026-10-24**, as step 2 of the [A45 plan](a45/plan.md) (its D10); released 2026-10-26 in `eval-core` 0.14.0, tagged 0d305a3. The literals fallback is taken only for `undefined`, in one read the visitor and the target read share. Opened 2026-10-23 by the plan's Revision 2; predated it |
 | [A53](backlog-retired.md#a53) | Under `caseInsensitive`, on one machine (Windows, Node 26.4.0), almost every process of the A45 plan's timing harness, 175 of 180, slows 5–9× about 2.7 s into its timed loop, in both bundles and on every path; a cloud run on Linux did not | core | decision, then fix | **Retired — decided 2026-10-31: a limit of the harness on one machine, not the library**; ships in no package. The slowdown is an episode that reaches a case-sensitive process too and none pinned to the performance cores; none on Linux with Node 26.4.0. [SR28](standing-rules.md#sr28) amended |
 | [A54](#a54) | Under `caseInsensitive`, a cached hit outlives an earlier own name that also matches — a case variant keeps answering a later own name, and a fresh lookup's refusal of the earlier one is skipped | core | fix | Open — opened 2026-11-01 by the code review of the [A33 plan](a33/plan.md)'s step 2; present in `eval-core` 0.15.0 and unchanged by A33's fix. The blocked value is neither returned nor written. Not scheduled |
+| [A55](#a55) | A throwing getter reads `undefined`: `safeGetProperty` catches any throw of a member read, and a compound or update target over it then fails at the write | core | fix | Open — opened 2026-11-03 by the [A48 plan](a48/plan.md), Revision 1 (§ 1.2, finding 1). Scheduled: the [A48 plan](a48/plan.md), step 3 |
+| [A56](#a56) | A member write through `this` lands on the context's receiver, and a read of the same name resolves elsewhere: `this.k = 2` writes into `thisArg` while `k` reads the scope's `10` | core | fix | Open — opened 2026-11-03 by the [A48 plan](a48/plan.md), Revision 1 (§ 1.2, finding 6). README corrected in the [A48 plan](a48/plan.md)'s step 1; fix not scheduled |
+| [A57](#a57) | Under `caseInsensitive`, a copy of a plain context keeps only its own enumerable string keys: a class instance's accessors and methods, non-enumerable keys and symbol keys are dropped | core | fix | Open — opened 2026-11-03 by the [A48 plan](a48/plan.md), Revision 1 (§ 1.2, finding 7). README corrected in the [A48 plan](a48/plan.md)'s step 1; fix not scheduled |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -483,7 +492,7 @@ makes it that release's row, with its tag commit and date.
 | [F26](backlog-retired.md#f26) | `tools/release-tags.mjs` does not check that a release tag is annotated: it resolves each tag with `git rev-list -n 1`, which accepts a lightweight tag, so the register's "all annotated" is checked by nothing | repo | fix | **Retired — fixed 2026-10-26**, in no package: every `eval-core@`, `eval-signals@` and `eval-forms@` tag must be a tag object, with or without a row, and a lightweight one fails, named once; the `v*` tags are not checked |
 | [F27](backlog-retired.md#f27) | The process and verification rules were copied across `CLAUDE.md`, the `step` skill, the `code-reviewer`, `CONTRIBUTING.md` and four plans' rule sections, and the copies had drifted: twenty divergences, among them three different gate commands | repo, core | docs | **Retired — fixed 2026-10-27**: [`docs/standing-rules.md`](standing-rules.md), SR1–SR38, imported by `CLAUDE.md`; the copies cite it. In no package, but for `contextPush`'s docblock, released 2026-10-30 in `eval-core` 0.14.1, tagged 95932e6, documentation only |
 | [F28](backlog-retired.md#f28) | The consumer documents Phase 10 left out: whether the package READMEs split into guides, where a guide lives and whether it ships; `eval-forms`' README, at 893 lines, by entry point first | repo, core, signals, forms | decision | **Retired — decided 2026-10-27, released 2026-10-29** as Phase 11: one README per package and no guide files; `eval-forms`' ordered by entry point, with a contents list, in `eval-forms` 0.7.1, docs-only |
-| [F29](#f29) | The README's "a rule that does not parse throws at registration, whatever the policy" is witnessed at both adapters under the default policy only; a function policy, the other one that swallows an error, is unwitnessed | forms | test gap | Open; opened 2026-10-28 by Phase 11 step 2's code review |
+| [F29](#f29) | The README's "a rule that does not parse throws at registration, whatever the policy" is witnessed at both adapters under the default policy only; a function policy, the other one that swallows an error, is unwitnessed | forms | test gap | Open; opened 2026-10-28 by Phase 11 step 2's code review. Scheduled: the [A48 plan](a48/plan.md), step 7 |
 | [F30](backlog-retired.md#f30) | `eval-signals` 0.8.0's `await` claims — the sync signal's throw on a refused `await` and its operand by identity, the async signal resolving an accepted one, a rejection as raised — are measured through the package once, and witnessed by no row of it | signals | test gap | **Retired — fixed 2026-10-31**, in no package: five rows, `eval-signals` 444 → 449, committed after the release commit 67486ab and before the publish. Opened the same day by the A24 plan's step 7a code review |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
@@ -832,7 +841,7 @@ short-lived reference without masking a kept one.
 ## A48 — Under `caseInsensitive`, a member read calls a prototype accessor twice
 
 **Package** core · **Kind** fix · **Status** Open. Opened 2026-10-23 by the
-[A45 plan](a45/plan.md), Revision 2 (its § 8 q2). It predates that plan. Not scheduled
+[A45 plan](a45/plan.md), Revision 2 (its § 8 q2). It predates that plan. Scheduled: the [A48 plan](a48/plan.md), step 3.
 
 When no own property matches the key, `evaluateMember`'s `caseInsensitive` lookup tests the key by
 reading it, `obj[key]` (`member-expression.ts:226` at db287da), and then reads `obj[foundKey]`. A key
@@ -866,7 +875,7 @@ production bundle built at db287da with the Angular compiler loaded, each row ru
 ## A49 — The context branch reads what it tests: `getThis` reads the value, `getKey` calls lookups
 
 **Package** core · **Kind** fix · **Status** Open. Opened 2026-10-23 by the
-[A45 plan](a45/plan.md), Revision 2 (its § 8 q3). It predates that plan. Not scheduled
+[A45 plan](a45/plan.md), Revision 2 (its § 8 q3). It predates that plan. Decided a documented limit (the [A48 plan](a48/plan.md)'s D5), step 6.
 
 `EvalContext.getThis` decides which object holds a key by reading the key's value, through
 `getContextValue`. `getKey` resolves through `resolve`, which reads the value and calls each lookup in
@@ -887,17 +896,17 @@ Measured 2026-10-23 against the production bundle: a getter `g` on the context o
 
 Under `caseInsensitive` a getter on the context is read when the context is copied, before the walk,
 so it shows 0 in that mode. A fix needs a presence test on `EvalContext`, a published class, or a
-documented limit. The A45 plan's characterisation spec holds the bold rows under this ID.
+documented limit, and it is decided as one: the [A48 plan](a48/plan.md)'s D5, with its contract written in step 6. The A45 plan's characterisation spec holds the bold rows under this ID.
 
 *Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M1j.
 *Verified*: measured 2026-10-23 with a throwaway script outside the repository, against the
 production bundle built at db287da and the A45 plan's prototype, with the Angular compiler loaded.
 
 <a id="a50"></a>
-## A50 — Under `caseInsensitive`, a member write through `this` lands on the `Registry` copy, not in it
+## A50 — A member write through `this` lands on a `Registry` as an own property, not in its map
 
 **Package** core · **Kind** fix · **Status** Open. Opened 2026-10-23 by the
-[A45 plan](a45/plan.md), Revision 2 (its § 8 q4, first half). It predates that plan. Not scheduled
+[A45 plan](a45/plan.md), Revision 2 (its § 8 q4, first half). It predates that plan. Scheduled: the [A48 plan](a48/plan.md), step 4.
 
 Under `caseInsensitive`, `EvalContext.fromContext` copies a plain context into a case-insensitive
 `Registry`, which becomes the context's original. For a key the original holds, `getThis` answers the
@@ -914,6 +923,8 @@ the production bundle, on `{ k: 1 }`:
 | `this.K = 5` | refused, `Write to the evaluation context is blocked for security reasons` | `5`; an own `k` on the `Registry` |
 | `this.g = 1`, a setter `g` on the context | set 1 | **set 0** |
 
+The same shape shows when a host `Registry` is the context, not a copy, case-sensitively and under `caseInsensitive` alike (*corrected 2026-11-03*, [SR4](standing-rules.md#sr4), the [A48 plan](a48/plan.md)'s finding 3). `this.k = 5` sets an own `k` on the `Registry` instance, `k` reads `1`, and the map keeps `1`; `this.k += 5` and `this.k++` do the same. A `Registry` held as a value is not part of this defect; it is measured only as a write (`A50 cs registry-as-value r.k = 5`). Measured 2026-11-02 in the A48 prototype (`rows-base.txt`, `A50 cs hostRegistry` and `A50 ci hostRegistry`), outside the repository. The identifier write `k = 5` over the same host `Registry` is measured in the A48 plan's step 2.
+
 A key the original does not hold is refused in both modes, by [A42](backlog-retired.md#a42)'s
 by-class refusal. The A45 plan's prototype gave the same rows: its resolver calls `getThis` as the
 read path does. The plan's characterisation spec holds the `caseInsensitive` rows under this ID. The
@@ -927,7 +938,7 @@ production bundle built at db287da and the A45 plan's prototype, with the Angula
 ## A51 — A member write to an `EvalScope` held as a value lands on the instance, and reaches its fields
 
 **Package** core · **Kind** fix · **Status** Open. Opened 2026-10-23 by the
-[A45 plan](a45/plan.md), Revision 2 (its § 8 q4, second half). It predates that plan. Not scheduled
+[A45 plan](a45/plan.md), Revision 2 (its § 8 q4, second half). It predates that plan. Scheduled: the [A48 plan](a48/plan.md), step 4. Decided there: the refusal sits in `safeSetProperty`, after the write policy and the right side.
 
 A member read whose object is an `EvalScope` goes through `EvalScope.get`. A member write to one
 never reaches `EvalScope.set`: `safeSetProperty` sets an own property on the instance. So the scope's
@@ -976,6 +987,47 @@ measure it ([SR28](standing-rules.md#sr28)).
 *Recorded*: this entry.
 *Verified*: measured 2026-11-01 on the production bundles of 0.15.0's code and of A33's fix, with
 `i3m3.mjs` and `arms.mjs`, pinned in the A33 plan's prototype folder, and by the reviewer.
+
+<a id="a55"></a>
+## A55 — A throwing getter reads `undefined`
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-11-03 by the
+[A48 plan](a48/plan.md), Revision 1 (§ 1.2, finding 1). Scheduled: the [A48 plan](a48/plan.md), step 3.
+
+`safeGetProperty` catches any throw of a member read and returns `undefined`. An own or inherited
+accessor whose getter throws therefore reads `undefined` case-sensitively, and so does a thrown non-`Error`.
+Case-sensitive, a compound or update target over such an accessor then fails at the write,
+`Failed to set property "t"`, since the accessor has no setter, and `x.t || 1` is `1`. Destructuring's
+source read, `let {t} = x`, swallows the same throw. Under `caseInsensitive`, an own accessor throws,
+because it is read directly after the cache match; an inherited one is read twice and swallowed. A
+null-ish target reads `undefined` by the early return, which is the evaluator's rule and stays.
+
+*Recorded*: this entry; the [A48 plan](a48/plan.md) § 1.2, finding 1, and its `rows-base.txt`, `A55` rows.
+*Verified*: measured 2026-11-02 in the sandbox, outside the repository, with the A48 prototype's `scripts/rows.mjs` against the production bundle of 9bf1bc8. The fix that removes the catch alone turns no `eval-core` suite case red (`suite-P55-eval-core.log`, 3303 of 3303), so the characterisation rows come first ([SR27](standing-rules.md#sr27)).
+
+<a id="a56"></a>
+## A56 — A member write through `this` lands on the context's receiver, and a read of the same name resolves elsewhere
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-11-03 by the
+[A48 plan](a48/plan.md), Revision 1 (§ 1.2, finding 6). README corrected in the [A48 plan](a48/plan.md)'s
+step 1; fix not scheduled.
+
+The context branch of a member write writes to `getThis`'s answer, a call's receiver, and that is not always the binding the read of the same name resolved. With a global prior scope holding `k` and a `thisArg`, `this.k = 2` writes into `thisArg` while `k` still reads `10`. Without a `thisArg`, the same write is refused as a write to the evaluation context. Case-sensitively, `(k => this.k)(1)` reads the parameter, and in `(k => (this.k = 5, k))(1)` the write goes to the original's `k`. Under `caseInsensitive`, that write leaves the copy's `k` at `0`. On `{ k: undefined }`, `this.k = 1` is refused while `k = 1` writes. The README's `### Scopes` section said "Only the call's receiver changes", which this made false; the A48 plan's step 1 replaced the sentence.
+
+*Recorded*: this entry; the [A48 plan](a48/plan.md) § 1.2, finding 6.
+*Verified*: measured 2026-11-02 in the sandbox, outside the repository, with the A48 prototype's `scripts/a56.mjs`, the `A56` rows of `a56-base.txt`.
+
+<a id="a57"></a>
+## A57 — A `caseInsensitive` copy of a plain context keeps only its own enumerable string keys
+
+**Package** core · **Kind** fix · **Status** Open. Opened 2026-11-03 by the
+[A48 plan](a48/plan.md), Revision 1 (§ 1.2, finding 7). README corrected in the [A48 plan](a48/plan.md)'s
+step 1; fix not scheduled.
+
+Under `caseInsensitive`, `EvalContext.fromContext` copies the object with `Object.entries`. A class instance's accessors and methods, its non-enumerable keys and its symbol keys are dropped. So `this.g` over a class instance's getter reads `undefined`, `this.m()` is not callable, and a write to `this.g` is refused as a write to the evaluation context. Case-sensitively, the same context keeps them all. The README's "copies the object into a case-insensitive store" understated the copy; the A48 plan's step 1 adds a sentence on what it keeps.
+
+*Recorded*: this entry; the [A48 plan](a48/plan.md) § 1.2, finding 7.
+*Verified*: measured 2026-11-02 in the sandbox, outside the repository, with the A48 prototype's `scripts/a56.mjs`, the `A57` and `copy` rows of `a56-base.txt`.
 
 ---
 
@@ -1606,7 +1658,7 @@ policy.
 **Fix**: two cases, one per adapter, each registering a rule that does not parse under a function
 policy and asserting the parse error's message, never a bare `toThrow()`
 ([SR18](standing-rules.md#sr18)), each probed by moving that adapter's parse inside its policy.
-Scheduled with the next phase that moves `eval-forms`' rows; Phase 11 holds them 0 / 0 / 0.
+Scheduled: the [A48 plan](a48/plan.md), step 7, with the release of `eval-forms`; Phase 11 held them 0 / 0 / 0.
 
 *Recorded*: this entry; the Phase 11 plan's step 2 Outcome. *Verified*: read 2026-10-28 — the two
 witnesses, `rules.ts` and `field-schema.ts` at the lines cited, and the M4 probe's record.

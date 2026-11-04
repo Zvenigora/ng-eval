@@ -8,15 +8,14 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: none active
+Plan document: docs/a48/plan.md
 Target: none
 Requested step: $ARGUMENTS
 
-**No plan is active.** The A33 plan (`docs/a33/plan.md`), A33 and A34, is complete: it shipped as
-`eval-core` 0.15.1, a patch, and its retrospect is its § 10. The next plan retargets this file when it
-is written. It names the plan above, says which projects each step reaches, and records the gate's
-counts its steps start from: at 9e88d18, the release commit, and unchanged by the post-publish record
-and the retrospect, `eval-core` 3303, `eval-signals` 450, `eval-forms` 386.
+**The A48 plan is active**: `docs/a48/plan.md`, Revision 1, for A48–A51, A55 and F29. Its steps reach
+`eval-core` in steps 1 to 4, 6 and 8, `eval-forms` in steps 6 to 8, and `eval-signals` in steps 7 and 8. Step 5 touches no package. Its steps start
+from the gate's counts at 9bf1bc8, the baseline the plan's § 6 names: `eval-core` 3303, `eval-signals`
+450, `eval-forms` 386.
 
 **Invoked while no plan is active, this skill stops at § 1.** Run the baseline, report it, say that
 no plan is active, and do nothing else. Do not run a step of a completed plan, and do not treat a

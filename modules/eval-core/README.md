@@ -175,7 +175,7 @@ expressions.length;   // 2
 
 An evaluation context may carry prior scopes, each with its own `namespace` and case sensitivity. Bare identifiers are read from the context itself; a namespaced scope is reached through its namespace.
 
-`thisArg` is the `this` a scope's methods are called with. A method called on the scope's own object, such as `cat.action(...)` below, receives `thisArg`; so does `this.fn()` when a global scope supplies `fn`. Without `thisArg`, `cat.action(...)` receives the scope's object. Only the call's receiver changes: `cat` still evaluates to the scope's object, so `cat.num` reads it and `cat.x = 1` writes to it. Up to 0.6.x `thisArg` was accepted and never applied.
+`thisArg` is the `this` a scope's methods are called with. A method called on the scope's own object, such as `cat.action(...)` below, receives `thisArg`; so does `this.fn()` when a global scope supplies `fn`. Without `thisArg`, `cat.action(...)` receives the scope's object. A read is unchanged: `cat` still evaluates to the scope's object, so `cat.num` reads it and `cat.x = 1` writes to it. A member write through `this` is not: when `k` resolves to a global scope that supplies `thisArg`, `this.k = 2` writes to `thisArg`, while `k` and `this.k` go on reading the scope's `k`; when that scope supplies no `thisArg`, the same write is refused as a write to the evaluation context. Up to 0.6.x `thisArg` was accepted and never applied.
 
 ```javascript
 import { EvalContext, EvalScope, EvalScopeOptions,
@@ -207,7 +207,7 @@ const result = service.simpleEval('cat.action(args, cat.num, "times")', evalCont
 // 'Mister Whiskers says meow 3 times' - `this` is thisArg; cat.num still reads cat
 ```
 
-Note that an `EvalContext` may back any number of evaluations, and that `caseInsensitive` set on the context alone does not reach the walk — pass it in the evaluation options too. Even then, a plain object handed to `new EvalContext` matches no case variant: build the context with `EvalContext.fromContext(object, options)` instead, which copies the object into a case-insensitive store.
+Note that an `EvalContext` may back any number of evaluations, and that `caseInsensitive` set on the context alone does not reach the walk — pass it in the evaluation options too. Even then, a plain object handed to `new EvalContext` matches no case variant: build the context with `EvalContext.fromContext(object, options)` instead, which copies the object into a case-insensitive store. The copy takes the object's own enumerable string keys, as `Object.entries` lists them, and reads an accessor once, when the copy is made; what the object inherits, such as a class's accessors and methods, and its non-enumerable and symbol keys are not copied.
 
 ### Colon-joined names — `provideColonIdentifiers`
 
