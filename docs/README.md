@@ -32,7 +32,9 @@ that anchor, `<a id="…"></a>` in the first cell.
 
 ## Active plan
 
-None. The next plan is linked here when it is written.
+| Track | Documents | Subject |
+| :--- | :--- | :--- |
+| `a48/` | [plan](a48/plan.md) | [A48](backlog.md#a48), [A50](backlog.md#a50), [A51](backlog.md#a51) and [A55](backlog.md#a55): member reads and writes that miss the data, and a getter's throw, fixed; [A49](backlog.md#a49) decided a documented limit; [F29](backlog.md#f29)'s two cases. For `eval-core` 0.16.0, `eval-signals` 0.9.0 and `eval-forms` 0.9.0. Its step 1 opened [A55](backlog.md#a55), [A56](backlog.md#a56), [A57](backlog.md#a57) and [A58](backlog.md#a58) and corrected two README sentences |
 
 ## Completed phases
 

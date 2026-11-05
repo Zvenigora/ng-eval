@@ -12,6 +12,15 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Changed
+- The README's `### Scopes` corrects two sentences. It said that a prior scope's `thisArg` changes
+  only the call's receiver; it now says so of a namespace, since through `this` a write can go to
+  `thisArg` ([A56](../../docs/backlog.md#a56)). And it said that `EvalContext.fromContext` copies a
+  plain object into a case-insensitive store; it now says that an object that is not an instance of
+  this realm's `Object`, one with a null prototype or one made in another realm, is not copied, and
+  is not yet read as the context in either mode ([A58](../../docs/backlog.md#a58)).
+  No behaviour changes. Documentation only: the README reaches the tarball.
+
 ---
 
 ## [0.15.1] - 2026-11-02

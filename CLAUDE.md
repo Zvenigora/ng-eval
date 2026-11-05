@@ -49,7 +49,9 @@ patch, and its plan is `docs/documentation/phase-11-plan.md`. The A24 plan, `doc
 the await track, A25, A24 and D13 — is complete: it shipped as `eval-core` 0.15.0, `eval-signals`
 0.8.0 and `eval-forms` 0.8.0. The A33 plan, `docs/a33/plan.md` — the case-insensitive lookup cache's
 miss, A33, and the options a parse remembers, A34 — is complete: it shipped as `eval-core` 0.15.1, a
-patch. No plan is active. What `ROADMAP.md` has left is Phases 7
+patch. The active plan is `docs/a48/plan.md`, A48–A51, A55 and F29: A48, A50, A51 and A55 fixed
+and A49 decided a documented limit, for `eval-core` 0.16.0 with `eval-signals` 0.9.0 and
+`eval-forms` 0.9.0. What `ROADMAP.md` has left is Phases 7
 and 8, which it reserves without specifying them.
 
 **Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left
@@ -122,8 +124,10 @@ than one commit ([SR1](docs/standing-rules.md#sr1)) — as in `docs/a8/`, `docs/
   which shipped as `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms` 0.7.0, and Phase 11's,
   `docs/documentation/phase-11-plan.md`, which shipped as `eval-forms` 0.7.1, and the A24 plan,
   `docs/a24/plan.md`, which shipped as `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms`
-  0.8.0. No plan is active. `.claude/skills/step/SKILL.md` is retargeted with each new plan; while
-  none is active it names none, and stops at its § 1 if invoked.
+  0.8.0. The active plan is `docs/a48/plan.md`, A48–A51, A55 and F29, for `eval-core` 0.16.0 with
+  `eval-signals` 0.9.0 and `eval-forms` 0.9.0. `.claude/skills/step/SKILL.md` targets it, and is
+  retargeted with each new plan; while none is active it names none, and stops at its § 1 if
+  invoked.
 - The completed plans are design records, not work in progress, and each remains the
   reference for its library — they record findings about this codebase that are not
   obvious from reading files in isolation:

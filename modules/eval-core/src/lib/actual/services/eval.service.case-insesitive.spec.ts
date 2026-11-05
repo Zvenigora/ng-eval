@@ -2,6 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { EvalService } from './eval.service';
 import { getValueIgnoreCase } from '../../internal/visitors';
 import { Registry } from '../../internal/public-api';
+import { EvalContext } from '../../internal/classes/eval';
+import { runInNewContext } from 'vm';
 
 const context = {
   string: 'string',
@@ -160,6 +162,147 @@ describe('EvalService - case-insensitive options', () => {
     const resultContext = registryContext.toObject();
     expect(actual).toEqual(expected);
     expect(resultContext).toMatchObject(expObj);
+  });
+
+  // `docs/backlog.md` A57: what `EvalContext.fromContext`'s case-insensitive
+  // copy holds, as A57's entry records it, and A58: what it does not copy,
+  // as the README's `### Scopes` states it. Under
+  // `caseInsensitive` a plain object is copied into a `Registry` by
+  // `Object.entries`; case-sensitive, the object itself is the context, so
+  // Q2 to Q4 read the same fixture case-sensitively first, to show it holds
+  // what the copy leaves out (SR17). Each case builds its own object (SR43).
+  describe('what fromContext\'s case-insensitive copy holds (docs/backlog.md A57)', () => {
+    const ci = { caseInsensitive: true };
+
+    it('Q1 should read an own enumerable getter once, when the copy is made', () => {
+      let gets = 0;
+      const object = {};
+      Object.defineProperty(object, 'g', { get: () => { gets += 1; return 1; }, enumerable: true });
+
+      const context = EvalContext.fromContext(object, ci);
+      expect(gets).toBe(1);
+      expect(service.simpleEval('g', context, ci)).toBe(1);
+      expect(service.simpleEval('this.g', context, ci)).toBe(1);
+      expect(gets).toBe(1);
+    });
+
+    it('Q2 should leave out a class instance\'s inherited accessor and method, and keep its own field', () => {
+      class Instance {
+        own = 1;
+        get g(): number { return 7; }
+        m(): string { return 'm'; }
+      }
+      // A class instance has no index signature; the context takes it as any object.
+      const instance = () => new Instance() as unknown as Record<string, unknown>;
+
+      const plain = EvalContext.fromContext(instance(), {});
+      expect(service.simpleEval('g', plain)).toBe(7);
+      expect(service.simpleEval('m()', plain)).toBe('m');
+
+      const context = EvalContext.fromContext(instance(), ci);
+      expect(service.simpleEval('own', context, ci)).toBe(1);
+      expect(service.simpleEval('g', context, ci)).toBeUndefined();
+      expect(service.simpleEval('this.g', context, ci)).toBeUndefined();
+      expect(() => service.simpleEval('m()', context, ci)).toThrow('Cannot call undefined or null function');
+    });
+
+    it('Q3 should leave out a non-enumerable own property', () => {
+      const make = () => {
+        const object: Record<string, unknown> = { a: 1 };
+        Object.defineProperty(object, 'h', { value: 3, enumerable: false });
+        return object;
+      };
+
+      expect(service.simpleEval('h', EvalContext.fromContext(make(), {}))).toBe(3);
+      expect(service.simpleEval('h', EvalContext.fromContext(make(), ci), ci)).toBeUndefined();
+    });
+
+    it('Q4 should leave out a symbol-keyed own property', () => {
+      const s = Symbol('s');
+      const make = () => ({ a: 1, s, [s]: 2 });
+
+      expect(service.simpleEval('this[s]', EvalContext.fromContext(make(), {}))).toBe(2);
+      expect(service.simpleEval('this[s]', EvalContext.fromContext(make(), ci), ci)).toBeUndefined();
+    });
+
+    it('Q5 should write k = 5 to the copy, leaving the caller\'s object as it was', () => {
+      const object: Record<string, unknown> = { k: 1 };
+      const context = EvalContext.fromContext(object, ci);
+
+      expect(service.simpleEval('k = 5', context, ci)).toBe(5);
+      expect(service.simpleEval('k', context, ci)).toBe(5);
+      expect(object['k']).toBe(1);
+    });
+
+    it('Q6 should write user.name into the caller\'s own user, the copy being shallow (the contrast)', () => {
+      const user = { name: 'a' };
+      const context = EvalContext.fromContext({ user }, ci);
+
+      expect(service.simpleEval('user.name = "x"', context, ci)).toBe('x');
+      expect(user.name).toBe('x');
+    });
+
+    it('Q7 should write k = 5 to a binding the expression declares, leaving the copy and the caller\'s object as they were', () => {
+      for (const expression of ['let k = 1; k = 5; k', '(k => (k = 5, k))(1)']) {
+        const object: Record<string, unknown> = { k: 1 };
+        const context = EvalContext.fromContext(object, ci);
+
+        expect(service.simpleEval(expression, context, ci)).toBe(5);
+        expect(service.simpleEval('k', context, ci)).toBe(1);
+        expect(object['k']).toBe(1);
+      }
+    });
+
+    it('Q8 should leave the caller\'s object as it was for a write into a pushed scope or through this', () => {
+      const object: Record<string, unknown> = { k: 1 };
+      const context = EvalContext.fromContext(object, ci);
+      context.push({ k: 'p' }, ci);
+
+      expect(service.simpleEval('k = 5', context, ci)).toBe(5);
+      context.pop();
+      expect(service.simpleEval('k', context, ci)).toBe(1);
+      expect(object['k']).toBe(1);
+
+      for (const expression of ['this.k = 5', 'this.k += 5', 'k++']) {
+        const own: Record<string, unknown> = { k: 1 };
+        service.simpleEval(expression, EvalContext.fromContext(own, ci), ci);
+        expect(own['k']).toBe(1);
+      }
+    });
+
+    it('Q9 should not copy an object with a null prototype, nor read it as the context, in either mode', () => {
+      const nullProto = (): Record<string, unknown> => {
+        const object = Object.create(null) as Record<string, unknown>;
+        object['k'] = 1;
+        return object;
+      };
+
+      const object = nullProto();
+      const context = EvalContext.fromContext(object, ci);
+      expect(context.original).toBe(object);
+      for (const options of [{}, ci]) {
+        const each = EvalContext.fromContext(nullProto(), options);
+        expect(service.simpleEval('k', each, options)).toBeUndefined();
+        expect(service.simpleEval('this.k', each, options)).toBeUndefined();
+        // The contrast: held as a value, it is read.
+        expect(service.simpleEval('d.k', EvalContext.fromContext({ d: nullProto() }, options), options)).toBe(1);
+      }
+    });
+
+    it('Q10 should not copy an object made in another realm, nor read it as the context, in either mode', () => {
+      const foreign = (): Record<string, unknown> => runInNewContext('({ k: 1 })') as Record<string, unknown>;
+
+      const object = foreign();
+      expect(object instanceof Object).toBe(false);
+      expect(EvalContext.fromContext(object, ci).original).toBe(object);
+      for (const options of [{}, ci]) {
+        const each = EvalContext.fromContext(foreign(), options);
+        expect(service.simpleEval('k', each, options)).toBeUndefined();
+        expect(service.simpleEval('this.k', each, options)).toBeUndefined();
+        // The contrast: held as a value, it is read.
+        expect(service.simpleEval('d.k', EvalContext.fromContext({ d: foreign() }, options), options)).toBe(1);
+      }
+    });
   });
 
 });

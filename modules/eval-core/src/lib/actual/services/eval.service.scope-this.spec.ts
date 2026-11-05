@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { EvalService } from './eval.service';
 import { EvalContext, EvalScope } from '../../internal/classes/eval';
-import { Context } from '../../internal/classes/common';
+import { Context, Registry } from '../../internal/classes/common';
 
 /**
  * `docs/backlog-retired.md` A7: `EvalScopeOptions.thisArg` was documented and
@@ -68,8 +68,9 @@ describe('EvalService - a prior scope\'s thisArg', () => {
     });
 
     it('should read a property from the scope\'s object, not from thisArg', () => {
-      // The receiver changes at the call and nowhere else: a member read
-      // substituting `thisArg` would answer 'Other'.
+      // Through a namespace the receiver changes at the call and nowhere
+      // else: a member read substituting `thisArg` would answer 'Other'.
+      // Through `this` a write can go to `thisArg` (A56, below).
       expect(service.simpleEval('cat.name', namespaced(scopeObject(), foreign))).toBe('Miss Kitty');
     });
 
@@ -147,6 +148,147 @@ describe('EvalService - a prior scope\'s thisArg', () => {
       expect(Reflect.ownKeys(receiver)).toEqual([]);
       expect(Object.getPrototypeOf(receiver)).toBeNull();
       expect(typeof (receiver as { push: unknown }).push).toBe('function');
+    });
+  });
+
+  describe.each<[string, { caseInsensitive?: boolean }]>([
+    ['case-sensitive', {}],
+    ['caseInsensitive', { caseInsensitive: true }],
+  ])('this.k = v under a global prior scope\'s thisArg (docs/backlog.md A56), %s', (_label, options) => {
+    // `this.k` reads `k` as the identifier does, a `k` the expression binds
+    // itself first, but a write through `this` goes to the receiver `getThis`
+    // answers: the `thisArg` of the first prior scope that holds `k`, when the
+    // context's own object does not. "Holds" is a value other than `undefined`.
+    // A56's entry records it; each case builds its own context,
+    // scopes and `thisArg` (SR43). W2 and W3 read `k` before `this.k`, so a
+    // probe that breaks the identifier's read fails on its own line.
+    const withScope = (caller: Record<string, unknown>) => {
+      const context = EvalContext.fromContext(caller, options);
+      const scope: Record<string, unknown> = { k: 10 };
+      const thisArg: Record<string, unknown> = { k: 't' };
+      context.priorScopes.push(EvalScope.fromObject(scope, { global: true, thisArg }));
+      return { context, scope, thisArg };
+    };
+
+    it('W1 should write this.k = 2 to thisArg, not to the scope\'s object', () => {
+      const { context, scope, thisArg } = withScope({});
+
+      expect(service.simpleEval('this.k = 2', context, options)).toBe(2);
+      expect(thisArg['k']).toBe(2);
+      expect(scope['k']).toBe(10);
+    });
+
+    it('W2 should read k and this.k from the scope, not from thisArg', () => {
+      const { context } = withScope({});
+
+      expect(service.simpleEval('k', context, options)).toBe(10);
+      expect(service.simpleEval('this.k', context, options)).toBe(10);
+    });
+
+    it('W3 should still read k and this.k from the scope after this.k = 2', () => {
+      const { context } = withScope({});
+      service.simpleEval('this.k = 2', context, options);
+
+      expect(service.simpleEval('k', context, options)).toBe(10);
+      expect(service.simpleEval('this.k', context, options)).toBe(10);
+    });
+
+    it('W4 should leave thisArg alone when the context\'s own object holds k (the contrast)', () => {
+      const caller: Record<string, unknown> = { k: 1 };
+      const { context, scope, thisArg } = withScope(caller);
+
+      expect(service.simpleEval('this.k = 2', context, options)).toBe(2);
+      expect(thisArg['k']).toBe('t');
+      expect(scope['k']).toBe(10);
+      // Case-sensitive the write lands on the caller's object; under
+      // `caseInsensitive` on the copy `fromContext` made of it, beside its map
+      // (A50, A57).
+      expect(caller['k']).toBe(options.caseInsensitive ? 1 : 2);
+    });
+
+    it('W5 should write to the thisArg of the first prior scope that holds k', () => {
+      const context = EvalContext.fromContext({}, options);
+      const second: Record<string, unknown> = { k: 't2' };
+      context.priorScopes.push(EvalScope.fromObject({ j: 1 }, { global: true }));
+      context.priorScopes.push(EvalScope.fromObject({ k: 10 }, { global: true, thisArg: second }));
+
+      expect(service.simpleEval('this.k = 2', context, options)).toBe(2);
+      expect(second['k']).toBe(2);
+    });
+
+    it('W6 should refuse this.k = 2 when the first prior scope that holds k has no thisArg', () => {
+      const context = EvalContext.fromContext({}, options);
+      const first: Record<string, unknown> = { k: 't1' };
+      context.priorScopes.push(EvalScope.fromObject({ j: 1 }, { global: true, thisArg: first }));
+      context.priorScopes.push(EvalScope.fromObject({ k: 10 }, { global: true }));
+
+      expect(() => service.simpleEval('this.k = 2', context, options))
+        .toThrow('Write to the evaluation context is blocked for security reasons');
+      expect(first['k']).toBe('t1');
+    });
+
+    it('W7 should read a k the expression binds itself, while this.k = 2 still writes thisArg (the contrast)', () => {
+      for (const expression of [
+        'let k = 1; this.k = 2; this.k',
+        'const k = 1; this.k = 2; this.k',
+        '(k => (this.k = 2, this.k))(1)',
+      ]) {
+        const { context, scope, thisArg } = withScope({});
+
+        expect(service.simpleEval(expression, context, options)).toBe(1);
+        expect(thisArg['k']).toBe(2);
+        expect(scope['k']).toBe(10);
+      }
+    });
+
+    it('W8 should write thisArg for a Registry passed as the context and for a Registry-backed prior scope (SR19)', () => {
+      const host = new Registry<string, unknown>([['j', 1]], options);
+      const viaHost = EvalContext.fromContext(host as unknown as Context, options);
+      const hostThisArg: Record<string, unknown> = { k: 't' };
+      viaHost.priorScopes.push(EvalScope.fromObject({ k: 10 }, { global: true, thisArg: hostThisArg }));
+
+      expect(service.simpleEval('this.k = 2', viaHost, options)).toBe(2);
+      expect(hostThisArg['k']).toBe(2);
+      expect(host.get('k')).toBeUndefined();
+
+      const backing = new Registry<string, unknown>([['k', 10]], options);
+      const viaScope = EvalContext.fromContext({}, options);
+      const scopeThisArg: Record<string, unknown> = { k: 't' };
+      viaScope.priorScopes.push(new EvalScope(backing as unknown as Context, { global: true, thisArg: scopeThisArg }));
+
+      expect(service.simpleEval('this.k = 2', viaScope, options)).toBe(2);
+      expect(scopeThisArg['k']).toBe(2);
+      expect(backing.get('k')).toBe(10);
+    });
+
+    it('W9 should pass over a k whose value is undefined, in a prior scope and in the context\'s own object', () => {
+      const context = EvalContext.fromContext({}, options);
+      const first: Record<string, unknown> = { k: 't1' };
+      const second: Record<string, unknown> = { k: 't2' };
+      context.priorScopes.push(EvalScope.fromObject({ k: undefined }, { global: true, thisArg: first }));
+      context.priorScopes.push(EvalScope.fromObject({ k: 10 }, { global: true, thisArg: second }));
+
+      expect(service.simpleEval('this.k = 2', context, options)).toBe(2);
+      expect(first['k']).toBe('t1');
+      expect(second['k']).toBe(2);
+
+      const caller: Record<string, unknown> = { k: undefined };
+      const own = withScope(caller);
+
+      expect(service.simpleEval('this.k = 2', own.context, options)).toBe(2);
+      expect(own.thisArg['k']).toBe(2);
+      expect(caller['k']).toBeUndefined();
+    });
+
+    it('W10 should read k from a scope the caller pushes, while this.k = 2 still writes thisArg', () => {
+      const { context, scope, thisArg } = withScope({});
+      context.push({ k: 'p' }, options);
+
+      expect(service.simpleEval('this.k = 2', context, options)).toBe(2);
+      expect(thisArg['k']).toBe(2);
+      expect(scope['k']).toBe(10);
+      expect(service.simpleEval('k', context, options)).toBe('p');
+      expect(service.simpleEval('this.k', context, options)).toBe('p');
     });
   });
 });
