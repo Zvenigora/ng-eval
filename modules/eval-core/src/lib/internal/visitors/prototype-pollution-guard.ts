@@ -279,10 +279,11 @@ export const safeSetProperty = (target: unknown, key: unknown, value: unknown): 
 };
 
 /**
- * Safely gets a property from an object with prototype pollution protection
+ * Safely gets a property from an object with prototype pollution protection.
+ * A getter's or a proxy trap's throw propagates, as in JavaScript.
  * @param target The target object
  * @param key The property key
- * @returns The property value or undefined
+ * @returns The property value, or undefined for a target that is not an object
  */
 export const safeGetProperty = (target: unknown, key: unknown): unknown => {
   if (!target || (typeof target !== 'object' && typeof target !== 'function')) {
@@ -302,13 +303,9 @@ export const safeGetProperty = (target: unknown, key: unknown): unknown => {
     propertyKey = String(key);
   }
 
-  // Direct property access using bracket notation (safer than complex prototype walking)
-  try {
-    return (target as Record<PropertyKey, unknown>)[propertyKey];
-  } catch {
-    // If property access fails, return undefined
-    return undefined;
-  }
+  // A getter's or a proxy trap's throw propagates, as it does in JavaScript
+  // (`docs/backlog-retired.md` A55).
+  return (target as Record<PropertyKey, unknown>)[propertyKey];
 };
 
 /**

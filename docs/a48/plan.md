@@ -1,15 +1,16 @@
 # A48–A51, A55 and F29 — member reads and writes that miss the data, and a getter's throw (`@zvenigora/ng-eval-core` 0.16.0)
 
 **Date**: November 3, 2026
-**Revision**: 1 — step 1, this plan and its records, with its five code reviews folded in before the
-commit (§ 4.1).
+**Revision**: 2 — step 2, A55 and A48 fixed: § 3.1's CHANGELOG heading corrected to `### Breaking`,
+step 1's count corrected to 30, and § 8 q1 decided (§ 4, Step 2). Revision 1 — step 1, this plan and
+its records, with its five code reviews folded in before the commit (§ 4.1).
 
 Four `eval-core` entries opened by the [A45 plan](../a45/plan.md) and one found measuring them:
-[A48](../backlog.md#a48), a `caseInsensitive` read that calls a prototype accessor twice;
+[A48](../backlog-retired.md#a48), a `caseInsensitive` read that calls a prototype accessor twice;
 [A49](../backlog.md#a49), the context branch calling a context getter or a lookup where JavaScript
 reads less; [A50](../backlog.md#a50), a write through `this` that lands beside a `Registry`'s map;
 [A51](../backlog.md#a51), a write to an `EvalScope` held as a value that lands on the instance; and
-[A55](../backlog.md#a55), new, `safeGetProperty` swallowing a getter's throw. This plan fixes A48,
+[A55](../backlog-retired.md#a55), new, `safeGetProperty` swallowing a getter's throw. This plan fixes A48,
 A50, A51 and A55, decides A49 a documented limit, and adds [F29](../backlog.md#f29)'s two `eval-forms`
 cases. The fixes change what an expression returns, throws and writes, so they ship as `eval-core`
 0.16.0, and `eval-signals` 0.9.0 and `eval-forms` 0.9.0 release in the same commit
@@ -234,7 +235,7 @@ supersede supplement 5's. Supplements 2 to 6's step 1 patches are superseded.
   ([SR18](../standing-rules.md#sr18)).
 - **D5. A49: a documented limit, no code.** How many times a context getter or a lookup is called is not
   part of the contract. A fix needs a presence test on `EvalContext`, a published class, for a cost no
-  consumer has reported. The README's "Three kinds of read remain beyond JavaScript's" passage states
+  consumer has reported. The README's "Two kinds of read remain beyond JavaScript's" passage (three until step 2) states
   it, under [SR44](../standing-rules.md#sr44).
 - **D6. A56, A57 and A58: opened, covered by step 1's rows, not fixed here.** A fix to any changes what
   a published path reads or writes (`getThis`'s answer as a write target, what the copy holds, what a
@@ -253,8 +254,9 @@ supersede supplement 5's. Supplements 2 to 6's step 1 patches are superseded.
 
 `prototype-pollution-guard.ts` and `member-expression.ts` made to P55 and P48, their comments pointing
 at `docs/backlog-retired.md` A55 and A48. The README's "Three kinds of read remain" passage loses its
-third kind, the inherited getter under `caseInsensitive`; the CHANGELOG's `### Changed` states the throw
-and the proxy's `has` trap, and `### Fixed` the double read. The characterisation includes the
+third kind, the inherited getter under `caseInsensitive`; the CHANGELOG's `### Breaking` states the throw
+and the proxy's `has` trap, as § 7 says and as 0.14.0 filed a getter's changed call count, and `### Fixed`
+the double read. (Revision 1 said `### Changed`; corrected in step 2.) The characterisation includes the
 destructuring read, own and inherited, in both modes (`s4.mjs`, `destructure`), and § 8 q1 is decided
 before the gate.
 
@@ -345,8 +347,8 @@ One step per session behind the `/step` gate. Gate counts at 3bbc296: `eval-core
 
 | Step | Subject | Files | Rows: `eval-core` / `eval-signals` / `eval-forms` | Ships in |
 | :--- | :--- | :--- | :--- | :--- |
-| 1 | This plan, its records, and the two README sentences | `docs/a48/plan.md` (new), `docs/README.md`, `docs/backlog.md`, `CLAUDE.md`, `.claude/skills/step/SKILL.md`; `modules/eval-core/README.md`, `CHANGELOG.md`, `eval.service.scope-this.spec.ts`, `eval.service.case-insesitive.spec.ts` | **+29** / 0 / 0 | the README and CHANGELOG in `eval-core` 0.16.0; the rest in no package |
-| 2 | A55 and A48 | `prototype-pollution-guard.ts`, `member-expression.ts`, a characterisation spec, `assignment-target.spec.ts`, `README.md`, `CHANGELOG.md`, the register, the skill, this document | measured in the step | `eval-core` 0.16.0 |
+| 1 | This plan, its records, and the two README sentences | `docs/a48/plan.md` (new), `docs/README.md`, `docs/backlog.md`, `CLAUDE.md`, `.claude/skills/step/SKILL.md`; `modules/eval-core/README.md`, `CHANGELOG.md`, `eval.service.scope-this.spec.ts`, `eval.service.case-insesitive.spec.ts` | **+30** / 0 / 0 | the README and CHANGELOG in `eval-core` 0.16.0; the rest in no package |
+| 2 | A55 and A48 | `prototype-pollution-guard.ts`, `member-expression.ts`, `member-read.spec.ts` (new), `assignment-target.spec.ts`, `eval.service.case-insesitive.spec.ts`, `README.md`, `CHANGELOG.md`, the register, `docs/README.md`, `docs/a45/plan.md`, `CLAUDE.md`, the skill, this document | **+86** / 0 / 0 | `eval-core` 0.16.0 |
 | 3 | A50 | `member-expression.ts`, `assignment-expression.ts`, `update-expression.ts`, their specs, `assignment-target.spec.ts`, `CHANGELOG.md`, the register, the skill, this document | measured in the step | `eval-core` 0.16.0 |
 | 4 | A51 | `prototype-pollution-guard.ts`, its spec, `assignment-target.spec.ts`, `CHANGELOG.md`, the register, the skill, this document | measured in the step | `eval-core` 0.16.0 |
 | 5 | A49, a documented limit | `README.md`, `eval-context.ts`' JSDoc, `assignment-target.spec.ts`' marks, a witness spec, `CHANGELOG.md`, the register, the skill, this document | measured in the step | `eval-core` 0.16.0 |
@@ -579,6 +581,106 @@ resolved; nothing Critical; two Important, three Minor, two notes.
 
 Q10 is a new row, so supplement 7 re-measures every probe's red set with it in place.
 
+### Step 2 — A55 and A48
+
+- **Place, don't draft.** The step's whole change is pinned as `step-2/step-2.patch` in supplement 8,
+  its SHA-256 given in the prompt, placed as step 1's was: each hunk with Edit or Write
+  ([SR36](../standing-rules.md#sr36)), then, everything staged, the diff that supplement 8's
+  `step-2/staged-diff.sh` prints hashes to the pinned patch's SHA-256.
+- **The code.** `prototype-pollution-guard.ts` and `member-expression.ts` made to P55 and P48, their
+  comments pointing at `docs/backlog-retired.md` A55 and A48; the inner `catch` kept, with a comment
+  saying why (§ 8 q1); the two comments that described the read's old test, above `resolveMemberTarget`
+  and inside it, rewritten ([SR25](../standing-rules.md#sr25)).
+- **The records.** A55 and A48 retired: their index rows re-pointed, their entries moved to
+  `docs/backlog-retired.md` with a *Fixed* paragraph each; the *Unreleased* history row, 16 live before,
+  4 opened, 2 closed, 18 after, and the totals row 42, 77, 101, 18. Every link to the two entries
+  re-pointed: `docs/README.md`'s row, this document's opening, `docs/a45/plan.md`'s seven
+  ([SR6](../standing-rules.md#sr6)), `backlog-retired.md`'s two, 0.14.0's CHANGELOG line. `CLAUDE.md`'s
+  "pointers to A48–A51, which stay open" corrected. Work in flight; the skill's count.
+- **Step 1's carry-overs** ([SR4](../standing-rules.md#sr4)): § 4's table and § 6 count step 1's rows as
+  30, not 29; Q9 and Q10 split, one case per assertion and mode, and probed where no probe reached
+  them; A56's entry states the pushed-scope point once; A58's entry records an object outside this
+  realm's `Object` as a global prior scope or a pushed scope (`a58.mjs`); the `describe` at
+  `eval.service.case-insesitive.spec.ts` names A57 and A58; § 8 q1 decided.
+- **The README** (§ 3.1): "Three kinds of read remain" becomes two. **The CHANGELOG**: `### Breaking`, the
+  throw and the proxy's `has` trap; `### Fixed`, the double read and the key the read and the write
+  agree on.
+- **Rows** ([SR27](../standing-rules.md#sr27)), **+86**, `eval-core` 3333 → 3419:
+  - `member-read.spec.ts`, new, 37 rows in both case modes, each mode its own case (74), each checked
+    against a native run of its source: A55, an own and an inherited getter that throws, read by `x.t`,
+    `x["t"]`, `x.t += 1`, `x.t++`, `x.t || 1` and `let {t} = x; 1`, its case variant `x.T`, and a throw
+    that is not an `Error` (15); its contrasts, `u.t`, `n.t` and a revoked proxy (3); A48, `c.g ||= 5`,
+    `` `${c.g}` ``, `c.G`, `c.G += 1`, an own accessor `o.g`, `p.foo`, `p.foo = 1`, `p.foo += 1` and
+    `p.FOO` over a chain holding `foo: undefined` behind an accessor `Foo`, and a proxy logging its
+    traps, `px.q`, `px.q += 1`, `px.zz` and a `get`-only proxy's `px.q` (13); § 8 q1, a proxy whose
+    `has` or `get` trap throws, a prototype whose `has` or `ownKeys` trap throws, and a proxy whose
+    `getPrototypeOf` or `ownKeys` trap throws (6).
+  - `eval.service.case-insesitive.spec.ts`: Q9 and Q10, two cases, become fourteen: per object, its
+    `instanceof Object` and that it is not copied, then `k`, `this.k` and the contrast `d.k`, each in
+    each mode (+12).
+  - `assignment-target.spec.ts`: the three `P` rows held under A48 have JavaScript's outcome under
+    `caseInsensitive`, one `get g`, and lose the mark; `Hold.under` drops `'A48'`. No count change.
+
+  On bdaa542's code, the rows in place (`code-at-bdaa542.patch`, supplement 8): **35 red**, the 32
+  `member-read.spec.ts` cases whose outcome the fix changes and the three `P` rows; with the fix, none.
+- **Claim → witness** ([SR21](../standing-rules.md#sr21)):
+
+  | Claim (CHANGELOG, README) | Rows | Probes |
+  | :--- | :--- | :--- |
+  | a getter's or a proxy `get` trap's throw reaches the caller, in both modes | A55's rows; q1's `get` row | P2-1, P2-8, P2-18; the 35 on bdaa542's code |
+  | the getter's own value, an `Error` or not | every `boom` outcome; the non-`Error` row | P2-9 |
+  | a null or undefined object still reads `undefined` | `u.t`, `n.t` | P2-4 |
+  | under `caseInsensitive` a read calls a proxy's `has` for a key no own property matches | `px.zz`; q1's rows | P2-2; P2-5 and P2-13, for a key an own property matches |
+  | a throw from that `has`, or from a searched prototype's `ownKeys`, is caught, and the key read as written | q1's `has`, prototype `has` and prototype `ownKeys` rows | P2-3 |
+  | under `caseInsensitive` a getter on the chain is called once, and a proxy's `get` once | A48's rows; the three `P` rows | P2-2, P2-16 |
+  | the read and the write agree on the key, `foo` | `p.foo`, `p.foo += 1`, `p.foo = 1` | P2-2, P2-14, P2-17 |
+  | README: two kinds of read remain, the third gone | the three `P` rows | P2-2 |
+
+- **Probes** ([SR15](../standing-rules.md#sr15), [SR16](../standing-rules.md#sr16)), each a pinned patch
+  against the step's tree in supplement 8, applied alone, every `eval-core` case read, reverted, and the
+  tree checked clean ([SR32](../standing-rules.md#sr32)); P1-18 and P1-19 are supplement 7's,
+  byte-identical, re-measured with Q9 and Q10 split. Red sets in supplement 8's `results/red-*.txt`.
+
+  | Probe | The wrong implementation | Red, of 3419 | Step 2's rows | Existing rows |
+  | :--- | :--- | ---: | :--- | :--- |
+  | P2-1 | `safeGetProperty` catches a throw and reads `undefined`, as up to 0.15.1 | 17 | case-sensitive, A55's 13 throwing rows, own and inherited, destructuring and the non-`Error` throw among them; under `caseInsensitive`, the two destructuring rows; q1's `get` row in both modes | none |
+  | P2-2 | the `caseInsensitive` test reads the key, as up to 0.15.1 | 19 | under `caseInsensitive`: A55's six inherited throwing rows; `c.g ||= 5`, `` `${c.g}` ``, `p.foo`, `p.foo += 1`, `px.zz`, the `get`-only `px.q`; q1's four `zz` rows | the three `P` rows under `caseInsensitive` |
+  | P2-3 | the branch's own `catch` goes | 3 | under `caseInsensitive`, q1's `has`, prototype `has` and prototype `ownKeys` rows | none |
+  | P2-4 | the null-ish early return goes | 10 | `u.t`, `n.t`, both modes | 6: `assignment-target.spec.ts`' case-sensitive `OBJ.X += 1`, `OBJ.X++`, `++OBJ.X`; two colon-joined criterion-6 rows; one documented example |
+  | P2-5 | a cache match is tested with `in` too, and the test decides | 81 | under `caseInsensitive`, `px.q`, `px.q += 1`, the own `x.T` | 78: 36 `updateExpressionVisitor`, 10 case-insensitive options, 10 lookup cache, 5 `assignment-target.spec.ts`, 5 read hooks, 5 performance, 2 curried function, and one each of the service, the case-variant guard, colon-joined names, documented examples and the dependency tracker |
+  | P2-6 | the prototype's own names are not searched | 42 | under `caseInsensitive`, `c.G`, `c.G += 1`, `p.FOO`, the inherited `x.T`, q1's prototype `ownKeys` row | 37: 22 case-variant guard, 11 case-insensitive options, 2 colon-joined, 2 read hooks |
+  | P2-7 | the lookup cache's listing of the own names sits inside a `catch` | 1 | under `caseInsensitive`, q1's `ownKeys` row | none |
+  | P2-8 | a destructuring read swallows a throw | 4 | the two destructuring rows, both modes | none |
+  | P2-9 | the throw reaches the caller as a copy | 17 | P2-1's 17 | none |
+  | P2-10 | a member read of an object outside this realm's `Object` reads `undefined`, in both branches | 5 | Q9's and Q10's `d.k`, both modes | 1: the case-variant guard's "should block on the resolved key rather than on the lowercased source key" |
+  | P2-11 | `this.k = v` also writes the first global prior scope that holds `k` | 12 | none | W1, W3, W4, W7, W8 and W10, both modes: the scope's `k` after the write |
+  | P2-12 | the `caseInsensitive` branch runs in both modes | 15 | case-sensitive: both `x.T`, `c.G`, `c.G += 1`, `p.FOO`, `px.zz`, q1's five rows but `getPrototypeOf` | 4: the case-variant guard's case-sensitive chain, one performance row, `assignment-target.spec.ts`' case-sensitive `obj.X &&= 2` and `obj.X ||= 2` |
+  | P2-13 | a cache match is read to test it | 11 | under `caseInsensitive`, `o.g`, `px.q`, `px.q += 1` | 8 `assignment-target.spec.ts` `E` rows under `caseInsensitive` |
+  | P2-14 | the write resolver tests the key by reading it | 2 | under `caseInsensitive`, `p.foo = 1` | `assignment-target.spec.ts`' `c.g = 1` under `caseInsensitive` |
+  | P2-15 | the class checks before a member read take a trap's throw as `false` | 4 | the revoked proxy and q1's `getPrototypeOf` row, both modes | none |
+  | P2-16 | `safeGetProperty` reads twice | 28 | 16, the rows whose log a second read changes, case-sensitive and, where the read reaches `safeGetProperty`, under `caseInsensitive` | 12: 8 `E` and the three `P` rows, case-sensitive; one `assignmentExpressionVisitor` row |
+  | P2-17 | case-sensitively, a key whose value is `undefined` falls to a case variant on the prototype, read and write | 17 | case-sensitive: `c.G`, `c.G += 1`, `p.FOO`, `p.foo`, `p.foo += 1`, `p.foo = 1`, the inherited `x.T`, q1's prototype `ownKeys` row | 9: 8 case-sensitive `assignment-target.spec.ts` rows, the case-variant guard's case-sensitive chain |
+  | P2-18 | the `caseInsensitive` branch's read of the matched key swallows a throw | 14 | under `caseInsensitive`, A55's 13 own and inherited rows but destructuring, and q1's `get` row | none |
+  | P1-18 | `fromContext` copies any object | 6 | Q9 and Q10: not copied, and under `caseInsensitive` `k` and `this.k` | none |
+  | P1-19 | `getContextValue` reads any object | 8 | Q9 and Q10: `k` and `this.k`, both modes | none |
+
+  Every `member-read.spec.ts` case is red under at least one probe, every new Q9 and Q10 case too, and
+  P2-11 reaches the `scope['k']` assertions no step-1 probe reached.
+- **Kill-list** ([SR25](../standing-rules.md#sr25)): `git grep -n -i "three kinds of read\|getter an
+  instance inherits\|read tests \`obj\[key\]\`\|read path's \`obj\[key\]\`\|which stay open\|backlog.md#a48\|backlog.md#a55"`
+  at bdaa542. The README's passage, the two code comments, `CLAUDE.md`'s sentence, D5's name for the
+  passage and every link are rewritten; 0.14.0's CHANGELOG line "Two are read twice …" and
+  `docs/a45/plan.md`'s table row quoting the passage are history, kept, the line's link re-pointed.
+- **Criterion**: the staged diff's hash; the gate green, `eval-core` 3419 (3333 + 86), `eval-signals`
+  450, `eval-forms` 386; doc-links 0 dangling; every probe's red set as the table gives it;
+  `sha256sum -c` on supplement 8's `SHA256SUMS.txt`; the register's live rows 18.
+- **Review**: the `code-reviewer` ([SR33](../standing-rules.md#sr33)): the step changes files under
+  `modules/`.
+- **Outcome**: placed from supplement 8's `step-2.patch`, measured first in the sandbox: the gate
+  `eval-core` 3419, `eval-signals` 450, `eval-forms` 386; doc-links 0 dangling; release-tags 52 rows, 62
+  tags, all annotated; the eighteen probes' and P1-18's and P1-19's red sets as the table gives them.
+  The commit's body records the run on the maintainer's checkout and the code review.
+
 ## 5. Public API surface
 
 No export changes shape ([SR12](../standing-rules.md#sr12)); behaviour changes as § 2 says, so the
@@ -586,8 +688,8 @@ release is a minor. Step 8 diffs each `.d.ts` against the published 0.15.1, 0.8.
 
 ## 6. Verification gates
 
-[SR8](../standing-rules.md#sr8) after every step, on the committed tree. Counts move by step 1's 29
-`eval-core` cases, and by what each later step's prompt fixes before its gate.
+[SR8](../standing-rules.md#sr8) after every step, on the committed tree. Counts move by step 1's 30
+`eval-core` cases, step 2's 86, and by what each later step's prompt fixes before its gate.
 
 ## 7. Risks
 
@@ -604,6 +706,16 @@ release is a minor. Step 8 diffs each `.d.ts` against the published 0.15.1, 0.8.
    proxy trap's throw there: `get` today, `has` after P48, and `getPrototypeOf` and `ownKeys` in both.
    D1's catch does not reach it. Step 2 measures it and decides whether the catch goes with A55's,
    before its gate.
+   **Decided in step 2: the catch stays.** Measured on the production bundle of bdaa542 and with P55
+   and P48 (`q1.mjs`, supplement 8): after P48 it swallows a throw from a `has` trap on the object or
+   its chain, and from the `ownKeys` trap of a prototype searched for a case variant, neither of which
+   JavaScript's `x.k` calls, and the key is then read as written, by the `get` JavaScript does make,
+   whose throw reaches the caller since D1. `resolveMemberTarget` wraps its `key in target` in the
+   same kind of `catch`, so the read and the write treat a throwing `has` alike. A proxy's own
+   `getPrototypeOf`, which the evaluator's class checks call before every member read, and under
+   `caseInsensitive` its own `ownKeys`, which the lookup cache calls, are outside it and already throw
+   to the caller; recorded in A55's retired entry. Rows: `member-read.spec.ts`, § 8 q1; probes P2-3,
+   P2-7 and P2-15.
 
 ## 9. Contract after this lands
 

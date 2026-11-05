@@ -214,10 +214,15 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
         
         // If cache miss or not found in own properties, check if the original key exists (including prototype methods)
         if (cachedFoundKey === undefined || !foundKey) {
+          // The `catch` swallows a throw from a trap JavaScript's `x.k` does
+          // not call, a `has` on the chain or the prototype's `ownKeys`, and
+          // leaves the key as spelled, as `resolveMemberTarget`'s does; the
+          // read below is the one JavaScript makes, and its throw propagates
+          // (`docs/a48/plan.md` § 8 q1).
           try {
-            // Test if property exists in prototype chain (this includes native methods like array.find)
-            const testValue = obj[key];
-            if (testValue !== undefined) {
+            // The key as spelled, anywhere on the chain, tested with `in` as the
+            // `=` resolver tests it, so no getter runs here (`docs/backlog-retired.md` A48)
+            if (key in obj) {
               foundKey = key;
             } else {
               // Look for case variations in prototype methods for arrays, objects, etc.
@@ -294,9 +299,9 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
  * `null` and `undefined` included, the full blocklist.
  *
  * Under `caseInsensitive` a string key on an object is matched as the read
- * matches it, the own-key cache and then the prototype's own names, but tested
- * with `in` where the read tests `obj[key]`, so no getter is called
- * (`docs/backlog.md` A44). The match is checked against the blocklist, as the
+ * matches it, the own-key cache, then the key tested with `in`, then the
+ * prototype's own names, so no getter is called (`docs/backlog.md` A44;
+ * the read's test, `docs/backlog-retired.md` A48). The match is checked against the blocklist, as the
  * read's `foundKey` is. Any other object takes the key as spelled, as on the
  * read path.
  *
@@ -354,9 +359,9 @@ export const resolveMemberTarget = (node: MemberExpression, st: EvalState, callb
       (a, b) => equalIgnoreCase(a, b) === true);
 
     if (!foundKey) {
-      // As the read path's `obj[key]` test, a lookup that throws leaves the
-      // key as spelled. A proxy's `has` trap is called here, which
-      // JavaScript's `=` does not call.
+      // As the read path's `in` test, a lookup that throws leaves the key as
+      // spelled. A proxy's `has` trap is called here, which JavaScript's `=`
+      // does not call.
       try {
         if (key in target) {
           foundKey = key;

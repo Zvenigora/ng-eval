@@ -3754,7 +3754,7 @@ exactly 28 cases red, every one marked `2`; before step 3's, exactly 55, every o
 nothing else in `eval-core` either time. Each step's probes, applied alone and reverted, are in the
 plan's step 2 and step 3 outcomes: the funnel's check dropped turned 9 cases red, the walk restored
 for `=` 37, and D9's read event dropped from the update 4. The 18 held cases name the entries that
-keep them, [A48](backlog.md#a48)–[A51](backlog.md#a51). The defect was noticed in the A40/A41
+keep them, [A48](#a48)–[A51](backlog.md#a51). The defect was noticed in the A40/A41
 batch, while correcting `SECURITY.md`'s account of why `obj.fetch = 1` threw, and measured
 2026-10-22 with a throwaway script outside the repository, against the production bundle with the
 Angular compiler loaded, each row run natively beside it.
@@ -3946,7 +3946,7 @@ So what the bundles differ in decides only how many evaluations a process makes 
 slowdown, not whether it comes. No arm separates the two candidate causes: the platform or Node
 version, and something the `caseInsensitive` path builds per evaluation. **First decide which it
 is**; a cause in the library is then a fix, and one in the platform a documented limit of the
-harness. [A48](backlog.md#a48) records an earlier harness's bimodal `caseInsensitive` write medians (the
+harness. [A48](#a48) records an earlier harness's bimodal `caseInsensitive` write medians (the
 plan's M7), which may be the same effect.
 
 **Lead, unverified: allocation-driven garbage collection from the per-evaluation `Registry` copy.**
@@ -3988,6 +3988,113 @@ explained**: why a `caseInsensitive` process meets its first episode about 2.6 s
 case-sensitive process at 12.5 s, and why the episode's 34 µs is slower than the efficiency
 cores' 10.5–14.7 µs (scheduling on them at a reduced clock would fit; not measured). Neither
 changes the decision. [SR28](standing-rules.md#sr28) now pins timed processes on such a machine.
+
+<a id="a48"></a>
+## A48 — Under `caseInsensitive`, a member read calls a prototype accessor twice
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-11-05**; ships in `eval-core`
+0.16.0. Was Open. Opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (its § 8 q2). It
+predates that plan
+
+*Fixed* 2026-11-05, as step 2 of the [A48 plan](a48/plan.md), with [A55](#a55). When no own property
+matches the key, `evaluateMember`'s `caseInsensitive` lookup tests the key with `key in obj`, as the
+`=` resolver already did, and reads it once: the plan's prototype, `P48.patch`, with its comment
+pointing here and the `catch`'s reason added. Measured on the production bundle of bdaa542 with it
+(`rows.mjs`, the `A48` rows; the output in the plan's supplement 8): an inherited accessor is read once by `c.g`,
+`c.g++`, `c.g += 1`, `c.g ||= 5` and `` `${c.g}` ``, and a proxy's `get` trap once for a key no own
+property matches, where it is now preceded by its `has` trap, `has:zz, get:zz`; the CHANGELOG states
+that under `### Breaking`. The test now agrees with the write: over a chain holding `foo: undefined`
+behind an accessor `Foo`, `p.foo` read `Foo`'s value and `p.foo += 1` wrote through `Foo`'s setter,
+where `p.foo = 1` wrote `foo`; each now reads or writes `foo`. The `catch` around the test and the
+search of the prototype's names stays (the plan's § 8 q1): it swallows a throw from a trap
+JavaScript's read does not call, a `has` on the chain or a prototype's `ownKeys`, and the key is then
+read as written, whose throw reaches the caller since A55's fix. The A45 plan's characterisation
+spec, `assignment-target.spec.ts`, no longer holds its three `P` rows: under `caseInsensitive` they
+read once, as JavaScript does. The README's "Three kinds of read remain" passage loses its third kind.
+
+When no own property matches the key, `evaluateMember`'s `caseInsensitive` lookup tests the key by
+reading it, `obj[key]` (`member-expression.ts:226` at db287da), and then reads `obj[foundKey]`. A key
+that an accessor on the prototype answers is therefore read twice. An own accessor is matched by the
+lookup cache, which reads no value, so it is read once. Measured 2026-10-23 against the production
+bundle, `class C { get g(); set g(v) }`:
+
+| Expression | Case-sensitive | `caseInsensitive` | JavaScript |
+| :--- | :--- | :--- | :--- |
+| `c.g` | get 1 | **get 2** | get 1 |
+| `c.g++` | get 1, set 1 | **get 2**, set 1 | get 1, set 1 |
+| `c.g += 1`, under the A45 plan's prototype | get 1, set 1 | **get 2**, set 1 | get 1, set 1 |
+| `o.g`, an own accessor | get 1 | get 1 | get 1 |
+
+The A45 plan keeps the read path's shape (its D6), so its step 2 leaves `c.g += 1` at two reads under
+`caseInsensitive`. Its characterisation spec holds that row and the two above it under this ID. The
+plan's resolver for `=` matches the key with `in` and reads nothing, which is one possible fix here.
+
+**The `caseInsensitive` path cannot be timed with the plan's harness** (the plan's M7). Every path
+costs about 5.5–6 µs, a bare identifier read included, because the context is copied per evaluation.
+The write path's medians were bimodal in the harness, 6.7–66 µs at the same settings, while three
+standalone runs measured 10.5–11 µs with no heap growth. Since [A53](#a53)'s
+decision, those medians are most likely its slowdown episodes, not re-measured. A timing pinned to the
+performance cores as [SR28](standing-rules.md#sr28) asks, or run on Linux, can time this path.
+
+*Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M1f and M7.
+*Verified*: measured 2026-10-23 with a throwaway script outside the repository, against the
+production bundle built at db287da with the Angular compiler loaded, each row run natively beside it.
+The fix: `member-read.spec.ts`' A48 and § 8 q1 rows and the three `P` rows, those the fix changes red
+on bdaa542's code, all green with it, and their probes (the [A48 plan](a48/plan.md) § 4, Step 2).
+
+<a id="a55"></a>
+## A55 — `safeGetProperty` swallows a getter's throw and reads `undefined`
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-11-05**; ships in `eval-core`
+0.16.0. Was Open. Opened 2026-11-03 by the [A48 plan](a48/plan.md), step 1 (its § 1.4, finding 1). It
+predates that plan
+
+*Fixed* 2026-11-05, as step 2 of the [A48 plan](a48/plan.md), with [A48](#a48). `safeGetProperty`'s
+`catch` is gone, as in the plan's prototype, `P55.patch`, its comment pointing here: a getter's or
+a proxy `get` trap's throw reaches the caller in both modes, the thrown value itself, an `Error` or
+not, as in JavaScript. An own or inherited getter that throws now throws from `x.t`, `x["t"]`,
+`x.t += 1`, `x.t++` and `x.t || 1`, and from a destructuring read, `let {t} = x; 1`, in both modes,
+the getter called once. Unchanged: a null or undefined object reads `undefined` by the early return; a
+case variant, `x.T`, reads as before; and a revoked proxy throws at the evaluator's own
+`getPrototypeOf`. No `eval-core` case pinned the swallow, so the rows came first and were red on
+bdaa542's code ([SR27](standing-rules.md#sr27)). Outside both `catch`es, and unchanged by the fix, a
+proxy's `getPrototypeOf` trap, which the evaluator's own class checks call before every member read,
+and under `caseInsensitive` its `ownKeys` trap, which the lookup cache calls, throw to the caller
+where JavaScript's `x.k` calls neither (`member-read.spec.ts`, § 8 q1's last two rows).
+
+`safeGetProperty` (`prototype-pollution-guard.ts`) reads `target[key]` inside a `try` whose `catch`
+returns `undefined`, so a throw from a getter or a proxy trap is read as `undefined`. Measured
+2026-11-02 on the production bundle of 9bf1bc8 (`rows.mjs`, the `A55` rows), a getter `t` that throws
+`boom`:
+
+| Expression | Case-sensitive, own or inherited | `caseInsensitive`, own | `caseInsensitive`, inherited | JavaScript |
+| :--- | :--- | :--- | :--- | :--- |
+| `x.t` | `undefined` | throws `boom` | `undefined`; the getter called twice | throws `boom` |
+| `x.t += 1`, `x.t++` | throws at the write, `Failed to set property "t": …` | throws `boom` | throws at the write; the getter called twice | throws `boom` |
+| `x.t \|\| 1` | `1` | throws `boom` | `1` | throws `boom` |
+| `x.T` | `undefined`, no read | throws `boom` | throws `boom`; the getter called once | `undefined` |
+
+A throw that is not an `Error` is swallowed alike. Under `caseInsensitive` an own accessor read as a
+member is read directly after the cache match, so `x.t` already throws; an inherited one is read twice, by
+[A48](#a48)'s test and then by `safeGetProperty`, which swallows the second. A revoked proxy throws in
+both modes, at `getPrototypeOf`, outside the catch. A destructuring read swallows in both modes, own or
+inherited: `let {t} = x; 1` is `1`, the getter called once (`s4.mjs`, the `destructure` rows; P55
+makes it throw). A null-ish object, `u.t` or `u?.t`, reads
+`undefined` by an early return, which is not this defect.
+
+**Fix**: the catch goes, so a getter's or a proxy `get` trap's throw reaches the caller as in
+JavaScript. The `caseInsensitive` branch of `evaluateMember` has a `catch` of its own, around its test
+of the key and its search of the prototype's names, which swallows a proxy trap's throw there; the
+plan's step 2 decides it with its rows. No suite case pins the
+swallow: the prototype, `P55.patch`, turns no `eval-core` case red, so a characterisation comes first
+([SR27](standing-rules.md#sr27)). With A48's fix the inherited rows throw as well, so the two land
+together. A breaking change by behaviour: `eval-signals`' `onError: 'throw'` and `eval-forms`'
+`'throw'` and function policies then see the error (the plan's § 1.4, finding 8).
+
+*Recorded*: this entry; the [A48 plan](a48/plan.md) § 1.4. *Verified*: measured with `rows.mjs` and the suites,
+pinned in the plan's prototype folder, `a48-prototype`. The fix: `member-read.spec.ts`' A55 rows and
+contrasts, those the fix changes red on bdaa542's code, all green with it, and their probes (the
+[A48 plan](a48/plan.md) § 4, Step 2).
 
 ---
 

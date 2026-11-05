@@ -171,7 +171,7 @@ describe('EvalService - case-insensitive options', () => {
   // `Object.entries`; case-sensitive, the object itself is the context, so
   // Q2 to Q4 read the same fixture case-sensitively first, to show it holds
   // what the copy leaves out (SR17). Each case builds its own object (SR43).
-  describe('what fromContext\'s case-insensitive copy holds (docs/backlog.md A57)', () => {
+  describe('what fromContext\'s case-insensitive copy holds, and what it does not copy (docs/backlog.md A57, A58)', () => {
     const ci = { caseInsensitive: true };
 
     it('Q1 should read an own enumerable getter once, when the copy is made', () => {
@@ -270,38 +270,38 @@ describe('EvalService - case-insensitive options', () => {
       }
     });
 
-    it('Q9 should not copy an object with a null prototype, nor read it as the context, in either mode', () => {
-      const nullProto = (): Record<string, unknown> => {
-        const object = Object.create(null) as Record<string, unknown>;
-        object['k'] = 1;
-        return object;
-      };
+    // A58: an object that is not an instance of this realm's `Object` is not
+    // copied, nor read as the context, in either mode. Each assertion is a case
+    // of its own, in each mode, so a probe of one is read on its own line.
+    const nullProto = (): Record<string, unknown> => {
+      const object = Object.create(null) as Record<string, unknown>;
+      object['k'] = 1;
+      return object;
+    };
+    const foreign = (): Record<string, unknown> => runInNewContext('({ k: 1 })') as Record<string, unknown>;
+    const modes: [string, { caseInsensitive?: boolean }][] = [['case-sensitive', {}], ['caseInsensitive', ci]];
 
-      const object = nullProto();
-      const context = EvalContext.fromContext(object, ci);
-      expect(context.original).toBe(object);
-      for (const options of [{}, ci]) {
-        const each = EvalContext.fromContext(nullProto(), options);
-        expect(service.simpleEval('k', each, options)).toBeUndefined();
-        expect(service.simpleEval('this.k', each, options)).toBeUndefined();
-        // The contrast: held as a value, it is read.
-        expect(service.simpleEval('d.k', EvalContext.fromContext({ d: nullProto() }, options), options)).toBe(1);
-      }
-    });
+    describe.each<[string, () => Record<string, unknown>]>([
+      ['Q9 an object with a null prototype', nullProto],
+      ['Q10 an object made in another realm', foreign],
+    ])('%s (docs/backlog.md A58)', (_label, make) => {
+      it('should fail instanceof Object, and not be copied', () => {
+        const object = make();
+        expect(object instanceof Object).toBe(false);
+        expect(EvalContext.fromContext(object, ci).original).toBe(object);
+      });
 
-    it('Q10 should not copy an object made in another realm, nor read it as the context, in either mode', () => {
-      const foreign = (): Record<string, unknown> => runInNewContext('({ k: 1 })') as Record<string, unknown>;
+      it.each(modes)('%s: k should read undefined', (_mode, options) => {
+        expect(service.simpleEval('k', EvalContext.fromContext(make(), options), options)).toBeUndefined();
+      });
 
-      const object = foreign();
-      expect(object instanceof Object).toBe(false);
-      expect(EvalContext.fromContext(object, ci).original).toBe(object);
-      for (const options of [{}, ci]) {
-        const each = EvalContext.fromContext(foreign(), options);
-        expect(service.simpleEval('k', each, options)).toBeUndefined();
-        expect(service.simpleEval('this.k', each, options)).toBeUndefined();
-        // The contrast: held as a value, it is read.
-        expect(service.simpleEval('d.k', EvalContext.fromContext({ d: foreign() }, options), options)).toBe(1);
-      }
+      it.each(modes)('%s: this.k should read undefined', (_mode, options) => {
+        expect(service.simpleEval('this.k', EvalContext.fromContext(make(), options), options)).toBeUndefined();
+      });
+
+      it.each(modes)('%s: held as a value, d.k should read 1 (the contrast)', (_mode, options) => {
+        expect(service.simpleEval('d.k', EvalContext.fromContext({ d: make() }, options), options)).toBe(1);
+      });
     });
   });
 

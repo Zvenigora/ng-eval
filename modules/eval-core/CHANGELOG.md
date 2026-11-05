@@ -12,6 +12,18 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Breaking
+- **A getter's or a proxy `get` trap's throw reaches the caller, in both case modes.** A member
+  read caught any throw from the read and gave `undefined`: `x.t` was `undefined`, `x.t || 1` was
+  `1`, `let {t} = x` bound `undefined`, and `x.t += 1` or `x.t++` failed later, at the write. Under
+  `caseInsensitive` an own getter already threw, and an inherited one was swallowed. Each now
+  throws the getter's own value, an `Error` or not, as JavaScript does
+  ([A55](../../docs/backlog-retired.md#a55)). A null or undefined object still reads `undefined`.
+- **Under `caseInsensitive`, a member read calls a proxy's `has` trap** for a key no own property
+  matches, as a member write already did; JavaScript's read calls none. A throw from that `has`
+  trap, or from the `ownKeys` trap of a prototype searched for a case variant, is caught, and the
+  key is then read as written ([A48](../../docs/backlog-retired.md#a48)).
+
 ### Changed
 - The README's `### Scopes` corrects two sentences. It said that a prior scope's `thisArg` changes
   only the call's receiver; it now says so of a namespace, since through `this` a write can go to
@@ -20,6 +32,16 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   this realm's `Object`, one with a null prototype or one made in another realm, is not copied, and
   is not yet read as the context in either mode ([A58](../../docs/backlog.md#a58)).
   No behaviour changes. Documentation only: the README reaches the tarball.
+
+### Fixed
+- **Under `caseInsensitive`, a member read calls a getter on the prototype chain once.** The lookup
+  tested the key by reading it, then read it again: `c.g`, `c.g += 1`, `c.g++`, `c.g ||= 5` and
+  `` `${c.g}` `` called an inherited getter twice, and a proxy's `get` trap ran twice for a key no
+  own property matches. The key is now tested with `in`, as a member write tests it, and read once
+  ([A48](../../docs/backlog-retired.md#a48)). The read and the write now agree on the key: over an
+  inherited `foo` whose value is `undefined`, behind an accessor `Foo` on a nearer prototype,
+  `p.foo` read `Foo`'s value and `p.foo += 1` wrote through `Foo`'s setter, where `p.foo = 1` wrote
+  `foo`; each now reads or writes `foo`.
 
 ---
 
@@ -221,7 +243,7 @@ their floors to it.
   them: `getObj()[k()] += f()` runs `getObj`, `k`, the read, `f`, then the write, where up to 0.13.3
   it evaluated the object, the key and the read a second time after `f`. A getter on the target is
   called once where it was called twice. Two are read twice where they were read four times: a
-  prototype accessor under `caseInsensitive` ([A48](../../docs/backlog.md#a48)), and an accessor
+  prototype accessor under `caseInsensitive` ([A48](../../docs/backlog-retired.md#a48)), and an accessor
   on the context reached through `this` ([A49](../../docs/backlog.md#a49)). The read events are those of that one read, `a`, then `a.b`, where each was reported
   twice; node hooks and the trace see the target's object and a computed key, and no longer the
   target node, and an identifier target not at all. The value read still passes the checks every

@@ -122,7 +122,7 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
 
   /** A row whose outcome after its step is still not JavaScript's, and the entry that keeps it so. */
   interface Hold {
-    under: 'A48' | 'A49' | 'A50' | 'A51';
+    under: 'A49' | 'A50' | 'A51';
     after: Outcome;
   }
 
@@ -941,9 +941,8 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   const P: Row[] = [
     {
       source: 'c.g', observe: onInstance,
-      today: { cs: { value: 1, log: ['get g'] }, ci: { value: 1, log: ['get g', 'get g'] } },
+      today: both({ value: 1, log: ['get g'] }),
       js: both(native({ value: 1, log: ['get g'] })),
-      held: { ci: { under: 'A48', after: { value: 1, log: ['get g', 'get g'] } } },
     },
     {
       source: 'c.g = 1', observe: onInstance,
@@ -952,18 +951,13 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     },
     {
       source: 'c.g += 1', observe: onInstance,
-      today: {
-        cs: { value: 2, log: ['get g', 'set g=2'] },
-        ci: { value: 2, log: ['get g', 'get g', 'set g=2'] },
-      },
+      today: both({ value: 2, log: ['get g', 'set g=2'] }),
       js: both(native({ value: 2, log: ['get g', 'set g=2'] })),
-      held: { ci: { under: 'A48', after: { value: 2, log: ['get g', 'get g', 'set g=2'] } } },
     },
     {
       source: 'c.g++', observe: onInstance,
-      today: { cs: { value: 1, log: ['get g', 'set g=2'] }, ci: { value: 1, log: ['get g', 'get g', 'set g=2'] } },
+      today: both({ value: 1, log: ['get g', 'set g=2'] }),
       js: both(native({ value: 1, log: ['get g', 'set g=2'] })),
-      held: { ci: { under: 'A48', after: { value: 1, log: ['get g', 'get g', 'set g=2'] } } },
     },
   ];
 

@@ -159,7 +159,7 @@ than one commit ([SR1](docs/standing-rules.md#sr1)) — as in `docs/a8/`, `docs/
     evaluates them, with A52, shipped as `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms`
     0.7.0; its § 0 collects thirteen rules, now standing rules
     ([the map](docs/standing-rules.md#old-numberings)), § 3 is the design, § 9 the contract after it landed, and § 10 the retrospect. Its § 8 q2–q4
-    are pointers to A48–A51, which stay open.
+    are pointers to A48–A51; the A48 plan fixed A48 in its step 2, and A49–A51 are open.
   - `docs/documentation/phase-11-plan.md` — Phase 11, `eval-forms`' README by entry point, shipped
     as `eval-forms` 0.7.1, docs-only; its § 3.1 is D1–D6, why each package keeps one README and no
     guide file exists, § 3.2 the README's order, § 3.5 its contents list, § 9 the contract after it

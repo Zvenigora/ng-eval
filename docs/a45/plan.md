@@ -39,7 +39,7 @@ receivers they turn on: `null`, `undefined` and a function. Revision 1's q6, q5 
 D7, D8 and D9. Measuring D7 found that § 3.3's resolver lacked the case-sensitive blocklist check the
 read used to make, so `o.constructor = f()` called `f` before refusing. Measuring D9 found that the
 target read's literal fallback turned `null` into `undefined`, which put four existing cases red. Both
-are corrected in § 3.3 and § 3.2. q2, q3 and q4 are now [A48](../backlog.md#a48)–[A51](../backlog.md#a51),
+are corrected in § 3.3 and § 3.2. q2, q3 and q4 are now [A48](../backlog-retired.md#a48)–[A51](../backlog.md#a51),
 q4 as two entries since its two halves are different code paths. The `null` read is
 [A52](../backlog-retired.md#a52). q8 is folded into A48. Rows: 92, cases 184. `eval-core` reaches 3064 at
 step 1 and 3100 at step 3.
@@ -60,7 +60,7 @@ downstream witnesses with their counts unchanged (M4).
   written as a name writes it as a key today, and is refused from step 3. No compound or `=` target
   loses the refusal in steps 2 and 3. It has no register entry: step 2's confirmation gate found it.
 
-**Opens**: [A48](../backlog.md#a48)–[A51](../backlog.md#a51) (Revision 2), for defects the plan
+**Opens**: [A48](../backlog-retired.md#a48)–[A51](../backlog.md#a51) (Revision 2), for defects the plan
 measured and does not fix. The characterisation spec holds their rows. [A52](../backlog-retired.md#a52),
 opened with them, the plan fixes in step 2 (D10). Step 5 opens
 [A53](../backlog-retired.md#a53), step 4's unexplained `caseInsensitive` slowdown.
@@ -235,7 +235,7 @@ Each finding cites the measurement in § 1.3 that produced it.
    `obj[key]` (`member-expression.ts:226`) and then reads `obj[foundKey]`. So `c.g` calls the getter
    twice, and `c.g += 1` calls it twice even under the prototype, against JavaScript's once. D6 keeps
    the read path's shape, so D1's "reads it once" cannot hold for this case:
-   [A48](../backlog.md#a48), whose rows step 1 holds.
+   [A48](../backlog-retired.md#a48), whose rows step 1 holds.
 8. **The context branch reads what it tests** (M1j). `this.g` calls a getter on the context twice,
    once through `get` and once through `getThis`. `this.g = 1` calls it four times today, and once
    under the prototype, where JavaScript calls it zero times. Under `caseInsensitive`, `getKey`
@@ -370,7 +370,7 @@ db287da. The prototype's bundle was measured with the same scripts.
 | M4 | Whether any existing case observes D1–D4 | The prototype in the library; `nx run-many -t test --parallel=1` over all four projects; then one probe at a time, each an environment switch in the prototype, re-running `eval-core` | All green: 2880 / 443 / 380. Funnel check removed (P2): 1 red, `should refuse fetch ||= 1 with the funnel's message`. Identifier compound read event removed: 2 red, part 1's `should report a read of a and none of b for a short-circuited a ||= b`, both modes. A44's match removed: 0 red |
 | M5 | What `eval-signals` observes | A throwaway spec: `createEvalSignal(…, { trackDependencies: true })` over 7 expressions, `compiler.createState` spied on as the recompute counter, one source signal changed between two reads; run at HEAD and under the prototype | Finding 10; § 1.4, table M5 |
 | M6 | The timing baseline | One process per bundle and path; a cached AST and a fresh `EvalState` per evaluation; 15 rounds of 60,000 per process, after 20,000 warm-up; per-round µs, min and median. Bundle order alternated by rotation, children run one at a time. An A/A pair of the HEAD bundle, six rotations and then twelve; then HEAD against the prototype on the member read, twelve rotations | § 1.4, table M6 |
-| M7 | Whether the `caseInsensitive` paths can be timed | The same harness with `caseInsensitive`, and three standalone growth checks | Not stably: § 1.4, table M6's note. Folded into [A48](../backlog.md#a48) (Revision 2) |
+| M7 | Whether the `caseInsensitive` paths can be timed | The same harness with `caseInsensitive`, and three standalone growth checks | Not stably: § 1.4, table M6's note. Folded into [A48](../backlog-retired.md#a48) (Revision 2) |
 | M8 | *Revision 2.* The resolver's edges, a blocklisted key with a calling right side, identifier updates of blocklisted names, and identifier update read events | M1's method. JavaScript's side for the edges through `new Function`, sloppy and strict, since a module script is always strict | Findings 12–14; § 1.4, tables M8a–M8d |
 | M9 | *Revision 2.* An identifier holding `null` under `caseInsensitive` | M1's method, at HEAD and under the prototype | Finding 16; § 1.4, table M9 |
 | M10 | *Revision 2.* The prototype extended by D7–D9, against the suites and its own probes | `nx run-many -t test --parallel=1`, then each switch alone, against `eval-core` or against M1/M8 | The `??` fallback: 4 red, `update-expression.spec.ts`'s `caseInsensitive` `x++`, `x--`, `++x`, `--x` on `null`. The fallback taken only on `undefined`: 2880 / 443 / 380 green. Probe results: § 1.4, table M10 |
@@ -996,7 +996,7 @@ widening at its gate, so `eval-signals` is at 444 from step 6. *Revision 2*: the
 
   | Group and row | Mode | After | JavaScript | Held under |
   | :--- | :--- | :--- | :--- | :--- |
-  | P `c.g` | `caseInsensitive` | get 2 | get 1 | [A48](../backlog.md#a48) |
+  | P `c.g` | `caseInsensitive` | get 2 | get 1 | [A48](../backlog-retired.md#a48) |
   | P `c.g += 1` (step 2) | `caseInsensitive` | get 2, set 1 | get 1, set 1 | A48 |
   | P `c.g++` | `caseInsensitive` | get 2, set 1 | get 1, set 1 | A48 |
   | C `this.g = 1` (step 3) | case-sensitive | get 1, set 1 | get 0, set 1 | [A49](../backlog.md#a49) |
@@ -2044,7 +2044,7 @@ their decisions belong to their entries. *Revision 3* decided q9 as D10 and remo
 decided q7 by measurement; q7 keeps its text, with the decision under it.
 
 2. **Under `caseInsensitive`, the read path reads a prototype accessor twice**:
-   [A48](../backlog.md#a48) (M1f, finding 7). Its rows are held in step 1. The entry also records
+   [A48](../backlog-retired.md#a48) (M1f, finding 7). Its rows are held in step 1. The entry also records
    that the plan's harness cannot time the `caseInsensitive` path (M7), which was q8.
 3. **The context branch reads what it tests**: [A49](../backlog.md#a49) (M1j, finding 8). Held in
    step 1.
@@ -2096,7 +2096,7 @@ decided q7 by measurement; q7 keeps its text, with the decision under it.
    a host-built `this` and under `caseInsensitive` any spelling of it, with the identifier visitor's
    message and before any lookup (D11, *Revision 4*). Case-sensitive, `This` is an ordinary name.
 9. **Not provided**, each held in step 1 under its entry:
-   - a single read of a prototype accessor under `caseInsensitive` ([A48](../backlog.md#a48));
+   - a single read of a prototype accessor under `caseInsensitive` ([A48](../backlog-retired.md#a48));
    - an `=` through the context branch that reads nothing ([A49](../backlog.md#a49));
    - a write through `this` under `caseInsensitive` that reaches the data ([A50](../backlog.md#a50));
    - a write through an `EvalScope` value that reaches the data ([A51](../backlog.md#a51)).
