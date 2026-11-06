@@ -4,9 +4,8 @@ import { beforeVisitor } from './before-visitor';
 import { pushVisitorResult } from './visitor-result';
 import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
-import { evaluateMember } from './member-expression';
+import { evaluateMember, writeMemberTarget } from './member-expression';
 import { readIdentifierTarget } from './identifier';
-import { safeSetProperty } from './prototype-pollution-guard';
 import { consultMemberWrite } from './member-write-policy';
 import { assignToBinding } from './variable-declaration';
 import { unwrapParentheses } from './utils';
@@ -52,7 +51,7 @@ export const updateExpressionVisitor = (node: UpdateExpression, st: EvalState, c
     pushVisitorResult(node, st, node.prefix ? updated : old);
   } else if (target.type === 'MemberExpression') {
     // The write reaches the key the lookup matched (`docs/backlog.md` A44).
-    const [object, , value, , property] = evaluateMember(target, st, callback);
+    const [object, , value, fromContext, property] = evaluateMember(target, st, callback);
     // As in the identifier branch: one native conversion, before the write.
     let updated = value as number;
     const old = node.operator === '++' ? updated++ : updated--;
@@ -63,8 +62,10 @@ export const updateExpressionVisitor = (node: UpdateExpression, st: EvalState, c
       consultMemberWrite(st, created, object, property);
     }
 
-    // Use safe property assignment to prevent prototype pollution
-    safeSetProperty(object, property, updated);
+    // A `Registry` that is the context's original, reached through the
+    // context, through its map; anything else through `safeSetProperty`; each
+    // refusing a blocked name.
+    writeMemberTarget(st, object, property, updated, fromContext === true);
 
     pushVisitorResult(node, st, node.prefix ? updated : old);
   } else {

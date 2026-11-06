@@ -4,9 +4,8 @@ import { beforeVisitor } from './before-visitor';
 import { pushVisitorResult, popVisitorResult, refuseFunnelledValue } from './visitor-result';
 import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
-import { evaluateMember, resolveMemberTarget } from './member-expression';
+import { evaluateMember, resolveMemberTarget, writeMemberTarget } from './member-expression';
 import { readIdentifierTarget, refuseIdentifierTarget } from './identifier';
-import { safeSetProperty } from './prototype-pollution-guard';
 import { consultMemberWrite } from './member-write-policy';
 import { assignToBinding } from './variable-declaration';
 import { unwrapParentheses } from './utils';
@@ -62,6 +61,7 @@ export const assignmentExpressionVisitor = (node: AssignmentExpression, st: Eval
   let left: number | undefined;
   let targetObject: unknown;
   let targetKey: unknown;
+  let targetFromContext = false;
   if (target.type === 'Identifier') {
     if (plain) {
       refuseIdentifierTarget(target, st);
@@ -69,11 +69,12 @@ export const assignmentExpressionVisitor = (node: AssignmentExpression, st: Eval
       left = readIdentifierTarget(target, st) as number;
     }
   } else if (plain) {
-    [targetObject, targetKey] = resolveMemberTarget(target, st, callback);
+    [targetObject, targetKey, targetFromContext] = resolveMemberTarget(target, st, callback);
   } else {
-    const [object, , value, , key] = evaluateMember(target, st, callback);
+    const [object, , value, fromContext, key] = evaluateMember(target, st, callback);
     targetObject = object;
     targetKey = key;
+    targetFromContext = fromContext === true;
     left = value as number;
   }
   if (!plain) {
@@ -130,8 +131,10 @@ export const assignmentExpressionVisitor = (node: AssignmentExpression, st: Eval
       consultMemberWrite(st, created, object, key);
     }
 
-    // Use safe property assignment to prevent prototype pollution
-    safeSetProperty(object, key, value);
+    // A `Registry` that is the context's original, reached through the
+    // context, through its map; anything else through `safeSetProperty`; each
+    // refusing a blocked name.
+    writeMemberTarget(st, object, key, value, targetFromContext);
     
     pushVisitorResult(node, st, value);
   }

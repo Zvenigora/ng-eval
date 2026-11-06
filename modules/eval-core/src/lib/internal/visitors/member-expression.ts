@@ -4,7 +4,8 @@ import { beforeVisitor } from './before-visitor';
 import { pushVisitorResult, popVisitorResult } from './visitor-result';
 import { EvalScope, EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
-import { safeGetProperty, isDangerousProperty, isDangerousPrimitiveProperty } from './prototype-pollution-guard';
+import { safeGetProperty, safeSetProperty, isDangerousProperty, isDangerousPrimitiveProperty } from './prototype-pollution-guard';
+import { Registry } from '../classes/common';
 import { equalIgnoreCase } from './utils';
 import { getCachedCaseInsensitiveProperty } from './property-lookup-cache';
 import { markThisPositional } from './this-position';
@@ -306,10 +307,16 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
  * read path.
  *
  * The context branch still calls `getThis`, which reads the value it tests
- * (`docs/backlog.md` A49), and under `caseInsensitive` answers the `Registry`
- * copy (A50). An `EvalScope` is written as an object (A51).
+ * (`docs/backlog.md` A49). When it answers the context's original and that is
+ * a `Registry`, the `caseInsensitive` copy or a host's, {@link writeMemberTarget}
+ * writes it through its map (`docs/backlog-retired.md` A50). An `EvalScope` is
+ * written as an object (A51).
+ *
+ * The third slot is the receiver's origin, as `evaluateMember`'s fourth is:
+ * true when the context branch chose it, so that a `Registry` the host holds
+ * in its own data, even the original itself, is written as any object is.
  */
-export const resolveMemberTarget = (node: MemberExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>): [unknown, unknown] => {
+export const resolveMemberTarget = (node: MemberExpression, st: EvalState, callback: walk.WalkerCallback<EvalState>): [unknown, unknown, boolean] => {
 
   markThisPositional(node.object, !!st.options?.caseInsensitive);
   callback(node.object, st);
@@ -339,12 +346,12 @@ export const resolveMemberTarget = (node: MemberExpression, st: EvalState, callb
         throw new Error(`Access to dangerous property "${String(contextKey)}" is blocked for security reasons`);
       }
     }
-    return [st.context.getThis(contextKey) ?? object, contextKey];
+    return [st.context.getThis(contextKey) ?? object, contextKey, true];
   } else if (object instanceof EvalScope) {
     if (isDangerousProperty(key)) {
       throw new Error(`Access to dangerous property "${String(key)}" is blocked for security reasons`);
     }
-    return [object, key];
+    return [object, key, false];
   }
 
   const isPrimitive = (typeof object === 'string' || typeof object === 'number' || typeof object === 'boolean');
@@ -379,8 +386,37 @@ export const resolveMemberTarget = (node: MemberExpression, st: EvalState, callb
     if (foundKey && isDangerousProperty(foundKey)) {
       throw new Error(`Access to dangerous property "${foundKey}" is blocked for security reasons`);
     }
-    return [object, foundKey || key];
+    return [object, foundKey || key, false];
   }
 
-  return [object, key];
+  return [object, key, false];
 }
+
+/**
+ * Writes `value` to `key` of a member target. The context's original, when it
+ * is a `Registry` - a host's, or the `caseInsensitive` copy of a plain
+ * context - and the context branch chose it (`fromContext`), is written through
+ * its map, as `k = v` writes it: that path reads it through `get`, so a property
+ * on the instance is never read back (`docs/backlog-retired.md` A50). Anything
+ * else is `safeSetProperty`'s, a `Registry` reached as a value included, even
+ * the original, which the host may hold in its own data: that path reads it as
+ * an object, so it is written as one, consistent with itself as before.
+ *
+ * That branch bypasses `safeSetProperty`, so it refuses a blocked name itself,
+ * with the same message. It stands behind the callers' own refusals: for `=`
+ * and the compound and logical operators `resolveMemberTarget` refuses a
+ * blocked key, and its `caseInsensitive` resolution, before the right side
+ * runs, and for an update the read in `evaluateMember` refuses it.
+ */
+export const writeMemberTarget = (st: EvalState, object: unknown, key: unknown, value: unknown, fromContext: boolean): void => {
+  // The origin and the identity first: `instanceof` calls a proxy's
+  // `getPrototypeOf` trap.
+  if (fromContext && object === st.context?.original && object instanceof Registry) {
+    if (isDangerousProperty(key)) {
+      throw new Error(`Access to dangerous property "${String(key)}" is blocked for security reasons`);
+    }
+    object.set(key, value);
+    return;
+  }
+  safeSetProperty(object, key, value);
+};

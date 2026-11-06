@@ -251,7 +251,7 @@ Each finding cites the measurement in § 1.3 that produced it.
      `ns._context = 9` replaces the scope's context. The read goes through `EvalScope.get`; the write
      never reaches `EvalScope.set`.
 
-   D1–D9 do not decide either. They are [A50](../backlog.md#a50) and [A51](../backlog.md#a51), two
+   D1–D9 do not decide either. They are [A50](../backlog-retired.md#a50) and [A51](../backlog.md#a51), two
    entries since the two halves are different code paths, and step 1 holds their rows.
 10. **`eval-signals` observes D2, and nothing else** (M5).
     - `count = 5` over a signal context records `count` today and is recomputed when `count` changes.
@@ -803,7 +803,7 @@ in `member-expression.ts` and returns `[object, key]`:
 - **the context branch**: the blocklist check, then under `caseInsensitive` `getKey` and the
   resolved-key check, then `getThis(contextKey) ?? object`. `getThis` reads the value it tests
   ([A49](../backlog.md#a49)), and under `caseInsensitive` the object it answers is the `Registry`
-  copy ([A50](../backlog.md#a50));
+  copy ([A50](../backlog-retired.md#a50));
 - **the `EvalScope` branch**: the blocklist check, and `[object, key]` ([A51](../backlog.md#a51));
 - **any other receiver**:
   - **The key checks** (D7) run in both modes, before the right side. A string, number or boolean
@@ -1001,7 +1001,7 @@ widening at its gate, so `eval-signals` is at 444 from step 6. *Revision 2*: the
   | P `c.g++` | `caseInsensitive` | get 2, set 1 | get 1, set 1 | A48 |
   | C `this.g = 1` (step 3) | case-sensitive | get 1, set 1 | get 0, set 1 | [A49](../backlog.md#a49) |
   | C `this.g += 1` (step 2) | case-sensitive | get 2, set 1 | get 1, set 1 | A49 |
-  | C `this.g = 1`, `this.g += 1` | `caseInsensitive` | get 0, set 0; the result `1` or `2` | set 1 | [A50](../backlog.md#a50) |
+  | C `this.g = 1`, `this.g += 1` | `caseInsensitive` | get 0, set 0; the result `1` or `2` | set 1 | [A50](../backlog-retired.md#a50) |
   | L `x = 1`, `X = 1` (step 3) | `caseInsensitive` | 1 lookup call | none | A49 |
   | L `x += 1` | `caseInsensitive` | 2 lookup calls | 1 | A49 |
   | S `this.k = 5`, `this.k += 5`, `this.K = 5`, `this.k++` | `caseInsensitive` | `5`, `6`, `5`, `1`; an own `k` on the `Registry`; `get('k')` `1` | `k` written | A50 |
@@ -2050,7 +2050,7 @@ decided q7 by measurement; q7 keeps its text, with the decision under it.
    step 1.
 4. **Two write targets miss the data** (M1d, M1h, M1i; finding 9), as two entries, since the two are
    different code paths with different fixes:
-   - `this.k = v` under `caseInsensitive` lands on the `Registry` copy: [A50](../backlog.md#a50);
+   - `this.k = v` under `caseInsensitive` lands on the `Registry` copy: [A50](../backlog-retired.md#a50);
    - a member of an `EvalScope` value lands on the instance: [A51](../backlog.md#a51).
 
    Both are held in step 1.
@@ -2098,7 +2098,7 @@ decided q7 by measurement; q7 keeps its text, with the decision under it.
 9. **Not provided**, each held in step 1 under its entry:
    - a single read of a prototype accessor under `caseInsensitive` ([A48](../backlog-retired.md#a48));
    - an `=` through the context branch that reads nothing ([A49](../backlog.md#a49));
-   - a write through `this` under `caseInsensitive` that reaches the data ([A50](../backlog.md#a50));
+   - a write through `this` under `caseInsensitive` that reaches the data ([A50](../backlog-retired.md#a50));
    - a write through an `EvalScope` value that reaches the data ([A51](../backlog.md#a51)).
 
 ## 10. Retrospect

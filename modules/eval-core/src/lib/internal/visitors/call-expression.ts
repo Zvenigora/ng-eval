@@ -206,7 +206,7 @@ export const callMember = (st: EvalState, [object, propertyName, fn, contextReso
   // not the caller's to write (`member-write-policy.ts`). After the
   // consultation and not before, so a policy still sees the write it would
   // have seen and its own refusal is still the one that surfaces - the same
-  // order the member-write path has, where `safeSetProperty` refuses after
+  // order the member-write path has, where `writeMemberTarget` refuses after
   // `consultMemberWrite` has been asked.
   refuseContextMethodWrite(fn, receiver, args);
   // A receiver the evaluator resolved out of the context's own chain is

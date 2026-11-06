@@ -1,14 +1,17 @@
 # A48–A51, A55 and F29 — member reads and writes that miss the data, and a getter's throw (`@zvenigora/ng-eval-core` 0.16.0)
 
 **Date**: November 3, 2026
-**Revision**: 2 — step 2, A55 and A48 fixed: § 3.1's CHANGELOG heading corrected to `### Breaking`,
+**Revision**: 3 — step 3, A50 fixed: § 4's table gives step 3's files and its +48, the write's test is by the receiver's origin, step 2's
+get-only proxy break, measured wider than recorded, is stated, and [A59](../backlog.md#a59) opened for
+it and step 2's two traps, at the maintainer's decision (§ 4, Step 3; § 7). Revision 2 — step 2, A55
+and A48 fixed: § 3.1's CHANGELOG heading corrected to `### Breaking`,
 step 1's count corrected to 30, and § 8 q1 decided (§ 4, Step 2). Revision 1 — step 1, this plan and
 its records, with its five code reviews folded in before the commit (§ 4.1).
 
 Four `eval-core` entries opened by the [A45 plan](../a45/plan.md) and one found measuring them:
 [A48](../backlog-retired.md#a48), a `caseInsensitive` read that calls a prototype accessor twice;
 [A49](../backlog.md#a49), the context branch calling a context getter or a lookup where JavaScript
-reads less; [A50](../backlog.md#a50), a write through `this` that lands beside a `Registry`'s map;
+reads less; [A50](../backlog-retired.md#a50), a write through `this` that lands beside a `Registry`'s map;
 [A51](../backlog.md#a51), a write to an `EvalScope` held as a value that lands on the instance; and
 [A55](../backlog-retired.md#a55), new, `safeGetProperty` swallowing a getter's throw. This plan fixes A48,
 A50, A51 and A55, decides A49 a documented limit, and adds [F29](../backlog.md#f29)'s two `eval-forms`
@@ -349,7 +352,7 @@ One step per session behind the `/step` gate. Gate counts at 3bbc296: `eval-core
 | :--- | :--- | :--- | :--- | :--- |
 | 1 | This plan, its records, and the two README sentences | `docs/a48/plan.md` (new), `docs/README.md`, `docs/backlog.md`, `CLAUDE.md`, `.claude/skills/step/SKILL.md`; `modules/eval-core/README.md`, `CHANGELOG.md`, `eval.service.scope-this.spec.ts`, `eval.service.case-insesitive.spec.ts` | **+30** / 0 / 0 | the README and CHANGELOG in `eval-core` 0.16.0; the rest in no package |
 | 2 | A55 and A48 | `prototype-pollution-guard.ts`, `member-expression.ts`, `member-read.spec.ts` (new), `assignment-target.spec.ts`, `eval.service.case-insesitive.spec.ts`, `README.md`, `CHANGELOG.md`, the register, `docs/README.md`, `docs/a45/plan.md`, `CLAUDE.md`, the skill, this document | **+86** / 0 / 0 | `eval-core` 0.16.0 |
-| 3 | A50 | `member-expression.ts`, `assignment-expression.ts`, `update-expression.ts`, their specs, `assignment-target.spec.ts`, `CHANGELOG.md`, the register, the skill, this document | measured in the step | `eval-core` 0.16.0 |
+| 3 | A50 | `member-expression.ts`, `assignment-expression.ts`, `update-expression.ts`, `assignment-target.spec.ts`, `member-read.spec.ts`, `CHANGELOG.md`, the register, the skill, this document; comments in `call-expression.ts`, `member-write-policy.ts`, `eval.service.scope-this.spec.ts` and `eval-forms`' `field-schema.spec.ts` | **+48** / 0 / 0 | `eval-core` 0.16.0 |
 | 4 | A51 | `prototype-pollution-guard.ts`, its spec, `assignment-target.spec.ts`, `CHANGELOG.md`, the register, the skill, this document | measured in the step | `eval-core` 0.16.0 |
 | 5 | A49, a documented limit | `README.md`, `eval-context.ts`' JSDoc, `assignment-target.spec.ts`' marks, a witness spec, `CHANGELOG.md`, the register, the skill, this document | measured in the step | `eval-core` 0.16.0 |
 | 6 | Downstream rows and F29 | `eval-signals` and `eval-forms` specs, the register, the skill, this document | 0 / measured / measured | no package |
@@ -499,7 +502,7 @@ Important, four Minor, four notes.
 - **I-a.** The CHANGELOG's A57 clause, "an assignment to one of its names changes the copy", was false
   for a write through `this`: under `caseInsensitive` over `{ k: 1 }`, `this.k = 5` lands beside the
   copy's map and a later `k` reads 1, and `let k = 0; this.k = 5; k` leaves the binding 0 (`s4.mjs`,
-  `copy-this`; that is [A50](../backlog.md#a50), fixed in step 3). The README and the CHANGELOG said
+  `copy-this`; that is [A50](../backlog-retired.md#a50), fixed in step 3). The README and the CHANGELOG said
   "an identifier assignment" until the third review's rewrite; the CHANGELOG restores "inherited". The
   A57 entry records the write through `this`.
 - **M-a.** A scope the caller pushes with `EvalContext.push` is what `k` and `this.k` read, while
@@ -681,6 +684,151 @@ Q10 is a new row, so supplement 7 re-measures every probe's red set with it in p
   tags, all annotated; the eighteen probes' and P1-18's and P1-19's red sets as the table gives them.
   The commit's body records the run on the maintainer's checkout and the code review.
 
+### Step 3 — A50
+
+- **Place, don't draft.** The step's whole change is pinned as `step-3/step-3.patch` in supplement 11
+  (supplements 9 and 10 are superseded: 9 was pinned before A59 was opened, and 10's code review
+  found the Critical below),
+  its SHA-256 given in the prompt, placed as step 2's was: each hunk with Edit or Write
+  ([SR36](../standing-rules.md#sr36)), then, everything staged, the diff that supplement 11's
+  `step-3/staged-diff.sh` prints hashes to the pinned patch's SHA-256.
+- **The code.** `writeMemberTarget`, new in `member-expression.ts`, P50 with one correction: a
+  `Registry` that is the context's original, and that the context branch chose as the receiver, is
+  written through its map, a blocked name refused first, and anything else goes to `safeSetProperty`.
+  The choice is the receiver's origin, which `evaluateMember` already carries in its fourth slot
+  (`docs/a35/plan.md` § 8 q7) and `resolveMemberTarget` now returns in a third; P50 tested identity
+  alone, so the original reached as a value, a host `Registry` holding itself, `self.k = 5`, went to
+  the map too, and `self.q = 7; self.q` read `undefined`, where 0dc9c15 read 7. The first placement's
+  code review found it (Critical: the CHANGELOG's "held as a value … as before" false for the
+  original); D3 and finding 3 already said the value path stays consistent with itself, so the code
+  is made to match them. `assignment-expression.ts` and `update-expression.ts` pass the origin. The
+  test reads the origin and the identity before `instanceof`, which calls a proxy's `getPrototypeOf`
+  trap (the review's Minor). Its comment
+  points at `docs/backlog-retired.md` A50 and states the layer: its refusal stands behind
+  `resolveMemberTarget`'s, and for an update the read's. The comments that named `safeSetProperty`
+  as the write, above `resolveMemberTarget`, in `member-write-policy.ts` (two) and in
+  `call-expression.ts`, are rewritten ([SR25](../standing-rules.md#sr25)).
+- **The records.** A50 retired: its index row re-pointed, its entry moved to
+  `docs/backlog-retired.md` with a *Fixed* paragraph. [A59](../backlog.md#a59) opened, Covered, at
+  the maintainer's decision: the proxy traps a member read calls beyond `get`, gathering step 2's
+  `getPrototypeOf` and `ownKeys` rows and carry-over 1 below; A55's and A48's retired entries point to
+  it. The *Unreleased* history row, 16 live before, 5 opened, 3 closed, 18 after, and the totals row
+  42, 78, 102, 18. Every link to it re-pointed:
+  `docs/README.md`'s row, this document's two, `docs/a45/plan.md`'s five
+  ([SR6](../standing-rules.md#sr6)), and the register's own three, in Work in flight, A56 and A57.
+  A57's sentence that a write through `this` lands beside the copy's map, false from this step, is
+  corrected ([SR31](../standing-rules.md#sr31)); A56's "A50's shape" says where the write goes now.
+  Work in flight; the skill's count.
+- **Step 2's carry-overs** ([SR4](../standing-rules.md#sr4)):
+  1. **The get-only proxy, measured wider than recorded** (`a50.mjs`, the `GETONLY` rows, on published
+     0.15.1, on 0dc9c15 and on 0dc9c15 with P50). Under `caseInsensitive`, a key that a proxy with no
+     `has` trap answers but whose target does not hold is searched for a case variant on the target's
+     prototype, as `=` already searched it: the variant is read, `px.getx` over an instance whose
+     prototype has `getX`, and `px.getx += 1` reads and writes it; or refused when it is a blocked
+     name, `px.tostring` over `{}`. Up to 0.15.1 the read tested the key by reading it and read it as
+     spelled, twice. `px.q` and a case-sensitive read are unchanged, and `px.getx = 1` wrote `getX`
+     at 0.15.1 too. The CHANGELOG gains a `### Breaking` bullet; `member-read.spec.ts` five rows; A48's
+     retired entry a paragraph; and [A59](../backlog.md#a59) records it.
+  2. `field-schema.spec.ts`' comment that "no member access in this evaluator throws at all" is
+     reworded: a member access on `null` or `undefined` does not throw; a blocked name and, from
+     0.16.0, a getter that throws do. A comment only, in no package.
+  3. The two `C` rows held under A50, `this.g = 1` and `this.g += 1` under `caseInsensitive`, keep
+     their outcome under P50 and are re-marked `design: a write into the caseInsensitive copy`; P50's
+     refusal is probed behind `resolveMemberTarget`'s and the read's (the probes below).
+- **The file list** (§ 4's table, corrected here, [SR3](../standing-rules.md#sr3)): beyond the
+  table's, `member-read.spec.ts` and `field-schema.spec.ts` (the carry-overs), `call-expression.ts`,
+  `member-write-policy.ts` and `eval.service.scope-this.spec.ts` (comments only), `docs/README.md`, `docs/backlog-retired.md` and
+  `docs/a45/plan.md` (the records and the links). The two visitors' own specs are not changed: the
+  characterisation spec's `S`, `H` and `K` rows run both visitors.
+- **The CHANGELOG**: `### Fixed`, the write through `this` to a `Registry` original; `### Breaking`, the
+  get-only proxy (carry-over 1). The README promises neither path and is not changed.
+- **Rows** ([SR27](../standing-rules.md#sr27)), **+48**, `eval-core` 3419 → 3467:
+  - `assignment-target.spec.ts`, +38: group `H`, a host's `Registry` as the context, twelve rows in
+    both modes: `this.k = 5`, `this.k += 5`, `this.k++` and `this.k ||= 5` written through the map;
+    `this.K = 5`, refused case-sensitively by A42 and written under `caseInsensitive`; `this.z = 5`,
+    refused; `r.k = 5`, a `Registry` held as a value, an own property as before, checked natively;
+    and the host's `Registry` holding itself as `self`: `self.k = 5`, `self.k += 5`, `self.k++` and
+    `this.self.k = 5`, the original reached as a value, an own property, read back by `self.k`, the
+    map keeping 1, as at 0dc9c15, beside `this["k"] = 5` on the same fixture, through the map.
+    Group `K`, a blocked name on a `Registry` original, seven rows in both modes: `this.__proto__ =
+    f()`, `this["__proto__"] = f()`, `this.constructor += f()`, `this.constructor++`,
+    `this.prototype = f()` and `this.CONSTRUCTOR = f()` over a host `Registry` holding the names,
+    and `this.constructor = f()` over a plain context, whose `caseInsensitive` copy is the original:
+    each refused before `f` runs, the map keeping its entries. The four `S` rows held under A50 have
+    the copy's map written under `caseInsensitive`, `k` and `K` the new value, no stray, the caller's
+    object `1`, and are re-marked `design: a write into the caseInsensitive copy`; the two `C` rows
+    are re-marked; `Hold.under` drops `'A50'`.
+  - `member-read.spec.ts`, +10: a proxy whose `get` trap answers every key, with no `has` trap, five
+    rows in both modes: `px.q` and `px.tostring` over `{}`, and `px.getx`, `px.getx += 1` and the
+    contrast `px.getx = 1` over an instance with a method `getX`.
+
+  On 0dc9c15's code, the rows in place (`code-at-0dc9c15.patch`, supplement 11): **15 red**, the set P3-7
+  gives: `H`'s six writes through the context, through the map with no stray, both modes, `this.K = 5`
+  under `caseInsensitive`, and the four `S` rows under `caseInsensitive`; with the fix, none. The `self`
+  rows, the `K` rows and the `member-read.spec.ts` rows are green on 0dc9c15's code as well: the `self`
+  rows pin what 0dc9c15 did, and the others layers and a read that step 2 already changed. The `K` and `member-read.spec.ts` rows are green on 0dc9c15's
+  code as well: they pin layers and a read that step 2 already changed.
+- **Claim → witness** ([SR21](../standing-rules.md#sr21)):
+
+  | Claim (CHANGELOG) | Rows | Probes |
+  | :--- | :--- | :--- |
+  | a write through `this` to a `Registry` original reaches its map, and a later `k` or `this.k` reads it: the copy under `caseInsensitive`, a host's in both modes | `H`'s writes; `S`' four under `caseInsensitive` | P3-7; the 15 on 0dc9c15's code |
+  | `=`, `+=`, `\|\|=` and `++` alike | `H`'s `this.k = 5`, `this.k += 5`, `this.k \|\|= 5`, `this.k++` | P3-7 |
+  | under `caseInsensitive` the write stays in the copy, the caller's object unwritten, as before | `S`' `caller: 1` under `caseInsensitive` | none: unchanged, and nothing the step changes reaches the caller's object |
+  | a `Registry` reached as a value, the context's original included, is written as any object is, as before | `H`'s `r.k = 5`, checked natively, and its four `self` rows | P3-1; P3-11, the review's case |
+  | a key the original does not hold is still refused (the entry) | `H`'s `this.z = 5`, and `this.K = 5` and `K`'s `this.CONSTRUCTOR = f()` case-sensitively | P3-9 |
+  | the write goes to a `Registry` that is the original only (the entry) | existing rows: a plain original is not a `Registry` | P3-2 |
+  | the get-only proxy: a case variant on the target's prototype read, written, or refused when blocked; `px.q` as spelled; `=` as before; case-sensitive unchanged | the five `member-read.spec.ts` rows | P3-8, P3-10, P2-12, P2-14, P2-16 |
+  | (no claim) `writeMemberTarget` refuses a blocked name, behind `resolveMemberTarget`'s refusal and the read's | `K` | P3-3, P3-4, P3-5, P3-6 |
+
+- **Probes** ([SR15](../standing-rules.md#sr15), [SR16](../standing-rules.md#sr16)), each a pinned patch
+  against the step's tree in supplement 11, applied alone, every `eval-core` case read, reverted, and the
+  tree checked clean ([SR32](../standing-rules.md#sr32)). Red sets in supplement 11's
+  `results/red-*.txt`.
+
+  | Probe | The wrong implementation | Red, of 3467 | Step 3's rows | Existing rows |
+  | :--- | :--- | ---: | :--- | :--- |
+  | P3-1 | any `Registry` is written through its map, however it was reached | 10 | `H`'s `r.k = 5` and its four `self` rows, both modes | none |
+  | P3-2 | any original the context branch chose is written through `set`, a plain object too | 8 | none | 8, case-sensitive, a plain context written through `this`: `S`' `this.k = 5`, `this.k += 5` and `this.k++`, `C`'s `this.g = 1` and `this.g += 1`, one `R` row, one A56 row and A42's "the write refusal" |
+  | P3-3 | `writeMemberTarget`'s own blocked-name check goes | 0 | none: `resolveMemberTarget` and the read refuse first | none |
+  | P3-4 | `resolveMemberTarget`'s two context checks go | 12 | 9: `K`'s `=` rows, both modes, but case-sensitive `this.CONSTRUCTOR = f()`: `f` runs, and the refusal comes after it | 3: `B`'s `this.constructor = f()`, both modes, and `this.CONSTRUCTOR = f()` under `caseInsensitive` |
+  | P3-5 | P3-4, and `writeMemberTarget`'s check | 12 | P3-4's nine, the write now landing in the map | P3-4's three |
+  | P3-6 | the read's two context checks, and `writeMemberTarget`'s | 370 | `K`'s `this.constructor += f()` and `this.constructor++`, both modes, the write landing | 366: "the blocklist against the context", every blocked read through `this` |
+  | P3-7 | the map written and an own property set too, as up to 0.15.1 | 15 | `H`'s six writes through the context, `this["k"] = 5` on the `self` fixture among them, both modes, and `this.K = 5` under `caseInsensitive`; `S`' four under `caseInsensitive` | none |
+  | P3-8 | the `caseInsensitive` read tests the key by reading it, as up to 0.15.1 (P2-2) | 23 | under `caseInsensitive`, the answering proxy's `px.q`, `px.tostring`, `px.getx`, `px.getx += 1` | 19: P2-2's |
+  | P3-9 | a key the original does not hold is written into it, where A42 refuses it | 21 | `H`'s `this.z = 5`, both modes; case-sensitive `this.K = 5` and `K`'s `this.CONSTRUCTOR = f()` | 17: 11 A42 "the evaluation context is not writable", 4 `assignment-target.spec.ts`, 2 A56 |
+  | P3-10 | the write resolver's `caseInsensitive` branch runs in both modes | 7 | case-sensitive `px.getx = 1` | 6: 5 `assignment-target.spec.ts`, 1 performance |
+  | P3-11 | the original is written through its map by identity alone, however it was reached: P50 as first pinned, the review's case | 8 | `H`'s four `self` rows, both modes | none |
+  | P3-12 | any `Registry` the context branch chose is written through its map, the original or not | 0 | none: the branch chooses a `Registry` other than the original only as a prior scope's `thisArg`, which no row holds and nothing claims | none |
+  | P2-12 | supplement 8's, byte-identical: the read's `caseInsensitive` branch in both modes | 18 | case-sensitive `px.tostring`, `px.getx`, `px.getx += 1` | 15: step 2's |
+  | P2-14 | supplement 8's: the write resolver tests the key by reading it | 3 | `px.getx = 1` under `caseInsensitive` | 2: step 2's |
+  | P2-16 | supplement 8's: `safeGetProperty` reads twice | 33 | `px.q` in both modes; case-sensitive `px.tostring`, `px.getx`, `px.getx += 1` | 28: step 2's |
+
+  Every new case is red under at least one probe, checked case by case; each red set's names are as
+  many as Jest's failed cases, so no two red cases share a name (25 `eval-core` titles repeat at 0dc9c15,
+  none in this step's specs).
+- **Kill-list** ([SR25](../standing-rules.md#sr25)): `git grep -n "beside its map\|backlog.md#a50\|immediately before \`safeSetProperty\`\|\`safeSetProperty\` covers every write\|where \`safeSetProperty\` refuses after\|no member access in this"`
+  at 0dc9c15. Rewritten: the register's A57 sentence, A50's index row status, the four code comments,
+  `eval.service.scope-this.spec.ts`' W4 comment and `field-schema.spec.ts`' comment; every link
+  re-pointed. Kept: A50's index row description and its entry, history; `assignment-target.spec.ts`'
+  definition of `stray`, which still names what it tests; this document's step 1 text.
+- **Criterion**: the staged diff's hash; the gate green, `eval-core` 3467 (3419 + 48), `eval-signals`
+  450, `eval-forms` 386; doc-links 0 dangling; every probe's red set as the table gives it;
+  `sha256sum -c` on supplement 11's `SHA256SUMS.txt`; the register's live rows 18.
+- **Review**: the `code-reviewer` ([SR33](../standing-rules.md#sr33)): the step changes files under
+  `modules/`.
+- **Carried into step 4** ([SR4](../standing-rules.md#sr4)): measured with the correction
+  (`shadow.mjs`, supplement 11), the same on 0.15.1, 0dc9c15 and step 3: a host `Registry` held in its
+  own data can have its methods shadowed by a member write, an own property, as for any object, so
+  `self.get = 1` makes every later `k` and `this.k` throw `context.get is not a function`, and
+  `self.set = 1` every later `k = 5`. It is [A51](../backlog.md#a51)'s shape for a `Registry`, recorded
+  there; step 4 decides whether D4's refusal covers it.
+- **Outcome**: supplement 11's first placement matched its hash, its gate and its 14 red sets, and its
+  code review stopped the commit on a Critical, above, so supplement 11 corrects the code and pins the
+  step again. Measured first in the sandbox: the gate `eval-core` 3467, `eval-signals` 450,
+  `eval-forms` 386; doc-links 0 dangling; the probes' red sets as the table gives them. The commit's
+  body records the run on the maintainer's checkout and the code review.
+
 ## 5. Public API surface
 
 No export changes shape ([SR12](../standing-rules.md#sr12)); behaviour changes as § 2 says, so the
@@ -689,13 +837,18 @@ release is a minor. Step 8 diffs each `.d.ts` against the published 0.15.1, 0.8.
 ## 6. Verification gates
 
 [SR8](../standing-rules.md#sr8) after every step, on the committed tree. Counts move by step 1's 30
-`eval-core` cases, step 2's 86, and by what each later step's prompt fixes before its gate.
+`eval-core` cases, step 2's 86, step 3's 48, and by what each later step's prompt fixes before its gate.
 
 ## 7. Risks
 
 - **A getter that throws by design.** A host whose getters throw, read in an expression with a fallback
   such as `x.t || 1`, gets the throw from 0.16.0. Named in the CHANGELOG as a breaking change; the
   witness is step 2's characterisation, red on the swallow.
+- **A proxy as a member target under `caseInsensitive`.** A key a proxy with no `has` trap answers,
+  but its target does not hold, is searched for a case variant on the target's prototype from 0.16.0:
+  read under the variant's name, or refused when it is a blocked name. Named in the CHANGELOG as a
+  breaking change and recorded as [A59](../backlog.md#a59); the witnesses are step 3's five
+  `member-read.spec.ts` rows, red under P3-8.
 - **Timing on one machine.** The noise floor in the sandbox is about ±4% (finding 11), above the void
   bound; § 3.7's +5% clause decides two void runs.
 

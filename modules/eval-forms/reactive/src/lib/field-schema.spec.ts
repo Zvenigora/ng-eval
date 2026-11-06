@@ -196,8 +196,10 @@ describe('bindFieldProperties', () => {
     // A **call**, and the trailing `()` is the whole assertion. The plan said
     // `user.name.first` raises a `TypeError`; measured, it does not - member
     // access goes through `safeGetProperty`, which returns `undefined` for a
-    // null-ish target rather than throwing, so no member access in this
-    // evaluator throws at all. Calling the `undefined` it produced does:
+    // null-ish target rather than throwing, so a member access on `null` or
+    // `undefined` does not throw here, where JavaScript's does. (Other member
+    // accesses do throw: a blocked name, and from eval-core 0.16.0 a getter
+    // that throws.) Calling the `undefined` it produced does:
     // `call-expression.ts`'s `safeCall` raises
     // `Error('Cannot call undefined or null function')`. Corrected in the plan
     // before this spec was changed.

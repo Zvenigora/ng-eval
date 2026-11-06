@@ -201,8 +201,8 @@ describe('EvalService - a prior scope\'s thisArg', () => {
       expect(thisArg['k']).toBe('t');
       expect(scope['k']).toBe(10);
       // Case-sensitive the write lands on the caller's object; under
-      // `caseInsensitive` on the copy `fromContext` made of it, beside its map
-      // (A50, A57).
+      // `caseInsensitive` in the copy `fromContext` made of it, into its map
+      // since A50's fix (A57).
       expect(caller['k']).toBe(options.caseInsensitive ? 1 : 2);
     });
 

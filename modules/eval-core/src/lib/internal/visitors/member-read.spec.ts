@@ -11,7 +11,11 @@ import { evaluate, parse } from '../functions';
  * as in JavaScript, in both case modes, where `safeGetProperty` read it as
  * `undefined` (A55); and under `caseInsensitive` a key that no own property
  * matches is tested with `in`, so an inherited accessor is read once where it
- * was read twice, and a proxy's `has` trap is called (A48). A null-ish object
+ * was read twice, and a proxy's `has` trap is called (A48). A key a proxy with
+ * no `has` trap answers, but `in` misses, is then searched for a case variant
+ * on its target's prototype, as `=` searches it: the variant is read, or
+ * refused when it is a blocked name (step 2's carry-over, measured in step 3,
+ * `docs/a48/plan.md` § 4). A null-ish object
  * still reads `undefined` by the early return. The `caseInsensitive` branch's
  * own `catch`, around its test of the key and its search of the prototype's
  * names, stays (§ 8 q1): it swallows a throw from a trap JavaScript's `x.k`
@@ -213,6 +217,29 @@ describe('a member read (A55, A48): a getter\'s throw, and one read', () => {
     return { data: { px }, log };
   };
 
+  /**
+   * `px`, a proxy whose `get` trap answers every key, `answer:<key>`, with no
+   * `has` trap, so `in` finds only what its target holds: over `{}`, or over an
+   * instance of a class with a method `getX`. Its `set` trap logs.
+   */
+  const answeringProxy = (over: 'empty' | 'instance') => (): Fixture => {
+    const log: string[] = [];
+    class T { getX(): string { return 'method'; } }
+    const px = new Proxy<Record<string, unknown>>(over === 'empty' ? {} : new T() as unknown as Record<string, unknown>, {
+      get: (_target, key) => {
+        if (typeof key !== 'string') {
+          return undefined;
+        }
+        log.push(`get:${key}`);
+        return `answer:${key}`;
+      },
+      set: (_target, key, value) => { log.push(`set:${String(key)}=${String(value)}`); return true; },
+    });
+    return { data: { px }, log };
+  };
+
+  const answering = 'a get trap answering every key';
+
   const A48: Row[] = [
     {
       source: 'c.g ||= 5', fixture: onInstance,
@@ -270,6 +297,45 @@ describe('a member read (A55, A48): a getter\'s throw, and one read', () => {
     {
       source: 'px.q', label: 'a get trap only', fixture: getOnlyProxy,
       today: both({ value: 1, log: ['get:q'] }), js: both({ value: 1, log: ['get:q'] }),
+    },
+    // A key the proxy answers but `in` does not find is searched for a case
+    // variant on its target's prototype, as `=` already searched it. Up to
+    // 0.15.1 the read tested the key by reading it, read it again as spelled,
+    // and never searched.
+    {
+      source: 'px.q', label: `${answering}, over {}`, fixture: answeringProxy('empty'),
+      today: both({ value: 'answer:q', log: ['get:q'] }), js: both({ value: 'answer:q', log: ['get:q'] }),
+    },
+    {
+      source: 'px.tostring', label: `${answering}, over {}`, fixture: answeringProxy('empty'),
+      today: {
+        cs: { value: 'answer:tostring', log: ['get:tostring'] },
+        ci: { threw: 'Access to dangerous property "toString" is blocked for security reasons', log: [] },
+      },
+      js: both({ value: 'answer:tostring', log: ['get:tostring'] }),
+      differs: { ci: 'in misses the key, and its case variant on the prototype, toString, is blocked' },
+    },
+    {
+      source: 'px.getx', label: `${answering}, over an instance with a method getX`, fixture: answeringProxy('instance'),
+      today: { cs: { value: 'answer:getx', log: ['get:getx'] }, ci: { value: 'answer:getX', log: ['get:getX'] } },
+      js: both({ value: 'answer:getx', log: ['get:getx'] }),
+      differs: { ci: 'in misses the key, and its case variant on the prototype, getX, is read' },
+    },
+    {
+      source: 'px.getx += 1', label: `${answering}, over an instance with a method getX`, fixture: answeringProxy('instance'),
+      today: {
+        cs: { value: 'answer:getx1', log: ['get:getx', 'set:getx=answer:getx1'] },
+        ci: { value: 'answer:getX1', log: ['get:getX', 'set:getX=answer:getX1'] },
+      },
+      js: both({ value: 'answer:getx1', log: ['get:getx', 'set:getx=answer:getx1'] }),
+      differs: { ci: 'in misses the key, and its case variant on the prototype, getX, is read and written' },
+    },
+    {
+      // The contrast: `=` searched so up to 0.15.1 already.
+      source: 'px.getx = 1', label: `${answering}, over an instance with a method getX`, fixture: answeringProxy('instance'),
+      today: { cs: { value: 1, log: ['set:getx=1'] }, ci: { value: 1, log: ['set:getX=1'] } },
+      js: both({ value: 1, log: ['set:getx=1'] }),
+      differs: { ci: 'in misses the key, and its case variant on the prototype, getX, is written' },
     },
   ];
 

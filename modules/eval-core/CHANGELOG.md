@@ -23,6 +23,15 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   matches, as a member write already did; JavaScript's read calls none. A throw from that `has`
   trap, or from the `ownKeys` trap of a prototype searched for a case variant, is caught, and the
   key is then read as written ([A48](../../docs/backlog-retired.md#a48)).
+- **Under `caseInsensitive`, a key a proxy answers by its `get` trap alone is searched for a case
+  variant.** For a proxy with no `has` trap, `in` does not find a key its target does not hold, so
+  the read searches the target's prototype for a case variant, as `=` already did: over a target
+  whose prototype has a method `getX`, `px.getx` reads `getX`, and `px.getx += 1` reads and writes
+  it; a variant that is a blocked name is refused, so over `{}` `px.tostring` throws
+  `Access to dangerous property "toString" is blocked for security reasons`. Up to 0.15.1 the read
+  tested the key by reading it, and read it as spelled. A key with no such variant, `px.q`, is read
+  as spelled, as before, and a case-sensitive read is unchanged
+  ([A48](../../docs/backlog-retired.md#a48), [A59](../../docs/backlog.md#a59)).
 
 ### Changed
 - The README's `### Scopes` corrects two sentences. It said that a prior scope's `thisArg` changes
@@ -42,6 +51,16 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   inherited `foo` whose value is `undefined`, behind an accessor `Foo` on a nearer prototype,
   `p.foo` read `Foo`'s value and `p.foo += 1` wrote through `Foo`'s setter, where `p.foo = 1` wrote
   `foo`; each now reads or writes `foo`.
+- **A write through `this` to a `Registry` that is the context's original reaches its map.**
+  Where the original holds `k`, `this.k = v`, `this.k += v`, `this.k ||= v` and `this.k++` set an
+  own property on the `Registry` instance and left its map, so a later `k` or `this.k` read the old
+  value: under `caseInsensitive` on the copy `EvalContext.fromContext` makes of a plain context, and
+  in both modes on a host's `Registry` passed as the context. The write now goes through the
+  `Registry`'s map, as `k = v` does, and a later read sees it
+  ([A50](../../docs/backlog-retired.md#a50)). Under `caseInsensitive` it stays in the copy, as an
+  identifier write does, and does not reach the caller's object. A `Registry` reached as a value is
+  written as any object is, as before: `r.k = v`, and the context's own `Registry` when the host holds
+  it in its data, `self.k = v`.
 
 ---
 

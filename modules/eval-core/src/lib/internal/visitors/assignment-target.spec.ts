@@ -122,7 +122,7 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
 
   /** A row whose outcome after its step is still not JavaScript's, and the entry that keeps it so. */
   interface Hold {
-    under: 'A49' | 'A50' | 'A51';
+    under: 'A49' | 'A51';
     after: Outcome;
   }
 
@@ -851,37 +851,42 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   };
 
   const toData = { k: 1, K: undefined, stray: false, caller: 1 };
-  const toCopy = { k: 1, K: 1, stray: true, caller: 1 };
+  /**
+   * Under `caseInsensitive`, the copy after a write through `this` to `k`: its
+   * map holds `value`, read as `k` and `K`, and the caller's object keeps `1`.
+   * Up to 0.15.1 the write set an own `k` on the copy's instance and its map
+   * kept `1` (`docs/backlog-retired.md` A50).
+   */
+  const inCopy = (value: unknown) => ({ k: value, K: value, stray: false, caller: 1 });
 
   const S: Row[] = [
     {
       source: 'this.k = 5', observe: throughThis,
-      today: { cs: { ...toData, value: 5, k: 5, caller: 5 }, ci: { ...toCopy, value: 5 } },
+      today: { cs: { ...toData, value: 5, k: 5, caller: 5 }, ci: { ...inCopy(5), value: 5 } },
       js: both(native({ ...toData, value: 5, k: 5, caller: 5 })),
-      held: { ci: { under: 'A50', after: { ...toCopy, value: 5 } } },
+      design: { ci: copied },
     },
     {
       source: 'this.k += 5', observe: throughThis,
-      today: { cs: { ...toData, value: 6, k: 6, caller: 6 }, ci: { ...toCopy, value: 6 } },
+      today: { cs: { ...toData, value: 6, k: 6, caller: 6 }, ci: { ...inCopy(6), value: 6 } },
       js: both(native({ ...toData, value: 6, k: 6, caller: 6 })),
-      held: { ci: { under: 'A50', after: { ...toCopy, value: 6 } } },
+      design: { ci: copied },
     },
     {
       source: 'this.K = 5', observe: throughThis, nativeAs: 'this.k = 5',
-      today: { cs: { ...toData, threw: contextWrite }, ci: { ...toCopy, value: 5 } },
+      today: { cs: { ...toData, threw: contextWrite }, ci: { ...inCopy(5), value: 5 } },
       js: { cs: native({ ...toData, value: 5, K: 5 }), ci: native({ ...toData, value: 5, k: 5, caller: 5 }) },
-      held: { ci: { under: 'A50', after: { ...toCopy, value: 5 } } },
-      design: { cs: 'A42, a write to the context' },
+      design: { cs: 'A42, a write to the context', ci: copied },
     },
     {
       source: 'this.k++', observe: throughThis,
-      today: { cs: { ...toData, value: 1, k: 2, caller: 2 }, ci: { ...toCopy, value: 1 } },
+      today: { cs: { ...toData, value: 1, k: 2, caller: 2 }, ci: { ...inCopy(2), value: 1 } },
       js: both(native({ ...toData, value: 1, k: 2, caller: 2 })),
-      held: { ci: { under: 'A50', after: { ...toCopy, value: 1 } } },
+      design: { ci: copied },
     },
     {
       source: 'this.z = 5', observe: throughThis,
-      today: { cs: { ...toData, threw: contextWrite }, ci: { ...toCopy, stray: false, threw: contextWrite } },
+      today: { cs: { ...toData, threw: contextWrite }, ci: { ...inCopy(1), threw: contextWrite } },
       js: both(native({ ...toData, value: 5 })),
       design: both('A42, a write to the context'),
     },
@@ -1022,10 +1027,8 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
       source: 'this.g = 1', observe: onAccessorG,
       today: { cs: { value: 1, get: 1, set: 1 }, ci: { value: 1, get: 0, set: 0 } },
       js: both(native({ value: 1, get: 0, set: 1 })),
-      held: {
-        cs: { under: 'A49', after: { value: 1, get: 1, set: 1 } },
-        ci: { under: 'A50', after: { value: 1, get: 0, set: 0 } },
-      },
+      held: { cs: { under: 'A49', after: { value: 1, get: 1, set: 1 } } },
+      design: { ci: copied },
     },
     {
       source: 'g = 1', observe: onAccessorG,
@@ -1037,10 +1040,184 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
       source: 'this.g += 1', observe: onAccessorG,
       today: { cs: { value: 2, get: 2, set: 1 }, ci: { value: 2, get: 0, set: 0 } },
       js: both(native({ value: 2, get: 1, set: 1 })),
-      held: {
-        cs: { under: 'A49', after: { value: 2, get: 2, set: 1 } },
-        ci: { under: 'A50', after: { value: 2, get: 0, set: 0 } },
+      held: { cs: { under: 'A49', after: { value: 2, get: 2, set: 1 } } },
+      design: { ci: copied },
+    },
+  ];
+
+  // --- H (A50): a Registry that is the context's original, through `this` --
+
+  /**
+   * A host's `Registry` holding `k` as `initial`, passed as the context, so it
+   * is the context's original in both modes. `k` is read back through the
+   * context, `map` is the `Registry`'s own `get('k')`, and `stray` an own `k`
+   * on the instance, beside its map, where up to 0.15.1 the write landed
+   * (`docs/backlog-retired.md` A50). JavaScript has no map to write.
+   */
+  const throughHost = (initial: unknown): Observe => (engine, source, options) => {
+    const host = new Registry<string, unknown>([['k', initial]], options);
+    const ran = engine.run(source, host as unknown as Record<string, unknown>, options);
+    return { ...outcome(ran), k: ran.read('k'), map: host.get('k'), stray: ran.stray('k') };
+  };
+
+  /** `r`, a `Registry` holding `k: 1`, held as a value: an object like any other. */
+  const registryValue: Observe = (engine, source, options) => {
+    const r = new Registry<string, unknown>([['k', 1]], options);
+    const ran = engine.run(source, { r }, options);
+    return { ...outcome(ran), map: r.get('k'), own: Object.prototype.hasOwnProperty.call(r, 'k') };
+  };
+
+  /**
+   * The host's `Registry` as the context, and held in its own data as `self`:
+   * reached as a value, `self.k` or `this.self.k`, it is written as any object
+   * is, an own property, and read back as one, as up to 0.15.1; only a receiver
+   * the context branch chose goes through the map. `self` is `self.k` read
+   * afterwards, `k` the context's.
+   */
+  const heldByHost: Observe = (engine, source, options) => {
+    const host = new Registry<string, unknown>([['k', 1]], options);
+    host.set('self', host);
+    const ran = engine.run(source, host as unknown as Record<string, unknown>, options);
+    return { ...outcome(ran), k: ran.read('k'), self: ran.later('self.k'), map: host.get('k'), stray: ran.stray('k') };
+  };
+
+  const noMap = none('a Registry original is written through its map, which JavaScript does not have');
+  const asValue = (value: unknown) => ({ k: 1, self: value, map: 1, stray: true });
+  const inMap = (value: unknown) => ({ k: value, map: value, stray: false });
+
+  const H: Row[] = [
+    {
+      source: 'this.k = 5', observe: throughHost(1),
+      today: both({ ...inMap(5), value: 5 }),
+      js: both(noMap),
+    },
+    {
+      source: 'this.k += 5', observe: throughHost(1),
+      today: both({ ...inMap(6), value: 6 }),
+      js: both(noMap),
+    },
+    {
+      source: 'this.k++', observe: throughHost(1),
+      today: both({ ...inMap(2), value: 1 }),
+      js: both(noMap),
+    },
+    {
+      source: 'this.k ||= 5', observe: throughHost(0),
+      today: both({ ...inMap(5), value: 5 }),
+      js: both(noMap),
+    },
+    {
+      source: 'this.K = 5', observe: throughHost(1),
+      today: { cs: { ...inMap(1), threw: contextWrite }, ci: { ...inMap(5), value: 5 } },
+      js: both(noMap),
+    },
+    {
+      source: 'this.z = 5', observe: throughHost(1),
+      today: both({ ...inMap(1), threw: contextWrite }),
+      js: both(noMap),
+    },
+    {
+      source: 'r.k = 5', observe: registryValue,
+      today: both({ value: 5, map: 1, own: true }),
+      js: both(native({ value: 5, map: 1, own: true })),
+    },
+    // The original itself, reached as a value: by the origin, not the identity.
+    {
+      source: 'self.k = 5', observe: heldByHost,
+      today: both({ ...asValue(5), value: 5 }),
+      js: both(noMap),
+    },
+    {
+      source: 'self.k += 5', observe: heldByHost,
+      today: both({ ...asValue(NaN), value: NaN }),
+      js: both(noMap),
+    },
+    {
+      source: 'self.k++', observe: heldByHost,
+      today: both({ ...asValue(NaN), value: NaN }),
+      js: both(noMap),
+    },
+    {
+      source: 'this.self.k = 5', observe: heldByHost,
+      today: both({ ...asValue(5), value: 5 }),
+      js: both(noMap),
+    },
+    {
+      source: 'this["k"] = 5', observe: heldByHost,
+      today: both({ k: 5, self: undefined, map: 5, stray: false, value: 5 }),
+      js: both(noMap),
+    },
+  ];
+
+  // --- K (A50): a blocked name on a Registry original ------------------------
+
+  /**
+   * A host's `Registry` holding the blocked names `__proto__`, `constructor`
+   * and `prototype`, beside `k`, and `f`, which logs its call. `map` is what the
+   * `Registry` holds under the three names, and `strays` those set as own
+   * properties of the instance. `writeMemberTarget` refuses a blocked name on
+   * this branch, which bypasses `safeSetProperty`; `resolveMemberTarget`, or for
+   * an update the read, refuses it first, before the right side runs.
+   */
+  const blockedOnHost: Observe = (engine, source, options) => {
+    const log: string[] = [];
+    const f = () => { log.push('f'); return 7; };
+    const names = ['__proto__', 'constructor', 'prototype'];
+    const host = new Registry<string, unknown>([...names.map(name => [name, 1] as [string, unknown]), ['k', 1], ['f', f]], options);
+    const ran = engine.run(source, host as unknown as Record<string, unknown>, options);
+    return { ...outcome(ran), log, map: names.map(name => host.get(name)), strays: names.filter(name => ran.stray(name)) };
+  };
+
+  /** A plain context holding `constructor` and `f`: under `caseInsensitive` its copy is the original. */
+  const blockedOnCopy: Observe = (engine, source, options) => {
+    const log: string[] = [];
+    const f = () => { log.push('f'); return 7; };
+    const data: Record<string, unknown> = { constructor: 1, f };
+    const ran = engine.run(source, data, options);
+    return { ...outcome(ran), log, caller: data['constructor'] };
+  };
+
+  const keptOnHost = { log: [], map: [1, 1, 1], strays: [] };
+
+  const K: Row[] = [
+    {
+      source: 'this.__proto__ = f()', observe: blockedOnHost,
+      today: both({ ...keptOnHost, threw: dangerousProperty('__proto__') }),
+      js: both(noMap),
+    },
+    {
+      source: 'this["__proto__"] = f()', observe: blockedOnHost,
+      today: both({ ...keptOnHost, threw: dangerousProperty('__proto__') }),
+      js: both(noMap),
+    },
+    {
+      source: 'this.constructor += f()', observe: blockedOnHost,
+      today: both({ ...keptOnHost, threw: dangerousProperty('constructor') }),
+      js: both(noMap),
+    },
+    {
+      source: 'this.constructor++', observe: blockedOnHost,
+      today: both({ ...keptOnHost, threw: dangerousProperty('constructor') }),
+      js: both(noMap),
+    },
+    {
+      source: 'this.prototype = f()', observe: blockedOnHost,
+      today: both({ ...keptOnHost, threw: dangerousProperty('prototype') }),
+      js: both(noMap),
+    },
+    {
+      source: 'this.CONSTRUCTOR = f()', observe: blockedOnHost,
+      today: {
+        cs: { ...keptOnHost, log: ['f'], threw: contextWrite },
+        ci: { ...keptOnHost, threw: dangerousProperty('constructor') },
       },
+      js: both(noMap),
+    },
+    {
+      source: 'this.constructor = f()', observe: blockedOnCopy,
+      today: both({ threw: dangerousProperty('constructor'), log: [], caller: 1 }),
+      js: both(native({ value: 7, log: ['f'], caller: 7 })),
+      design: both('the blocklist, before the right side'),
     },
   ];
 
@@ -1216,6 +1393,8 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     ['P (M1f): a prototype accessor', P],
     ['L (M1j): a lookup answering the name', L],
     ['C (M1j): an accessor on the context, through this', C],
+    ['H (A50): a Registry that is the context\'s original, through this', H],
+    ['K (A50): a blocked name on a Registry original', K],
     ['N (M9, M11): an identifier holding null', N],
     ['T (M12): this as an identifier target, written This or host-built', T],
     ['V (step 2, W1): a foreign EvalContext as a compound target', V],

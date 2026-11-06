@@ -32,7 +32,7 @@ export const recordCreated = (created: WeakSet<object>, value: unknown): void =>
  * here unchanged: nothing has been written yet.
  *
  * Called by the member branches of `assignment-expression.ts` and
- * `update-expression.ts`, immediately before `safeSetProperty`, and only after
+ * `update-expression.ts`, immediately before `writeMemberTarget`, and only after
  * the caller has read `st.createdObjects` and found it set. That read is the
  * whole of the default path's cost: a state whose context has no policy holds
  * no set, so neither visitor reaches this call.
@@ -224,9 +224,10 @@ const WRITE_SITES: ReadonlyMap<unknown, Site> = (() => {
  * the other half of `refuseContextWrite` (`docs/a35/plan.md` Revision 16,
  * item 2's enumeration).
  *
- * `safeSetProperty` covers every write an expression makes through the
- * evaluator: dotted and computed member assignment, compound assignment and
- * the update expressions. It does not cover a write made by **native code**
+ * `writeMemberTarget`, and the `safeSetProperty` it falls to, cover every
+ * write an expression makes through the evaluator: dotted and computed member
+ * assignment, compound assignment and the update expressions. They do not
+ * cover a write made by **native code**
  * the expression merely calls - `Object.assign(c, { push: f })`,
  * `Object.defineProperty`, `Reflect.set`, `Object.setPrototypeOf`,
  * `Object.freeze`, and each of them reached through `call`, `apply` or

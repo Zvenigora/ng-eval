@@ -4012,6 +4012,17 @@ read as written, whose throw reaches the caller since A55's fix. The A45 plan's 
 spec, `assignment-target.spec.ts`, no longer holds its three `P` rows: under `caseInsensitive` they
 read once, as JavaScript does. The README's "Three kinds of read remain" passage loses its third kind.
 
+*Measured after the fix*, by the plan's step 3, on published 0.15.1 and on 0dc9c15 (`a50.mjs`, in its
+supplement 11): `in` reaches a proxy with no `has` trap too, and answers from its target. A key such a
+proxy answers by `get` but its target does not hold is then searched for a case variant on the
+target's prototype, as `=` already searched it: over an instance whose prototype has a method `getX`,
+`px.getx` reads `getX`, and `px.getx += 1` reads and writes it; a variant that is a blocked name is
+refused, so over `{}` `px.tostring` throws `Access to dangerous property "toString" is blocked for
+security reasons`. Up to 0.15.1 the read tested the key by reading it and read it as spelled. `px.q`,
+a key with no such variant, and a case-sensitive read are unchanged. Step 2 left this out of the
+CHANGELOG; step 3 states it under `### Breaking`, with four `member-read.spec.ts` rows and a contrast,
+`px.getx = 1`, and records it as [A59](backlog.md#a59).
+
 When no own property matches the key, `evaluateMember`'s `caseInsensitive` lookup tests the key by
 reading it, `obj[key]` (`member-expression.ts:226` at db287da), and then reads `obj[foundKey]`. A key
 that an accessor on the prototype answers is therefore read twice. An own accessor is matched by the
@@ -4060,7 +4071,8 @@ case variant, `x.T`, reads as before; and a revoked proxy throws at the evaluato
 bdaa542's code ([SR27](standing-rules.md#sr27)). Outside both `catch`es, and unchanged by the fix, a
 proxy's `getPrototypeOf` trap, which the evaluator's own class checks call before every member read,
 and under `caseInsensitive` its `ownKeys` trap, which the lookup cache calls, throw to the caller
-where JavaScript's `x.k` calls neither (`member-read.spec.ts`, § 8 q1's last two rows).
+where JavaScript's `x.k` calls neither (`member-read.spec.ts`, § 8 q1's last two rows); recorded as
+[A59](backlog.md#a59) by the plan's step 3.
 
 `safeGetProperty` (`prototype-pollution-guard.ts`) reads `target[key]` inside a `try` whose `catch`
 returns `undefined`, so a throw from a getter or a proxy trap is read as `undefined`. Measured
@@ -4097,6 +4109,78 @@ contrasts, those the fix changes red on bdaa542's code, all green with it, and t
 [A48 plan](a48/plan.md) § 4, Step 2).
 
 ---
+
+<a id="a50"></a>
+## A50 — A member write through `this` lands on a `Registry` original's instance, not in its map
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-11-06**; ships in `eval-core`
+0.16.0. Was Open. Opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (its § 8 q4, first
+half). It predates that plan. Corrected 2026-11-03
+
+*Fixed* 2026-11-06, as step 3 of the [A48 plan](a48/plan.md). A member write goes through
+`writeMemberTarget`, new in `member-expression.ts`: a `Registry` that is the context's original, and
+that the context branch chose as the receiver, is written through its map, `Registry.set`, as the
+identifier write `k = 5` already wrote it, and anything else through `safeSetProperty`, as before. The
+assignment and update visitors pass the receiver's origin, which `evaluateMember` already carried
+for `callMember`. That is the plan's prototype, `P50.patch`, corrected: P50 tested the identity alone,
+so the original reached as a value, a host `Registry` holding itself, `self.k = 5`, was written to
+the map and `self.q = 7; self.q` read `undefined`; the step's code review found it before the commit. Measured on the production bundle of
+0dc9c15 with it (`a50.mjs`, the output in the plan's supplement 11): `this.k = 5`, `this.k += 5`,
+`this.k ||= 5`, `this.k++` and `++this.k` write the map, a later `k` and `this.k` read the new value,
+and no own `k` is left on the instance, under `caseInsensitive` on the copy of a plain context, and
+in both modes on a host's `Registry`. Under `caseInsensitive` the write stays in the copy, which
+persists across evaluations on the same `EvalContext` and never reaches the caller's object, as an
+identifier write's does; the A45 plan's characterisation spec marks those rows
+`design: a write into the caseInsensitive copy`, as it marks its identifier rows. Its two `C` rows,
+`this.g = 1` and `this.g += 1` over a context accessor under `caseInsensitive`, kept their outcome:
+the copy holds the accessor's value, read once when it is made, and the write goes to the copy. A
+key the original does not hold is still refused, by [A42](#a42)'s by-class refusal, and a
+`Registry` reached as a value, the original included, is written as any object is, an own property
+read back by the same path, as up to 0.15.1. The new branch bypasses `safeSetProperty`,
+so it refuses a blocked name itself, with the same message; it stands behind `resolveMemberTarget`'s
+refusals, and for an update the read's, which refuse first, before the right side runs. The
+plan's probes reach each layer (its § 4, Step 3).
+
+Under `caseInsensitive`, `EvalContext.fromContext` copies a plain context into a case-insensitive
+`Registry`, which becomes the context's original. For a key the original holds, `getThis` answers the
+original, so `this.k = v` writes `safeSetProperty(registry, k, v)`. That sets an own JavaScript
+property on the `Registry` instance. Its map is not changed, so every later read of `k` sees the old
+value, and the expression's own result is the only sign of the write. Measured 2026-10-23 against
+the production bundle, on `{ k: 1 }`:
+
+| Expression | Case-sensitive | `caseInsensitive` |
+| :--- | :--- | :--- |
+| `this.k = 5` | `5`; the caller's `k` is `5` | `5`; an own `k` on the `Registry`; `get('k')` is `1` |
+| `this.k += 5` | `6`; `k` is `6` | `6`; the same; `get('k')` is `1` |
+| `this.k++` | `1`; `k` is `2` | `1`; the same; `get('k')` is `1` |
+| `this.K = 5` | refused, `Write to the evaluation context is blocked for security reasons` | `5`; an own `k` on the `Registry` |
+| `this.g = 1`, a setter `g` on the context | set 1 | **set 0** |
+
+A key the original does not hold is refused in both modes, by [A42](#a42)'s
+by-class refusal. The A45 plan's prototype gave the same rows: its resolver calls `getThis` as the
+read path does. The plan's characterisation spec holds the `caseInsensitive` rows under this ID. The
+case-sensitive `this.K = 5` refusal is A42's decision, not this defect.
+
+*Corrected 2026-11-03* by the [A48 plan](a48/plan.md) (its § 1.4, finding 3; [SR4](standing-rules.md#sr4)): the defect
+is a `Registry` that is the context's original, not the `caseInsensitive` copy alone. A host's
+`Registry` passed as the context shows it in both case modes, measured 2026-11-02 on the production
+bundle of 9bf1bc8 (`rows.mjs`, the `A50 hostRegistry` rows), on `new Registry([['k', 1]])`:
+
+| Expression | Case-sensitive and `caseInsensitive` |
+| :--- | :--- |
+| `this.k = 5` | `5`; an own `k` on the instance; a later `k` reads `1`; the map keeps `1` |
+| `this.k += 5` | `6`; the same |
+| `this.k++` | `1`; the same |
+
+The identifier write, `k = 5`, writes the map in both modes, and a later `k` reads `5`. A `Registry`
+held as a value, `r.k = 5`, sets an own property and leaves the map, as for any object.
+
+*Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M1d and M1j.
+*Verified*: measured 2026-10-23 with a throwaway script outside the repository, against the
+production bundle built at db287da and the A45 plan's prototype, with the Angular compiler loaded.
+The fix: `assignment-target.spec.ts`' `S` rows under `caseInsensitive` and its new `H` and `K`
+rows, those the fix changes red on 0dc9c15's code, all green with it, and their probes (the
+[A48 plan](a48/plan.md) § 4, Step 3).
 
 # B. `eval-core` — security and hygiene
 
