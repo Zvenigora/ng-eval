@@ -77,7 +77,7 @@ from `@zvenigora/ng-eval-core` 0.14.0, which evaluates an assignment's target as
 - **An assignment's `dependencies` follow its reads.** With `trackDependencies: true`:
   - `count = 5` records nothing, where up to 0.6.1 it recorded `count`. Case-sensitive, it is no
     longer recomputed when `count` changes either. Under `caseInsensitive` it still is, since
-    resolving the write's key reads `count` ([A49](../../docs/backlog.md#a49)), so the recompute
+    resolving the write's key reads `count` ([A49](../../docs/backlog-retired.md#a49)), so the recompute
     change is case-sensitive only.
   - `user.name = "Bob"` records `user`, where it recorded `user` and `user.name`, and
     `user.a.b = 1` records `user` and `user.a`, where it also recorded `user.a.b`. Each is still

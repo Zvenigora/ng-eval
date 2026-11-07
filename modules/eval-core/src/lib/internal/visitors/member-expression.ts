@@ -306,11 +306,13 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
  * read's `foundKey` is. Any other object takes the key as spelled, as on the
  * read path.
  *
- * The context branch still calls `getThis`, which reads the value it tests
- * (`docs/backlog.md` A49). When it answers the context's original and that is
- * a `Registry`, the `caseInsensitive` copy or a host's, {@link writeMemberTarget}
- * writes it through its map (`docs/backlog-retired.md` A50). An `EvalScope` is
- * written as an object (A51).
+ * The context branch still calls `getThis`, which reads the value it tests,
+ * so a getter there runs where JavaScript reads nothing; how many times is not
+ * part of the contract (`docs/backlog-retired.md` A49). When it answers the
+ * context's original and that is a `Registry`, the `caseInsensitive` copy or a
+ * host's, {@link writeMemberTarget} writes it through its map
+ * (`docs/backlog-retired.md` A50). An `EvalScope` is refused, by
+ * `safeSetProperty` (`docs/backlog-retired.md` A51).
  *
  * The third slot is the receiver's origin, as `evaluateMember`'s fourth is:
  * true when the context branch chose it, so that a `Registry` the host holds

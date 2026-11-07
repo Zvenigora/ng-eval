@@ -241,7 +241,7 @@ Each finding cites the measurement in § 1.3 that produced it.
    under the prototype, where JavaScript calls it zero times. Under `caseInsensitive`, `getKey`
    consults a lookup function. So `x = 1` calls a lookup twice today and once under the prototype
    (once and zero times case-sensitive). D6 names `getThis` and `getKey` as the resolver's:
-   [A49](../backlog.md#a49), whose rows step 1 holds.
+   [A49](../backlog-retired.md#a49), whose rows step 1 holds.
 9. **Two write targets miss the data entirely, today and under the prototype** (M1d, M1h, M1i).
    - **`this.k = 5` under `caseInsensitive`** writes an own JavaScript property `k` onto the context's
      `Registry` copy. Its map is not changed, so `get('k')` still reads `1`. `getThis` answers the
@@ -266,7 +266,7 @@ Each finding cites the measurement in § 1.3 that produced it.
     *Corrected 2026-10-25, at step 6's gate.* M5 ran case-sensitive only, and before D10. Re-measured
     against 0.13.3's code and step 5's tree (step 6's outcome), its rows and M5b's reproduce, and
     two legs it lacked change the reading. Under `caseInsensitive`, `count = 5` still recomputes, 2
-    and 2, since `getKey` reads the signal ([A49](../backlog.md#a49)): the recompute change is
+    and 2, since `getKey` reads the signal ([A49](../backlog-retired.md#a49)): the recompute change is
     case-sensitive only. And "every expression that does not throw" is **not** unchanged under
     `caseInsensitive`: D10 moves a `null` source's reads, `nul === null` from `false` to `true` and
     `nul + 1` from `NaN` to `1`, through both downstream packages. Nor is the error's `key`
@@ -802,7 +802,7 @@ in `member-expression.ts` and returns `[object, key]`:
   expression, walked and popped;
 - **the context branch**: the blocklist check, then under `caseInsensitive` `getKey` and the
   resolved-key check, then `getThis(contextKey) ?? object`. `getThis` reads the value it tests
-  ([A49](../backlog.md#a49)), and under `caseInsensitive` the object it answers is the `Registry`
+  ([A49](../backlog-retired.md#a49)), and under `caseInsensitive` the object it answers is the `Registry`
   copy ([A50](../backlog-retired.md#a50));
 - **the `EvalScope` branch**: the blocklist check, and `[object, key]` ([A51](../backlog-retired.md#a51));
 - **any other receiver**:
@@ -999,7 +999,7 @@ widening at its gate, so `eval-signals` is at 444 from step 6. *Revision 2*: the
   | P `c.g` | `caseInsensitive` | get 2 | get 1 | [A48](../backlog-retired.md#a48) |
   | P `c.g += 1` (step 2) | `caseInsensitive` | get 2, set 1 | get 1, set 1 | A48 |
   | P `c.g++` | `caseInsensitive` | get 2, set 1 | get 1, set 1 | A48 |
-  | C `this.g = 1` (step 3) | case-sensitive | get 1, set 1 | get 0, set 1 | [A49](../backlog.md#a49) |
+  | C `this.g = 1` (step 3) | case-sensitive | get 1, set 1 | get 0, set 1 | [A49](../backlog-retired.md#a49) |
   | C `this.g += 1` (step 2) | case-sensitive | get 2, set 1 | get 1, set 1 | A49 |
   | C `this.g = 1`, `this.g += 1` | `caseInsensitive` | get 0, set 0; the result `1` or `2` | set 1 | [A50](../backlog-retired.md#a50) |
   | L `x = 1`, `X = 1` (step 3) | `caseInsensitive` | 1 lookup call | none | A49 |
@@ -2046,7 +2046,7 @@ decided q7 by measurement; q7 keeps its text, with the decision under it.
 2. **Under `caseInsensitive`, the read path reads a prototype accessor twice**:
    [A48](../backlog-retired.md#a48) (M1f, finding 7). Its rows are held in step 1. The entry also records
    that the plan's harness cannot time the `caseInsensitive` path (M7), which was q8.
-3. **The context branch reads what it tests**: [A49](../backlog.md#a49) (M1j, finding 8). Held in
+3. **The context branch reads what it tests**: [A49](../backlog-retired.md#a49) (M1j, finding 8). Held in
    step 1.
 4. **Two write targets miss the data** (M1d, M1h, M1i; finding 9), as two entries, since the two are
    different code paths with different fixes:
@@ -2076,7 +2076,7 @@ decided q7 by measurement; q7 keeps its text, with the decision under it.
 
 1. An assignment's member target has its object and key evaluated once, in JavaScript's order:
    object, key, the read where there is one, the right side, the write. `=` reads no value, except
-   what [A49](../backlog.md#a49) records for the context branch.
+   what [A49](../backlog-retired.md#a49) records for the context branch.
 2. A compound or logical assignment reads its target once, and that value passes the funnel. A listed
    function as such a target is refused with today's message.
 3. `a.b = 1` reports the reads of `a` and of any intermediate hops. `x = 1` reports nothing. A compound
@@ -2097,7 +2097,7 @@ decided q7 by measurement; q7 keeps its text, with the decision under it.
    message and before any lookup (D11, *Revision 4*). Case-sensitive, `This` is an ordinary name.
 9. **Not provided**, each held in step 1 under its entry:
    - a single read of a prototype accessor under `caseInsensitive` ([A48](../backlog-retired.md#a48));
-   - an `=` through the context branch that reads nothing ([A49](../backlog.md#a49));
+   - an `=` through the context branch that reads nothing ([A49](../backlog-retired.md#a49));
    - a write through `this` under `caseInsensitive` that reaches the data ([A50](../backlog-retired.md#a50));
    - a write through an `EvalScope` value that reaches the data ([A51](../backlog-retired.md#a51)).
 

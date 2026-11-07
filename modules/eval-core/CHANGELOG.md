@@ -53,6 +53,20 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   this realm's `Object`, one with a null prototype or one made in another realm, is not copied, and
   is not yet read as the context in either mode ([A58](../../docs/backlog.md#a58)).
   No behaviour changes. Documentation only: the README reaches the tarball.
+- The README's `AssignmentExpression` entry states a limit as the contract: how many times an
+  expression calls a getter on the context or on a scope's object, or a lookup, is not part of it;
+  one can run where JavaScript reads nothing, or more than once for one read, and a registered read
+  hook can add a call. It said "two kinds of read remain beyond JavaScript's", with counts for each:
+  a getter on the context reached through `this` case-sensitively, `this.g = 1` once and
+  `this.g += 1` twice, and a lookup under `caseInsensitive`, `x = 1` once and `x += 1` twice. Of
+  those, the lookup's `x += 1` holds without a read hook only: with one, as `eval-signals`'
+  dependency tracking registers, it calls the lookup three times, and case-sensitively a plain `g`
+  calls a getter on the context twice, where JavaScript calls it once. A getter on a global
+  prior scope's object is called more than once for one read as well, `this.g` three times under
+  `caseInsensitive`. The entry keeps one example, `this.g = 1`, which holds with or without a hook.
+  `EvalContext`'s `lookups` JSDoc states the limit for a lookup and its `getThis` JSDoc for the
+  getter it reads, both in the published `.d.ts`. No behaviour changes
+  ([A49](../../docs/backlog-retired.md#a49)).
 
 ### Fixed
 - **Under `caseInsensitive`, a member read calls a getter on the prototype chain once.** The lookup
@@ -278,7 +292,7 @@ their floors to it.
   it evaluated the object, the key and the read a second time after `f`. A getter on the target is
   called once where it was called twice. Two are read twice where they were read four times: a
   prototype accessor under `caseInsensitive` ([A48](../../docs/backlog-retired.md#a48)), and an accessor
-  on the context reached through `this` ([A49](../../docs/backlog.md#a49)). The read events are those of that one read, `a`, then `a.b`, where each was reported
+  on the context reached through `this` ([A49](../../docs/backlog-retired.md#a49)). The read events are those of that one read, `a`, then `a.b`, where each was reported
   twice; node hooks and the trace see the target's object and a computed key, and no longer the
   target node, and an identifier target not at all. The value read still passes the checks every
   read value passes, so a listed function as the target, `fetch += 1` or `obj.fetch ||= 1`, is
@@ -288,7 +302,7 @@ their floors to it.
   to 0.13.3 it read the target, and after `f` evaluated the object and the key and read the target a
   second time. A getter on the target is not called, except an accessor on the context reached
   through `this`, which is called once where it was called four times
-  ([A49](../../docs/backlog.md#a49)); under `caseInsensitive` a lookup answering an identifier
+  ([A49](../../docs/backlog-retired.md#a49)); under `caseInsensitive` a lookup answering an identifier
   target's name is called once, where it was called twice (A49). A listed function as the target is overwritten
   as `obj.fetch++` overwrites one, so `fetch = 1` and `obj.fetch = 1` write `1` where they were
   refused; `fetch += 1` and `fetch ||= 1` read it, and are still refused. The read events are the

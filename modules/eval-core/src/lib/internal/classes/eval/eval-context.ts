@@ -153,6 +153,12 @@ export class EvalContext {
 
   /**
    * Gets the lookups registry.
+   *
+   * A lookup is called while a name is resolved, and how many times an
+   * expression calls it is not part of the contract
+   * (`docs/backlog-retired.md` A49): it can be called where JavaScript would
+   * read nothing, as under `caseInsensitive` by `x = 1`, or more than once for
+   * one read, and a registered read hook can add a call.
    */
   public get lookups(): EvalLookup[] {
     return this._lookups;
@@ -333,7 +339,15 @@ export class EvalContext {
    *   not an object that holds the key.
    *
    * Undefined means "no receiver of its own", and the member visitor then falls
-   * back to the object it was evaluating. Up to 0.6.x the prior-scope step
+   * back to the object it was evaluating.
+   *
+   * It decides by reading the value, through the original or a prior scope's
+   * `get`, so a getter there runs where JavaScript reads nothing; how many
+   * times an expression calls it is not part of the contract
+   * (`docs/backlog-retired.md` A49). Case-sensitively, with a getter `g` on the
+   * context, `this.g = 1` calls it once and `this.g += 1` twice.
+   *
+   * Up to 0.6.x the prior-scope step
    * re-tested the original context and could never answer, and the lookup step
    * returned the lookup function itself (`docs/backlog-retired.md` A7).
    * @param key - The key to retrieve the value for.

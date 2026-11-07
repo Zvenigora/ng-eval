@@ -82,7 +82,7 @@ no symbol of this package changes shape, and **no shipped code of it changes**, 
   `count = 5`, as a `/reactive` `visible` or `text` rule over a control `count`, was recomputed
   when `count` changed, and now is not. On `/signals` the same rule ran again after `count`
   changed, and now does not. Under `caseInsensitive`, which only `/signals` takes, it still does,
-  since resolving the write's key reads `count` ([A49](../../docs/backlog.md#a49)), so the change is
+  since resolving the write's key reads `count` ([A49](../../docs/backlog-retired.md#a49)), so the change is
   case-sensitive only. Such a rule throws `SignalContextWriteError` on every run, in every mode.
   Where the rule spells its key as the data does, the error is unchanged: its class, `kind`, `key`,
   and the `expression` and message each entry point gives it; a case-variant member key under

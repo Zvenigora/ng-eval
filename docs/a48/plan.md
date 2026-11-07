@@ -1,7 +1,14 @@
 # A48–A51, A55 and F29 — member reads and writes that miss the data, and a getter's throw (`@zvenigora/ng-eval-core` 0.16.0)
 
 **Date**: November 3, 2026
-**Revision**: 4 — step 4, A51 fixed: § 4's table gives step 4's files and its +52; step 3's
+**Revision**: 5 — step 5, A49 decided a documented limit: the README's passage rewritten as the
+contract, with no count promised, measured on twenty forms without and with a read hook, since a
+getter on a prior scope's object made "two kinds" false and a read hook made its lookup counts false
+(supplement 13 kept them, and its code review stopped the commit; supplement 14's CHANGELOG
+misstated which of the old counts a hook moves, and its review stopped the commit too); § 4's table gives step 5's files
+and its +8; [A61](../backlog.md#a61) opened from step 4's
+review, at the maintainer's decision; step 4's review's three findings corrected (§ 4, Step 5).
+Revision 4 — step 4, A51 fixed: § 4's table gives step 4's files and its +52; step 3's
 review's two Important points are stated and pinned, the original as a prior scope's `thisArg`
 written through its map, kept as A50's fix, and a `Registry` `thisArg` that is not the original
 unchanged; [A60](../backlog.md#a60) opened for the `Registry` whose methods a write shadows, at the
@@ -14,7 +21,7 @@ its records, with its five code reviews folded in before the commit (§ 4.1).
 
 Four `eval-core` entries opened by the [A45 plan](../a45/plan.md) and one found measuring them:
 [A48](../backlog-retired.md#a48), a `caseInsensitive` read that calls a prototype accessor twice;
-[A49](../backlog.md#a49), the context branch calling a context getter or a lookup where JavaScript
+[A49](../backlog-retired.md#a49), the context branch calling a context getter or a lookup where JavaScript
 reads less; [A50](../backlog-retired.md#a50), a write through `this` that lands beside a `Registry`'s map;
 [A51](../backlog-retired.md#a51), a write to an `EvalScope` held as a value that lands on the instance; and
 [A55](../backlog-retired.md#a55), new, `safeGetProperty` swallowing a getter's throw. This plan fixes A48,
@@ -243,8 +250,8 @@ supersede supplement 5's. Supplements 2 to 6's step 1 patches are superseded.
   member write shadows is not covered, and is [A60](../backlog.md#a60) (decided in step 4).
 - **D5. A49: a documented limit, no code.** How many times a context getter or a lookup is called is not
   part of the contract. A fix needs a presence test on `EvalContext`, a published class, for a cost no
-  consumer has reported. The README's "Two kinds of read remain beyond JavaScript's" passage (three until step 2) states
-  it, under [SR44](../standing-rules.md#sr44).
+  consumer has reported. The README's "Two kinds of read remain beyond JavaScript's" passage (three until step 2) stated
+  it, under [SR44](../standing-rules.md#sr44). Step 5 replaced it with the contract, since a getter on a prior scope's object made "two kinds" false (§ 4, Step 5).
 - **D6. A56, A57 and A58: opened, covered by step 1's rows, not fixed here.** A fix to any changes what
   a published path reads or writes (`getThis`'s answer as a write target, what the copy holds, what a
   context outside this realm's `Object` reads) and is its own decision. The README is corrected in step 1
@@ -359,7 +366,7 @@ One step per session behind the `/step` gate. Gate counts at 3bbc296: `eval-core
 | 2 | A55 and A48 | `prototype-pollution-guard.ts`, `member-expression.ts`, `member-read.spec.ts` (new), `assignment-target.spec.ts`, `eval.service.case-insesitive.spec.ts`, `README.md`, `CHANGELOG.md`, the register, `docs/README.md`, `docs/a45/plan.md`, `CLAUDE.md`, the skill, this document | **+86** / 0 / 0 | `eval-core` 0.16.0 |
 | 3 | A50 | `member-expression.ts`, `assignment-expression.ts`, `update-expression.ts`, `assignment-target.spec.ts`, `member-read.spec.ts`, `CHANGELOG.md`, the register, the skill, this document; comments in `call-expression.ts`, `member-write-policy.ts`, `eval.service.scope-this.spec.ts` and `eval-forms`' `field-schema.spec.ts` | **+48** / 0 / 0 | `eval-core` 0.16.0 |
 | 4 | A51 | `prototype-pollution-guard.ts`, its spec, `assignment-target.spec.ts`, `CHANGELOG.md`, the register, `docs/backlog-retired.md`, `docs/README.md`, `docs/a45/plan.md`, `CLAUDE.md`, the skill, this document | **+52** / 0 / 0 | `eval-core` 0.16.0 |
-| 5 | A49, a documented limit | `README.md`, `eval-context.ts`' JSDoc, `assignment-target.spec.ts`' marks, a witness spec, `CHANGELOG.md`, the register, the skill, this document | measured in the step | `eval-core` 0.16.0 |
+| 5 | A49, a documented limit | `README.md`, `eval-context.ts`' JSDoc, `member-expression.ts`' JSDoc, `assignment-target.spec.ts`' marks and its `Q` rows, `CHANGELOG.md` and the two downstream CHANGELOGs' links, the register, `docs/backlog-retired.md`, `docs/README.md`, `docs/a45/plan.md`, `CLAUDE.md`, the skill, this document | **+8** / 0 / 0 | `eval-core` 0.16.0 |
 | 6 | Downstream rows and F29 | `eval-signals` and `eval-forms` specs, the register, the skill, this document | 0 / measured / measured | no package |
 | 7 | The timing record | this document, the skill | 0 / 0 / 0 | no package |
 | 8 | The release commit | the three `package.json`, the three `CHANGELOG.md`, the register, `CLAUDE.md`, the skill, this document | 0 / 0 / 0 | the release |
@@ -982,6 +989,127 @@ Q10 is a new row, so supplement 7 re-measures every probe's red set with it in p
   `eval-forms` 386; doc-links 0 dangling; the probes' red sets as the table gives them. The commit's
   body records the run on the maintainer's checkout and the code review.
 
+### Step 5 — A49, a documented limit
+
+- **Place, don't draft.** The step's whole change is pinned as `step-5/step-5.patch` in supplement 15,
+  its SHA-256 given in the prompt, placed as step 4's was ([SR36](../standing-rules.md#sr36)), the
+  staged diff that `step-5/staged-diff.sh` prints hashing to the pinned patch's SHA-256.
+- **No code.** Comments and JSDoc only: `EvalContext`'s `lookups` states the limit for a lookup, and
+  `getThis` for the getter it reads, both in the published `.d.ts`; `resolveMemberTarget`'s JSDoc points A49 at `docs/backlog-retired.md` and says an
+  `EvalScope` is refused, by `safeSetProperty` (A51), where it said "written as an object" (step 4's
+  review, Important).
+- **Measured first** ([SR19](../standing-rules.md#sr19), [SR44](../standing-rules.md#sr44)), on the
+  production bundles of 0.15.1 (`B8BAED38…AFDA24E4`) and the step 4 code (`47A03308…0E25C1BA`), the
+  same on each (`a49.mjs`, 394 rows, `results/a49-*.txt` in supplement 15): twenty expression forms
+  against a getter on the context, a lookup, a getter on a global prior scope's object and one on a
+  scope pushed with the mode's options and without any, both modes, each without and with a read hook registered, and JavaScript's counts
+  by `with`. The README's "two kinds of read remain beyond JavaScript's" was false twice over:
+  without a hook, a getter on a global prior scope's object is called twice by `this.g`
+  case-sensitively and three times under `caseInsensitive`, and a getter through `this` twice by
+  `this.g`, `this.g++`, `this["g"]`, `this.g()` and the logical forms; with a read hook, every
+  identifier read resolves its key again, so `x += 1` under `caseInsensitive` calls a lookup three
+  times, not the README's two, and case-sensitively a plain `g` calls a getter on the context twice. A read through `this` is the same
+  with a hook.
+- **The wording** (D5, [SR44](../standing-rules.md#sr44)), in the README's `AssignmentExpression`
+  entry: "How many times an expression calls a getter on the context or on a scope's object, or a
+  lookup, is not part of the contract: one can run where JavaScript reads nothing, or more than once
+  for one read, and a registered read hook can add a call. Case-sensitively, with a getter `g` on the
+  context, `this.g = 1` calls it once, where JavaScript calls none." No count is promised beyond that
+  one example, which is the same with a hook; the lookup counts are dropped, and the `lookups` JSDoc
+  states the limit without them.
+- **The maintainer's decision** (2026-11-06): step 4's review's third finding, the natives that write
+  an `EvalScope` past A51's refusal, opened as [A61](../backlog.md#a61), Open, not scheduled.
+  Measured on 0.15.1 and the step 4 code, the same on each, both modes (`assign.mjs`,
+  `results/assign-*.txt`): `Object.assign`, an alias of it, `Reflect.set` and `Object.defineProperty`
+  write the scope's fields when the host places them in the context; a host's own function does too,
+  which no check reaches.
+- **Step 4's carry-overs** ([SR4](../standing-rules.md#sr4)): the `resolveMemberTarget` JSDoc, above;
+  the register's Work in flight named Revision 3, now Revision 5; A51's retired entry is corrected:
+  "reaches its fields" is closed for a member write only, the rest A61. Step 4's kill-list searched
+  for the link to A51 and missed an unlinked "(A51)"; this step's searches for the ID in words as well.
+- **The records.** A49 retired, *decided: a documented limit*: its index row re-pointed, its entry
+  moved to `docs/backlog-retired.md` with a *Decided* paragraph. A61 opened. The *Unreleased* history
+  row, 16 live before, 7 opened, 5 closed, 18 after, and the totals row 42, 80, 104, 18. Every link to
+  A49 re-pointed: the three `CHANGELOG.md` files (released sections; the A45 plan's step 7 re-pointed
+  one the same way), `docs/README.md`'s row, `docs/a45/plan.md`'s seven, this document's one, and the
+  register's own six, in Work in flight, the release table's three rows, A49's index row and A57.
+  `CLAUDE.md`'s "A49 is open" corrected. D5's pointer to the README passage corrected. The skill's
+  count.
+- **The file list** (§ 4's table, corrected in this step, [SR3](../standing-rules.md#sr3)): beyond
+  what Revision 4's row named, `member-expression.ts`' JSDoc, `docs/backlog-retired.md`,
+  `docs/README.md`, `docs/a45/plan.md`, `CLAUDE.md`, and the `eval-signals` and `eval-forms`
+  CHANGELOGs, for their links. The "witness spec" is `assignment-target.spec.ts`' `Q` group.
+- **The CHANGELOG**: `### Changed`, the README's limit, documentation only.
+- **Rows** ([SR27](../standing-rules.md#sr27)), **+8**, `eval-core` 3519 → 3527:
+  `assignment-target.spec.ts`' group `Q`, a getter on a global prior scope's object, two rows in both
+  modes: `this.g`, called twice case-sensitively and three times under `caseInsensitive`; `g += 1`,
+  once and twice, the write not reaching the scope. A prior scope is the evaluator's, so `js` is
+  `none`. Two rows with a read hook registered, by a new `withReadHook` wrapper, each labelled
+  `a read hook`: `L`'s `x += 1`, a lookup called twice case-sensitively and three times under
+  `caseInsensitive`, JavaScript once; `C`'s `g`, a getter called twice case-sensitively, JavaScript
+  once, and under `caseInsensitive` read only when the context is copied. The rows held under A49,
+  `C`'s `this.g = 1` and `this.g += 1` case-sensitively and `L`'s three under `caseInsensitive`, are
+  re-marked `design: A49, a documented limit…`; `Hold.under` is `'A56'` alone. Every existing
+  outcome is as at 1112ea2; only the marks move.
+- **Claim → witness** ([SR21](../standing-rules.md#sr21)):
+
+  | Claim (README, CHANGELOG) | Rows | Probes |
+  | :--- | :--- | :--- |
+  | a getter or lookup can run where JavaScript reads nothing: case-sensitively `this.g = 1` calls `g` once | `C`'s `this.g = 1`, case-sensitive; `L`'s `x = 1` and `X = 1` under `caseInsensitive` | P5-1; P5-3 |
+  | or more than once for one read | `C`'s `this.g += 1`; `L`'s `x += 1` under `caseInsensitive`; `Q`'s two | P5-1; P5-3; P5-2, P5-4, P5-5 |
+  | a registered read hook can add a call | `L`'s and `C`'s `a read hook` rows | P5-6 |
+  | (CHANGELOG) of the README's old counts only `x += 1` moves with a hook, to three; case-sensitively a plain `g` calls a getter on the context twice | the same | P5-6; P5-3; P5-4 |
+  | (A49's entry) under `caseInsensitive` a getter on the context is read when the context is copied | `C`'s three under `caseInsensitive` | P5-7 |
+  | (CHANGELOG) a getter on a global prior scope's object, `this.g` three times under `caseInsensitive` | `Q`'s `this.g` | P5-2; P5-5 |
+
+- **Probes** ([SR15](../standing-rules.md#sr15), [SR16](../standing-rules.md#sr16)), each a pinned patch
+  against the step's tree in supplement 15, applied alone, every `eval-core` case read, reverted, and the
+  tree checked clean ([SR32](../standing-rules.md#sr32)):
+
+  | Probe | The wrong implementation | Red, of 3527 | Step 5's rows | Existing rows |
+  | :--- | :--- | ---: | :--- | :--- |
+  | P5-1 | `getThis` tests the original by presence, not by its value (D5's rejected fix) | 23 | `C`'s `this.g = 1` and `this.g += 1`, both modes | 19: `H`'s eleven, `S`' four under `caseInsensitive`, `R`'s `this.x = 1` under `caseInsensitive`, W4 and W9, and Q8 |
+  | P5-2 | `getThis` tests a prior scope by presence | 6 | `Q`'s `this.g`, both modes | 4: W8 and W9, both modes |
+  | P5-3 | `resolve` calls each lookup twice | 6 | `L`'s three under `caseInsensitive`, and its `x += 1 (a read hook)`, both modes | 1: `L`'s `x += 1`, case-sensitive |
+  | P5-4 | `getKey` answers a global prior scope's key by presence, without reading it | 3 | `Q`'s two under `caseInsensitive`; `C`'s `g (a read hook)`, case-sensitive | none |
+  | P5-5 | `resolve` reads each prior scope twice | 4 | `Q`'s two, both modes | none |
+  | P5-6 | a read hook's event keeps the name as spelled, not resolving its key again | 14 | `L`'s `x += 1 (a read hook)`, both modes; `C`'s `g (a read hook)`, case-sensitive | 11: `read-hooks.spec.ts`' eight under `caseInsensitive`, the dependency tracker's, `performance.spec.ts`' read-emission guard, and the colon-joined names' hook criterion |
+  | P5-7 | under `caseInsensitive` a context holding an accessor is not copied | 9 | `C`'s `g (a read hook)`, `this.g = 1` and `this.g += 1` under `caseInsensitive` | 6: `C`'s `g = 1` and `G`'s four under `caseInsensitive`, and Q8 |
+
+  Every new or re-marked case is red under at least one probe, checked case by case; each red set's
+  names are as many as Jest's failed cases. P5-5 was added when `Q`'s `g += 1`, case-sensitive, was
+  red under no other, P5-6 for the rows with a read hook, and P5-7 when `C`'s `g (a read hook)` under
+  `caseInsensitive` was red under none of P5-1 to P5-6.
+- **Kill-list** ([SR25](../standing-rules.md#sr25)): `git grep -n "backlog.md#a49\|(#a49)\|Two kinds of read\|written as an object (A51)\|at Revision 3, steps\|A49 is open\|reaches its fields\|calls it once and\|x += 1\` twice"`
+  at 1112ea2. Rewritten: every A49 link, the README's passage, the JSDoc's sentence, Work in flight,
+  `CLAUDE.md`'s sentence, D5's pointer, and the lookup counts in the README and the `lookups` JSDoc.
+  Kept: the `getThis` JSDoc's `this.g = 1` once and `this.g += 1` twice, the same with a hook; the
+  CHANGELOG's quotation of the old counts; A51's title, "reaches its fields", history, which its
+  *Corrected* paragraph now scopes; D5's quotation of the passage it replaced.
+- **Criterion**: the staged diff's hash; the gate green, `eval-core` 3527 (3519 + 8), `eval-signals`
+  450, `eval-forms` 386; doc-links 0 dangling; every probe's red set as the table gives it;
+  `sha256sum -c` on supplement 15's `SHA256SUMS.txt`; the register's live rows 18.
+- **Review**: the `code-reviewer` ([SR33](../standing-rules.md#sr33)): the step changes files under
+  `modules/`.
+- **Outcome**: supplement 13's placement matched its hash, its tree, its gate (3523 / 450 / 386) and
+  its five red sets, and its code review stopped the commit on an Important finding the stop rule
+  names: the README's "`x += 1` twice", a shipped sentence false with a read hook, measured on the
+  bundle; with three more places of the same error, the `lookups` JSDoc, the CHANGELOG's "examples
+  stand" and A49's entry, and four Minors: a pushed scope's getter, unnamed (now "a scope's object");
+  "beyond JavaScript's" for a prior scope, which JavaScript has not (now "more than once for one
+  read"); `Q`'s docblock, true under `caseInsensitive` only (rewritten); and the JSDoc's reach to the
+  `.d.ts`, unstated (stated). Decided (b): no count promised, the hook stated, rows added for it.
+  Supplement 14 pinned the step again; its placement matched its hash, tree, gate (3527) and seven red
+  sets, and its code review stopped the commit on one Important the stop rule names: the CHANGELOG's
+  "Those counts hold without a read hook only", false for three of the four counts it quoted, only
+  the lookup's `x += 1` moving with a hook. Its Minors: "a plain `g`" without a mode or holder
+  (now case-sensitive, on the context); A49's entry's "a scope the host pushes", copied only when
+  pushed with `caseInsensitive` (corrected); `withReadHook`'s block placed between
+  `contextAccessor`'s docblock and its declaration (moved); and 14 stale `docs/backlog.md` A44 and A45
+  pointers in nine `eval-core` files, older than this step, carried to step 6 ([SR3](../standing-rules.md#sr3)).
+  Supplement 15 pins the step again. Measured in the sandbox on the final tree: the gate `eval-core`
+  3527, `eval-signals` 450, `eval-forms` 386; doc-links 0 dangling; the probes' red sets as the table
+  gives them. The commit's body records the run on the maintainer's checkout and the code review.
 ## 5. Public API surface
 
 No export changes shape ([SR12](../standing-rules.md#sr12)); behaviour changes as § 2 says, so the
@@ -990,7 +1118,7 @@ release is a minor. Step 8 diffs each `.d.ts` against the published 0.15.1, 0.8.
 ## 6. Verification gates
 
 [SR8](../standing-rules.md#sr8) after every step, on the committed tree. Counts move by step 1's 30
-`eval-core` cases, step 2's 86, step 3's 48, step 4's 52, and by what each later step's prompt fixes before its gate.
+`eval-core` cases, step 2's 86, step 3's 48, step 4's 52, step 5's 8, and by what each later step's prompt fixes before its gate.
 
 ## 7. Risks
 

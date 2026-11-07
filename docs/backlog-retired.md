@@ -4110,6 +4110,82 @@ contrasts, those the fix changes red on bdaa542's code, all green with it, and t
 
 ---
 
+<a id="a49"></a>
+## A49 — The context branch reads what it tests: `getThis` reads the value, `getKey` calls lookups
+
+**Package** core · **Kind** fix · **Status** **Retired — decided 2026-11-06: a documented limit**;
+ships in `eval-core` 0.16.0, documentation only. Was Open. Opened 2026-10-23 by the
+[A45 plan](a45/plan.md), Revision 2 (its § 8 q3). It predates that plan
+
+*Decided* 2026-11-06, as step 5 of the [A48 plan](a48/plan.md) (its D5): no code fix. How many times
+the evaluator calls a getter or a lookup is not part of the contract, and a fix needs a presence test
+on `EvalContext`, a published class, for a cost no consumer has reported. The limit is written where a
+consumer reads it, as what every path keeps ([SR44](standing-rules.md#sr44)): the README's
+`AssignmentExpression` entry, `EvalContext`'s `lookups` JSDoc for a lookup and its `getThis` JSDoc
+for the getter it reads. The README states that how many times an expression calls a getter on the
+context or on a scope's object, or a lookup, is not part of the contract: one can run where
+JavaScript reads nothing, or more than once for one read, and a registered read hook can add a call.
+It keeps one example, which holds with or without a hook: case-sensitively, with a getter `g` on the
+context, `this.g = 1` calls it once, where JavaScript calls none. No count is promised.
+
+The README said "two kinds of read remain beyond JavaScript's", with counts for each. Measured on
+0.15.1 and the plan's step 4 code, the same on each (`a49.mjs`, 394 rows, without and with a read hook
+registered, its output in the plan's supplement 15), both case modes:
+
+- **Without a hook**, beyond those two: a getter on the context reached through `this` is called
+  twice by `this.g`, `this.g++`, `this["g"]`, `this.g()` and the logical forms through `this`, where
+  JavaScript reads it once; a lookup under `caseInsensitive` twice by `this.g` and by `g++`; a getter
+  on a global prior scope's object twice by `this.g` case-sensitively and three times under
+  `caseInsensitive`, and once by `g = 5` under `caseInsensitive`, where JavaScript has no prior scope.
+  A plain `g` calls a getter on the context once, as JavaScript does.
+- **With a read hook**, as `eval-signals`' dependency tracking registers: every identifier read
+  resolves its key again for the hook, so it calls a getter on the context, a lookup, or a getter on
+  a prior scope's or a pushed scope's object once more. Case-sensitively a plain `g` calls a getter
+  on the context twice, and in both modes one on a prior scope's object or on a scope pushed without
+  options twice; under
+  `caseInsensitive` `g += 1`, `g++` and `g &&= 5` call a lookup three times (the `L` row's `x += 1`
+  likewise). A read through `this` is unchanged.
+- Under `caseInsensitive` a getter on the context, or on a scope pushed with `caseInsensitive`, is
+  read when it is copied, not by the expression; a scope pushed without options is not copied.
+
+So the README's lookup counts, `x = 1` once and `x += 1` twice, held without a hook only, and step 5
+as first pinned (the plan's supplement 13) kept them; its code review measured three with a hook and
+stopped the commit. The step's measurement had no hook leg ([SR19](standing-rules.md#sr19)).
+
+The rows held under this ID are re-marked `design: A49, a documented limit`; the prior scope's getter
+is pinned by `assignment-target.spec.ts`' `Q` rows, and a read hook's extra call by an `L` row
+(`x += 1`) and a `C` row (`g`), each labelled `a read hook`.
+
+`EvalContext.getThis` decides which object holds a key by reading the key's value, through
+`getContextValue`. `getKey` resolves through `resolve`, which reads the value and calls each lookup in
+turn. Both are on the member read's context branch, and the A45 plan's `=` resolver calls both by
+design (its D6). So a getter on the context, or a lookup function, runs where JavaScript reads nothing.
+Measured 2026-10-23 against the production bundle: a getter `g` on the context object, and an
+`EvalContext` with a lookup that answers `x`:
+
+| Expression | Today, case-sensitive | Under the A45 plan's prototype | JavaScript |
+| :--- | :--- | :--- | :--- |
+| `this.g` | get 2 | get 2 | get 1 |
+| `this.g = 1` | get 4, set 1 | **get 1**, set 1 | get 0, set 1 |
+| `this.g += 1` | get 4, set 1 | **get 2**, set 1 | get 1, set 1 |
+| `x = 1`, the lookup, `caseInsensitive` | 2 calls | **1 call** (`getKey`) | — (a resolver; 0 reads) |
+| `X = 1`, the same | 2 calls | **1 call** | — |
+| `x += 1`, the same | 2 calls | **2 calls** | — (1 read) |
+| `x = 1`, the lookup, case-sensitive | 1 call | 0 calls | — |
+
+Under `caseInsensitive` a getter on the context is read when the context is copied, before the walk,
+so it shows 0 in that mode. A fix needs a presence test on `EvalContext`, a published class, or a
+documented limit. The A45 plan's characterisation spec held the bold rows under this ID until the
+decision.
+
+*Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M1j.
+*Verified*: measured 2026-10-23 with a throwaway script outside the repository, against the
+production bundle built at db287da and the A45 plan's prototype, with the Angular compiler loaded.
+The decision: `assignment-target.spec.ts`' `C` and `L` rows, re-marked, its new `Q` rows and its two
+rows with a read hook, with their probes (the [A48 plan](a48/plan.md) § 4, Step 5).
+
+---
+
 <a id="a50"></a>
 ## A50 — A member write through `this` lands on a `Registry` original's instance, not in its map
 
@@ -4202,7 +4278,7 @@ rows, those the fix changes red on 0dc9c15's code, all green with it, and their 
 
 **Package** core · **Kind** fix · **Status** **Retired — fixed 2026-11-06**; ships in `eval-core`
 0.16.0. Was Open. Opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (its § 8 q4, second
-half). It predates that plan. Corrected 2026-11-06
+half). It predates that plan. Corrected 2026-11-06, twice
 
 *Fixed* 2026-11-06, as step 4 of the [A48 plan](a48/plan.md). `safeSetProperty` refuses an
 `EvalScope` target, by class, `Write to an evaluation scope is blocked`, after `refuseContextWrite`
@@ -4226,6 +4302,11 @@ The same step opened [A60](backlog.md#a60), which this refusal does not cover: a
 that is the context, reached as a value in the host's own data, can have its methods shadowed by a
 member write, `self.get = 1`, which this entry recorded as *Related* until then. The refusal is of
 an `EvalScope`, and a `Registry` reached as a value is written as any object is ([A50](#a50)).
+
+*Corrected 2026-11-06*, by the plan's step 5 ([SR31](standing-rules.md#sr31)), from step 4's code
+review: the title's "reaches its fields" is closed for a member write only. A native function the host
+also places in the context, `Object.assign`, `Reflect.set` or `Object.defineProperty`, still writes
+the scope and its fields, as on 0.15.1; that is [A61](backlog.md#a61).
 
 *Corrected 2026-11-06* ([SR4](standing-rules.md#sr4)): "a prior scope is never reachable as one",
 below, holds for the scope itself, not for its `thisArg`: an `EvalScope` that is a global prior

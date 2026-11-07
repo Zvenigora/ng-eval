@@ -1,5 +1,5 @@
 import { AnyNode, AssignmentExpression, ExpressionStatement, Identifier, Program } from 'acorn';
-import { EvalContext, EvalKnownOptions, EvalScope, EvalState, createDependencyTracker } from '../classes/eval';
+import { EvalContext, EvalHooks, EvalKnownOptions, EvalScope, EvalState, createDependencyTracker } from '../classes/eval';
 import { Registry } from '../classes/common';
 import { evaluate, parse } from '../functions';
 
@@ -122,7 +122,7 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
 
   /** A row whose outcome after its step is still not JavaScript's, and the entry that keeps it so. */
   interface Hold {
-    under: 'A49' | 'A56';
+    under: 'A56';
     after: Outcome;
   }
 
@@ -162,6 +162,7 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   const nonObject = (type: string) => `Cannot set property on non-object: ${type}`;
   const copied = 'a write into the caseInsensitive copy';
   const scopeRefused = 'A51, a write to an evaluation scope refused';
+  const limit = 'A49, a documented limit: a getter or lookup count is not the contract';
 
   /** A class instance whose `g` is an accessor on its prototype, logging each call. */
   const accessorInstance = (log: string[], initial: unknown): object => {
@@ -171,6 +172,19 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
       set g(value: unknown) { log.push(`set g=${String(value)}`); held = value; }
     }
     return new C();
+  };
+
+  /**
+   * `observe` with a read hook registered, one that does nothing, as
+   * `eval-signals`' dependency tracker is: an identifier read dispatched to a
+   * hook resolves its key again, so a getter or a lookup on the way is called
+   * once more (`docs/backlog-retired.md` A49). JavaScript has no hooks; the
+   * native arm runs as without one.
+   */
+  const withReadHook = (observe: Observe): Observe => (engine, source, options) => {
+    const hooks = new EvalHooks();
+    hooks.onRead(() => undefined);
+    return observe(engine, source, { ...options, hooks } as EvalKnownOptions);
   };
 
   /**
@@ -1191,19 +1205,25 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
       source: 'x = 1', observe: looked,
       today: { cs: { value: 1, calls: 0 }, ci: { value: 1, calls: 1 } },
       js: both(native({ value: 1, calls: 0 })),
-      held: { ci: { under: 'A49', after: { value: 1, calls: 1 } } },
+      design: { ci: limit },
     },
     {
       source: 'X = 1', observe: looked,
       today: { cs: { value: 1, calls: 0 }, ci: { value: 1, calls: 1 } },
       js: both(native({ value: 1, calls: 0 })),
-      held: { ci: { under: 'A49', after: { value: 1, calls: 1 } } },
+      design: { ci: limit },
     },
     {
       source: 'x += 1', observe: looked,
       today: { cs: { value: 1, calls: 1 }, ci: { value: 1, calls: 2 } },
       js: both(native({ value: 1, calls: 1 })),
-      held: { ci: { under: 'A49', after: { value: 1, calls: 2 } } },
+      design: { ci: limit },
+    },
+    {
+      source: 'x += 1', observe: withReadHook(looked), label: 'a read hook',
+      today: { cs: { value: 1, calls: 2 }, ci: { value: 1, calls: 3 } },
+      js: both(native({ value: 1, calls: 1 })),
+      design: both(limit),
     },
   ];
 
@@ -1216,8 +1236,7 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
       source: 'this.g = 1', observe: onAccessorG,
       today: { cs: { value: 1, get: 1, set: 1 }, ci: { value: 1, get: 0, set: 0 } },
       js: both(native({ value: 1, get: 0, set: 1 })),
-      held: { cs: { under: 'A49', after: { value: 1, get: 1, set: 1 } } },
-      design: { ci: copied },
+      design: { cs: limit, ci: copied },
     },
     {
       source: 'g = 1', observe: onAccessorG,
@@ -1229,8 +1248,54 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
       source: 'this.g += 1', observe: onAccessorG,
       today: { cs: { value: 2, get: 2, set: 1 }, ci: { value: 2, get: 0, set: 0 } },
       js: both(native({ value: 2, get: 1, set: 1 })),
-      held: { cs: { under: 'A49', after: { value: 2, get: 2, set: 1 } } },
-      design: { ci: copied },
+      design: { cs: limit, ci: copied },
+    },
+    {
+      source: 'g', observe: withReadHook(onAccessorG), label: 'a read hook',
+      today: { cs: { value: 1, get: 2, set: 0 }, ci: { value: 1, get: 0, set: 0 } },
+      js: both(native({ value: 1, get: 1, set: 0 })),
+      design: { cs: limit, ci: copied },
+    },
+  ];
+
+  // --- Q (A49): a getter on a global prior scope's object ------------------------
+
+  /**
+   * An empty context and a global prior scope whose object has `g`, an accessor
+   * holding 1, its get and set calls counted. How many times an expression calls
+   * it is not part of the contract (`docs/backlog-retired.md` A49).
+   * Case-sensitively a getter on the context's own object is called as often;
+   * under `caseInsensitive` that one is read only when the context is copied,
+   * and this one is called more: `this.g` three times. A prior scope is the
+   * evaluator's, so JavaScript has no answer.
+   */
+  const onPriorGetter: Observe = (engine, source, options) => {
+    const counts = { get: 0, set: 0 };
+    let held: unknown = 1;
+    const inner = {};
+    Object.defineProperty(inner, 'g', {
+      get: () => { counts.get += 1; return held; },
+      set: (value: unknown) => { counts.set += 1; held = value; },
+      enumerable: true, configurable: true,
+    });
+    const ran = engine.run(source, {}, options, context => {
+      context?.priorScopes.push(new EvalScope(inner, { global: true }));
+    });
+    return { ...outcome(ran), ...counts };
+  };
+
+  const priorScopeOnly = none('a prior scope is the evaluator\'s; the count is A49\'s documented limit');
+
+  const Q: Row[] = [
+    {
+      source: 'this.g', observe: onPriorGetter,
+      today: { cs: { value: 1, get: 2, set: 0 }, ci: { value: 1, get: 3, set: 0 } },
+      js: both(priorScopeOnly),
+    },
+    {
+      source: 'g += 1', observe: onPriorGetter,
+      today: { cs: { value: 2, get: 1, set: 0 }, ci: { value: 2, get: 2, set: 0 } },
+      js: both(priorScopeOnly),
     },
   ];
 
@@ -1664,6 +1729,7 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     ['C (M1j): an accessor on the context, through this', C],
     ['H (A50): a Registry that is the context\'s original, through this', H],
     ['K (A50): a blocked name on a Registry original', K],
+    ['Q (A49): a getter on a global prior scope\'s object', Q],
     ['Y (A50, A56): a prior scope\'s thisArg that is a Registry', Y],
     ['N (M9, M11): an identifier holding null', N],
     ['T (M12): this as an identifier target, written This or host-built', T],

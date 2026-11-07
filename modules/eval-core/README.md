@@ -288,10 +288,11 @@ The project has been tested with the following node types:
    the target's value only for a compound or logical operator, then the right side, then the
    write. So `=` does not read its target, and `+=` or `||=` reads it once; up to 0.13.3 the
    target was read as an operand, and a member target was evaluated again after the right side.
-   Two kinds of read remain beyond JavaScript's. Case-sensitive, a getter `g` on the context,
-   reached through `this`: `this.g = 1` calls it once and `this.g += 1` twice. And under
-   `caseInsensitive`, a lookup that answers an identifier target: `x = 1` calls it once and
-   `x += 1` twice. Destructuring assignment, `[a, b] = arr` or `({ m } = o)`, throws
+   How many times an expression calls a getter on the context or on a scope's object, or a
+   lookup, is not part of the contract: one can run where JavaScript reads nothing, or more than
+   once for one read, and a registered read hook can add a call. Case-sensitively, with a getter
+   `g` on the context, `this.g = 1` calls it once, where JavaScript calls none. Destructuring
+   assignment, `[a, b] = arr` or `({ m } = o)`, throws
    `Unsupported assignment target`;
    before `@zvenigora/ng-eval-core` 0.7.0 it silently did nothing. An identifier write that
    would shadow `undefined`, or under `caseInsensitive` a literal, throws
