@@ -32,6 +32,18 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   tested the key by reading it, and read it as spelled. A key with no such variant, `px.q`, is read
   as spelled, as before, and a case-sensitive read is unchanged
   ([A48](../../docs/backlog-retired.md#a48), [A59](../../docs/backlog.md#a59)).
+- **A member write to an `EvalScope` throws** `Write to an evaluation scope is blocked`, where up to
+  0.15.1 it set an own property on the instance. A host that places an `EvalScope` in the context as
+  a value reads it through the scope's `get`, so `ns.k = 5`, `ns.k += 5` and `ns.k++` left the
+  scope's context unchanged and a later `ns.k` read the old value, and `ns._context = 9`,
+  `ns._options = 9` or `ns.type = 9` replaced the scope's own fields. The write is refused, in both
+  case modes, for every form a member write takes and every key the blocklist does not already
+  refuse, for a subclass too, and for an `EvalScope` that is a prior scope's `thisArg`, reached
+  through `this`. It is refused after
+  the right side has run and after a write policy, `EvalContext.checkMemberWrite`, has been asked,
+  so a policy that refuses first still gives its own error. A namespaced scope's object, `ns.n`, is
+  not a scope, and `ns.n.k = 7` still writes into it; a logical assignment that writes nothing,
+  `ns.k ||= 5` with `k` set, is not refused ([A51](../../docs/backlog-retired.md#a51)).
 
 ### Changed
 - The README's `### Scopes` corrects two sentences. It said that a prior scope's `thisArg` changes
@@ -58,7 +70,10 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   in both modes on a host's `Registry` passed as the context. The write now goes through the
   `Registry`'s map, as `k = v` does, and a later read sees it
   ([A50](../../docs/backlog-retired.md#a50)). Under `caseInsensitive` it stays in the copy, as an
-  identifier write does, and does not reach the caller's object. A `Registry` reached as a value is
+  identifier write does, and does not reach the caller's object. The same holds where the original
+  is a global prior scope's `thisArg` and that scope holds the key: `this.k = v` writes the
+  original's map, and a later `k` or `this.k` reads `v`, where up to 0.15.1 the instance took an own
+  property and they read the scope's value. A `Registry` reached as a value is
   written as any object is, as before: `r.k = v`, and the context's own `Registry` when the host holds
   it in its data, `self.k = v`.
 

@@ -122,7 +122,7 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
 
   /** A row whose outcome after its step is still not JavaScript's, and the entry that keeps it so. */
   interface Hold {
-    under: 'A49' | 'A51';
+    under: 'A49' | 'A56';
     after: Outcome;
   }
 
@@ -135,6 +135,8 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     nativeAs?: string;
     held?: Partial<PerMode<Hold>>;
     design?: Partial<PerMode<string>>;
+    /** The fixture, where two rows of a group share a source, so that every case's name is its own. */
+    label?: string;
   }
 
   const both = <T>(value: T): PerMode<T> => ({ cs: value, ci: value });
@@ -156,8 +158,10 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   const dangerousProperty = (name: string) => `Access to dangerous property "${name}" is blocked for security reasons`;
   const dangerousFunction = 'Access to dangerous function "fetch" is blocked for security reasons';
   const contextWrite = 'Write to the evaluation context is blocked for security reasons';
+  const scopeWrite = 'Write to an evaluation scope is blocked';
   const nonObject = (type: string) => `Cannot set property on non-object: ${type}`;
   const copied = 'a write into the caseInsensitive copy';
+  const scopeRefused = 'A51, a write to an evaluation scope refused';
 
   /** A class instance whose `g` is an accessor on its prototype, logging each call. */
   const accessorInstance = (log: string[], initial: unknown): object => {
@@ -843,6 +847,8 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
    * The context holds `ns`, a global `EvalScope` over `{ k: 1 }`. `later` is
    * `ns.k` run afterwards on the same context, and `own` whether the write
    * left an own `k` on the instance. Natively the instance is all there is.
+   * From 0.16.0 the write is refused (`docs/backlog-retired.md` A51); up to
+   * 0.15.1 it set an own `k`, and `ns.k` read `1`.
    */
   const throughScope: Observe = (engine, source, options) => {
     const ns = new EvalScope({ k: 1 }, { global: true });
@@ -892,15 +898,198 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     },
     {
       source: 'ns.k = 5', observe: throughScope,
-      today: both({ value: 5, later: 1, own: true }),
+      today: both({ threw: scopeWrite, later: 1, own: false }),
       js: both(native({ value: 5, later: 5, own: true })),
-      held: both({ under: 'A51', after: { value: 5, later: 1, own: true } }),
+      design: both(scopeRefused),
     },
     {
       source: 'ns.k += 5', observe: throughScope,
-      today: both({ value: 6, later: 1, own: true }),
+      today: both({ threw: scopeWrite, later: 1, own: false }),
       js: both(native({ value: NaN, later: NaN, own: true })),
-      held: both({ under: 'A51', after: { value: 6, later: 1, own: true } }),
+      design: both(scopeRefused),
+    },
+  ];
+
+  // --- J (A51): a member write to an `EvalScope` held as a value -------------
+
+  type ScopeShape = 'global' | 'namespaced' | 'subclass';
+
+  /**
+   * The context holds `ns`, an `EvalScope` over `{ k: initial }`: global,
+   * namespaced as `n`, or a subclass's global instance; and `f`, which logs its
+   * call. `later` is `ns.k` run afterwards on the same context, `own` the
+   * instance's own names beside the scope's three fields, `scope` its context
+   * object as it stands, and `intact` whether those three fields still hold
+   * what the scope was made with. From 0.16.0 every write to the instance is
+   * refused, after the right side (`docs/backlog-retired.md` A51); natively the
+   * instance is all there is, and the write lands on it.
+   */
+  const heldScope = (shape: ScopeShape, initial: unknown = 1): Observe => (engine, source, options) => {
+    const log: string[] = [];
+    const f = () => { log.push('f'); return 7; };
+    const inner: Record<string, unknown> = { k: initial };
+    const scopeOptions = shape === 'namespaced' ? { namespace: 'n' } : { global: true };
+    class Sub extends EvalScope {}
+    const ns = shape === 'subclass' ? new Sub(inner, scopeOptions) : new EvalScope(inner, scopeOptions);
+    const made = { context: ns.context, options: ns.options, type: ns.type };
+    const ran = engine.run(source, { ns, f }, options);
+    const fields = ['type', '_context', '_options'];
+    return {
+      ...outcome(ran), log, later: ran.later('ns.k'),
+      own: Object.keys(ns).filter(name => !fields.includes(name)), scope: { ...inner },
+      intact: ns.context === made.context && ns.options === made.options && ns.type === made.type,
+    };
+  };
+
+  /**
+   * An `EvalScope` as a global prior scope's `thisArg`, beside that scope's
+   * `{ k: 10 }`: `this.k` answers the `thisArg` as the receiver (A56), and the
+   * write is refused there too. `k` is read back through the context. A prior
+   * scope is the evaluator's, so JavaScript has no answer.
+   */
+  const scopeAsThisArg: Observe = (engine, source, options) => {
+    const target = new EvalScope({ k: 't' }, { global: true });
+    const ran = engine.run(source, {}, options, context => {
+      context?.priorScopes.push(new EvalScope({ k: 10 }, { global: true, thisArg: target }));
+    });
+    return { ...outcome(ran), k: ran.read('k'), own: Object.keys(target).filter(name => !['type', '_context', '_options'].includes(name)) };
+  };
+
+  /**
+   * A context whose class defines `checkMemberWrite`, allowing or refusing,
+   * each call logged after `f`'s: the policy is asked after the right side
+   * and before the refusal, which therefore runs only for a write the policy
+   * allows (`docs/a48/plan.md`, P-1). A policy is the evaluator's, so
+   * JavaScript has no answer, and the native engine is not run.
+   */
+  const scopeUnderPolicy = (allows: boolean): Observe => (_engine, source, options) => {
+    const log: string[] = [];
+    const f = () => { log.push('f'); return 7; };
+    class Policed extends EvalContext {
+      override checkMemberWrite(write: { key: unknown }): void {
+        log.push(`policy:${String(write.key)}`);
+        if (!allows) {
+          throw new Error('the policy refuses');
+        }
+      }
+    }
+    const ns = new EvalScope({ k: 1 }, { global: true });
+    const context = new Policed({ ns, f }, options);
+    const ran = attempt(() => evaluate(programOf(source), EvalState.fromContext(context, options)));
+    return { ...ran, log, own: Object.prototype.hasOwnProperty.call(ns, 'k') };
+  };
+
+  const kept = { log: [], later: 1, own: [], scope: { k: 1 }, intact: true };
+  const keptNamespaced = { ...kept, later: undefined };
+  const onScope = (value: unknown, own: string[], later: unknown) =>
+    ({ value, log: [], later, own, scope: { k: 1 }, intact: true });
+  const evaluatorsOwn = none('a prior scope and a write policy are the evaluator\'s');
+
+  const J: Row[] = [
+    {
+      source: 'ns.k++', observe: heldScope('global'),
+      today: both({ ...kept, threw: scopeWrite }),
+      js: both(native(onScope(NaN, ['k'], NaN))),
+      design: both(scopeRefused),
+    },
+    {
+      source: '++ns.k', observe: heldScope('global'),
+      today: both({ ...kept, threw: scopeWrite }),
+      js: both(native(onScope(NaN, ['k'], NaN))),
+      design: both(scopeRefused),
+    },
+    {
+      source: 'ns["k"] = 5', observe: heldScope('global'),
+      today: both({ ...kept, threw: scopeWrite }),
+      js: both(native(onScope(5, ['k'], 5))),
+      design: both(scopeRefused),
+    },
+    {
+      source: 'ns.K = 5', observe: heldScope('global'),
+      today: both({ ...kept, threw: scopeWrite }),
+      js: both(native(onScope(5, ['K'], undefined))),
+      design: both(scopeRefused),
+    },
+    {
+      source: 'ns.z = 5', observe: heldScope('global'),
+      today: both({ ...kept, threw: scopeWrite }),
+      js: both(native(onScope(5, ['z'], undefined))),
+      design: both(scopeRefused),
+    },
+    {
+      source: 'ns.k = f()', observe: heldScope('global'),
+      today: both({ ...kept, log: ['f'], threw: scopeWrite }),
+      js: both(native({ ...onScope(7, ['k'], 7), log: ['f'] })),
+      design: both(scopeRefused),
+    },
+    {
+      source: 'ns._context = 9', observe: heldScope('global'),
+      today: both({ ...kept, threw: scopeWrite }),
+      js: both(native({ ...onScope(9, [], undefined), intact: false })),
+      design: both(scopeRefused),
+    },
+    {
+      source: 'ns._options = 9', observe: heldScope('global'),
+      today: both({ ...kept, threw: scopeWrite }),
+      js: both(native({ ...onScope(9, [], undefined), intact: false })),
+      design: both(scopeRefused),
+    },
+    {
+      source: 'ns.type = 9', observe: heldScope('global'),
+      today: both({ ...kept, threw: scopeWrite }),
+      js: both(native({ ...onScope(9, [], undefined), intact: false })),
+      design: both(scopeRefused),
+    },
+    {
+      source: 'ns.__proto__ = f()', observe: heldScope('global'),
+      today: both({ ...kept, threw: dangerousProperty('__proto__') }),
+      js: both(native({ ...onScope(7, [], undefined), log: ['f'] })),
+      design: both('the blocklist, before the right side'),
+    },
+    {
+      source: 'ns.k ||= 5', observe: heldScope('global', 1), label: 'k set',
+      today: both({ ...kept, value: 1 }),
+      js: both(native(onScope(5, ['k'], 5))),
+      design: both('an EvalScope is read through its get'),
+    },
+    {
+      source: 'ns.k ||= 5', observe: heldScope('global', 0), label: 'k falsy',
+      today: both({ ...kept, scope: { k: 0 }, later: 0, threw: scopeWrite }),
+      js: both(native({ ...onScope(5, ['k'], 5), scope: { k: 0 } })),
+      design: both(scopeRefused),
+    },
+    {
+      source: 'ns.k = 5', observe: heldScope('namespaced'), label: 'namespaced',
+      today: both({ ...keptNamespaced, threw: scopeWrite }),
+      js: both(native(onScope(5, ['k'], 5))),
+      design: both(scopeRefused),
+    },
+    {
+      source: 'ns.n.k = 7', observe: heldScope('namespaced'), label: 'namespaced',
+      today: both({ ...keptNamespaced, value: 7, scope: { k: 7 } }),
+      js: both(native({ threw: 'Cannot set properties of undefined (setting \'k\')', log: [], later: undefined, own: [], scope: { k: 1 }, intact: true })),
+      design: both('an EvalScope is read through its get'),
+    },
+    {
+      source: 'ns.k = 5', observe: heldScope('subclass'), label: 'a subclass',
+      today: both({ ...kept, threw: scopeWrite }),
+      js: both(native(onScope(5, ['k'], 5))),
+      design: both(scopeRefused),
+    },
+    {
+      source: 'this.k = 2', observe: scopeAsThisArg, label: 'a prior scope\'s thisArg',
+      today: both({ threw: scopeWrite, k: 10, own: [] }),
+      js: both(evaluatorsOwn),
+    },
+    {
+      source: 'ns.k = f()', observe: scopeUnderPolicy(true), label: 'a policy that allows',
+      today: both({ threw: scopeWrite, log: ['f', 'policy:k'], own: false }),
+      js: both(evaluatorsOwn),
+    },
+    {
+      source: 'ns.k = f()', observe: scopeUnderPolicy(false), label: 'a policy that refuses',
+      today: both({ threw: 'the policy refuses', log: ['f', 'policy:k'], own: false }),
+      js: both(evaluatorsOwn),
     },
   ];
 
@@ -1221,6 +1410,85 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     },
   ];
 
+  // --- Y (A50, A56): a prior scope's `thisArg` that is a `Registry` ----------
+
+  type ThisArgShape = 'the original' | 'the copy' | 'another Registry';
+
+  /**
+   * A global prior scope `{ k: 10 }` whose `thisArg` is a `Registry`, the
+   * context's own object holding `a` and not `k`, so `this.k = v` writes to
+   * the `thisArg` (A56). `the original` is a host's `Registry` passed as the
+   * context, in both modes its original; `the copy` is the context's original
+   * of a plain `{ a: 1 }`, under `caseInsensitive` the copy `fromContext` makes
+   * and case-sensitively the caller's own object; `another Registry` is not
+   * the original. `k` is read back through the context, `map` is the
+   * `thisArg`'s `get('k')` when it is a `Registry`, `stray` an own `k` on it,
+   * and `caller` the plain object's `k`.
+   *
+   * The original, reached so, is written through its map from 0.16.0, as
+   * through the context itself (`docs/backlog-retired.md` A50); up to 0.15.1
+   * it took an own `k`, and `k` read 10. Another `Registry` keeps that shape,
+   * held under A56.
+   */
+  const registryThisArg = (shape: ThisArgShape): Observe => (engine, source, options) => {
+    const data: Record<string, unknown> = { a: 1 };
+    const host = new Registry<string, unknown>([['a', 1]], options);
+    const other = new Registry<string, unknown>([['q', 0]], options);
+    let target: unknown;
+    const ran = engine.run(source, shape === 'the original' ? host as unknown as Record<string, unknown> : data, options,
+      context => {
+        target = shape === 'the original' ? host : shape === 'the copy' ? context?.original : other;
+        context?.priorScopes.push(new EvalScope({ k: 10 }, { global: true, thisArg: target }));
+      });
+    return {
+      ...outcome(ran), k: ran.read('k'),
+      map: target instanceof Registry ? target.get('k') : 'not a Registry',
+      stray: target instanceof Registry && Object.prototype.hasOwnProperty.call(target, 'k'),
+      ...(shape === 'the copy' ? { caller: data['k'] } : {}),
+    };
+  };
+
+  const throughThisArg = none('a prior scope and its thisArg are the evaluator\'s');
+  const missed = (value: unknown) => ({ value, k: 10, map: undefined, stray: true });
+
+  const Y: Row[] = [
+    {
+      source: 'this.k = 2', observe: registryThisArg('the original'), label: 'the original',
+      today: both({ ...inMap(2), value: 2 }),
+      js: both(throughThisArg),
+    },
+    {
+      source: 'this.k += 2', observe: registryThisArg('the original'), label: 'the original',
+      today: both({ ...inMap(12), value: 12 }),
+      js: both(throughThisArg),
+    },
+    {
+      source: 'this.k++', observe: registryThisArg('the original'), label: 'the original',
+      today: both({ ...inMap(11), value: 10 }),
+      js: both(throughThisArg),
+    },
+    {
+      source: 'this.k = 2', observe: registryThisArg('the copy'), label: 'the copy',
+      today: {
+        cs: { value: 2, k: 2, map: 'not a Registry', stray: false, caller: 2 },
+        ci: { ...inMap(2), value: 2, caller: undefined },
+      },
+      js: both(throughThisArg),
+    },
+    {
+      source: 'this.k = 2', observe: registryThisArg('another Registry'), label: 'another Registry',
+      today: both(missed(2)),
+      js: both(throughThisArg),
+      held: both({ under: 'A56', after: missed(2) }),
+    },
+    {
+      source: 'this.k += 2', observe: registryThisArg('another Registry'), label: 'another Registry',
+      today: both(missed(12)),
+      js: both(throughThisArg),
+      held: both({ under: 'A56', after: missed(12) }),
+    },
+  ];
+
   // --- N (M9, M11): an identifier holding `null` ------------------------------
 
   const onNull: Observe = (engine, source, options) => {
@@ -1389,12 +1657,14 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     ['A (M1e, M1f): the key a member write reaches under caseInsensitive', A],
     ['R (M2): read events, node hooks and the trace', R],
     ['S (M1d, M1h): this.k, and an EvalScope held as a value', S],
+    ['J (A51): a member write to an EvalScope held as a value', J],
     ['G (M1g): an identifier target with an accessor on the context', G],
     ['P (M1f): a prototype accessor', P],
     ['L (M1j): a lookup answering the name', L],
     ['C (M1j): an accessor on the context, through this', C],
     ['H (A50): a Registry that is the context\'s original, through this', H],
     ['K (A50): a blocked name on a Registry original', K],
+    ['Y (A50, A56): a prior scope\'s thisArg that is a Registry', Y],
     ['N (M9, M11): an identifier holding null', N],
     ['T (M12): this as an identifier target, written This or host-built', T],
     ['V (step 2, W1): a foreign EvalContext as a compound target', V],
@@ -1411,7 +1681,7 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
     if (design) {
       marks.push(`design: ${design}`);
     }
-    return [row.source, ...marks].join(' · ');
+    return [row.label ? `${row.source} (${row.label})` : row.source, ...marks].join(' · ');
   };
 
   describe.each<[string, Mode, EvalKnownOptions]>([

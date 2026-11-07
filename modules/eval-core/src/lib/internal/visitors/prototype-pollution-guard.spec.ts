@@ -1,6 +1,7 @@
 import { AnyNode } from 'acorn';
-import { EvalState } from '../classes/eval';
+import { EvalScope, EvalState } from '../classes/eval';
 import { evaluate, parse } from '../functions';
+import { safeSetProperty } from './prototype-pollution-guard';
 
 /**
  * A member write assigns - `docs/backlog-retired.md` A23.
@@ -104,5 +105,61 @@ describe('safeSetProperty - a member write assigns', () => {
     expect(() => run('o.g = 2', { o })).toThrow(/^Failed to set property "g": /);
 
     expect(typeof Object.getOwnPropertyDescriptor(o, 'g')?.get).toBe('function');
+  });
+});
+
+/**
+ * A write to an `EvalScope` is refused - `docs/backlog-retired.md` A51.
+ *
+ * The scope is read through its `get`, so a property set on the instance was
+ * never read back, and the instance's own fields could be replaced. The
+ * refusal is by class, after `refuseContextWrite` and before the blocklist,
+ * so it names its own layer whatever the key. Through an expression it runs
+ * after the right side and after a write policy; `assignment-target.spec.ts`
+ * group J pins that.
+ */
+describe('safeSetProperty - an evaluation scope is not written', () => {
+
+  const scopeWrite = 'Write to an evaluation scope is blocked';
+
+  const run = (source: string, context: Record<string, unknown> = {}): unknown =>
+    evaluate(parse(source, { ecmaVersion: 2020 }) as AnyNode, EvalState.fromContext(context));
+
+  it('should refuse an EvalScope, and leave its fields and its context', () => {
+    const inner = { k: 1 };
+    const ns = new EvalScope(inner, { global: true });
+    const options = ns.options;
+
+    expect(() => safeSetProperty(ns, 'k', 5)).toThrow(scopeWrite);
+    expect(() => safeSetProperty(ns, '_context', 9)).toThrow(scopeWrite);
+
+    expect(Object.prototype.hasOwnProperty.call(ns, 'k')).toBe(false);
+    expect(ns.context).toBe(inner);
+    expect(ns.options).toBe(options);
+    expect(inner).toEqual({ k: 1 });
+  });
+
+  it('should refuse a subclass of EvalScope', () => {
+    class Sub extends EvalScope {}
+    const ns = new Sub({ k: 1 }, { global: true });
+
+    expect(() => safeSetProperty(ns, 'k', 5)).toThrow(scopeWrite);
+
+    expect(Object.prototype.hasOwnProperty.call(ns, 'k')).toBe(false);
+  });
+
+  it('should refuse an EvalScope before the blocklist, under its own message', () => {
+    const ns = new EvalScope({ k: 1 }, { global: true });
+
+    expect(() => safeSetProperty(ns, 'constructor', 5)).toThrow(scopeWrite);
+  });
+
+  it('should write the object a namespaced scope holds, which is not a scope', () => {
+    const inner = { k: 1 };
+    const ns = new EvalScope(inner, { namespace: 'n' });
+
+    expect(run('ns.n.k = 7', { ns })).toBe(7);
+
+    expect(inner).toEqual({ k: 7 });
   });
 });

@@ -7,11 +7,13 @@
  */
 // Direct, not through the `classes/eval` barrel. `instanceof` needs the class
 // itself and not its type, and this module is imported by most visitors, so
-// the narrowest edge is the right one. Nothing here reads the binding at
-// module scope - only inside {@link safeSetProperty} - so the import cycle
-// the barrels already carry (`eval-scope.ts` imports the visitors barrel) is
-// not deepened into an initialisation order.
+// the narrowest edge is the right one. Nothing here reads either binding at
+// module scope - only inside {@link refuseContextWrite} and
+// {@link safeSetProperty} - so the import cycle the barrels already carry
+// (`eval-scope.ts` imports the visitors barrel) is not deepened into an
+// initialisation order.
 import { EvalContext } from '../classes/eval/eval-context';
+import { EvalScope } from '../classes/eval/eval-scope';
 
 /**
  * Set of property names that are dangerous for prototype pollution attacks
@@ -232,6 +234,19 @@ export const safeSetProperty = (target: unknown, key: unknown, value: unknown): 
   }
 
   refuseContextWrite(target);
+
+  // A scope a host placed in the context as a value is read only through its
+  // `get`, so a property written on the instance is never read back, and it
+  // could replace the scope's own fields (`docs/backlog-retired.md` A51). By
+  // class, so a subclass is refused too. Refused here, after the right side
+  // and after a write policy has been asked, as JavaScript refuses a write the
+  // object does not accept: a refusal earlier would run ahead of a policy such
+  // as a signal context's, whose own error bypasses `onError`
+  // (`docs/a48/plan.md`, P-1). The object a namespaced scope holds, `ns.n`, is
+  // not a scope, and is written as any object is.
+  if (target instanceof EvalScope) {
+    throw new Error(`Write to an evaluation scope is blocked`);
+  }
 
   if (isDangerousProperty(key)) {
     throw new Error(`Access to dangerous property "${String(key)}" is blocked for security reasons`);

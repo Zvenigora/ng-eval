@@ -3754,7 +3754,7 @@ exactly 28 cases red, every one marked `2`; before step 3's, exactly 55, every o
 nothing else in `eval-core` either time. Each step's probes, applied alone and reverted, are in the
 plan's step 2 and step 3 outcomes: the funnel's check dropped turned 9 cases red, the walk restored
 for `=` 37, and D9's read event dropped from the update 4. The 18 held cases name the entries that
-keep them, [A48](#a48)–[A51](backlog.md#a51). The defect was noticed in the A40/A41
+keep them, [A48](#a48)–[A51](#a51). The defect was noticed in the A40/A41
 batch, while correcting `SECURITY.md`'s account of why `obj.fetch = 1` threw, and measured
 2026-10-22 with a throwaway script outside the repository, against the production bundle with the
 Angular compiler loaded, each row run natively beside it.
@@ -4115,7 +4115,7 @@ contrasts, those the fix changes red on bdaa542's code, all green with it, and t
 
 **Package** core · **Kind** fix · **Status** **Retired — fixed 2026-11-06**; ships in `eval-core`
 0.16.0. Was Open. Opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (its § 8 q4, first
-half). It predates that plan. Corrected 2026-11-03
+half). It predates that plan. Corrected 2026-11-03 and 2026-11-06
 
 *Fixed* 2026-11-06, as step 3 of the [A48 plan](a48/plan.md). A member write goes through
 `writeMemberTarget`, new in `member-expression.ts`: a `Registry` that is the context's original, and
@@ -4134,7 +4134,7 @@ identifier write's does; the A45 plan's characterisation spec marks those rows
 `design: a write into the caseInsensitive copy`, as it marks its identifier rows. Its two `C` rows,
 `this.g = 1` and `this.g += 1` over a context accessor under `caseInsensitive`, kept their outcome:
 the copy holds the accessor's value, read once when it is made, and the write goes to the copy. A
-key the original does not hold is still refused, by [A42](#a42)'s by-class refusal, and a
+key no receiver holds is still refused, by [A42](#a42)'s by-class refusal, and a
 `Registry` reached as a value, the original included, is written as any object is, an own property
 read back by the same path, as up to 0.15.1. The new branch bypasses `safeSetProperty`,
 so it refuses a blocked name itself, with the same message; it stands behind `resolveMemberTarget`'s
@@ -4175,12 +4175,90 @@ bundle of 9bf1bc8 (`rows.mjs`, the `A50 hostRegistry` rows), on `new Registry([[
 The identifier write, `k = 5`, writes the map in both modes, and a later `k` reads `5`. A `Registry`
 held as a value, `r.k = 5`, sets an own property and leaves the map, as for any object.
 
+*Corrected 2026-11-06* by the [A48 plan](a48/plan.md)'s step 4 ([SR31](standing-rules.md#sr31)), from its
+step 3's code review: the fix reaches one more path than this entry said, and the path is kept, as
+the same fix. Where the original does not hold a key but a global prior scope that holds it has the
+original as its `thisArg`, `getThis` answers the original, the context branch chose it, and the
+write goes through its map: over a host `Registry` holding `a`, with a global prior scope
+`{ k: 10 }` whose `thisArg` is that `Registry`, `this.k = 2`, `this.k += 2` and `this.k++` write the
+map, and `k` and `this.k` then read the new value, in both modes; under `caseInsensitive` the same
+holds for the copy of a plain context as `thisArg`. Up to 0.15.1, and at 0dc9c15, the instance took
+an own `k` and `k` read `10` (`s12.mjs`, its `THISARG` rows, the plan's supplement 12). So "a key
+the original does not hold is still refused", as this entry said, held only where no receiver holds
+it. A `Registry` `thisArg` that is not the original keeps the shape this entry fixed, unchanged,
+which [A56](backlog.md#a56) records. Pinned by `assignment-target.spec.ts`' `Y` rows.
+
 *Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M1d and M1j.
 *Verified*: measured 2026-10-23 with a throwaway script outside the repository, against the
 production bundle built at db287da and the A45 plan's prototype, with the Angular compiler loaded.
 The fix: `assignment-target.spec.ts`' `S` rows under `caseInsensitive` and its new `H` and `K`
 rows, those the fix changes red on 0dc9c15's code, all green with it, and their probes (the
 [A48 plan](a48/plan.md) § 4, Step 3).
+
+---
+
+<a id="a51"></a>
+## A51 — A member write to an `EvalScope` held as a value lands on the instance, and reaches its fields
+
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-11-06**; ships in `eval-core`
+0.16.0. Was Open. Opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (its § 8 q4, second
+half). It predates that plan. Corrected 2026-11-06
+
+*Fixed* 2026-11-06, as step 4 of the [A48 plan](a48/plan.md). `safeSetProperty` refuses an
+`EvalScope` target, by class, `Write to an evaluation scope is blocked`, after `refuseContextWrite`
+and before its blocklist, so it names its own layer whatever the key. That is the plan's prototype,
+`P51.patch`, as pinned, its comment pointing here. Through an expression the refusal therefore runs
+after the right side and after a write policy, `EvalContext.checkMemberWrite`, has been asked, as the
+plan's P-1 asks: a refusal earlier would run ahead of a policy such as `eval-signals`' signal
+context, whose own error bypasses `onError`, so a policy that refuses still gives its own error.
+Measured on the production bundle of 6086872 with it (`s12.mjs`, the output in the plan's
+supplement 12), both case modes alike, on a global scope, a namespaced one and a subclass's
+instance: `ns.k = 5`, `ns.k += 5`, `ns.k++`, `++ns.k`, `ns["k"] = 5`, `ns.K = 5`, `ns.z = 5`, the
+logical forms that write, and `ns._context = 9`, `ns._options = 9` and `ns.type = 9` are refused,
+the scope's context and fields as they were; `ns.k = f()` calls `f` first; and an `EvalScope` that is
+a global prior scope's `thisArg` is refused through `this`, `this.k = 2`. A blocked name is refused
+first by `resolveMemberTarget`'s `EvalScope` branch, before the right side, as before. Unchanged:
+`ns.n.k = 7` writes into a namespaced scope's object, which is not a scope, and `ns.k ||= 5` with `k`
+set writes nothing and is not refused. On a proxy target the refusal's `instanceof` calls its
+`getPrototypeOf` trap once more ([A59](backlog.md#a59)).
+
+The same step opened [A60](backlog.md#a60), which this refusal does not cover: a host `Registry`
+that is the context, reached as a value in the host's own data, can have its methods shadowed by a
+member write, `self.get = 1`, which this entry recorded as *Related* until then. The refusal is of
+an `EvalScope`, and a `Registry` reached as a value is written as any object is ([A50](#a50)).
+
+*Corrected 2026-11-06* ([SR4](standing-rules.md#sr4)): "a prior scope is never reachable as one",
+below, holds for the scope itself, not for its `thisArg`: an `EvalScope` that is a global prior
+scope's `thisArg` is the receiver of `this.k = v` for a key that scope holds
+([A56](backlog.md#a56)), and was written as one held as a value is, an own `k` on the instance
+(`s12.mjs`, the same on 0.15.1, 0dc9c15 and 6086872).
+
+A member read whose object is an `EvalScope` goes through `EvalScope.get`. A member write to one
+never reaches `EvalScope.set`: `safeSetProperty` sets an own property on the instance. So the scope's
+context is unchanged, and a later read through `get` does not see the write. The write can also
+replace the instance's own fields. The branch is reached only when the host places an `EvalScope` in
+the context as a value; a prior scope is never reachable as one. Measured 2026-10-23 against the
+production bundle, both case modes alike:
+
+| Expression | `new EvalScope({ k: 1 }, { global: true })` | Namespaced, `{ namespace: 'n' }` |
+| :--- | :--- | :--- |
+| `ns.k` | `1` | `undefined`, by `EvalScope.get`'s rule |
+| `ns.k = 5` | `5`; an own `k` on the instance; the context stays `{ k: 1 }`; a later `ns.k` is `1` | `5`; an own `k`; a later `ns.k` is `undefined` |
+| `ns.k += 5` | `6`; the same | `NaN`; the same |
+| `ns.k++` | `1`; the same | `NaN`; the same |
+| `ns._context = 9`, `ns._options = 9`, `ns.type = 9` | each replaces that field | the same |
+
+A host that wants such writes refused can use a write policy, `EvalContext.checkMemberWrite`, which is
+asked first. The A45 plan's prototype gave the same rows. Its characterisation spec held the
+`ns.k = 5` and `ns.k += 5` rows under this ID until the fix, which marks them
+`design: A51, a write to an evaluation scope refused`.
+
+*Recorded*: this entry; the [A45 plan](a45/plan.md) § 1.4, M1h and M1i.
+*Verified*: measured 2026-10-23 with a throwaway script outside the repository, against the
+production bundle built at db287da and the A45 plan's prototype, with the Angular compiler loaded.
+The fix: `assignment-target.spec.ts`' `J` rows and its two `S` rows, and `prototype-pollution-guard.spec.ts`'
+four, those the fix changes red on 6086872's code, all green with it, and their probes (the
+[A48 plan](a48/plan.md) § 4, Step 4).
 
 # B. `eval-core` — security and hygiene
 

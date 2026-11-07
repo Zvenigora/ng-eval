@@ -39,7 +39,7 @@ receivers they turn on: `null`, `undefined` and a function. Revision 1's q6, q5 
 D7, D8 and D9. Measuring D7 found that § 3.3's resolver lacked the case-sensitive blocklist check the
 read used to make, so `o.constructor = f()` called `f` before refusing. Measuring D9 found that the
 target read's literal fallback turned `null` into `undefined`, which put four existing cases red. Both
-are corrected in § 3.3 and § 3.2. q2, q3 and q4 are now [A48](../backlog-retired.md#a48)–[A51](../backlog.md#a51),
+are corrected in § 3.3 and § 3.2. q2, q3 and q4 are now [A48](../backlog-retired.md#a48)–[A51](../backlog-retired.md#a51),
 q4 as two entries since its two halves are different code paths. The `null` read is
 [A52](../backlog-retired.md#a52). q8 is folded into A48. Rows: 92, cases 184. `eval-core` reaches 3064 at
 step 1 and 3100 at step 3.
@@ -60,7 +60,7 @@ downstream witnesses with their counts unchanged (M4).
   written as a name writes it as a key today, and is refused from step 3. No compound or `=` target
   loses the refusal in steps 2 and 3. It has no register entry: step 2's confirmation gate found it.
 
-**Opens**: [A48](../backlog-retired.md#a48)–[A51](../backlog.md#a51) (Revision 2), for defects the plan
+**Opens**: [A48](../backlog-retired.md#a48)–[A51](../backlog-retired.md#a51) (Revision 2), for defects the plan
 measured and does not fix. The characterisation spec holds their rows. [A52](../backlog-retired.md#a52),
 opened with them, the plan fixes in step 2 (D10). Step 5 opens
 [A53](../backlog-retired.md#a53), step 4's unexplained `caseInsensitive` slowdown.
@@ -251,7 +251,7 @@ Each finding cites the measurement in § 1.3 that produced it.
      `ns._context = 9` replaces the scope's context. The read goes through `EvalScope.get`; the write
      never reaches `EvalScope.set`.
 
-   D1–D9 do not decide either. They are [A50](../backlog-retired.md#a50) and [A51](../backlog.md#a51), two
+   D1–D9 do not decide either. They are [A50](../backlog-retired.md#a50) and [A51](../backlog-retired.md#a51), two
    entries since the two halves are different code paths, and step 1 holds their rows.
 10. **`eval-signals` observes D2, and nothing else** (M5).
     - `count = 5` over a signal context records `count` today and is recomputed when `count` changes.
@@ -804,7 +804,7 @@ in `member-expression.ts` and returns `[object, key]`:
   resolved-key check, then `getThis(contextKey) ?? object`. `getThis` reads the value it tests
   ([A49](../backlog.md#a49)), and under `caseInsensitive` the object it answers is the `Registry`
   copy ([A50](../backlog-retired.md#a50));
-- **the `EvalScope` branch**: the blocklist check, and `[object, key]` ([A51](../backlog.md#a51));
+- **the `EvalScope` branch**: the blocklist check, and `[object, key]` ([A51](../backlog-retired.md#a51));
 - **any other receiver**:
   - **The key checks** (D7) run in both modes, before the right side. A string, number or boolean
     receiver gets the primitive subset's check; any other receiver gets the full blocklist. Without the
@@ -1005,7 +1005,7 @@ widening at its gate, so `eval-signals` is at 444 from step 6. *Revision 2*: the
   | L `x = 1`, `X = 1` (step 3) | `caseInsensitive` | 1 lookup call | none | A49 |
   | L `x += 1` | `caseInsensitive` | 2 lookup calls | 1 | A49 |
   | S `this.k = 5`, `this.k += 5`, `this.K = 5`, `this.k++` | `caseInsensitive` | `5`, `6`, `5`, `1`; an own `k` on the `Registry`; `get('k')` `1` | `k` written | A50 |
-  | S `ns.k = 5`, `ns.k += 5` | both | `5`, `6`; an own `k` on the instance; a later `ns.k` `1` | a later `ns.k` `5`; `NaN` for `+=` | [A51](../backlog.md#a51) |
+  | S `ns.k = 5`, `ns.k += 5` | both | `5`, `6`; an own `k` on the instance; a later `ns.k` `1` | a later `ns.k` `5`; `NaN` for `+=` | [A51](../backlog-retired.md#a51) |
 
   A step that fixes one of these entries moves its held rows to the native run, and removes the mark.
 - **Edit**: this document (Revision 2 and the outcome); `.claude/skills/step/SKILL.md`, step 1's
@@ -2051,7 +2051,7 @@ decided q7 by measurement; q7 keeps its text, with the decision under it.
 4. **Two write targets miss the data** (M1d, M1h, M1i; finding 9), as two entries, since the two are
    different code paths with different fixes:
    - `this.k = v` under `caseInsensitive` lands on the `Registry` copy: [A50](../backlog-retired.md#a50);
-   - a member of an `EvalScope` value lands on the instance: [A51](../backlog.md#a51).
+   - a member of an `EvalScope` value lands on the instance: [A51](../backlog-retired.md#a51).
 
    Both are held in step 1.
 7. **The downstream versions** (M5, finding 10; D5). `eval-signals`' `dependencies` and recompute
@@ -2099,7 +2099,7 @@ decided q7 by measurement; q7 keeps its text, with the decision under it.
    - a single read of a prototype accessor under `caseInsensitive` ([A48](../backlog-retired.md#a48));
    - an `=` through the context branch that reads nothing ([A49](../backlog.md#a49));
    - a write through `this` under `caseInsensitive` that reaches the data ([A50](../backlog-retired.md#a50));
-   - a write through an `EvalScope` value that reaches the data ([A51](../backlog.md#a51)).
+   - a write through an `EvalScope` value that reaches the data ([A51](../backlog-retired.md#a51)).
 
 ## 10. Retrospect
 
