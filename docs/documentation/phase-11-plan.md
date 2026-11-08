@@ -494,7 +494,7 @@ recorded at 0d305a3.
     review, which criterion 6's grep could not see: it lands at the end of `## Lifetime` instead,
     after the net, and both paragraphs stay as written.
   - `docs/backlog.md` joins this step's file list, under [SR4](../standing-rules.md#sr4) and
-    [SR5](../standing-rules.md#sr5), to open [F29](../backlog.md#f29): the parse-error item's
+    [SR5](../standing-rules.md#sr5), to open [F29](../backlog-retired.md#f29): the parse-error item's
     "whatever the policy" is witnessed at both adapters under the default policy only. That resolves
     the code review's finding 4, a latent gap, which this plan's 0 / 0 / 0 leaves to the register.
     The same commit corrects F28's first constraint, which named the count case's old `from` and was
@@ -686,7 +686,7 @@ Each step's code review found something its exit criteria could not:
 - **Step 2**: § 3.3 put `:408-409` after `destroy()`'s paragraph, where the next paragraph's "There
   is a **net** under that" would have named the coercion. Criterion 6's grep for directional words
   was green, because "that" is not one of them. The same review found the parse-error sentence's
-  "whatever the policy" witnessed under the default policy only, now [F29](../backlog.md#f29).
+  "whatever the policy" witnessed under the default policy only, now [F29](../backlog-retired.md#f29).
 - **Step 3**: one Minor, a register sentence contradicting F29's own entry.
 
 The release went as planned: the CHANGELOG's date, written at the commit, was npm's, so step 4

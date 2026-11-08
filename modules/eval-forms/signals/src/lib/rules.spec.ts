@@ -293,6 +293,19 @@ describe('createExpressionRules', () => {
       expect(f.city().metadata(TEXT)?.()).toBe('handled');
     });
 
+    it('should throw a parse error at registration under a function policy too (docs/backlog-retired.md F29)', () => {
+      // The README's "whatever the policy": the registrar parses, guards and
+      // compiles when it is called, outside the closure the policy wraps, so a
+      // function policy, which would otherwise swallow the error, never sees it.
+      const model = throwingModel();
+      const rules = createExpressionRules(model);
+      const s = schema<Model>((p) => {
+        rules.evalText(p.city, 'city ===', { onError: () => 'handled' });
+      });
+
+      expect(() => buildForm(model, s)).toThrow('Unexpected token (1:8)');
+    });
+
     it('should throw a write error out of the field state, bypassing onError', () => {
       // An assigning expression is illegal on every recompute with every
       // dataset - a bug in the rule's own syntax - so routing it through this

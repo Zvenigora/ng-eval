@@ -27,7 +27,7 @@ Requested step: $ARGUMENTS
   retrospect**.
 
 **The counts the steps start from**, the gate at 3bbc296: `eval-core` 3303, `eval-signals` 450,
-`eval-forms` 386. `eval-core` reaches 3333 at step 1, 3419 at step 2, 3467 at step 3, 3519 at step 4 and 3527 at step 5; each later step's movement is fixed in its prompt
+`eval-forms` 386. `eval-core` reaches 3333 at step 1, 3419 at step 2, 3467 at step 3, 3519 at step 4, 3527 at step 5 and 3533 at step 6, when `eval-signals` reaches 462 and `eval-forms` 391; each later step's movement is fixed in its prompt
 before its gate, and recorded in the plan's § 4.
 
 **Step state**: read it from the plan, not from here. The last step in its § 4 with a recorded

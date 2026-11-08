@@ -345,11 +345,12 @@ export class EvalContext {
    * `get`, so a getter there runs where JavaScript reads nothing; how many
    * times an expression calls it is not part of the contract
    * (`docs/backlog-retired.md` A49). Case-sensitively, with a getter `g` on the
-   * context, `this.g = 1` calls it once and `this.g += 1` twice.
+   * context, `this.g = 1` calls it once and `this.g += 1` twice, with or
+   * without a read hook.
    *
-   * Up to 0.6.x the prior-scope step
-   * re-tested the original context and could never answer, and the lookup step
-   * returned the lookup function itself (`docs/backlog-retired.md` A7).
+   * Up to 0.6.x the prior-scope step re-tested the original context and could
+   * never answer, and the lookup step returned the lookup function itself
+   * (`docs/backlog-retired.md` A7).
    * @param key - The key to retrieve the value for.
    * @returns The `this` value associated with the key, or undefined.
    */

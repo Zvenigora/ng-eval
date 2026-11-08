@@ -269,6 +269,45 @@ describe('bindFieldProperties', () => {
       expect(seen[0]).toBeInstanceOf(Error);
     });
 
+    describe('a getter that throws, under each policy (eval-core 0.16.0, docs/backlog-retired.md A55)', () => {
+
+      // Up to eval-core 0.15.1 an inherited getter's throw read `undefined`
+      // under every policy, so `'throw'` rendered `''` and a function policy
+      // never saw it (`docs/a48/plan.md` § 3.6, step 6). The default is
+      // unchanged.
+      class ThrowingGetter {
+        get t(): unknown {
+          throw new Error('boom');
+        }
+      }
+      const holdingThrowingGetter = (): FormGroup =>
+        group({ country: new FormControl('CA'), user: new FormControl(new ThrowingGetter()) });
+
+      it('should render an empty text under the default policy', () => {
+        const bound = bindFields([{ name: 'country', text: 'user.t' }], holdingThrowingGetter(), { injector });
+
+        expect(bound['country'].text?.()).toBe('');
+      });
+
+      it('should throw the getter\'s error under throw', () => {
+        const bound = bindFields(
+          [{ name: 'country', text: 'user.t' }], holdingThrowingGetter(), { injector, onError: 'throw' }
+        );
+
+        expect(() => bound['country'].text?.()).toThrow('boom');
+      });
+
+      it('should pass the getter\'s error to a function policy', () => {
+        const bound = bindFields(
+          [{ name: 'country', text: 'user.t' }],
+          holdingThrowingGetter(),
+          { injector, onError: (error: unknown) => `handled:${(error as Error).message}` }
+        );
+
+        expect(bound['country'].text?.()).toBe('handled:boom');
+      });
+    });
+
     it('should let a write violation through the default rather than blanking it', () => {
       // A write violation is *static* - illegal on every recompute with every
       // dataset - so swallowing it under a default of `'undefined'` would hand

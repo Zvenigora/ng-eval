@@ -390,6 +390,21 @@ describe('documented examples', () => {
       ).toThrow(/Unexpected|Unterminated|SyntaxError/);
     });
 
+    it('should throw from the bind for an expression that does not parse under a function policy too (docs/backlog-retired.md F29)', () => {
+      // The README's "whatever the policy": a function policy is the other one
+      // that swallows an error, and `'throw'` would pass however the bind
+      // parsed. The compile runs in `createEvalSignal`, outside the policy.
+      const form = new FormGroup({ country: new FormControl('CA') });
+
+      expect(() =>
+        bindFieldProperties(
+          [{ name: 'country', visible: 'country ===' }],
+          form,
+          { injector, onError: () => 'handled' }
+        )
+      ).toThrow('Unexpected token (1:11)');
+    });
+
     it('should throw a write violation in the default mode', () => {
       const form = new FormGroup({ country: new FormControl('CA') });
 

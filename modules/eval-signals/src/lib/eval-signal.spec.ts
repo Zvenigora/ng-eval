@@ -1,6 +1,6 @@
 import { Injector, WritableSignal, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { CompilerService, EvalContext, EvalHooks, EvalState } from '@zvenigora/ng-eval-core';
+import { CompilerService, EvalContext, EvalHooks, EvalScope, EvalState } from '@zvenigora/ng-eval-core';
 import { EvalSignal, EvalSignalOptions, createEvalSignal } from './eval-signal';
 import { SignalContextSource, SignalContextWriteError, createSignalContext } from './signal-context';
 
@@ -207,6 +207,103 @@ describe('createEvalSignal', () => {
       expect((seen[0] as Error).message).toContain('boom');
     });
 
+  });
+
+  /**
+   * `eval-core` 0.16.0's reads and writes, through a signal (SR24;
+   * `docs/a48/plan.md` § 3.6, step 6), in both modes. Up to `eval-core`
+   * 0.15.1 an inherited getter's throw read `undefined` under every policy, in
+   * both modes (`docs/backlog-retired.md` A55; under `caseInsensitive` an own
+   * getter's already threw), and under `caseInsensitive` a prototype accessor
+   * was called twice for one read (A48). The signal context's own
+   * write policy is asked before eval-core refuses a write to the context or
+   * to an `EvalScope` (P-1, A50, A51), so a refusal stays its own error.
+   */
+  describe('eval-core 0.16.0 through a signal (docs/a48/plan.md, step 6)', () => {
+
+    class ThrowingGetter {
+      get t(): unknown {
+        throw new Error('boom');
+      }
+    }
+    const holdingThrowingGetter = () => ({ x: new ThrowingGetter() });
+
+    describe.each([
+      ['case-sensitive', false],
+      ['caseInsensitive', true],
+    ])('%s', (_mode, caseInsensitive) => {
+
+      const eval_ = { caseInsensitive };
+
+      it('should throw a getter\'s error under the default policy (A55)', () => {
+        const value = create('x.t', holdingThrowingGetter(), { eval: eval_ });
+
+        expect(() => value()).toThrow('boom');
+      });
+
+      it('should read a getter\'s error as undefined under onError undefined (A55)', () => {
+        const value = create('x.t', holdingThrowingGetter(), { eval: eval_, onError: 'undefined' });
+
+        expect(value()).toBeUndefined();
+      });
+
+      it('should pass a getter\'s error to a function policy (A55)', () => {
+        const seen: unknown[] = [];
+        const value = create('x.t', holdingThrowingGetter(), {
+          eval: eval_,
+          onError: (error) => { seen.push(error); return 'handled'; },
+        });
+
+        expect(value()).toEqual('handled');
+        expect((seen[0] as Error).message).toEqual('boom');
+      });
+
+      it('should call a prototype accessor once for one read (A48)', () => {
+        let calls = 0;
+        class Holder {
+          get g(): number {
+            calls += 1;
+            return 1;
+          }
+        }
+        const value = create('c.g + 1', { c: new Holder() }, { eval: eval_ });
+
+        expect(value()).toEqual(2);
+        expect(calls).toEqual(1);
+      });
+
+      it('should refuse this.k = 5 as the signal context\'s own error, before eval-core (P-1, A50)', () => {
+        const value = create('this.k = 5', { k: signal(1) }, { eval: eval_, onError: 'undefined' });
+
+        let caught: unknown;
+        try {
+          value();
+        } catch (error) {
+          caught = error;
+        }
+
+        expect(caught).toBeInstanceOf(SignalContextWriteError);
+        expect((caught as SignalContextWriteError).kind).toEqual('member');
+        expect((caught as SignalContextWriteError).key).toEqual('k');
+      });
+
+      it('should refuse a write to an EvalScope as the signal context\'s own error, before eval-core (P-1, A51)', () => {
+        const ns = new EvalScope({ k: 1 }, { global: true });
+        const value = create('ns.k = 5', { ns }, { eval: eval_, onError: 'undefined' });
+
+        let caught: unknown;
+        try {
+          value();
+        } catch (error) {
+          caught = error;
+        }
+
+        expect(caught).toBeInstanceOf(SignalContextWriteError);
+        expect((caught as SignalContextWriteError).kind).toEqual('member');
+        expect((caught as SignalContextWriteError).key).toEqual('k');
+        expect(ns.context).toEqual({ k: 1 });
+      });
+    });
   });
 
   describe('forwarding options.eval to both halves', () => {

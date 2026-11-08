@@ -8485,7 +8485,7 @@ deferred the question.
 published 00:50 UTC. Its three `.d.ts` are SHA-256-identical to 0.7.0's, its manifest differs in
 `version` only, and the packed README is byte-identical to the repository's. The `/reactive` count
 case reads from `## How it fits together` to `## Signal Forms`, at the same 11 fences, and every
-step held the gate at 3134 / 444 / 380. Step 2's code review opened [F29](backlog.md#f29), a latent
+step held the gate at 3134 / 444 / 380. Step 2's code review opened [F29](#f29), a latent
 test gap in the parse-error sentence the step made adapter-neutral. The retrospect is the plan's
 § 10.
 
@@ -8520,6 +8520,56 @@ Phase 10 plan's D6 and § 8 q2, `tools/published-links.txt`, the count case's do
 *Verified*, retired: 2026-10-29, `npm pack @zvenigora/ng-eval-forms@0.7.1`, its README `cmp` silent
 against the repository's, and `git cat-file -t eval-forms@0.7.1` giving `tag` (the plan's step 4
 criteria 2 and 3).
+
+<a id="f29"></a>
+## F29 — A parse error's policy claim is witnessed under the default policy only
+
+**Package** forms · **Kind** test gap · **Status** **Retired — fixed 2026-11-07**; tests only, ships in
+no package. Was Open. Opened 2026-10-28 by Phase 11 step 2's code review
+
+*Fixed* 2026-11-07, as step 6 of the [A48 plan](a48/plan.md), as this entry's *Fix* says: two cases,
+one per adapter, each registering a rule that does not parse under a function policy,
+`onError: () => 'handled'`, and asserting the parse error's message ([SR18](standing-rules.md#sr18)).
+At `/reactive`, `readme-examples.spec.ts`' "should throw from the bind for an expression that does
+not parse under a function policy too", `'country ==='`, `Unexpected token (1:11)`; at `/signals`,
+`rules.spec.ts`' "should throw a parse error at registration under a function policy too",
+`'city ==='` through `evalText`, `Unexpected token (1:8)` from `form()`. Each is probed by moving
+that adapter's parse inside its policy: P6-1 moves `/signals`' parse, guard and compile into the
+closure `applyErrorPolicy` wraps, as the M4 probe did, and its case goes red with 43 others, the
+guard's and the compile-once counts'; P6-2 hands `/reactive`'s compile error to a function policy
+and binds the result, and its case alone goes red (the plan's supplement 16). The README's sentence
+is unchanged: it was true, and is now witnessed under both policies that swallow an error.
+
+`eval-forms`' README, `## When a rule fails`, says that **a rule that does not parse throws at
+registration, whatever the policy**, at both adapters: from `bindFieldProperties` at `/reactive`, and
+from `form()` at `/signals`. Phase 11 step 2 made the sentence adapter-neutral; until then it named
+`bindFieldProperties` only, with the same "whatever the policy".
+
+**Witnessed under the default policy only.** `reactive/src/lib/readme-examples.spec.ts:377` and
+`signals/src/lib/rules.spec.ts:710-718` each register a rule that does not parse with no `onError`, so
+under `'undefined'`, and expect the throw. **Unwitnessed: a function policy**, such as
+`onError: () => 'handled'`, the other policy that swallows an error. `'throw'` would pass under any
+implementation, so it is no witness: an adapter that parsed inside its policy would rethrow there too.
+
+**Measured, not tested.** `/signals` parses, guards and compiles in `prepare`
+(`modules/eval-forms/signals/src/lib/rules.ts:221-230`), when the registrar is called, outside the
+closure `applyErrorPolicy` wraps (`:233-234`). `/reactive`'s `validate` skips a rule that does not
+parse (`modules/eval-forms/reactive/src/lib/field-schema.ts:241-245`), and the compile throws from
+`createEvalSignal` inside the bind loop (`:536-556`), which takes `onError` for evaluation, not for
+the compile: `modules/eval-signals/src/lib/eval-signal.ts` compiles at `:258`, outside the `catch` at
+`:369` that applies the policy. The loop's `catch` releases the binding and rethrows (`:561-567`). The M4 probe
+([`phase-11-plan.md`](documentation/phase-11-plan.md) § 8 q1) moved `/signals`' parse, guard and
+compile inside the returned closure: 2 of 31 `rules.spec.ts` cases went red, both under the default
+policy.
+
+**Fix**: two cases, one per adapter, each registering a rule that does not parse under a function
+policy and asserting the parse error's message, never a bare `toThrow()`
+([SR18](standing-rules.md#sr18)), each probed by moving that adapter's parse inside its policy.
+Scheduled with the next phase that moves `eval-forms`' rows; Phase 11 holds them 0 / 0 / 0. (Done by
+the A48 plan's step 6, above.)
+
+*Recorded*: this entry; the Phase 11 plan's step 2 Outcome. *Verified*: read 2026-10-28 — the two
+witnesses, `rules.ts` and `field-schema.ts` at the lines cited, and the M4 probe's record.
 
 <a id="f30"></a>
 ## F30 — `eval-signals` 0.8.0's `await` claims were measured through it, not tested — **Retired, fixed**

@@ -1,7 +1,11 @@
 # A48–A51, A55 and F29 — member reads and writes that miss the data, and a getter's throw (`@zvenigora/ng-eval-core` 0.16.0)
 
 **Date**: November 3, 2026
-**Revision**: 5 — step 5, A49 decided a documented limit: the README's passage rewritten as the
+**Revision**: 6 — step 6, the downstream rows and F29: rows through `eval-signals` and `eval-forms`
+for what 0.16.0 changes, measured on this tree and on 0.15.1's `eval-core` code, with an inherited
+getter, since an own one's throw already reached the caller under `caseInsensitive`; F29's two cases;
+step 5's review's Important pinned by three rows with a read hook, and its Minors; supplement 14's
+stale-pointer Minor answered by the A45 plan's decision to leave them; § 4's table gives step 6's files and its +6 / +12 / +5 (§ 4, Step 6). Revision 5 — step 5, A49 decided a documented limit: the README's passage rewritten as the
 contract, with no count promised, measured on twenty forms without and with a read hook, since a
 getter on a prior scope's object made "two kinds" false and a read hook made its lookup counts false
 (supplement 13 kept them, and its code review stopped the commit; supplement 14's CHANGELOG
@@ -25,7 +29,7 @@ Four `eval-core` entries opened by the [A45 plan](../a45/plan.md) and one found 
 reads less; [A50](../backlog-retired.md#a50), a write through `this` that lands beside a `Registry`'s map;
 [A51](../backlog-retired.md#a51), a write to an `EvalScope` held as a value that lands on the instance; and
 [A55](../backlog-retired.md#a55), new, `safeGetProperty` swallowing a getter's throw. This plan fixes A48,
-A50, A51 and A55, decides A49 a documented limit, and adds [F29](../backlog.md#f29)'s two `eval-forms`
+A50, A51 and A55, decides A49 a documented limit, and adds [F29](../backlog-retired.md#f29)'s two `eval-forms`
 cases. The fixes change what an expression returns, throws and writes, so they ship as `eval-core`
 0.16.0, and `eval-signals` 0.9.0 and `eval-forms` 0.9.0 release in the same commit
 ([SR42](../standing-rules.md#sr42)). Measuring them found two README sentences false now, which step 1
@@ -367,7 +371,7 @@ One step per session behind the `/step` gate. Gate counts at 3bbc296: `eval-core
 | 3 | A50 | `member-expression.ts`, `assignment-expression.ts`, `update-expression.ts`, `assignment-target.spec.ts`, `member-read.spec.ts`, `CHANGELOG.md`, the register, the skill, this document; comments in `call-expression.ts`, `member-write-policy.ts`, `eval.service.scope-this.spec.ts` and `eval-forms`' `field-schema.spec.ts` | **+48** / 0 / 0 | `eval-core` 0.16.0 |
 | 4 | A51 | `prototype-pollution-guard.ts`, its spec, `assignment-target.spec.ts`, `CHANGELOG.md`, the register, `docs/backlog-retired.md`, `docs/README.md`, `docs/a45/plan.md`, `CLAUDE.md`, the skill, this document | **+52** / 0 / 0 | `eval-core` 0.16.0 |
 | 5 | A49, a documented limit | `README.md`, `eval-context.ts`' JSDoc, `member-expression.ts`' JSDoc, `assignment-target.spec.ts`' marks and its `Q` rows, `CHANGELOG.md` and the two downstream CHANGELOGs' links, the register, `docs/backlog-retired.md`, `docs/README.md`, `docs/a45/plan.md`, `CLAUDE.md`, the skill, this document | **+8** / 0 / 0 | `eval-core` 0.16.0 |
-| 6 | Downstream rows and F29 | `eval-signals` and `eval-forms` specs, the register, the skill, this document | 0 / measured / measured | no package |
+| 6 | Downstream rows and F29 | `eval-signals`' `eval-signal.spec.ts`; `eval-forms`' `field-schema.spec.ts`, `readme-examples.spec.ts` and `rules.spec.ts`; `eval-core`'s `assignment-target.spec.ts` and `eval-context.ts`' JSDoc; the register, `docs/backlog-retired.md`, `docs/README.md`, `docs/documentation/phase-11-plan.md`, `CLAUDE.md`, the skill, this document | **+6** / **+12** / **+5** | no package |
 | 7 | The timing record | this document, the skill | 0 / 0 / 0 | no package |
 | 8 | The release commit | the three `package.json`, the three `CHANGELOG.md`, the register, `CLAUDE.md`, the skill, this document | 0 / 0 / 0 | the release |
 | 9 | The post-publish record | the register, `CLAUDE.md`, the tags, the skill, this document | 0 / 0 / 0 | no package |
@@ -1110,6 +1114,116 @@ Q10 is a new row, so supplement 7 re-measures every probe's red set with it in p
   Supplement 15 pins the step again. Measured in the sandbox on the final tree: the gate `eval-core`
   3527, `eval-signals` 450, `eval-forms` 386; doc-links 0 dangling; the probes' red sets as the table
   gives them. The commit's body records the run on the maintainer's checkout and the code review.
+### Step 6 — the downstream rows and F29
+
+- **Place, don't draft.** The step's whole change is pinned as `step-6/step-6.patch` in supplement 16,
+  placed as step 5's was ([SR36](../standing-rules.md#sr36)), the staged diff that
+  `step-6/staged-diff.sh` prints hashing to the pinned patch's SHA-256.
+- **No code.** Specs, comments and records only. No package moves for this step, and no CHANGELOG:
+  the downstream packages' entries for 0.9.0 are the release step's.
+- **The downstream rows** ([SR24](../standing-rules.md#sr24), § 3.6), from the prototype's
+  `downstream.txt`, each first run on this tree and then on 0.15.1's `eval-core` code
+  (`code-at-9e88d18.patch`, the published 0.15.1's non-spec `eval-core` sources over this tree):
+  - `eval-signals`, `eval-signal.spec.ts`' new block "eval-core 0.16.0 through a signal", six cases in
+    both modes, **+12**: an inherited getter that throws, `x.t`, under the default policy, which
+    throws `boom`, under `'undefined'`, which reads `undefined`, and under a function policy, which
+    sees the error; a prototype accessor read by `c.g + 1`, called once; `this.k = 5` and a write
+    to an `EvalScope` held as a value, `ns.k = 5`, each refused as the signal context's own
+    `SignalContextWriteError`, kind `member`, key `k`, before `eval-core`'s refusal, with
+    `onError: 'undefined'` set, the scope's context unwritten.
+  - `eval-forms` `/reactive`, `field-schema.spec.ts`' new block "a getter that throws, under each
+    policy", three cases, **+3**: over a control holding an inherited getter that throws, `text:
+    'user.t'` renders `''` under the default policy, throws `boom` under `'throw'`, and gives
+    `handled:boom` to a function policy.
+
+  On 0.15.1's code **7 of the 15 are red**: the getter's throw and the function policy in both modes,
+  the accessor's single call under `caseInsensitive`, and `/reactive`'s `'throw'` and function policy.
+  The rest pin what 0.16.0 leaves: `'undefined'`, a single call case-sensitively, the two refusals, and
+  `/reactive`'s default. The fixture is an **inherited** getter: measured on the 0.15.1 and step 4
+  bundles (`ci55.mjs`, `results/ci55-*.txt`), under `caseInsensitive` an own getter's throw already
+  reached the caller on 0.15.1, through the case-variant search, and an inherited one's did not; with
+  an own getter the `caseInsensitive` rows were green on 0.15.1, pinning nothing that changed. The
+  CHANGELOG's A55 bullet already says so.
+- **F29** ([its entry](../backlog-retired.md#f29)): two cases, one per adapter, a rule that does not
+  parse registered under a function policy, asserting the parse error's message
+  ([SR18](../standing-rules.md#sr18)), **+2**: `/reactive`'s `readme-examples.spec.ts`,
+  `'country ==='`, `Unexpected token (1:11)`; `/signals`' `rules.spec.ts`, `'city ==='` through
+  `evalText`, `Unexpected token (1:8)`, from `form()`. Green on 0.15.1's code as well: the parse ran
+  outside the policy then too.
+- **Step 5's carry-overs** ([SR4](../standing-rules.md#sr4)):
+  1. **The review's Important**, the read-hook leg of the README's one example and of the CHANGELOG's
+     unchanged counts, pinned: `assignment-target.spec.ts`' `C` gains `this.g = 1 (a read hook)` and
+     `this.g += 1 (a read hook)`, and `L` gains `x = 1 (a read hook)`, both modes, **+6**,
+     `eval-core` 3527 → 3533; each with a probe that adds a call only when a read hook is set, P6-3
+     on the `=` context branch, P6-5 on the read path, P6-4 on an identifier write's key.
+  2. **Minor 1**: `C`'s `g (a read hook)` under `caseInsensitive` was marked `copied`, a write's mark;
+     a read's, `copiedRead`, is added.
+  3. **Minor 2**: `docs/README.md`'s A48 row, its "and its step 4 …, and its step 5" chain.
+  4. **Minor 3**: `getThis`' JSDoc, a short line left by step 5's edit, reflowed; and it states that
+     its example is the same with or without a read hook, which the new rows pin.
+  5. **Supplement 14's review, Minor 4**, 14 `docs/backlog.md` A44 and A45 pointers in nine
+     `eval-core` files: not changed. The [A45 plan](../a45/plan.md) (its reading 6) left source
+     comments citing `docs/backlog.md` A44, A45 and A52 by ID on purpose, "which the index still
+     resolves": each ID's index row links to its retired entry. The step first re-pointed them, and
+     reverted that when its kill-list found the decision.
+- **The records.** F29 retired, tests only: its index row re-pointed, its entry moved to
+  `docs/backlog-retired.md` with a *Fixed* paragraph. The *Unreleased* history row, 16 live before, 7
+  opened, 6 closed, 17 after, and the totals row 42, 80, 105, 17; the register's live rows **17**.
+  Every link to F29 re-pointed: the register's three, `docs/README.md`'s, this document's,
+  `docs/documentation/phase-11-plan.md`'s two, and `docs/backlog-retired.md`'s one, in F28's entry.
+  `CLAUDE.md`'s "A48, A50, A51 and A55 fixed" gains F29. Work in flight; the skill's counts.
+- **The file list** (§ 4's table, corrected in this step, [SR3](../standing-rules.md#sr3)): beyond the
+  downstream specs, the register, the skill and this document, `assignment-target.spec.ts` and
+  `eval-context.ts`' JSDoc (step 5's carry-overs),
+  `docs/backlog-retired.md`, `docs/README.md`, `docs/documentation/phase-11-plan.md` and `CLAUDE.md`.
+- **Rows** ([SR27](../standing-rules.md#sr27)): `eval-core` **+6**, 3527 → 3533; `eval-signals`
+  **+12**, 450 → 462; `eval-forms` **+5**, 386 → 391.
+- **Claim → witness** ([SR21](../standing-rules.md#sr21)):
+
+  | Claim | Rows | Probes |
+  | :--- | :--- | :--- |
+  | (eval-core CHANGELOG, A55) a getter's throw reaches the caller, in both modes; through `eval-signals`, under its default `'throw'` and a function policy | `eval-signals`' A55 rows | code-at-9e88d18 |
+  | (the same) through `/reactive`'s `'throw'` and function policy; its default still renders `''` | `/reactive`'s three | code-at-9e88d18; P6-9 |
+  | (the same) `'undefined'` still reads `undefined` | `eval-signals`' `'undefined'` rows | P6-6 |
+  | (eval-core CHANGELOG, A48) one call to a prototype accessor for one read under `caseInsensitive`; case-sensitively as before | `eval-signals`' A48 rows | code-at-9e88d18; P6-8 |
+  | (P-1) the signal context's write policy is asked before `eval-core` refuses a write to the context or to an `EvalScope` | `eval-signals`' two refusal rows | P6-7 |
+  | (eval-forms README) a rule that does not parse throws at registration, whatever the policy | the two F29 cases | P6-1; P6-2 |
+  | (eval-core README, CHANGELOG, `getThis` JSDoc) case-sensitively `this.g = 1` calls `g` once, and `this.g += 1` twice, with or without a read hook; under `caseInsensitive` `x = 1` calls a lookup once | `C`'s and `L`'s new `a read hook` rows | P6-3; P6-5; P6-4; P5-7 |
+
+- **Probes** ([SR15](../standing-rules.md#sr15), [SR16](../standing-rules.md#sr16)), each a pinned patch
+  against the step's tree in supplement 16, applied alone, **all three packages' cases read**, reverted,
+  and the tree checked clean ([SR32](../standing-rules.md#sr32)); a new runner, `runprobes6.sh`,
+  reads each package in turn and prefixes each red name with its package:
+
+  | Probe | The wrong implementation | Red: core / signals / forms | Step 6's rows | Existing rows |
+  | :--- | :--- | ---: | :--- | :--- |
+  | code-at-9e88d18 | the published 0.15.1's `eval-core` code: no A55, A48, A50 or A51 fix | 96 / 5 / 2 | `eval-signals`' A55 default and function rows, both modes, and A48 under `caseInsensitive`; `/reactive`'s `'throw'` and function policy | 96, steps 1 to 4's in `eval-core`: `assignment-target.spec.ts`' 57, `member-read.spec.ts`' 36, the guard spec's three |
+  | P6-1 | `/signals` parses, guards and compiles inside the closure its policy wraps (F29's M4 probe) | 0 / 0 / 44 | `/signals`' F29 case | 43: the guard's, the compile-once counts', the colon-joined names' |
+  | P6-2 | `/reactive` hands a compile error to a function policy and binds its result | 0 / 0 / 1 | `/reactive`'s F29 case | none |
+  | P6-3 | the `=` context branch reads the getter once more when a read hook is set | 1 / 0 / 0 | `C`'s `this.g = 1 (a read hook)`, case-sensitive | none |
+  | P6-4 | an identifier write resolves its key once more when a read hook is set | 4 / 0 / 0 | `L`'s `x = 1 (a read hook)`, both modes | 2: `L`'s `x += 1 (a read hook)`, both modes |
+  | P6-5 | the read path's context branch reads the getter once more when a read hook is set | 1 / 0 / 0 | `C`'s `this.g += 1 (a read hook)`, case-sensitive | none |
+  | P6-6 | `eval-signals`' `'undefined'` policy lets an `Error` through | 0 / 3 / 4 | `eval-signals`' `'undefined'` rows, both modes; `/reactive`'s default | 4: `eval-signals`' "should yield undefined in undefined mode", `/reactive`'s "should not inherit eval-signals default of throw", "should resolve a throwing expression to the property default", and the worked example |
+  | P6-7 | the signal context's member-write policy refuses no member write, a method only | 0 / 16 / 2 | `eval-signals`' two refusal rows, both modes | 14: the read-only write policy's member writes, in `eval-signal.spec.ts` and `signal-context.spec.ts`, and `eval-forms`' two |
+  | P6-8 | a member read reads its property twice | 33 / 1 / 0 | `eval-signals`' A48 row, case-sensitive | 33 in `eval-core` |
+  | P6-9 | `/reactive`'s default policy is `eval-signals`' `'throw'` | 0 / 0 / 4 | `/reactive`'s default | 3: as P6-6's `/reactive` three |
+  | P5-7 | step 5's, byte-identical: under `caseInsensitive` a context holding an accessor is not copied | 11 / 0 / 0 | `C`'s `this.g = 1 (a read hook)` and `this.g += 1 (a read hook)` under `caseInsensitive`; `g (a read hook)`'s new mark | 8: step 5's |
+
+  Every new case is red under at least one probe, checked case by case; each red set's names are as
+  many as Jest's failed cases, per package.
+- **Kill-list** ([SR25](../standing-rules.md#sr25)): `git grep -n "backlog.md#f29\|(#f29)\|A51 and A55 fixed$"`
+  at 930df59. Rewritten: every F29 link and `CLAUDE.md`'s sentence. Kept: F29's own text, history,
+  under its *Fixed* paragraph; the retired file's own `(#f29)`, in F28's entry. A first pattern for
+  the `docs/backlog.md` A44 and A45 pointers found the A45 plan's decision to leave them, above.
+- **Criterion**: the staged diff's hash; the gate green, `eval-core` 3533 (3527 + 6), `eval-signals`
+  462 (450 + 12), `eval-forms` 391 (386 + 5); doc-links 0 dangling; every probe's red set as the
+  table gives it; `sha256sum -c` on supplement 16's `SHA256SUMS.txt`; the register's live rows 17.
+- **Review**: the `code-reviewer` ([SR33](../standing-rules.md#sr33)): the step changes files under
+  `modules/`.
+- **Outcome**: measured first in the sandbox: the gate `eval-core` 3533, `eval-signals` 462,
+  `eval-forms` 391; doc-links 0 dangling; the probes' red sets as the table gives them. The commit's
+  body records the run on the maintainer's checkout and the code review.
+
 ## 5. Public API surface
 
 No export changes shape ([SR12](../standing-rules.md#sr12)); behaviour changes as § 2 says, so the
@@ -1118,7 +1232,7 @@ release is a minor. Step 8 diffs each `.d.ts` against the published 0.15.1, 0.8.
 ## 6. Verification gates
 
 [SR8](../standing-rules.md#sr8) after every step, on the committed tree. Counts move by step 1's 30
-`eval-core` cases, step 2's 86, step 3's 48, step 4's 52, step 5's 8, and by what each later step's prompt fixes before its gate.
+`eval-core` cases, step 2's 86, step 3's 48, step 4's 52, step 5's 8, step 6's 6, `eval-signals` by step 6's 12 and `eval-forms` by its 5, and by what each later step's prompt fixes before its gate.
 
 ## 7. Risks
 

@@ -161,6 +161,7 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
   const scopeWrite = 'Write to an evaluation scope is blocked';
   const nonObject = (type: string) => `Cannot set property on non-object: ${type}`;
   const copied = 'a write into the caseInsensitive copy';
+  const copiedRead = 'a read of the caseInsensitive copy, the getter read once when it was made';
   const scopeRefused = 'A51, a write to an evaluation scope refused';
   const limit = 'A49, a documented limit: a getter or lookup count is not the contract';
 
@@ -1220,6 +1221,12 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
       design: { ci: limit },
     },
     {
+      source: 'x = 1', observe: withReadHook(looked), label: 'a read hook',
+      today: { cs: { value: 1, calls: 0 }, ci: { value: 1, calls: 1 } },
+      js: both(native({ value: 1, calls: 0 })),
+      design: { ci: limit },
+    },
+    {
       source: 'x += 1', observe: withReadHook(looked), label: 'a read hook',
       today: { cs: { value: 1, calls: 2 }, ci: { value: 1, calls: 3 } },
       js: both(native({ value: 1, calls: 1 })),
@@ -1254,6 +1261,18 @@ describe('assignment targets (A45 part 2, A44): today, pinned', () => {
       source: 'g', observe: withReadHook(onAccessorG), label: 'a read hook',
       today: { cs: { value: 1, get: 2, set: 0 }, ci: { value: 1, get: 0, set: 0 } },
       js: both(native({ value: 1, get: 1, set: 0 })),
+      design: { cs: limit, ci: copiedRead },
+    },
+    {
+      source: 'this.g = 1', observe: withReadHook(onAccessorG), label: 'a read hook',
+      today: { cs: { value: 1, get: 1, set: 1 }, ci: { value: 1, get: 0, set: 0 } },
+      js: both(native({ value: 1, get: 0, set: 1 })),
+      design: { cs: limit, ci: copied },
+    },
+    {
+      source: 'this.g += 1', observe: withReadHook(onAccessorG), label: 'a read hook',
+      today: { cs: { value: 2, get: 2, set: 1 }, ci: { value: 2, get: 0, set: 0 } },
+      js: both(native({ value: 2, get: 1, set: 1 })),
       design: { cs: limit, ci: copied },
     },
   ];

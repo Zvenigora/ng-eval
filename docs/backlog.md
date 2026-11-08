@@ -56,9 +56,9 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-**The [A48 plan](a48/plan.md) is active**, at Revision 5, steps 1 to 10: [A55](backlog-retired.md#a55), [A48](backlog-retired.md#a48), [A50](backlog-retired.md#a50) and
+**The [A48 plan](a48/plan.md) is active**, at Revision 6, steps 1 to 10: [A55](backlog-retired.md#a55), [A48](backlog-retired.md#a48), [A50](backlog-retired.md#a50) and
 [A51](backlog-retired.md#a51) fixed in its steps 2 to 4, [A49](backlog-retired.md#a49) decided a documented limit in step 5, the
-downstream rows and [F29](#f29) in step 6, the timing in step 7, and the release in step 8:
+downstream rows and [F29](backlog-retired.md#f29) in step 6, the timing in step 7, and the release in step 8:
 `eval-core` 0.16.0, a minor by behaviour, with `eval-signals` 0.9.0 and `eval-forms` 0.9.0 in the
 same commit. Step 1 opened A55, [A56](#a56), [A57](#a57) and [A58](#a58), corrected A50 for a host
 `Registry`, and corrected two README sentences false now, which ship in 0.16.0. It replaces a step 1 written on
@@ -67,8 +67,9 @@ another model, d507440, reverted by 3bbc296. Step 2 fixed A55 and A48, now retir
 opened [A59](#a59), the proxy traps a member read calls beyond `get`. Step 4 fixed A51, now retired,
 which ships in 0.16.0, and opened [A60](#a60), a host `Registry` whose methods a member write can
 shadow. Step 5 decided A49 a documented limit, now retired, which ships in 0.16.0 as documentation,
-and opened [A61](#a61), the native functions that write an `EvalScope` past A51's refusal; step 6,
-the downstream rows and F29, is next.
+and opened [A61](#a61), the native functions that write an `EvalScope` past A51's refusal. Step 6
+added the rows through `eval-signals` and `eval-forms` for what 0.16.0 changes, and fixed F29, now
+retired, tests only; step 7, the timing record, is next.
 
 **The [A33 plan](a33/plan.md) is complete**, at Revision 6, steps 1 to 6: [A33](backlog-retired.md#a33),
 the case-insensitive lookup cache's miss re-validated by name, fixed, and [A34](backlog-retired.md#a34),
@@ -196,8 +197,8 @@ F28's answer. `eval-forms`' README is ordered by entry point, with a contents li
 splits. It shipped as `eval-forms` 0.7.1, a docs-only patch tagged annotated at 69c3e0e and published
 2026-10-29, its three `.d.ts` byte-identical to 0.7.0's and no peer range moved. F28 is decided and
 retired. Its retrospect is the plan's § 10, which added [SR39](standing-rules.md#sr39) and corrected
-[SR3](standing-rules.md#sr3)'s check. [F29](#f29), opened by step 2's code review, waits for the next
-phase that moves `eval-forms`' rows.
+[SR3](standing-rules.md#sr3)'s check. [F29](backlog-retired.md#f29), opened by step 2's code review,
+was fixed by the [A48 plan](a48/plan.md)'s step 6, the next plan to move `eval-forms`' rows.
 
 **The [A24 plan](a24/plan.md) is complete**: the await track, [A25](backlog-retired.md#a25),
 [A24](backlog-retired.md#a24) and [D13](backlog-retired.md#d13), shipped as `eval-core` 0.15.0,
@@ -361,8 +362,8 @@ How the live count has moved from one release to the next. The register opened o
 | `eval-core` 0.14.1. F28, decided by Phase 11 and shipped in `eval-forms` 0.7.1, was retired by 0.7.1's post-publish commit, after its tag; A47 is fixed, and A32 and A30 are decided, documentation only | `95932e6` | 2026-10-30 | 27 | 0 | 4: F28, A47, A32, A30 | 23 |
 | `eval-core` 0.15.0, `eval-signals` 0.8.0, `eval-forms` 0.8.0. A27 and A38 are fixed, and A25, A24 and D13 by the A24 plan, all released in them; F30 opened by the release commit's code review | `67486ab` | 2026-10-31 | 23 | 1: F30 | 5: A27, A38, A25, A24, D13 | 19 |
 | `eval-core` 0.15.1. A33 is fixed and A34 decided, documented, both released in it; F30 and A53 closed in no package; A54 opened by step 2's review | `9e88d18` | 2026-11-02 | 19 | 1: A54 | 4: F30, A53, A33, A34 | 16 |
-| *Unreleased*. A55 to A58 opened by the A48 plan's step 1; A55 and A48 fixed by its step 2, A50 by its step 3 and A51 by its step 4, and A49 decided a documented limit by its step 5, for `eval-core` 0.16.0; A59 opened by its step 3, A60 by its step 4 and A61 by its step 5 | | | 16 | 7: A55, A56, A57, A58, A59, A60, A61 | 5: A55, A48, A50, A51, A49 | 18 |
-| **Since the register opened** | | | **42** | **80** | **104** | **18** |
+| *Unreleased*. A55 to A58 opened by the A48 plan's step 1; A55 and A48 fixed by its step 2, A50 by its step 3 and A51 by its step 4, and A49 decided a documented limit by its step 5, for `eval-core` 0.16.0, and F29 fixed by its step 6, tests only; A59 opened by its step 3, A60 by its step 4 and A61 by its step 5 | | | 16 | 7: A55, A56, A57, A58, A59, A60, A61 | 6: A55, A48, A50, A51, A49, F29 | 17 |
+| **Since the register opened** | | | **42** | **80** | **105** | **17** |
 
 **How a row is counted.** Each row compares the index at the previous row's commit (the first, at
 `ef5ac2b`) with the index at that release's tag commit. *Live* is a Status that starts with Open,
@@ -505,7 +506,7 @@ makes it that release's row, with its tag commit and date.
 | [F26](backlog-retired.md#f26) | `tools/release-tags.mjs` does not check that a release tag is annotated: it resolves each tag with `git rev-list -n 1`, which accepts a lightweight tag, so the register's "all annotated" is checked by nothing | repo | fix | **Retired — fixed 2026-10-26**, in no package: every `eval-core@`, `eval-signals@` and `eval-forms@` tag must be a tag object, with or without a row, and a lightweight one fails, named once; the `v*` tags are not checked |
 | [F27](backlog-retired.md#f27) | The process and verification rules were copied across `CLAUDE.md`, the `step` skill, the `code-reviewer`, `CONTRIBUTING.md` and four plans' rule sections, and the copies had drifted: twenty divergences, among them three different gate commands | repo, core | docs | **Retired — fixed 2026-10-27**: [`docs/standing-rules.md`](standing-rules.md), SR1–SR38, imported by `CLAUDE.md`; the copies cite it. In no package, but for `contextPush`'s docblock, released 2026-10-30 in `eval-core` 0.14.1, tagged 95932e6, documentation only |
 | [F28](backlog-retired.md#f28) | The consumer documents Phase 10 left out: whether the package READMEs split into guides, where a guide lives and whether it ships; `eval-forms`' README, at 893 lines, by entry point first | repo, core, signals, forms | decision | **Retired — decided 2026-10-27, released 2026-10-29** as Phase 11: one README per package and no guide files; `eval-forms`' ordered by entry point, with a contents list, in `eval-forms` 0.7.1, docs-only |
-| [F29](#f29) | The README's "a rule that does not parse throws at registration, whatever the policy" is witnessed at both adapters under the default policy only; a function policy, the other one that swallows an error, is unwitnessed | forms | test gap | Open; opened 2026-10-28 by Phase 11 step 2's code review. Scheduled — the [A48 plan](a48/plan.md), step 6 |
+| [F29](backlog-retired.md#f29) | The README's "a rule that does not parse throws at registration, whatever the policy" is witnessed at both adapters under the default policy only; a function policy, the other one that swallows an error, is unwitnessed | forms | test gap | **Retired — fixed 2026-11-07**, as step 6 of the [A48 plan](a48/plan.md); tests only, ships in no package. Opened 2026-10-28 by Phase 11 step 2's code review |
 | [F30](backlog-retired.md#f30) | `eval-signals` 0.8.0's `await` claims — the sync signal's throw on a refused `await` and its operand by identity, the async signal resolving an accepted one, a rejection as raised — are measured through the package once, and witnessed by no row of it | signals | test gap | **Retired — fixed 2026-10-31**, in no package: five rows, `eval-signals` 444 → 449, committed after the release commit 67486ab and before the publish. Opened the same day by the A24 plan's step 7a code review |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
@@ -1768,39 +1769,3 @@ a plain `new Promise` rejected with no handler reached none of the three channel
 `uncaughtPromiseErrors` queue held it until the macrotask, and a function set under the hook was
 called with it. Then by criterion 5's own cases: a wrong implementation that left superseded runs'
 rejections unhandled turned both red through the hook, with the control green.
-
-<a id="f29"></a>
-## F29 — A parse error's policy claim is witnessed under the default policy only
-
-**Package** forms · **Kind** test gap · **Status** Open. Opened 2026-10-28 by Phase 11 step 2's code
-review. Scheduled — the [A48 plan](a48/plan.md), step 6
-
-`eval-forms`' README, `## When a rule fails`, says that **a rule that does not parse throws at
-registration, whatever the policy**, at both adapters: from `bindFieldProperties` at `/reactive`, and
-from `form()` at `/signals`. Phase 11 step 2 made the sentence adapter-neutral; until then it named
-`bindFieldProperties` only, with the same "whatever the policy".
-
-**Witnessed under the default policy only.** `reactive/src/lib/readme-examples.spec.ts:377` and
-`signals/src/lib/rules.spec.ts:710-718` each register a rule that does not parse with no `onError`, so
-under `'undefined'`, and expect the throw. **Unwitnessed: a function policy**, such as
-`onError: () => 'handled'`, the other policy that swallows an error. `'throw'` would pass under any
-implementation, so it is no witness: an adapter that parsed inside its policy would rethrow there too.
-
-**Measured, not tested.** `/signals` parses, guards and compiles in `prepare`
-(`modules/eval-forms/signals/src/lib/rules.ts:221-230`), when the registrar is called, outside the
-closure `applyErrorPolicy` wraps (`:233-234`). `/reactive`'s `validate` skips a rule that does not
-parse (`modules/eval-forms/reactive/src/lib/field-schema.ts:241-245`), and the compile throws from
-`createEvalSignal` inside the bind loop (`:536-556`), which takes `onError` for evaluation, not for
-the compile: `modules/eval-signals/src/lib/eval-signal.ts` compiles at `:258`, outside the `catch` at
-`:369` that applies the policy. The loop's `catch` releases the binding and rethrows (`:561-567`). The M4 probe
-([`phase-11-plan.md`](documentation/phase-11-plan.md) § 8 q1) moved `/signals`' parse, guard and
-compile inside the returned closure: 2 of 31 `rules.spec.ts` cases went red, both under the default
-policy.
-
-**Fix**: two cases, one per adapter, each registering a rule that does not parse under a function
-policy and asserting the parse error's message, never a bare `toThrow()`
-([SR18](standing-rules.md#sr18)), each probed by moving that adapter's parse inside its policy.
-Scheduled with the next phase that moves `eval-forms`' rows; Phase 11 holds them 0 / 0 / 0.
-
-*Recorded*: this entry; the Phase 11 plan's step 2 Outcome. *Verified*: read 2026-10-28 — the two
-witnesses, `rules.ts` and `field-schema.ts` at the lines cited, and the M4 probe's record.
