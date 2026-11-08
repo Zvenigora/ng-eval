@@ -3992,9 +3992,9 @@ changes the decision. [SR28](standing-rules.md#sr28) now pins timed processes on
 <a id="a48"></a>
 ## A48 — Under `caseInsensitive`, a member read calls a prototype accessor twice
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-11-05**; ships in `eval-core`
-0.16.0. Was Open. Opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (its § 8 q2). It
-predates that plan
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-11-05**; released in `eval-core`
+0.16.0, pending publish. Was Open. Opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (its § 8
+q2). It predates that plan
 
 *Fixed* 2026-11-05, as step 2 of the [A48 plan](a48/plan.md), with [A55](#a55). When no own property
 matches the key, `evaluateMember`'s `caseInsensitive` lookup tests the key with `key in obj`, as the
@@ -4056,9 +4056,9 @@ on bdaa542's code, all green with it, and their probes (the [A48 plan](a48/plan.
 <a id="a55"></a>
 ## A55 — `safeGetProperty` swallows a getter's throw and reads `undefined`
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-11-05**; ships in `eval-core`
-0.16.0. Was Open. Opened 2026-11-03 by the [A48 plan](a48/plan.md), step 1 (its § 1.4, finding 1). It
-predates that plan
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-11-05**; released in `eval-core`
+0.16.0, pending publish. Was Open. Opened 2026-11-03 by the [A48 plan](a48/plan.md), step 1 (its § 1.4,
+finding 1). It predates that plan
 
 *Fixed* 2026-11-05, as step 2 of the [A48 plan](a48/plan.md), with [A48](#a48). `safeGetProperty`'s
 `catch` is gone, as in the plan's prototype, `P55.patch`, its comment pointing here: a getter's or
@@ -4114,7 +4114,7 @@ contrasts, those the fix changes red on bdaa542's code, all green with it, and t
 ## A49 — The context branch reads what it tests: `getThis` reads the value, `getKey` calls lookups
 
 **Package** core · **Kind** fix · **Status** **Retired — decided 2026-11-06: a documented limit**;
-ships in `eval-core` 0.16.0, documentation only. Was Open. Opened 2026-10-23 by the
+released in `eval-core` 0.16.0, pending publish, documentation only. Was Open. Opened 2026-10-23 by the
 [A45 plan](a45/plan.md), Revision 2 (its § 8 q3). It predates that plan
 
 *Decided* 2026-11-06, as step 5 of the [A48 plan](a48/plan.md) (its D5): no code fix. How many times
@@ -4189,9 +4189,9 @@ rows with a read hook, with their probes (the [A48 plan](a48/plan.md) § 4, Step
 <a id="a50"></a>
 ## A50 — A member write through `this` lands on a `Registry` original's instance, not in its map
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-11-06**; ships in `eval-core`
-0.16.0. Was Open. Opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (its § 8 q4, first
-half). It predates that plan. Corrected 2026-11-03 and 2026-11-06
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-11-06**; released in `eval-core`
+0.16.0, pending publish. Was Open. Opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (its § 8
+q4, first half). It predates that plan. Corrected 2026-11-03 and 2026-11-06
 
 *Fixed* 2026-11-06, as step 3 of the [A48 plan](a48/plan.md). A member write goes through
 `writeMemberTarget`, new in `member-expression.ts`: a `Registry` that is the context's original, and
@@ -4276,9 +4276,9 @@ rows, those the fix changes red on 0dc9c15's code, all green with it, and their 
 <a id="a51"></a>
 ## A51 — A member write to an `EvalScope` held as a value lands on the instance, and reaches its fields
 
-**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-11-06**; ships in `eval-core`
-0.16.0. Was Open. Opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (its § 8 q4, second
-half). It predates that plan. Corrected 2026-11-06, twice
+**Package** core · **Kind** fix · **Status** **Retired — fixed 2026-11-06**; released in `eval-core`
+0.16.0, pending publish. Was Open. Opened 2026-10-23 by the [A45 plan](a45/plan.md), Revision 2 (its § 8
+q4, second half). It predates that plan. Corrected 2026-11-06, twice
 
 *Fixed* 2026-11-06, as step 4 of the [A48 plan](a48/plan.md). `safeSetProperty` refuses an
 `EvalScope` target, by class, `Write to an evaluation scope is blocked`, after `refuseContextWrite`
@@ -8536,9 +8536,10 @@ not parse under a function policy too", `'country ==='`, `Unexpected token (1:11
 `'city ==='` through `evalText`, `Unexpected token (1:8)` from `form()`. Each is probed by moving
 that adapter's parse inside its policy: P6-1 moves `/signals`' parse, guard and compile into the
 closure `applyErrorPolicy` wraps, as the M4 probe did, and its case goes red with 43 others, the
-guard's, the compile-once counts' and the colon-joined names'; P6-2 hands `/reactive`'s compile error to a function policy
-and binds the result, and its case alone goes red (the plan's supplement 16). The README's sentence
-is unchanged: it was true, and is now witnessed under both policies that swallow an error.
+guard's, the compile-once counts' and the colon-joined names'; P6-2 hands `/reactive`'s compile
+error to a function policy and binds the result, and its case alone goes red (the plan's
+supplement 16). The README's sentence is unchanged: it was true, and is now witnessed under both
+policies that swallow an error.
 
 `eval-forms`' README, `## When a rule fails`, says that **a rule that does not parse throws at
 registration, whatever the policy**, at both adapters: from `bindFieldProperties` at `/reactive`, and

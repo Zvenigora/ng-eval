@@ -10,6 +10,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.9.0] - 2026-11-08
+
+**A member read lets a getter's throw reach the signal, and the `eval-core` range moves to 0.16.** A
+breaking minor: no symbol of this package changes shape, and **no shipped code of it changes**, so
+the `.d.ts` is byte-identical to 0.8.0's. What changes is the behaviour it forwards from
+`@zvenigora/ng-eval-core` 0.16.0 ([A55](../../docs/backlog-retired.md#a55),
+[A48](../../docs/backlog-retired.md#a48); the [A48 plan](../../docs/a48/plan.md)). That release's
+other changes to a member read reach an expression's reads as well; its CHANGELOG lists them.
+Whether its changes to a member write reach a signal depends on the context. Over a record, or a
+context `createSignalContext` built, the signal context's write guard refuses a member write to any
+object the evaluation did not create first, as before, so `this.k = 5`,
+[A50](../../docs/backlog-retired.md#a50)'s path, and `ns.k = 5` over an `EvalScope` the context
+holds as a value, [A51](../../docs/backlog-retired.md#a51)'s, each throw a `SignalContextWriteError`
+of kind `member` and key `k`. Over an `EvalContext` the caller built, which reaches `eval-core`
+unchanged, both reach the signal as they reach `eval-core`: `this.k = 5` over a host's `Registry`
+that holds `k` now writes its map, where it set an own property on the instance, and `ns.k = 5` is
+now refused with `Write to an evaluation scope is blocked`, an error the signal's `onError` handles,
+where it set an own property on the scope.
+
+### Breaking
+- **The `eval-core` range is `>=0.16.0 <0.17.0`**, where it was `>=0.15.0 <0.16.0`: the behaviour
+  below exists only in 0.16.0.
+- **A member read lets a getter's throw reach the signal, in both case modes.** Over a context holding
+  an object whose inherited getter `t` throws, a `createEvalSignal` over `x.t` read `undefined` under
+  every `onError`, so a function policy never saw the error. Under the default `onError` it now throws
+  the getter's error on read, and a function policy receives it; `onError: 'undefined'` still reads
+  `undefined`. Under `caseInsensitive` `x.t` over an own getter already threw, as `eval-core`'s
+  CHANGELOG says.
+
+### Fixed
+- **Under `caseInsensitive`, `c.g` calls an inherited getter `g` once.** Over an instance whose class
+  declares a getter `g`, a signal over `c.g + 1` called it twice per evaluation, and now calls it
+  once; case-sensitively it was called once before too.
+
+---
+
 ## [0.8.0] - 2026-10-31
 
 **An `await` is evaluated only where its value is the result, and the `eval-core` range moves to

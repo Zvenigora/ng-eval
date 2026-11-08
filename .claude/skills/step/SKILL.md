@@ -22,7 +22,8 @@ Requested step: $ARGUMENTS
 - **Step 6 is mostly `eval-signals` and `eval-forms`**: downstream rows and F29's two cases, with
   step 5's carry-overs in `eval-core`'s spec and `getThis`' JSDoc, which reaches 0.16.0's `.d.ts`.
 - **Step 7 is the timing record**, run Claude-side (one valid run, no regression), and **step 8 the
-  release commit**: all three packages in one commit ([SR42](../../../docs/standing-rules.md#sr42)). A
+  release commit**: all three packages in one commit ([SR42](../../../docs/standing-rules.md#sr42)), its
+  CHANGELOG headings dated npm's expected UTC date, which step 9 corrects if npm's differs. A
   `package.json` before step 8 is a stop-and-replan.
 - **Step 9 is the post-publish record**, after the maintainer publishes, and **step 10 the
   retrospect**.

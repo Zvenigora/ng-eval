@@ -12,13 +12,34 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+---
+
+## [0.16.0] - 2026-11-08
+
+**A member read lets a getter's throw reach the caller, and member reads and writes change under
+`caseInsensitive`, through `this` to a `Registry`, and to an `EvalScope`.** A minor carrying
+breaking changes ([A55](../../docs/backlog-retired.md#a55),
+[A48](../../docs/backlog-retired.md#a48), [A51](../../docs/backlog-retired.md#a51); the
+[A48 plan](../../docs/a48/plan.md)), with [A50](../../docs/backlog-retired.md#a50)'s fix and
+[A49](../../docs/backlog-retired.md#a49) decided a documented limit. No exported symbol changes
+shape: the `.d.ts` differs from 0.15.1's in two JSDoc blocks only, `EvalContext`'s `lookups` and
+`getThis`, A49's. What changes is behaviour: what a member read does with a getter or a proxy trap
+that throws, how a `caseInsensitive` member read tests and searches a key, what a write through
+`this` does to a `Registry` that is the context's original, and that a member write to an
+`EvalScope` is refused; each bullet below names the paths it covers. Timed against 0.15.1 on seven
+paths, with no regression on any. `eval-signals` 0.9.0 and `eval-forms` 0.9.0 raise their floors to
+it.
+
 ### Breaking
-- **A getter's or a proxy `get` trap's throw reaches the caller, in both case modes.** A member
-  read caught any throw from the read and gave `undefined`: `x.t` was `undefined`, `x.t || 1` was
-  `1`, `let {t} = x` bound `undefined`, and `x.t += 1` or `x.t++` failed later, at the write. Under
-  `caseInsensitive` an own getter already threw, and an inherited one was swallowed. Each now
-  throws the getter's own value, an `Error` or not, as JavaScript does
-  ([A55](../../docs/backlog-retired.md#a55)). A null or undefined object still reads `undefined`.
+- **A member read lets a getter's or a proxy `get` trap's throw reach the caller, in both case
+  modes.** It caught a throw from the read and gave `undefined`. Case-sensitively, over an object
+  whose getter `t` throws, own or inherited, `x.t` was `undefined`, `x.t || 1` was `1` and
+  `let {t} = x` bound `undefined`, and `x.t += 1` and `x.t++` threw at the write where `t` has no
+  setter and wrote `NaN` through the setter where it has one. Under `caseInsensitive` some of these
+  reads already threw, `x.t` over an own getter among them, and some did not, `x.t` over an inherited
+  one and `let {t} = x` over either. Each of these forms now throws the getter's own value, an `Error`
+  or not, as JavaScript does ([A55](../../docs/backlog-retired.md#a55)). A null or undefined object
+  still reads `undefined`.
 - **Under `caseInsensitive`, a member read calls a proxy's `has` trap** for a key no own property
   matches, as a member write already did; JavaScript's read calls none. A throw from that `has`
   trap, or from the `ownKeys` trap of a prototype searched for a case variant, is caught, and the
@@ -32,18 +53,18 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   tested the key by reading it, and read it as spelled. A key with no such variant, `px.q`, is read
   as spelled, as before, and a case-sensitive read is unchanged
   ([A48](../../docs/backlog-retired.md#a48), [A59](../../docs/backlog.md#a59)).
-- **A member write to an `EvalScope` throws** `Write to an evaluation scope is blocked`, where up to
-  0.15.1 it set an own property on the instance. A host that places an `EvalScope` in the context as
-  a value reads it through the scope's `get`, so `ns.k = 5`, `ns.k += 5` and `ns.k++` left the
-  scope's context unchanged and a later `ns.k` read the old value, and `ns._context = 9`,
-  `ns._options = 9` or `ns.type = 9` replaced the scope's own fields. The write is refused, in both
-  case modes, for every form a member write takes and every key the blocklist does not already
-  refuse, for a subclass too, and for an `EvalScope` that is a prior scope's `thisArg`, reached
-  through `this`. It is refused after
-  the right side has run and after a write policy, `EvalContext.checkMemberWrite`, has been asked,
-  so a policy that refuses first still gives its own error. A namespaced scope's object, `ns.n`, is
-  not a scope, and `ns.n.k = 7` still writes into it; a logical assignment that writes nothing,
-  `ns.k ||= 5` with `k` set, is not refused ([A51](../../docs/backlog-retired.md#a51)).
+- **A member write to an `EvalScope` is refused.** It throws
+  `Write to an evaluation scope is blocked`, where up to 0.15.1 it set an own property on the
+  instance. A host that places an `EvalScope` in the context as a value reads it through the scope's
+  `get`, so `ns.k = 5`, `ns.k += 5` and `ns.k++` left the scope's context unchanged and a later `ns.k`
+  read the old value, and `ns._context = 9`, `ns._options = 9` or `ns.type = 9` replaced the scope's
+  own fields. The write is refused, in both case modes, for every form a member write takes and every
+  key the blocklist does not already refuse, for a subclass too, and for an `EvalScope` that is a
+  prior scope's `thisArg`, reached through `this`. It is refused after the right side has run and
+  after a write policy, `EvalContext.checkMemberWrite`, has been asked, so a policy that refuses first
+  still gives its own error. A namespaced scope's object, `ns.n`, is not a scope, and `ns.n.k = 7`
+  still writes into it; a logical assignment that writes nothing, `ns.k ||= 5` with `k` set, is not
+  refused ([A51](../../docs/backlog-retired.md#a51)).
 
 ### Changed
 - The README's `### Scopes` corrects two sentences. It said that a prior scope's `thisArg` changes
@@ -69,27 +90,26 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   ([A49](../../docs/backlog-retired.md#a49)).
 
 ### Fixed
-- **Under `caseInsensitive`, a member read calls a getter on the prototype chain once.** The lookup
-  tested the key by reading it, then read it again: `c.g`, `c.g += 1`, `c.g++`, `c.g ||= 5` and
-  `` `${c.g}` `` called an inherited getter twice, and a proxy's `get` trap ran twice for a key no
-  own property matches. The key is now tested with `in`, as a member write tests it, and read once
-  ([A48](../../docs/backlog-retired.md#a48)). The read and the write now agree on the key: over an
-  inherited `foo` whose value is `undefined`, behind an accessor `Foo` on a nearer prototype,
-  `p.foo` read `Foo`'s value and `p.foo += 1` wrote through `Foo`'s setter, where `p.foo = 1` wrote
-  `foo`; each now reads or writes `foo`.
-- **A write through `this` to a `Registry` that is the context's original reaches its map.**
-  Where the original holds `k`, `this.k = v`, `this.k += v`, `this.k ||= v` and `this.k++` set an
-  own property on the `Registry` instance and left its map, so a later `k` or `this.k` read the old
-  value: under `caseInsensitive` on the copy `EvalContext.fromContext` makes of a plain context, and
-  in both modes on a host's `Registry` passed as the context. The write now goes through the
+- **Under `caseInsensitive`, `c.g` calls a getter on `c`'s prototype chain once.** The lookup tested
+  the key by reading it, then read it again: `c.g`, `c.g += 1`, `c.g++`, `c.g ||= 5` and
+  `` `${c.g}` `` called an inherited getter twice, and a proxy's `get` trap ran twice for a key no own
+  property matches. The key is now tested with `in`, as a member write tests it, and each of these
+  forms calls the getter once, and the trap runs once ([A48](../../docs/backlog-retired.md#a48)). The
+  read and the write now agree on the key: over an inherited `foo` whose value is `undefined`, behind
+  an accessor `Foo` on a nearer prototype, `p.foo` read `Foo`'s value and `p.foo += 1` wrote through
+  `Foo`'s setter, where `p.foo = 1` wrote `foo`; each now reads or writes `foo`.
+- **A write through `this` to a `Registry` that is the context's original reaches its map, for a key
+  it holds.** Where the original holds `k`, `this.k = v`, `this.k += v`, `this.k ||= v` and `this.k++`
+  set an own property on the `Registry` instance and left its map, so a later `k` or `this.k` read the
+  old value: under `caseInsensitive` on the copy `EvalContext.fromContext` makes of a plain context,
+  and in both modes on a host's `Registry` passed as the context. The write now goes through the
   `Registry`'s map, as `k = v` does, and a later read sees it
   ([A50](../../docs/backlog-retired.md#a50)). Under `caseInsensitive` it stays in the copy, as an
-  identifier write does, and does not reach the caller's object. The same holds where the original
-  is a global prior scope's `thisArg` and that scope holds the key: `this.k = v` writes the
-  original's map, and a later `k` or `this.k` reads `v`, where up to 0.15.1 the instance took an own
-  property and they read the scope's value. A `Registry` reached as a value is
-  written as any object is, as before: `r.k = v`, and the context's own `Registry` when the host holds
-  it in its data, `self.k = v`.
+  identifier write does, and does not reach the caller's object. The same holds where the original is
+  a global prior scope's `thisArg` and that scope holds the key: `this.k = v` writes the original's
+  map, and a later `k` or `this.k` reads `v`, where up to 0.15.1 the instance took an own property and
+  they read the scope's value. A `Registry` reached as a value is written as any object is, as before:
+  `r.k = v`, and the context's own `Registry` when the host holds it in its data, `self.k = v`.
 
 ---
 

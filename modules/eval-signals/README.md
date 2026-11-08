@@ -12,14 +12,18 @@ recomputes **exactly** when a key the expression actually read has changed.
 npm install @zvenigora/ng-eval-signals @zvenigora/ng-eval-core
 ```
 
-Peer dependencies: `@angular/core >=19.0.0` and `@zvenigora/ng-eval-core >=0.15.0 <0.16.0`. The floor
-is 0.15.0 since 0.8.0: an `await` is evaluated only where its value is the result, refused anywhere
-else, and bounded by no timer — see [Two signals instead of `await`](#two-signals-instead-of-await)
-— and that behaviour exists only there. The reads an assignment records, which raised the floor to
-0.14.0 in 0.7.0, and the guarded receiver a source function's `this` is, which raised it to 0.13.0
-in 0.6.0, hold in 0.15.0 as well. This version also carries the write guard, which needs `eval-core` 0.11.0 to ask
-about a built-in method's write as well as a member write — see
-[Writes are not supported](#writes-are-not-supported).
+Peer dependencies: `@angular/core >=19.0.0` and `@zvenigora/ng-eval-core >=0.16.0 <0.17.0`. The
+floor is 0.16.0 since 0.9.0: a member read lets a getter's throw reach the signal, so over an object
+whose inherited getter `t` throws, a signal over `x.t` throws the getter's error on read under the
+default `onError`, in both case modes, where it read `undefined`; and under `caseInsensitive` a
+signal over `c.g + 1` calls an inherited getter `g` once, where it called it twice. That behaviour
+exists only there, and `eval-core`'s CHANGELOG gives the other paths. The `await` positions, which
+raised the floor to 0.15.0 in 0.8.0 — see
+[Two signals instead of `await`](#two-signals-instead-of-await) — the reads an assignment records,
+which raised it to 0.14.0 in 0.7.0, and the guarded receiver a source function's `this` is, which
+raised it to 0.13.0 in 0.6.0, hold in 0.16.0 as well. This version also carries the write guard,
+which needs `eval-core` 0.11.0 to ask about a built-in method's write as well as a member write —
+see [Writes are not supported](#writes-are-not-supported).
 
 ## Sibling packages
 

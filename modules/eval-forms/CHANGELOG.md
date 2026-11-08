@@ -10,6 +10,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.9.0] - 2026-11-08
+
+**A getter that throws reaches a rule's error policy at `/reactive`, and both `@zvenigora` floors
+rise.** A breaking minor ([A55](../../docs/backlog-retired.md#a55); the
+[A48 plan](../../docs/a48/plan.md)): no symbol of this package changes shape, and **no shipped code
+of it changes**, so its three `.d.ts` files are byte-identical to 0.8.0's. What changes is the
+behaviour it forwards from `@zvenigora/ng-eval-core` 0.16.0. Both entry points evaluate a rule with
+that release, over a signal context from `eval-signals`. That release's other changes to a member
+read reach a rule's reads as well, the `caseInsensitive` ones at `/signals` only, since `/reactive`
+takes no evaluation options; its CHANGELOG lists them. Its changes to a member write do not reach a
+rule: the signal context's write guard refuses a member write to any object the evaluation did not
+create first, as before, with a `SignalContextWriteError`, so neither
+[A50](../../docs/backlog-retired.md#a50)'s write through `this` nor
+[A51](../../docs/backlog-retired.md#a51)'s refusal of a write to an `EvalScope` is seen.
+
+### Breaking
+- **A getter that throws reaches a rule's error policy.** At `/reactive`, over a control whose value
+  is an object with an inherited getter `t` that throws, a `text` rule `user.t` rendered `''` under
+  every policy, so `onError: 'throw'` threw nothing and a function policy never saw the error. Under
+  `'throw'` it now throws the getter's error, and a function policy receives it and gives its
+  result; the default policy still renders `''`.
+- **Both `@zvenigora` floors raised.** `@zvenigora/ng-eval-core`: `>=0.15.0 <0.16.0` →
+  `>=0.16.0 <0.17.0`. `@zvenigora/ng-eval-signals`: `>=0.8.0 <0.9.0` → `>=0.9.0 <0.10.0`. **The
+  floors rise rather than only the ceilings**: the behaviour above exists only in `eval-core` 0.16.0,
+  and `eval-signals` below 0.9.0 requires `eval-core` below 0.16.0, so it cannot sit beside this
+  release. The README's Install and Versions quote both.
+
+---
+
 ## [0.8.0] - 2026-10-31
 
 **A rule holding a statement `eval-core` does not evaluate is refused at registration, and both

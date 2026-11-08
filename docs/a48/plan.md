@@ -1,7 +1,10 @@
 # A48–A51, A55 and F29 — member reads and writes that miss the data, and a getter's throw (`@zvenigora/ng-eval-core` 0.16.0)
 
 **Date**: November 3, 2026
-**Revision**: 7 — step 7, the timing record: one valid run under § 3.7, no regression on any path,
+**Revision**: 8 — step 8, the release commit: `eval-core` 0.16.0, `eval-signals` 0.9.0 and
+`eval-forms` 0.9.0 in one commit, pending publish; step 7's Outcome added, its review's Important,
+with its Minors (§ 4, Step 8).
+Revision 7 — step 7, the timing record: one valid run under § 3.7, no regression on any path,
 so the release goes ahead on the timing; step 6's review's four Minors corrected (§ 4, Step 7).
 Revision 6 — step 6, the downstream rows and F29: rows through `eval-signals` and `eval-forms`
 for what 0.16.0 changes, measured on this tree and on 0.15.1's `eval-core` code, with an inherited
@@ -374,8 +377,8 @@ One step per session behind the `/step` gate. Gate counts at 3bbc296: `eval-core
 | 4 | A51 | `prototype-pollution-guard.ts`, its spec, `assignment-target.spec.ts`, `CHANGELOG.md`, the register, `docs/backlog-retired.md`, `docs/README.md`, `docs/a45/plan.md`, `CLAUDE.md`, the skill, this document | **+52** / 0 / 0 | `eval-core` 0.16.0 |
 | 5 | A49, a documented limit | `README.md`, `eval-context.ts`' JSDoc, `member-expression.ts`' JSDoc, `assignment-target.spec.ts`' marks and its `Q` rows, `CHANGELOG.md` and the two downstream CHANGELOGs' links, the register, `docs/backlog-retired.md`, `docs/README.md`, `docs/a45/plan.md`, `CLAUDE.md`, the skill, this document | **+8** / 0 / 0 | `eval-core` 0.16.0 |
 | 6 | Downstream rows and F29 | `eval-signals`' `eval-signal.spec.ts`; `eval-forms`' `field-schema.spec.ts`, `readme-examples.spec.ts` and `rules.spec.ts`; `eval-core`'s `assignment-target.spec.ts` and `eval-context.ts`' JSDoc; the register, `docs/backlog-retired.md`, `docs/README.md`, `docs/documentation/phase-11-plan.md`, `CLAUDE.md`, the skill, this document | **+6** / **+12** / **+5** | `getThis`' JSDoc in `eval-core` 0.16.0's `.d.ts` (corrected in step 7); the rest in no package |
-| 7 | The timing record | this document, the skill, `docs/backlog.md`, `docs/backlog-retired.md`, `docs/README.md` | 0 / 0 / 0 | no package |
-| 8 | The release commit | the three `package.json`, the three `CHANGELOG.md`, the register, `CLAUDE.md`, the skill, this document | 0 / 0 / 0 | the release |
+| 7 | The timing record | this document, the skill, the register, `docs/backlog-retired.md`, `docs/README.md` | 0 / 0 / 0 | no package |
+| 8 | The release commit | the three `package.json`, the three `CHANGELOG.md`, the `eval-signals` and `eval-forms` READMEs, the register, `docs/backlog-retired.md`, `docs/README.md`, `CLAUDE.md`, the skill, this document | 0 / 0 / 0 | the release |
 | 9 | The post-publish record | the register, `CLAUDE.md`, the tags, the skill, this document | 0 / 0 / 0 | no package |
 | 10 | Retrospect | this document's § 9 and § 10, `docs/standing-rules.md` if a rule stands, `CLAUDE.md`, `docs/README.md`, the register, the skill | 0 / 0 / 0 | no package |
 
@@ -1145,7 +1148,8 @@ Q10 is a new row, so supplement 7 re-measures every probe's red set with it in p
   The rest pin what 0.16.0 leaves: `'undefined'`, a single call case-sensitively, the two refusals, and
   `/reactive`'s default. The fixture is an **inherited** getter: measured on the 0.15.1 and step 4
   bundles (`ci55.mjs`, `results/ci55-*.txt`), under `caseInsensitive` an own getter's throw already
-  reached the caller on 0.15.1, through the case-variant search, and an inherited one's did not; with
+  reached the caller on 0.15.1, through the case-variant search, and an inherited one's did not when
+  read as spelled, `x.t`, though it did by a case variant, `x.T` (corrected in step 8); with
   an own getter the `caseInsensitive` rows were green on 0.15.1, pinning nothing that changed. The
   CHANGELOG's A55 bullet already says so.
 - **F29** ([its entry](../backlog-retired.md#f29)): two cases, one per adapter, a rule that does not
@@ -1257,9 +1261,9 @@ Q10 is a new row, so supplement 7 re-measures every probe's red set with it in p
 
   **Valid**: the A/A control's medians lie within ±1.44%, none above the regression test (at most 15
   of 24 positive). **No regression**: B's medians lie between −0.67% and +1.04% on the deciding paths
-  and between −1.04% and +0.95% on the reported ones, at most 15 of 24 positive where 18 are needed. A valid run
-  decides, so no second run; the release goes ahead on the timing. The prototype's two runs were void
-  at a noise floor of about ±4% (finding 11); this run's control stayed within ±1.44%.
+  and between −1.04% and +0.95% on the reported ones, at most 15 of 24 positive where 18 are needed. A
+  valid run decides, so no second run; the release goes ahead on the timing. The prototype's two runs
+  were void at a noise floor of about ±4% (finding 11); this run's control stayed within ±1.44%.
 - **Memory arm**: none, as § 3.7 states, from the patches.
 - **Step 6's review** ([SR4](../standing-rules.md#sr4)), its four Minors: § 4's row and the skill said
   step 6 shipped in no package, but `getThis`' JSDoc reaches `eval-core` 0.16.0's `.d.ts`, which the
@@ -1273,6 +1277,131 @@ Q10 is a new row, so supplement 7 re-measures every probe's red set with it in p
   supplement 17's `t7/run1/`.
 - **Criterion**: the staged diff's hash; the gate green at 3533 / 462 / 391; doc-links 0 dangling;
   `sha256sum -c` on supplement 17's `SHA256SUMS.txt`, the rules file's hash among them.
+- **The file list** (§ 4's table, corrected in this step, [SR3](../standing-rules.md#sr3)): beyond this
+  document and the skill, the register for Work in flight, `docs/backlog-retired.md` for step 6's
+  Minors 2 and 3, and `docs/README.md`'s A48 row, which names each step. (Recorded in step 8, from
+  step 7's review, M-1.)
+- **Outcome**: run 1 valid, no regression, measured in the sandbox, and the gate 3533 / 462 / 391,
+  doc-links 0 dangling. Committed as da73cbd; its body records the placement on the maintainer's
+  checkout and the review, whose Important, this bullet, was added in step 8.
+
+### Step 8 — the release commit
+
+- **Place, don't draft.** The step's whole change is pinned as `step-8/step-8.patch` in supplement 22,
+  placed as step 7's was ([SR36](../standing-rules.md#sr36)).
+- **The versions** (§ 2, D7), in one commit ([SR42](../standing-rules.md#sr42)): `eval-core` 0.15.1 →
+  **0.16.0**; `eval-signals` 0.8.0 → **0.9.0**, its peer range on `eval-core` `>=0.15.0 <0.16.0` →
+  `>=0.16.0 <0.17.0`; `eval-forms` 0.8.0 → **0.9.0**, the same on `eval-core` and `>=0.8.0 <0.9.0` →
+  `>=0.9.0 <0.10.0` on `eval-signals`. Each a minor by behaviour, the floors raised rather than only
+  the ceilings, since the forwarded behaviour exists only in 0.16.0 and every earlier `eval-signals`
+  requires an earlier `eval-core`.
+- **The CHANGELOGs.** `eval-core`'s `[Unreleased]` moves under `[0.16.0] - 2026-11-08`, with a
+  summary; `eval-signals` and `eval-forms` gain `[0.9.0] - 2026-11-08`, each stating what reaches it,
+  as step 6's rows witness: through a signal a getter's throw, in both modes, and one call to an
+  inherited getter under `caseInsensitive`, case-sensitively unchanged; no change to a member write
+  seen through a rule, or a signal over a record or a context `createSignalContext` built, whose write
+  guard refuses first, A50's `this.k = 5` and A51's `ns.k = 5` among them, while over a caller's
+  `EvalContext` both reach a signal; at `/reactive` the getter's throw under `'throw'` and a function
+  policy, the default unchanged. 2026-11-08 is npm's expected UTC date; step 9 corrects a heading that
+  differs.
+- **The `.d.ts` files** (§ 5), the gate's build against the published tarballs (`npm pack`), in
+  supplement 22's `results/`: `eval-core`'s differs from 0.15.1's in two JSDoc blocks, `lookups`' and
+  `getThis`', 21 lines, and in no declaration; `eval-signals`' one and `eval-forms`' three are
+  byte-identical to 0.8.0's. No shipped code of either downstream package changes since 67486ab: its
+  diff there is specs and two CHANGELOG links.
+- **The READMEs.** `eval-signals`' Install and `eval-forms`' Install and Versions quote the new ranges
+  and give the reason for each floor, keeping the earlier ones as history. No link is added, so
+  `tools/published-links.txt` does not change.
+- **The records.** The six entries' status, in the index and in `docs/backlog-retired.md`: "released in
+  `eval-core` 0.16.0, pending publish" for A55, A48, A50, A51 and A49; F29 is unchanged, tests only. The
+  *Unreleased* history row names the release; its counts do not move, 17 live. Work in flight gains the
+  release paragraph. `CLAUDE.md`'s plan sentence: released, pending publish. The skill's step 8 line.
+- **Step 7's review** ([SR4](../standing-rules.md#sr4)): its Important, step 7's missing **Outcome**,
+  added, so the skill's step state reads step 7 done; its Minors: § 4's row 7 says "the register"
+  where it said `docs/backlog.md`, and step 7's section records why its list grew; the two unwrapped
+  lines reflowed, F29's *Fixed* paragraph and step 7's No-regression bullet; the tree hash, confirmed
+  on the checkout, needs nothing.
+- **The file list** (§ 4's table, corrected in this step, [SR3](../standing-rules.md#sr3)): beyond the
+  manifests, the CHANGELOGs, the register, `CLAUDE.md`, the skill and this document, the `eval-signals`
+  and `eval-forms` READMEs, which quote the ranges, `docs/backlog-retired.md`, which holds the five
+  entries' status and step 7's Minor, and `docs/README.md`'s A48 row, which names each step.
+- **Supplement 18's review, a stop** (the stop rule, [SR4](../standing-rules.md#sr4)): its Critical,
+  C1, `eval-core`'s A55 bullet, written in step 2 and shipped by this step's dated heading, said that
+  under `caseInsensitive` "an own getter already threw, and an inherited one was swallowed". On 0.15.1
+  an own getter's `let {t} = x` was swallowed under `caseInsensitive` too (`member-read.spec.ts`' row
+  `let {t} = x; 1 · own`, red on `code-at-9e88d18`; cited in supplement 19 as
+  `assignment-target.spec.ts`', corrected in supplement 20), and, its I1, an inherited getter read by
+  a case variant, `x.T`, already threw (`ci55-v0151.txt`). Supplement 19's bullet named each: a member
+  read of an own getter, and of an inherited one by a case variant, threw; an inherited one read as
+  spelled, and a destructuring read in both modes, was swallowed (superseded below, in supplement 20).
+  Its I2, `eval-signals`' README, made the same claim unscoped: it now names the fixture its rows run,
+  `x.t` over an inherited getter and `c.g + 1`, and points to `eval-core`'s CHANGELOG for the other
+  paths; that package's CHANGELOG says "a member read of an own getter". Its Minors: `eval-forms`'
+  headline says `/reactive`, where its rows run; the register's release paragraph names
+  `eval-signals`' Install alone, which has no Versions; `eval-forms`' "0.16.0 keeps" sentence moved
+  after the history it refers to; step 7's No-regression bullet reflowed; `docs/README.md`'s A48 row
+  gains step 8, and the file list it. Pinned again as supplement 19. My check of step 2's text was
+  against its own words, not the red set; the red set had the destructuring row.
+- **Supplement 19's review, a second stop**: four shipped sentences false on a path they name, each
+  measured on the published 0.15.1 bundle and the 0.16.0 build (supplement 20's `a55paths.mjs`,
+  `results/a55paths-*.txt`). C-A: the summary's "a write through `this` to a `Registry` reaches its
+  map", false for a prior scope's `thisArg` that is another `Registry` (group `Y`, held under A56) and
+  for a key the original does not hold. C-B: "`x.t += 1` or `x.t++` failed later, at the write", true
+  only where `t` has no setter; with one, 0.15.1 wrote `NaN` through it. C-C: "a member read already
+  threw for an own getter", false for an index, `x[0]`, where `x["0"]` threw; and "an inherited one
+  read by a case variant", false for a getter two prototypes up. C-D: `eval-forms`' README's `''`,
+  which only a `text` rule renders. I-1: the summary stated a call count. So the summary no longer
+  restates the bullets, naming what changes and leaving each path to its bullet, and the A55 bullet
+  says, by its fixture and its mode, what 0.15.1 did, claiming under `caseInsensitive` only the reads
+  measured; `eval-signals`' headings name `c.g` and a getter's throw. Its Minors: this section's row
+  citation, the reflow, and the README's "keep" sentence naming both packages. Pinned again as
+  supplement 20. The rule I took from it: a sentence stating what a release did before is checked
+  against every shape the measurement varies, setter, index and prototype depth among them, not
+  against the rows' fixture alone.
+- **Supplement 20's review, a third stop**: its Critical, the downstream CHANGELOGs' "its other
+  changes reach an expression too" and "reach a rule too", false for `eval-core`'s two member write
+  changes: a signal context's write guard refuses a member write to an object the evaluation did not
+  create before `eval-core` sees it, so neither A50's `this.k = 5` nor A51's `ns.k = 5` reaches a
+  signal or a rule (`eval-signal.spec.ts`' two refusal rows; both forms adapters build their context
+  with `createSignalContext`). Supplement 21's two sentences said that release's member read changes
+  reach a read, `eval-forms`' adding the `caseInsensitive` ones at `/signals` only, and its member
+  write changes do not (`eval-signals`' superseded below, in supplement 22). Its Important,
+  `eval-core`'s A48 *Fixed* heading, stated a call count for every member read; under
+  `caseInsensitive` `this.g` through a global prior scope's object still calls its getter three times.
+  The heading names `c.g`, and the body says each form it lists calls the getter once, measured at one
+  and two prototypes up and for a proxy's `get` trap (supplement 21's `a48count.mjs`,
+  `results/a48count-*.txt`: 2 calls to 1 under `caseInsensitive`, 1 to 1 case-sensitively). Its
+  Minors: A50's heading says "for a key it holds", and the stop above is in the past tense. The same
+  pass scoped A51's heading to "is refused", since a blocked key or a write policy refuses with its
+  own error, and A55's headings, both summaries and both READMEs' floor sentences to a member read,
+  the path the rows measure. Pinned again as supplement 21. The rule from this one: a sentence that
+  says what reaches a package names the paths that do not.
+- **Supplement 21's review, a fourth stop**: its Critical, `eval-signals`' sentence that its member
+  write changes do not reach a signal, false over an `EvalContext` the caller built, which
+  `createEvalSignal` hands to the walk unchanged, without `createSignalContext`'s guard. Measured
+  through `createEvalSignal` itself ([SR40](../standing-rules.md#sr40)), on 0.8.0's published bundle
+  over 0.15.1's and on this tree's two (supplement 22's `callerctx.mjs`, `results/callerctx-*.txt`),
+  in both modes: over a caller's context `this.k = 5; k` over a host's `Registry` holding `k` read 1
+  and set an own `k` on 0.15.1, and reads 5 from the map on 0.16.0; `ns.k = 5` over an `EvalScope` set
+  an own `k` and now throws `Write to an evaluation scope is blocked`, which the signal's `onError`
+  handles (`onerror.mjs`); over a record both throw `SignalContextWriteError`, as before. The sentence
+  now names both contexts. Its I2, "before `eval-core` sees it", wrong as a mechanism, since
+  `eval-core`'s visitors ask the guard: "first". Its I1, the register's release paragraph and this
+  section's CHANGELOGs bullet, scoped the same way; its Minor, the third stop's "Both sentences",
+  corrected. `eval-forms`' sentence is unchanged: both adapters build their context with
+  `createFieldContext`, which calls `createSignalContext`, and neither takes a caller's. Pinned again
+  as supplement 22.
+- **Rows**: none, 3533 / 462 / 391. **Probes**: none; the step changes no behaviour, and step 6's rows
+  are the downstream witnesses ([SR24](../standing-rules.md#sr24)).
+- **Criterion**: the staged diff's hash; the gate green at 3533 / 462 / 391, its lint reading each peer
+  range against the workspace version; doc-links 0 dangling; release-tags 0 failing; `sha256sum -c` on
+  supplement 22's `SHA256SUMS.txt`.
+- **Review**: the `code-reviewer` ([SR33](../standing-rules.md#sr33)): the step changes files under
+  `modules/`.
+- **Outcome**: measured first in the sandbox: the gate 3533 / 462 / 391, doc-links 0 dangling,
+  release-tags 0 failing; the `.d.ts` diffs as above. The commit's body records the run on the
+  maintainer's checkout and the code review. Publishing and tagging are the maintainer's; step 9 is
+  the post-publish record.
 
 ## 5. Public API surface
 
