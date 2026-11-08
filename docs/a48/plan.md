@@ -1,7 +1,10 @@
 # A48–A51, A55 and F29 — member reads and writes that miss the data, and a getter's throw (`@zvenigora/ng-eval-core` 0.16.0)
 
 **Date**: November 3, 2026
-**Revision**: 9 — step 9, the post-publish record: all three on npm 2026-11-08, tagged annotated at
+**Revision**: 10 — step 10, the retrospect: § 9 maps the published entries to their witnesses, § 10
+records twelve review stops of one cause; SR45 is new, § 0's P-1 to P-3 are promoted as SR46 and
+SR47, and SR19 and SR40 are amended; the plan is complete (§ 4, Step 10).
+Revision 9 — step 9, the post-publish record: all three on npm 2026-11-08, tagged annotated at
 7d9d488; F31 opened; step 8's last review carried (§ 4, Step 9).
 Revision 8 — step 8, the release commit: `eval-core` 0.16.0, `eval-signals` 0.9.0 and
 `eval-forms` 0.9.0 in one commit, pending publish; step 7's Outcome added, its review's Important,
@@ -1451,6 +1454,31 @@ Q10 is a new row, so supplement 7 re-measures every probe's red set with it in p
   doc-links 0 dangling, release-tags 55 rows, 65 tags. The commit's body records the run on the
   maintainer's checkout.
 
+### Step 10 — the retrospect
+
+- **Place, don't draft.** The step's whole change is pinned as `step-10/step-10.patch` in supplement
+  24, placed as step 9's was ([SR36](../standing-rules.md#sr36)).
+- **This document's § 9 and § 10.** § 9 maps each published entry to its witnesses and restates
+  none; § 10 records what shipped, the corrections, the probe misses, the twelve review stops and
+  their one cause, the process traps, and the rules weighed.
+- **The rules** (§ 10.6): [SR45](../standing-rules.md#sr45) new, and § 0's three promoted as
+  [SR46](../standing-rules.md#sr46) and [SR47](../standing-rules.md#sr47);
+  [SR19](../standing-rules.md#sr19) and [SR40](../standing-rules.md#sr40) amended, each with its
+  *Origin* in this document.
+- **The records.** No plan is active: `CLAUDE.md`'s two plan sentences, `docs/README.md`'s Active
+  plan, which now says none, and the step skill, which names none and stops at its § 1, keeping its
+  state rule's note on the Outcome bullet. The plan joins `docs/README.md`'s Completed tracks and
+  `CLAUDE.md`'s design records. The register's Work in flight records the plan complete.
+  `CLAUDE.md`'s test paragraph names SR45.
+- **Rows**: none, 3533 / 462 / 391. **Probes**: none. **Review**: none of
+  [SR33](../standing-rules.md#sr33)'s, since no file under `modules/` or `tools/` changes.
+- **Criterion**: the staged diff's hash; the gate green at 3533 / 462 / 391; doc-links 0 dangling;
+  release-tags 55 rows, 65 tags, all annotated, 0 failing; `sha256sum -c` on supplement 24's
+  `SHA256SUMS.txt`.
+- **Outcome**: measured first in the sandbox: the gate 3533 / 462 / 391, doc-links 0 dangling,
+  release-tags 55 rows, 65 tags. The commit's body records the run on the maintainer's checkout. The
+  plan is complete.
+
 ## 5. Public API surface
 
 No export changes shape ([SR12](../standing-rules.md#sr12)); behaviour changes as § 2 says, so the
@@ -1499,8 +1527,173 @@ release is a minor. Step 8 diffs each `.d.ts` against the published 0.15.1, 0.8.
 
 ## 9. Contract after this lands
 
-Written in step 10.
+Written by step 10, from the code at 7d9d488 and the measurements pinned in supplements 16 to 23.
+**The contract is the three published entries, not this section**: `eval-core`'s `[0.16.0]`,
+`eval-signals`' `[0.9.0]` and `eval-forms`' `[0.9.0]`, each checked by five reviews against its
+paths, and the README passages they name. Restating them here would lose their scope
+([SR45](../standing-rules.md#sr45)), so this section maps each to its witnesses and says what it
+leaves open.
+
+| Entry | Its witnesses | Its probes |
+| :--- | :--- | :--- |
+| `eval-core`, A55: a member read lets a getter's or a proxy `get` trap's throw reach the caller | `member-read.spec.ts`' A55 rows, every form, own and inherited, both modes, and the non-`Error` row; `a55paths-*.txt` for the setter, index and depth shapes | Step 2's P2 probes; code-at-9e88d18 |
+| `eval-core`, A48: under `caseInsensitive` `c.g` calls an inherited getter once; a proxy's `has` trap; a get-only proxy's case variant | `member-read.spec.ts`' A48 rows; `a48count-*.txt`, depths one and two and a proxy's `get` trap | Step 2's and step 3's; P6-8 |
+| `eval-core`, A50: a write through `this` to a `Registry` that is the context's original reaches its map, for a key it holds | `assignment-target.spec.ts`' `H`, `S` and `Y` rows, the original and the copy | Step 3's P3 probes; P4-6 |
+| `eval-core`, A51: a member write to an `EvalScope` is refused | `assignment-target.spec.ts`' `J` and `S` rows; the guard spec's four | Step 4's P4 probes |
+| `eval-core`, A49: a call count is not the contract | `assignment-target.spec.ts`' `C`, `L` and `Q` rows, with and without a read hook, marked `design` | Step 5's P5 probes; P6-3 to P6-5 |
+| `eval-signals`: a getter's throw through a signal; one call under `caseInsensitive`; the write guard first over a record | `eval-signal.spec.ts`' step 6 block, both modes | code-at-9e88d18; P6-6 to P6-8 |
+| `eval-signals`: over a caller's `EvalContext` A50 and A51 reach the signal | measured through `createEvalSignal` (`callerctx-*.txt`, supplement 23, both modes with a mode check); no row | none |
+| `eval-forms`: at `/reactive` a `text` rule over a getter that throws, under each policy | `field-schema.spec.ts`' three rows | code-at-9e88d18; P6-9 |
+
+**Left open by this contract**: [A54](../backlog.md#a54), [A56](../backlog.md#a56) to
+[A61](../backlog.md#a61), unscheduled, and [F31](../backlog.md#f31), A55 at `eval-forms`'
+`/signals`, which no row runs. The caller's-context path of `eval-signals` is measured, not pinned
+by a row.
 
 ## 10. Retrospect
 
-Written in step 10.
+Written in step 10, 2026-11-08 ([SR7](../standing-rules.md#sr7)). Like the A33 plan's, it keeps what
+a later plan can reuse. Each step's outcome in § 4 says what that step did.
+
+### 10.1 What shipped
+
+`eval-core` 0.16.0, `eval-signals` 0.9.0 and `eval-forms` 0.9.0, released together at 7d9d488
+([SR42](../standing-rules.md#sr42)) and published 2026-11-08: A55, A48, A50 and A51 fixed, A49
+decided a documented limit, F29's two cases in no package. Tagged annotated: `eval-core@0.16.0`
+(object 0e4ae0d), `eval-signals@0.9.0` (e23c123), `eval-forms@0.9.0` (c0d1c32). Each published
+tarball's code, `.d.ts` and manifest are byte-identical to the build of 7d9d488's tree.
+
+- **Closed**: A55, A48, A50, A51, A49 and F29. **Opened**: A55 to A61 by steps 1 to 5, A55 closed
+  again in step 2, and [F31](../backlog.md#f31) by step 9. The register's history row reads 16 live
+  before, 7 opened, 6 closed, 17 at 7d9d488; the *Unreleased* row after it, 17 → 18.
+- **The rows**: 3303 / 450 / 386 to 3533 / 462 / 391. `eval-core` gained 30 in step 1, 86 in step 2,
+  48 in step 3, 52 in step 4, 8 in step 5 and 6 in step 6; `eval-signals` 12 and `eval-forms` 5 in
+  step 6.
+- **The `.d.ts`**: `eval-core`'s differs from 0.15.1's in two JSDoc blocks, `lookups` and `getThis`,
+  and in no declaration; the four downstream files are byte-identical to 0.8.0's.
+- **The timing**: one valid run, no regression on any of seven paths (step 7).
+- **Release tags**: 55 rows and 65 tags at the gate, all annotated.
+
+### 10.2 Plan corrections, by step and revision
+
+The revision is the step's number. The revision lines at the top of this document give each in full;
+the pattern across them is the one § 10.4 records.
+
+- **Revision 1, step 1.** Five reviews each stopped the commit on a README sentence about the
+  `caseInsensitive` copy or a write through `this`; § 4.1 records each. The passages were cut back
+  to the correction [SR31](../standing-rules.md#sr31) needs, and A56, A57 and A58 record the paths.
+- **Revision 2, step 2.** § 3.1's CHANGELOG heading corrected to `### Breaking`; step 1's count to
+  30.
+- **Revision 3, step 3.** The write's test moved from identity to the receiver's origin after
+  supplement 10's Critical; step 2's get-only proxy change, measured wider than recorded, stated;
+  A59 opened.
+- **Revision 4, step 4.** Step 3's two Important points stated and pinned; A60 opened; step 3's
+  section corrected.
+- **Revision 5, step 5.** Two stops, on the README's counts and then the CHANGELOG's; the passage
+  rewritten to promise no count; A61 opened.
+- **Revision 6, step 6.** The downstream rows use an inherited getter, since an own one's throw
+  already reached the caller under `caseInsensitive`; eight cases red under no probe at first, P6-5
+  to P6-9 added.
+- **Revision 7, step 7.** The timing record; its Outcome bullet left out, added in step 8.
+- **Revision 8, step 8.** Four stops before the fifth placement landed (§ 10.4). § 4's row 8 widened
+  to the two downstream READMEs, `docs/backlog-retired.md` and `docs/README.md`
+  ([SR3](../standing-rules.md#sr3)).
+- **Revision 9, step 9.** The post-publish record; F31 opened; the fourth stop's measurement
+  corrected.
+- **Revision 10, step 10.** This revision. § 4's row 10 stands as written: a rule stands, so
+  `docs/standing-rules.md` changes.
+
+### 10.3 Each probe prediction that missed, and why
+
+Every red set was measured in the sandbox before a supplement was pinned, so no prediction reached
+the maintainer's checkout wrong, and every placement's probes matched their pinned sets by name. The
+misses were caught there:
+
+| Step | What missed | Why |
+| :--- | :--- | :--- |
+| 3 | A duplicate test title, `this.k = 5` twice in `H`, hid two red cases from a name comparison | A name comparison counts names, not cases; the runner now checks unique names against Jest's failed count |
+| 4 | `J` and `Y` rows sharing a source gave 33 names for 35 failed | Two rows with one source in one group make one case name; rows gained an optional `label` |
+| 4 | P4-6 did not compile, and 152 suites failed to run | A probe's suite must compile; the runner checks "Test suite failed to run" |
+| 5 | `Q`'s `g += 1` case-sensitively, then `C`'s `g (a read hook)` under `caseInsensitive`, red under no probe | The probes were written from the mechanism, not checked case by case against the new rows; P5-5 and P5-7 added |
+| 6 | The A55 rows over an own getter were green on 0.15.1's code under `caseInsensitive` | An own getter's throw already reached the caller there; the fixture became an inherited getter |
+| 6 | Eight new cases red under no probe | As step 5's; P6-5 to P6-9 added |
+
+The rules they share stand already: [SR15](../standing-rules.md#sr15), every new check gets a probe
+it is seen to fail under, and [SR16](../standing-rules.md#sr16), each probe read case by case. Each
+miss was one of them skipped, and caught before pinning.
+
+### 10.4 Reviewer findings that changed dictated text
+
+Twelve placements were stopped by the code review, each on a sentence that ships, or a plan claim,
+true of its rows' fixture and false on a path its words reached. Each was measured on a production
+bundle before it was rewritten.
+
+| Step | Supplement | The sentence | The path that broke it |
+| :--- | :--- | :--- | :--- |
+| 1 | 2 to 6 | The README's passages on the `caseInsensitive` copy and a write through `this` | A binding of the same name; a pushed scope; a null-prototype or other-realm object; a `thisArg` the reads also reach; the caller's object reached a second way (§ 4.1) |
+| 3 | 10 | The CHANGELOG's "a `Registry` held as a value is written as before" | The original reached as a value, `self.q = 7; self.q` |
+| 5 | 13 | The README's call counts | A read hook, which resolves a key again |
+| 5 | 14 | The CHANGELOG's "those counts hold without a read hook only" | True of `x += 1` alone |
+| 8 | 18 | A55's "an own getter already threw, an inherited one was swallowed", written in step 2 | `let {t} = x` over an own getter; `x.T` over an inherited one |
+| 8 | 19 | The summary's `Registry` write; A55's "failed at the write"; "already threw for an own getter"; the forms README's `''` | Another `Registry` as a prior scope's `thisArg`; a setter; an index key; a getter two prototypes up; a `visible` rule |
+| 8 | 20 | The downstream "its other changes reach an expression / a rule too"; the A48 heading's count | A member write, refused by the write guard first; `this.g` through a prior scope's object |
+| 8 | 21 | `eval-signals`' "its member write changes do not reach a signal" | An `EvalContext` the caller built, passed to the walk without the guard |
+
+The cause is the same each time. The sentence was written from the rows, which run one fixture, and
+stated as a rule over every path its words named. The rules standing at the start each cover a part:
+[SR44](../standing-rules.md#sr44) a documented limit, [SR19](../standing-rules.md#sr19) an option's
+leg, [SR40](../standing-rules.md#sr40) the entry point, [SR21](../standing-rules.md#sr21) a witness
+per claim. None says to list the paths a sentence's words reach before it ships, or that a dated
+heading ships lines written steps earlier. The fifth placement of step 8 landed when every heading
+and summary was scoped to its body's fixture and every reach sentence named the paths that do not
+reach. [SR45](../standing-rules.md#sr45) is that practice.
+
+The other findings that changed text: step 3's two Important points, a prior scope's `thisArg`
+written through the original's map and a `Registry` `thisArg` that is not the original, stated in
+step 4; step 4's Important, `resolveMemberTarget`'s JSDoc; step 5's Important, no row for the
+read-hook leg, pinned in step 6; step 7's Important, its missing Outcome (§ 10.5); and step 8's last
+I1 and I2, the measurement's modes (§ 10.5).
+
+### 10.5 Process traps
+
+- **The step skill read step 7 as next after step 7.** Its section had no Outcome bullet, and the
+  skill reads state from the last one. Step 8 added it. The skill's note now says each step's
+  section ends with its Outcome, written in the step's own patch.
+- **A measurement reported two modes and ran one.** `callerctx.mjs` passed `{ caseInsensitive }` as
+  `createEvalSignal`'s options, which read evaluation options under `eval`, so both runs were
+  case-sensitive. The shipped sentences held when rerun with `{ eval }` and a mode check.
+  [SR19](../standing-rules.md#sr19) is amended: a measurement that reports a leg checks that the
+  option reached the code path.
+- **Hand-copied figures in prompts.** Supplement 17's prompt said 18 checksum lines where there were
+  19, and step 8's fifth prompt gave a hash ending `…4a4bca81` where the patch's ends `…3a4bca81`;
+  the commit body, written by a script, was right. A figure in a prompt is pasted from the command
+  that printed it.
+- **A publish reported `E409`, and the version was published.** An `npm publish` of `eval-core`
+  reported "Cannot publish over previously staged version" 32 seconds before the registry's time for
+  0.16.0, and `npm stage list` showed nothing staged. Before a publish is retried,
+  `npm view <package>@<version>` says whether it is already up, and a staged version is checked
+  against the build before it is approved.
+- **Edits during a gate.** Three times a prose edit was made while the sandbox gate ran, and the
+  gate was stopped and run again on the final tree, as [SR8](../standing-rules.md#sr8) requires.
+
+### 10.6 Rules weighed
+
+Each candidate was weighed against the failures in §§ 10.3–10.5, and § 0's three rules against the
+steps they governed. The rule texts are in `docs/standing-rules.md`, in the file's form, each with
+its *Origin* and *Red*.
+
+| Candidate | Decision | Reason | *Origin* in this plan |
+| :--- | :--- | :--- | :--- |
+| New SR45: a shipped sentence, heading and summary included, claims no more than its witnesses run; its paths are listed from the code and measured; a dated heading's lines are checked again at the release step | **Promote, SR45** | Twelve stops, one cause, and no standing rule asks for the list of paths before a sentence ships | § 10.4 |
+| SR40: measured through every entry path the package's README documents | **Amend SR40** | Step 8's fourth stop was a documented entry path the default path's layer does not cover | § 10.4, step 8, supplement 21 |
+| SR19: a measurement that reports a leg checks that the option reached the code path | **Amend SR19** | `callerctx.mjs` reported a leg it did not run | § 10.5 |
+| P-1: a new write-path refusal says where it runs, relative to the write policy and the right side, and is measured through `eval-signals` | **Promote, SR46** | It held: step 6's refusal rows pin the order, and step 8's fourth stop is the same order from a caller's own context | § 0; § 1.4, finding 9 |
+| P-2 and P-3: a figure is read from a pinned file and names it; "the pinned file wins" governs measured facts only | **Promote, SR47**, the two as one | P-2 is a case of P-3: both say where a figure comes from | § 0; § 1.3 |
+| A rule for the Outcome bullet | **Declined**, the skill's note instead | It is the skill's own reading rule; the skill says it | § 10.5 |
+| A rule for publish retries | **Declined**, recorded here | Publishing is the maintainer's; this section carries it | § 10.5 |
+| A rule for figures pasted into prompts | **Declined**, recorded here | Prompts are not in the repository; the habit is the author's | § 10.5 |
+
+SR46 and SR47 are § 0's P-1 to P-3, which held through the plan. SR45 says what it adds to SR44 and
+relies on SR23 for the measurement; SR40's amendment and SR45's "every entry point the package
+documents" name one check from two sides, the measurement and the sentence, so the amended SR40
+cites the stop and SR45 its listing.

@@ -56,7 +56,7 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-**The [A48 plan](a48/plan.md) is active**, at Revision 9, steps 1 to 10:
+**The [A48 plan](a48/plan.md) is complete**, at Revision 10, steps 1 to 10:
 [A55](backlog-retired.md#a55), [A48](backlog-retired.md#a48), [A50](backlog-retired.md#a50) and
 [A51](backlog-retired.md#a51) fixed in its steps 2 to 4, [A49](backlog-retired.md#a49) decided a
 documented limit in step 5, the downstream rows and [F29](backlog-retired.md#f29) in step 6, the
@@ -66,7 +66,9 @@ published 2026-11-08. Step 1 opened A55, [A56](#a56), [A57](#a57) and [A58](#a58
 [A59](#a59), step 4 [A60](#a60) and step 5 [A61](#a61). Step 8's review stopped its commit four
 times, each on a shipped sentence false on a path it names, and the fifth placement landed. Step 9
 recorded the publish and opened [F31](#f31), from step 8's last review: no row witnesses A55 at
-`eval-forms`' `/signals`. Step 10, the retrospect, is next.
+`eval-forms`' `/signals`. Its retrospect, § 10, finds one cause behind the twelve stops, a shipped
+sentence stated more widely than its witnesses run: SR45 is new, § 0's three rules are SR46 and
+SR47, and SR19 and SR40 are amended.
 
 **The [A33 plan](a33/plan.md) is complete**, at Revision 6, steps 1 to 6: [A33](backlog-retired.md#a33),
 the case-insensitive lookup cache's miss re-validated by name, fixed, and [A34](backlog-retired.md#a34),

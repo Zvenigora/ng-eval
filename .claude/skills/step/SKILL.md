@@ -8,33 +8,27 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: `docs/a48/plan.md`
-Target: `@zvenigora/ng-eval-core` 0.16.0, with `eval-signals` 0.9.0 and `eval-forms` 0.9.0 — A48, A50,
-A51 and A55 fixed, A49 decided a documented limit, F29's two cases
+Plan document: none active
+Target: none
 Requested step: $ARGUMENTS
 
-**Which projects each step reaches** (the plan's § 4 is the scope):
+**No plan is active.** The A48 plan (`docs/a48/plan.md`), A48–A51, A55 and F29, is complete: it shipped
+as `eval-core` 0.16.0 with `eval-signals` 0.9.0 and `eval-forms` 0.9.0, and its retrospect is its § 10.
+The next plan retargets this file when it is written. It names the plan above, says which projects each
+step reaches, and records the gate's counts its steps start from: at 7d9d488, the release commit, and
+unchanged by the post-publish record and the retrospect, `eval-core` 3533, `eval-signals` 462,
+`eval-forms` 391.
 
-- **Steps 2 to 5 are `eval-core`**: step 2 A55 and A48, step 3 A50, step 4 A51, step 5 A49 as a
-  documented limit, each with its rows, an `[Unreleased]` line in its CHANGELOG and its entry retired.
-  Their prototypes are the pinned patches under `D:\repo.2026\ng-eval-base\a48-prototype\` and its
-  supplements, each beside its `SHA256SUMS.txt` ([SR32](../../../docs/standing-rules.md#sr32)).
-- **Step 6 is mostly `eval-signals` and `eval-forms`**: downstream rows and F29's two cases, with
-  step 5's carry-overs in `eval-core`'s spec and `getThis`' JSDoc, which reaches 0.16.0's `.d.ts`.
-- **Step 7 is the timing record**, run Claude-side (one valid run, no regression), and **step 8 the
-  release commit**: all three packages in one commit ([SR42](../../../docs/standing-rules.md#sr42)), its
-  CHANGELOG headings dated npm's expected UTC date, which step 9 corrects if npm's differs. A
-  `package.json` before step 8 is a stop-and-replan.
-- **Step 9 is the post-publish record**, after the maintainer publishes all three and writes their
-  three annotated tags at the release commit, and **step 10 the retrospect**.
-
-**The counts the steps start from**, the gate at 3bbc296: `eval-core` 3303, `eval-signals` 450,
-`eval-forms` 386. `eval-core` reaches 3333 at step 1, 3419 at step 2, 3467 at step 3, 3519 at step 4, 3527 at step 5 and 3533 at step 6, when `eval-signals` reaches 462 and `eval-forms` 391; each later step's movement is fixed in its prompt
-before its gate, and recorded in the plan's § 4.
+**Invoked while no plan is active, this skill stops at § 1.** Run the baseline, report it, say that
+no plan is active, and do nothing else. Do not run a step of a completed plan, and do not treat a
+register entry as a plan: a one-commit item or a batch has its exit criteria in the prompt
+(`CLAUDE.md`, "Working from a plan").
 
 **Step state**: read it from the plan, not from here. The last step in its § 4 with a recorded
 **Outcome** is done, and the next is the step after it in § 4's table. A plan's step 1 records its
 Outcome, and § 4 carries its table from Revision 1; a plan with neither cannot be read by this rule.
+Each step's section ends with its Outcome bullet, written in the step's own patch: a step without one
+reads as not done (the A48 plan's step 7).
 
 **The standing rules load with `CLAUDE.md`** (`docs/standing-rules.md`), and the plan's § 0, where
 it has one, adds to them; read it first. Each step's file list in the plan's § 4 is its scope, and it

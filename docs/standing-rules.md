@@ -132,11 +132,16 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
   Re-check the fixture under each leg, and assert the caller's own object beside the store: under
   `caseInsensitive`, `fromContext` copies a plain context into a `Registry`. A refusal row's fixtures
   include a blocked name the object's prototype holds and one it does not, and a null-prototype object:
-  a check that falls back to the prototype refuses only the names the prototype holds. *Origin*:
+  a check that falls back to the prototype refuses only the names the prototype holds. A measurement
+  that reports a leg checks that the option reached the code path, by a result only that leg gives:
+  under `caseInsensitive`, a key read by a case variant. *Origin*:
   [the A35 plan's second § 1.2](a35/plan.md#12-standing-rules-from-revision-16);
   [A33 plan § 10.4](a33/plan.md#104-reviewer-findings-that-changed-dictated-text), step 2's Critical,
-  whose characterisation tried only names the prototype holds. *Red*: nothing — held by review. Its
-  instance is witnessed by the A33 plan's R6r, R6w, R7r and R7w, red under the count rule.
+  whose characterisation tried only names the prototype holds;
+  [A48 plan § 10.5](a48/plan.md#105-process-traps), whose `callerctx.mjs` reported two modes and passed
+  the mode where `createEvalSignal` does not read it, so both of its runs were case-sensitive. *Red*:
+  nothing — held by review. Its instance is witnessed by the A33 plan's R6r, R6w, R7r and R7w, red under
+  the count rule.
 - <a id="sr41"></a>**SR41 — A row that pins a pass-through asserts identity, never type.** Assert a
   value that passes through with `toBe` against the value that went in. A `toBeInstanceOf(Promise)`
   check, or awaiting the result, passes for a re-wrapped promise as well as for the original. Probing
@@ -234,11 +239,17 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
   held by review.
 - <a id="sr40"></a>**SR40 — A claim about what the caller receives is measured at the entry point.**
   Measure it where the caller stands, through every layer between the changed code and the caller,
-  not at the layer being changed. *Origin*: [the A24 plan's § 1.2](a24/plan.md#12-findings-that-shape-the-plan)
-  finding 2. A25's decided text said a rejection reaches the caller "as their own value". That was
-  true of the visitor once its catch was gone, and false at `evalAsync`, whose `ensureError` turns
-  any rejection that is not an `Error` into a new one. *Red*: nothing — held by review. Its one
-  instance is witnessed by the A24 plan's group C rows, which assert at `evalAsync`.
+  not at the layer being changed, and through every entry path the package's README documents: a
+  path that takes the caller's own object past a layer the default path builds is a separate path.
+  *Origin*: [the A24 plan's § 1.2](a24/plan.md#12-findings-that-shape-the-plan) finding 2. A25's
+  decided text said a rejection reaches the caller "as their own value". That was true of the
+  visitor once its catch was gone, and false at `evalAsync`, whose `ensureError` turns any rejection
+  that is not an `Error` into a new one.
+  [A48 plan § 10.4](a48/plan.md#104-reviewer-findings-that-changed-dictated-text), step 8's fourth
+  stop: `eval-signals`' "its changes to a member write do not reach a signal" held over a record and
+  failed over an `EvalContext` the caller built, which `createEvalSignal` passes to the walk without
+  `createSignalContext`'s write guard. *Red*: nothing — held by review. Its first instance is
+  witnessed by the A24 plan's group C rows, which assert at `evalAsync`.
 - <a id="sr44"></a>**SR44 — A documented limit states the contract that holds on every path.** A limit
   is written as what every path keeps, not as the mechanism that usually causes it. Before a stronger
   wording is written, the paths that contradict it are measured, and a contrast row pins a path that
@@ -248,6 +259,37 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
   written value "is not seen for a text parsed or compiled before", false for a new call-options object)
   and its re-review's I-b (an eviction clause no row witnessed). *Red*: nothing — held by review. Its
   instance is witnessed by W6, which the stronger wording fails.
+- <a id="sr45"></a>**SR45 — A shipped sentence claims no more than its witnesses run.** A README,
+  CHANGELOG or JSDoc sentence, its heading and its entry's summary included, names the fixture its
+  witnesses run (the shape, the mode, the entry point, the policy), or claims only what every path
+  keeps ([SR44](#sr44)). Before it ships, the paths its words reach are listed from the code, not from
+  the rows: each store shape, both modes, every entry point the package documents, a setter beside a
+  getter, an index key beside a name, a deeper prototype, each policy. Each one the sentence does not
+  exclude is measured ([SR23](#sr23)). A summary names what changes and leaves each path to its
+  bullet; it restates none, since a restated path loses its bullet's scope. A sentence that says what
+  reaches a package also names the paths that do not. Dating a heading ships every line under it,
+  whichever step wrote it, so the release step checks each line again under this rule. [SR44](#sr44)
+  governs a documented limit; this rule governs every shipped sentence, a heading included. *Origin*:
+  [A48 plan § 10.4](a48/plan.md#104-reviewer-findings-that-changed-dictated-text): twelve placements
+  stopped by review, five in step 1, one in step 3, two in step 5 and four in step 8, each on a
+  sentence true of its rows' fixture and false on a path its words reached. *Red*: nothing — held by
+  review. Its instances are the A48 plan's `a55paths.mjs`, `a48count.mjs` and `callerctx.mjs`, run on
+  the published bundles and the release's, which the 0.16.0 and 0.9.0 sentences were rewritten to.
+- <a id="sr46"></a>**SR46 — A new write-path refusal says where it runs.** It says where it runs
+  relative to `EvalContext.checkMemberWrite` and to the right side, and it is measured through
+  `eval-signals`, whose signal context refuses a member write first: a refusal that runs before the
+  write policy turns `SignalContextWriteError`, which bypasses `onError`, into a plain `Error` that
+  `onError` handles. *Origin*: the [A48 plan's § 0](a48/plan.md#0-rules-the-plan-adds), P-1, from
+  its § 1.4 finding 9; its step 8's fourth stop is the same order seen from a caller's own
+  `EvalContext`, where no guard runs first and A51's refusal reaches the signal's `onError`. *Red*:
+  `eval-signal.spec.ts`' two refusal rows, from the A48 plan's step 6, red under its P6-7.
+- <a id="sr47"></a>**SR47 — A figure is read from a pinned file, and names it.** A count or
+  measurement in a plan or a commit body is read from a pinned file, named with its hash where it is
+  first cited, since scripts that measure the same change differ: a figure such as "P50 moves 12
+  rows" is one script's. "The pinned file wins" governs measured facts only; a decision is
+  re-decided in the plan, not inherited from a prototype's notes. *Origin*: the
+  [A48 plan's § 0](a48/plan.md#0-rules-the-plan-adds), P-2 and P-3, from its § 1.3's five row
+  scripts. *Red*: nothing — held by review.
 
 ## Hygiene
 

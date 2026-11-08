@@ -49,11 +49,10 @@ patch, and its plan is `docs/documentation/phase-11-plan.md`. The A24 plan, `doc
 the await track, A25, A24 and D13 — is complete: it shipped as `eval-core` 0.15.0, `eval-signals`
 0.8.0 and `eval-forms` 0.8.0. The A33 plan, `docs/a33/plan.md` — the case-insensitive lookup cache's
 miss, A33, and the options a parse remembers, A34 — is complete: it shipped as `eval-core` 0.15.1, a
-patch. The active plan is `docs/a48/plan.md`, A48–A51, A55 and F29: A48, A50, A51, A55 and F29
-fixed and A49 decided a documented limit, released as `eval-core` 0.16.0 with `eval-signals` 0.9.0
-and `eval-forms` 0.9.0, published 2026-11-08 and tagged at 7d9d488; its step 10, the retrospect, is
-next. What `ROADMAP.md` has left is Phases 7
-and 8, which it reserves without specifying them.
+patch. The A48 plan, `docs/a48/plan.md` — member reads and writes that miss the data, and a getter's
+throw: A48, A50, A51, A55 and F29 fixed and A49 decided a documented limit — is complete: it shipped
+as `eval-core` 0.16.0 with `eval-signals` 0.9.0 and `eval-forms` 0.9.0. No plan is active. What
+`ROADMAP.md` has left is Phases 7 and 8, which it reserves without specifying them.
 
 **Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left
 unfixed, decisions logged rather than made, gaps in what the suite can catch — is in
@@ -125,10 +124,9 @@ than one commit ([SR1](docs/standing-rules.md#sr1)) — as in `docs/a8/`, `docs/
   which shipped as `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms` 0.7.0, and Phase 11's,
   `docs/documentation/phase-11-plan.md`, which shipped as `eval-forms` 0.7.1, and the A24 plan,
   `docs/a24/plan.md`, which shipped as `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms`
-  0.8.0. The active plan is `docs/a48/plan.md`, A48–A51, A55 and F29, for `eval-core` 0.16.0 with
-  `eval-signals` 0.9.0 and `eval-forms` 0.9.0. `.claude/skills/step/SKILL.md` targets it, and is
-  retargeted with each new plan; while none is active it names none, and stops at its § 1 if
-  invoked.
+  0.8.0, and the A48 plan, `docs/a48/plan.md`, which shipped as `eval-core` 0.16.0, `eval-signals`
+  0.9.0 and `eval-forms` 0.9.0. No plan is active. `.claude/skills/step/SKILL.md` is retargeted with
+  each new plan; while none is active it names none, and stops at its § 1 if invoked.
 - The completed plans are design records, not work in progress, and each remains the
   reference for its library — they record findings about this codebase that are not
   obvious from reading files in isolation:
@@ -175,6 +173,10 @@ than one commit ([SR1](docs/standing-rules.md#sr1)) — as in `docs/a8/`, `docs/
     name, and the options a parse remembers by identity, documented. Shipped as `eval-core` 0.15.1. Its
     § 3.1 is the B1 design, § 9 the contract after it landed, and § 10 the retrospect; its § 8 q1 is decided
     by one `eval-signals` row, D1.
+  - `docs/a48/plan.md` — member reads and writes that miss the data, and a getter's throw: A55, A48, A50
+    and A51 fixed, A49 decided a documented limit, F29's cases. Shipped as `eval-core` 0.16.0 with
+    `eval-signals` 0.9.0 and `eval-forms` 0.9.0. Its § 9 maps the published entries to their witnesses,
+    and § 10 is the retrospect, whose twelve review stops are SR45's origin.
 
   Their open questions are settled unless the document says otherwise. They stay as written,
   and their line citations, and those in their summaries, refer to the code at the commits that
@@ -386,7 +388,7 @@ These apply to all three libraries.
 - Test-first, assertions, probes and the setup check are
   [SR13](docs/standing-rules.md#sr13)–[SR19](docs/standing-rules.md#sr19), a pass-through's
   identity [SR41](docs/standing-rules.md#sr41), a row's later assertion [SR43](docs/standing-rules.md#sr43),
-  and the documentation specs
+  a shipped sentence's scope [SR45](docs/standing-rules.md#sr45), and the documentation specs
   [SR30](docs/standing-rules.md#sr30). A claim about what the caller receives is measured at the
   entry point ([SR40](docs/standing-rules.md#sr40)).
 
