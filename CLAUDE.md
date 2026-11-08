@@ -19,13 +19,13 @@ independently and **all three published to npm** under the `@zvenigora` scope, e
 
 - **`@zvenigora/ng-eval-core`** (`modules/eval-core`) — a JavaScript expression
   parser/evaluator built on `acorn` + `acorn-walk`, exposed as Angular DI services.
-  Published at **0.15.1**. This is where nearly all the code is.
+  Published at **0.16.0**. This is where nearly all the code is.
 - **`@zvenigora/ng-eval-signals`** (`modules/eval-signals`) — expression → Angular
-  `Signal`, built on the first library's published surface. Published at **0.8.0**;
+  `Signal`, built on the first library's published surface. Published at **0.9.0**;
   Phase 3 shipped 0.1.0.
 - **`@zvenigora/ng-eval-forms`** (`modules/eval-forms`) — Angular form field properties
   driven by expressions that arrive as strings at runtime, built on the other two.
-  Published at **0.8.0**; Phase 6 shipped 0.2.0. It ships **three entry points from one
+  Published at **0.9.0**; Phase 6 shipped 0.2.0. It ships **three entry points from one
   package**: the shared core at `@zvenigora/ng-eval-forms`, the Reactive Forms adapter at
   `@zvenigora/ng-eval-forms/reactive`, and the Signal Forms adapter at
   `@zvenigora/ng-eval-forms/signals`, which requires Angular 22.
@@ -51,7 +51,8 @@ the await track, A25, A24 and D13 — is complete: it shipped as `eval-core` 0.1
 miss, A33, and the options a parse remembers, A34 — is complete: it shipped as `eval-core` 0.15.1, a
 patch. The active plan is `docs/a48/plan.md`, A48–A51, A55 and F29: A48, A50, A51, A55 and F29
 fixed and A49 decided a documented limit, released as `eval-core` 0.16.0 with `eval-signals` 0.9.0
-and `eval-forms` 0.9.0, pending publish. What `ROADMAP.md` has left is Phases 7
+and `eval-forms` 0.9.0, published 2026-11-08 and tagged at 7d9d488; its step 10, the retrospect, is
+next. What `ROADMAP.md` has left is Phases 7
 and 8, which it reserves without specifying them.
 
 **Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left

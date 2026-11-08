@@ -25,8 +25,8 @@ Requested step: $ARGUMENTS
   release commit**: all three packages in one commit ([SR42](../../../docs/standing-rules.md#sr42)), its
   CHANGELOG headings dated npm's expected UTC date, which step 9 corrects if npm's differs. A
   `package.json` before step 8 is a stop-and-replan.
-- **Step 9 is the post-publish record**, after the maintainer publishes, and **step 10 the
-  retrospect**.
+- **Step 9 is the post-publish record**, after the maintainer publishes all three and writes their
+  three annotated tags at the release commit, and **step 10 the retrospect**.
 
 **The counts the steps start from**, the gate at 3bbc296: `eval-core` 3303, `eval-signals` 450,
 `eval-forms` 386. `eval-core` reaches 3333 at step 1, 3419 at step 2, 3467 at step 3, 3519 at step 4, 3527 at step 5 and 3533 at step 6, when `eval-signals` reaches 462 and `eval-forms` 391; each later step's movement is fixed in its prompt
