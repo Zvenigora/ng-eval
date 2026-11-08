@@ -8522,7 +8522,7 @@ against the repository's, and `git cat-file -t eval-forms@0.7.1` giving `tag` (t
 criteria 2 and 3).
 
 <a id="f29"></a>
-## F29 — A parse error's policy claim is witnessed under the default policy only
+## F29 — A parse error's policy claim is witnessed under the default policy only — **Retired, fixed**
 
 **Package** forms · **Kind** test gap · **Status** **Retired — fixed 2026-11-07**; tests only, ships in
 no package. Was Open. Opened 2026-10-28 by Phase 11 step 2's code review
@@ -8536,7 +8536,7 @@ not parse under a function policy too", `'country ==='`, `Unexpected token (1:11
 `'city ==='` through `evalText`, `Unexpected token (1:8)` from `form()`. Each is probed by moving
 that adapter's parse inside its policy: P6-1 moves `/signals`' parse, guard and compile into the
 closure `applyErrorPolicy` wraps, as the M4 probe did, and its case goes red with 43 others, the
-guard's and the compile-once counts'; P6-2 hands `/reactive`'s compile error to a function policy
+guard's, the compile-once counts' and the colon-joined names'; P6-2 hands `/reactive`'s compile error to a function policy
 and binds the result, and its case alone goes red (the plan's supplement 16). The README's sentence
 is unchanged: it was true, and is now witnessed under both policies that swallow an error.
 

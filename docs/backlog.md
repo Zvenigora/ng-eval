@@ -56,7 +56,7 @@ to be careful. [`docs/gates/plan.md`](gates/plan.md) § 8.4 deferred it, and it 
 
 ### Work in flight
 
-**The [A48 plan](a48/plan.md) is active**, at Revision 6, steps 1 to 10: [A55](backlog-retired.md#a55), [A48](backlog-retired.md#a48), [A50](backlog-retired.md#a50) and
+**The [A48 plan](a48/plan.md) is active**, at Revision 7, steps 1 to 10: [A55](backlog-retired.md#a55), [A48](backlog-retired.md#a48), [A50](backlog-retired.md#a50) and
 [A51](backlog-retired.md#a51) fixed in its steps 2 to 4, [A49](backlog-retired.md#a49) decided a documented limit in step 5, the
 downstream rows and [F29](backlog-retired.md#f29) in step 6, the timing in step 7, and the release in step 8:
 `eval-core` 0.16.0, a minor by behaviour, with `eval-signals` 0.9.0 and `eval-forms` 0.9.0 in the
@@ -69,7 +69,8 @@ which ships in 0.16.0, and opened [A60](#a60), a host `Registry` whose methods a
 shadow. Step 5 decided A49 a documented limit, now retired, which ships in 0.16.0 as documentation,
 and opened [A61](#a61), the native functions that write an `EvalScope` past A51's refusal. Step 6
 added the rows through `eval-signals` and `eval-forms` for what 0.16.0 changes, and fixed F29, now
-retired, tests only; step 7, the timing record, is next.
+retired, tests only. Step 7 timed the final code under the plan's § 3.7: one valid run, no regression;
+step 8, the release commit, is next.
 
 **The [A33 plan](a33/plan.md) is complete**, at Revision 6, steps 1 to 6: [A33](backlog-retired.md#a33),
 the case-insensitive lookup cache's miss re-validated by name, fixed, and [A34](backlog-retired.md#a34),

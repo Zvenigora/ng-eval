@@ -19,10 +19,11 @@ Requested step: $ARGUMENTS
   documented limit, each with its rows, an `[Unreleased]` line in its CHANGELOG and its entry retired.
   Their prototypes are the pinned patches under `D:\repo.2026\ng-eval-base\a48-prototype\` and its
   supplements, each beside its `SHA256SUMS.txt` ([SR32](../../../docs/standing-rules.md#sr32)).
-- **Step 6 is `eval-signals` and `eval-forms`**: downstream rows and F29's two cases, in no package.
-- **Step 7 is the timing record**, run Claude-side, and **step 8 the release commit**: all three
-  packages in one commit ([SR42](../../../docs/standing-rules.md#sr42)). A `package.json` before step 8
-  is a stop-and-replan.
+- **Step 6 is mostly `eval-signals` and `eval-forms`**: downstream rows and F29's two cases, with
+  step 5's carry-overs in `eval-core`'s spec and `getThis`' JSDoc, which reaches 0.16.0's `.d.ts`.
+- **Step 7 is the timing record**, run Claude-side (one valid run, no regression), and **step 8 the
+  release commit**: all three packages in one commit ([SR42](../../../docs/standing-rules.md#sr42)). A
+  `package.json` before step 8 is a stop-and-replan.
 - **Step 9 is the post-publish record**, after the maintainer publishes, and **step 10 the
   retrospect**.
 

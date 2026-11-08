@@ -1,7 +1,9 @@
 # A48–A51, A55 and F29 — member reads and writes that miss the data, and a getter's throw (`@zvenigora/ng-eval-core` 0.16.0)
 
 **Date**: November 3, 2026
-**Revision**: 6 — step 6, the downstream rows and F29: rows through `eval-signals` and `eval-forms`
+**Revision**: 7 — step 7, the timing record: one valid run under § 3.7, no regression on any path,
+so the release goes ahead on the timing; step 6's review's four Minors corrected (§ 4, Step 7).
+Revision 6 — step 6, the downstream rows and F29: rows through `eval-signals` and `eval-forms`
 for what 0.16.0 changes, measured on this tree and on 0.15.1's `eval-core` code, with an inherited
 getter, since an own one's throw already reached the caller under `caseInsensitive`; F29's two cases;
 step 5's review's Important pinned by three rows with a read hook, and its Minors; supplement 14's
@@ -371,8 +373,8 @@ One step per session behind the `/step` gate. Gate counts at 3bbc296: `eval-core
 | 3 | A50 | `member-expression.ts`, `assignment-expression.ts`, `update-expression.ts`, `assignment-target.spec.ts`, `member-read.spec.ts`, `CHANGELOG.md`, the register, the skill, this document; comments in `call-expression.ts`, `member-write-policy.ts`, `eval.service.scope-this.spec.ts` and `eval-forms`' `field-schema.spec.ts` | **+48** / 0 / 0 | `eval-core` 0.16.0 |
 | 4 | A51 | `prototype-pollution-guard.ts`, its spec, `assignment-target.spec.ts`, `CHANGELOG.md`, the register, `docs/backlog-retired.md`, `docs/README.md`, `docs/a45/plan.md`, `CLAUDE.md`, the skill, this document | **+52** / 0 / 0 | `eval-core` 0.16.0 |
 | 5 | A49, a documented limit | `README.md`, `eval-context.ts`' JSDoc, `member-expression.ts`' JSDoc, `assignment-target.spec.ts`' marks and its `Q` rows, `CHANGELOG.md` and the two downstream CHANGELOGs' links, the register, `docs/backlog-retired.md`, `docs/README.md`, `docs/a45/plan.md`, `CLAUDE.md`, the skill, this document | **+8** / 0 / 0 | `eval-core` 0.16.0 |
-| 6 | Downstream rows and F29 | `eval-signals`' `eval-signal.spec.ts`; `eval-forms`' `field-schema.spec.ts`, `readme-examples.spec.ts` and `rules.spec.ts`; `eval-core`'s `assignment-target.spec.ts` and `eval-context.ts`' JSDoc; the register, `docs/backlog-retired.md`, `docs/README.md`, `docs/documentation/phase-11-plan.md`, `CLAUDE.md`, the skill, this document | **+6** / **+12** / **+5** | no package |
-| 7 | The timing record | this document, the skill | 0 / 0 / 0 | no package |
+| 6 | Downstream rows and F29 | `eval-signals`' `eval-signal.spec.ts`; `eval-forms`' `field-schema.spec.ts`, `readme-examples.spec.ts` and `rules.spec.ts`; `eval-core`'s `assignment-target.spec.ts` and `eval-context.ts`' JSDoc; the register, `docs/backlog-retired.md`, `docs/README.md`, `docs/documentation/phase-11-plan.md`, `CLAUDE.md`, the skill, this document | **+6** / **+12** / **+5** | `getThis`' JSDoc in `eval-core` 0.16.0's `.d.ts` (corrected in step 7); the rest in no package |
+| 7 | The timing record | this document, the skill, `docs/backlog.md`, `docs/backlog-retired.md`, `docs/README.md` | 0 / 0 / 0 | no package |
 | 8 | The release commit | the three `package.json`, the three `CHANGELOG.md`, the register, `CLAUDE.md`, the skill, this document | 0 / 0 / 0 | the release |
 | 9 | The post-publish record | the register, `CLAUDE.md`, the tags, the skill, this document | 0 / 0 / 0 | no package |
 | 10 | Retrospect | this document's § 9 and § 10, `docs/standing-rules.md` if a rule stands, `CLAUDE.md`, `docs/README.md`, the register, the skill | 0 / 0 / 0 | no package |
@@ -1114,13 +1116,15 @@ Q10 is a new row, so supplement 7 re-measures every probe's red set with it in p
   Supplement 15 pins the step again. Measured in the sandbox on the final tree: the gate `eval-core`
   3527, `eval-signals` 450, `eval-forms` 386; doc-links 0 dangling; the probes' red sets as the table
   gives them. The commit's body records the run on the maintainer's checkout and the code review.
+
 ### Step 6 — the downstream rows and F29
 
 - **Place, don't draft.** The step's whole change is pinned as `step-6/step-6.patch` in supplement 16,
   placed as step 5's was ([SR36](../standing-rules.md#sr36)), the staged diff that
   `step-6/staged-diff.sh` prints hashing to the pinned patch's SHA-256.
 - **No code.** Specs, comments and records only. No package moves for this step, and no CHANGELOG:
-  the downstream packages' entries for 0.9.0 are the release step's.
+  the downstream packages' entries for 0.9.0 are the release step's. (`getThis`' reflowed JSDoc
+  reaches `eval-core` 0.16.0's `.d.ts`, which the A49 bullet covers; corrected in step 7.)
 - **The downstream rows** ([SR24](../standing-rules.md#sr24), § 3.6), from the prototype's
   `downstream.txt`, each first run on this tree and then on 0.15.1's `eval-core` code
   (`code-at-9e88d18.patch`, the published 0.15.1's non-spec `eval-core` sources over this tree):
@@ -1224,6 +1228,52 @@ Q10 is a new row, so supplement 7 re-measures every probe's red set with it in p
   `eval-forms` 391; doc-links 0 dangling; the probes' red sets as the table gives them. The commit's
   body records the run on the maintainer's checkout and the code review.
 
+### Step 7 — the timing record
+
+- **Run Claude-side** ([SR28](../standing-rules.md#sr28)), under § 3.7's rule, its file written and
+  hashed before the first run (`rules.md`, `ACA3FAA9…E1CDD0`) and pinned with the run in supplement
+  17, beside the harness: the prototype's `bench.mjs`, byte-identical (`C1B966FF…`), `run.sh`
+  (24 rotations, path-major) and `analyse.py` (the prototype's, its thresholds 18 of 24, and a line
+  for § 3.7's +5% test). The sandbox, Linux, no performance cores, Node 26.4.0, one process at a time,
+  nothing else running.
+- **The bundles**: A, the published 0.15.1 (`B8BAED38…AFDA24E4`); A′ its byte copy; B the production
+  bundle of 32dabcd, the tree after step 6 (`71936AEB…7F051264`). N per path is the prototype's
+  calibration of A, fixed in the rules file: this sandbox ran about twice as fast as the prototype's
+  (A's `read` 457 ns against 998), so a round lasted about 0.1 s, not 0.2 s. The rule was not changed.
+- **Run 1**, 2026-11-08 00:10 to 00:25 UTC, 504 processes:
+
+  ```text
+  path           A ns |  A/A med   pos |    B med   pos | verdict
+  read          456.6 |   -0.64% 11/24 |   -0.67% 10/24 | ok (decides)
+  write         512.3 |   -0.33% 11/24 |   -0.19% 11/24 | ok (decides)
+  ci-inh       3063.1 |   +1.34% 15/24 |   +1.04% 14/24 | ok (decides)
+  ci-proto     3369.8 |   -0.39% 10/24 |   -0.26% 11/24 | ok (decides)
+  compound      521.3 |   -0.53%  8/24 |   +0.95% 15/24 | ok (reported)
+  cs-inh        458.1 |   -1.44%  9/24 |   -0.60% 10/24 | ok (reported)
+  ci-miss     34451.2 |   -0.86% 10/24 |   -1.04% 10/24 | ok (reported)
+  run valid | deciding regressions: none
+  deciding paths with B median above +5%: none
+  ```
+
+  **Valid**: the A/A control's medians lie within ±1.44%, none above the regression test (at most 15
+  of 24 positive). **No regression**: B's medians lie between −0.67% and +1.04% on the deciding paths
+  and between −1.04% and +0.95% on the reported ones, at most 15 of 24 positive where 18 are needed. A valid run
+  decides, so no second run; the release goes ahead on the timing. The prototype's two runs were void
+  at a noise floor of about ±4% (finding 11); this run's control stayed within ±1.44%.
+- **Memory arm**: none, as § 3.7 states, from the patches.
+- **Step 6's review** ([SR4](../standing-rules.md#sr4)), its four Minors: § 4's row and the skill said
+  step 6 shipped in no package, but `getThis`' JSDoc reaches `eval-core` 0.16.0's `.d.ts`, which the
+  A49 bullet already covers, and the skill said step 6 was `eval-signals` and `eval-forms` only
+  (both corrected); F29's retired heading lacked the "— **Retired, fixed**" its neighbours carry
+  (added); F29's *Fixed* paragraph named two of the three groups P6-1 turns red, leaving out the
+  colon-joined names' (added); and no blank line before `### Step 6` (added).
+- **Rows**: none, 3533 / 462 / 391. **Probes**: none; a timing has no red set. **Review**: the
+  `code-reviewer` on the records, which this plan asks for here ([SR33](../standing-rules.md#sr33)): no
+  file under `modules/` or `tools/` changes, but the section states figures, each checked against
+  supplement 17's `t7/run1/`.
+- **Criterion**: the staged diff's hash; the gate green at 3533 / 462 / 391; doc-links 0 dangling;
+  `sha256sum -c` on supplement 17's `SHA256SUMS.txt`, the rules file's hash among them.
+
 ## 5. Public API surface
 
 No export changes shape ([SR12](../standing-rules.md#sr12)); behaviour changes as § 2 says, so the
@@ -1249,7 +1299,8 @@ release is a minor. Step 8 diffs each `.d.ts` against the published 0.15.1, 0.8.
   instance and was never read back. Named in the CHANGELOG as a breaking change; the witnesses are
   step 4's `J` rows, red on 6086872's code.
 - **Timing on one machine.** The noise floor in the sandbox is about ±4% (finding 11), above the void
-  bound; § 3.7's +5% clause decides two void runs.
+  bound; § 3.7's +5% clause decides two void runs. Step 7's one run was valid, its control within
+  ±1.44%.
 
 ## 8. Open questions
 
