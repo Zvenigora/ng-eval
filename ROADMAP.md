@@ -44,6 +44,7 @@ shared workspace. None of that applies yet.
 | `@zvenigora/ng-eval-core` | `modules/eval-core` (existing) | — | Parsing, evaluation engine, visitors |
 | `@zvenigora/ng-eval-signals` | `modules/eval-signals` (new) | `eval-core` | Reactive/signal-backed expression evaluation |
 | `@zvenigora/ng-eval-forms` | `modules/eval-forms` (new) | `eval-core`, `eval-signals` | Expression-driven dynamic form metadata |
+| `@zvenigora/ng-eval-rules` | `modules/eval-rules` (planned) | `eval-core`; `eval-signals` for its `/signals` entry point only | A rule engine: rules stored as JSON, evaluated as expressions |
 
 ## Phases
 
@@ -69,9 +70,10 @@ summary of every phase.
 | 9 | Colon-joined identifiers | `@zvenigora/ng-eval-core`, with `@zvenigora/ng-eval-signals` and `@zvenigora/ng-eval-forms` | [`colon-identifiers/phase-9-plan.md`](docs/colon-identifiers/phase-9-plan.md) | [`colon-identifiers/phase-9-summary.md`](docs/colon-identifiers/phase-9-summary.md) |
 | 10 | Documentation restructure, repository-wide | All three, as docs-only patches | [`documentation/phase-10-plan.md`](docs/documentation/phase-10-plan.md) | [`documentation/phase-10-summary.md`](docs/documentation/phase-10-summary.md) |
 | 11 | `eval-forms`' README by entry point | `@zvenigora/ng-eval-forms`, a docs-only patch | [`documentation/phase-11-plan.md`](docs/documentation/phase-11-plan.md) | [Its § 10](docs/documentation/phase-11-plan.md#10-retrospect) |
+| 12 | `@zvenigora/ng-eval-rules`, a new module: pure rule evaluation | Not shipped: planned as `@zvenigora/ng-eval-rules` 0.1.0 | [`eval-rules/plan.md`](docs/eval-rules/plan.md), no step run | — |
 
-Every phase in the table is complete, Phase 11 the last of them, and none is in flight. Phase 11
-shipped as `eval-forms` 0.7.1 and retired [F28](docs/backlog-retired.md#f28).
+Phases 1 to 11 are complete, Phase 11 the last of them. Phase 11 shipped as `eval-forms` 0.7.1 and
+retired [F28](docs/backlog-retired.md#f28). Phase 12 has a plan, its questions decided, and no step has run.
 
 Phase 9 is numbered after the two reserved phases below and ran ahead of them: it was the one with
 a consumer waiting. Until Phase 10 condensed this file, each phase had a section here with its
@@ -93,6 +95,25 @@ to a phase" that does not exist. Reserved now so the citations resolve:
   number stays reserved so the citation resolves; it holds no work.
 
 Neither is scheduled. A phase becomes real when it gets a plan document, per `CLAUDE.md`.
+
+### Phases 12 to 16 — `@zvenigora/ng-eval-rules`
+
+A rule engine over `eval-core`: a rule is a fixed pipeline of calculations, decisions and outputs,
+stored as JSON, whose effects are recorded by evaluation and performed afterwards by the host. The
+design, with its 61 questions, is
+[`docs/eval-rules/design-session.md`](docs/eval-rules/design-session.md). One phase per release:
+
+| Phase | Release | Subject | State |
+| :--- | :--- | :--- | :--- |
+| 12 | 0.1.0 | Pure rule evaluation: the format, `compileRule`, the result with its trace, the tests runner, the registry cache | [Plan](docs/eval-rules/plan.md), no step run |
+| 13 | 0.2.0 | The engine: rule sets, events, the sink, batch commit, the queue and the loop guard | Designed, no plan |
+| 14 | 0.3.0 | Workflows: the node-kind registry, `sequence`, `branch`, async commit and cancellation | Designed, no plan |
+| 15 | 0.4.0 | The `/signals` entry point: a value-change event source | Designed, no plan |
+| 16 | 0.5.0 | The async rule run: `await` in a calculation | Designed, no plan |
+
+Phases 15 and 16 do not depend on each other and may swap. What the design defers outright — a
+converter from an earlier rule format, `parallel` and `fanOut`, a rule as a `computed`, timer and
+route event sources — goes to the register when Phase 12's step 1 runs, not here.
 
 ## Deferred work
 
