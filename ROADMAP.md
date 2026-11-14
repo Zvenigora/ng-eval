@@ -45,6 +45,7 @@ shared workspace. None of that applies yet.
 | `@zvenigora/ng-eval-signals` | `modules/eval-signals` (new) | `eval-core` | Reactive/signal-backed expression evaluation |
 | `@zvenigora/ng-eval-forms` | `modules/eval-forms` (new) | `eval-core`, `eval-signals` | Expression-driven dynamic form metadata |
 | `@zvenigora/ng-eval-rules` | `modules/eval-rules` (planned) | `eval-core`; `eval-signals` for its `/signals` entry point only | A rule engine: rules stored as JSON, evaluated as expressions |
+| `@zvenigora/ng-eval-template` | `modules/eval-template` (planned) | `eval-core` | Text templates: macros in text, each an expression |
 
 ## Phases
 
@@ -114,6 +115,22 @@ design, with its 61 questions, is
 Phases 15 and 16 do not depend on each other and may swap. What the design defers outright — a
 converter from an earlier rule format, `parallel` and `fanOut`, a rule as a `computed`, timer and
 route event sources — goes to the register when Phase 12's step 1 runs, not here.
+
+### Phases 17 and 18 — `@zvenigora/ng-eval-template`, and `eval-forms`' template and styling properties
+
+Text with expression macros in it, `{{count}} pens` or `{{#if vip}}<b>Gold</b>{{#else}}Standard{{/if}}`,
+where every expression is `eval-core`'s and the delimiters are the host's. The design, with its 45
+questions, is [`docs/eval-template/design-session.md`](docs/eval-template/design-session.md). One
+phase per release, as above:
+
+| Phase | Release | Subject | State |
+| :--- | :--- | :--- | :--- |
+| 17 | `@zvenigora/ng-eval-template` 0.1.0 | The pure template compiler: `compileTemplate` and `renderTemplate`, value macros, `#if` and `#switch` blocks, escaped output | [Plan](docs/eval-template/plan.md), no step run |
+| 18 | An `eval-forms` minor | A template property at both adapters, and the `class` and `style` properties | Agreed in outline, no design |
+
+Neither displaces Phase 12, and the order among Phases 12, 17 and 18 is not decided. Phase 18 needs
+Phase 17. What the design leaves out of 0.1.0 — named macros, loops, pipes, statements and `await`
+in a macro — goes to the register when Phase 17's step 1 runs, not here.
 
 ## Deferred work
 
