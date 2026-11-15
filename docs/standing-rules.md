@@ -47,6 +47,19 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
   the register's links, [A30's retirement](backlog-retired.md#a30).
   *Red*: doc-links, on the dangling link.
 - <a id="sr7"></a>**SR7 — One retrospect per track**, no per-step summaries in new work. *Origin*: none. *Red*: nothing.
+- <a id="sr48"></a>**SR48 — A register entry schedules work only past the fix bar.** An entry is
+  fixed when it is one of four things: a security route, which is a way past a guard that a README
+  or `SECURITY.md` documents, open to the least trusted author they name; a published sentence that
+  is false now ([SR31](#sr31)); a blocker of the active plan; or a defect a consumer reported. Any
+  other entry is recorded as [SR5](#sr5) says, pinned by a row where one is cheap, stated in the
+  README where a consumer can meet it, and marked not scheduled: it starts no track. An entry opened
+  while another is fixed does not join that track ([SR3](#sr3)), and is weighed against the bar by
+  itself. Between two feature releases at most one backlog batch runs, of at most three entries in
+  one release, chosen at the phase boundary; a security route and a false sentence do not wait for
+  it. *Origin*: the maintainer, 2026-11-14: "Currently the library stuck on backlog. Each new fixes
+  open new ones". The [A48 plan](a48/plan.md) retired six entries and opened eight, each found by
+  listing the paths a fix's sentence reaches ([SR45](#sr45)), and Phases 12 and 17 had plans with no
+  step run. *Red*: nothing — held by review, at each phase boundary and whenever an entry is opened.
 
 ## The gate and what ships
 
