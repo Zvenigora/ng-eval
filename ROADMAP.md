@@ -128,26 +128,31 @@ phase per release, as above:
 | 17 | `@zvenigora/ng-eval-template` 0.1.0 | The pure template compiler: `compileTemplate` and `renderTemplate`, value macros, `#if` and `#switch` blocks, escaped output | [Plan](docs/eval-template/plan.md), no step run |
 | 18 | An `eval-forms` minor | A template property at both adapters, and the `class` and `style` properties | Agreed in outline, no design |
 
-Neither displaces Phase 12, and the order among Phases 12, 17 and 18 is not decided. Phase 18 needs
-Phase 17. What the design leaves out of 0.1.0 — named macros, loops, pipes, statements and `await`
+Neither displaces Phase 12, and the order among Phases 12, 17 and 18 is not decided, except that
+Phase 19 runs before all three. Phase 18 needs Phase 17. What the design leaves out of 0.1.0 — named macros, loops, pipes, statements and `await`
 in a macro — goes to the register when Phase 17's step 1 runs, not here.
 
-### Phase 19 and Phase 20 — reserved, not yet designed
+### Phase 19 and Phase 20 — a demo application, and documentation in two sets
 
-Reserved on 2026-11-14, at the maintainer's request. Neither has a design session, a plan or a
-schedule, and no earlier design session covered either; both are to be designed together, since
-they would share their examples and their hosting.
+Reserved on 2026-11-14, at the maintainer's request. Phase 19 was designed on 2026-11-15; Phase 20
+has no design session, no plan and no schedule.
 
-- **Phase 19 — a demo application** that presents what the libraries do. Open, for its design
-  session: what it is for, a showcase, a set of living examples or a test bed; where it lives and
-  how it is hosted; and whether it consumes the published packages or the workspace's source. It
-  is an application, not a sixth package.
+- **Phase 19 — a demo application**: designed, first in order, with a
+  [plan](docs/demo/plan.md) at Revision 2, ready for its step 1, no step run. A showcase of
+  features and a set of use-case examples for an Angular developer deciding whether to adopt the
+  libraries. It is an Nx application at `apps/demo`, not a sixth package, built from the
+  workspace's source and hosted on GitHub Pages. The design, with its 23 questions, is
+  [`docs/demo/design-session.md`](docs/demo/design-session.md). It runs before Phases 12 and 17,
+  and each of those plans gains a demo step before its release step, written when its phase
+  starts.
 - **Phase 20 — documentation in two sets**, one for customers and one for maintainers. The
   maintainer set exists: [`docs/`](docs/README.md), `CLAUDE.md` and `CONTRIBUTING.md`. The
   customer set is today the root README, the package READMEs, their CHANGELOGs and `SECURITY.md`.
   A guide outside the READMEs reverses [Phase 11's § 3.1](docs/documentation/phase-11-plan.md) D1,
   one README per package and no guide files ([F28](docs/backlog-retired.md#f28)), so its design
-  session reopens that decision before anything else.
+  session reopens that decision before anything else. Phase 19's session fixed two points for it:
+  the demo is a plain Angular application, not a documentation generator, and the site leaves
+  room for a guide section.
 
 A phase becomes real when it gets a plan document, as above.
 

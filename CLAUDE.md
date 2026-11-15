@@ -39,6 +39,8 @@ release; their plan documents are design records rather than active work. **No p
 Two are written and no step of either has run: Phase 12, `@zvenigora/ng-eval-rules`
 (`docs/eval-rules/plan.md`), and Phase 17, `@zvenigora/ng-eval-template`
 (`docs/eval-template/plan.md`). The order between them is the maintainer's, and not decided.
+Phase 19, a demo application at `apps/demo`, runs before both: its plan
+(`docs/demo/plan.md`) is at Revision 2 and ready for its step 1, and no step has run.
 `ROADMAP.md` has the phases, and says which of them are reserved without a specification.
 
 Which release each completed phase and track shipped as, and what each plan is the reference for,
