@@ -21,9 +21,15 @@ it, so every session loads it; the `code-reviewer` does not see the import and r
   logged rather than made, and gaps in what the suite can catch. Its index lists every entry, live and
   retired, and its Publication status table lists every version published from Phase 2's release on,
   with its tag. Read its
-  preamble before recording a deferral anywhere else.
+  "Using this file" section before recording a deferral anywhere else, and an entry by its heading,
+  never the file whole.
 - [`backlog-retired.md`](backlog-retired.md) — the retired entries, each kept with its reason and its
   evidence.
+- [`backlog-in-flight.md`](backlog-in-flight.md) — "Work in flight": which plans have run against the
+  register, and what each fixed, opened and released. It was a section of `backlog.md` until
+  2026-11-15.
+- [`backlog-history.md`](backlog-history.md) — the Register history: the live count from one release
+  to the next, and how a row is counted. It was a section of `backlog.md` until 2026-11-15.
 
 Cite an entry by its ID, `BL-A8` or A8, never by a line number. Retiring an entry moves it to
 `backlog-retired.md`, and the doc-links gate lists the inbound links to re-point. If a published

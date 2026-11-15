@@ -51,7 +51,10 @@ its line there, and changes here only a "Published at" version above and which p
 **Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left
 unfixed, decisions logged rather than made, gaps in what the suite can catch — is in
 **`docs/backlog.md`**, cited by stable ID ([SR5](docs/standing-rules.md#sr5)). Read its
-preamble before recording a deferral anywhere else.
+"Using this file" section before recording a deferral anywhere else, and never the file whole, nor
+`docs/backlog-retired.md`: that section says how to read one entry by its heading. What is in
+flight and the register's history are beside it, in `docs/backlog-in-flight.md` and
+`docs/backlog-history.md`.
 
 ## Commands
 

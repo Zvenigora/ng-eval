@@ -23,7 +23,9 @@ what changed. If the parent told you which plan step this is, read that step in 
 plan document under `docs/` so you know what the change was *supposed* to touch.
 
 Review the diff, plus whatever surrounding code you need to read to judge it. Do not
-review the whole codebase.
+review the whole codebase. Do not read `docs/backlog.md` or `docs/backlog-retired.md` whole
+either: read the entry the diff or the step names, by its heading, as the register's "Using this
+file" says.
 
 **Then decide which checklist applies.** The three libraries fail in different ways, and so
 do `eval-forms`' two adapters. Running the wrong list produces a review that reads as

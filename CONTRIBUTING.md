@@ -131,10 +131,10 @@ All three packages publish to the public npm registry under the `@zvenigora` sco
    The commit must be the one the published artifact was built from, since `eval-signals` and
    `eval-forms` resolve their next version from these tags.
 6. Record the release in a docs-only commit: a row per published package in
-   `docs/backlog.md`'s Publication status, and one row for the release in its Register history,
-   counted as that section describes. Dates in the Publication status rows, the Register history
-   and the CHANGELOG headings are npm's publish date in UTC; if it differs from the heading
-   written at release time, the post-publish commit corrects the heading.
+   `docs/backlog.md`'s Publication status, and one row for the release in the Register history,
+   `docs/backlog-history.md`, counted as that file describes. Dates in the Publication status
+   rows, the Register history and the CHANGELOG headings are npm's publish date in UTC; if it
+   differs from the heading written at release time, the post-publish commit corrects the heading.
 
    **This is the commit the tag check runs on.** `npm test` runs `tools/release-tags.mjs`, which
    fails unless every Publication status row's tag exists and, where the row names the commit it
