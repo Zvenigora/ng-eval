@@ -1,6 +1,6 @@
 # Phase 17 Plan — `@zvenigora/ng-eval-template` 0.1.0, text with expression macros (new module)
 
-**Status: Revision 1, ready for step 1.** No step has run, and nothing is committed. The design is
+**Status: Revision 2, ready for step 1.** No step has run. The design is
 [`design-session.md`](design-session.md), two sessions and questions Q1 to Q45, with ten readings
 the maintainer confirmed. This plan does not restate it: it cites a decision by its Q number, and
 adds what a plan needs: measurements, scope, steps, exit criteria, and what goes red.
@@ -11,11 +11,22 @@ outside the repository ([SR32](../standing-rules.md#sr32), [SR47](../standing-ru
 it says it is a prediction. Step 1 checks the hashes and runs the scripts again on the bundle its
 own gate builds.
 
-**What is open.** [§ 8](#8-questions) holds seven readings this plan makes by its rule P-1, on
-points the measurements raised after session 2 had ended. Each is the stricter of two published
-behaviours, and each is for the maintainer to confirm or change at step 1's gate; § 3 and § 4 are
-written to them. The order among Phases 12, 17 and 18 is the maintainer's, and open: this plan
-assumes neither order ([§ 3.6](#36-the-package)).
+**No question is open.** [§ 8](#8-questions) held seven readings Revision 1 made by its rule P-1,
+on points the measurements raised after session 2 had ended. The maintainer decided all seven on
+2026-11-14, and [§ 2](#2-decisions--recorded-not-reopened) holds the decisions. Three stand as
+Revision 1 read them: q4, q6 and q7. Four were decided otherwise:
+
+- **q1.** Writes are refused behind an option, `contextReadOnly`, on by default.
+- **q2.** The rule for `end`'s first character holds for `start` too.
+- **q3.** A block comment is permitted in a macro, and a line comment is a problem.
+- **q5.** Two of the three bounds are options, `stopOnErrorCount` and `maxNestedLevel`.
+
+§ 3, § 4 and § 5 are written to the decisions. The order among Phases 12, 17 and 18 is the
+maintainer's, and open: this plan assumes neither order ([§ 3.6](#36-the-package)).
+
+**Revision 2** wrote the decisions in, and measured what q3 newly rests on (T5; findings 19 and
+20): the parser tells a block comment from a line comment, and the search crosses a block comment
+only if it looks past the comment for the token the parse stopped on.
 
 This phase ships **one release, 0.1.0**: `compileTemplate` and `renderTemplate`, plain functions.
 `eval-forms`' template, `class` and `style` properties are Phase 18, with a plan of its own. What
@@ -27,7 +38,8 @@ Phase 18 needs from the shapes this phase publishes is
 - **P-1. Where the design leaves a reading open, 0.1.0 ships the stricter one.** A refusal can be
   lifted in a later minor; an acceptance cannot be withdrawn without a breaking release
   ([SR12](../standing-rules.md#sr12)). Each use is marked **P-1** where it is made, so the
-  retrospect can count what was later lifted. It is the `eval-rules` plan's
+  retrospect can count what was later lifted. Revision 1 made seven, all in [§ 8](#8-questions),
+  and the maintainer's decisions kept three as read and changed four. It is the `eval-rules` plan's
   [P-1](../eval-rules/plan.md#0-rules-the-plan-adds), taken as written. *Red*: nothing — held by
   review.
 
@@ -81,16 +93,18 @@ Each names the row of [§ 1.3](#13-mechanism-questions-measured) it is read from
    depth, and the first text after the last token delivered, which is the token the parse had
    read and not consumed, or could not read. Each is confirmed by the whole-expression parse, in
    order, and the window doubles while none is. The prototype also takes the failure's own
-   position; no T1 row needs it, so step 3 keeps it only if a row does
-   ([SR21](../standing-rules.md#sr21)).
+   position. No T1 row inside Revision 1's rule needs it; a text whose first `end` sits in a block
+   comment does, and finding 20 says what replaces it.
    N and G gave the same result on 115 of 122 rows, 61 texts in each parser mode, and G made 1
    attempt where N made 31,999, in 3.4 ms, and 2 where N made 1,001, in 24.3 ms.
 6. **The seven rows where G differs are two kinds, and each is refused by a rule of § 8** (T1).
    In five, `end` starts with a character that can sit inside a name or a number, `x}`, `.}` and
    `:1}`: N ends the macro inside `max`, `1.` or `Q1:1`, and G, which looks only where a token
    starts, finds nothing. In two, an `end` sits in a line comment: N ends the macro there, and G
-   at the next one. [§ 8](#8-questions) q2 and q3 refuse both forms (P-1), and with them refused G
-   is N's answer: [§ 3.3](#33-where-a-macro-ends) has the argument.
+   at the next one. [§ 8](#8-questions) q2 and q3 refuse both forms, and with them refused G
+   is N's answer: [§ 3.3](#33-where-a-macro-ends) has the argument. A block comment, which q3
+   permits, is not among the seven: `{{ a /* }} */ }}` ends after the comment by N and by G, in
+   both parser modes.
 7. **A candidate `end` can be tried without end** (T2, H5). With the `end` `+`, every `+` of
    `x ? 1 + 1 + … : 0 +` is a candidate at the wrapper's depth, and the text before each is not
    whole. N made 1,001 attempts in 1,204 ms at 4,014 characters. G stops at 100 attempts in one
@@ -162,6 +176,19 @@ Each names the row of [§ 1.3](#13-mechanism-questions-measured) it is read from
     opener cascades in the prototype: `{{#if}}x{{/if}}` reports the empty expression and then a
     stray `/if`. Both are step 4's to close: a hint on the first, and a block that opens even when
     its expression is a problem.
+19. **The parser says which kind a comment is** (T5a). `onComment`'s first argument is true for a
+    block comment and false for a line comment, through the bundle's `parse`, in both parser
+    modes, with each comment's start and end: `a /* c\n d */ + b // e` gives a block at 2 to 12
+    and a line at 17 to 21. `a <!-- c` gives a line comment: acorn reads `<!--` as JavaScript's
+    HTML-like comment. That is § 8 q3's whole mechanism.
+20. **The search crosses a block comment only if it looks past it** (T5b). Over 11 texts whose
+    first `end` sits in or after a block comment, in each parser mode, with no comment refused:
+    the prototype's search gave N's answer on all 11. Without the failure's own position it
+    differed on 5, `{{ a /* }} */ }}` among them: the first text after the last token delivered
+    is then the comment, and the token the parse stopped on lies past it. Taking the first text
+    after the last token *past whitespace and comments*, and no failure position, gave N's answer
+    on all 11. § 3.3 specifies that form. The eleventh text, an unclosed `/*`, is a problem by
+    each, at the same offset.
 
 ### 1.3 Mechanism questions, measured
 
@@ -170,7 +197,9 @@ against the `eval-core` 0.16.0 bundle in the repository's `dist/`, built 2026-11
 `71936AEB…7F051264`, on Node 26.4.0: the bundle the `eval-rules` prototype ran on. Which tree
 built it was not checked, which is why step 1 runs the scripts again. The bundle is partially
 compiled, so a script loads `@angular/compiler` before it, by a path into the repository's
-`node_modules`. The folder's `SHA256SUMS.txt` has 10 lines.
+`node_modules`. The folder's `SHA256SUMS.txt` has 12 lines: Revision 1's ten, and T5's two, added
+on 2026-11-14 and run on the same bundle. `README.txt` describes Revision 1's files and was not
+changed, so that its hash stands; T5 is described here and in its script's header.
 
 | Script | SHA-256 | Result | SHA-256 |
 | :--- | :--- | :--- | :--- |
@@ -180,11 +209,20 @@ compiled, so a script loads `@angular/compiler` before it, by a path into the re
 | `scripts/t2-cost.mjs` | `BFD693A9…296AACBF` | `results/t2-cost.txt` | `6FDBEA42…C5689B60` |
 | `scripts/t3-compile.mjs` | `37B90608…DECD4212` | `results/t3-compile.txt` | `B862DE5E…98BA8E8C` |
 | `scripts/t4-render.mjs` | `9A2E35B2…6E23281B` | `results/t4-render.txt` | `5393DBCB…3D7C2312` |
+| `scripts/t5-comments.mjs` | `47C17062…4FD6F785` | `results/t5-comments.txt` | `130BA18D…19CF4BFF` |
 
 `lib.mjs` is a prototype of [§ 3](#3-design-of-010): the whole-expression parse, the three ways to
 find a macro's end, and a `compileTemplate` and `renderTemplate` small enough to read beside each
 row. It is not the implementation, and no step copies it: a step is written test-first
 ([SR13](../standing-rules.md#sr13)).
+
+**`lib.mjs` is Revision 1's prototype, and four decisions of § 8 are not in it.** It refuses every
+comment, where q3 permits a block comment; it checks `end`'s first character and not `start`'s
+(q2); its guard is a switch of its render, where q1 makes it a compile option, and it throws for
+no context shape; and it stops at 100 problems by a setting of its own and has no bound on
+nesting (q5). T1 to T4 are therefore read as what Revision 1 measured. Where a decision changes a row, the step
+that owns the row names the change in its exit criteria, as step 4 already did for finding 18's
+two.
 
 T2's milliseconds are single runs in one process. They answer a design question; they are not
 timings under [SR28](../standing-rules.md#sr28), none is published, and they moved between runs.
@@ -198,11 +236,13 @@ the counts.
 | T2 | What does a hostile or a large template cost each mechanism? | Findings 4, 5, 7 and 8. Seven shapes, n from 250 to 64,000. On 64,000 valid value macros, 832,000 characters, N and G each made one attempt per macro. On 100 or more unclosed tags both stop at 100 problems with no parse at all | `t2-cost` |
 | T3 | Which problems does a prototype of `compileTemplate` report? | 65 templates: 42 gave problems, 21 rendered and 2 compiled and threw at render, an unknown function and an object literal `eval-core` refuses. The design's five examples render as its § 2.2 says, under `{{ }}`, `[= ]` and `<% %>`. Q38's four backslash rows, Q35's commas, Q39, each row of Q40, the nesting options and readings 7 to 9 each give the problem the design names. Finding 18's two gaps | `t3-compile` |
 | T4 | What does a prototype of `renderTemplate` print, refuse and leave behind? | Findings 10 to 17, in seven groups, T4a to T4g. T4c and T4d run both case modes, and T4d's "by variant" column is the mode check: a key read by a case variant ([SR19](../standing-rules.md#sr19)) | `t4-render` |
+| T5 | Which kind is a comment, and does the search cross a block comment? | Findings 19 and 20. T5a: six texts in each parser mode, each comment with its kind and span. T5b: 11 texts in each mode, N against the search with three sources of candidates; the form without the failure position and not past comments differs from N on 5 of 11, and the other two on none | `t5-comments` |
 
 What step 1 still owes: the hashes checked with `sha256sum -c`; each script run again on the
 bundle the step's gate builds, with any row that differs written here as a plan correction
 ([SR4](../standing-rules.md#sr4)). No script measures the `@angular/core` peer or
-`release-tags.mjs`, which are step 2's.
+`release-tags.mjs`, which are step 2's. No script measures a bound on nesting either: § 8 q5's
+`maxNestedLevel` is step 4's, with a row at the bound and one past it.
 
 ## 2. Decisions — recorded, not reopened
 
@@ -227,14 +267,28 @@ From the design sessions, by question.
 | Nesting by structure only, behind `nestedBlocks`, off, and `nestedValues`, on | Q14, Q24, Q30 |
 | `onError` is `'throw'`, `'undefined'` or a function that observes; `'undefined'` is the default | Q36, Q45 |
 | A contained failure prints `onErrorPrint`, `''` by default, as written: in place of a value macro, or once in place of a whole block | Q37, Q43, Q44 |
-| The six compile options belong to `compileTemplate`; `renderTemplate` takes the two error options; an unknown option throws | Reading 5 |
+| The compile options belong to `compileTemplate`, and the compiled template carries them; `renderTemplate` takes the two error options; an unknown option throws. The design's § 2.4 had six rows and seven keys, and § 8 adds three keys | Reading 5 |
 | 0.1.0 requires an Angular build and promises nothing about plain Node | Reading 4 |
 | Named macros, loops, pipes, whitespace trimming, template comments and an `if … then` grammar are left out | Q15, Q20 |
 
+From this plan's § 8, decided by the maintainer on 2026-11-14. q4, q6 and q7 are as Revision 1
+read them. q1, q2, q3 and q5 are not, and each says what changed. Where a decision narrows a row
+above, it names the row.
+
+| Decision | § 8 |
+| :--- | :--- |
+| A compile option, `contextReadOnly`, default `true`. With it on, a write is refused over a plain object or a `Registry`, and `renderTemplate` throws for a caller's own `EvalContext`, with a message that says to compile with `contextReadOnly: false`. With it off, a plain context is writable, as `eval-core` leaves it, and a caller's `EvalContext` keeps its own policy. Revision 1 read: always refused, no option | q1 |
+| Neither `start` nor `end` may start with a letter, a digit, `_`, `$`, `.`, `:` or a character outside ASCII; such an option throws. So `${` is refused as a `start`. Revision 1 read: `end` only. Narrows Q16 and reading 5 | q2 |
+| A block comment, `/* */`, is permitted in a macro and prints nothing. A line comment, `//`, is a compile problem. A macro that holds a comment and nothing else is still empty (Q32). Revision 1 read: every comment a problem | q3 |
+| A macro whose value is a function is a failure, checked on the value at render, with a message that names the macro. A function inside an expression works, and as a condition a function is truthy. Narrows reading 6 | q4 |
+| Problems reported by one compile: an option, `stopOnErrorCount`, default 100. Candidate ends tried in one tag: fixed at 100, not an option. Nesting: an option, `maxNestedLevel`, default 2, beside `nestedBlocks`, which stays the switch; a top-level block is level 1. Each option is a positive integer, `maxNestedLevel` at most 100, and any other value throws. Revision 1 read: three fixed bounds of 100. Qualifies Q19 | q5 |
+| `renderTemplate` throws for a `Registry` or an `EvalContext` whose `caseInsensitive` is not the template's, and for an object `eval-core` does not read | q6 |
+| A `Promise` as an `#if` condition, a `#switch` subject or a `#case` value is a failure. `await` arrives with a later async render, and is not in 0.1.0. An exception to Q18's truthiness | q7 |
+
 ## 3. Design of 0.1.0
 
-A paragraph that cites a question of § 8 is written to this plan's reading of it, and changes with
-the maintainer's answer.
+A paragraph that cites a question of § 8 is written to the maintainer's decision of it, as § 2
+records it.
 
 ### 3.1 In scope
 
@@ -273,7 +327,8 @@ whole expression.
 newline + `)`, with the template's `colonIdentifiers`, with `allowAwaitOutsideFunction`
 (finding 9), and with `onToken` and `onComment`. The text is whole when that parses, the wrapper's
 parenthesis closes at the last token, and the program is one expression statement. The same call
-gives the top-level commas (finding 3) and the comments.
+gives the top-level commas (finding 3) and the comments, each with its kind (finding 19). A text
+that is whole and holds a line comment is a problem (§ 8 q3); a block comment changes nothing.
 
 **The search** is finding 5's:
 
@@ -281,7 +336,9 @@ gives the top-level commas (finding 3) and the comments.
    before it is whole, that is the end.
 2. Otherwise one parse of `(` + a window of the text, 256 characters and doubling, gives the
    candidates, and each is confirmed by the whole-expression parse, in order. The first confirmed
-   is the end.
+   is the end. The candidates are finding 5's, with one change from the prototype (finding 20):
+   the first text after the last token delivered is taken past whitespace *and comments*, and the
+   failure's own position is not a source.
 3. At most 100 confirmations in one tag (§ 8 q5). With nothing confirmed and the window at the end
    of the text, the tag's problem is the first failed attempt's.
 
@@ -291,9 +348,12 @@ before it, so the search accepts nothing the rule would not. It could only be la
 text before q is whole, so its brackets are balanced and no string, template or regular expression
 is open at q. The guided parse reads the same tokens up to q, and then either consumes the token
 at q, which is then a delivered token at the wrapper's depth, or fails on it or fails to read it,
-and q is then the first text after the last token delivered. Each is a candidate.
-What is left is a q that is not where a token starts: inside a name or a number, which § 8 q2
-excludes by `end`'s first character, or inside a comment, which § 8 q3 makes a problem either way.
+and q is then the first text after the last token delivered, past any comments. Each is a
+candidate.
+What is left is a q that is not where a token starts. Inside a name or a number, § 8 q2 excludes
+it by `end`'s first character. Inside a line comment, § 8 q3 makes the tag a problem either way.
+Inside a block comment there is no such q: the text before it holds an unclosed `/*`, which is not
+whole, so the rule does not end the macro there either (finding 20's eleventh text).
 A multi-character operator cannot be split so that the text before the split is whole: a whole
 expression ends in a name, a literal, a closing bracket, `++` or `--`, and no operator has one of
 those as a proper prefix. The argument is this plan's, and step 3 does not rest on it: the rule,
@@ -307,24 +367,29 @@ the offset in the template text, and a message. All are returned together.
 
 **What it throws for** is the host's own code, not the text: an option it does not define; a
 `start` or `end` that is empty, equal to the other, or holds whitespace or a backslash
-(reading 5); an `end` § 8 q2 refuses. The message names the option.
+(reading 5); a `start` or an `end` whose first character § 8 q2 refuses; a `stopOnErrorCount` that
+is not a positive integer, or a `maxNestedLevel` that is not a positive integer of at most 100
+(§ 8 q5). The message names the option.
 
 The problems, by what the author did:
 
 - **The expression**: it does not parse; it is empty; it is not one expression; it nests too
   deeply for the parser, the checks or `compile` (finding 8).
-- **The tag**: a `start` with no `end` that closes it; more than 100 candidate ends (§ 8 q5); an
-  unknown tag name, an uppercase one among them; text after the name of a tag that takes none.
-- **What a macro may not hold**: a top-level comma outside `#case` (Q35); a comment (§ 8 q3); a
+- **The tag**: a `start` with no `end` that closes it; more than 100 candidate ends, a figure that
+  is not an option (§ 8 q5); an unknown tag name, an uppercase one among them; text after the name
+  of a tag that takes none.
+- **What a macro may not hold**: a top-level comma outside `#case` (Q35); a line comment, while
+  a block comment is permitted (§ 8 q3); a
   statement anywhere, an `await`, an `async` function, an `import()` (reading 7), each with a
   message of its own; a statement `eval-core` does not evaluate, with `eval-core`'s message from
   `findUnsupportedStatement`; an identifier that names a member of `Object.prototype` (reading 8).
 - **The blocks**: a close with no open; an open with no close; an `#elseif` or `#else` outside
   `#if`, a `#case` or `#default` outside `#switch`; the order problems and the empty `#switch` of
   Q40; text or a macro before the first `#case`; a block in a branch with `nestedBlocks` off, or a
-  value macro in one with `nestedValues` off; blocks nested more than 100 deep (§ 8 q5).
-- **The list itself**: after 100 problems, one more that says the rest was not checked, and the
-  scan stops (§ 8 q5).
+  value macro in one with `nestedValues` off; with `nestedBlocks` on, a block at a level above
+  `maxNestedLevel`, where a top-level block is level 1 and a value macro is no level (§ 8 q5).
+- **The list itself**: after `stopOnErrorCount` problems, one more that says the rest was not
+  checked, and the scan stops (§ 8 q5).
 
 Every rejection here runs before any evaluation, so none stands in a write's path
 ([SR46](../standing-rules.md#sr46)). The run-time refusals are § 3.5's.
@@ -335,11 +400,19 @@ For one `renderTemplate(compiled, context?, { onError?, onErrorPrint? })`:
 
 1. The options are checked, and a failure throws: a key other than the two, an `onError` that is
    not one of the three forms, an `onErrorPrint` that is not a string.
-2. The context is settled once (§ 8 q1, q6). An `EvalContext` is used as the caller built it,
-   read through and never copied (finding 16). A plain object or a `Registry` is put behind this
-   library's own `EvalContext` subclass, whose `set` and `checkMemberWrite` refuse (finding 10).
-   No context is an empty one. Anything else throws, and so does a store whose case mode is not
-   the template's.
+2. The context is settled once (§ 8 q1, q6), by three checks in this order, each with a message
+   of its own ([SR18](../standing-rules.md#sr18)). First, the shape: no context is an empty one,
+   and anything `eval-core` does not read as a context throws, a null-prototype object among
+   them. Second, `contextReadOnly`: with it on, a caller's own `EvalContext` throws, since this
+   library reads such a context through and cannot guard it without copying it. Third, the case
+   mode: a `Registry` or an `EvalContext` whose `caseInsensitive` is not the template's throws.
+   Then:
+   - With `contextReadOnly` on, the default, a plain object or a `Registry` is put behind this
+     library's own `EvalContext` subclass, whose `set` and `checkMemberWrite` refuse
+     (finding 10).
+   - With it off, a plain object or a `Registry` gets an ordinary `EvalContext`, writable as
+     `eval-core` leaves it, and a caller's `EvalContext` is used as the caller built it, read
+     through and never copied (finding 16).
 3. The nodes are rendered in order. Template text is appended as written.
 4. Each expression is one walk on a state of its own, built with the template's
    `caseInsensitive`, and followed by an unwind of the context's scope stack to the depth before
@@ -359,13 +432,16 @@ For one `renderTemplate(compiled, context?, { onError?, onErrorPrint? })`:
    subject's or a `#case` value's.
 
 **What the render keeps on every path** ([SR44](../standing-rules.md#sr44)): it never parses; an
-untaken branch is not evaluated; a value is inserted once and is never read as template text. Over
-a plain object or a `Registry`, the caller's object, and every object reachable from it, is not
-written by an expression of the template, unless through a function the host supplied
+untaken branch is not evaluated; a value is inserted once and is never read as template text.
+Under `contextReadOnly`, the default, the caller's object, and every object reachable from it, is
+not written by an expression of the template, unless through a function the host supplied
 (finding 10; R-finding 17 for a `Reflect` among the context). **What it does not promise**: that a
 write is refused, since `delete` is not; that a refused write's right side did not run
-(the `eval-rules` plan's M2); or anything about writes over a caller's own `EvalContext`, whose
-policy is the caller's ([SR40](../standing-rules.md#sr40)).
+(the `eval-rules` plan's M2); or anything about writes with `contextReadOnly` off. There a plain
+context is written as `eval-core` writes it, which under `caseInsensitive` means an identifier
+write lands on the copy and a member write on the caller's own nested object (finding 10), and a
+caller's own `EvalContext` keeps the policy the caller gave it
+([SR40](../standing-rules.md#sr40)).
 
 ### 3.6 The package
 
@@ -396,7 +472,7 @@ README says so (reading 4, R-finding 25).
 | A template property at both `eval-forms` adapters, and the `class` and `style` properties | Phase 18 |
 | Named macros and `#include`; loops; pipes; whitespace trimming; template comments; an `if … then` expression grammar (design § 2.5) | The register ([SR5](../standing-rules.md#sr5)), opened by step 1 |
 | An async render, and `await` in a macro | The register |
-| What § 8 refuses, once confirmed: a comment in a macro, an `end` led by a name or number character, a function printed as text, writes over a plain context, the three bounds as options | The register, one entry |
+| What § 8 refuses, as decided: a line comment in a macro, a `start` or an `end` led by a name or number character, a function printed as text, a `Promise` as a condition, a `contextReadOnly` template over a caller's own `EvalContext`, a store in the other case mode, the bound on candidate ends as an option | The register, one entry |
 | A bound on evaluation time and memory (R-finding 9); running outside an Angular build | The `eval-rules` plan opens both entries if its step 1 runs first; otherwise step 1 here |
 
 ### 3.8 What Phase 18 needs from 0.1.0's shapes
@@ -406,7 +482,7 @@ gate, and again in step 6 before the version is set.
 
 | Later need | What 0.1.0 must already be | Where |
 | :--- | :--- | :--- |
-| Phase 18: one `EvalSignal<string>` per template, recomputed when a value a macro read changes (Q13, Q26) | A synchronous render that reads a caller's `EvalContext` through, so a signal context's reads are the render's reads and an untaken branch reads nothing | Finding 16, § 3.5 step 2 |
+| Phase 18: one `EvalSignal<string>` per template, recomputed when a value a macro read changes (Q13, Q26) | A synchronous render that reads a caller's `EvalContext` through, so a signal context's reads are the render's reads and an untaken branch reads nothing. Since § 8 q1 that is a template compiled with `contextReadOnly: false`, which Phase 18 does: its signal context refuses writes itself | Finding 16, § 3.5 step 2 |
 | Phase 18: the template is parsed once | A compiled template that holds what `compile` returned, and a render that never calls `parse` | Step 5's parse-count row |
 | Phase 18: `eval-forms`' policy passed through | A type of the same shape (Q36) | § 5 |
 | Phase 18: a write to a signal context is never contained by a policy, as in `eval-forms` | A function policy whose throw leaves `renderTemplate`: Phase 18's function rethrows a `SignalContextWriteError` | Finding 13, § 3.5 step 8 |
@@ -444,7 +520,7 @@ step's list also holds this document and the skill, whose recorded counts move w
 | 4 | `compileTemplate` | `template-options.ts`, `scan.ts`, `compile-template.ts`, `template.ts` (the types), their specs, the barrel and its two specs, `package.json`, `README.md`, `CHANGELOG.md` | `eval-template` 0.1.0 |
 | 5 | `renderTemplate` | `render-template.ts`, `template-context.ts`, `escape.ts`, their specs, `render-template.parse-count.spec.ts`, the barrel and its specs, `CHANGELOG.md` | `eval-template` 0.1.0 |
 | 6 | The README, and the release commit | `modules/eval-template/README.md`, `readme-examples.spec.ts`, `CHANGELOG.md`, `package.json`, `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root `README.md` and `CHANGELOG.md` | The release, `eval-template` 0.1.0 |
-| 7 | The post-publish record | `docs/backlog.md`, `ROADMAP.md`, `CLAUDE.md` | No package |
+| 7 | The post-publish record | `docs/backlog.md`, `ROADMAP.md`, `CLAUDE.md`, `docs/release-history.md` | No package |
 | 8 | The retrospect | This document's § 9 and § 10, `docs/standing-rules.md` if a rule is promoted, `CLAUDE.md`, `ROADMAP.md` | No package |
 
 File names under `src/lib/` are proposals until the step that writes them.
@@ -454,25 +530,29 @@ File names under `src/lib/` are proposals until the step that writes them.
 **Files**: `docs/eval-template/plan.md`, `docs/eval-template/design-session.md`, `docs/README.md`,
 `ROADMAP.md`, `CLAUDE.md`, `.claude/skills/step/SKILL.md`, `docs/backlog.md`.
 
-- Put § 8's seven readings to the maintainer at the confirmation gate, and write each answer into
-  § 2 and § 8. A reading that changes is followed through § 3 and § 4 in this step's patch
+- § 8 is decided, and Revision 2 wrote the decisions into § 2 to § 5. Read them back to the
+  maintainer at the confirmation gate, and correct here any that Revision 2 wrote wrongly
   ([SR4](../standing-rules.md#sr4)).
-- Check the prototype's hashes, run its scripts on the bundle the gate builds, and write any row
-  that differs into § 1.3.
+- Check the prototype's hashes, run its scripts on the bundle the gate builds, T5 among them, and
+  write any row that differs into § 1.3.
 - Read § 2's decisions once more against the rows: a decision a row now contradicts goes back to
   the maintainer, and is not adjusted in place.
+- Record, in `design-session.md`, that the plan's seven questions are answered, if Revision 2's
+  record of it needs correcting.
 - Open the register entries § 3.7 names.
 - Point `CLAUDE.md` and the `step` skill at this plan as the active one, unless the `eval-rules`
   plan is active then: one plan is active at a time, and which goes first is the maintainer's.
 - Record the gate's baseline counts.
 
-**Exit criteria**: each of § 8's readings is confirmed or changed, in the maintainer's words;
-`sha256sum -c` is clean, and every row of § 1.3 has been run on the gate's bundle; doc-links is
-green; the gate is green with the existing projects' counts unchanged.
+**Exit criteria**: § 2's seven decisions are read back and stand, or are corrected in the
+maintainer's words; `sha256sum -c` is clean over the 12 lines, and every row of § 1.3 has been run
+on the gate's bundle; doc-links is green; the gate is green with the existing projects' counts
+unchanged.
 
-**The wrong implementation** ([SR20](../standing-rules.md#sr20)): a reading recorded as confirmed
-because nobody objected; and a row copied from this revision without running its script on the
-gate's bundle. Each result file's second line names the bundle it ran on.
+**The wrong implementation** ([SR20](../standing-rules.md#sr20)): a decision taken as read
+because Revision 2 wrote it down, when its wording is this plan's and not the maintainer's; and a
+row copied from this revision without running its script on the gate's bundle. Each result file's
+second line names the bundle it ran on.
 
 ### Step 2 — The project, empty and green
 
@@ -516,19 +596,25 @@ written kept in the spec file as the oracle.
 
 **Exit criteria**
 - T1b's 28 texts, in both parser modes, each give the result its row has: the node type, the
-  commas' offsets and the comments' offsets, or the problem with its offset.
+  commas' offsets and the comments' offsets, or the problem with its offset. T5a's six texts each
+  give their comments' kinds and spans.
   *Probe*: drop the "closes at the last token" check, and `a) + (b` goes green as an expression;
   drop the newline, and `a // c` is a problem; parse the text bare, and `{a: 1}.a` is a problem.
-- **The differential rows**: for T1's 52 texts inside the rule, in both parser modes, the search
+- **The differential rows**: for T1's 53 texts inside the rule, which are Revision 1's 52 and
+  `{{ a /* }} */ }}`, now inside it by § 8 q3, and for T5b's 11, in both parser modes, the search
   and the oracle give the same end and the same node type, or both a problem. *Probe*: each
   source of candidates is removed alone, and the step records which rows went red; a source whose
   removal turns nothing red gets a row or goes ([SR21](../standing-rules.md#sr21)). Seen in the
   prototype, and so predicted: without the first text after the last delivered token,
-  `<!-- a-- -->` and `[= a == b =]` differ from the oracle; without the first-`end` attempt these
-  rows stay green and the cost rows below go red, which is what that attempt is for.
-- T1's seven rows outside the rule are pinned as they are, as contrast rows: the oracle gives an
-  end and the search does not, or a later one ([SR44](../standing-rules.md#sr44)). They are what
-  § 8 q2 and q3 refuse, and step 4's rows are the refusals.
+  `<!-- a-- -->` and `[= a == b =]` differ from the oracle; with that text taken past whitespace
+  and not past comments, five of T5b's texts differ (T5b's second arm); without the first-`end`
+  attempt these rows stay green and the cost rows below go red, which is what that attempt is
+  for.
+- T1's seven rows outside the rule are contrast rows: the oracle gives an end and the search does
+  not, or a later one ([SR44](../standing-rules.md#sr44)). They are what § 8 q2 and q3 refuse, and
+  step 4's rows are the refusals. T1 has their values from the prototype's search, which differs
+  from § 3.3's in one source of candidates, so each value is a prediction until its row runs
+  ([SR22](../standing-rules.md#sr22)).
 - **The cost rows**, by count of calls of `eval-core`'s `parse`, counted with the delegating
   barrel mock of `eval-forms`' `rules.invocation-count.spec.ts`, in a spec file of its own
   (R-finding 24): one parse for `{{ a }}`; at most 100 confirmations and one guided parse per
@@ -554,25 +640,36 @@ branches, `#switch` with its cases. Each expression is compiled once, with `eval
 
 **Exit criteria**
 - T3's 65 templates each compile or give the problems their rows have, by `code` and `offset`,
-  with two changes from the prototype, both finding 18's: `{{#if}}x{{/if}}` gives one problem, and
-  `{{ Q1:1 + 1 }}` with the option off gives a message that names `colonIdentifiers`.
+  with three changes from the prototype. Two are finding 18's: `{{#if}}x{{/if}}` gives one
+  problem, and `{{ Q1:1 + 1 }}` with the option off gives a message that names `colonIdentifiers`.
+  The third is § 8 q3's: `{{ a /* note */ }}` compiles and prints `a`'s value, while
+  `{{ a // note\n }}` keeps its problem, whose message now says a line comment.
 - Every problem row asserts its `code`, its `offset` and its message
   ([SR18](../standing-rules.md#sr18)), and beside each is the nearest valid template, which
   compiles.
 - Each refusal of § 3.4 has a row, and each option a leg: both delimiters set, `colonIdentifiers`
   on and off, each nesting option on and off ([SR19](../standing-rules.md#sr19)).
-  `caseInsensitive` changes nothing at compile time, and a row says so: `{{#IF a}}` is an unknown
-  tag under it (Q39).
+  `caseInsensitive` and `contextReadOnly` change nothing at compile time, and a row says so for
+  each: `{{#IF a}}` is an unknown tag under the first (Q39), and `{{ x = 5 }}` compiles under
+  either value of the second, since a write is refused at render (§ 3.5).
 - What `compileTemplate` throws for: an unknown option, `onError` among them, since that is
-  `renderTemplate`'s; each refused delimiter, with the message naming the option.
-- § 8 q5's three bounds each have a row at the bound and one past it.
+  `renderTemplate`'s; each refused delimiter, as `start` and as `end`, with the message naming
+  the option, `${` among the rows (§ 8 q2); and for each of `stopOnErrorCount` and
+  `maxNestedLevel`, `0`, a negative number, `1.5` and a string, with `101` for `maxNestedLevel`.
+- § 8 q5's three bounds each have a row at the bound and one past it: `stopOnErrorCount` at its
+  default and at a value the row sets, each with the one further problem that says the rest was
+  not checked; candidate ends at 100; `maxNestedLevel` at its default of 2 and at a value the row
+  sets, with `nestedBlocks` on. A row with `nestedBlocks` off shows the nested block is the
+  `nestedBlocks` problem there, whatever `maxNestedLevel` says.
 - The public types compile through the barrel: `public-api.spec.ts` imports each
   ([SR9](../standing-rules.md#sr9)).
 
 **The wrong implementation**: a scan that stops at the first problem, which passes every
 one-problem row. The row `{{ a + }} {{#IF}} {{/if}} {{ b` has four, and asserts all four in
 order. And a scan that reads a tag name before skipping whitespace, which passes every row
-written without spaces: `{{ #if a }}yes{{ /if }}` is a row.
+written without spaces: `{{ #if a }}yes{{ /if }}` is a row. And a line-comment check that looks
+for `//` in the text instead of asking the parser, which passes both comment rows above:
+`{{ 'http://x' }}` and `{{ a /* // */ }}` are rows, and both compile.
 
 ### Step 5 — `renderTemplate`
 
@@ -583,8 +680,11 @@ specs, `src/lib/render-template.parse-count.spec.ts`, `src/public-api.ts` and it
 § 3.5, in its order.
 
 **Exit criteria**
-- T4a's values each print what their row has, under `html`, `text` and `#raw`. A function is a
-  failure if § 8 q4 stands.
+- T4a's values each print what their row has, under `html`, `text` and `#raw`, but for the
+  function, which T4a printed as its source text and which is a failure (§ 8 q4), with a message
+  that names the macro. The check is on the value: `{{ fn }}`, `{{ o.method }}`,
+  `{{ flag ? fn : 0 }}` and `{{ () => 1 }}` are rows, and each fails. `{{ fn(1) }}` prints, and
+  `{{#if fn}}yes{{/if}}` takes its branch.
 - T4b's 14 templates give their rows under each of the four policies. The `'throw'` row asserts
   the error by identity, with `toBe` against the object the host function threw
   ([SR41](../standing-rules.md#sr41)); that the walk passes it through unchanged is a prediction
@@ -593,15 +693,25 @@ specs, `src/lib/render-template.parse-count.spec.ts`, `src/public-api.ts` and it
 - An untaken branch is not evaluated: a call counter stays at 0. *Probe*: evaluate every branch
   and print the taken one.
 - A value is inserted once: T4a's `{{ secret }}` row, with `secret` in the context.
-- **Writes** (§ 8 q1): T4c's 17 forms in both case modes, over a plain object and over a
-  `Registry`, each asserting the caller's own object beside the result
-  ([SR19](../standing-rules.md#sr19)). A contrast row pins a caller's own `EvalContext` with no
-  policy, where `x = 5` lands ([SR40](../standing-rules.md#sr40),
-  [SR44](../standing-rules.md#sr44)). A refused write is a failure like any other: it prints
+- **Writes** (§ 8 q1), under each value of `contextReadOnly`: T4c's 17 forms in both case modes,
+  over a plain object and over a `Registry`, each asserting the caller's own object beside the
+  result ([SR19](../standing-rules.md#sr19)). With the option on, the rows are T4c's guard arm,
+  and with it off its plain arm, the `caseInsensitive` rows among them, where `x = 5` prints `5`
+  and leaves the caller's `x` as it was. A refused write is a failure like any other: it prints
   `onErrorPrint` under a containing policy and leaves `renderTemplate` under `'throw'`, and a row
   whose right side is a call shows the call ran ([SR46](../standing-rules.md#sr46)).
+- **A caller's own `EvalContext`** (§ 8 q1): with `contextReadOnly` on, `renderTemplate` throws
+  before any macro runs, whatever `onError` says, with a message that names the option; a call
+  counter in the template stays at 0. With it off, a contrast row pins `x = 5` landing in a
+  context built with no policy ([SR40](../standing-rules.md#sr40),
+  [SR44](../standing-rules.md#sr44)). *Probe*: with the throw removed and the option on, the write
+  row lands, which is the looser reading the decision refused.
 - **Context shapes** (§ 8 q6): T4d's eight shapes under a template compiled in each mode, with the
-  mode check. The mismatched stores and the null-prototype object throw, with a message.
+  mode check, and with `contextReadOnly` off for the two `EvalContext` shapes, which the option
+  refuses first. The mismatched stores and the null-prototype object throw, each with the message
+  of its own check, and a row with both faults, a mismatched `EvalContext` under
+  `contextReadOnly`, asserts which message it gets: § 3.5 step 2's order
+  ([SR18](../standing-rules.md#sr18)).
 - **The unwind**: T4e's stranded scope, over one context rendered twice. *Probe*: remove the
   unwind, and the first render prints `stranded`.
 - **A caller's context is read through**: T4g's lookup rows.
@@ -631,8 +741,15 @@ The README by the order the other packages use. Its limits, each stated as what 
 - Escaping guards against data, not against the author; the result is for `[innerHTML]`, where
   Angular sanitizes it; sanitized HTML still carries a value to another server in a URL; escaping
   does not make `href="{{url}}"` safe (design § 2.6, finding 17).
-- What a template can and cannot write, by context shape (§ 3.5).
-- Evaluation time and memory are not bounded, and compile work is, by three figures (§ 8 q5).
+- What a template can and cannot write, by `contextReadOnly` and by context shape (§ 3.5): what
+  the default refuses and what it does not, that turning it off for a template an end user wrote
+  lets that template change the host's object, and what a write does under `caseInsensitive`.
+- Evaluation time and memory are not bounded, and compile work is: by `stopOnErrorCount`, by
+  `maxNestedLevel`, and by 100 candidate ends in one tag, which is not an option (§ 8 q5).
+- A context key named `await` cannot be read: a macro is parsed so that `await` gets a message of
+  its own (finding 9).
+- A block comment in a macro prints nothing, and a line comment is a problem (§ 8 q3).
+- `${` cannot be a `start`, with the rest of § 8 q2's rule for both delimiters.
 - Under `caseInsensitive` a plain context is copied on each render, and the copy holds own
   enumerable properties only ([A57](../backlog.md#a57)).
 - A `Date` prints in the local time zone; an unknown name prints `''`.
@@ -650,8 +767,9 @@ for a first release.
 
 ### Step 7 — The post-publish record
 
-The Publication status row with its annotated tag, the roadmap's Phase 17 row, and `CLAUDE.md`'s
-package list.
+The Publication status row with its annotated tag, the roadmap's Phase 17 row, `CLAUDE.md`'s
+package list, and the phase's row in [`docs/release-history.md`](../release-history.md), which
+holds what `CLAUDE.md` held of the release history until 2026-11-14.
 
 ### Step 8 — The retrospect
 
@@ -671,8 +789,10 @@ consumer reads and does not build, and the README says so.
 
 Shapes § 2 has fixed:
 
-- `CompileTemplateOptions` holds `start`, `end`, `output`, `nestedBlocks`, `nestedValues`,
-  `colonIdentifiers` and `caseInsensitive`. Any other key throws.
+- `CompileTemplateOptions` holds ten keys: `start`, `end`, `output`, `nestedBlocks`,
+  `nestedValues`, `colonIdentifiers` and `caseInsensitive`, the design's seven, and
+  `contextReadOnly`, `stopOnErrorCount` and `maxNestedLevel`, from § 8 q1 and q5. Any other key
+  throws.
 - `compileTemplate` returns a `CompileTemplateResult`: the compiled template and no problem, or no
   template and at least one problem.
 - A `TemplateProblem` is `{ code, offset, message }`, its `code` from a list documented as open.
@@ -700,7 +820,9 @@ type-check ([SR9](../standing-rules.md#sr9)): the specs' use of the public types
 | A hostile template makes compile slow | Step 3's cost rows, by parse count; step 4's rows at each bound |
 | An engine error leaves `compileTemplate` as a throw | Step 3's and step 4's `RangeError` rows. An error of a kind no row has would leave it: `compileTemplate` converts the kinds it names, not every throw |
 | A write reaches the host's object through a path T4c did not list | Step 5's 17 forms; a path with no row is a gap, recorded |
-| A caller takes the write refusal to cover their own `EvalContext` | Step 5's contrast row, and the README sentence scoped to it |
+| A caller takes the write refusal to cover their own `EvalContext` | Step 5's throw row: with `contextReadOnly` on, such a context is refused, with a message. With it off, the contrast row and the README sentence scoped to it |
+| A host turns `contextReadOnly` off for a template an end user wrote | Nothing in the gate. The README states what that permits, and the default is on |
+| A host sets `stopOnErrorCount` so high that a hostile template's problem list is the cost | Nothing in the gate: the option is the host's, and the README says what it bounds |
 | A host forgets `colonIdentifiers` | Step 4's hint row |
 | A host passes a store built in the other case mode | Step 5's two throw rows |
 | A host expects `{{numberName}}` to print something | Step 5's function row: a failure, with a message that says a call was probably meant |
@@ -712,42 +834,84 @@ type-check ([SR9](../standing-rules.md#sr9)): the specs' use of the public types
 
 ## 8. Questions
 
-Seven readings, each made by P-1 on a point the sessions did not ask and a measurement raised.
-**None is decided.** Step 1's gate puts each to the maintainer, and its answer replaces the
-reading here. Each says what the looser reading would be, since lifting one later is additive and
-adding one later is not.
+Seven readings, each made by P-1 in Revision 1 on a point the sessions did not ask and a
+measurement raised. **All are decided**, by the maintainer on 2026-11-14: they stay here with
+their reasons, each followed by its decision, and [§ 2](#2-decisions--recorded-not-reopened) holds
+the decisions. None is open. Each says what the looser reading would be, since lifting one later
+is additive and adding one later is not. The answers were given in conversation, after a sample
+of each question the maintainer asked for, and the wording of each decision is this plan's:
+step 1's gate reads them back.
 
 1. **Writes.** Over a plain object or a `Registry`, `renderTemplate` builds a context that refuses
    an identifier write and a member write, by the two overrides `eval-signals` uses (finding 10).
    A caller's own `EvalContext` keeps the policy the caller gave it. The looser reading leaves a
    plain context writable, as `eval-core` does by default: then `{{ user.role = 'admin' }}` in a
    template from an end user changes the host's object. *Reading*: refuse (P-1).
+   *Decided, otherwise*: an option. The maintainer asked for a `contextReadOnly` option that is
+   off by default, and on being told that a default cannot be flipped later without a breaking
+   release, and that design Q2 names the least trusted author, set it on by default. It is
+   `compileTemplate`'s, so the trust is fixed with the text and reading 5 stands. With it on, a
+   caller's own `EvalContext` is not rendered: `renderTemplate` throws. The alternative offered,
+   that the option silently does nothing over such a context, was declined. What the decision
+   costs: the plainest call over an `EvalContext` throws until the host compiles with
+   `contextReadOnly: false`, and Phase 18 does that (§ 3.8).
 2. **`end`'s first character.** `end` may not start with a letter, a digit, `_`, `$`, `.`, `:` or
    a character outside ASCII (finding 6). With such an `end` the rule ends a macro inside a name
    or a number, `{{ max}` under `x}`, and the search of § 3.3 is not the rule's answer. The looser
    reading admits any `end` and pays for it with a fallback to the rule as written, bounded by
    § 8 q5. *Reading*: refuse, by a throw, since the option is the host's (P-1).
+   *Decided, and widened*: the rule holds for `start` too. No measurement asks for that: `start`
+   is looked for in template text and never inside an expression, so finding 6 does not reach it.
+   It is the maintainer's choice of one rule for both delimiters, and it is the stricter one. What
+   it costs: `${` cannot be a `start`, which the maintainer was told and confirmed.
 3. **A comment in a macro.** `{{ a /* note */ }}` and `{{ a // note }}` are compile problems
    (finding 6). Under the rule, `{{ a // note }} more }}` ends at the first `}}`, inside the
    comment, which no author means. Design § 2.5 leaves template comments out; this is JavaScript's
    own comment inside an expression. *Reading*: a problem (P-1).
+   *Decided, otherwise*: a block comment is permitted, and a line comment is a problem. The case
+   this question argued from is a line comment's, and it stays refused. A block comment has no
+   such case: an `end` inside one has an unclosed comment before it, so the rule does not end the
+   macro there (findings 19 and 20). A permitted comment prints nothing, and `{{ /* note */ }}`
+   is an empty macro, a problem by Q32, so this is not the template comment design § 2.5 left
+   out.
 4. **A function as a value.** `{{numberName}}`, with the call forgotten, prints the host
    function's source text under reading 6's `String(value)` (finding 11). *Reading*: a function is
    a failure, like a `Promise`, with a message that names the macro (P-1). As a condition a
    function stays what JavaScript makes it, truthy.
+   *Decided, as read*: a function as the macro's value is not supported, and in the maintainer's
+   words "function as part of expression should be supported". Confirmed with it: the check is on
+   the value at
+   render, not on the macro's text, so `{{ user.getName }}` and `{{ flag ? f : g }}` fail as
+   `{{ numberName }}` does.
 5. **Three bounds, each 100**: problems reported by one compile, candidate ends tried in one tag,
    and blocks nested inside one another (findings 7 and 8). Past each, a problem. None is an
    option in 0.1.0. The first qualifies Q19's "every problem at once" for a text with more than
    100. *Reading*: fixed bounds (P-1); a figure the maintainer prefers replaces 100.
+   *Decided, otherwise for two of the three*:
+   - Problems: an option, `stopOnErrorCount`, default 100.
+   - Candidate ends in one tag: fixed at 100, and not an option. The count belongs to how the
+     search works, and an option would bind a later search to it.
+   - Nesting: an option, `maxNestedLevel`, default 2. `nestedBlocks` stays the switch that Q24
+     and Q30 decided, and this is the depth once it is on: a top-level block is level 1, so the
+     default allows one block inside another and nothing deeper. The alternative offered, that
+     the new option replaces `nestedBlocks`, was declined.
+   - Each option is a positive integer, `maxNestedLevel` at most 100, and any other value throws.
+     These three details were this plan's reading, and the maintainer confirmed them.
 6. **A context the template cannot be read against.** `renderTemplate` throws for a `Registry` or
    an `EvalContext` whose `caseInsensitive` is not the template's, and for an object `eval-core`
    does not read, a null-prototype one among them (finding 14). The looser reading renders them:
    the first prints `''` for some names and a value for others, and the second prints `''` for
-   every name. *Reading*: throw (P-1).
+   every name. *Reading*: throw (P-1). *Decided, as read.* Since q1, a caller's `EvalContext`
+   under `contextReadOnly` is refused before its case mode is looked at (§ 3.5 step 2).
 7. **A `Promise` as a condition.** Reading 6 makes a `Promise` value a failure. A `Promise` as an
    `#if` condition, a `#switch` subject or a `#case` value is a failure too, and its block prints
    `onErrorPrint` (finding 13). The looser reading is JavaScript's: truthy, and never `===` to a
-   case. *Reading*: a failure (P-1), so an async render can await it later.
+   case. *Reading*: a failure (P-1), so an async render can await it later. *Decided, as read.*
+   The maintainer asked why an `await` of the promise could not be a condition. It can, in a
+   later minor: `renderTemplate` returns a string synchronously, and Phase 18's signal is built
+   on that, so an `await` needs a second, async render. Q20 and reading 7 keep it out of 0.1.0,
+   and the maintainer kept them. Even then `eval-core` accepts an `await` only where its value is
+   the result, so `{{#if await p}}` could work and `{{#if (await p).ok}}` could not.
 
 Not a reading, and not this plan's: **the order among Phases 12, 17 and 18.**
 

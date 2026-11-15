@@ -14,6 +14,10 @@ is built. It is the record to review, and the input to Phase 17's plan,
   [§ 5](#5-facts-found-about-the-existing-code), or it says it was not verified.
 - Session 2 revised one answer of session 1, Q22, and § 2 is written to the answers as they now
   stand. Where an answer was revised, the questionnaire says by which question.
+- On 2026-11-14 the maintainer decided the seven questions Phase 17's plan had raised, its
+  [§ 8](plan.md#8-questions), P1 to P7 here. They narrow four earlier answers, Q16, Q18, Q19 and
+  readings 5 and 6, and add three options. § 2 is written to them too, and
+  [§ 4](#4-the-questionnaire) lists them last.
 - The form follows the `eval-rules` record,
   [`docs/eval-rules/design-session.md`](../eval-rules/design-session.md).
 
@@ -41,9 +45,15 @@ no Angular DI, no signal and no `eval-signals` peer (Q12, Q25, Q26).
 - **`compileTemplate(text, options)`** returns a value that holds the compiled template, or every
   problem at once. A problem is `{ code, offset, message }`, its `code` from a list documented as
   open. It does not throw for a bad template (Q19, reading 10). It throws for an option it does not
-  define and for a delimiter it refuses, since the options are the host's (reading 5).
+  define and for a delimiter it refuses, since the options are the host's (reading 5). It reports
+  up to `stopOnErrorCount` problems, 100 by default, and then one more that says the rest was not
+  checked (P5).
 - **`renderTemplate(compiled, context, options)`** returns a string. The context is what
-  `eval-core` takes, the host's functions included. The options carry `onError` and `onErrorPrint`
+  `eval-core` takes, the host's functions included, with two limits. It throws for a store whose
+  case mode is not the template's and for an object `eval-core` does not read (P6). And under
+  `contextReadOnly`, the default, a write to a plain object or a `Registry` is refused, and a
+  caller's own `EvalContext` is not rendered at all: the host compiles with
+  `contextReadOnly: false` to pass one (P1). The options carry `onError` and `onErrorPrint`
   and nothing else (Q25, Q43, reading 5).
 - The compiled template is a handle with no public field (reading 10).
 - Rendering never parses, so a template that compiled cannot fail on syntax later.
@@ -66,6 +76,8 @@ delimiter.
 
 - **Delimiters** come from the options: `start` and `end`, both non-empty and different from each
   other, by default `{{` and `}}` (Q16). Neither holds whitespace or a backslash (reading 5).
+  Neither starts with a letter, a digit, `_`, `$`, `.`, `:` or a character outside ASCII, so `${`
+  is not a `start` (P2).
 - **Backslashes directly before `start`** (Q16, Q38): each pair prints one backslash, and an odd one
   left over escapes the delimiter. So `\{{x}}` prints `{{x}}`, and `\\{{x}}` prints `\` and then the
   value. A backslash anywhere else is text.
@@ -115,6 +127,16 @@ Session 2 added these compile problems:
 - **An identifier that names a member of `Object.prototype`**, such as `toString` or `constructor`,
   as in `eval-forms` (reading 8).
 
+The plan's questions added these:
+
+- **A line comment in a macro** (P3): `{{ a // note }}`. A block comment, `{{ a /* note */ }}`, is
+  permitted and prints nothing.
+- **A block at a level above `maxNestedLevel`** (P5), 2 by default, where a top-level block is
+  level 1. It applies with `nestedBlocks` on; with it off, any block in a branch is a problem, as
+  before.
+- **More than 100 possible ends in one tag** (P5), which takes an `end` that also occurs inside
+  expressions, such as `+`.
+
 ### 2.3 The semantics
 
 - **Every expression is `eval-core`'s.** Each is parsed once at compile time and evaluated at
@@ -122,7 +144,8 @@ Session 2 added these compile problems:
   limits. The package has no evaluator of its own.
 - **A macro is one expression**: no statements, and no `await` in 0.1.0 (Q20).
 - **`#if` and `#elseif` test JavaScript truthiness**, as `visible` does, so the string `'false'`
-  is true (Q18).
+  is true (Q18). One exception: a `Promise` as a condition, a `#switch` subject or a `#case` value
+  is a failure, not a truthy value (P7).
 - **`#case` compares with `===`**, takes one or more values, and the first match wins with no
   fall-through (Q18). Its values are expressions, evaluated in order until one matches (reading 1).
 - **No matching branch prints `''`** (Q18). An untaken branch is not evaluated (Q13).
@@ -131,6 +154,10 @@ Session 2 added these compile problems:
   since it cannot depend on `eval-forms`, whose `toText` states it (reading 3).
 - **A value that is a `Promise` is a failure**, not the text `[object Promise]`, so an async render
   stays additive (reading 6).
+- **A value that is a function is a failure** too, not the function's source text (P4):
+  `{{numberName}}` with the call forgotten. The check is on the value, so a function inside an
+  expression works, `{{numberName(count)}}` or an arrow function passed to `map`, and as a
+  condition a function is truthy.
 - **A failure goes to `onError`, per macro** (Q11, Q36). `onError` is `'throw'`, `'undefined'` or
   a function, the shape of `eval-forms`' `ExpressionErrorPolicy`, exported under this package's own
   name, and `'undefined'` is the default. Under `'throw'` the render throws the error. Under the
@@ -163,6 +190,9 @@ Session 2 added these compile problems:
 | `nestedValues` | `true` | Allows a value macro, `{{x}}` or `{{#raw x}}`, inside a branch (Q24, Q30) |
 | `colonIdentifiers` | `false` | As in `eval-core` and both siblings (Q20) |
 | `caseInsensitive` | `false` | As in `eval-core`, for the names an expression reads (Q20) |
+| `contextReadOnly` | `true` | Refuses a write to a plain object or a `Registry` at render, and refuses a caller's own `EvalContext` (P1) |
+| `stopOnErrorCount` | `100` | How many problems one compile reports before it stops; a positive integer (P5) |
+| `maxNestedLevel` | `2` | How deep blocks may nest once `nestedBlocks` is on; a positive integer of at most 100 (P5) |
 
 A template that uses a nesting while its option is off gets a compile problem, never a silent
 literal.
@@ -182,7 +212,9 @@ Each is additive later, since an unknown tag is a compile problem today (Q15, Q2
   meanwhile, as `numberName` does.
 - Loops. `items.map(i => i.name).join(', ')` works in a macro today.
 - Statements in a macro, and `await`.
-- Pipes such as `x | upper`, whitespace trimming, and comments.
+- Pipes such as `x | upper`, whitespace trimming, and template comments. JavaScript's own block
+  comment inside a macro's expression is permitted (P3), and a macro that holds nothing else is
+  empty, so it is not a template comment.
 - An `if … then … elseif … else` expression grammar. It is not JavaScript, so it needs an acorn
   plugin, as colon-joined names did; the maintainer may add it in a later phase (Q9).
 
@@ -280,6 +312,22 @@ answer to Q37 named an option the round had not proposed.
 | — | Reading 9 | A tag that starts with `/` is a close tag, so an expression that starts with a regular expression needs parentheses | Reading |
 | — | Reading 10 | `compileTemplate` returns a value holding the compiled template or the problems; a problem is `{ code, offset, message }`, its `code` from an open list; the compiled template is a handle with no public field | Reading |
 
+The plan's questions, decided on 2026-11-14. Phase 17's plan made seven readings of its own, its
+[§ 8](plan.md#8-questions) q1 to q7, on points its measurements raised after session 2. The
+maintainer asked for a sample of several before answering, and the plan keeps each question's
+reasons and what each answer costs. P4, P6 and P7 are as the plan read them; P1, P2, P3 and P5
+are not.
+
+| Q | Subject | Answer | State |
+| :--- | :--- | :--- | :--- |
+| P1 | Writes to the host's context | A compile option, `contextReadOnly`, `true` by default: a write over a plain object or a `Registry` is refused, and a caller's own `EvalContext` is refused with a message. The plan read: always refused, no option. The maintainer first proposed `false` as the default | Settled; adds an option to reading 5 |
+| P2 | A delimiter's first character | Neither `start` nor `end` starts with a letter, a digit, `_`, `$`, `.`, `:` or a character outside ASCII. The plan read: `end` only | Settled; narrows Q16 and reading 5 |
+| P3 | A comment in a macro | A block comment is permitted; a line comment is a compile problem. The plan read: every comment a problem | Settled |
+| P4 | A function as a macro's value | A failure, checked on the value. A function inside an expression works | Settled; narrows reading 6 |
+| P5 | Bounds on compile work | `stopOnErrorCount`, an option, 100 by default; candidate ends in one tag fixed at 100; `maxNestedLevel`, an option, 2 by default, beside `nestedBlocks`. The plan read: three fixed bounds of 100 | Settled; qualifies Q19, and adds two options to reading 5 |
+| P6 | A context the template cannot be read against | `renderTemplate` throws for a store in the other case mode and for an object `eval-core` does not read | Settled |
+| P7 | A `Promise` as a condition | A failure. `await` arrives with a later async render, and stays out of 0.1.0 as Q20 and reading 7 have it | Settled; an exception to Q18 |
+
 ## 5. Facts found about the existing code
 
 Read on 2026-11-12, at the commit that wrote this file.
@@ -327,5 +375,6 @@ Session 1 left nine points for the plans. Session 2 and Phase 17's plan took the
 | 9 | Register entries for what [§ 2.5](#25-left-out-of-010) leaves out | Written when Phase 17's step 1 runs, as Phase 12 does for its own |
 
 What session 2 did not ask, and the plan's measurements raised, is the plan's
-[§ 8](plan.md#8-questions): seven readings it makes by its rule P-1, each for the maintainer to
-confirm at its step 1's gate.
+[§ 8](plan.md#8-questions): seven readings it made by its rule P-1. The maintainer decided all
+seven on 2026-11-14, P1 to P7 in [§ 4](#4-the-questionnaire), four of them otherwise than the plan
+had read. Nothing of Phase 17's design is open; the order among Phases 12, 17 and 18 still is.
