@@ -132,6 +132,25 @@ Neither displaces Phase 12, and the order among Phases 12, 17 and 18 is not deci
 Phase 17. What the design leaves out of 0.1.0 — named macros, loops, pipes, statements and `await`
 in a macro — goes to the register when Phase 17's step 1 runs, not here.
 
+### Phase 19 and Phase 20 — reserved, not yet designed
+
+Reserved on 2026-11-14, at the maintainer's request. Neither has a design session, a plan or a
+schedule, and no earlier design session covered either; both are to be designed together, since
+they would share their examples and their hosting.
+
+- **Phase 19 — a demo application** that presents what the libraries do. Open, for its design
+  session: what it is for, a showcase, a set of living examples or a test bed; where it lives and
+  how it is hosted; and whether it consumes the published packages or the workspace's source. It
+  is an application, not a sixth package.
+- **Phase 20 — documentation in two sets**, one for customers and one for maintainers. The
+  maintainer set exists: [`docs/`](docs/README.md), `CLAUDE.md` and `CONTRIBUTING.md`. The
+  customer set is today the root README, the package READMEs, their CHANGELOGs and `SECURITY.md`.
+  A guide outside the READMEs reverses [Phase 11's § 3.1](docs/documentation/phase-11-plan.md) D1,
+  one README per package and no guide files ([F28](docs/backlog-retired.md#f28)), so its design
+  session reopens that decision before anything else.
+
+A phase becomes real when it gets a plan document, as above.
+
 ## Deferred work
 
 Everything recorded-and-not-done lives in **[`docs/backlog.md`](docs/backlog.md)**: two
