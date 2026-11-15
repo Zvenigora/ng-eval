@@ -34,25 +34,17 @@ independently and **all three published to npm** under the `@zvenigora` scope, e
 without a breaking release, in any of the three; "nothing has shipped yet" no longer
 applies to any of them.
 
-Phases 1, 2, 3, 4, 5, 6, 9, 10 and 11 are complete and their plan documents are design records rather
-than active work. Phase 2 shipped as `eval-core` 0.4.0, and its plan is
-`docs/statements/phase-2-plan.md`. Phase 5, the async signal, shipped as `eval-signals` 0.5.0,
-and its plan is `docs/signals/phase-5-plan.md`. Phase 9, colon-joined identifiers, shipped as
-`eval-core` 0.12.0, `eval-signals` 0.5.1 and `eval-forms` 0.5.0, and its plan is
-`docs/colon-identifiers/phase-9-plan.md`. Phase 10, the documentation restructure, is complete:
-it shipped as `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms` 0.6.1, docs-only patches,
-and its plan is `docs/documentation/phase-10-plan.md`. The A45 plan, `docs/a45/plan.md` — A45
-part 2 and A44, assignment targets as JavaScript evaluates them — is complete: it shipped as
-`eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms` 0.7.0. Phase 11, `eval-forms`' README
-by entry point (`docs/backlog.md` F28), is complete: it shipped as `eval-forms` 0.7.1, a docs-only
-patch, and its plan is `docs/documentation/phase-11-plan.md`. The A24 plan, `docs/a24/plan.md` —
-the await track, A25, A24 and D13 — is complete: it shipped as `eval-core` 0.15.0, `eval-signals`
-0.8.0 and `eval-forms` 0.8.0. The A33 plan, `docs/a33/plan.md` — the case-insensitive lookup cache's
-miss, A33, and the options a parse remembers, A34 — is complete: it shipped as `eval-core` 0.15.1, a
-patch. The A48 plan, `docs/a48/plan.md` — member reads and writes that miss the data, and a getter's
-throw: A48, A50, A51, A55 and F29 fixed and A49 decided a documented limit — is complete: it shipped
-as `eval-core` 0.16.0 with `eval-signals` 0.9.0 and `eval-forms` 0.9.0. No plan is active. What
-`ROADMAP.md` has left is Phases 7 and 8, which it reserves without specifying them.
+Phases 1 to 6 and 9 to 11 are complete, and so is every track `docs/README.md` lists with a
+release; their plan documents are design records rather than active work. **No plan is active.**
+Two are written and no step of either has run: Phase 12, `@zvenigora/ng-eval-rules`
+(`docs/eval-rules/plan.md`), and Phase 17, `@zvenigora/ng-eval-template`
+(`docs/eval-template/plan.md`). The order between them is the maintainer's, and not decided.
+`ROADMAP.md` has the phases, and says which of them are reserved without a specification.
+
+Which release each completed phase and track shipped as, and what each plan is the reference for,
+is [`docs/release-history.md`](docs/release-history.md). It is not imported here: open it when
+the question is what shipped where, or which plan to read. A release step or a retrospect adds
+its line there, and changes here only a "Published at" version above and which plan is active.
 
 **Deferred work is not in `ROADMAP.md`.** Everything recorded-and-not-done — defects left
 unfixed, decisions logged rather than made, gaps in what the suite can catch — is in
@@ -118,65 +110,13 @@ than one commit ([SR1](docs/standing-rules.md#sr1)) — as in `docs/a8/`, `docs/
 [SR2](docs/standing-rules.md#sr2)–[SR4](docs/standing-rules.md#sr4),
 [SR8](docs/standing-rules.md#sr8) and [SR33](docs/standing-rules.md#sr33)–[SR35](docs/standing-rules.md#sr35).
 
-- The A35 plan, `docs/a35/plan.md` — dangerous function values past the call sandbox, with A36
-  and A37 — is complete: it shipped as `eval-core` 0.12.1 and 0.13.0, and its advisory is
-  GHSA-qrqj-3445-3rjx. Phase 10's plan is complete, and so are the A45 plan, `docs/a45/plan.md`,
-  which shipped as `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms` 0.7.0, and Phase 11's,
-  `docs/documentation/phase-11-plan.md`, which shipped as `eval-forms` 0.7.1, and the A24 plan,
-  `docs/a24/plan.md`, which shipped as `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms`
-  0.8.0, and the A48 plan, `docs/a48/plan.md`, which shipped as `eval-core` 0.16.0, `eval-signals`
-  0.9.0 and `eval-forms` 0.9.0. No plan is active. `.claude/skills/step/SKILL.md` is retargeted with
-  each new plan; while none is active it names none, and stops at its § 1 if invoked.
+- No plan is active. `.claude/skills/step/SKILL.md` is retargeted with each new plan; while none
+  is active it names none, and stops at its § 1 if invoked.
 - The completed plans are design records, not work in progress, and each remains the
   reference for its library — they record findings about this codebase that are not
-  obvious from reading files in isolation:
-  - `docs/side-effects/phase-1-plan.md` — Phase 1, the hook contract (its § 9 and § 9.1).
-  - `docs/statements/phase-2-plan.md` — Phase 2, statements.
-  - `docs/signals/phase-3-plan.md` — Phase 3; its § 9 is the downstream contract
-    `eval-forms` is entitled to rely on, and § 3.2.2 the construct-once finding.
-  - `docs/forms/phase-4-plan.md` — Phase 4; its § 9 designs Phase 6 and § 9.1 states
-    Phase 6's one correctness precondition.
-  - `docs/signals/phase-5-plan.md` — Phase 5, the async signal; its § 3.4 is the value and
-    status contract, and § 9 the downstream one.
-  - `docs/colon-identifiers/phase-9-plan.md` — Phase 9, colon-joined identifiers; its § 3.4 is
-    the grammar, § 3.5 the acorn plugin and the internals it relies on, and § 9 the downstream
-    contract. Its § 8 q1, q2 and q4 are open, waiting on real expressions arriving as corpus
-    data, and say so; q5 is decided — not provided in Phase 9 — and reopens only on the condition
-    the plan states.
-  - `docs/a35/plan.md` — the A35 track, dangerous function values past the call sandbox, with
-    A36, A37, A39 and A42, shipped as `eval-core` 0.12.1 and 0.13.0; its § 3.1 is the identity
-    set, § 3.3 the funnel, § 3.4 what stays open, and § 9 the contract after it landed. It
-    numbers two § 1.2s: the second, "Standing rules, from Revision 16", holds the two probe rules
-    that are now [SR18](docs/standing-rules.md#sr18) and [SR19](docs/standing-rules.md#sr19).
-  - `docs/documentation/phase-10-plan.md` — Phase 10, the documentation restructure, shipped as
-    `eval-core` 0.13.1, `eval-signals` 0.6.1 and `eval-forms` 0.6.1, docs-only; its § 3.2 is why
-    nothing under `docs/` moves, § 3.5 the package READMEs' one opening and their gated peer ranges,
-    § 3.10 `SECURITY.md`'s identifier check, § 6.1 the spec discipline for documentation, and § 9
-    the contract after it landed. Its § 8 q3 was decided after the phase, as `docs/backlog.md` F25
-    Part 4: a published absolute link binds its target.
-  - `docs/a45/plan.md` — the A45 track, A45 part 2 and A44, assignment targets as JavaScript
-    evaluates them, with A52, shipped as `eval-core` 0.14.0, `eval-signals` 0.7.0 and `eval-forms`
-    0.7.0; its § 0 collects thirteen rules, now standing rules
-    ([the map](docs/standing-rules.md#old-numberings)), § 3 is the design, § 9 the contract after it landed, and § 10 the retrospect. Its § 8 q2–q4
-    are pointers to A48–A51; the A48 plan fixed A48, A50 and A51 in its steps 2 to 4, and decided A49 a documented limit in step 5.
-  - `docs/documentation/phase-11-plan.md` — Phase 11, `eval-forms`' README by entry point, shipped
-    as `eval-forms` 0.7.1, docs-only; its § 3.1 is D1–D6, why each package keeps one README and no
-    guide file exists, § 3.2 the README's order, § 3.5 its contents list, § 9 the contract after it
-    landed — its headings are 0.7.0's word for word — and § 10 the retrospect.
-  - `docs/a24/plan.md` — the A24 track, the await track: A25, A24 and D13, shipped as `eval-core`
-    0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0. Its § 3.2 is the accepted-position design:
-    the accepted `await` is read off each walk's root and carried in that walk's visitor table, never
-    on `st` or a node. § 3.3 is the statement table that `findUnsupportedStatement` and the evaluator
-    share, § 9 the contract after it landed, and § 10 the retrospect. Its § 0's two rules are now
-    [SR40](docs/standing-rules.md#sr40) and [SR41](docs/standing-rules.md#sr41).
-  - `docs/a33/plan.md` — the A33 and A34 track: the case-insensitive lookup cache's miss re-validated by
-    name, and the options a parse remembers by identity, documented. Shipped as `eval-core` 0.15.1. Its
-    § 3.1 is the B1 design, § 9 the contract after it landed, and § 10 the retrospect; its § 8 q1 is decided
-    by one `eval-signals` row, D1.
-  - `docs/a48/plan.md` — member reads and writes that miss the data, and a getter's throw: A55, A48, A50
-    and A51 fixed, A49 decided a documented limit, F29's cases. Shipped as `eval-core` 0.16.0 with
-    `eval-signals` 0.9.0 and `eval-forms` 0.9.0. Its § 9 maps the published entries to their witnesses,
-    and § 10 is the retrospect, whose twelve review stops are SR45's origin.
+  obvious from reading files in isolation. [`docs/release-history.md`](docs/release-history.md)
+  lists each with the sections to read, and `docs/README.md` indexes every document under
+  `docs/`. Read the plan for a library before changing what it designed.
 
   Their open questions are settled unless the document says otherwise. They stay as written,
   and their line citations, and those in their summaries, refer to the code at the commits that

@@ -32,7 +32,16 @@ that anchor, `<a id="…"></a>` in the first cell.
 
 ## Active plan
 
-None. The next plan is linked here when it is written.
+None. Two plans are written and not started, [`eval-rules/plan.md`](eval-rules/plan.md) and
+[`eval-template/plan.md`](eval-template/plan.md), both in the table of tracks below; whichever
+starts first is linked here by its step 1.
+
+## Release history
+
+[`release-history.md`](release-history.md) — which release each completed phase and track shipped
+as, in order, and what each plan is the reference for. It was part of `CLAUDE.md` until
+2026-11-14. The versions themselves, with dates and tags, are the register's Publication status
+table.
 
 ## Completed phases
 
