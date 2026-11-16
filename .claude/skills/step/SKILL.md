@@ -8,21 +8,27 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: none active
-Target: none
+Plan document: docs/demo/plan.md
+Target: the `demo` application at `apps/demo`, which step 2 creates; no library
 Requested step: $ARGUMENTS
 
-**No plan is active.** The A48 plan (`docs/a48/plan.md`), A48–A51, A55 and F29, is complete: it shipped
-as `eval-core` 0.16.0 with `eval-signals` 0.9.0 and `eval-forms` 0.9.0, and its retrospect is its § 10.
-The next plan retargets this file when it is written. It names the plan above, says which projects each
-step reaches, and records the gate's counts its steps start from: at 7d9d488, the release commit, and
-unchanged by the post-publish record and the retrospect, `eval-core` 3533, `eval-signals` 462,
-`eval-forms` 391.
+**The active plan is Phase 19's, the demo application** (`docs/demo/plan.md`): one Nx application at
+`apps/demo` and a site on GitHub Pages, shipping in no package. **No step reaches a project under
+`modules/`**, and a file there changing is a stop (its § 4). Step 1 reached documents only. Steps 2 to
+7 reach the `demo` project, with the root files each row of § 4 lists, and step 8 reaches root
+documents. The gate's counts its steps start from, read by step 1, are `eval-core` 3533,
+`eval-signals` 462 and `eval-forms` 391, and they move in no step
+([SR10](../../../docs/standing-rules.md#sr10)). From step 2 the gate also runs the `demo` project's
+`lint`, `test` and `build`, and each step's Outcome records the demo's count.
 
-**Invoked while no plan is active, this skill stops at § 1.** Run the baseline, report it, say that
-no plan is active, and do nothing else. Do not run a step of a completed plan, and do not treat a
-register entry as a plan: a one-commit item or a batch has its exit criteria in the prompt
-(`CLAUDE.md`, "Working from a plan").
+**The plan's § 0 adds D-1 and D-2.** By D-1, for a file under `apps/demo` the gate, commits only when
+asked, Edit and Write, and no `eslint-disable` apply; the `code-reviewer` before a commit, a probe for
+each check and the claim-to-witness table do not. So a step whose changed files are all under
+`apps/demo`, or the plan document, runs no `code-reviewer` in § 5: its report says so, and gives the
+step's one-off checks. A file outside `apps/demo` follows the standing rules for that file, so a step
+that changes one under `tools/` runs the reviewer. By D-2, a build read as a measurement starts from a
+deleted `.angular` cache. A one-commit item or a batch is not a step of this plan: its exit criteria
+are in its prompt (`CLAUDE.md`, "Working from a plan").
 
 **Step state**: read it from the plan, not from here. The last step in its § 4 with a recorded
 **Outcome** is done, and the next is the step after it in § 4's table. A plan's step 1 records its

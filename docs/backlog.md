@@ -288,6 +288,7 @@ and `v0.2.3`: lightweight tags from before the `<project>@<version>` names, whic
 | [F29](backlog-retired.md#f29) | The README's "a rule that does not parse throws at registration, whatever the policy" is witnessed at both adapters under the default policy only; a function policy, the other one that swallows an error, is unwitnessed | forms | test gap | **Retired — fixed 2026-11-07**, as step 6 of the [A48 plan](a48/plan.md); tests only, ships in no package. Opened 2026-10-28 by Phase 11 step 2's code review |
 | [F30](backlog-retired.md#f30) | `eval-signals` 0.8.0's `await` claims — the sync signal's throw on a refused `await` and its operand by identity, the async signal resolving an accepted one, a rejection as raised — are measured through the package once, and witnessed by no row of it | signals | test gap | **Retired — fixed 2026-10-31**, in no package: five rows, `eval-signals` 444 → 449, committed after the release commit 67486ab and before the publish. Opened the same day by the A24 plan's step 7a code review |
 | [F31](#f31) | `eval-core` 0.16.0's A55 at `eval-forms`' `/signals` — a rule over a getter that throws now sees its throw under `'throw'` or a function policy — is witnessed by no row; `/reactive`'s three rows witness it there | forms | test gap | Open — opened 2026-11-08 by the [A48 plan](a48/plan.md)'s step 9, from step 8's code review |
+| [F32](#f32) | `eval-core`'s barrels re-export 26 types without `export type`, so its source does not compile under `isolatedModules` (`TS1205`); an application that compiles the source, as the demo does, turns the option off | core | fix | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-15 by the [Phase 19 plan](demo/plan.md)'s step 1, from its M2 |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -1567,3 +1568,46 @@ so the behaviour should be the same, but that is read from the code, not measure
 **The fix**: a row at `/signals`, a rule over a getter that throws under each policy, red on
 0.15.1's `eval-core` code, and a clause in the next `eval-forms` CHANGELOG if it ships with a
 release.
+
+<a id="f32"></a>
+## F32 — `eval-core`'s barrels do not compile under `isolatedModules`
+
+**Package** core · **Kind** fix · **Status** Open, not scheduled ([SR48](standing-rules.md#sr48)). Opened 2026-11-15 by the [Phase 19 plan](demo/plan.md)'s step 1, from its M2
+
+`eval-core`'s barrels re-export 26 types with `export { … }`, not `export type { … }`. Under
+`isolatedModules: true` TypeScript refuses each of them: `TS1205`, "Re-exporting a type when
+'isolatedModules' is enabled requires using 'export type'". `eval-core` does not set the option, so
+its own build, lint and tests never meet the error. `eval-signals` and `eval-forms` set it and do
+not meet it either, because their builds read `eval-core`'s built declarations, not its source.
+What meets it is a project that compiles `eval-core`'s source under the option. The demo
+application of Phase 19 is designed to compile the source, as its prototype does, and a new
+Angular application sets the option by default.
+
+**Verified** by step 1's M2 run, on Windows and Node 26.4.0, over the prototype the plan's
+[§ 1.3](demo/plan.md#13-mechanism-questions-measured) pins by its hash. With `isolatedModules: true`
+in its `tsconfig.json` and `.angular` deleted, the application build fails with 26 errors. All 26
+are `TS1205`, and all are in four of `eval-core`'s barrels under `src/lib/internal/`:
+
+| Barrel | Errors |
+| :--- | ---: |
+| `classes/eval/public-api.ts` | 18 |
+| `interfaces/public-api.ts` | 4 |
+| `classes/common/public-api.ts` | 2 |
+| `functions/public-api.ts` | 2 |
+
+None is in `eval-signals` or `eval-forms`. With `isolatedModules: false` the same build is green
+and `tsc --noEmit` prints nothing (the plan's M3).
+
+**Not scheduled**, by SR48. It is none of the four things that rule fixes: no security route, no
+published sentence that is false, no blocker of the active plan, since the demo sets
+`isolatedModules: false` (the plan's [§ 8](demo/plan.md#8-questions) P4), and no consumer's report.
+A consumer of the published package never compiles the barrels: the package holds the built
+bundle and declarations. For the same reason no README states it. No row pins it, since a row
+would need a second compile of the source under the option; the M2 run is its record.
+
+**What reopens it**: a consumer reports it; the demo can no longer set `isolatedModules: false`,
+which makes it a blocker of the active plan; or `eval-core`'s own build gains the option, or
+`verbatimModuleSyntax`.
+
+**The fix**: `export type` on each of the 26 re-exports. Whether the built `.d.ts` changes is
+measured then, not assumed here ([SR12](standing-rules.md#sr12)).

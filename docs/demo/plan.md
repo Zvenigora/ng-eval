@@ -1,13 +1,14 @@
 # Phase 19 Plan — the demo application, first version
 
-**Status: Revision 2, ready for step 1.** No step has run. The design is
+**Status: Revision 2, step 1 done; step 2 is next.** The design is
 [`design-session.md`](design-session.md), one session and questions Q1 to Q23. This plan does not
 restate it: it cites a decision by its Q number, and adds what a plan needs: measurements, scope,
 steps, exit criteria, and what goes red.
 
 A statement here about how the build, the libraries' source or Jest behaves is a row of
 [§ 1.3](#13-mechanism-questions-measured), run on a prototype pinned in the ignored `tmp/` folder,
-or it says it is a prediction. Step 1 checks the prototype's hash and runs it again.
+or it says it is a prediction. Step 1 checked the prototype's hash and ran six of the rows again;
+its Outcome, in [§ 4](#step-1--this-plan-its-records-and-the-measurements), has each result.
 
 **No question is open.** [§ 8](#8-questions) held seven readings Revision 1 made by its rule P-1,
 on points the measurements raised after the session had ended. The maintainer decided all seven
@@ -81,9 +82,22 @@ Pages.
 ### 1.3 Mechanism questions, measured
 
 The prototype is `tmp/demo-proto`: 20 files, not counting `node_modules`, `dist`, the cache, the
-lockfile and the logs. The SHA-256 of their sorted `sha256sum` listing is `3eef781b…414d4c3a`.
+lockfile and the logs. Its hash is
+`3eef781b1949cceb953dec5c5a132a9b26542549f2357aa7e04b9d27414d4c3a`: the SHA-256 of the files'
+`sha256sum -b` lines, sorted by path, as this command prints it from Git Bash in the prototype's
+folder:
+
+```sh
+find . -type f -not -path './node_modules/*' -not -path './dist/*' -not -path './.angular/*' -not -name 'package-lock.json' -not -name '*.log' | LC_ALL=C sort | xargs sha256sum -b | sha256sum
+```
+
+The command does not cover a path that holds a space: `xargs` splits it, `sha256sum` fails on each
+half, and the hash printed is the other files'. So the count of files the `find` lists, 20, is
+read beside the hash. Step 1 found a twenty-first, a zip in a folder named with a space, which was
+not the prototype's; it was moved out before the measurements ran.
+
 `tmp/` is ignored by git, so the prototype is outside the tracked tree but inside the working
-folder; step 1 moves it if the maintainer wants it elsewhere. It installed `@angular/build` 22.2.4
+folder, and step 1 left it there. It installed `@angular/build` 22.2.4
 with `--legacy-peer-deps`, so that the compiler and TypeScript resolved to the workspace's own
 copies, and ran the builder through the Angular CLI, not through Nx.
 
@@ -94,9 +108,9 @@ copies, and ran the builder through the Angular CLI, not through Nx.
 | M3 | And with `isolatedModules: false`? | Yes. The production build is green, and `tsc --noEmit` prints nothing, with the libraries' other strict options on and the base `lib` |
 | M4 | Is a build after a `tsconfig` change trustworthy? | Not from a warm cache: the 26 errors were printed again until `.angular` was deleted |
 | M5 | What does the build emit for Pages? | `dist/browser/`. Its `index.html` holds `<base href="/ng-eval/">`; script, style and chunk references are relative; the lazy route is `import("./chunk-….js")` |
-| M6 | Is a copied example file the file that ran? | Yes, for the one compared: `source/core-eval.example.ts` has the SHA-256 of its source. All four were copied |
+| M6 | Is a copied example file the file that ran? | Yes, for all four: each `source/*.example.ts` has the SHA-256 of its source. Revision 1 compared one, `core-eval.example.ts`, and step 1 the four |
 | M7 | Does `with { loader: 'text' }` work on a `.ts` file? | In a development build, yes: the text is inlined and the component still compiles. TypeScript needs `@ts-expect-error` on the import. Not tried under Jest |
-| M8 | What does a highlighter cost? | Baseline 510.91 kB raw, 130.86 kB estimated transfer. highlight.js, core with three languages: +31.81 kB, +10.70 kB. Prism with two: +21.58 kB, +7.05 kB, with three "not ESM" warnings and no types of its own |
+| M8 | What does a highlighter cost? | Baseline 510.91 kB raw, 130.86 kB estimated transfer. highlight.js, core with three languages: +31.81 kB, +10.70 kB. Prism with two: +21.58 kB, +7.05 kB, with three "not ESM" warnings and no types of its own. The pinned tree holds the highlight.js state only, so that is the arm step 1 built again: 542.72 kB raw, 141.56 kB transfer. The baseline's figures are read from `build3.log`, SHA-256 `0f5c9c7336b07b5ad827377ade716c9ddac0808506bae4ffee5ba59c01a3ea12`, and Prism's, 532.49 kB and 137.91 kB, from `build6.log`, SHA-256 `374e8542b0866c39b052d31e61f6bf7d85ac2f406a5cd54f3bf1835181ec91b8`. The prototype's hash does not cover the logs |
 | M9 | Do the libraries work without zone.js? | Four Jest cases pass under the zoneless environment, one per group. Each asserts a value, changes a source, and asserts the new value |
 | M10 | May an untagged project import a library? | No: "A project without tags matching at least one constraint cannot depend on any libraries", on each of the four example files |
 | M11 | Does the builder need an install script? | No. Four were blocked (`@parcel/watcher`, `esbuild`, `lmdb`, `msgpackr-extract`), and the build and the tests were green |
@@ -194,7 +208,7 @@ Every step's list also holds this document.
 
 | Step | Subject | Files | Demo cases added |
 | :--- | :--- | :--- | :--- |
-| 1 | This plan, its records, and the measurements | `docs/demo/`, `docs/README.md`, `ROADMAP.md`, `CLAUDE.md`, `docs/backlog.md`, the `step` skill | — |
+| 1 | This plan, its records, and the measurements | `docs/demo/`, `docs/README.md`, `ROADMAP.md`, `CLAUDE.md`, `docs/backlog.md`, `docs/backlog-history.md`, the `step` skill | — |
 | 2 | The project, empty and green | `apps/demo/` (new), the root `package.json`, `package-lock.json`, `eslint.config.mjs`, `CLAUDE.md`, `CONTRIBUTING.md`, the root `CHANGELOG.md` | 1 |
 | 3 | The block, the registry and the free-form page | `apps/demo/`, the root `package.json`, `package-lock.json` | The block's, the two registry cases, 1 smoke |
 | 4 | Feature pages: core and signals | `apps/demo/` | 6 smoke |
@@ -213,6 +227,33 @@ Every step's list also holds this document.
 Exit: the measurements agree with [§ 1.3](#13-mechanism-questions-measured), or the row is
 corrected in this commit ([SR4](../standing-rules.md#sr4)); the gate is green; doc-links lists no
 dangling link.
+
+- **Outcome** (2026-11-15). The six rows ran on Windows and Node 26.4.0, each build from a deleted
+  `.angular` (D-2), and every one agrees with [§ 1.3](#13-mechanism-questions-measured). The
+  prototype's hash was the pinned one before the runs and after them, over 20 files.
+  - **M2**: 26 errors, all `TS1205`, all in `eval-core`'s barrels under `src/lib/internal/`:
+    `classes/eval/public-api.ts` 18, `interfaces/public-api.ts` 4, `classes/common/public-api.ts` 2
+    and `functions/public-api.ts` 2.
+  - **M3**: the production build is green, and `tsc --noEmit -p tsconfig.app.json` prints nothing.
+  - **M5**: `dist/browser/index.html` holds `<base href="/ng-eval/">`; its script, stylesheet and
+    preloaded chunk are referenced by file name alone; `main-Q2IMXDAI.js` holds one
+    `import("./chunk-2M6PBCKP.js")`.
+  - **M6**: four of four copied files have their source's SHA-256.
+  - **M8**: 542.72 kB raw and 141.56 kB transfer, the highlight.js arm. `build3.log` and
+    `build6.log` hold the row's other two figures.
+  - **M9**: 4 passed.
+  - **Corrected in this commit** ([SR4](../standing-rules.md#sr4)), no result among them: § 1.3
+    gives the hash in full with its command, and says what the command does not cover; M6's row
+    says four were compared, where one had been; M8's row names the arm that was built again and
+    the two logs, each by its SHA-256 ([SR47](../standing-rules.md#sr47)); row 1's file list gains
+    `docs/backlog-history.md`, since the Register history left `docs/backlog.md` on 2026-11-15.
+  - **The register**: [F32](../backlog.md#f32) opened for the 26 re-exports, not scheduled
+    ([SR48](../standing-rules.md#sr48)); live entries 18 → 19.
+  - **The records**: the `step` skill names this plan, and `CLAUDE.md`, `docs/README.md` and
+    `ROADMAP.md` name it active, with rows for Phases 17 and 19 in `ROADMAP.md`'s table.
+  - **The gate**, green: `eval-core` 3533, `eval-signals` 462, `eval-forms` 391, the baseline every
+    later step starts from. doc-links: 373 files, 3077 links, 0 dangling. release-tags: 55 rows,
+    65 release tags, all annotated, 0 failing.
 
 ### Step 2 — The project, empty and green
 
