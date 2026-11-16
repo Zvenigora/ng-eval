@@ -38,8 +38,8 @@ that anchor, `<a id="…"></a>` in the first cell.
 
 ## Active plan
 
-[`demo/plan.md`](demo/plan.md), Phase 19, the demo application at `apps/demo`: step 1 is done and
-step 2 is next. Two more plans are written and not started,
+[`demo/plan.md`](demo/plan.md), Phase 19, the demo application at `apps/demo`: steps 1 and 2 are
+done and step 3 is next. Two more plans are written and not started,
 [`eval-rules/plan.md`](eval-rules/plan.md) and [`eval-template/plan.md`](eval-template/plan.md),
 both in the table of tracks below; each is linked here by its step 1. Phase 19 runs before both.
 
@@ -93,8 +93,8 @@ Work on one register entry, or a group of them, that needed more than one commit
 ## Gates
 
 The gate is [SR8](standing-rules.md#sr8), run after every step, and again after any edit that follows
-it. Beside the three projects' lint,
-test and build targets, it runs these checks:
+it. Beside the lint, test and build targets of the three libraries and the demo, it runs these
+checks:
 
 - [`tools/doc-links.mjs`](../tools/doc-links.mjs) — every relative link in a `*.md`, and in a comment
   line of a `*.ts`, resolves to a file and, where it names one, an anchor; untracked files git does

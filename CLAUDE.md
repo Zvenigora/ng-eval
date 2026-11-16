@@ -34,10 +34,16 @@ independently and **all three published to npm** under the `@zvenigora` scope, e
 without a breaking release, in any of the three; "nothing has shipped yet" no longer
 applies to any of them.
 
+Beside them is one application, **`demo`** (`apps/demo`, tag `scope:demo`), which ships in no
+package. It compiles the libraries' source through the path aliases of `tsconfig.base.json`, not
+their built packages, so it sets `isolatedModules: false`: `eval-core`'s barrels do not compile
+under the option (`docs/backlog.md` F32). It runs without zone.js, and its Jest settings are
+`eval-core`'s. Its process is D-1 of `docs/demo/plan.md`'s § 0, not the libraries'.
+
 Phases 1 to 6 and 9 to 11 are complete, and so is every track `docs/README.md` lists with a
 release; their plan documents are design records rather than active work. **Phase 19's plan is
 active** (`docs/demo/plan.md`): a demo application at `apps/demo`, shipping in no package. Its
-step 1 is done and step 2 is next.
+steps 1 and 2 are done and step 3 is next.
 Two more are written and no step of either has run: Phase 12, `@zvenigora/ng-eval-rules`
 (`docs/eval-rules/plan.md`), and Phase 17, `@zvenigora/ng-eval-template`
 (`docs/eval-template/plan.md`). The order between them is the maintainer's, and not decided;
@@ -62,10 +68,12 @@ flight and the register's history are beside it, in `docs/backlog-in-flight.md` 
 Prefer `nx` over the underlying tooling (see `AGENTS.md` for the workspace-wide Nx rules).
 
 ```sh
-# projects: eval-core, eval-signals, eval-forms
-npx nx run <project>:build:production   # ng-packagr → dist/modules/<project>
+# libraries: eval-core, eval-signals, eval-forms; the application: demo
+npx nx run <library>:build:production   # ng-packagr → dist/modules/<library>
+npx nx run demo:build                   # @angular/build → dist/apps/demo, after the libraries' builds
 npx nx run <project>:test               # jest (jest-preset-angular)
 npx nx run <project>:lint               # eslint flat config
+npx nx serve demo                       # dev server, at http://localhost:4200/ng-eval/
 
 npx nx run-many -t lint test build       # every project, every target
 
@@ -79,12 +87,12 @@ Its `--output-style=static` is there because nx 23.3, like 23.2, hides successfu
 output, and the gate is read for its test counts.
 
 Root scripts: `npm test`, `npm run build` and `npm run lint` are `nx run-many -t <target>`
-with no project filter, so each covers all three projects. CI
+with no project filter, so each covers the three libraries and the demo. CI
 (`.github/workflows/node.js.yml`) runs `npm ci`, `npm run build --if-present` and
-`npm test` — so it covers all three projects' build and test targets, and no project's
-lint.
+`npm test` — so it covers the build and test targets of the three libraries and the demo, and
+no project's lint.
 
-`test` also runs on a fourth project, the workspace root (`@zvenigora/ng-eval`), whose only
+`test` also runs on a fifth project, the workspace root (`@zvenigora/ng-eval`), whose only
 `test` target is `node tools/doc-links.mjs && node tools/release-tags.mjs`, declared in the root
 `package.json`'s `nx.targets`. The first is the document cross-reference gate (`docs/backlog.md`
 F9). It fails on a relative link in any `*.md`, or in a comment line of any `*.ts`, whose file or
@@ -116,7 +124,7 @@ than one commit ([SR1](docs/standing-rules.md#sr1)) — as in `docs/a8/`, `docs/
 [SR2](docs/standing-rules.md#sr2)–[SR4](docs/standing-rules.md#sr4),
 [SR8](docs/standing-rules.md#sr8) and [SR33](docs/standing-rules.md#sr33)–[SR35](docs/standing-rules.md#sr35).
 
-- The active plan is Phase 19's, `docs/demo/plan.md`: step 1 is done and step 2 is next.
+- The active plan is Phase 19's, `docs/demo/plan.md`: steps 1 and 2 are done and step 3 is next.
   `.claude/skills/step/SKILL.md` is retargeted with each new plan and names this one; while none
   is active it names none, and stops at its § 1 if invoked.
 - The completed plans are design records, not work in progress, and each remains the

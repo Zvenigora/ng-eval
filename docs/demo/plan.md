@@ -1,6 +1,6 @@
 # Phase 19 Plan — the demo application, first version
 
-**Status: Revision 2, step 1 done; step 2 is next.** The design is
+**Status: Revision 2, steps 1 and 2 done; step 3 is next.** The design is
 [`design-session.md`](design-session.md), one session and questions Q1 to Q23. This plan does not
 restate it: it cites a decision by its Q number, and adds what a plan needs: measurements, scope,
 steps, exit criteria, and what goes red.
@@ -14,7 +14,7 @@ its Outcome, in [§ 4](#step-1--this-plan-its-records-and-the-measurements), has
 on points the measurements raised after the session had ended. The maintainer decided all seven
 on 2026-11-15, each as Revision 1 read it, and [§ 2](#2-decisions--recorded-not-reopened) holds
 the decisions. Two of them amend an answer of the session, Q11 and Q20, and the design record
-says so at each.
+says so at each. An eighth, P8, the builder's version, was decided on 2026-11-16, at step 2.
 
 **Revision 2** wrote the decisions in. It changed no measurement, no step and no exit criterion.
 
@@ -45,7 +45,8 @@ Pages.
 ### 1.1 What exists today
 
 - Three published libraries under `modules/`, and no application. The root manifest lists no
-  application builder, and none is installed (M1).
+  application builder, and none is installed (M1). This is the state the plan was written from:
+  step 2 added the application and the builder.
 - `nx.json` has generator defaults for an Angular application. `tsconfig.base.json` has path
   aliases for all five entry points. Lint boundaries are by `scope:` tag.
 - CI runs `npm run build` and `npm test`, both `nx run-many` with no project filter, so a new
@@ -88,13 +89,15 @@ lockfile and the logs. Its hash is
 folder:
 
 ```sh
-find . -type f -not -path './node_modules/*' -not -path './dist/*' -not -path './.angular/*' -not -name 'package-lock.json' -not -name '*.log' | LC_ALL=C sort | xargs sha256sum -b | sha256sum
+find . -type f -not -path './node_modules/*' -not -path './dist/*' -not -path './.angular/*' -not -name 'package-lock.json' -not -name '*.log' -print0 | LC_ALL=C sort -z | xargs -0 sha256sum -b | sha256sum
 ```
 
-The command does not cover a path that holds a space: `xargs` splits it, `sha256sum` fails on each
-half, and the hash printed is the other files'. So the count of files the `find` lists, 20, is
-read beside the hash. Step 1 found a twenty-first, a zip in a folder named with a space, which was
-not the prototype's; it was moved out before the measurements ran.
+The command separates the paths by a null byte, so it covers a path that holds a space. The count
+of files the `find` lists, 20, is still read beside the hash. Step 1 ran the command without
+`-print0`, `-z` and `-0`: `xargs` then splits a path at a space, `sha256sum` fails on each half,
+and the hash printed is the other files'. It found a twenty-first file that way, a zip in a folder
+named with a space, which was not the prototype's; it was moved out before the measurements ran.
+Over the 20 files the two commands print the same hash, and step 2 ran this one.
 
 `tmp/` is ignored by git, so the prototype is outside the tracked tree but inside the working
 folder, and step 1 left it there. It installed `@angular/build` 22.2.4
@@ -119,9 +122,14 @@ copies, and ran the builder through the Angular CLI, not through Nx.
 **Not measured, so predictions**, each an exit criterion of the step that first relies on it:
 
 - Nx running the builder as the `demo` project's target. Nx does not see a project under `tmp/`.
-- The builder installed in the root without `--force`, and a clean `npm ci` after it.
-- The lint constraint for the demo's tag, in both directions.
-- The site in a browser, at any address.
+  **Measured by step 2**: its criteria 1 and 4.
+- The builder installed in the root without `--force`, and a clean `npm ci` after it. **Measured
+  by step 2**: its criterion 2, at 22.2.5 (P8).
+- The lint constraint for the demo's tag, in both directions. **Measured by step 2**: its
+  criterion 5 and two probes. The constraint is what lets the demo import the libraries. An import
+  of the demo from a library is refused by the rule's other checks, and no probe reached a tag.
+- The site in a browser, at any address. Step 2's criterion 6 saw the shell at the dev server's
+  address; the Pages address is step 8's.
 - Recreating an example on each edit, and what a parse error does to the page.
 - The versions and the commit in the footer.
 - The Pages workflow, and CI on Ubuntu.
@@ -142,6 +150,10 @@ more were decided on 2026-11-15, from [§ 8](#8-questions):
 - **P6.** The first deploy is step 8 of this plan.
 - **P7.** The project's files are written by hand, not by the Nx generator.
 
+One more was decided on 2026-11-16, at step 2:
+
+- **P8.** The builder is `@angular/build` 22.2.5 exactly, not the 22.2.4 the prototype measured.
+
 ## 3. Design of the first version
 
 ### 3.1 In scope
@@ -158,8 +170,16 @@ look, the footer, and the Pages workflow with its first deploy (Q10, Q14, Q15).
 - The root `eslint.config.mjs` gains one constraint: `scope:demo` may depend on `scope:core`,
   `scope:signals` and `scope:forms`. No constraint names `scope:demo` as a permitted dependency.
 - Jest runs under `setupZonelessTestEnv`, and the application provides no zone (P5).
+- Its Jest settings are `eval-core`'s: `tsconfig.spec.json` with `module: preserve` and
+  `moduleResolution: bundler`, and `jest.config.ts` with `diagnostics: { ignoreCodes: [151001] }`.
+  With `isolatedModules: false` (P4), ts-jest type-checks the demo's specs, as it does
+  `eval-core`'s and no other library's, so the demo takes the settings of the one library that
+  type-checks in Jest. The prototype's `commonjs` with `bundler` ran M9 green, and nothing measured
+  it red. `eval-signals`' and `eval-forms`' `commonjs` with `node10` is the one measured red: under
+  it `@angular/core/testing` does not resolve (`TS2307`), which those two never see, because
+  `isolatedModules: true` turns the check off.
 - The build's `baseHref` is `/ng-eval/`, and routing uses `withHashLocation()` (Q17, M5).
-- The root `devDependencies` gain `@angular/build` at 22.2.4 exactly, in step 2, and the
+- The root `devDependencies` gain `@angular/build` at 22.2.5 exactly (P8), in step 2, and the
   highlighter in step 3. No manifest under `modules/` changes (Q4).
 
 ### 3.3 An example, and the block around it
@@ -209,7 +229,7 @@ Every step's list also holds this document.
 | Step | Subject | Files | Demo cases added |
 | :--- | :--- | :--- | :--- |
 | 1 | This plan, its records, and the measurements | `docs/demo/`, `docs/README.md`, `ROADMAP.md`, `CLAUDE.md`, `docs/backlog.md`, `docs/backlog-history.md`, the `step` skill | — |
-| 2 | The project, empty and green | `apps/demo/` (new), the root `package.json`, `package-lock.json`, `eslint.config.mjs`, `CLAUDE.md`, `CONTRIBUTING.md`, the root `CHANGELOG.md` | 1 |
+| 2 | The project, empty and green | `apps/demo/` (new), the root `package.json`, `package-lock.json`, `eslint.config.mjs`, `CLAUDE.md`, `CONTRIBUTING.md`, the root `CHANGELOG.md`, `docs/README.md` | 1 |
 | 3 | The block, the registry and the free-form page | `apps/demo/`, the root `package.json`, `package-lock.json` | The block's, the two registry cases, 1 smoke |
 | 4 | Feature pages: core and signals | `apps/demo/` | 6 smoke |
 | 5 | Feature pages: forms, both adapters | `apps/demo/` | 6 smoke |
@@ -274,6 +294,76 @@ Exit, each with what shows it:
 If Nx cannot run the builder for a project compiled from the libraries' source, stop: the
 alternatives, the `@nx/angular:application` executor or a build against `dist/`, are a replan,
 since the second reverses Q8.
+
+- **Outcome** (2026-11-16). Run on Windows, Node 26.4.0. The step's prompt carried the reviewing
+  chat's measurements from a Linux sandbox at 63bdf4c, pinned in `ng-eval-19.2-measurements.zip`,
+  SHA-256 `deddf836bc80dae8c7fc94f96fb443e0310b16e7e3bc1bc67837665ff76e9014`, which the maintainer
+  holds ([SR47](../standing-rules.md#sr47)). Nothing was applied from it, and every result below
+  that it also holds agrees with it.
+  - **The version, and P8.** `@angular/build` 22.2.5 exactly, where Revision 2 said 22.2.4. The
+    maintainer decided it on relaying the prompt: 22.2.4 pins vite 8.3.0, on which `npm audit`
+    lists six advisories, one of them high, all in the dev server, and 22.2.5 pins vite 8.3.5.
+    § 1.3's rows stay as written: the prototype measured 22.2.4.
+  - **The install.** `npm install --save-dev --save-exact @angular/build@22.2.5`, with no other
+    flag, exit 0. The lockfile gained 124 package entries and lost none, and the root manifest
+    changed by one line. Its git blob went from `fa944c92235231fe90fc3870cb5ed0d37942a08a` to
+    `de628a06b75be0ef2564d7278a72a18bbb248400`, the sandbox's blob. A clean `npm ci` exit 0 left it
+    at that blob.
+  - **The warnings**, at the install and at `npm ci` alike. `npm warn ERESOLVE overriding peer
+    dependency`, twice, for `@emnapi/core` and `@emnapi/runtime` under
+    `@oxc-parser/binding-wasm32-wasi`, an optional dependency of the builder. One install script
+    blocked, `msgpackr-extract@3.0.7`; `allowScripts` is unchanged (M11). No `npm error`.
+  - **The audit.** `npm audit --package-lock-only` lists `deepmerge` GHSA-gcqx-w48m-w2h4, `glob`
+    GHSA-3g3m-2fjr-6pw4 and `minimatch` GHSA-g3hv-75wg-m249, the three [F16](../backlog.md#f16)
+    holds, and nothing on vite.
+  - **Criterion 1**, met. `npx nx show projects` lists `demo`, and the gate is green with its
+    `lint`, `test` and `build`. Neither `nx.json` nor `tsconfig.base.json` changed.
+  - **Criterion 2**, met: the install and the two blobs above.
+  - **Criterion 3**, met. `git status --porcelain modules/` prints nothing, and the gate has
+    `eval-core` 3533, `eval-signals` 462 and `eval-forms` 391.
+  - **Criterion 4**, met. From a deleted `.angular` and `dist` (D-2),
+    `dist/apps/demo/browser/index.html` holds `<base href="/ng-eval/">`. The same build with
+    `--excludeTaskDependencies` is green with no `dist/modules`, and gives the same output names,
+    `main-PCE7FPE5.js` and `styles-6GXROV53.css`: the demo compiles the libraries' source (Q8).
+    `tsc --noEmit` prints nothing for `tsconfig.app.json` and for `tsconfig.spec.json`.
+  - **Criterion 5**, met as written, and its explanation corrected. `home.ts` imports a value
+    from each of the five entry points and uses it, `toText` from the `eval-forms` root, and the
+    demo's lint is green. Two probes ran, each alone and reverted by hand. A relative import of
+    `apps/demo/src/app/home` in `modules/eval-core/src/index.ts` turns `eval-core`'s lint red with
+    "Projects cannot be imported by a relative or absolute path, and must begin with a npm scope".
+    That is the rule's own check and not a tag: in the sandbox the same import through a temporary
+    path alias gave "Circular dependency between "eval-core" and "demo" detected", so no probe
+    reached a tag rule. Taking the `scope:demo` constraint out turns the demo's lint red with "A
+    project without tags matching at least one constraint cannot depend on any libraries", on each
+    of the five imports. So the constraint is what lets the demo import the libraries, and the
+    rule's other checks are what refuse an import of the demo.
+  - **Criterion 6**, met. The maintainer ran `npx nx serve demo` and sent the page at
+    `http://localhost:4200/ng-eval/` as a screenshot: the `home` link, the heading, and the five
+    sections, each under its entry point's name.
+  - **No zone.** `project.json` has no `polyfills` entry, the build emits no `polyfills-*.js`, and
+    `grep -c "Zone already loaded"` gives 0 for the one script, though `zone.js` is in the root
+    manifest.
+  - **Corrected in this commit** ([SR4](../standing-rules.md#sr4)). P8, in § 2, § 3.2 and § 8.
+    § 1.3's hash command is the null-separated one, which covers a path that holds a space and
+    prints the same hash over the same 20 files; step 1's Outcome describes the command it ran, and
+    stays. § 3.2 names the demo's Jest settings and the three that were weighed. Criterion 5's
+    explanation, above. Row 2's file list gains `docs/README.md`, for the gate's sentence and the
+    active-plan sentence. § 1.3 marks three predictions as measured, and says what criterion 6 saw.
+  - **The sweep** ([SR25](../standing-rules.md#sr25)), by `git grep -n -i -E 'all three
+    projects|three projects|fourth project|no application'`. Rewritten: `CLAUDE.md`'s Commands,
+    `CONTRIBUTING.md`'s Code style and its "All three projects are now configured the same way",
+    and `docs/README.md`'s Gates. Kept as history: completed plans, step summaries, dated
+    CHANGELOG lines, the `step` skill's account of the worker warning, and § 1.1 here, now marked.
+    Left, outside this step's list: `docs/eval-rules/plan.md`'s two mentions of "the three
+    projects" in its step 1, which that step corrects, and a spec comment under `modules/`.
+  - **The demo's count**: 1.
+  - **The gate**, green: `eval-core` 3533, `eval-signals` 462, `eval-forms` 391, `demo` 1.
+    doc-links: 379 files, 3084 links, 0 dangling. release-tags: 55 rows, 65 release tags, all
+    annotated, 0 failing.
+  - **The gate's time** is the sandbox's, not this machine's
+    ([SR28](../standing-rules.md#sr28)), read from the zip named above: nx's Run duration was
+    1m 5s and 1m 6s without the `demo` project, and 1m 12s, 1m 12s and 1m 13s with it, with
+    `eval-core`'s `test` the critical path in all five.
 
 ### Step 3 — The block, the registry and the free-form page
 
@@ -343,8 +433,9 @@ browser, since no gate sees the look or the live site.
 
 ## 8. Questions
 
-All decided on 2026-11-15. Each was Revision 1's reading (P-1), written so that "yes" accepted
-it, and the maintainer accepted all seven. The third column is the reading as decided.
+P1 to P7 were decided on 2026-11-15. Each was Revision 1's reading (P-1), written so that "yes"
+accepted it, and the maintainer accepted all seven. The third column is the reading as decided.
+P8 was raised by the sandbox measurements made for step 2's prompt, and decided on 2026-11-16.
 
 | # | Question | Decision |
 | :--- | :--- | :--- |
@@ -355,6 +446,7 @@ it, and the maintainer accepted all seven. The third column is the reading as de
 | P5 | Should the demo run without zone.js? | Yes. It is Angular 22's default and the four groups pass under it (M9). It also makes the demo the libraries' first zoneless consumer |
 | P6 | Should the first deploy be step 8 of this plan, which needs the maintainer to enable Pages and start the workflow? | Yes. A workflow that has never run is a prediction, and the links of Q19 wait on a live site |
 | P7 | Should the project's files be written by hand, and not by the Nx generator? | Yes. The generator edits the root manifest and `nx.json` beyond a step's file list. The prototype's files are the starting point |
+| P8 | Should the builder be `@angular/build` 22.2.5 exactly, and not 22.2.4? | Yes. 22.2.4 pins vite 8.3.0, on which `npm audit` lists six advisories, one of them high (GHSA-587h-7wmj-h5pm), all in the dev server. 22.2.5 pins vite 8.3.5, and the audit stays at the three advisories [F16](../backlog.md#f16) holds |
 
 ## 9. Contract after this lands
 

@@ -28,6 +28,14 @@ export default [
                 'scope:forms',
               ],
             },
+            {
+              sourceTag: 'scope:demo',
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:signals',
+                'scope:forms',
+              ],
+            },
           ],
         },
       ],

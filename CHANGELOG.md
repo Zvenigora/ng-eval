@@ -20,6 +20,13 @@ which gained "(not published to npm)". This file now holds only changes that shi
 Workspace tooling: nothing here reaches a consumer, so nothing here is versioned.
 
 ### Added
+- **The `demo` application, empty**, 2026-11-16. `apps/demo` is an Nx application, project `demo`,
+  built by `@angular/build` 22.2.5, a new root dev dependency, from the libraries' source through
+  the workspace's path aliases. It holds a shell, a home page that uses all five entry points, and
+  one Jest case under the zoneless environment. The root lint configuration lets the `scope:demo`
+  tag depend on the three libraries' tags. `npm run lint`, `npm test` and `npm run build` now run
+  its targets too, and so does the gate. CI runs its build and its test, and no project's lint. It
+  ships in no package. `docs/demo/plan.md`, Phase 19 step 2.
 - **The standing rules, in one place**, 2026-10-27. `docs/standing-rules.md` holds the process and
   verification rules for all three libraries as SR1–SR38, each with its origin and what goes red when
   it is broken, and a table resolving the older plans' rule numbers. `CLAUDE.md` imports it, and
