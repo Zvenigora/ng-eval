@@ -1,6 +1,6 @@
 # Phase 19 Plan — the demo application, first version
 
-**Status: Revision 2, steps 1 to 3 done; step 4 is next.** The design is
+**Status: Revision 2, steps 1 to 4 done; step 5 is next.** The design is
 [`design-session.md`](design-session.md), one session and questions Q1 to Q23. This plan does not
 restate it: it cites a decision by its Q number, and adds what a plan needs: measurements, scope,
 steps, exit criteria, and what goes red.
@@ -232,7 +232,7 @@ Every step's list also holds this document.
 | 1 | This plan, its records, and the measurements | `docs/demo/`, `docs/README.md`, `ROADMAP.md`, `CLAUDE.md`, `docs/backlog.md`, `docs/backlog-history.md`, the `step` skill | — |
 | 2 | The project, empty and green | `apps/demo/` (new), the root `package.json`, `package-lock.json`, `eslint.config.mjs`, `CLAUDE.md`, `CONTRIBUTING.md`, the root `CHANGELOG.md`, `docs/README.md` | 1 |
 | 3 | The block, the registry and the free-form page | `apps/demo/`, the root `package.json`, `package-lock.json`, `CLAUDE.md`, `docs/README.md` | The block's, the two registry cases, 1 smoke |
-| 4 | Feature pages: core and signals | `apps/demo/` | 6 smoke |
+| 4 | Feature pages: core and signals | `apps/demo/`, `CLAUDE.md`, `docs/README.md` | 6 smoke, 1 nav |
 | 5 | Feature pages: forms, both adapters | `apps/demo/` | 6 smoke |
 | 6 | The three use cases | `apps/demo/` | 3 smoke |
 | 7 | The look, the footer and the workflow | `apps/demo/`, `.github/workflows/pages.yml` (new) | The footer's |
@@ -471,6 +471,88 @@ and no guarantee (D-1), read by the maintainer at the step's confirmation.
 
 Step 5's pages show `visible` and `text` at `/reactive`, and `visible`, `text` and `disabled` at
 `/signals` ([§ 1.2](#12-findings-that-shape-the-plan) finding 6).
+
+- **Step 4's Outcome** (2026-11-17). Run on Windows, Node 26.4.0. The step's prompt carried the
+  reviewing chat's measurements on `f644932`, pinned in `ng-eval-19.4-measurements.zip`, SHA-256
+  `e6f4cf522c93831b061380e250daa806fbf280d9dddfb8fed3cc2a320e29bfd2`, which the maintainer holds
+  ([SR47](../standing-rules.md#sr47)); the hash was checked before the step. It is a measuring rig,
+  not this step's code, and nothing was applied from it. The prompt quoted its smoke values, and
+  each case below reads them.
+  - **The pages.** Six registry entries after `try`, in this order, each file under `src/app`:
+    `features/core/evaluate` (`x + y`, CompilerService's README section),
+    `features/core/scopes` (`CAT.action(ARGS, cat.NUM, "times")`), `features/core/hooks`
+    (`2 + 3 * a`), `features/signals/signal` and `features/signals/dependencies`
+    (`price * quantity`), and `features/signals/async` (`loadUser(id)`). Each example reads
+    `inject(EXPRESSION)` and `inject(DATA)` in field initializers, as `try/core-eval.example.ts`
+    does, and is otherwise its README section's code. The scopes and hooks examples run the
+    README's statements in the constructor, after the field initializers: the scope push and the
+    hook registration come before the evaluation. A context that needs functions defines them in
+    the example's file: the README's `cat` object, and `loadUser` over two users, Ada and Grace,
+    resolving after a 10 ms `setTimeout`. The hooks example pushes
+    `event.path ?? String(event.key)`, since `event.key` is `string | number | symbol`.
+  - **The prose.** `RegistryEntry` gains `readonly summary: string`, and `page.ts` renders it as a
+    `<p>` between the title and the README link, as-is, backticks included. Each of the seven
+    entries, `try`'s included, has the text the prompt gave; a page has no other prose.
+  - **The navigation**, found by the reviewing chat's measurement, before the step. The link
+    array `['/', entry.path]` encoded the slashes inside a nested path, giving
+    `/features%2Fcore%2Fhooks`, and a click landed on `try` through the `'**'` redirect: Angular
+    splits `/` only in a link array's first command. `app.ts` now binds `'/' + entry.path`.
+    `app.spec.ts` renders `App` under `provideRouter(routes)` and reads every navigation link's
+    `href` as `'/' + ` its entry's path, in registry order. It does not navigate, since a page's
+    source view would call `fetch`.
+  - **The smoke cases**, one per example in `<name>.example.spec.ts` beside it, shaped as
+    `try/core-eval.example.spec.ts`: a value, a change, the new value. evaluate: 3 and 3, then
+    `{ "x": 10, "y": 2 }` gives 12 and 12. scopes: `Mister Whiskers says meow 3 times`, then
+    `cat.NAME` gives `Miss Kitty`. hooks: 32, the reads `["a"]` and 7 trace lines, then
+    `{ "a": 20 }` gives 62. signal: 30, then the button gives 40. dependencies: 30 and
+    `price, quantity`, then `price * quantity + shipping` gives 35 and
+    `price, quantity, shipping`. async: after `whenStable`, `resolved` and `Ada`, then
+    `{ "id": 2 }` gives `resolved` and `Grace`, with real timers, since the async signal holds a
+    `PendingTasks` task while a run is pending. Each spec copies the two helpers, but the signal
+    spec copies `entryAt` only: its change is a click, so a copied `typeInto` would be unused,
+    and lint has no `eslint-disable` here. The registry's two cases are green, and
+    `registry.spec.ts` is unedited.
+  - **The type-check.** `npx tsc --noEmit -p` prints nothing for `tsconfig.app.json` and for
+    `tsconfig.spec.json`.
+  - **The build** (D-2), from a deleted `.angular` and `dist`, by
+    `npx nx build demo --excludeTaskDependencies`: green, with no warning. Initial files
+    `main-XNEXTBQX.js` and `styles-6GXROV53.css`; Initial total 266.66 kB raw, 74.73 kB transfer.
+    One lazy chunk per example, by name: `core-eval-example` (`chunk-jTIVcbD1.js`, 525 bytes),
+    `evaluate-example` (`chunk-Cl7-9omf.js`, 783 bytes), `scopes-example` (`chunk-DgKPhOi8.js`,
+    829 bytes), `hooks-example` (`chunk-BmiBMeFz.js`, 1.06 kB), `signal-example`
+    (`chunk-DfBlL-LI.js`, 836 bytes), `dependencies-example` (`chunk-Dm1Z1Hpe.js`, 902 bytes) and
+    `async-example` (`chunk-D10DAG_2.js`, 3.75 kB). `eval-core`, which step 3 found in
+    `core-eval-example`'s chunk, is now in a shared unnamed lazy chunk, `chunk-BKxpoGEF.js`,
+    187.18 kB raw and 45.57 kB transfer, beside three smaller unnamed ones.
+  - **The copies.** `dist/apps/demo/browser/source/` holds the seven `*.example.ts`, one per file
+    under `src/app`, each with its source's SHA-256:
+    `try/core-eval.example.ts` `571db0e591b5838276e58845fb698acfa2dd1e65bb52520f247ba8ffbde61fbe`,
+    `features/core/evaluate.example.ts`
+    `aa1a9057da10b218b5d0615a6ed1ee03d25bacd2e4ba3ed9bf652b67b5b672ac`,
+    `features/core/scopes.example.ts`
+    `5a8fe9d7a1c98d2153c432dd39caf9f3d591fefd62abbe6017427e489bd4af7f`,
+    `features/core/hooks.example.ts`
+    `3959cdb1c4777c7f773976382c8562e29f0e2637c21bfe80f99b2f52fe5c3293`,
+    `features/signals/signal.example.ts`
+    `590beb6b9dccb1cc51677cd7b105015efd9b32871cb886a6138c9d19f4080b65`,
+    `features/signals/dependencies.example.ts`
+    `99cd4a8c249491cbd32dc3aafd7559cbc147e998eba323f66290ca9f5c86b11f` and
+    `features/signals/async.example.ts`
+    `14d9741640a06c3309b3e7097d0e12ebb004cb27f9d2861191164502f1e3fc84`. Every new file was
+    written with LF line endings.
+  - **`modules/` and `tools/`**: `git status --porcelain modules/ tools/` prints nothing. No
+    `code-reviewer` ran (D-1): no file under either changed.
+  - **Corrected in this commit** ([SR4](../standing-rules.md#sr4)). Row 4's file list gains
+    `CLAUDE.md` and `docs/README.md`, for the active-plan sentence, and its cases read
+    "6 smoke, 1 nav".
+  - **The sweep** ([SR25](../standing-rules.md#sr25)), by
+    `git grep -n -E 'steps 1 to 3|step 4 is next'`. Rewritten: `CLAUDE.md`'s two active-plan
+    sentences, `docs/README.md`'s Active plan, and this document's status line. The grep finds
+    nothing in `docs/a45/plan.md`, which is left alone.
+  - **The demo's count**: 13. Step 3's six, the six smoke cases and the navigation case.
+  - **The gate**, green: `eval-core` 3533, `eval-signals` 462, `eval-forms` 391, `demo` 13.
+    doc-links: 402 files, 3092 links, 0 dangling. release-tags: 55 rows,
+    65 release tags, all annotated, 0 failing.
 
 ### Step 7 — The look, the footer and the workflow
 

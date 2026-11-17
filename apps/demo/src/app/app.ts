@@ -8,7 +8,7 @@ import { REGISTRY } from './registry';
   template: `
     <nav>
       @for (entry of entries; track entry.path) {
-        <a [routerLink]="['/', entry.path]">{{ entry.title }}</a>
+        <a [routerLink]="'/' + entry.path">{{ entry.title }}</a>
       }
     </nav>
     <router-outlet />
