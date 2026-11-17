@@ -16,6 +16,9 @@
         "index": "apps/demo/src/index.html",
         "tsConfig": "apps/demo/tsconfig.app.json",
         "baseHref": "/ng-eval/",
+        "assets": [
+          { "glob": "**/*.example.ts", "input": "apps/demo/src/app", "output": "source" }
+        ],
         "styles": ["apps/demo/src/styles.css"]
       },
       "configurations": {

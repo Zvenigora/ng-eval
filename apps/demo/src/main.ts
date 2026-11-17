@@ -1,8 +1,8 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { provideRouter, withHashLocation } from '@angular/router';
 import { App } from './app/app';
-import { Home } from './app/home';
+import { routes } from './app/routes';
 
 bootstrapApplication(App, {
-  providers: [provideRouter([{ path: '', component: Home }], withHashLocation())],
+  providers: [provideRouter(routes, withHashLocation())],
 }).catch((error) => console.error(error));

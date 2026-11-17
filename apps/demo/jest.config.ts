@@ -16,7 +16,14 @@ module.exports = {
       },
     ],
   },
-  transformIgnorePatterns: ['node_modules/(?!.*\\.mjs$)'],
+  // highlight.js's `lib/languages/*.js` set `module.exports` and no `.default`, and the demo
+  // does not set `esModuleInterop`, so here a language's default import is undefined, though
+  // tsc passes. Its `es/languages/*.js` export a default: map the import there, and let Jest
+  // transform those files. `lib/core.js` sets `.default` itself, and needs neither.
+  moduleNameMapper: {
+    '^highlight\\.js/lib/languages/(.*)$': '<rootDir>/../../node_modules/highlight.js/es/languages/$1.js',
+  },
+  transformIgnorePatterns: ['node_modules/(?!(.*\\.mjs$|highlight\\.js/es/languages/))'],
   snapshotSerializers: [
     'jest-preset-angular/build/serializers/no-ng-attributes',
     'jest-preset-angular/build/serializers/ng-snapshot',

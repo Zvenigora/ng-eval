@@ -1,6 +1,6 @@
 # Phase 19 Plan — the demo application, first version
 
-**Status: Revision 2, steps 1 and 2 done; step 3 is next.** The design is
+**Status: Revision 2, steps 1 to 3 done; step 4 is next.** The design is
 [`design-session.md`](design-session.md), one session and questions Q1 to Q23. This plan does not
 restate it: it cites a decision by its Q number, and adds what a plan needs: measurements, scope,
 steps, exit criteria, and what goes red.
@@ -130,7 +130,8 @@ copies, and ran the builder through the Angular CLI, not through Nx.
   of the demo from a library is refused by the rule's other checks, and no probe reached a tag.
 - The site in a browser, at any address. Step 2's criterion 6 saw the shell at the dev server's
   address; the Pages address is step 8's.
-- Recreating an example on each edit, and what a parse error does to the page.
+- Recreating an example on each edit, and what a parse error does to the page. **Measured by
+  step 3**: the block's two cases.
 - The versions and the commit in the footer.
 - The Pages workflow, and CI on Ubuntu.
 
@@ -230,7 +231,7 @@ Every step's list also holds this document.
 | :--- | :--- | :--- | :--- |
 | 1 | This plan, its records, and the measurements | `docs/demo/`, `docs/README.md`, `ROADMAP.md`, `CLAUDE.md`, `docs/backlog.md`, `docs/backlog-history.md`, the `step` skill | — |
 | 2 | The project, empty and green | `apps/demo/` (new), the root `package.json`, `package-lock.json`, `eslint.config.mjs`, `CLAUDE.md`, `CONTRIBUTING.md`, the root `CHANGELOG.md`, `docs/README.md` | 1 |
-| 3 | The block, the registry and the free-form page | `apps/demo/`, the root `package.json`, `package-lock.json` | The block's, the two registry cases, 1 smoke |
+| 3 | The block, the registry and the free-form page | `apps/demo/`, the root `package.json`, `package-lock.json`, `CLAUDE.md`, `docs/README.md` | The block's, the two registry cases, 1 smoke |
 | 4 | Feature pages: core and signals | `apps/demo/` | 6 smoke |
 | 5 | Feature pages: forms, both adapters | `apps/demo/` | 6 smoke |
 | 6 | The three use cases | `apps/demo/` | 3 smoke |
@@ -373,6 +374,91 @@ free-form page as the block's first user. Adds the highlighter.
 Exit: the four checks of § 3.4 exist and are green; the built `source/` holds one file per
 `*.example.ts`, each with its source's SHA-256; the copy button's case reads back the text the
 view shows.
+
+- **Outcome** (2026-11-16). Run on Windows, Node 26.4.0. The step's prompt carried the reviewing
+  chat's measurements, pinned in `ng-eval-19.3-measurements.zip`, SHA-256
+  `6ad8eb2ef66daec4228c0370221519e99b6bd062144bea85fe8de57de15c6873`, which the maintainer holds
+  ([SR47](../standing-rules.md#sr47)). Nothing was applied from it; the prompt quoted its lockfile
+  blob and its build figures, and each is compared below.
+  - **The install.** `npm install --save-dev --save-exact highlight.js@11.12.0`, with no other
+    flag, exit 0. The lockfile gained one package entry, `node_modules/highlight.js`, and lost
+    none, and the root manifest changed by one line in `devDependencies`. Its git blob went from
+    `de628a06b75be0ef2564d7278a72a18bbb248400` to `cddbc46f7f736669d616ca360bda2643d2c2ae15`, the
+    sandbox's blob. A clean `npm ci` exit 0 left it at that blob, and printed step 2's two
+    `npm warn ERESOLVE overriding peer dependency`. One install script blocked at both,
+    `msgpackr-extract@3.0.7`; `allowScripts` is unchanged. No `npm error`. The prototype's
+    manifest has highlight.js 11.11.1; the pin is 11.12.0.
+  - **The audit.** `npm audit --package-lock-only` lists `glob` GHSA-3g3m-2fjr-6pw4 and `minimatch`
+    GHSA-g3hv-75wg-m249, two of the three [F16](../backlog.md#f16) holds. `deepmerge`
+    GHSA-gcqx-w48m-w2h4 is not listed.
+  - **The highlighter.** `highlight.ts` registers the `typescript` language on
+    `highlight.js/lib/core`, once, and the source view renders `[innerHTML]` of
+    `hljs.highlight(text, { language: 'typescript' }).value`, with no `bypassSecurityTrust*` and no
+    theme stylesheet. The copy case finds a `span` in the code element and no `console.warn` call:
+    the sanitizer kept the spans and warned of nothing.
+  - **The Jest mapping.** Under the demo's Jest a language's default import is undefined: its
+    `lib/languages/*.js` sets `module.exports` and no `.default`, and the demo does not set
+    `esModuleInterop`, though tsc passes. Read with `node`:
+    `require('highlight.js/lib/languages/typescript').default` is undefined, and `lib/core.js`'s
+    `.default` is the object. `jest.config.ts` maps `highlight.js/lib/languages/*` to
+    `es/languages/*.js`, which export a default, and its `transformIgnorePatterns` lets Jest
+    transform those files; a comment there gives the reason. `esModuleInterop` stays unset, since
+    it changes how `eval-core`'s source compiles in the demo's Jest.
+  - **The layout**, under `src/app`. `example-tokens.ts` holds `EXPRESSION` and `DATA`;
+    `registry.ts` the entry type, the list and the `ENTRY` token; `routes.ts` a route per entry,
+    each providing its entry to `page.ts`, with `''` and `'**'` redirecting to `try`; `app.ts` the
+    navigation, from the entries' titles. `block.ts` creates the example by
+    `ViewContainerRef.createComponent`, from the boxes' `(input)` handler and once after the
+    entry's `load` resolves, and calls the new ref's `detectChanges()` in the same `try`; a throw
+    clears the container and shows its message. `source-view.ts` fetches `source/<file>` through
+    `SOURCE_FETCH`, whose default is `fetch`, checks `response.ok`, and copies by
+    `navigator.clipboard.writeText`. The block and the source view each hold a `PendingTasks`
+    task until their promise settles, so `whenStable` waits for the load and the fetch. The
+    free-form entry is `try/core-eval.example.ts`, the prototype's example reading
+    `inject(EXPRESSION)` and `inject(DATA)`, with `2 + 3 * a` and `{ "a": 10 }`. `home.ts` and
+    `home.spec.ts` are deleted.
+  - **Q9's lazy folder per group is a lazy chunk per example.** Each entry's `load` is a dynamic
+    `import()` of its component, so the build gives each example its own chunk; the one this step
+    adds is `chunk-22HTLO2C.js`, named `core-eval-example`, 186.40 kB raw and 44.93 kB transfer.
+  - **The build** (D-2), from a deleted `.angular` and `dist`, by
+    `npx nx build demo --excludeTaskDependencies`: green, with no warning. Initial files
+    `chunk-BCTB2LHD.js`, `main-BH3WRTS2.js` and `styles-6GXROV53.css`; Initial total 262.61 kB raw,
+    75.67 kB transfer. The sandbox's figures, +29.63 kB raw and +9.85 kB transfer over 502.80 kB
+    and 127.25 kB, do not compare with these: step 2's home page put all five entry points in the
+    initial bundle, and here `eval-core` is in the lazy chunk, the other entry points in no file,
+    and highlight.js in `main`.
+  - **The copies.** `dist/apps/demo/browser/source/` holds one file, `try/core-eval.example.ts`,
+    for the one `*.example.ts` under `src/app`, and both have the SHA-256
+    `571db0e591b5838276e58845fb698acfa2dd1e65bb52520f247ba8ffbde61fbe`.
+  - **The type-check.** `npx tsc --noEmit -p` prints nothing for `tsconfig.app.json` and for
+    `tsconfig.spec.json`.
+  - **The exit**, met. The four checks of [§ 3.4](#34-what-keeps-it-honest) exist and are green:
+    the smoke case in `try/core-eval.example.spec.ts`, the block's two cases in `block.spec.ts`,
+    and the registry's two in `registry.spec.ts`. The built `source/` holds one file per
+    `*.example.ts`, each with its source's SHA-256, above. The copy case in `source-view.spec.ts`
+    reads back the code element's `textContent`, which is the file's text with LF line endings.
+  - **Found in review, before the commit.** The HTML parser turns CRLF into LF when `[innerHTML]`
+    is set, so on a checkout with `core.autocrlf` on, where the example file holds CRLF, the copy
+    case was red: the text copied kept CRLF, and the text shown did not. It was green here only
+    because the step wrote the file with LF, and CI checks out LF. Measured in the reviewing
+    chat's sandbox by converting the file. `source-view.ts` now replaces CRLF with LF in the
+    fetched text, so the text copied is the text shown, and the spec compares the code element
+    with the file read from disk after the same replacement. The case is green with either line
+    ending.
+  - **`modules/` and `tools/`**: `git status --porcelain modules/ tools/` prints nothing. No
+    `code-reviewer` ran (D-1): no file under either changed.
+  - **Corrected in this commit** ([SR4](../standing-rules.md#sr4)). Row 3's file list gains
+    `CLAUDE.md` and `docs/README.md`, for the active-plan sentence. § 1.3 marks a prediction as
+    measured.
+  - **The sweep** ([SR25](../standing-rules.md#sr25)), by `git grep -n -E 'steps 1 and 2 (are
+    )?done|step 3 is next'`. Rewritten: `CLAUDE.md`'s two active-plan sentences,
+    `docs/README.md`'s Active plan, and this document's status line. Kept as history: two lines
+    of `docs/a45/plan.md`, a completed plan, on its own steps.
+  - **The demo's count**: 6. Step 2's case went with `home.ts`; the smoke case, the block's two,
+    the registry's two and the copy case are this step's.
+  - **The gate**, green: `eval-core` 3533, `eval-signals` 462, `eval-forms` 391, `demo` 6.
+    doc-links: 389 files, 3089 links, 0 dangling. release-tags: 55 rows, 65 release tags,
+    all annotated, 0 failing.
 
 ### Steps 4, 5 and 6 — The pages
 

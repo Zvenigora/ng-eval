@@ -38,8 +38,8 @@ that anchor, `<a id="…"></a>` in the first cell.
 
 ## Active plan
 
-[`demo/plan.md`](demo/plan.md), Phase 19, the demo application at `apps/demo`: steps 1 and 2 are
-done and step 3 is next. Two more plans are written and not started,
+[`demo/plan.md`](demo/plan.md), Phase 19, the demo application at `apps/demo`: steps 1 to 3 are
+done and step 4 is next. Two more plans are written and not started,
 [`eval-rules/plan.md`](eval-rules/plan.md) and [`eval-template/plan.md`](eval-template/plan.md),
 both in the table of tracks below; each is linked here by its step 1. Phase 19 runs before both.
 
