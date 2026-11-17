@@ -102,6 +102,81 @@ export const REGISTRY: readonly RegistryEntry[] = [
     data: '{ "id": 1 }',
     readme: { file: 'modules/eval-signals/README.md', anchor: 'async-expressions' },
   },
+  {
+    path: 'features/forms-reactive/quick-start',
+    title: 'The field schema quick start',
+    summary: 'Binds a schema whose `state` field has the expression as its `visible` rule, with '
+      + '`bindFieldProperties`, over a `FormGroup` whose controls start from the data. The state '
+      + 'input is shown while the rule is true, and typing in the country input recomputes it.',
+    file: 'features/forms-reactive/quick-start.example.ts',
+    load: () => import('./features/forms-reactive/quick-start.example').then((m) => m.QuickStartExample),
+    expression: "country === 'US'",
+    data: '{ "country": "CA", "state": "" }',
+    readme: { file: 'modules/eval-forms/README.md', anchor: 'quick-start--reactive-forms-reactive' },
+  },
+  {
+    path: 'features/forms-reactive/rule-fails',
+    title: 'When a rule fails',
+    summary: 'Binds the expression as one field\'s `text` rule three times, over a `FormGroup` whose '
+      + 'controls start from the data: with the default `onError`, with a function that returns '
+      + '`—`, and with `\'throw\'`. Each line shows the value as JSON, or the message its read threw.',
+    file: 'features/forms-reactive/rule-fails.example.ts',
+    load: () => import('./features/forms-reactive/rule-fails.example').then((m) => m.RuleFailsExample),
+    expression: 'customer.name.toUpperCase()',
+    data: '{ "customer": null }',
+    readme: { file: 'modules/eval-forms/README.md', anchor: 'when-a-rule-fails' },
+  },
+  {
+    path: 'features/forms-reactive/validation',
+    title: 'Schema and expression validation at bind',
+    summary: 'Binds a schema whose `city` field has the expression as its `visible` rule, over a '
+      + '`FormGroup` whose controls start from the data, and shows the rule\'s value. With the '
+      + 'first expression, `constructor`, `bindFieldProperties` throws, and the block shows its '
+      + 'message.',
+    file: 'features/forms-reactive/validation.example.ts',
+    load: () => import('./features/forms-reactive/validation.example').then((m) => m.ValidationExample),
+    expression: 'constructor',
+    data: '{ "country": "CA" }',
+    readme: { file: 'modules/eval-forms/README.md', anchor: 'it-is-validated-when-you-bind' },
+  },
+  {
+    path: 'features/forms-signals/registrars',
+    title: 'The three registrars and their polarity',
+    summary: 'Registers three rules in a Signal Forms schema with `createExpressionRules`: the '
+      + 'expression by `evalVisible` on `state`, and two fixed rules by `evalText` and '
+      + '`evalDisabled` on `zip`. It shows what Angular\'s field state reads back. The button sets '
+      + 'the model to the US and a total of 120.',
+    file: 'features/forms-signals/registrars.example.ts',
+    load: () => import('./features/forms-signals/registrars.example').then((m) => m.RegistrarsExample),
+    expression: "country === 'US'",
+    data: '{ "country": "CA", "state": "", "zip": "", "orderTotal": 80 }',
+    readme: { file: 'modules/eval-forms/README.md', anchor: 'the-three-registrars-and-their-polarity' },
+  },
+  {
+    path: 'features/forms-signals/schema-function',
+    title: 'Reusing a schema function',
+    summary: 'Calls one schema function, which registers the expression by `evalVisible` on '
+      + '`state`, once per form: for two models, from the data\'s `a` and `b`, each with its own '
+      + '`createExpressionRules`. It shows each form\'s `state().hidden()`.',
+    file: 'features/forms-signals/schema-function.example.ts',
+    load: () => import('./features/forms-signals/schema-function.example').then((m) => m.SchemaFunctionExample),
+    expression: "country === 'US'",
+    data: '{ "a": { "country": "US", "state": "" }, "b": { "country": "CA", "state": "" } }',
+    readme: { file: 'modules/eval-forms/README.md', anchor: 'reuse-a-schema-function-not-a-schema-value' },
+  },
+  {
+    path: 'features/forms-signals/error-policy',
+    title: 'The error policy',
+    summary: 'Registers the expression by `evalText` on three fields of one Signal Forms schema: '
+      + 'with the default `onError`, with a function that returns `—`, and with `\'throw\'`. The '
+      + 'model\'s `customer` comes from the data. Each line shows the value as JSON, or the '
+      + 'message its read threw.',
+    file: 'features/forms-signals/error-policy.example.ts',
+    load: () => import('./features/forms-signals/error-policy.example').then((m) => m.ErrorPolicyExample),
+    expression: 'customer.name.toUpperCase()',
+    data: '{ "customer": null }',
+    readme: { file: 'modules/eval-forms/README.md', anchor: 'when-a-rule-fails' },
+  },
 ];
 
 /** The entry a page shows, provided by its route. */

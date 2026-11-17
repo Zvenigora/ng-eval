@@ -73,7 +73,7 @@ summary of every phase.
 | 11 | `eval-forms`' README by entry point | `@zvenigora/ng-eval-forms`, a docs-only patch | [`documentation/phase-11-plan.md`](docs/documentation/phase-11-plan.md) | [Its § 10](docs/documentation/phase-11-plan.md#10-retrospect) |
 | 12 | `@zvenigora/ng-eval-rules`, a new module: pure rule evaluation | Not shipped: planned as `@zvenigora/ng-eval-rules` 0.1.0 | [`eval-rules/plan.md`](docs/eval-rules/plan.md), no step run | — |
 | 17 | `@zvenigora/ng-eval-template`, a new module: the pure template compiler | Not shipped: planned as `@zvenigora/ng-eval-template` 0.1.0 | [`eval-template/plan.md`](docs/eval-template/plan.md), no step run | — |
-| 19 | A demo application at `apps/demo` | Ships in no package: an application at `apps/demo` and a site on GitHub Pages | [`demo/plan.md`](docs/demo/plan.md), step 1 done | — |
+| 19 | A demo application at `apps/demo` | Ships in no package: an application at `apps/demo` and a site on GitHub Pages | [`demo/plan.md`](docs/demo/plan.md), active | — |
 
 Phases 1 to 11 are complete, Phase 11 the last of them. Phase 11 shipped as `eval-forms` 0.7.1 and
 retired [F28](docs/backlog-retired.md#f28). Phase 12 has a plan, its questions decided, and no step has run.
@@ -140,7 +140,7 @@ Reserved on 2026-11-14, at the maintainer's request. Phase 19 was designed on 20
 has no design session, no plan and no schedule.
 
 - **Phase 19 — a demo application**: designed, first in order, with a
-  [plan](docs/demo/plan.md) that is active: step 1 done, step 2 next. A showcase of
+  [plan](docs/demo/plan.md) that is active. A showcase of
   features and a set of use-case examples for an Angular developer deciding whether to adopt the
   libraries. It is an Nx application at `apps/demo`, not a sixth package, built from the
   workspace's source and hosted on GitHub Pages. The design, with its 23 questions, is

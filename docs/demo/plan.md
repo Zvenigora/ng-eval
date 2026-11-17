@@ -1,6 +1,6 @@
 # Phase 19 Plan — the demo application, first version
 
-**Status: Revision 2, steps 1 to 4 done; step 5 is next.** The design is
+**Status: Revision 2, steps 1 to 5 done; step 6 is next.** The design is
 [`design-session.md`](design-session.md), one session and questions Q1 to Q23. This plan does not
 restate it: it cites a decision by its Q number, and adds what a plan needs: measurements, scope,
 steps, exit criteria, and what goes red.
@@ -233,7 +233,7 @@ Every step's list also holds this document.
 | 2 | The project, empty and green | `apps/demo/` (new), the root `package.json`, `package-lock.json`, `eslint.config.mjs`, `CLAUDE.md`, `CONTRIBUTING.md`, the root `CHANGELOG.md`, `docs/README.md` | 1 |
 | 3 | The block, the registry and the free-form page | `apps/demo/`, the root `package.json`, `package-lock.json`, `CLAUDE.md`, `docs/README.md` | The block's, the two registry cases, 1 smoke |
 | 4 | Feature pages: core and signals | `apps/demo/`, `CLAUDE.md`, `docs/README.md` | 6 smoke, 1 nav |
-| 5 | Feature pages: forms, both adapters | `apps/demo/` | 6 smoke |
+| 5 | Feature pages: forms, both adapters | `apps/demo/`, `CLAUDE.md`, `docs/README.md`, `ROADMAP.md` | 6 smoke |
 | 6 | The three use cases | `apps/demo/` | 3 smoke |
 | 7 | The look, the footer and the workflow | `apps/demo/`, `.github/workflows/pages.yml` (new) | The footer's |
 | 8 | The first deploy, the links and the retrospect | The root `README.md`, `CHANGELOG.md`, this document's § 9 and § 10, `docs/standing-rules.md` if D-1 is promoted, `docs/release-history.md`, `CLAUDE.md`, `ROADMAP.md` | — |
@@ -552,6 +552,106 @@ Step 5's pages show `visible` and `text` at `/reactive`, and `visible`, `text` a
   - **The demo's count**: 13. Step 3's six, the six smoke cases and the navigation case.
   - **The gate**, green: `eval-core` 3533, `eval-signals` 462, `eval-forms` 391, `demo` 13.
     doc-links: 402 files, 3092 links, 0 dangling. release-tags: 55 rows,
+    65 release tags, all annotated, 0 failing.
+- **Step 5's Outcome** (2026-11-17). Run on Windows, Node 26.4.0, by Claude Sonnet 5.5. The step's
+  prompt carried the reviewing chat's measurements on `e748863`, pinned in
+  `ng-eval-19.5-measurements.zip`, SHA-256
+  `215dffb426ab818d3c552c12b2f1de79227c10a844ca11fe0dc4eac97ce3b9c4`, which the maintainer holds
+  ([SR47](../standing-rules.md#sr47)). It is a measuring rig, not this step's code, and nothing was
+  applied from it; this session did not open it. The prompt quoted its smoke values, which each case
+  below reads, and its attribution of the initial bundle's growth, which this session did not
+  measure again.
+  - **The pages.** Six registry entries after `features/signals/async`, in this order, each file
+    under `src/app`, each example reading `inject(EXPRESSION)` and `inject(DATA)` in field
+    initializers and otherwise its README section's code, with its README link at
+    `modules/eval-forms/README.md`. `features/forms-reactive/quick-start` (`QuickStartExample`,
+    `country === 'US'`, anchor `quick-start--reactive-forms-reactive`),
+    `features/forms-reactive/rule-fails` (`RuleFailsExample`, `customer.name.toUpperCase()`, anchor
+    `when-a-rule-fails`), `features/forms-reactive/validation` (`ValidationExample`, `constructor`,
+    anchor `it-is-validated-when-you-bind`), `features/forms-signals/registrars`
+    (`RegistrarsExample`, `country === 'US'`, anchor
+    `the-three-registrars-and-their-polarity`), `features/forms-signals/schema-function`
+    (`SchemaFunctionExample`, `country === 'US'`, anchor
+    `reuse-a-schema-function-not-a-schema-value`) and `features/forms-signals/error-policy`
+    (`ErrorPolicyExample`, `customer.name.toUpperCase()`, anchor `when-a-rule-fails`, the section
+    covering both adapters). The titles are Q14's, and the summaries and the default data are the
+    prompt's, as the maintainer reads them at the confirmation.
+  - **The examples.** At `/reactive` each takes `Injector`, binds with `bindFieldProperties` in a
+    field initializer with `{ injector }`, and destroys every binding in `ngOnDestroy`. The quick
+    start builds the README's `FormGroup` (`country`, `state`) from the data, imports
+    `ReactiveFormsModule`, and renders an `input.country`, an `input.state` inside
+    `@if (binding.fields['state'].visible?.())`, and an `<output>` of the value. `rule-fails` and
+    `validation` build one `FormControl` per key of the data. `rule-fails` binds
+    `[{ name: 'label', text: expression }]` three times, with the default, `onError: () => '—'` and
+    `onError: 'throw'`, and its `read(binding)` is `JSON.stringify` of the text value or the caught
+    error's message. `validation` binds `[{ name: 'city', visible: expression }]` with no
+    `try`/`catch`, so a throw reaches the block. At `/signals` each builds a `signal` model,
+    `createExpressionRules(model)`, `schema()` and `form()` in field initializers. `registrars` is
+    the README's three registrations, with the expression as `evalVisible`'s, and a button that sets
+    the model to the US and a total of 120. `schema-function` is the README's `makeSchema`, over
+    models from the data's `a` and `b`. `error-policy`'s model is `customer` from the data and three
+    empty string fields, with three `evalText` registrations of the expression and a `read(key)`
+    shaped as `rule-fails`'s.
+  - **The smoke cases**, one per example in `<name>.example.spec.ts` beside it, shaped as step 4's,
+    and each green on its first run against the prompt's values. Each copies `entryAt`, and
+    `typeInto` only where a box is typed into: `quick-start` and `registrars` copy `entryAt` only,
+    with step 4's comment, since their change is the example's own input or button.
+    quick-start: output `false` and no `input.state`; typing `US` into `input.country` (value and
+    an `input` event) gives `true` and an `input.state`. rule-fails and error-policy: `""`, `"—"`
+    and `Cannot call undefined or null function`, then `{ "customer": { "name": "Ada" } }` gives
+    `"ADA"` three times. validation: no `demo-validation`, and a `p.error` matching
+    `/^Expression 'constructor': identifier 'constructor' is a member of Object\.prototype/`; then
+    `country === 'US'` gives no `p.error` and output `false`. registrars: `true`, `Standard`,
+    `true`, `ZIP is US-only`; the button gives `false`, `Free shipping`, `false` and an empty
+    string. schema-function: a `false` and b `true`; then `country === 'CA'` gives a `true` and
+    b `false`. `registry.spec.ts` is unedited, and its two cases are green over the thirteen entries.
+  - **The type-check.** `npx tsc --noEmit -p` exits 0 for `tsconfig.app.json` and for
+    `tsconfig.spec.json`; the workspace's output filter prints `TypeScript: No errors found`, and
+    no diagnostic.
+  - **The build** (D-2), from a deleted `.angular` and `dist`, by
+    `npx nx build demo --excludeTaskDependencies`: green, with no warning. Initial files
+    `main-CESFZMBZ.js` and `styles-6GXROV53.css`; Initial total 287.35 kB raw, 80.18 kB transfer,
+    up from step 4's 266.66 kB and 74.73 kB. The reviewing chat's rig gave 287.35 kB and
+    80.20 kB, and its pinned file attributes main's +20.7 kB to `@angular/core` (+15.8 kB, core
+    code the forms pages use, kept in `main`) and the summaries (+3.8 kB). The six new named
+    lazy chunks: `quick-start-example` (`chunk-Dp8DEh3A.js`, 1.34 kB), `rule-fails-example`
+    (`chunk-CKS2FzYX.js`, 1.52 kB), `validation-example` (`chunk-DuQMy_t1.js`, 905 bytes),
+    `registrars-example` (`chunk-DZ0iENoV.js`, 1.60 kB), `schema-function-example`
+    (`chunk-X-czTRn_.js`, 993 bytes) and `error-policy-example` (`chunk-Dh3rkiEg.js`, 1.34 kB).
+    The unnamed lazy chunk that holds `eval-core` is `chunk-Bfy_7kKG.js`, 181.63 kB raw and
+    44.49 kB transfer, beside five smaller unnamed ones.
+  - **The copies.** `dist/apps/demo/browser/source/` holds thirteen files, the seven of step 4 and
+    six new, each with its source's SHA-256 (the seven are step 4's, unchanged):
+    `features/forms-reactive/quick-start.example.ts`
+    `e62c8802a9a42c86cba0e010100d97baffea4907a4eab042d9f69d349c5e029a`,
+    `features/forms-reactive/rule-fails.example.ts`
+    `36a4f8cd3f99fc6f51adbe4ff23029dce90850bc0c5418d48bf74b6ff3f4c83f`,
+    `features/forms-reactive/validation.example.ts`
+    `8565da9c9ca79d79f87e83414128b37f370e944798162a1d9de1a2007bdb9929`,
+    `features/forms-signals/registrars.example.ts`
+    `5557ddf17cb63868e741751ca22416cf007f1ca02450f065a2b25419985a169f`,
+    `features/forms-signals/schema-function.example.ts`
+    `a581af6ccce4e4eaa81d14d7eaddc07372b3ffbb2d47d5bf82600f4c2b17da8a` and
+    `features/forms-signals/error-policy.example.ts`
+    `bd372de63c1f5cec58a85ab43d0bcf939611e3ba638753f7da7f340c23b3e9ea`. Every new file was
+    written with LF line endings.
+  - **`modules/` and `tools/`**: `git status --porcelain modules/ tools/` prints nothing. No
+    `code-reviewer` ran (D-1): no file under either changed.
+  - **Corrected in this commit** ([SR4](../standing-rules.md#sr4)). Row 5's file list gains
+    `CLAUDE.md`, `docs/README.md` and `ROADMAP.md`, for the active-plan sentences, and for three
+    progress sentences that were false now ([SR31](../standing-rules.md#sr31)): `docs/README.md`'s
+    `demo/` row said "step 1 done and step 2 next" and "Nothing is built yet", and `ROADMAP.md`'s
+    two lines said "step 1 done" and "step 1 done, step 2 next". They now say "active", or nothing.
+  - **The sweep** ([SR25](../standing-rules.md#sr25)), by
+    `git grep -n -E 'steps 1 to 4|step 5 is next|step 1 done|step 2 next|Nothing is built yet'`.
+    Rewritten: `CLAUDE.md`'s two active-plan sentences, `docs/README.md`'s Active plan and its
+    `demo/` row, `ROADMAP.md`'s two lines, and this document's status line. Kept as history
+    ([SR6](../standing-rules.md#sr6)): `docs/a24/plan.md` and `docs/a48/plan.md`, completed plans
+    on their own steps, `docs/backlog-in-flight.md`'s line on Phase 11, and
+    `docs/documentation/phase-10-plan.md`.
+  - **The demo's count**: 19. Step 4's thirteen and the six smoke cases.
+  - **The gate**, green: `eval-core` 3533, `eval-signals` 462, `eval-forms` 391, `demo` 19.
+    doc-links: 414 files, 3097 links, 0 dangling. release-tags: 55 rows,
     65 release tags, all annotated, 0 failing.
 
 ### Step 7 — The look, the footer and the workflow
