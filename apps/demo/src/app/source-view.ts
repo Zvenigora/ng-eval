@@ -4,7 +4,10 @@ import { highlightTypeScript } from './highlight';
 /** What the source view reads of a response. */
 export type SourceResponse = Pick<Response, 'ok' | 'status' | 'statusText' | 'text'>;
 
-/** How the source view fetches a file. The default is the browser's `fetch`; a spec provides its own. */
+/**
+ * How a file the build copied is fetched: the source view's example, and the footer's
+ * manifests. The default is the browser's `fetch`; a spec provides its own.
+ */
 export const SOURCE_FETCH = new InjectionToken<(url: string) => Promise<SourceResponse>>('SOURCE_FETCH', {
   providedIn: 'root',
   factory: () => (url: string) => fetch(url),
@@ -25,7 +28,7 @@ function messageOf(error: unknown): string {
       @if (copied()) {
         <span>Copied</span>
       }
-      <pre><code [innerHTML]="highlighted()"></code></pre>
+      <pre><code class="hljs" [innerHTML]="highlighted()"></code></pre>
     }
   `,
 })

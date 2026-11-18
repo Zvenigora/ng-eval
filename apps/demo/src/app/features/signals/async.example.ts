@@ -19,8 +19,12 @@ function loadUser(id: number): Promise<User | undefined> {
 @Component({
   selector: 'demo-async',
   template: `
-    <output class="status">{{ user.status() }}</output>
-    <output class="name">{{ name() }}</output>
+    <dl>
+      <dt>user.status()</dt>
+      <dd><output class="status">{{ user.status() }}</output></dd>
+      <dt>user().name</dt>
+      <dd><output class="name">{{ name() }}</output></dd>
+    </dl>
   `,
 })
 export class AsyncExample {

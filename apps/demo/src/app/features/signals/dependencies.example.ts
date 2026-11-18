@@ -11,8 +11,12 @@ interface Order {
 @Component({
   selector: 'demo-dependencies',
   template: `
-    <output class="total">{{ total() }}</output>
-    <output class="dependencies">{{ dependencies() }}</output>
+    <dl>
+      <dt>total()</dt>
+      <dd><output class="total">{{ total() }}</output></dd>
+      <dt>total.dependencies</dt>
+      <dd><output class="dependencies">{{ dependencies() }}</output></dd>
+    </dl>
   `,
 })
 export class DependenciesExample {

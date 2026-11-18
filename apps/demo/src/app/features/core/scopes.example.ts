@@ -12,7 +12,12 @@ const cat = {
 
 @Component({
   selector: 'demo-scopes',
-  template: `<output>{{ result }}</output>`,
+  template: `
+    <dl>
+      <dt>simpleEval</dt>
+      <dd><output>{{ result }}</output></dd>
+    </dl>
+  `,
 })
 export class ScopesExample {
   private readonly service = inject(EvalService);

@@ -1,0 +1,49 @@
+# Builds the demo application from master and publishes it to GitHub Pages. It runs only when the
+# maintainer starts it (docs/demo/design-session.md, Q16): the demo builds from the libraries'
+# source, so a deploy on every push would show behaviour that an install from npm does not give.
+
+name: Pages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # Started on another branch, it builds nothing.
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - name: Use Node.js 26.x
+      uses: actions/setup-node@v5
+      with:
+        node-version: 26.x
+        cache: 'npm'
+    - run: npm ci
+    # The footer shows the commit: `--define` sets NG_EVAL_COMMIT to a JavaScript string. Nx
+    # removes one pair of quotes from the value, so the SHA is written inside two.
+    - name: Build the demo
+      run: npx nx build demo --skip-nx-cache "--define.NG_EVAL_COMMIT='\"${GITHUB_SHA}\"'"
+    - uses: actions/upload-pages-artifact@v5
+      with:
+        path: dist/apps/demo/browser
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v5

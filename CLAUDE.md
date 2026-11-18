@@ -43,7 +43,7 @@ under the option (`docs/backlog.md` F32). It runs without zone.js, and its Jest 
 Phases 1 to 6 and 9 to 11 are complete, and so is every track `docs/README.md` lists with a
 release; their plan documents are design records rather than active work. **Phase 19's plan is
 active** (`docs/demo/plan.md`): a demo application at `apps/demo`, shipping in no package. Its
-steps 1 to 6 are done and step 7 is next.
+steps 1 to 7 are done and step 8 is next.
 Two more are written and no step of either has run: Phase 12, `@zvenigora/ng-eval-rules`
 (`docs/eval-rules/plan.md`), and Phase 17, `@zvenigora/ng-eval-template`
 (`docs/eval-template/plan.md`). The order between them is the maintainer's, and not decided;
@@ -124,7 +124,7 @@ than one commit ([SR1](docs/standing-rules.md#sr1)) — as in `docs/a8/`, `docs/
 [SR2](docs/standing-rules.md#sr2)–[SR4](docs/standing-rules.md#sr4),
 [SR8](docs/standing-rules.md#sr8) and [SR33](docs/standing-rules.md#sr33)–[SR35](docs/standing-rules.md#sr35).
 
-- The active plan is Phase 19's, `docs/demo/plan.md`: steps 1 to 6 are done and step 7 is next.
+- The active plan is Phase 19's, `docs/demo/plan.md`: steps 1 to 7 are done and step 8 is next.
   `.claude/skills/step/SKILL.md` is retargeted with each new plan and names this one; while none
   is active it names none, and stops at its § 1 if invoked.
 - The completed plans are design records, not work in progress, and each remains the

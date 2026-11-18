@@ -11,7 +11,10 @@ interface Order {
 @Component({
   selector: 'demo-signal',
   template: `
-    <output>{{ total() }}</output>
+    <dl>
+      <dt>total()</dt>
+      <dd><output>{{ total() }}</output></dd>
+    </dl>
     <button type="button" (click)="quantity.set(quantity() + 1)">quantity + 1</button>
   `,
 })

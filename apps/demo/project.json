@@ -17,7 +17,10 @@
         "tsConfig": "apps/demo/tsconfig.app.json",
         "baseHref": "/ng-eval/",
         "assets": [
-          { "glob": "**/*.example.ts", "input": "apps/demo/src/app", "output": "source" }
+          { "glob": "**/*.example.ts", "input": "apps/demo/src/app", "output": "source" },
+          { "glob": "package.json", "input": "modules/eval-core", "output": "packages/eval-core" },
+          { "glob": "package.json", "input": "modules/eval-signals", "output": "packages/eval-signals" },
+          { "glob": "package.json", "input": "modules/eval-forms", "output": "packages/eval-forms" }
         ],
         "styles": ["apps/demo/src/styles.css"]
       },

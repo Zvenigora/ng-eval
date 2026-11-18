@@ -17,7 +17,7 @@ function typeInto(fixture: ComponentFixture<Block>, index: number, value: string
 }
 
 describe('the hooks page, zoneless', () => {
-  it('hooks: shows the value, the reads and the trace, and the new value after `a` changes', async () => {
+  it('hooks: shows the value, the reads and the trace with each node\'s type, and the new value after `a` changes', async () => {
     const fixture = TestBed.createComponent(Block);
     fixture.componentRef.setInput('entry', entryAt('features/core/hooks'));
     await fixture.whenStable();
@@ -27,6 +27,7 @@ describe('the hooks page, zoneless', () => {
     expect(element.querySelector('demo-hooks output')?.textContent).toBe('32');
     expect(texts('demo-hooks ul.reads li')).toEqual(['a']);
     expect(texts('demo-hooks ul.trace li')).toHaveLength(7);
+    expect(texts('demo-hooks ul.trace li')[6]).toBe('Program: 2 + 3 * a = 32');
 
     typeInto(fixture, 1, '{ "a": 20 }');
     await fixture.whenStable();

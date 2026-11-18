@@ -5,7 +5,12 @@ import { DATA, EXPRESSION } from '../../example-tokens';
 
 @Component({
   selector: 'demo-validation',
-  template: `<output>{{ binding.fields['city'].visible?.() }}</output>`,
+  template: `
+    <dl>
+      <dt>fields['city'].visible()</dt>
+      <dd><output>{{ binding.fields['city'].visible?.() }}</output></dd>
+    </dl>
+  `,
 })
 export class ValidationExample implements OnDestroy {
   private readonly injector = inject(Injector);

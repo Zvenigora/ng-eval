@@ -4,7 +4,12 @@ import { DATA, EXPRESSION } from '../example-tokens';
 
 @Component({
   selector: 'demo-core-eval',
-  template: `<output>{{ result }}</output>`,
+  template: `
+    <dl>
+      <dt>simpleEval</dt>
+      <dd><output>{{ result }}</output></dd>
+    </dl>
+  `,
 })
 export class CoreEvalExample {
   private readonly service = inject(EvalService);

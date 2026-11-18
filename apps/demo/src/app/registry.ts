@@ -63,7 +63,8 @@ export const REGISTRY: readonly RegistryEntry[] = [
     path: 'features/core/hooks',
     title: 'Hooks and trace',
     summary: 'Evaluates the expression with `EvalService.eval` over a state built from the data, '
-      + 'lists each context read an `onRead` hook reported, and lists the state\'s trace.',
+      + 'lists each context read an `onRead` hook reported, and lists the state\'s trace, one line '
+      + 'per node, with the node\'s type.',
     file: 'features/core/hooks.example.ts',
     load: () => import('./features/core/hooks.example').then((m) => m.HooksExample),
     expression: '2 + 3 * a',
@@ -132,10 +133,11 @@ export const REGISTRY: readonly RegistryEntry[] = [
   {
     path: 'features/forms-reactive/validation',
     title: 'Schema and expression validation at bind',
-    summary: 'Binds a schema whose `city` field has the expression as its `visible` rule, over a '
-      + '`FormGroup` whose controls start from the data, and shows the rule\'s value. With the '
-      + 'first expression, `constructor`, `bindFieldProperties` throws, and the block shows its '
-      + 'message.',
+    summary: 'Binds a schema of one field, `city`, with the expression as its `visible` rule, over '
+      + 'a `FormGroup` whose controls start from the data, and shows the rule\'s value. `city` has '
+      + 'no control: the rule reads the form\'s values, such as `country`. With the first '
+      + 'expression, `constructor`, `bindFieldProperties` throws, and the block shows its message, '
+      + 'which names the expression.',
     file: 'features/forms-reactive/validation.example.ts',
     load: () => import('./features/forms-reactive/validation.example').then((m) => m.ValidationExample),
     expression: 'constructor',

@@ -1,1 +1,232 @@
-body { font-family: system-ui, sans-serif; margin: 1rem; }
+/* highlight.js's two GitHub themes, one for each setting of the visitor's colour scheme. */
+@import 'highlight.js/styles/github.css' (prefers-color-scheme: light);
+@import 'highlight.js/styles/github-dark.css' (prefers-color-scheme: dark);
+
+:root {
+  color-scheme: light dark;
+  --text: #1f2328;
+  --muted: #59636e;
+  --background: #ffffff;
+  --surface: #f6f8fa;
+  --border: #d1d9e0;
+  --link: #0969da;
+  --error: #d1242f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #f0f6fc;
+    --muted: #9198a1;
+    --background: #0d1117;
+    --surface: #151b23;
+    --border: #3d444d;
+    --link: #4493f8;
+    --error: #f85149;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--background);
+}
+
+a {
+  color: var(--link);
+}
+
+/* The shell: the navigation beside the page, and the footer under both. */
+demo-root {
+  display: grid;
+  grid-template-columns: 16rem minmax(0, 1fr);
+  grid-template-areas:
+    'nav main'
+    'footer footer';
+  min-height: 100vh;
+}
+
+nav {
+  grid-area: nav;
+  padding: 1rem;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+nav a {
+  display: block;
+  padding: 0.125rem 0;
+}
+
+nav h2 {
+  margin: 1rem 0 0.25rem;
+  font-size: 1rem;
+}
+
+nav h3 {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+main {
+  grid-area: main;
+  min-width: 0;
+  padding: 1rem 1.5rem;
+}
+
+demo-footer {
+  grid-area: footer;
+}
+
+footer {
+  padding: 0.5rem 1.5rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+
+footer span + span::before {
+  content: ' · ';
+}
+
+footer a + a {
+  margin-left: 1rem;
+}
+
+code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.875em;
+}
+
+/* The block and the source view. */
+label {
+  display: block;
+  margin: 0.5rem 0;
+}
+
+textarea,
+input,
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 4rem;
+  padding: 0.5rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.875rem;
+}
+
+input {
+  max-width: 100%;
+  padding: 0.25rem 0.5rem;
+}
+
+button {
+  padding: 0.25rem 0.75rem;
+  cursor: pointer;
+}
+
+.example {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.error {
+  color: var(--error);
+  white-space: pre-wrap;
+}
+
+pre {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+pre code.hljs {
+  font-size: 0.8125rem;
+}
+
+/* A shown value: its label, then the value. */
+dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.25rem 1rem;
+  margin: 0.5rem 0;
+}
+
+dt {
+  font-family: ui-monospace, monospace;
+  color: var(--muted);
+}
+
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+dd ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.25rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Phone width: the navigation above the page, and each label above its value. */
+@media (max-width: 48rem) {
+  demo-root {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'nav'
+      'main'
+      'footer';
+  }
+
+  nav {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  nav a {
+    display: inline-block;
+    margin-right: 0.75rem;
+  }
+
+  main {
+    padding: 1rem;
+  }
+
+  dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  dd {
+    margin-bottom: 0.25rem;
+  }
+}

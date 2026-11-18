@@ -1,6 +1,6 @@
 # Phase 19 Plan — the demo application, first version
 
-**Status: Revision 2, steps 1 to 6 done; step 7 is next.** The design is
+**Status: Revision 2, steps 1 to 7 done; step 8 is next.** The design is
 [`design-session.md`](design-session.md), one session and questions Q1 to Q23. This plan does not
 restate it: it cites a decision by its Q number, and adds what a plan needs: measurements, scope,
 steps, exit criteria, and what goes red.
@@ -235,7 +235,7 @@ Every step's list also holds this document.
 | 4 | Feature pages: core and signals | `apps/demo/`, `CLAUDE.md`, `docs/README.md` | 6 smoke, 1 nav |
 | 5 | Feature pages: forms, both adapters | `apps/demo/`, `CLAUDE.md`, `docs/README.md`, `ROADMAP.md` | 6 smoke |
 | 6 | The three use cases | `apps/demo/`, `CLAUDE.md`, `docs/README.md` | 3 smoke; the nav case gains the headings |
-| 7 | The look, the footer and the workflow | `apps/demo/`, `.github/workflows/pages.yml` (new) | The footer's |
+| 7 | The look, the footer and the workflow | `apps/demo/`, `.github/workflows/pages.yml` (new), `CLAUDE.md`, `docs/README.md` | The footer's; the hooks case checks a trace line |
 | 8 | The first deploy, the links and the retrospect | The root `README.md`, `CHANGELOG.md`, this document's § 9 and § 10, `docs/standing-rules.md` if D-1 is promoted, `docs/release-history.md`, `CLAUDE.md`, `ROADMAP.md` | — |
 
 ### Step 1 — This plan, its records, and the measurements
@@ -748,6 +748,89 @@ Step 5's pages show `visible` and `text` at `/reactive`, and `visible`, `text` a
 
 Exit: the site read in a browser in both settings and at phone width; the footer's case green; the
 workflow file present, with `workflow_dispatch` as its only trigger.
+
+- **Step 7's Outcome** (2026-11-17). Run on Windows, Node 26.4.0, by Claude Sonnet 5.5. The step's
+  prompt carried the reviewing chat's measurements on `84cd932`, pinned in
+  `ng-eval-19.7-measurements.zip`, SHA-256
+  `3db1e14cefed8e63c974bd163c7f180f7d28d705f036d6f0cd01ca8bc9a85137`, which the maintainer holds
+  ([SR47](../standing-rules.md#sr47)). It is a measuring rig, not this step's code, and nothing was
+  applied from it; this session did not open it, and the four decisions below are the rig's, not
+  measured here. The prompt gave the code, and each case below reads it.
+  - **The versions come from the manifests, copied by the build and fetched**, as the source view
+    fetches `source/` (P2). The rig measured two other arms and both failed. A relative import of
+    `modules/eval-core/package.json` passes `tsc`, and `nx lint demo` refuses it ("Projects cannot
+    be imported by a relative or absolute path…"); an `allow` entry did not clear it. A
+    `tsconfig.base.json` path alias for the manifests passes lint and the build, but turns the three
+    libraries' `export-list.spec.ts` case "agrees with tsconfig.base.json…" red (2, 2 and 4
+    failures), and fixing that is a change under `modules/`.
+  - **The commit comes from `--define`**, set by the workflow only. Nx strips one pair of quotes
+    from the value: `'abc1234'` reaches esbuild as an identifier, so the footer silently shows no
+    commit; `"84cd…"` fails the build; `'"<sha>"'` gives the string. The workflow's line, run through
+    bash with a digit-led and a letter-led SHA, put the right string in `main` both times. Without
+    a define, `typeof NG_EVAL_COMMIT` is `'undefined'`, which is what the footer's case reads as
+    "a local build".
+  - **Light and dark** follow `prefers-color-scheme`: highlight.js's `github.css` and
+    `github-dark.css` are imported under the two media conditions. At 390 px and 1280 px, in both
+    schemes, none of the 16 pages scrolls sideways (64 loads in headless Chrome, the rig's).
+  - **Every shown value is labelled**, as the forms pages already do: a `<dl>`, the label in `<dt>`,
+    the value in `<dd>`, and the existing `<output class=…>` kept inside it, so every smoke
+    selector still matches. The hooks trace shows the node's type; quick start's two inputs get
+    labels; the validation page's summary says `city` has no control. A summary's backticked words
+    render as `<code>`.
+  - **The files.** New: `footer.ts` and `footer.spec.ts` under `src/app`, and
+    `.github/workflows/pages.yml`, whose only trigger is `workflow_dispatch` and whose build job
+    runs on `master` only. Edited under `apps/demo`: `project.json` (three `package.json` entries
+    in the build's `assets`), `styles.css` (replaced whole), `app.ts` (the footer, and a `<main>`
+    around the outlet), `page.ts` (the summary's code parts), `source-view.ts` (the shared fetch's
+    comment, and `class="hljs"` on the code element, which the themes style), `registry.ts` (the
+    hooks and validation summaries), the nine example files of the prompt's § 8, and
+    `hooks.example.spec.ts`, whose case now checks the last trace line, `Program: 2 + 3 * a = 32`,
+    and says so in its name.
+  - **The footer's case**, one, in `footer.spec.ts`: the three `.packages span` texts equal each
+    `modules/<folder>/package.json`'s name and version, read from disk through a fetch the spec
+    provides in place of the build's copy; with no `NG_EVAL_COMMIT`, `.commit` reads "A local
+    build: no commit recorded."; with a global of that name, it reads "Built from commit 84cd932."
+    and the link's `href` is the repository's `/commit/<sha>` address. It was green on its first
+    run, against the prompt's file.
+  - **The type-check.** `npx tsc --noEmit -p` exits 0 for `tsconfig.app.json` and for
+    `tsconfig.spec.json`.
+  - **The build** (D-2), from a deleted `.angular` and `dist`, by
+    `npx nx build demo --excludeTaskDependencies --skip-nx-cache`: green, with no warning. Initial
+    files `main-I5QIQXSL.js` and `styles-73GMJHFS.css`; Initial total 299.66 kB raw, 83.49 kB
+    transfer, up from step 6's 292.79 kB and 81.68 kB, the figures the rig gave; styles 4.62 kB raw,
+    1.17 kB transfer, which this session did not attribute. The largest lazy chunk,
+    `chunk-C-exUbPA.js`, is 181.63 kB raw and 44.47 kB transfer.
+  - **The copies.** `dist/apps/demo/browser/packages/` holds three files, each equal to its
+    `modules/` manifest by SHA-256. The checkout has `core.autocrlf` on, so the files compared held
+    CRLF; as committed (LF), the manifests' SHA-256 are: `eval-core/package.json`
+    `d8532b302b20944767617aeb636592702405767d839c26488a9f51e0f4920677`,
+    `eval-signals/package.json`
+    `72ecd52823c5ad808e1965ac0b2d1e61c99677cfef2e70eeedb8bb098cda97f8` and
+    `eval-forms/package.json`
+    `c4b712bd48e0c363d939f493285d92f1f73c6a269609b9d320a95e0b5a936ed4`. `source/` is the sixteen
+    files of step 6.
+  - **`modules/` and `tools/`**: `git status --porcelain modules/ tools/ tsconfig.base.json
+    eslint.config.mjs` prints nothing. No `code-reviewer` ran (D-1): no file under any of them
+    changed.
+  - **Corrected in this commit** ([SR4](../standing-rules.md#sr4)). Row 7's file list gains
+    `CLAUDE.md` and `docs/README.md`, for the active-plan sentences, and its cases read "The
+    footer's; the hooks case checks a trace line".
+  - **The sweep** ([SR25](../standing-rules.md#sr25)), by
+    `git grep -n -E 'steps 1 to 6|step 7 is next|step [1-6] done|step [2-7] (is )?next|Nothing is built yet'`.
+    Rewritten: `CLAUDE.md`'s two active-plan sentences, `docs/README.md`'s Active plan, and this
+    document's status line. Kept ([SR6](../standing-rules.md#sr6)): the completed plans' records
+    (`docs/a24/plan.md`, `docs/a33/plan.md`, `docs/a45/plan.md`, `docs/colon-identifiers/phase-9-plan.md`,
+    `docs/documentation/phase-10-plan.md` and `phase-11-plan.md`), `docs/backlog-in-flight.md`'s
+    line on the A33 plan, and this document's own earlier Outcomes, which quote their greps.
+  - **The demo's count**: 23. Step 6's twenty-two and the footer's case; the hooks case gained an
+    assertion and a name, not a row.
+  - **The gate**, green: `eval-core` 3533, `eval-signals` 462, `eval-forms` 391, `demo` 23.
+    doc-links: 422 files, 3105 links, 0 dangling. release-tags: 55 rows,
+    65 release tags, all annotated, 0 failing.
+  - **The exit's browser reading is the maintainer's.** The site read in a browser in both
+    settings and at phone width was not done in this session, which started no dev server; the
+    checks above are the build, the type-check and the cases. The footer's case is green, and the
+    workflow file is present with `workflow_dispatch` as its only trigger.
 
 ### Step 8 — The first deploy, the links and the retrospect
 

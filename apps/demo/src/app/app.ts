@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
+import { Footer } from './footer';
 import { REGISTRY, RegistryEntry } from './registry';
 
 /** The features' group titles, by the folder of their paths: one group per library. */
@@ -31,7 +32,7 @@ function featureGroups(): NavGroup[] {
 
 @Component({
   selector: 'demo-root',
-  imports: [RouterOutlet, RouterLink],
+  imports: [RouterOutlet, RouterLink, Footer],
   template: `
     <nav>
       @for (entry of top; track entry.path) {
@@ -49,7 +50,10 @@ function featureGroups(): NavGroup[] {
         <a [routerLink]="'/' + entry.path">{{ entry.title }}</a>
       }
     </nav>
-    <router-outlet />
+    <main>
+      <router-outlet />
+    </main>
+    <demo-footer />
   `,
 })
 export class App {

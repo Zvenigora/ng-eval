@@ -5,17 +5,26 @@ import { DATA, EXPRESSION } from '../../example-tokens';
 @Component({
   selector: 'demo-hooks',
   template: `
-    <output>{{ result }}</output>
-    <ul class="reads">
-      @for (read of reads; track $index) {
-        <li>{{ read }}</li>
-      }
-    </ul>
-    <ul class="trace">
-      @for (line of trace; track $index) {
-        <li>{{ line }}</li>
-      }
-    </ul>
+    <dl>
+      <dt>eval</dt>
+      <dd><output>{{ result }}</output></dd>
+      <dt>onRead</dt>
+      <dd>
+        <ul class="reads">
+          @for (read of reads; track $index) {
+            <li>{{ read }}</li>
+          }
+        </ul>
+      </dd>
+      <dt>state.result.trace</dt>
+      <dd>
+        <ul class="trace">
+          @for (line of trace; track $index) {
+            <li>{{ line }}</li>
+          }
+        </ul>
+      </dd>
+    </dl>
   `,
 })
 export class HooksExample {
@@ -36,6 +45,6 @@ export class HooksExample {
     });
 
     this.result = this.service.eval(this.expression, state);
-    this.trace = state.result.trace.map((item) => `${item.expression} = ${item.value}`);
+    this.trace = state.result.trace.map((item) => `${item.type}: ${item.expression} = ${item.value}`);
   }
 }

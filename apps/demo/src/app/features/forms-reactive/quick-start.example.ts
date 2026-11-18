@@ -13,12 +13,21 @@ interface Order {
   imports: [ReactiveFormsModule],
   template: `
     <form [formGroup]="form">
-      <input class="country" formControlName="country" />
+      <label>
+        country
+        <input class="country" formControlName="country" />
+      </label>
       @if (binding.fields['state'].visible?.()) {
-        <input class="state" formControlName="state" />
+        <label>
+          state
+          <input class="state" formControlName="state" />
+        </label>
       }
     </form>
-    <output>{{ binding.fields['state'].visible?.() }}</output>
+    <dl>
+      <dt>fields['state'].visible()</dt>
+      <dd><output>{{ binding.fields['state'].visible?.() }}</output></dd>
+    </dl>
   `,
 })
 export class QuickStartExample implements OnDestroy {
