@@ -186,23 +186,20 @@ export const REGISTRY: readonly RegistryEntry[] = [
     path: 'use-cases/configured-form',
     title: 'A form driven by configuration',
     summary: 'Builds a form from the field list in the data box, as it would arrive from a server: '
-      + 'one control per field, and the list bound as the schema with `bindFieldProperties`. A '
-      + 'field with a `visible` rule is shown while the rule is true, and a field is labelled by '
-      + 'its `text` rule, or by its name when it has none. Typing in the country input recomputes '
-      + 'the rules that read it.',
+      + 'one control per field, a drop-down for a field with `options` and an input otherwise, and '
+      + 'the list bound as the schema with `bindFieldProperties`. `options` is this form\'s own key; '
+      + 'the binding reads `name`, `visible` and `text`. A field with a `visible` rule is shown '
+      + 'while the rule is true, and a field is labelled by its `text` rule, or by its name when it '
+      + 'has none. Choosing a country recomputes the rules that read it.',
     file: 'use-cases/configured-form.example.ts',
     load: () => import('./use-cases/configured-form.example').then((m) => m.ConfiguredFormExample),
     expression: null,
-    data: JSON.stringify(
-      [
-        { name: 'country' },
-        { name: 'state', visible: "country === 'US'", text: "'State'" },
-        { name: 'province', visible: "country === 'CA'", text: "'Province'" },
-        { name: 'zip', text: "country === 'US' ? 'ZIP code' : 'Postal code'" },
-      ],
-      null,
-      2
-    ),
+    data: `[
+  { "name": "country", "text": "'Country'", "options": ["US", "CA", "GB"] },
+  { "name": "state", "visible": "country === 'US'", "text": "'State'" },
+  { "name": "province", "visible": "country === 'CA'", "text": "'Province'" },
+  { "name": "zip", "text": "country === 'US' ? 'ZIP code' : 'Postal code'" }
+]`,
     readme: { file: 'modules/eval-forms/README.md', anchor: 'the-field-schema' },
   },
   {
@@ -238,17 +235,13 @@ export const REGISTRY: readonly RegistryEntry[] = [
     file: 'use-cases/row-filter.example.ts',
     load: () => import('./use-cases/row-filter.example').then((m) => m.RowFilterExample),
     expression: "price > 100 && category == 'books'",
-    data: JSON.stringify(
-      [
-        { title: 'Dune', category: 'books', price: 120 },
-        { title: 'Atlas', category: 'books', price: 80 },
-        { title: 'Desk lamp', category: 'home', price: 150 },
-        { title: 'Encyclopedia', category: 'books', price: 300 },
-        { title: 'Mug', category: 'home', price: 12 },
-      ],
-      null,
-      2
-    ),
+    data: `[
+  { "title": "Dune", "category": "books", "price": 120 },
+  { "title": "Atlas", "category": "books", "price": 80 },
+  { "title": "Desk lamp", "category": "home", "price": 150 },
+  { "title": "Encyclopedia", "category": "books", "price": 300 },
+  { "title": "Mug", "category": "home", "price": 12 }
+]`,
     readme: { file: 'modules/eval-core/README.md', anchor: 'compilation--compilerservice' },
   },
 ];

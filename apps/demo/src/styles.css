@@ -114,6 +114,7 @@ label {
 
 textarea,
 input,
+select,
 button {
   font: inherit;
   color: inherit;
@@ -136,9 +137,38 @@ input {
   padding: 0.25rem 0.5rem;
 }
 
+select {
+  padding: 0.25rem 0.5rem;
+}
+
 button {
   padding: 0.25rem 0.75rem;
   cursor: pointer;
+}
+
+/* An example's form: each label's text in one column, its control in the next. */
+.example form,
+.example .fields {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 18rem);
+  gap: 0.5rem 1rem;
+  align-items: center;
+  margin: 0.5rem 0;
+}
+
+.example form label,
+.example .fields label {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  margin: 0;
+}
+
+.example form input,
+.example form select,
+.example .fields input {
+  width: 100%;
 }
 
 .example {

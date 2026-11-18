@@ -831,6 +831,13 @@ workflow file present, with `workflow_dispatch` as its only trigger.
     settings and at phone width was not done in this session, which started no dev server; the
     checks above are the build, the type-check and the cases. The footer's case is green, and the
     workflow file is present with `workflow_dispatch` as its only trigger.
+  - **After the first deploy** (2026-11-18). The maintainer's reading of the live site asked for
+    three changes, made in a fix-up commit before step 8: each box is as tall as its text, 2 to 12
+    lines, and the configured-form and row-filter data are written one field or row per line; the
+    configured form's country is a drop-down labelled `Country`, from `options`, a key only the
+    example reads, and its case chooses `US` in it; an example's labels and controls sit in two
+    aligned columns. Build (D-2): Initial 303.04 kB raw, 84.22 kB transfer; main grows 2.6 kB with
+    the drop-down. The demo's count stays 23.
 
 ### Step 8 — The first deploy, the links and the retrospect
 

@@ -32,12 +32,12 @@ function messageOf(error: unknown): string {
     @if (entry().expression !== null) {
       <label>
         Expression
-        <textarea #expressionBox [value]="expression()" (input)="setExpression(expressionBox.value)"></textarea>
+        <textarea #expressionBox [rows]="rowsFor(expression())" [value]="expression()" (input)="setExpression(expressionBox.value)"></textarea>
       </label>
     }
     <label>
       Data, as JSON
-      <textarea #dataBox [value]="data()" (input)="setData(dataBox.value)"></textarea>
+      <textarea #dataBox [rows]="rowsFor(data())" [value]="data()" (input)="setData(dataBox.value)"></textarea>
     </label>
     <div class="example">
       <ng-container #host />
@@ -52,6 +52,11 @@ export class Block implements OnInit {
 
   readonly expression = signal('');
   readonly data = signal('');
+
+  /** A box's height in lines: its text's line count, at least 2 and at most 12. */
+  rowsFor(text: string): number {
+    return Math.min(Math.max(text.split('\n').length, 2), 12);
+  }
   readonly error = signal<string | null>(null);
 
   private readonly host = viewChild.required('host', { read: ViewContainerRef });

@@ -18,14 +18,16 @@ interface Formula {
 @Component({
   selector: 'demo-formula-fields',
   template: `
-    <label>
-      price
-      <input class="price" type="number" [value]="price()" (input)="price.set(asNumber($event))" />
-    </label>
-    <label>
-      quantity
-      <input class="quantity" type="number" [value]="quantity()" (input)="quantity.set(asNumber($event))" />
-    </label>
+    <div class="fields">
+      <label>
+        price
+        <input class="price" type="number" [value]="price()" (input)="price.set(asNumber($event))" />
+      </label>
+      <label>
+        quantity
+        <input class="quantity" type="number" [value]="quantity()" (input)="quantity.set(asNumber($event))" />
+      </label>
+    </div>
     <dl>
       @for (formula of formulas; track formula.name) {
         <dt>{{ formula.name }} = {{ formula.expression }}</dt>
