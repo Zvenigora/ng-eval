@@ -12,8 +12,11 @@ export interface RegistryEntry {
   readonly file: string;
   /** The example's component, by a dynamic import, so that each example is its own chunk. */
   readonly load: () => Promise<Type<unknown>>;
-  /** The expression box's first value. */
-  readonly expression: string;
+  /**
+   * The expression box's first value, or `null` for an example that reads no expression, whose
+   * page shows no expression box.
+   */
+  readonly expression: string | null;
   /** The data box's first value, as JSON text. */
   readonly data: string;
   /** The README section the page links, as a path from the repository's root and a heading slug. */
@@ -176,6 +179,75 @@ export const REGISTRY: readonly RegistryEntry[] = [
     expression: 'customer.name.toUpperCase()',
     data: '{ "customer": null }',
     readme: { file: 'modules/eval-forms/README.md', anchor: 'when-a-rule-fails' },
+  },
+  {
+    path: 'use-cases/configured-form',
+    title: 'A form driven by configuration',
+    summary: 'Builds a form from the field list in the data box, as it would arrive from a server: '
+      + 'one control per field, and the list bound as the schema with `bindFieldProperties`. A '
+      + 'field with a `visible` rule is shown while the rule is true, and a field is labelled by '
+      + 'its `text` rule, or by its name when it has none. Typing in the country input recomputes '
+      + 'the rules that read it.',
+    file: 'use-cases/configured-form.example.ts',
+    load: () => import('./use-cases/configured-form.example').then((m) => m.ConfiguredFormExample),
+    expression: null,
+    data: JSON.stringify(
+      [
+        { name: 'country' },
+        { name: 'state', visible: "country === 'US'", text: "'State'" },
+        { name: 'province', visible: "country === 'CA'", text: "'Province'" },
+        { name: 'zip', text: "country === 'US' ? 'ZIP code' : 'Postal code'" },
+      ],
+      null,
+      2
+    ),
+    readme: { file: 'modules/eval-forms/README.md', anchor: 'the-field-schema' },
+  },
+  {
+    path: 'use-cases/formula-fields',
+    title: 'Formula fields',
+    summary: 'Makes a signal with `createEvalSignal` of each formula in the data box, in order. A '
+      + 'formula reads the price and quantity inputs and the formulas before it, so typing in an '
+      + 'input recomputes the formulas that read it.',
+    file: 'use-cases/formula-fields.example.ts',
+    load: () => import('./use-cases/formula-fields.example').then((m) => m.FormulaFieldsExample),
+    expression: null,
+    data: JSON.stringify(
+      {
+        price: 25,
+        quantity: 4,
+        formulas: {
+          subtotal: 'price * quantity',
+          discount: 'subtotal >= 100 ? subtotal * 0.1 : 0',
+          tax: '(subtotal - discount) * 0.13',
+          total: 'subtotal - discount + tax',
+        },
+      },
+      null,
+      2
+    ),
+    readme: { file: 'modules/eval-signals/README.md', anchor: 'how-it-fits-together' },
+  },
+  {
+    path: 'use-cases/row-filter',
+    title: 'A filter the user writes',
+    summary: 'Compiles the expression once with `CompilerService.compile`, calls it with '
+      + '`simpleCall` once per row of the data, and shows the rows it is truthy for.',
+    file: 'use-cases/row-filter.example.ts',
+    load: () => import('./use-cases/row-filter.example').then((m) => m.RowFilterExample),
+    expression: "price > 100 && category == 'books'",
+    data: JSON.stringify(
+      [
+        { title: 'Dune', category: 'books', price: 120 },
+        { title: 'Atlas', category: 'books', price: 80 },
+        { title: 'Desk lamp', category: 'home', price: 150 },
+        { title: 'Encyclopedia', category: 'books', price: 300 },
+        { title: 'Mug', category: 'home', price: 12 },
+      ],
+      null,
+      2
+    ),
+    readme: { file: 'modules/eval-core/README.md', anchor: 'compilation--compilerservice' },
   },
 ];
 

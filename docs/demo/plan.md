@@ -1,6 +1,6 @@
 # Phase 19 Plan — the demo application, first version
 
-**Status: Revision 2, steps 1 to 5 done; step 6 is next.** The design is
+**Status: Revision 2, steps 1 to 6 done; step 7 is next.** The design is
 [`design-session.md`](design-session.md), one session and questions Q1 to Q23. This plan does not
 restate it: it cites a decision by its Q number, and adds what a plan needs: measurements, scope,
 steps, exit criteria, and what goes red.
@@ -234,7 +234,7 @@ Every step's list also holds this document.
 | 3 | The block, the registry and the free-form page | `apps/demo/`, the root `package.json`, `package-lock.json`, `CLAUDE.md`, `docs/README.md` | The block's, the two registry cases, 1 smoke |
 | 4 | Feature pages: core and signals | `apps/demo/`, `CLAUDE.md`, `docs/README.md` | 6 smoke, 1 nav |
 | 5 | Feature pages: forms, both adapters | `apps/demo/`, `CLAUDE.md`, `docs/README.md`, `ROADMAP.md` | 6 smoke |
-| 6 | The three use cases | `apps/demo/` | 3 smoke |
+| 6 | The three use cases | `apps/demo/`, `CLAUDE.md`, `docs/README.md` | 3 smoke; the nav case gains the headings |
 | 7 | The look, the footer and the workflow | `apps/demo/`, `.github/workflows/pages.yml` (new) | The footer's |
 | 8 | The first deploy, the links and the retrospect | The root `README.md`, `CHANGELOG.md`, this document's § 9 and § 10, `docs/standing-rules.md` if D-1 is promoted, `docs/release-history.md`, `CLAUDE.md`, `ROADMAP.md` | — |
 
@@ -652,6 +652,89 @@ Step 5's pages show `visible` and `text` at `/reactive`, and `visible`, `text` a
   - **The demo's count**: 19. Step 4's thirteen and the six smoke cases.
   - **The gate**, green: `eval-core` 3533, `eval-signals` 462, `eval-forms` 391, `demo` 19.
     doc-links: 414 files, 3097 links, 0 dangling. release-tags: 55 rows,
+    65 release tags, all annotated, 0 failing.
+- **Step 6's Outcome** (2026-11-17). Run on Windows, Node 26.4.0, by Claude Sonnet 5.5. The step's
+  prompt carried the reviewing chat's measurements on `2928845`, pinned in
+  `ng-eval-19.6-measurements.zip`, SHA-256
+  `0d81003f844e57296bd38300078730488635d67ad28ec8c77a1762fbb2a59a21`, which the maintainer holds
+  ([SR47](../standing-rules.md#sr47)); the hash was checked before the step. It is a measuring rig,
+  not this step's code, and nothing was applied from it; this session did not open it. The prompt
+  gave the code and the values the cases read, and each case below reads them.
+  - **The pages.** Three registry entries after `features/forms-signals/error-policy`, in this
+    order, each file under `src/app`: `use-cases/configured-form` (`ConfiguredFormExample`, anchor
+    `the-field-schema` in `modules/eval-forms/README.md`), `use-cases/formula-fields`
+    (`FormulaFieldsExample`, anchor `how-it-fits-together` in `modules/eval-signals/README.md`) and
+    `use-cases/row-filter` (`RowFilterExample`, `price > 100 && category == 'books'`, anchor
+    `compilation--compilerservice` in `modules/eval-core/README.md`). `RegistryEntry.expression` is
+    now `string | null`. The first two have `expression: null`, since neither reads an expression:
+    the block wraps its Expression label in `@if (entry().expression !== null)`, and sets the
+    expression signal to `entry.expression ?? ''`, so the data box is the only textarea, at index
+    0, on those two pages. The titles, the summaries and the default data are the prompt's.
+  - **The examples.** `configured-form` is at `/reactive` only: `FieldSchema` is the JSON shape,
+    which `/signals` has none of, so `disabled` stays on the registrars page. It builds one
+    `FormControl` per field of the data, binds the list with `bindFieldProperties` and
+    `{ injector }`, destroys the binding in `ngOnDestroy`, and renders a label per field, shown
+    while the field's `visible` rule is true, with its `text` rule or its name. `formula-fields`
+    makes one `createEvalSignal` per formula, in order, from a copy of the source, so a formula
+    reads only the two inputs and those before it. Its values are shown with `toFixed(2)`, since
+    `DecimalPipe` throws on a string during change detection, outside the block's `try`.
+    `row-filter` compiles once with `CompilerService.compile`, and calls the result with
+    `simpleCall` once per row.
+  - **The navigation** (design § 2.4). `app.ts` renders the free-form page's link, then a
+    Features section of four groups, titled from each path's folder (`core`, `signals`,
+    `forms, /reactive`, `forms, /signals`), then a Use cases section. `app.spec.ts` keeps its
+    `href` check, in registry order, and now also reads `nav h2` as `Features`, `Use cases` and
+    `nav h3` as the four group titles.
+  - **The smoke cases**, one per example in `<name>.example.spec.ts` beside it, shaped as step 5's,
+    each green on its first run against the prompt's values. Each copies `entryAt`; `row-filter`
+    alone copies `typeInto`, and the other two carry step 5's comment, since their change is the
+    example's own input. configured-form: one textarea; the labels as
+    `<class>: <text>` are `country: country` and `zip: Postal code`; typing `US` into
+    `label.country input` gives `country: country`, `state: State` and `zip: ZIP code`.
+    formula-fields: one textarea; `dd.subtotal`, `dd.discount`, `dd.tax` and `dd.total` read
+    `100.00`, `10.00`, `11.70` and `101.70`; typing `2` into `input.quantity` gives `50.00`,
+    `0.00`, `6.50` and `56.50`. row-filter: `2 of 5 rows`, and the first cell of each row `Dune`
+    and `Encyclopedia`; the expression `price > 100` gives `3 of 5 rows`, `Dune`, `Desk lamp` and
+    `Encyclopedia`. `registry.spec.ts` is unedited, and its two cases are green over the sixteen
+    entries.
+  - **The type-check.** `npx tsc --noEmit -p` exits 0 for `tsconfig.app.json` and for
+    `tsconfig.spec.json`.
+  - **The build** (D-2), from a deleted `.angular` and `dist`, by
+    `npx nx build demo --excludeTaskDependencies`: green, with no warning. Initial files
+    `main-GOOYQO7A.js` and `styles-6GXROV53.css`; Initial total 292.79 kB raw, 81.68 kB transfer,
+    up from step 5's 287.35 kB and 80.18 kB, which this session did not attribute. It is the
+    figure the reviewing chat's rig gave, 292.79 kB and 81.68 kB. The three new named lazy chunks:
+    `configured-form-example` (`chunk-C-0tSrOk.js`, 1.45 kB), `formula-fields-example`
+    (`chunk-Bxny2Tvb.js`, 1.59 kB) and `row-filter-example` (`chunk-D1jmXym-.js`, 1.16 kB), the
+    sizes the rig gave. The largest unnamed lazy chunk, `chunk-6oBH9k32.js`, is 181.63 kB raw and
+    44.48 kB transfer.
+  - **The copies.** `dist/apps/demo/browser/source/` holds sixteen files, the thirteen of step 5
+    and three new under `use-cases/`, each equal to its source, whose SHA-256 is:
+    `use-cases/configured-form.example.ts`
+    `744eb7c38b2db9fecbd96fb50661217e3f639672c2a94593c7c145c794f9d78e`,
+    `use-cases/formula-fields.example.ts`
+    `646babbf5909c700ca39d9c7f994a9148f89479adde938e5ca05c0e62719025f` and
+    `use-cases/row-filter.example.ts`
+    `7e409bff8f1a9fb38c7db36ba12b03710a1bbd80193843626d73ad2f43377828`. Every new file was
+    written with LF line endings.
+  - **`modules/` and `tools/`**: `git status --porcelain modules/ tools/` prints nothing. No
+    `code-reviewer` ran (D-1): no file under either changed.
+  - **Corrected in this commit** ([SR4](../standing-rules.md#sr4)). Row 6's file list gains
+    `CLAUDE.md` and `docs/README.md`, for the active-plan sentences, and its cases read
+    "3 smoke; the nav case gains the headings".
+  - **The sweep** ([SR25](../standing-rules.md#sr25)), by
+    `git grep -n -E 'steps 1 to 5|step 6 is next|step [1-5] done|step [2-6] (is )?next|Nothing is built yet'`.
+    Rewritten: `CLAUDE.md`'s two active-plan sentences, `docs/README.md`'s Active plan, and this
+    document's status line. Kept ([SR6](../standing-rules.md#sr6)): the completed plans' records
+    (`docs/a24/plan.md`, `docs/a33/plan.md`, `docs/a45/plan.md`, `docs/a48/plan.md`,
+    `docs/colon-identifiers/phase-9-plan.md`, `docs/documentation/phase-10-plan.md` and
+    `phase-11-plan.md`), this document's own earlier Outcomes, which quote their greps, and three
+    unrelated "steps 1 to 5": `docs/eval-rules/plan.md`, `docs/statements/summary.md` and
+    `modules/eval-core/src/lib/internal/visitors/dispatch-statement.ts`, which this step does not
+    touch.
+  - **The demo's count**: 22. Step 5's nineteen and the three smoke cases.
+  - **The gate**, green: `eval-core` 3533, `eval-signals` 462, `eval-forms` 391, `demo` 22.
+    doc-links: 420 files, 3101 links, 0 dangling. release-tags: 55 rows,
     65 release tags, all annotated, 0 failing.
 
 ### Step 7 — The look, the footer and the workflow

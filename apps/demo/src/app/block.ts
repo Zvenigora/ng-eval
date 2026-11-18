@@ -29,10 +29,12 @@ function messageOf(error: unknown): string {
 @Component({
   selector: 'demo-block',
   template: `
-    <label>
-      Expression
-      <textarea #expressionBox [value]="expression()" (input)="setExpression(expressionBox.value)"></textarea>
-    </label>
+    @if (entry().expression !== null) {
+      <label>
+        Expression
+        <textarea #expressionBox [value]="expression()" (input)="setExpression(expressionBox.value)"></textarea>
+      </label>
+    }
     <label>
       Data, as JSON
       <textarea #dataBox [value]="data()" (input)="setData(dataBox.value)"></textarea>
@@ -59,7 +61,7 @@ export class Block implements OnInit {
 
   ngOnInit(): void {
     const entry = this.entry();
-    this.expression.set(entry.expression);
+    this.expression.set(entry.expression ?? '');
     this.data.set(entry.data);
 
     const done = this.pendingTasks.add();
