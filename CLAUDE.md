@@ -96,7 +96,7 @@ with no project filter, so each covers the four libraries and the demo. CI
 `npm test` — so it covers the build and test targets of the four libraries and the demo, and
 no project's lint.
 
-`test` also runs on a fifth project, the workspace root (`@zvenigora/ng-eval`), whose only
+`test` also runs on a sixth project, the workspace root (`@zvenigora/ng-eval`), whose only
 `test` target is `node tools/doc-links.mjs && node tools/release-tags.mjs`, declared in the root
 `package.json`'s `nx.targets`. The first is the document cross-reference gate (`docs/backlog.md`
 F9). It fails on a relative link in any `*.md`, or in a comment line of any `*.ts`, whose file or

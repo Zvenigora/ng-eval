@@ -55,7 +55,7 @@ thorough and checked nothing.
   both sites and report two things: whether the containment still holds, and whether its
   stated rationale still does.
 - Items 1, 2, 3, 5, 7 and 9 of the eval-core list are **eval-core-only** and apply to no file
-  in any downstream library: neither contains visitors, so there is no value stack, no
+  in any downstream library: none contains visitors, so there is no value stack, no
   `beforeVisitor`/`afterVisitor` bracketing, no `contextPush`, no binding form, nothing
   that must stay synchronous inside a walk, and no loop of ours to fail to terminate.
 - A diff spanning more than one → run each list, and say in your report which findings

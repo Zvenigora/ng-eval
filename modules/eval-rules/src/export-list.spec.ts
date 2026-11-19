@@ -14,7 +14,7 @@
  * Phase 12 plan, step 2). This is deliberate: `@nx/enforce-module-boundaries` runs with
  * `allow: []` (root `eslint.config.mjs`), so no spec may import a helper out of
  * another project — by alias or relatively — and § 6 gate 4 forbids loosening
- * that rule to serve a spec. What retires the triplication is a shared
+ * that rule to serve a spec. What retires the copies is a shared
  * spec-utilities location the boundary rule permits. No such location exists in
  * this workspace, and building one is not this track's to do.
  *

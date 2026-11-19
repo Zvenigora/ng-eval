@@ -827,9 +827,10 @@ file's second line names the bundle it ran on.
 `tools/published-links.txt` if the README prints a link into the repository. Added by
 Revision 6 ([SR4](../standing-rules.md#sr4)): `modules/eval-core/src/export-list.spec.ts`,
 `modules/eval-signals/src/export-list.spec.ts` and `modules/eval-forms/src/export-list.spec.ts`,
-whose comparison with `tsconfig.base.json`'s paths goes red on the new path; `CONTRIBUTING.md`
-and `docs/README.md`, which counted the gate's libraries; and `docs/README.md`, `ROADMAP.md`,
-`docs/backlog-in-flight.md` and `docs/release-history.md`, which named this step next.
+whose comparison with `tsconfig.base.json`'s paths goes red on the new path; `CONTRIBUTING.md`,
+which counted the gate's libraries; `docs/README.md`, which counted them and named this step
+next; and `ROADMAP.md`, `docs/backlog-in-flight.md` and `docs/release-history.md`, which named
+this step next.
 
 The package is at version `0.0.0` and exports one constant, so the barrel specs have something to
 pin. Nothing is published. The README is a stub that passes the two README gates the barrel specs
@@ -973,7 +974,10 @@ from the README's stub section and its fence, and from the barrel specs' cases t
 ### Step 4 — Evaluation
 
 **Files**: `src/lib/rule-context.ts`, `src/lib/evaluate-rule.ts`, `src/lib/rule-result.ts`, their
-specs, the barrel and its specs, `CHANGELOG.md`.
+specs, the barrel and its specs, `CHANGELOG.md`; and `CLAUDE.md`, whose paragraph on the
+depth-mark unwind names the guards of "both downstream libraries", `eval-signal.ts` and
+`evaluate-rule.ts`, and gains this package's (found by step 2's review sweep,
+[SR4](../standing-rules.md#sr4)).
 
 `RuleResult` has no `trace` in this step; step 5 adds it, and nothing is published between them.
 
@@ -1173,7 +1177,9 @@ alone; `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root `
   root `README.md` and `CHANGELOG.md` list the package.
 - `docs/release-history.md` gains the release's line, and `CLAUDE.md` its "Published at" version.
   `CLAUDE.md`'s "What this is" says four packages are published, and `CONTRIBUTING.md`'s Releasing
-  counts four (Revision 6: step 2 wrote the fourth in as not published).
+  counts four, as does its "Why publishing is still manual", whose "All three libraries are now
+  configured the same way" the package's `project.json` already meets (Revision 6: step 2 wrote
+  the fourth in as not published).
 
 **Exit criteria**: the gate green on the committed tree; the README counts still pinned; the
 review finds no shipped sentence wider than its witnesses.

@@ -18,7 +18,8 @@ the root files each row of the plan's § 4 lists; step 8 reaches the `demo` appl
 `eslint.config.mjs`; steps 9 to 11 are the release commit, the post-publish record and the retrospect.
 **No step changes `eval-core`, `eval-signals` or `eval-forms`**, and a file under their folders changing
 is a stop. Step 2 was the one exception: each one's `src/export-list.spec.ts` gained the new package's
-path, since the case that compares its list with `tsconfig.base.json`'s paths went red without it. The gate's counts its steps start from, read by step 1 at 51791c9, are `eval-core` 3533,
+path, since the case that compares its list with `tsconfig.base.json`'s paths went red without it.
+The gate's counts its steps start from, read by step 1 at 51791c9, are `eval-core` 3533,
 `eval-signals` 462, `eval-forms` 391 and `demo` 23. The three libraries' move in no step
 ([SR10](../../../docs/standing-rules.md#sr10)), and `demo`'s moves in step 8 only. From step 2 the gate
 also runs the `eval-rules` project, and each step's Outcome records its count.
