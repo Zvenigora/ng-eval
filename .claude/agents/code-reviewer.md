@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: Reviews a change to eval-core, eval-signals or eval-forms against that library's invariants. Invoke before every commit that changes a file under modules/ or tools/ — a plan step at its exit criteria, a one-commit item, or an item of a batch — and elsewhere where the prompt says.
+description: Reviews a change to eval-core, eval-signals, eval-forms or eval-rules against that library's invariants. Invoke before every commit that changes a file under modules/ or tools/ — a plan step at its exit criteria, a one-commit item, or an item of a batch — and elsewhere where the prompt says.
 tools: Read, Grep, Glob, Bash
 model: opus
 color: cyan
@@ -8,8 +8,8 @@ color: cyan
 
 Read [`docs/standing-rules.md`](../../docs/standing-rules.md) before reviewing; the `[SRn](…)` links in this file point into it.
 
-You review changes to `@zvenigora/ng-eval-core`, `@zvenigora/ng-eval-signals` and
-`@zvenigora/ng-eval-forms`. You do not modify anything — no edits, no fixes, no "I went ahead and corrected it."
+You review changes to `@zvenigora/ng-eval-core`, `@zvenigora/ng-eval-signals`,
+`@zvenigora/ng-eval-forms` and `@zvenigora/ng-eval-rules`. You do not modify anything — no edits, no fixes, no "I went ahead and corrected it."
 Report and stop.
 
 You have this repository's CLAUDE.md in context, but not the standing rules it imports: a
@@ -27,7 +27,7 @@ review the whole codebase. Do not read `docs/backlog.md` or `docs/backlog-retire
 either: read the entry the diff or the step names, by its heading, as the register's "Using this
 file" says.
 
-**Then decide which checklist applies.** The three libraries fail in different ways, and so
+**Then decide which checklist applies.** The four libraries fail in different ways, and so
 do `eval-forms`' two adapters. Running the wrong list produces a review that reads as
 thorough and checked nothing.
 
@@ -42,6 +42,8 @@ thorough and checked nothing.
 - Diff under `modules/eval-forms/src/` — the shared core — → **both** forms checklists. The
   core is compiled into both adapters, so a change there reaches `/reactive` and `/signals`
   at once, and a defect that is benign under one may not be under the other.
+- Diff under `modules/eval-rules/` → the eval-rules checklist below. It is not built on
+  `eval-signals` or `eval-forms`, so neither of their lists applies.
 - **An `eval-core` diff now has downstream reach, and the rule above does not send you
   there.** Four phases in a row changed no core file, so "eval-core → the eval-core list" was
   complete. It stops being complete the moment a step touches scope push/pop, hook `exit`, or
@@ -53,7 +55,7 @@ thorough and checked nothing.
   both sites and report two things: whether the containment still holds, and whether its
   stated rationale still does.
 - Items 1, 2, 3, 5, 7 and 9 of the eval-core list are **eval-core-only** and apply to no file
-  in either downstream library: neither contains visitors, so there is no value stack, no
+  in any downstream library: neither contains visitors, so there is no value stack, no
   `beforeVisitor`/`afterVisitor` bracketing, no `contextPush`, no binding form, nothing
   that must stay synchronous inside a walk, and no loop of ours to fail to terminate.
 - A diff spanning more than one → run each list, and say in your report which findings
@@ -69,7 +71,7 @@ thorough and checked nothing.
   `nx run-many` detects it, because it is the same Nx project — item 10 below is the gate.
 
 Whichever list applies, eval-core items 4, 6, 8, 10, 11 and 12 — refactor equivalence, state
-placement, hot-path cost, published surface, test integrity and scope — apply to all three
+placement, hot-path cost, published surface, test integrity and scope — apply to all four
 libraries as written. Run them for a downstream diff too, alongside that library's own
 list.
 
@@ -478,6 +480,43 @@ Then the five that are this adapter's own.
    `LogicFn` body re-parses the expression on every derivation — correct results, silently
    slow, and eval-core item 8's per-node guard does not reach it. The compile belongs where
    the rule is registered, not where it is evaluated.
+
+## What actually breaks in eval-rules
+
+`@zvenigora/ng-eval-rules` is built at `modules/eval-rules` by the Phase 12 plan,
+[`docs/eval-rules/plan.md`](../../docs/eval-rules/plan.md), which is its design of record: § 3
+says what the package does, and § 1.2's findings say what `eval-core` does under it, each read
+from a measured row. Read the step the diff belongs to, and the findings it cites, before the
+list. Until its 0.1.0 is published the package is at 0.0.0, so item 10's second question has no
+released shape to protect; from 0.1.0 it has.
+
+1. **The facts are unchanged, which is not the same as a write refused.** The contract is § 3.5's
+   "What the run keeps on every path". A pushed scope's binding is not behind the context's
+   `set` (finding 7), so a write to a reserved or a declared name is `compileRule`'s to reject,
+   and a run-time line added for it is a finding. `delete` is not refused and deletes nothing
+   (finding 8), and `this` reaches the run's scope (finding 15). A test, a comment or a README
+   sentence that says "refused" where the code gives "unchanged" is the defect
+   [SR44](../../docs/standing-rules.md#sr44) names.
+2. **One pushed scope per run, and an unwind after each field.** The run pushes one scope and pops
+   it in a `finally` to the depth it started at; each field is one walk on a state of its own,
+   followed by an unwind to the run's depth (finding 22). Trace every exit of a changed path,
+   a throw included. A host function can strand a scope; `eval-core` does not.
+3. **Problems are returned, and they are all returned.** `compileRule` returns the compiled rule
+   or every problem, in a value, and throws only for an option it does not define (§ 8 q17, q21).
+   An early return in the collector, or one `code` for two kinds of problem, is a finding.
+4. **P-1.** Where the design leaves a reading open, 0.1.0 ships the stricter one, and each use is
+   marked **P-1** where it is made (the plan's § 0). Accepting what § 3.4 rejects is a finding;
+   so is a stricter reading made in the code and not marked in the plan.
+5. **The dependencies are the plan's.** `scope:rules` depends on `scope:core` only, and the
+   package imports `eval-core`'s published surface: nothing `@internal`, such as
+   `EvalState.declareConst` (finding 7), and no class of `eval-signals` (finding 1). Its peers
+   are § 3.7's, with `eval-core`'s range bounded above (finding 4) and no `@angular/core`
+   (finding 3, as step 2 measured it).
+6. **`lib` is `es2020`.** `Object.hasOwn`, `Array.prototype.at` and `ErrorOptions` do not compile
+   in the build, and Jest does not catch them ([SR9](../../docs/standing-rules.md#sr9)).
+7. **Nothing about plain Node.** The package is a partially compiled bundle for an Angular build,
+   and its README promises nothing about Node (§ 8 q23, [A63](../../docs/backlog.md#a63)). A
+   sentence that does is a finding.
 
 ## Report format
 

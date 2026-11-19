@@ -1,6 +1,6 @@
 # Phase 12 Plan — `@zvenigora/ng-eval-rules` 0.1.0, pure rule evaluation (new module)
 
-**Status: Revision 5, the active plan: step 1 is done and step 2 is next.** Revisions 1 to 4 and
+**Status: Revision 6, the active plan: steps 1 and 2 are done and step 3 is next.** Revisions 1 to 4 and
 the design sessions were committed ahead of step 1, at the maintainer's request. Revision 3 measured
 [§ 1.3](#13-mechanism-questions-measured)'s rows on the built 0.16.0 bundle, and Revision 4 added
 two, with eight scripts pinned outside the repository ([SR32](../standing-rules.md#sr32),
@@ -19,6 +19,26 @@ This phase ships **one release, 0.1.0**: a rule compiled once and evaluated to a
 engine, no events and no commit. The later slices of the design are Phases 13 to 16 in
 [`ROADMAP.md`](../../ROADMAP.md), each with a plan of its own when it starts. What they need from
 the shapes this phase publishes is [§ 3.8](#38-what-phases-13-to-16-need-from-010s-shapes).
+
+**Revision 6** is step 2's. It measured finding 3 and finding 5, which § 1.2 now records, and
+corrects § 4 where the project's creation reached files step 2's list did not name
+([SR4](../standing-rules.md#sr4)):
+
+- **The three libraries' `src/export-list.spec.ts`.** Each holds a case that compares its list of
+  specifiers with `tsconfig.base.json`'s paths, and the new path turned that case red in all three:
+  one case each, and no other. Each list gains the path, and its comments the fourth copy. No case
+  is added or removed, so their counts do not move, and a spec ships in no package. The `step`
+  skill's sentence that no step changes the three libraries names this exception.
+- **The documents that counted the gate's libraries**: `CONTRIBUTING.md`'s Code style, whose
+  `npm run lint` linted three libraries, and `docs/README.md`'s Gates. And the four that named
+  step 2 next: `docs/README.md`, `ROADMAP.md`, `docs/backlog-in-flight.md` and
+  `docs/release-history.md`.
+- **The placeholder imports a type from `eval-core`.** With nothing imported from it,
+  `@nx/dependency-checks` reports `eval-core`'s own peer as not used, as finding 3 says of
+  `@angular/core`; a type-only import is enough for it. Step 3 removes the placeholder with its
+  first export.
+- **§ 3.7's peers** are `eval-core`'s alone until step 3 adds `acorn-walk`: finding 3 is measured,
+  and lint refuses the `@angular/core` peer.
 
 **Revision 5** is step 1's. The prototype's 21 hashes are the pinned ones, and its seven scripts
 ran again on the `eval-core` bundle the gate builds at 51791c9, which is byte for byte the bundle
@@ -122,8 +142,8 @@ block-bodied arrow function is one expression (finding 9). It added findings 10 
 
 Findings 1 to 5 are the draft's, 6 to 14 Revision 2's, 15 to 24 Revision 3's and 25 to 28
 Revision 4's. Each names the
-row of [§ 1.3](#13-mechanism-questions-measured) it is read from. Finding 3 is a prediction, and
-says so.
+row of [§ 1.3](#13-mechanism-questions-measured) it is read from. Findings 3 and 5 have no row:
+step 2 measured them, and each says how.
 
 1. **A read-only context is an existing mechanism** (M2). `eval-signals`' signal context
    subclasses `EvalContext` and overrides `set`, which refuses an identifier write, and
@@ -142,17 +162,24 @@ says so.
    this package peer it too. Its main entry imports nothing from `@angular/core`, and each
    project's lint runs `@nx/dependency-checks`, whose `checkObsoleteDependencies` is on by default
    and reports a declared dependency the source never imports, as `The "…" package is not used by
-   "…" project`. That is a prediction: step 2 measures it. If lint reports it, the peer is
-   dropped, since a consumer already has `@angular/core` as `eval-core`'s own peer.
+   "…" project`. **Step 2 measured it**: with the `@angular/core` peer declared, and the source
+   importing a type from `eval-core` and nothing from `@angular/core`, lint reported
+   `The "@angular/core" package is not used by "eval-rules" project`; without it, lint was green.
+   So the peer is dropped, and a consumer already has `@angular/core` as `eval-core`'s own peer.
+   The same rule reports `eval-core`'s peer when the source imports nothing from it, and a
+   type-only import satisfies it (Revision 6).
 4. **A peer range here is bounded above.** Both downstream packages declare
    `>=0.16.0 <0.17.0`, and the workspace lint reads the range against the workspace version
    ([SR42](../standing-rules.md#sr42)).
-5. **`release-tags.mjs` names its packages**, read from the script and not yet run. Without an
+5. **`release-tags.mjs` names its packages**, read from the script, and run by step 2. Without an
    entry in its `PROJECT` map, a Publication status row for a fourth package fails as "is not a
    package this workspace publishes", and the package's tags are not required to be annotated.
    So a probe row with no tag fails before the map changes and after it, with two messages, and
-   step 2's probe asserts the second ([SR18](../standing-rules.md#sr18)). `CONTRIBUTING.md`'s
-   Releasing names the three packages in a table and in its publish commands.
+   step 2's probe asserts the second ([SR18](../standing-rules.md#sr18)). Step 2's run, with a
+   scratch row for `@zvenigora/ng-eval-rules` 0.1.0: before the map changed it printed
+   `` `@zvenigora/ng-eval-rules` is not a package this workspace publishes ``, and after it
+   `@zvenigora/ng-eval-rules 0.1.0 is published, and there is no tag eval-rules@0.1.0`.
+   `CONTRIBUTING.md`'s Releasing names the three packages in a table and in its publish commands.
 6. **`calc` cannot be an `EvalScope` namespace** (M1). `EvalContext.get` resolves the original
    before the prior scopes, so with the facts `{ calc: { x: 'facts' } }` the expression `calc.x`
    read `'facts'`. A scope pushed with `EvalContext.push` resolves first: over facts named `calc`,
@@ -671,9 +698,9 @@ published: `RuleTraceEntry` is bound from 0.1.0.
 ### 3.7 The package
 
 `modules/eval-rules`, tag `scope:rules`, depending on `scope:core` only. Its peers are
-`@zvenigora/ng-eval-core >=0.16.0 <0.17.0`; `acorn-walk ^8.3.0`, as `eval-forms` declares it
-(finding 20); and `@angular/core >=19.0.0` if step 2's lint accepts a peer the source does not
-import (finding 3). It imports nothing from `acorn`. Its `tsconfig.json` is `eval-signals`' own,
+`@zvenigora/ng-eval-core >=0.16.0 <0.17.0`; and `acorn-walk ^8.3.0`, as `eval-forms` declares it
+(finding 20). Not `@angular/core`: step 2's lint refuses a peer the source does not import
+(finding 3). It imports nothing from `acorn`. Its `tsconfig.json` is `eval-signals`' own,
 so its `lib` is `es2020`: `Object.hasOwn`, `Array.prototype.at` and `ErrorOptions` do not compile
 here. One barrel, `src/public-api.ts`, is the whole surface, pinned by `export-list.spec.ts` and
 `public-api.spec.ts` as in the other two.
@@ -732,7 +759,7 @@ also lists `docs/backlog-history.md`, whose *Unreleased* row moves with it, and
 | Step | Subject | Files | Ships in |
 | :--- | :--- | :--- | :--- |
 | 1 | This plan, its records, and the measurements | `docs/eval-rules/plan.md`, `docs/eval-rules/design-session.md`, `docs/README.md`, `ROADMAP.md`, `CLAUDE.md`, the skill, `docs/backlog.md`, `docs/backlog-history.md`, `docs/backlog-in-flight.md`, `docs/release-history.md` | No package |
-| 2 | The project, empty and green | `modules/eval-rules/` (new), `tsconfig.base.json`, `eslint.config.mjs`, `tools/release-tags.mjs`, `.claude/agents/code-reviewer.md`, `CLAUDE.md`, the root `README.md` and `CHANGELOG.md`, `tools/published-links.txt` | No package: `eval-rules` is at 0.0.0 and unpublished until step 9 |
+| 2 | The project, empty and green | `modules/eval-rules/` (new), `tsconfig.base.json`, `eslint.config.mjs`, `tools/release-tags.mjs`, `.claude/agents/code-reviewer.md`, `CLAUDE.md`, the root `README.md` and `CHANGELOG.md`, `tools/published-links.txt`; added by Revision 6: the three libraries' `src/export-list.spec.ts`, `CONTRIBUTING.md`, `docs/README.md`, `ROADMAP.md`, `docs/backlog-in-flight.md`, `docs/release-history.md` | No package: `eval-rules` is at 0.0.0 and unpublished until step 9 |
 | 3 | The format and `compileRule` | `rule.ts`, `compile-rule.ts`, `pattern.ts`, `define-rule.ts`, their specs, the barrel and its two specs, `package.json`, `README.md`, `CHANGELOG.md` | `eval-rules` 0.1.0 |
 | 4 | Evaluation | `rule-context.ts`, `evaluate-rule.ts`, `rule-result.ts`, their specs, the barrel and its specs, `CHANGELOG.md` | `eval-rules` 0.1.0 |
 | 5 | The trace, and the cost of building it | `rule-trace.ts`, its spec, `performance.spec.ts`, `evaluate-rule.ts`, `rule-result.ts`, `CHANGELOG.md` | `eval-rules` 0.1.0 |
@@ -797,7 +824,12 @@ file's second line names the bundle it ran on.
 `LICENSE`, `src/index.ts`, `src/public-api.ts`, `src/test-setup.ts`, `src/export-list.spec.ts`,
 `src/public-api.spec.ts`), `tsconfig.base.json`, `eslint.config.mjs`, `tools/release-tags.mjs`,
 `.claude/agents/code-reviewer.md`, `CLAUDE.md`, the root `README.md` and `CHANGELOG.md`, and
-`tools/published-links.txt` if the README prints a link into the repository.
+`tools/published-links.txt` if the README prints a link into the repository. Added by
+Revision 6 ([SR4](../standing-rules.md#sr4)): `modules/eval-core/src/export-list.spec.ts`,
+`modules/eval-signals/src/export-list.spec.ts` and `modules/eval-forms/src/export-list.spec.ts`,
+whose comparison with `tsconfig.base.json`'s paths goes red on the new path; `CONTRIBUTING.md`
+and `docs/README.md`, which counted the gate's libraries; and `docs/README.md`, `ROADMAP.md`,
+`docs/backlog-in-flight.md` and `docs/release-history.md`, which named this step next.
 
 The package is at version `0.0.0` and exports one constant, so the barrel specs have something to
 pin. Nothing is published. The README is a stub that passes the two README gates the barrel specs
@@ -828,12 +860,42 @@ named in a code span.
 **The wrong implementation**: a project the gate does not run. `nx run-many` skips a project with
 no matching target silently, so the criterion counts projects in the gate's output, not its colour.
 
+- **Outcome** (2026-11-19, Revision 6). `modules/eval-rules` is an Nx library, project
+  `eval-rules`, tag `scope:rules`, with the root lint letting it depend on `scope:core` alone and a
+  `tsconfig.base.json` path for `@zvenigora/ng-eval-rules`. Its configuration files are
+  `eval-signals`' with the names changed. The package is at 0.0.0, with `eval-core`'s peer alone,
+  and exports one constant, `RULES_PLACEHOLDER`, typed with `eval-core`'s `ParserOptions`, which
+  is a type-only import; its README is a stub that names
+  it, quotes the peer under `## Install`, and imports it in a fence. Its two barrel specs are the
+  other three's, with the reader's cases written for one export: 35 cases, of which 32 are
+  `export-list.spec.ts`' 16 counted twice, since `public-api.spec.ts` imports that file. The
+  build emits `types/zvenigora-ng-eval-rules.d.ts`. The probes, each applied alone: an import of
+  `@zvenigora/ng-eval-signals` in `src` was red with `@nx/enforce-module-boundaries`'
+  `A project tagged with "scope:rules" can only depend on libs tagged with "scope:core",
+  "scope:rules"`, beside `@nx/dependency-checks` reporting the package missing from the peers; an
+  unlisted export was red in two cases, the reader's value-export case and F10's
+  documented-or-allowlisted case, each counted twice; the scratch Publication row gave finding 5's
+  two messages. Each of the barrel specs' 19 distinct cases was red under at least one of 16
+  mutations of the package's specs, README or barrel, each applied alone. Finding 3 is measured and written in. The demo compiles the barrel through the
+  alias: step 8's "The source" has the result. `tools/release-tags.mjs`' `PROJECT` map and its
+  messages name the package; the `code-reviewer` gains an `eval-rules` list; `CLAUDE.md`,
+  `CONTRIBUTING.md` and `docs/README.md` count four libraries. Revision 6's list is what the step
+  reached beyond its own. No register entry opened or fixed: 25 live. The gate on the final tree:
+  `eval-core` 3533, `eval-signals` 462, `eval-forms` 391 and `demo` 23, unchanged, and
+  `eval-rules` 35; doc-links 430 files, 3279 links, 0 dangling; release-tags 55 rows,
+  65 tags, 0 failing. The runs are pinned in `ng-eval-12.2-step2.zip`, whose SHA-256 is in this
+  step's commit body ([SR47](../standing-rules.md#sr47)). Ships in no package.
+
 ### Step 3 — The format and `compileRule`
 
 **Files**: `src/lib/rule.ts` (the types), `src/lib/compile-rule.ts`, `src/lib/pattern.ts`,
 `src/lib/define-rule.ts`, their specs, `src/public-api.ts`, the two barrel specs, `package.json`
 and the README's `## Install` (the `acorn-walk` peer), `CHANGELOG.md` (an `[Unreleased]` line,
 [SR11](../standing-rules.md#sr11)).
+
+Step 2's placeholder, `RULES_PLACEHOLDER`, goes with this step's first export: from the barrel,
+from the README's stub section and its fence, and from the barrel specs' cases that name it
+(Revision 6).
 
 **Exit criteria**
 - One row per rejection of § 3.4, asserting the message and the path
@@ -1075,7 +1137,14 @@ is the reference for every item below; this step corrects § 9 where a place it 
 - **The navigation**: `app.ts`'s `FEATURE_GROUPS` gains `features/rules` with its title, and
   `app.spec.ts`'s list of group titles gains it.
 - **The source**: the demo compiles `eval-rules` through its `tsconfig.base.json` alias, with
-  `isolatedModules: false`, as step 2 measured.
+  `isolatedModules: false`, as step 2 measured. Step 2's run: an import of the placeholder in
+  `app.ts`, used in one exported constant, and the demo's `build` from a deleted `.angular` was
+  green; the same import misspelled was red, with `No matching export in
+  "modules/eval-rules/src/index.ts"` and `TS2724`, so the build reads the barrel's source. The
+  demo's lint with the import was red with `@nx/enforce-module-boundaries`, `A project tagged with
+  "scope:demo" can only depend on libs tagged with "scope:core", "scope:signals",
+  "scope:forms"`, which this step's lint boundary item answers. Nothing else needs to change for
+  the source to compile.
 
 **Exit criteria**: the gate green, with `demo`'s count up by the four smoke cases and by any row
 the footer's and the navigation's specs gain, each counted in the Outcome, and the three
@@ -1103,6 +1172,8 @@ alone; `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root `
   gains a built-in's time, the regular expression of finding 9 ([A62](../backlog.md#a62)). The
   root `README.md` and `CHANGELOG.md` list the package.
 - `docs/release-history.md` gains the release's line, and `CLAUDE.md` its "Published at" version.
+  `CLAUDE.md`'s "What this is" says four packages are published, and `CONTRIBUTING.md`'s Releasing
+  counts four (Revision 6: step 2 wrote the fourth in as not published).
 
 **Exit criteria**: the gate green on the committed tree; the README counts still pinned; the
 review finds no shipped sentence wider than its witnesses.

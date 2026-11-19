@@ -6,16 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @docs/standing-rules.md
 
-The process and verification rules for all three libraries — plans and steps, the gate, probes,
+The process and verification rules for the libraries — plans and steps, the gate, probes,
 claims, commits — are [`docs/standing-rules.md`](docs/standing-rules.md), imported by the line
 above and cited as [SR1](docs/standing-rules.md#sr1), SR2, …. This file keeps the facts about the
 code and the state of the work, and cites a rule rather than restating it.
 
 ## What this is
 
-An Nx monorepo containing three Angular libraries under `modules/`, versioned
-independently and **all three published to npm** under the `@zvenigora` scope, each with a
-`<name>@<version>` git tag:
+An Nx monorepo containing four Angular libraries under `modules/`, versioned
+independently. The first three are **published to npm** under the `@zvenigora` scope, each with a
+`<name>@<version>` git tag, and the fourth is being built:
 
 - **`@zvenigora/ng-eval-core`** (`modules/eval-core`) — a JavaScript expression
   parser/evaluator built on `acorn` + `acorn-walk`, exposed as Angular DI services.
@@ -29,10 +29,13 @@ independently and **all three published to npm** under the `@zvenigora` scope, e
   package**: the shared core at `@zvenigora/ng-eval-forms`, the Reactive Forms adapter at
   `@zvenigora/ng-eval-forms/reactive`, and the Signal Forms adapter at
   `@zvenigora/ng-eval-forms/signals`, which requires Angular 22.
+- **`@zvenigora/ng-eval-rules`** (`modules/eval-rules`) — rules over `eval-core` expressions: a
+  rule compiled once and evaluated to a result. At **0.0.0, not published**: Phase 12 builds its
+  0.1.0. It depends on `eval-core` only, and until step 3 exports one placeholder constant.
 
 **Published is a constraint, not a status line.** No exported symbol's shape can change
-without a breaking release, in any of the three; "nothing has shipped yet" no longer
-applies to any of them.
+without a breaking release, in any of the three published; "nothing has shipped yet" no longer
+applies to any of them. It applies to `eval-rules` until its 0.1.0, from which the same holds.
 
 Beside them is one application, **`demo`** (`apps/demo`, tag `scope:demo`), which ships in no
 package. It compiles the libraries' source through the path aliases of `tsconfig.base.json`, not
@@ -45,7 +48,7 @@ site is `https://zvenigora.github.io/ng-eval/`, deployed by hand
 Phases 1 to 6, 9 to 11 and 19 are complete, and so is every track `docs/README.md` lists with a
 release; their plan documents are design records rather than active work. **Phase 12's plan is
 active** (`docs/eval-rules/plan.md`): `@zvenigora/ng-eval-rules` 0.1.0, a new package at
-`modules/eval-rules`. Its step 1 is done and step 2 is next; its step 8 is its demo step
+`modules/eval-rules`. Its steps 1 and 2 are done and step 3 is next; its step 8 is its demo step
 (`docs/demo/plan.md` § 9). One more is written and no step of it has run: Phase 17,
 `@zvenigora/ng-eval-template` (`docs/eval-template/plan.md`), which gains a demo step before its
 release step when it starts.
@@ -69,7 +72,7 @@ flight and the register's history are beside it, in `docs/backlog-in-flight.md` 
 Prefer `nx` over the underlying tooling (see `AGENTS.md` for the workspace-wide Nx rules).
 
 ```sh
-# libraries: eval-core, eval-signals, eval-forms; the application: demo
+# libraries: eval-core, eval-signals, eval-forms, eval-rules; the application: demo
 npx nx run <library>:build:production   # ng-packagr → dist/modules/<library>
 npx nx run demo:build                   # @angular/build → dist/apps/demo, after the libraries' builds
 npx nx run <project>:test               # jest (jest-preset-angular)
@@ -88,9 +91,9 @@ Its `--output-style=static` is there because nx 23.3, like 23.2, hides successfu
 output, and the gate is read for its test counts.
 
 Root scripts: `npm test`, `npm run build` and `npm run lint` are `nx run-many -t <target>`
-with no project filter, so each covers the three libraries and the demo. CI
+with no project filter, so each covers the four libraries and the demo. CI
 (`.github/workflows/node.js.yml`) runs `npm ci`, `npm run build --if-present` and
-`npm test` — so it covers the build and test targets of the three libraries and the demo, and
+`npm test` — so it covers the build and test targets of the four libraries and the demo, and
 no project's lint.
 
 `test` also runs on a fifth project, the workspace root (`@zvenigora/ng-eval`), whose only
@@ -107,7 +110,7 @@ list lacks; and fails on a file under `docs/` that `docs/README.md` does not lin
 (`docs/backlog.md` F8): every row of the register's Publication status table needs its
 `<project>@<version>` tag, at the commit the row names, so it fails in a checkout with no tags
 (`git fetch --tags`) and on a row written before its tag. Since F26 every release tag — any
-`eval-core@`, `eval-signals@` or `eval-forms@` tag, with or without a row — must also be annotated,
+`eval-core@`, `eval-signals@`, `eval-forms@` or `eval-rules@` tag, with or without a row — must also be annotated,
 and a lightweight one fails; the `v*` tags are not checked.
 
 **A green `test` run is not a type-check** ([SR9](docs/standing-rules.md#sr9), which names
@@ -125,7 +128,7 @@ than one commit ([SR1](docs/standing-rules.md#sr1)) — as in `docs/a8/`, `docs/
 [SR2](docs/standing-rules.md#sr2)–[SR4](docs/standing-rules.md#sr4),
 [SR8](docs/standing-rules.md#sr8) and [SR33](docs/standing-rules.md#sr33)–[SR35](docs/standing-rules.md#sr35).
 
-- The active plan is Phase 12's, `docs/eval-rules/plan.md`: step 1 is done and step 2 is next.
+- The active plan is Phase 12's, `docs/eval-rules/plan.md`: steps 1 and 2 are done and step 3 is next.
   `.claude/skills/step/SKILL.md` is retargeted with each new plan and names this one; while none
   is active it names none, and stops at its § 1 if invoked.
 - The completed plans are design records, not work in progress, and each remains the
@@ -336,7 +339,7 @@ regress.
 
 ## Testing
 
-These apply to all three libraries.
+These apply to all four libraries.
 
 - Specs live next to the code they cover, as `*.spec.ts` or `*.test.ts`.
 - Match the existing per-visitor spec style — read a neighbouring spec before writing a
@@ -368,27 +371,27 @@ These apply to all three libraries.
 - Commit messages follow the Angular format in `CONTRIBUTING.md`'s Commit Messages, where
   `chore` is for changes that ship to no consumer, such as `.claude/`.
 - Prettier config exists but the codebase is not formatted to it; match the surrounding file's style.
-- `tsconfig.base.json` sets `strict: false`, but all three libraries override it — so
+- `tsconfig.base.json` sets `strict: false`, but all four libraries override it — so
   library code compiles under strict, and you should narrow `T | undefined` for real
   rather than assuming the loose base config applies. Library code also leans on
-  `unknown` + explicit narrowing rather than `any`. All three additionally set
+  `unknown` + explicit narrowing rather than `any`. All four additionally set
   `noImplicitOverride`, `noPropertyAccessFromIndexSignature`, `noImplicitReturns` and
-  `noFallthroughCasesInSwitch`; `eval-signals` and `eval-forms` have identical
+  `noFallthroughCasesInSwitch`; `eval-signals`, `eval-forms` and `eval-rules` have identical
   `tsconfig.json`s and add `isolatedModules` on top of that. **The strictness difference
   between the libraries is `isolatedModules` and nothing else** — do not assume `eval-core`
   is the lax one. `noPropertyAccessFromIndexSignature` is why options are read as
   `options?.['caseInsensitive']` and not `options?.caseInsensitive` — `EvalOptions` is
   `Record<string, unknown> | { caseInsensitive: false }`, and dotted access into an index
-  signature is an error under that flag, in all three. That is required, not a style slip;
+  signature is an error under that flag, in all four. That is required, not a style slip;
   don't "tidy" it.
-- **`target` and `lib` disagree — but only downstream.** All three libraries target
+- **`target` and `lib` disagree — but only downstream.** All four libraries target
   `es2022`. `tsconfig.base.json` pins `lib: ["es2020", "dom"]`, and
   `modules/eval-core/tsconfig.json` **overrides it** to `["dom", "es2022"]` while the other
-  two do not. Re-check with
+  three do not. Re-check with
   `npx tsc --showConfig -p modules/<project>/tsconfig.lib.json` rather than by reading the
   files, since three levels of `extends` are involved.
 
-  So **in `eval-signals` and `eval-forms`** an ES2021+ API is available at *runtime* and
+  So **in `eval-signals`, `eval-forms` and `eval-rules`** an ES2021+ API is available at *runtime* and
   absent from the *type system* — `ErrorOptions`, `Error.cause`, `Object.hasOwn`,
   `Array.prototype.at`, `String.replaceAll` and friends fail to compile, usually with a
   "change your `lib`" hint that is not a licence to change it. Declare what you need at the

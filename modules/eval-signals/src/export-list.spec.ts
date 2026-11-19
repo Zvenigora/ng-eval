@@ -9,11 +9,11 @@
  * first with its own cases (§ 3.1) is what keeps "the export list is wrong" and
  * "the README is wrong" from being read as one failure.
  *
- * **Why it is triplicated.** `eval-core` and `eval-forms` carry byte-similar
- * copies. This is deliberate: `@nx/enforce-module-boundaries` runs with
+ * **Why it is copied.** `eval-core`, `eval-forms` and `eval-rules` carry
+ * byte-similar copies. This is deliberate: `@nx/enforce-module-boundaries` runs with
  * `allow: []` (root `eslint.config.mjs`), so no spec may import a helper out of
  * another project — by alias or relatively — and § 6 gate 4 forbids loosening
- * that rule to serve a spec. What retires the triplication is a shared
+ * that rule to serve a spec. What retires the copies is a shared
  * spec-utilities location the boundary rule permits. No such location exists in
  * this workspace, and building one is not this track's to do.
  *
@@ -21,7 +21,7 @@
  * than `Object.keys` over a namespace import, because a runtime export list is
  * blind to `export interface` and `export type` and the READMEs document those
  * (§ 1.1). It reads the file each specifier resolves to in `tsconfig.base.json`
- * — `src/index.ts` for the three package specifiers.
+ * — `src/index.ts` for the four package specifiers.
  *
  * The scanner reads the whole markdown file rather than only fenced blocks:
  * a superset of F3's wording, which cannot miss an import a fence parser would.
@@ -61,7 +61,7 @@ export const workspaceRoot = ((): string => {
 
 /**
  * What each published specifier resolves to, mirroring `tsconfig.base.json`
- * `paths`. The three package specifiers resolve to `src/index.ts`, one hop
+ * `paths`. The four package specifiers resolve to `src/index.ts`, one hop
  * outside `src/public-api.ts`.
  */
 export const SPECIFIER_ENTRY: Readonly<Record<string, string>> = {
@@ -72,6 +72,7 @@ export const SPECIFIER_ENTRY: Readonly<Record<string, string>> = {
     'modules/eval-forms/reactive/src/public-api.ts',
   '@zvenigora/ng-eval-forms/signals':
     'modules/eval-forms/signals/src/public-api.ts',
+  '@zvenigora/ng-eval-rules': 'modules/eval-rules/src/index.ts',
 };
 
 const compilerOptions = (): ts.CompilerOptions => {

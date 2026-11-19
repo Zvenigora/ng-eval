@@ -6,11 +6,11 @@
 // at that commit, and where they name the tag, it must be this row's. Runs as part of the root
 // project's `test` target, after doc-links.
 //
-// Every release tag — any tag named `eval-core@`, `eval-signals@` or `eval-forms@`, whether a row
-// names it or not — must be annotated (docs/backlog-retired.md F26): its ref's object type is `tag`,
-// where a lightweight tag's is `commit`. `git rev-list -n 1` peels both alike, so the commit check
-// cannot tell them apart. The `v*` tags from before the `<project>@<version>` names are lightweight,
-// and are not checked.
+// Every release tag — any tag named `eval-core@`, `eval-signals@`, `eval-forms@` or `eval-rules@`,
+// whether a row names it or not — must be annotated (docs/backlog-retired.md F26): its ref's object
+// type is `tag`, where a lightweight tag's is `commit`. `git rev-list -n 1` peels both alike, so the
+// commit check cannot tell them apart. The `v*` tags from before the `<project>@<version>` names are
+// lightweight, and are not checked.
 //
 // A checkout with no release tags at all fails, with a hint, rather than skipping. That is a
 // shallow or tagless clone, which is what CI's checkout gives unless it is asked for
@@ -30,6 +30,7 @@ const PROJECT = {
   '@zvenigora/ng-eval-core': 'eval-core',
   '@zvenigora/ng-eval-signals': 'eval-signals',
   '@zvenigora/ng-eval-forms': 'eval-forms',
+  '@zvenigora/ng-eval-rules': 'eval-rules',
 };
 
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
@@ -70,7 +71,7 @@ const lightweight = releaseTags.filter((tag) => tagTypes.get(tag) !== 'tag');
 
 if (releaseTags.length === 0) {
   errors.push(
-    'release-tags: this checkout has no eval-core@, eval-signals@ or eval-forms@ tag at all, so it is a ' +
+    'release-tags: this checkout has no eval-core@, eval-signals@, eval-forms@ or eval-rules@ tag at all, so it is a ' +
       'shallow or tagless clone. Run `git fetch --tags`; in CI, give actions/checkout `fetch-depth: 0`. ' +
       'The check does not skip.'
   );

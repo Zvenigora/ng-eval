@@ -45,18 +45,20 @@ Run `npm install`
 Please follow the code style of the surrounding code. Linting is ESLint flat config:
 [`eslint.config.mjs`](eslint.config.mjs) at the root, and one per module that extends it —
 [`modules/eval-core/eslint.config.mjs`](modules/eval-core/eslint.config.mjs),
-[`modules/eval-signals/eslint.config.mjs`](modules/eval-signals/eslint.config.mjs) and
-[`modules/eval-forms/eslint.config.mjs`](modules/eval-forms/eslint.config.mjs) — and one for the
+[`modules/eval-signals/eslint.config.mjs`](modules/eval-signals/eslint.config.mjs),
+[`modules/eval-forms/eslint.config.mjs`](modules/eval-forms/eslint.config.mjs) and
+[`modules/eval-rules/eslint.config.mjs`](modules/eval-rules/eslint.config.mjs) — and one for the
 demo application, [`apps/demo/eslint.config.mjs`](apps/demo/eslint.config.mjs). Most rules come
 from the `@nx` flat presets (`flat/base`, `flat/typescript` and `flat/javascript` at the root,
 `flat/angular` and `flat/angular-template` in each module and in the demo) rather than being
 chosen here. What the configs add is `@nx/enforce-module-boundaries`, which uses the `scope:core` /
-`scope:signals` / `scope:forms` project tags so that `eval-core` depends on neither downstream
-library and `eval-signals` does not depend on `eval-forms`, and the `scope:demo` tag so that the
-demo may depend on all three; the `zvenigora` prefix for component and directive selectors in the
-modules, and `demo` in the demo; and `@nx/dependency-checks` over each module's `package.json`.
-Read the config files for the exact rule set. `npm run lint` lints the three libraries and the
-demo; before committing, run the gate ([SR8](docs/standing-rules.md#sr8)), which includes it.
+`scope:signals` / `scope:forms` / `scope:rules` project tags so that `eval-core` depends on no
+downstream library, `eval-signals` does not depend on `eval-forms`, and `eval-rules` depends on
+`eval-core` alone, and the `scope:demo` tag so that the demo may depend on the first three; the
+`zvenigora` prefix for component and directive selectors in the modules, and `demo` in the demo;
+and `@nx/dependency-checks` over each module's `package.json`. Read the config files for the exact
+rule set. `npm run lint` lints the four libraries and the demo; before committing, run the gate
+([SR8](docs/standing-rules.md#sr8)), which includes it.
 
 ## Commit Messages
 

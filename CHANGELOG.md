@@ -20,6 +20,13 @@ which gained "(not published to npm)". This file now holds only changes that shi
 Workspace tooling: nothing here reaches a consumer, so nothing here is versioned.
 
 ### Added
+- **The `eval-rules` project, empty**, 2026-11-19. `modules/eval-rules` is an Nx library, project
+  `eval-rules`, tag `scope:rules`, which the root lint configuration lets depend on `scope:core`
+  alone, with a path in `tsconfig.base.json` for `@zvenigora/ng-eval-rules`. Its package is at
+  0.0.0 and exports one placeholder constant; its README is a stub. `npm run lint`, `npm test`
+  and `npm run build` now run its targets too, and so does the gate; `tools/release-tags.mjs`
+  knows the package, and the other three packages' export-list specs read its path. It ships in
+  no package until its 0.1.0. `docs/eval-rules/plan.md`, Phase 12 step 2.
 - **The demo site**, 2026-11-18, at
   [`zvenigora.github.io/ng-eval`](https://zvenigora.github.io/ng-eval/). The `demo` application
   holds a free-form page, twelve feature pages and three use cases, each a runnable example with

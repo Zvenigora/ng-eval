@@ -23,7 +23,8 @@
       ],
       "@zvenigora/ng-eval-forms/signals": [
         "./modules/eval-forms/signals/src/public-api.ts"
-      ]
+      ],
+      "@zvenigora/ng-eval-rules": ["./modules/eval-rules/src/index.ts"]
     },
     "strict": false,
     "noUncheckedSideEffectImports": false,

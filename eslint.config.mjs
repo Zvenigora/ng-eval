@@ -29,6 +29,10 @@ export default [
               ],
             },
             {
+              sourceTag: 'scope:rules',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:rules'],
+            },
+            {
               sourceTag: 'scope:demo',
               onlyDependOnLibsWithTags: [
                 'scope:core',

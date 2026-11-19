@@ -23,6 +23,10 @@ copy that ships to npm.
 | `@zvenigora/ng-eval-signals` | An expression over a context of signals as an Angular `Signal`, which recomputes exactly when a key the expression read has changed. Built on `ng-eval-core` | [README](modules/eval-signals/README.md) | [CHANGELOG](modules/eval-signals/CHANGELOG.md) |
 | `@zvenigora/ng-eval-forms` | Angular form field properties driven by expressions that arrive as strings at runtime: `visible` and `text`, plus `disabled` at `/signals`. One package, two adapters: Reactive Forms at `@zvenigora/ng-eval-forms/reactive`, and Signal Forms at `@zvenigora/ng-eval-forms/signals`, which needs Angular 22. Built on the other two | [README](modules/eval-forms/README.md) | [CHANGELOG](modules/eval-forms/CHANGELOG.md) |
 
+A fourth library, `@zvenigora/ng-eval-rules`, is being built at
+[`modules/eval-rules`](modules/eval-rules/README.md): a rule compiled once and evaluated to a
+result. It is not published yet; its first release will be 0.1.0.
+
 Expression syntax, the supported node types and the evaluator's options are documented in
 `ng-eval-core`'s README. Each package's peer dependencies, with their ranges, are in its README's
 `## Install` section.

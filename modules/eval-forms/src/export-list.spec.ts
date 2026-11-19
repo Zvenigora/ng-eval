@@ -10,11 +10,11 @@
  * keeps "the export list is wrong" and "the README is wrong" from being read as
  * one failure.
  *
- * **Why it is triplicated.** `eval-core` and `eval-signals` carry byte-similar
- * copies. This is deliberate: `@nx/enforce-module-boundaries` runs with
+ * **Why it is copied.** `eval-core`, `eval-signals` and `eval-rules` carry
+ * byte-similar copies. This is deliberate: `@nx/enforce-module-boundaries` runs with
  * `allow: []` (root `eslint.config.mjs`), so no spec may import a helper out of
  * another project — by alias or relatively — and § 6 gate 4 forbids loosening
- * that rule to serve a spec. What retires the triplication is a shared
+ * that rule to serve a spec. What retires the copies is a shared
  * spec-utilities location the boundary rule permits. No such location exists in
  * this workspace, and building one is not this track's to do. Within this
  * package the copy is shared: both entry-point gates import this one file.
@@ -64,7 +64,7 @@ export const workspaceRoot = ((): string => {
 
 /**
  * What each published specifier resolves to, mirroring `tsconfig.base.json`
- * `paths`. The three package specifiers resolve to `src/index.ts`, one hop
+ * `paths`. The four package specifiers resolve to `src/index.ts`, one hop
  * outside `src/public-api.ts`; the two `eval-forms` sub-entry-points resolve to
  * their `public-api.ts` directly.
  */
@@ -76,6 +76,7 @@ export const SPECIFIER_ENTRY: Readonly<Record<string, string>> = {
     'modules/eval-forms/reactive/src/public-api.ts',
   '@zvenigora/ng-eval-forms/signals':
     'modules/eval-forms/signals/src/public-api.ts',
+  '@zvenigora/ng-eval-rules': 'modules/eval-rules/src/index.ts',
 };
 
 const compilerOptions = (): ts.CompilerOptions => {

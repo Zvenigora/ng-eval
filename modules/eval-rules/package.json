@@ -1,0 +1,24 @@
+{
+  "name": "@zvenigora/ng-eval-rules",
+  "version": "0.0.0",
+  "description": "Rules for ng-eval expressions: a rule compiled once and evaluated to a result",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zvenigora/ng-eval.git"
+  },
+  "keywords": [
+    "Angular",
+    "Eval",
+    "Rules"
+  ],
+  "author": "Zvenigora (https://github.com/zvenigora)",
+  "license": "MIT",
+  "homepage": "https://github.com/Zvenigora/ng-eval#readme",
+  "peerDependencies": {
+    "@zvenigora/ng-eval-core": ">=0.16.0 <0.17.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
+}

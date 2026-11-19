@@ -10,12 +10,12 @@
  * "the README is wrong" from being read as one failure — they now fail in
  * different files.
  *
- * **Why it is triplicated.** `eval-signals` and `eval-forms` carry near-identical
- * copies. `documentedAllowlistEntries` and its case were added here for
+ * **Why it is copied.** `eval-signals`, `eval-forms` and `eval-rules` carry
+ * near-identical copies. `documentedAllowlistEntries` and its case were added here for
  * `docs/backlog-retired.md` F22, and to the other two for F24. This is deliberate, not an oversight: `@nx/enforce-module-boundaries`
  * runs with `allow: []` (root `eslint.config.mjs`), so no spec may import a
  * helper out of another project — by alias or relatively — and § 6 gate 4
- * forbids loosening that rule to serve a spec. What retires the triplication is
+ * forbids loosening that rule to serve a spec. What retires the copies is
  * a shared spec-utilities location the boundary rule permits. No such location
  * exists in this workspace, and building one is not this track's to do.
  *
@@ -23,7 +23,7 @@
  * than `Object.keys` over a namespace import, because a runtime export list is
  * blind to `export interface` and `export type` and the READMEs document those
  * (§ 1.1). It reads the file each specifier resolves to in `tsconfig.base.json`
- * — `src/index.ts` for the three package specifiers — so it reads the graph a
+ * — `src/index.ts` for the four package specifiers — so it reads the graph a
  * consumer's import actually enters. See § 3.1 as amended for the hop counts.
  *
  * The scanner reads the whole markdown file rather than only fenced blocks.
@@ -67,7 +67,7 @@ export const workspaceRoot = ((): string => {
 
 /**
  * What each published specifier resolves to, mirroring `tsconfig.base.json`
- * `paths`. The three package specifiers resolve to `src/index.ts`, one hop
+ * `paths`. The four package specifiers resolve to `src/index.ts`, one hop
  * outside `src/public-api.ts`.
  */
 export const SPECIFIER_ENTRY: Readonly<Record<string, string>> = {
@@ -78,6 +78,7 @@ export const SPECIFIER_ENTRY: Readonly<Record<string, string>> = {
     'modules/eval-forms/reactive/src/public-api.ts',
   '@zvenigora/ng-eval-forms/signals':
     'modules/eval-forms/signals/src/public-api.ts',
+  '@zvenigora/ng-eval-rules': 'modules/eval-rules/src/index.ts',
 };
 
 const compilerOptions = (): ts.CompilerOptions => {
