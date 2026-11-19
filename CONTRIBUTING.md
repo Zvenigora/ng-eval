@@ -96,7 +96,9 @@ All three packages publish to the public npm registry under the `@zvenigora` sco
    add the matching entry to that package's own `modules/<name>/CHANGELOG.md`, moving its
    `[Unreleased]` items under the new version's heading. Each package has its own changelog,
    as it has its own version. The root `CHANGELOG.md` only lists the three, and records
-   workspace changes that ship in no package.
+   workspace changes that ship in no package. A package README that does not yet link the demo
+   site, `https://zvenigora.github.io/ng-eval/`, gains the link in this commit: no release is made
+   only to add it ([the demo plan's § 9](docs/demo/plan.md#9-contract-after-this-lands)).
 2. Run the gate, `npx nx run-many -t lint test build --skip-nx-cache --output-style=static`
    ([SR8](docs/standing-rules.md#sr8)). `npm run lint`, `npm test` and `npm run build` run the
    same targets, cached, so they are not the gate. Publishing an unbuilt or stale `dist/` is the
@@ -145,6 +147,12 @@ All three packages publish to the public npm registry under the `@zvenigora` sco
    it is red in a checkout with no tags at all: run `git fetch --tags` first. CI's checkout
    fetches them (`fetch-depth: 0`). The commits before it carry no row for the new version, so
    the check does not see a release until its row is written.
+7. Deploy the demo, after the post-publish commit is pushed: start the `Pages` workflow from
+   `master` in the repository's Actions tab. It builds the `demo` application from the
+   workspace's source and publishes it to `https://zvenigora.github.io/ng-eval/`. Read the
+   site's footer: it names the commit the workflow built and each package's version, which are
+   now the ones just published. The workflow runs only when started, so a commit between two
+   releases reaches the site only if you start it.
 
 ### Why no flags are needed
 

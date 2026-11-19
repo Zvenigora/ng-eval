@@ -289,6 +289,8 @@ and `v0.2.3`: lightweight tags from before the `<project>@<version>` names, whic
 | [F30](backlog-retired.md#f30) | `eval-signals` 0.8.0's `await` claims — the sync signal's throw on a refused `await` and its operand by identity, the async signal resolving an accepted one, a rejection as raised — are measured through the package once, and witnessed by no row of it | signals | test gap | **Retired — fixed 2026-10-31**, in no package: five rows, `eval-signals` 444 → 449, committed after the release commit 67486ab and before the publish. Opened the same day by the A24 plan's step 7a code review |
 | [F31](#f31) | `eval-core` 0.16.0's A55 at `eval-forms`' `/signals` — a rule over a getter that throws now sees its throw under `'throw'` or a function policy — is witnessed by no row; `/reactive`'s three rows witness it there | forms | test gap | Open — opened 2026-11-08 by the [A48 plan](a48/plan.md)'s step 9, from step 8's code review |
 | [F32](#f32) | `eval-core`'s barrels re-export 26 types without `export type`, so its source does not compile under `isolatedModules` (`TS1205`); an application that compiles the source, as the demo does, turns the option off | core | fix | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-15 by the [Phase 19 plan](demo/plan.md)'s step 1, from its M2 |
+| [F33](#f33) | Two of `eval.service.memory-leaks.spec.ts`' collector cases, (1.5) and the positive control (2.3), have each failed once in a full gate and passed on the next, with no edit | core | test gap | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 19 plan](demo/plan.md)'s step 8, from the reviewing chat's gates |
+| [F34](#f34) | `tools/doc-links.mjs` exits with an unhandled `ENOENT` on a tracked file deleted from the working tree and not staged, where it reports a dangling link once the deletion is staged | repo | fix | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 19 plan](demo/plan.md)'s step 8, noticed at its step 3 |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -1611,3 +1613,55 @@ which makes it a blocker of the active plan; or `eval-core`'s own build gains th
 
 **The fix**: `export type` on each of the 26 re-exports. Whether the built `.d.ts` changes is
 measured then, not assumed here ([SR12](standing-rules.md#sr12)).
+
+<a id="f33"></a>
+## F33 — Two collector cases have each failed once and passed on the next gate
+
+**Package** core · **Kind** test gap · **Status** Open, not scheduled ([SR48](standing-rules.md#sr48)). Opened 2026-11-18 by the [Phase 19 plan](demo/plan.md)'s step 8, from the reviewing chat's gates
+
+`eval.service.memory-leaks.spec.ts` asks the collector whether a context is still reachable: its
+`collect` runs `gc()` in up to five macrotasks and reads a `WeakRef`. Two of its cases have each
+failed once in a full gate ([SR8](standing-rules.md#sr8)) and passed on the next, with no edit. Both
+runs were in the reviewing chat's Linux sandbox, on trees that changed no file under `modules/`:
+
+| Case | When | Next gate |
+| :--- | :--- | :--- |
+| `should not retain a state whose simpleEvalAsync promise rejected (1.5)` | The measurements for the Phase 19 plan's step 2 | Green |
+| `should still see a context whose state the caller holds (2.3)`, the positive control | The first gate of the fix-up 72585db, 2026-11-18 | Green |
+
+The failure messages were not kept. `collect`'s own comment records an earlier one: a single round
+lost to a short-lived reference once on CI under Node 24, which is why it now runs five.
+
+**Not scheduled**, by SR48: it is a test's reliability, and no consumer meets it. Meanwhile a prompt
+that runs the gate says that one of these cases red once is read by its `●` line and the gate run
+again, with no edit, and red twice is a stop.
+
+**What reopens it**: either case red on two gates of one tree, or red in CI.
+
+**The fix** is test-only, and fits with [F31](#f31)'s if both run: record the failure message the
+next time, then decide whether `collect` waits differently or the positive control holds its
+reference differently. No row's subject changes.
+
+<a id="f34"></a>
+## F34 — doc-links exits with `ENOENT` on a tracked file deleted and not staged
+
+**Package** repo · **Kind** fix · **Status** Open, not scheduled ([SR48](standing-rules.md#sr48)). Opened 2026-11-18 by the [Phase 19 plan](demo/plan.md)'s step 8; noticed at its step 3
+
+`tools/doc-links.mjs` lists the files it reads with git, and reads each with `readFileSync`. A file
+git still tracks but that is gone from the working tree, deleted without `git rm`, makes that read
+throw, and the script exits 1 with Node's stack trace: `Error: ENOENT: no such file or directory`,
+at `tools/doc-links.mjs` line 219. It names the file, and no link. Once the deletion is staged, the
+same tree gives the gate's ordinary report: each link to the file dangles, named by file and line.
+
+**Verified** at 72585db by the reviewing chat, on Linux and Node 22.23.5: with
+`docs/demo/design-session.md` deleted by `rm`, the script printed the trace and exited 1; after
+`git rm` of the same file it reported `docs/demo/plan.md:4` and `:140` among 4 dangling links.
+
+**Not scheduled**, by SR48: the gate still fails, so nothing false passes, and the message names the
+file. A step that deletes a file does so with `git rm`, and the prompts say so.
+
+**What reopens it**: a deletion the trace hides, or a change to `tools/doc-links.mjs` for another
+reason, which takes this with it ([SR33](standing-rules.md#sr33) runs the reviewer there).
+
+**The fix**: skip a listed file that does not exist, or report it as deleted and not staged, and
+then check the links to it as the staged case does.

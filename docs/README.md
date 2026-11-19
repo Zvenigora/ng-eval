@@ -38,10 +38,10 @@ that anchor, `<a id="…"></a>` in the first cell.
 
 ## Active plan
 
-[`demo/plan.md`](demo/plan.md), Phase 19, the demo application at `apps/demo`: steps 1 to 7 are
-done and step 8 is next. Two more plans are written and not started,
-[`eval-rules/plan.md`](eval-rules/plan.md) and [`eval-template/plan.md`](eval-template/plan.md),
-both in the table of tracks below; each is linked here by its step 1. Phase 19 runs before both.
+None. Two plans are written and not started, [`eval-rules/plan.md`](eval-rules/plan.md) and
+[`eval-template/plan.md`](eval-template/plan.md), both in the table of tracks below; each is linked
+here by its step 1, and each gains a demo step before its release step
+([`demo/plan.md`](demo/plan.md) § 9).
 
 ## Release history
 
@@ -66,6 +66,7 @@ summaries, refer to the code at the commit that wrote them.
 | 9, colon-joined identifiers | [`colon-identifiers/phase-9-plan.md`](colon-identifiers/phase-9-plan.md) | [retrospect](colon-identifiers/phase-9-summary.md) | Its § 3.4, the grammar, § 3.5, the acorn plugin and the internals it relies on, and § 9, the downstream contract. Its § 8 q1, q2 and q4 are open |
 | 10, the documentation restructure | [`documentation/phase-10-plan.md`](documentation/phase-10-plan.md) | [retrospect](documentation/phase-10-summary.md) | Its § 3.2, why nothing under `docs/` moves; § 3.5, the package READMEs' one opening and their gated peer ranges; § 3.10, `SECURITY.md`'s identifier check; § 6.1, the spec discipline for documentation; and § 9, the contract after it landed. Its § 8 q3 was decided after the phase, as [F25](backlog-retired.md#f25) Part 4 |
 | 11, `eval-forms`' README by entry point | [`documentation/phase-11-plan.md`](documentation/phase-11-plan.md) | [retrospect](documentation/phase-11-plan.md#10-retrospect), its § 10 | Its § 3.1, D1–D6: why each package keeps one README and no guide file exists ([F28](backlog-retired.md#f28)); § 3.2, the README's order by entry point; § 3.5, its contents list; and § 9, the contract after it landed |
+| 19, the demo application | [`demo/plan.md`](demo/plan.md); [design session 1](demo/design-session.md) | [retrospect](demo/plan.md#10-retrospect), its § 10 | Its § 9: how a page is added, how a new library joins the demo, and how the site is deployed; § 3, the design of the first version; § 1.3, the measurements on the prototype; § 2, its decisions P1–P8. Its § 0's D-1 and D-2 are now [SR49](standing-rules.md#sr49) and [SR50](standing-rules.md#sr50). Its step 1 opened [F32](backlog.md#f32), and step 8 [F33](backlog.md#f33) and [F34](backlog.md#f34). The design session: the questionnaire (Q1–Q23), the agreed design, and the two points fixed for Phase 20. The site is `https://zvenigora.github.io/ng-eval/` |
 
 Phases 7 and 8 are reserved in [`ROADMAP.md`](../ROADMAP.md) and have no plan.
 
@@ -85,7 +86,6 @@ Work on one register entry, or a group of them, that needed more than one commit
 | `a48/` | [plan](a48/plan.md) | [A48](backlog-retired.md#a48), [A50](backlog-retired.md#a50), [A51](backlog-retired.md#a51) and [A55](backlog-retired.md#a55): member reads and writes that miss the data, and a getter's throw, fixed; [A49](backlog-retired.md#a49) decided a documented limit; [F29](backlog-retired.md#f29)'s two cases, fixed. Shipped as `eval-core` 0.16.0, `eval-signals` 0.9.0 and `eval-forms` 0.9.0. Its step 1 opened [A55](backlog-retired.md#a55), [A56](backlog.md#a56), [A57](backlog.md#a57) and [A58](backlog.md#a58) and corrected two README sentences; its step 2 fixed A55 and A48, its step 3 fixed A50 and opened [A59](backlog.md#a59), its step 4 fixed A51 and opened [A60](backlog.md#a60), its step 5 decided A49 a documented limit and opened [A61](backlog.md#a61), its step 6 added the downstream rows and fixed F29, its step 7 timed the final code and found no regression, its step 8 is the release commit, its step 9 recorded the publish, and its step 10 is the retrospect, § 10, whose rule is SR45 |
 | `eval-rules/` | [plan](eval-rules/plan.md); [design sessions 1 to 3](eval-rules/design-session.md) | Phase 12, `eval-rules` 0.1.0, pure rule evaluation: the plan at Revision 4, ready for its step 1, no step run; its § 1.3 holds the measurements on `eval-core` 0.16.0, § 2 the decisions, and § 8 their questions, all decided. The `eval-rules` design sessions: the questionnaire (Q1–Q61), the agreed design, and what the next session should challenge. Not a plan; nothing is built |
 | `eval-template/` | [plan](eval-template/plan.md); [design sessions 1 and 2](eval-template/design-session.md) | Phase 17, `eval-template` 0.1.0, text with expression macros: the plan at Revision 2, ready for its step 1, no step run; its § 1.3 holds the measurements on `eval-core` 0.16.0, § 2 the decisions, and § 8 its seven questions, all decided on 2026-11-14. The design sessions, for Phases 17 and 18, the second being `eval-forms`' template, `class` and `style` properties: the questionnaire (Q1–Q45, and the plan's P1–P7), the agreed design, and where each point left for the plans went. The sessions are not a plan; nothing is built |
-| `demo/` | [plan](demo/plan.md); [design session 1](demo/design-session.md) | Phase 19, the demo application at `apps/demo`: the active plan, at Revision 2; its § 1.3 holds the measurements on a prototype, which step 1 ran again, § 2 the decisions, § 4 the eight steps, and § 8 its seven questions, all decided on 2026-11-15. Its step 1 opened [F32](backlog.md#f32). The design session: the questionnaire (Q1–Q23, and the plan's P1–P7), the agreed design, and the two points fixed for Phase 20 |
 | `gates/` | [plan](gates/plan.md), [step 1](gates/step-1-summary.md), [step 2](gates/step-2-summary.md), [step 3](gates/step-3-summary.md), [step 4](gates/step-4-summary.md), [retrospect](gates/summary.md) | The documentation and CI gates |
 | `trace-surface/` | [plan](trace-surface/plan.md) | The trace surface: A15, A16 and A19 decided |
 | `trace2/` | [step 1, the bound](trace2/step-1.md), [step 2, the reset](trace2/step-2.md), [step 3, docs and records](trace2/step-3.md) | [A12](backlog-retired.md#a12): the trace bound and its reset, as step records without a plan |

@@ -20,6 +20,15 @@ which gained "(not published to npm)". This file now holds only changes that shi
 Workspace tooling: nothing here reaches a consumer, so nothing here is versioned.
 
 ### Added
+- **The demo site**, 2026-11-18, at
+  [`zvenigora.github.io/ng-eval`](https://zvenigora.github.io/ng-eval/). The `demo` application
+  holds a free-form page, twelve feature pages and three use cases, each a runnable example with
+  its source and a link to the README section that documents it, and a Jest smoke case per
+  example. The `Pages` workflow, `.github/workflows/pages.yml`, builds it from `master` and
+  publishes it to GitHub Pages; it runs only when the maintainer starts it, and the site's footer
+  names the commit and each package's version. The root README links the site, and each package
+  README gains the link at that package's next release. It ships in no package.
+  `docs/demo/plan.md`, Phase 19 steps 3 to 8.
 - **The `demo` application, empty**, 2026-11-16. `apps/demo` is an Nx application, project `demo`,
   built by `@angular/build` 22.2.5, a new root dev dependency, from the libraries' source through
   the workspace's path aliases. It holds a shell, a home page that uses all five entry points, and

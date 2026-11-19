@@ -19,7 +19,7 @@ version each package is published at, and which plan is active.
 
 ## What shipped, in order
 
-Phases 1, 2, 3, 4, 5, 6, 9, 10 and 11 are complete, and their plan documents are design records
+Phases 1, 2, 3, 4, 5, 6, 9, 10, 11 and 19 are complete, and their plan documents are design records
 rather than active work. So are the tracks below.
 
 | Phase or track | Subject | Shipped as | Plan |
@@ -36,6 +36,7 @@ rather than active work. So are the tracks below.
 | The A24 plan | The await track: A25, A24 and D13 | `eval-core` 0.15.0, `eval-signals` 0.8.0 and `eval-forms` 0.8.0 | [`a24/plan.md`](a24/plan.md) |
 | The A33 plan | The case-insensitive lookup cache's miss, A33, and the options a parse remembers, A34 | `eval-core` 0.15.1, a patch | [`a33/plan.md`](a33/plan.md) |
 | The A48 plan | Member reads and writes that miss the data, and a getter's throw: A48, A50, A51, A55 and F29 fixed, and A49 decided a documented limit | `eval-core` 0.16.0 with `eval-signals` 0.9.0 and `eval-forms` 0.9.0 | [`a48/plan.md`](a48/plan.md) |
+| Phase 19 | The demo application at `apps/demo` | No package: the site at `zvenigora.github.io/ng-eval/`, first deployed 2026-11-18 | [`demo/plan.md`](demo/plan.md) |
 
 Phases 1 and 4 have no row: `CLAUDE.md` did not record their versions. Phases 1, 3, 4 and 6
 shipped before the Publication status table began, and each one's release is the entry that opens
@@ -100,6 +101,10 @@ isolation.
   `eval-core` 0.16.0 with `eval-signals` 0.9.0 and `eval-forms` 0.9.0. Its § 9 maps the published
   entries to their witnesses, and § 10 is the retrospect, whose twelve review stops are SR45's
   origin.
+- [`demo/plan.md`](demo/plan.md) — Phase 19, the demo application at `apps/demo`, shipped in no
+  package. Its § 9 says how a page is added, how a new library joins the demo, and how the site is
+  deployed; § 3 is the design of the first version, § 1.3 the measurements on its prototype, and
+  § 10 the retrospect, which promoted § 0's D-1 and D-2 as SR49 and SR50.
 
 Their open questions are settled unless the document says otherwise. They stay as written, and
 their line citations, and those in their summaries, refer to the code at the commits that wrote

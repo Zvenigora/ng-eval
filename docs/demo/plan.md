@@ -1,6 +1,8 @@
 # Phase 19 Plan — the demo application, first version
 
-**Status: Revision 2, steps 1 to 7 done; step 8 is next.** The design is
+**Status: Revision 2, complete: steps 1 to 8 done.** The site is
+`https://zvenigora.github.io/ng-eval/`. § 9 is the contract a later page and the demo steps of
+Phases 12 and 17 work to, and § 10 is the retrospect. The design is
 [`design-session.md`](design-session.md), one session and questions Q1 to Q23. This plan does not
 restate it: it cites a decision by its Q number, and adds what a plan needs: measurements, scope,
 steps, exit criteria, and what goes red.
@@ -236,7 +238,7 @@ Every step's list also holds this document.
 | 5 | Feature pages: forms, both adapters | `apps/demo/`, `CLAUDE.md`, `docs/README.md`, `ROADMAP.md` | 6 smoke |
 | 6 | The three use cases | `apps/demo/`, `CLAUDE.md`, `docs/README.md` | 3 smoke; the nav case gains the headings |
 | 7 | The look, the footer and the workflow | `apps/demo/`, `.github/workflows/pages.yml` (new), `CLAUDE.md`, `docs/README.md` | The footer's; the hooks case checks a trace line |
-| 8 | The first deploy, the links and the retrospect | The root `README.md`, `CHANGELOG.md`, this document's § 9 and § 10, `docs/standing-rules.md` if D-1 is promoted, `docs/release-history.md`, `CLAUDE.md`, `ROADMAP.md` | — |
+| 8 | The first deploy, the links and the retrospect | The root `README.md`, `CHANGELOG.md` and `CONTRIBUTING.md`, this document's § 9 and § 10, `docs/standing-rules.md`, `docs/release-history.md`, `docs/README.md`, `docs/backlog.md`, `docs/backlog-history.md`, `docs/backlog-in-flight.md`, `CLAUDE.md`, `ROADMAP.md`, the `step` skill | — |
 
 ### Step 1 — This plan, its records, and the measurements
 
@@ -849,6 +851,72 @@ renders after a reload; a source view shows its file; the footer shows the commi
 deployed. § 9 and § 10 are written, D-1 is weighed for promotion, and `CLAUDE.md` names no plan
 active.
 
+- **Step 8's Outcome** (2026-11-18). The step's text was written and gated in the reviewing chat's
+  sandbox on `72585db`, and pinned in `ng-eval-19.8-measurements.zip`, which the maintainer holds
+  ([SR47](../standing-rules.md#sr47)); its SHA-256 is in this commit's body, since the pack holds
+  this text. Its `step8.patch` gives this commit's tree, and this session placed it with Edit and
+  Write ([SR36](../standing-rules.md#sr36)) and ran the gate. Every figure below is the pack's, and
+  the gate's are this session's as well.
+  - **The deploy** (P6), by the maintainer. Pages was enabled on 2026-11-18, with GitHub Actions as
+    its source, and the `Pages` workflow was started from `master` at `38be9ec`: both jobs green, and
+    the footer read "Built from commit 38be9ec." with `eval-core` 0.16.0, `eval-signals` 0.9.0 and
+    `eval-forms` 0.9.0. His reading of that site asked for the changes of step 7's last bullet, made
+    in `72585db`, and the workflow was started again from it.
+  - **The exit, read on the live site** on 2026-11-18, in the maintainer's browser by the reviewing
+    chat (the pack's `live.json`). `zvenigora.github.io/ng-eval/` serves the site.
+    `#/use-cases/configured-form`, opened by its full address in a new tab, renders its heading and
+    its drop-down, and its footer reads "Built from commit 72585db.", linked to the full SHA, with
+    the three versions above. `#/features/core/hooks`, reloaded, renders with the output `32` and
+    the last trace line `Program: 2 + 3 * a = 32`. Its source view shows `hooks.example.ts`: the text
+    shown and the file fetched from `source/` have the SHA-256
+    `b2d85b6e3e39f89638d12cc45dcdf86b579437ff9cbe79c56821aed459b302fb`, the committed file's, and the
+    fetched file holds no CR. So the footer shows the commit that was deployed.
+  - **The links** (Q19). The root README gains a "Demo" section, after "Packages", that links the
+    site and says what it holds and that its footer names the commit and each package's version.
+    The repository's homepage field is the site's address, set by the maintainer. Each package
+    README gains the link at that package's next release: `CONTRIBUTING.md`'s Releasing says so in
+    its step 1, and its new step 7 is the deploy, after the post-publish commit.
+  - **The root `CHANGELOG.md`**: one line under Workspace, Added, "The demo site", 2026-11-18. Step
+    2's line, "The `demo` application, empty", stays as written.
+  - **§ 9 and § 10** are written. § 10.5 weighs § 0's rules: D-1 is promoted as
+    [SR49](../standing-rules.md#sr49) and D-2 as [SR50](../standing-rules.md#sr50); P-1 is not;
+    [SR47](../standing-rules.md#sr47) gains a sentence on a tracked file's hash. The rules file's
+    Old numberings table gains this plan's row, and its last line, a stray `</content>` there since
+    8e6a617, is removed.
+  - **No plan is active.** `CLAUDE.md` names none, and says the demo's process is SR49; the `step`
+    skill names none and stops at its § 1; `docs/README.md`'s Active plan says none, and this plan's
+    row moves from Completed tracks to Completed phases; `ROADMAP.md`'s row 19 and its section, and
+    `docs/release-history.md`, record the phase complete.
+  - **The register.** [F33](../backlog.md#f33) and [F34](../backlog.md#f34) are opened, both not
+    scheduled ([SR48](../standing-rules.md#sr48)), for two things this plan noticed and had not
+    recorded ([SR5](../standing-rules.md#sr5)): two collector cases in `eval-core`'s memory-leaks spec
+    have each failed once and passed on the next gate, and doc-links exits with `ENOENT` on a tracked
+    file deleted and not staged. The Register history's *Unreleased* row goes 19 → 21, and Work in
+    flight records the plan complete.
+  - **Corrected in this commit** ([SR4](../standing-rules.md#sr4)). Row 8's file list names every
+    file this step changes. It gains the `step` skill and `docs/README.md`, for "no plan active", as
+    the A48 plan's last step changed them; `CONTRIBUTING.md`, since a package README's link at its
+    next release and the deploy after a release need a place every release reads; and
+    `docs/backlog.md`, `docs/backlog-history.md` and `docs/backlog-in-flight.md`, for F33, F34 and
+    Work in flight. "`docs/standing-rules.md` if D-1 is promoted" reads `docs/standing-rules.md`.
+  - **The sweep** ([SR25](../standing-rules.md#sr25)), by
+    `git grep -n -E 'steps 1 to 7|step 8 is next|step [1-7] done|step [2-8] (is )?next|plan that is active|Phase 19 runs before|D-1 of'`.
+    At `72585db` it finds 17 lines outside the seven completed plans below. Rewritten: `CLAUDE.md`'s
+    four, `docs/README.md`'s three, in its Active plan, `ROADMAP.md`'s "Phase 19 runs before all
+    three", and this document's status line. Found by reading, since the grep misses a phrase that wraps:
+    `ROADMAP.md`'s Phase 19 entry, "a plan that is active", rewritten. Kept
+    ([SR6](../standing-rules.md#sr6)): the design session's Q7 line, a design record; the completed
+    plans' records (`docs/a24/plan.md`, `docs/a33/plan.md`, `docs/a45/plan.md`, `docs/a48/plan.md`,
+    `docs/colon-identifiers/phase-9-plan.md`, `docs/documentation/phase-10-plan.md` and
+    `phase-11-plan.md`); and this document's own earlier Outcomes, which quote their greps.
+  - **`modules/`, `tools/` and `apps/demo/`**: `git status --porcelain modules/ tools/ apps/` prints
+    nothing. No `code-reviewer` ran ([SR33](../standing-rules.md#sr33)): no file under `modules/` or
+    `tools/` changed.
+  - **The demo's count**: 23, unchanged.
+  - **The gate**, green: `eval-core` 3533, `eval-signals` 462, `eval-forms` 391, `demo` 23.
+    doc-links: 422 files, 3185 links, 0 dangling. release-tags: 55 rows, 65 release tags, all
+    annotated, 0 failing.
+
 ## 5. Public API surface added
 
 None. No library changes.
@@ -891,9 +959,165 @@ P8 was raised by the sandbox measurements made for step 2's prompt, and decided 
 
 ## 9. Contract after this lands
 
-Written by step 8: how a page is added, and how a new library joins the demo, for the demo steps
-of Phases 12 and 17 (Q21).
+Written by step 8, from the code at `72585db`. It is the reference for the demo steps of Phases 12
+and 17 (Q21), and for a page added between them. The places named below are read from that code; the
+first step that adds a library measures them, and corrects this section if one is missing
+([SR4](../standing-rules.md#sr4)).
+
+**What there is.** The `demo` application at `apps/demo`, which ships in no package, and its site at
+`https://zvenigora.github.io/ng-eval/`: the free-form page, twelve feature pages and three use cases,
+at the addresses of design § 2.4. Each page is one example, one registry entry and one smoke case.
+The four checks of [§ 3.4](#34-what-keeps-it-honest) run in the gate, and its process is
+[SR49](../standing-rules.md#sr49).
+
+**A page is added** in one commit, with no plan ([SR1](../standing-rules.md#sr1), Q10):
+
+1. **The example**, `<name>.example.ts` under `src/app/features/<group>/` or `src/app/use-cases/`: a
+   standalone component that reads `inject(EXPRESSION)` and `inject(DATA)` in field initializers
+   (P1), and is otherwise its README section's code. The build's glob copies it to `source/`, where
+   the source view fetches it (P2). Write it with LF line endings.
+2. **Its entry** in `registry.ts`: `path`, `title`, `summary`, `file`, `load` as a dynamic import,
+   `expression` (or `null` for an example that reads none), `data` and `readme`. The summary states
+   what the example does and nothing more (SR49); its backticked parts render as code. The
+   registry's order is the navigation's, and the routes are built from it.
+3. **Its smoke case**, `<name>.example.spec.ts` beside it, shaped as the others: a value, a change,
+   the new value. A spec that compares a file's text read from disk replaces CRLF with LF first,
+   since the maintainer's checkout has `core.autocrlf` on (step 3's Outcome).
+4. **Nothing else**, for a page in an existing group. The registry's two cases go red on a file
+   with no entry and on a README anchor that is no heading. The navigation binds `'/' + entry.path`;
+   a link array would encode the path's slashes (step 4's Outcome).
+5. **The commit**: the gate ([SR8](../standing-rules.md#sr8)), the demo's count up by one, the
+   maintainer's reading of the page, and a cited build from a deleted `.angular`
+   ([SR50](../standing-rules.md#sr50)). The site changes only when the workflow is next started.
+
+**A library joins the demo** in its phase's demo step, before the release step: three feature pages
+and one use case (Q21). Beside the pages:
+
+1. **The lint boundary.** The root `eslint.config.mjs`'s `scope:demo` constraint gains the
+   library's tag. It is a root configuration, so the full gate reads it, not lint alone (§ 10.3).
+2. **The footer.** `project.json`'s build `assets` gain the library's `package.json`, copied to
+   `packages/<folder>/`; `footer.ts`'s `FOLDERS` and `footer.spec.ts`'s list gain the folder. A
+   path alias for the manifest, in place of the copy, turns the libraries' `export-list.spec.ts`
+   cases red (step 7's Outcome).
+3. **The navigation.** `app.ts`'s `FEATURE_GROUPS` gains `features/<group>` with its title, and
+   `app.spec.ts`'s list of group titles gains it.
+4. **The source.** The demo compiles the library's source through its `tsconfig.base.json` alias,
+   with `isolatedModules: false` (P4) and the demo's strict options. A library whose source does
+   not compile there is that phase's finding, measured at its step 1.
+5. **The README link.** The library's README links the site from its first release, 0.1.0, as
+   `CONTRIBUTING.md`'s Releasing step 1 says for every package.
+
+**The deploy.** Pages builds from GitHub Actions since 2026-11-18. The `Pages` workflow runs only
+when the maintainer starts it, builds from `master` and publishes `dist/apps/demo/browser`; the
+footer names the commit, set by `--define`, and each package's version, from the copied manifests.
+After a release it is started once, after the post-publish commit (`CONTRIBUTING.md`'s Releasing,
+step 7), and the footer is the check.
+
+**Left open.** The design's [§ 3.5](#35-out-of-scope-and-where-it-goes) list, which is not a set of
+defects. Two more, read on the live site and noticed in step 7: at phone width the sixteen links of
+the navigation fill the first screen before the page, and the site has no favicon, so the browser's
+request for one is a 404. [F32](../backlog.md#f32) stays open and not scheduled; the demo does not
+need it fixed.
 
 ## 10. Retrospect
 
-Written by step 8.
+Written in step 8, 2026-11-18 ([SR7](../standing-rules.md#sr7)). Like the A48 plan's, it keeps what
+a later plan can reuse; each step's Outcome in § 4 says what that step did.
+
+### 10.1 What landed
+
+The `demo` application, in eight steps and one fix-up, and its site at
+`https://zvenigora.github.io/ng-eval/`, first deployed 2026-11-18. No package changed, and no file
+under `modules/` or `tools/`.
+
+| Step | Commit | Trailer | Demo cases | Initial bundle, raw / transfer |
+| :--- | :--- | :--- | ---: | :--- |
+| 1 | `63bdf4c` | Claude Fable 5.2 | — | — |
+| 2 | `3d5e94e` | Claude Fable 5.2 | 1 | — |
+| 3 | `f644932` | Claude Opus 5.5 | 6 | 262.61 kB / 75.67 kB |
+| 4 | `e748863` | Claude Opus 5.5 | 13 | 266.66 kB / 74.73 kB |
+| 5 | `2928845` | Claude Sonnet 5.5 | 19 | 287.35 kB / 80.18 kB |
+| 6 | `84cd932` | Claude Sonnet 5.5 | 22 | 292.79 kB / 81.68 kB |
+| 7 | `38be9ec` | Claude Sonnet 5.5 | 23 | 299.66 kB / 83.49 kB |
+| The fix-up | `72585db` | Claude Sonnet 5.5 | 23 | 303.04 kB / 84.22 kB |
+| 8 | this commit | this commit's | 23 | — |
+
+The trailer names the model the step's prompt said ran it; step 3's was taken from its prompt as
+written. The libraries' counts stayed at 3533, 462 and 391 throughout
+([SR10](../standing-rules.md#sr10)). The register opened [F32](../backlog.md#f32) in step 1 and
+[F33](../backlog.md#f33) and [F34](../backlog.md#f34) in step 8, all three not scheduled, and fixed
+none.
+
+**How the steps ran.** From step 2 on, the reviewing chat measured each step in its sandbox first,
+on a rig over the previous commit: gated, read in headless Chrome in step 7, and pinned as
+`ng-eval-19.<n>-measurements.zip` ([SR47](../standing-rules.md#sr47)). The prompt then gave the
+code, or the values the cases read, and the local session wrote the files with Edit and Write.
+Steps 5 to 7 ran on Sonnet that way. At steps 6 and 7 the reviewing chat rebuilt the tree from the
+maintainer's working tree, and every file but this document matched the rig's.
+
+### 10.2 Plan corrections, by step
+
+Every step's file list grew ([SR4](../standing-rules.md#sr4)). Step 1's gained
+`docs/backlog-history.md`, since the Register history had left `docs/backlog.md` the same day.
+Steps 2 to 7 each gained `CLAUDE.md` or `docs/README.md`, or both, for one reason: the active-plan
+sentences, which each step rewrites and which § 4's table, written before step 1, did not list.
+Step 5 also found three progress sentences false ([SR31](../standing-rules.md#sr31)) and added
+`ROADMAP.md`; step 8 added the files of its Outcome. A later plan lists those two files in every
+step's row from the start.
+
+The other corrections: step 1's § 1.3 hash command and its M6 and M8 rows; step 2's P8, the
+builder's version, decided by the maintainer on relaying the prompt, and § 3.2's Jest settings; and
+step 7's cases column. None changed an exit criterion.
+
+### 10.3 What the sandbox found before a step ran
+
+Each of these was measured on a rig and changed the prompt, so none reached the maintainer's
+checkout wrong:
+
+| Step | What a reading of the code predicted | What the rig showed |
+| :--- | :--- | :--- |
+| 2 | `@angular/build` 22.2.4, the prototype's | It pins vite 8.3.0, on which the audit lists six advisories, one high; 22.2.5 (P8) |
+| 3 | A highlight.js language imports as a default under Jest, since `tsc` passes | It is `undefined` without `esModuleInterop`; Jest maps the languages to their `es/` builds |
+| 4 | `[routerLink]="['/', entry.path]"` | The slashes inside the path are encoded, and a click lands on `try`; `'/' + entry.path` |
+| 7 | A `tsconfig.base.json` alias for the manifests, green in lint, `tsc`, the demo's Jest and the build | The full gate turns the three libraries' `export-list.spec.ts` red; the manifests are copied by the build instead |
+| 7 | `--define.NG_EVAL_COMMIT=…` passed through Nx as written | Nx strips one pair of quotes: `'abc1234'` becomes an identifier, and the footer silently shows no commit; the workflow's line was run from the YAML with a digit-led and a letter-led SHA |
+
+Two lessons carry. A root configuration change is read by the full gate, not by the checks of the
+project it is for. A value passed through a CLI is measured by the exact line that will run it, with
+each shape of input it can take.
+
+### 10.4 Process traps
+
+- **The maintainer's checkout is not the committed tree.** It has `core.autocrlf` on. In step 3 the
+  copy case was green only because the step wrote the file with LF: the HTML parser turns CRLF into
+  LF, so the text copied and the text shown differed in a CRLF checkout, and the source view now
+  normalizes the fetched text. In step 7 the Outcome recorded the three manifests' SHA-256 from that
+  checkout, and the reviewing chat's rebuild corrected them to the committed (LF) values before the
+  commit. [SR47](../standing-rules.md#sr47) now says a tracked file's hash is of its committed content.
+- **What a browser shows, no gate sees.** The maintainer's reading of the pages asked for labels on
+  every value, the trace's node types and a clearer validation summary (step 7), and then boxes
+  sized to their text, a drop-down and aligned fields (the fix-up). None was a false claim; each was
+  a page that did not read well. D-1 rests on that reading, and it was taken at every step that
+added or changed a page.
+- **A gate's case that fails once.** Two collector cases in `eval-core`'s memory-leaks spec each
+  failed once in a sandbox gate and passed on the next, with no edit: [F33](../backlog.md#f33).
+  The rule the prompts carried held: read the `●` line, run the gate again, and stop on red twice.
+- **A tool's own crash.** doc-links exits with `ENOENT` on a tracked file deleted and not staged
+  ([F34](../backlog.md#f34)); the prompts say to delete by `git rm`.
+- **The sweep's grep** has to carry the older steps' phrasing too, since a sentence written by step
+  3 can survive into step 7 in its own words; from step 6 on, each sweep's pattern carried the
+  earlier ones.
+
+### 10.5 Rules weighed
+
+Each of § 0's rules was weighed against the steps it governed, and the traps of § 10.4 against the
+standing rules. The rule texts are in `docs/standing-rules.md`, each with its *Origin* and *Red*.
+
+| Candidate | Decision | Reason | *Origin* in this plan |
+| :--- | :--- | :--- | :--- |
+| D-1, the demo's reduced process | **Promote, SR49** | It held through seven commits: no page's prose was found to state a limit or a guarantee, and every defect found was in wiring or look, caught by the rig or the maintainer's reading. It must outlive this plan: a page added later and the demo steps of Phases 12 and 17 run under it | § 0; § 10.4 |
+| D-2, a cited build from a deleted `.angular` | **Promote, SR50** | Every build an Outcome cites ran so, and those steps also measure builds | § 0; § 1.3, M4 |
+| SR47: a tracked file's hash is of its committed content, or says it is not | **Amend SR47** | Step 7's Outcome recorded CRLF hashes, caught only by a rebuild outside the checkout | § 10.4 |
+| P-1, a reading is marked and waits | **Declined** | It held: seven readings and P8 were each decided before a step ran on them. But [SR2](../standing-rules.md#sr2) and [SR4](../standing-rules.md#sr4) already stop a step at a point that is not decided, and Phases 12 and 17 have a rule of their own under the same name | § 0; § 8 |
+| A rule for CRLF in a spec that reads a file | **Declined**, § 9 instead | The libraries' specs already split on `\r?\n`; the demo's are SR49's, and § 9 says it where a page is added | § 10.4 |
+| A rule for a root configuration change | **Declined**, recorded here | [SR8](../standing-rules.md#sr8) already runs the full gate after every step; the trap was reading a part of it as enough | § 10.3 |

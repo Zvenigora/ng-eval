@@ -7,6 +7,16 @@ This was the "Work in flight" section of `backlog.md` until 2026-11-15. It moved
 that the register's preamble and its entries are read without it. Only its links to the live
 entries changed, from `#a56` to `backlog.md#a56`.
 
+**The [Phase 19 plan](demo/plan.md) is complete**, at Revision 2, steps 1 to 8: the demo
+application at `apps/demo`, which ships in no package, and its site at
+`https://zvenigora.github.io/ng-eval/`, first deployed 2026-11-18. It fixed no entry. Step 1 opened
+[F32](backlog.md#f32), `eval-core`'s barrels under `isolatedModules`, and step 8 opened
+[F33](backlog.md#f33), two collector cases that each failed once, and [F34](backlog.md#f34),
+doc-links' `ENOENT` on an unstaged deletion; all three are not scheduled
+([SR48](standing-rules.md#sr48)). Its retrospect, § 10, promotes § 0's D-1 and D-2 as
+[SR49](standing-rules.md#sr49) and [SR50](standing-rules.md#sr50), and amends
+[SR47](standing-rules.md#sr47).
+
 **The [A48 plan](a48/plan.md) is complete**, at Revision 10, steps 1 to 10:
 [A55](backlog-retired.md#a55), [A48](backlog-retired.md#a48), [A50](backlog-retired.md#a50) and
 [A51](backlog-retired.md#a51) fixed in its steps 2 to 4, [A49](backlog-retired.md#a49) decided a

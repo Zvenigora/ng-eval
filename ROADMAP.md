@@ -73,9 +73,9 @@ summary of every phase.
 | 11 | `eval-forms`' README by entry point | `@zvenigora/ng-eval-forms`, a docs-only patch | [`documentation/phase-11-plan.md`](docs/documentation/phase-11-plan.md) | [Its § 10](docs/documentation/phase-11-plan.md#10-retrospect) |
 | 12 | `@zvenigora/ng-eval-rules`, a new module: pure rule evaluation | Not shipped: planned as `@zvenigora/ng-eval-rules` 0.1.0 | [`eval-rules/plan.md`](docs/eval-rules/plan.md), no step run | — |
 | 17 | `@zvenigora/ng-eval-template`, a new module: the pure template compiler | Not shipped: planned as `@zvenigora/ng-eval-template` 0.1.0 | [`eval-template/plan.md`](docs/eval-template/plan.md), no step run | — |
-| 19 | A demo application at `apps/demo` | Ships in no package: an application at `apps/demo` and a site on GitHub Pages | [`demo/plan.md`](docs/demo/plan.md), active | — |
+| 19 | A demo application at `apps/demo` | Ships in no package: an application at `apps/demo` and the site at [`zvenigora.github.io/ng-eval`](https://zvenigora.github.io/ng-eval/) | [`demo/plan.md`](docs/demo/plan.md) | [Its § 10](docs/demo/plan.md#10-retrospect) |
 
-Phases 1 to 11 are complete, Phase 11 the last of them. Phase 11 shipped as `eval-forms` 0.7.1 and
+Phases 1 to 11 and 19 are complete, Phase 19 the last of them. Phase 11 shipped as `eval-forms` 0.7.1 and
 retired [F28](docs/backlog-retired.md#f28). Phase 12 has a plan, its questions decided, and no step has run.
 
 Phase 9 is numbered after the two reserved phases below and ran ahead of them: it was the one with
@@ -130,8 +130,8 @@ phase per release, as above:
 | 17 | `@zvenigora/ng-eval-template` 0.1.0 | The pure template compiler: `compileTemplate` and `renderTemplate`, value macros, `#if` and `#switch` blocks, escaped output | [Plan](docs/eval-template/plan.md), no step run |
 | 18 | An `eval-forms` minor | A template property at both adapters, and the `class` and `style` properties | Agreed in outline, no design |
 
-Neither displaces Phase 12, and the order among Phases 12, 17 and 18 is not decided, except that
-Phase 19 runs before all three. Phase 18 needs Phase 17. What the design leaves out of 0.1.0 — named macros, loops, pipes, statements and `await`
+Neither displaces Phase 12, and the order among Phases 12, 17 and 18 is not decided; Phase 19,
+which ran before all three, is complete. Phase 18 needs Phase 17. What the design leaves out of 0.1.0 — named macros, loops, pipes, statements and `await`
 in a macro — goes to the register when Phase 17's step 1 runs, not here.
 
 ### Phase 19 and Phase 20 — a demo application, and documentation in two sets
@@ -139,14 +139,15 @@ in a macro — goes to the register when Phase 17's step 1 runs, not here.
 Reserved on 2026-11-14, at the maintainer's request. Phase 19 was designed on 2026-11-15; Phase 20
 has no design session, no plan and no schedule.
 
-- **Phase 19 — a demo application**: designed, first in order, with a
-  [plan](docs/demo/plan.md) that is active. A showcase of
+- **Phase 19 — a demo application**: complete, its site live at
+  [`zvenigora.github.io/ng-eval`](https://zvenigora.github.io/ng-eval/) since 2026-11-18, and its
+  [plan](docs/demo/plan.md) a design record. A showcase of
   features and a set of use-case examples for an Angular developer deciding whether to adopt the
   libraries. It is an Nx application at `apps/demo`, not a sixth package, built from the
   workspace's source and hosted on GitHub Pages. The design, with its 23 questions, is
-  [`docs/demo/design-session.md`](docs/demo/design-session.md). It runs before Phases 12 and 17,
+  [`docs/demo/design-session.md`](docs/demo/design-session.md). It ran before Phases 12 and 17,
   and each of those plans gains a demo step before its release step, written when its phase
-  starts.
+  starts, by the plan's [§ 9](docs/demo/plan.md#9-contract-after-this-lands).
 - **Phase 20 — documentation in two sets**, one for customers and one for maintainers. The
   maintainer set exists: [`docs/`](docs/README.md), `CLAUDE.md` and `CONTRIBUTING.md`. The
   customer set is today the root README, the package READMEs, their CHANGELOGs and `SECURITY.md`.

@@ -300,9 +300,17 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
   measurement in a plan or a commit body is read from a pinned file, named with its hash where it is
   first cited, since scripts that measure the same change differ: a figure such as "P50 moves 12
   rows" is one script's. "The pinned file wins" governs measured facts only; a decision is
-  re-decided in the plan, not inherited from a prototype's notes. *Origin*: the
-  [A48 plan's § 0](a48/plan.md#0-rules-the-plan-adds), P-2 and P-3, from its § 1.3's five row
-  scripts. *Red*: nothing — held by review.
+  re-decided in the plan, not inherited from a prototype's notes. A hash of a tracked file is of its
+  committed content; one taken in a checkout that converts line endings, as `core.autocrlf` does,
+  says so. *Origin*: the [A48 plan's § 0](a48/plan.md#0-rules-the-plan-adds), P-2 and P-3, from its
+  § 1.3's five row scripts; the hash, the [Phase 19 plan's § 10.4](demo/plan.md#104-process-traps),
+  step 7's three manifest hashes, taken in a CRLF checkout and corrected before the commit.
+  *Red*: nothing — held by review.
+- <a id="sr50"></a>**SR50 — A cited build of the demo starts from a deleted cache.** Delete `.angular`
+  at the workspace root before a build of `apps/demo` whose size, output names or messages are
+  cited. The application builder keeps `.angular/cache`, and after a `tsconfig` change it printed
+  the previous run's errors. *Origin*: the [Phase 19 plan's § 0](demo/plan.md#0-rules-the-plan-adds),
+  D-2, from its § 1.3, M4; every build its Outcomes cite ran so. *Red*: nothing — held by review.
 
 ## Hygiene
 
@@ -337,6 +345,17 @@ imports this file, so every session loads it; the `code-reviewer`, which does no
   *Red*: nothing — the `npm ci` proof is run by hand.
 - <a id="sr38"></a>**SR38 — No personal email** address in any file of the repository. *Origin*:
   [F20](backlog-retired.md#f20). *Red*: nothing — held by review.
+- <a id="sr49"></a>**SR49 — The demo runs a reduced process.** For a file under `apps/demo` the gate
+  ([SR8](#sr8)), commits only when asked ([SR34](#sr34)), Edit and Write ([SR36](#sr36)) and no
+  `eslint-disable` apply; the `code-reviewer` ([SR33](#sr33)), a probe for each check
+  ([SR15](#sr15)) and the claim-to-witness table ([SR21](#sr21)) do not. In exchange a page states
+  only what its example does and links the README section that holds the contract; it states no
+  limit and no guarantee of its own, and the maintainer reads it before its commit. A file outside
+  `apps/demo` in the same commit follows the rules for that file. *Origin*: the
+  [Phase 19 plan's § 0](demo/plan.md#0-rules-the-plan-adds), D-1, from its design session's Q18;
+  weighed in its [§ 10.5](demo/plan.md#105-rules-weighed). *Red*: the registry's coverage case, on an
+  `*.example.ts` with no entry, and its README case, on an entry whose section is no heading of its
+  README; a page's prose — nothing, held by review.
 
 ## Old numberings
 
@@ -354,4 +373,4 @@ Design records keep their own numbering ([SR6](#sr6)); this resolves it.
 | The A35 plan's second § 1.2: the refusal message; the option leg | SR18; SR19 |
 | Phase 10 § 6.1: the strong example; every new check's probe; false now or latent | SR30; SR15; SR31 |
 | Phase 10 § 6.1: the README mirror; the document probe; vacuous removal; the F13 count | SR30; SR30; SR14; SR30 |
-</content>
+| [Phase 19 plan § 0](demo/plan.md#0-rules-the-plan-adds): D-1; D-2 | SR49; SR50 |

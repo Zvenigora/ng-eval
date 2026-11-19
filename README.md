@@ -27,6 +27,14 @@ Expression syntax, the supported node types and the evaluator's options are docu
 `ng-eval-core`'s README. Each package's peer dependencies, with their ranges, are in its README's
 `## Install` section.
 
+## Demo
+
+[The demo site](https://zvenigora.github.io/ng-eval/) runs the three packages' examples in the
+browser: a free-form page, twelve feature pages and three use cases. Each page has boxes for the
+expression and the data, the example's source, and a link to the README section that documents it. The
+site is built from this repository's `master`, and its footer names the commit and each package's
+version.
+
 ## Install
 
 Install a package with the packages it is built on:

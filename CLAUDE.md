@@ -38,16 +38,17 @@ Beside them is one application, **`demo`** (`apps/demo`, tag `scope:demo`), whic
 package. It compiles the libraries' source through the path aliases of `tsconfig.base.json`, not
 their built packages, so it sets `isolatedModules: false`: `eval-core`'s barrels do not compile
 under the option (`docs/backlog.md` F32). It runs without zone.js, and its Jest settings are
-`eval-core`'s. Its process is D-1 of `docs/demo/plan.md`'s § 0, not the libraries'.
+`eval-core`'s. Its process is [SR49](docs/standing-rules.md#sr49), not the libraries', and its
+site is `https://zvenigora.github.io/ng-eval/`, deployed by hand
+([CONTRIBUTING's Releasing](CONTRIBUTING.md#releasing), step 7).
 
-Phases 1 to 6 and 9 to 11 are complete, and so is every track `docs/README.md` lists with a
-release; their plan documents are design records rather than active work. **Phase 19's plan is
-active** (`docs/demo/plan.md`): a demo application at `apps/demo`, shipping in no package. Its
-steps 1 to 7 are done and step 8 is next.
-Two more are written and no step of either has run: Phase 12, `@zvenigora/ng-eval-rules`
+Phases 1 to 6, 9 to 11 and 19 are complete, and so is every track `docs/README.md` lists with a
+release; their plan documents are design records rather than active work. **No plan is active.**
+Two are written and no step of either has run: Phase 12, `@zvenigora/ng-eval-rules`
 (`docs/eval-rules/plan.md`), and Phase 17, `@zvenigora/ng-eval-template`
-(`docs/eval-template/plan.md`). The order between them is the maintainer's, and not decided;
-Phase 19 runs before both.
+(`docs/eval-template/plan.md`). The order between them is the maintainer's, and not decided.
+Each gains a demo step before its release step, written when the phase starts
+(`docs/demo/plan.md` § 9).
 `ROADMAP.md` has the phases, and says which of them are reserved without a specification.
 
 Which release each completed phase and track shipped as, and what each plan is the reference for,
@@ -124,8 +125,7 @@ than one commit ([SR1](docs/standing-rules.md#sr1)) — as in `docs/a8/`, `docs/
 [SR2](docs/standing-rules.md#sr2)–[SR4](docs/standing-rules.md#sr4),
 [SR8](docs/standing-rules.md#sr8) and [SR33](docs/standing-rules.md#sr33)–[SR35](docs/standing-rules.md#sr35).
 
-- The active plan is Phase 19's, `docs/demo/plan.md`: steps 1 to 7 are done and step 8 is next.
-  `.claude/skills/step/SKILL.md` is retargeted with each new plan and names this one; while none
+- No plan is active. `.claude/skills/step/SKILL.md` is retargeted with each new plan; while none
   is active it names none, and stops at its § 1 if invoked.
 - The completed plans are design records, not work in progress, and each remains the
   reference for its library — they record findings about this codebase that are not
