@@ -301,7 +301,7 @@ A case with no `if` is the `else`, and there is no operator or order field.
 | Q57 | The reactive mode | An event source only; a rule as a `computed` is backlog | Settled |
 | Q58 | A rule reading its own effect | A documented limit, with two workarounds | Settled |
 | Q59 | `onError` | An engine callback and an optional rule section | Settled |
-| Q60 | Statements | Off by default, on by option; an endless loop is not guarded for now | Settled |
+| Q60 | Statements | Off by default, on by option; an endless loop is not guarded for now. Answered without a decision by the plan's [finding 9](plan.md#12-findings-that-shape-the-plan): `eval-core` charges every `for` iteration against a budget and evaluates no `while` or `do`, so no loop is endless; what is unbounded is time by another route, [A62](../backlog.md#a62) | Settled |
 | — | Filter | `{ match?, when? }`: an optional predicate beside the pattern | Settled |
 | Q61 | An asynchronous provider | Request and reply as two rules, documented from the start; an async rule run, `await` in calculations only, as its own slice | Settled |
 
@@ -340,6 +340,11 @@ What is left is smaller, and none of it blocks a plan:
 
 1. **An endless loop under `statements: true`.** Evaluation is synchronous, so the engine cannot
    interrupt one. Set aside for now (Q60); it needs a backlog entry when the option is built.
+   *Answered* by the plan's [finding 9](plan.md#12-findings-that-shape-the-plan), measured on
+   `eval-core` 0.16.0: no loop is endless, since every `for` iteration is charged against a budget
+   of 100,000 and no `while` or `do` is evaluated. What is not bounded is evaluation time by
+   another route, a regular expression that backtracks, and memory; that is
+   [A62](../backlog.md#a62).
 2. **Trace size under `debug`** is unmeasured ([SR28](../standing-rules.md#sr28)). The plan measures
    it before any figure is published.
 3. **The "Default" rows** of the questionnaire were agreed in blocks and never discussed one by one.

@@ -71,12 +71,12 @@ summary of every phase.
 | 9 | Colon-joined identifiers | `@zvenigora/ng-eval-core`, with `@zvenigora/ng-eval-signals` and `@zvenigora/ng-eval-forms` | [`colon-identifiers/phase-9-plan.md`](docs/colon-identifiers/phase-9-plan.md) | [`colon-identifiers/phase-9-summary.md`](docs/colon-identifiers/phase-9-summary.md) |
 | 10 | Documentation restructure, repository-wide | All three, as docs-only patches | [`documentation/phase-10-plan.md`](docs/documentation/phase-10-plan.md) | [`documentation/phase-10-summary.md`](docs/documentation/phase-10-summary.md) |
 | 11 | `eval-forms`' README by entry point | `@zvenigora/ng-eval-forms`, a docs-only patch | [`documentation/phase-11-plan.md`](docs/documentation/phase-11-plan.md) | [Its § 10](docs/documentation/phase-11-plan.md#10-retrospect) |
-| 12 | `@zvenigora/ng-eval-rules`, a new module: pure rule evaluation | Not shipped: planned as `@zvenigora/ng-eval-rules` 0.1.0 | [`eval-rules/plan.md`](docs/eval-rules/plan.md), no step run | — |
+| 12 | `@zvenigora/ng-eval-rules`, a new module: pure rule evaluation | Not shipped: planned as `@zvenigora/ng-eval-rules` 0.1.0 | [`eval-rules/plan.md`](docs/eval-rules/plan.md), step 1 done | — |
 | 17 | `@zvenigora/ng-eval-template`, a new module: the pure template compiler | Not shipped: planned as `@zvenigora/ng-eval-template` 0.1.0 | [`eval-template/plan.md`](docs/eval-template/plan.md), no step run | — |
 | 19 | A demo application at `apps/demo` | Ships in no package: an application at `apps/demo` and the site at [`zvenigora.github.io/ng-eval`](https://zvenigora.github.io/ng-eval/) | [`demo/plan.md`](docs/demo/plan.md) | [Its § 10](docs/demo/plan.md#10-retrospect) |
 
 Phases 1 to 11 and 19 are complete, Phase 19 the last of them. Phase 11 shipped as `eval-forms` 0.7.1 and
-retired [F28](docs/backlog-retired.md#f28). Phase 12 has a plan, its questions decided, and no step has run.
+retired [F28](docs/backlog-retired.md#f28). Phase 12's plan is active: step 1 done, step 2 next.
 
 Phase 9 is numbered after the two reserved phases below and ran ahead of them: it was the one with
 a consumer waiting. Until Phase 10 condensed this file, each phase had a section here with its
@@ -108,7 +108,7 @@ design, with its 61 questions, is
 
 | Phase | Release | Subject | State |
 | :--- | :--- | :--- | :--- |
-| 12 | 0.1.0 | Pure rule evaluation: the format, `compileRule`, the result with its trace, the tests runner, the registry cache | [Plan](docs/eval-rules/plan.md), no step run |
+| 12 | 0.1.0 | Pure rule evaluation: the format, `compileRule`, the result with its trace, the tests runner, the registry cache | [Plan](docs/eval-rules/plan.md), active: step 1 done, step 2 next |
 | 13 | 0.2.0 | The engine: rule sets, events, the sink, batch commit, the queue and the loop guard | Designed, no plan |
 | 14 | 0.3.0 | Workflows: the node-kind registry, `sequence`, `branch`, async commit and cancellation | Designed, no plan |
 | 15 | 0.4.0 | The `/signals` entry point: a value-change event source | Designed, no plan |
@@ -116,7 +116,7 @@ design, with its 61 questions, is
 
 Phases 15 and 16 do not depend on each other and may swap. What the design defers outright — a
 converter from an earlier rule format, `parallel` and `fanOut`, a rule as a `computed`, timer and
-route event sources — goes to the register when Phase 12's step 1 runs, not here.
+route event sources — is in the register, [E7](docs/backlog.md#e7), opened by Phase 12's step 1.
 
 ### Phases 17 and 18 — `@zvenigora/ng-eval-template`, and `eval-forms`' template and styling properties
 
@@ -130,8 +130,8 @@ phase per release, as above:
 | 17 | `@zvenigora/ng-eval-template` 0.1.0 | The pure template compiler: `compileTemplate` and `renderTemplate`, value macros, `#if` and `#switch` blocks, escaped output | [Plan](docs/eval-template/plan.md), no step run |
 | 18 | An `eval-forms` minor | A template property at both adapters, and the `class` and `style` properties | Agreed in outline, no design |
 
-Neither displaces Phase 12, and the order among Phases 12, 17 and 18 is not decided; Phase 19,
-which ran before all three, is complete. Phase 18 needs Phase 17. What the design leaves out of 0.1.0 — named macros, loops, pipes, statements and `await`
+Neither displaces Phase 12, whose plan is active, and the order of Phases 17 and 18 after it is
+not decided; Phase 19, which ran before all three, is complete. Phase 18 needs Phase 17. What the design leaves out of 0.1.0 — named macros, loops, pipes, statements and `await`
 in a macro — goes to the register when Phase 17's step 1 runs, not here.
 
 ### Phase 19 and Phase 20 — a demo application, and documentation in two sets

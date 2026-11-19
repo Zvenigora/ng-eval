@@ -112,12 +112,11 @@ them ([SR6](standing-rules.md#sr6)): `git log` on the document finds that commit
 `git show <commit>:<file>` the code a citation names. Two of them number a § 9 and a § 9.1 on
 unrelated subjects.
 
-## Plans written and not started
+## Plans written and not released
 
-Neither is active, and no step of either has run. The order between them is the maintainer's, and
-not decided.
+Phase 12's is active, step 1 done; no step of Phase 17's has run.
 
-- [`eval-rules/plan.md`](eval-rules/plan.md) — Phase 12, `@zvenigora/ng-eval-rules` 0.1.0.
+- [`eval-rules/plan.md`](eval-rules/plan.md) — Phase 12, `@zvenigora/ng-eval-rules` 0.1.0: active.
 - [`eval-template/plan.md`](eval-template/plan.md) — Phase 17, `@zvenigora/ng-eval-template`
   0.1.0.
 

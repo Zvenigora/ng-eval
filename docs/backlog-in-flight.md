@@ -7,6 +7,14 @@ This was the "Work in flight" section of `backlog.md` until 2026-11-15. It moved
 that the register's preamble and its entries are read without it. Only its links to the live
 entries changed, from `#a56` to `backlog.md#a56`.
 
+**The [Phase 12 plan](eval-rules/plan.md) is active**, at Revision 5: `@zvenigora/ng-eval-rules`
+0.1.0, a new package. Step 1 is done and step 2 is next. Step 1 fixed no entry and opened four,
+each not scheduled ([SR48](standing-rules.md#sr48)): [A62](backlog.md#a62), evaluation time and
+memory not bounded; [A63](backlog.md#a63), no package loading in plain Node as installed;
+[E7](backlog.md#e7), the parts of the rule design that no phase has; and [E8](backlog.md#e8), what
+0.1.0 refuses and a later minor can admit. At the phase boundary before it, no backlog batch was
+chosen.
+
 **The [Phase 19 plan](demo/plan.md) is complete**, at Revision 2, steps 1 to 8: the demo
 application at `apps/demo`, which ships in no package, and its site at
 `https://zvenigora.github.io/ng-eval/`, first deployed 2026-11-18. It fixed no entry. Step 1 opened

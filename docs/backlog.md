@@ -225,6 +225,8 @@ and `v0.2.3`: lightweight tags from before the `<project>@<version>` names, whic
 | [A59](#a59) | A member read consults a proxy beyond its `get` trap: its `getPrototypeOf` at the class checks in both modes, and under `caseInsensitive` its `ownKeys` at the lookup cache and its `has`, after which a key a proxy answers but `in` misses is searched for a case variant, read or refused | core | fix | Covered — opened 2026-11-05 by the [A48 plan](a48/plan.md)'s step 3, which pins it (`member-read.spec.ts`); predates it in part. Not scheduled |
 | [A60](#a60) | A member write to a `Registry` that is the context, reached as a value in the host's own data, can shadow the method the evaluator calls on it: `self.get = 1` makes every later `k` throw | core | fix | Open — opened 2026-11-06 by the [A48 plan](a48/plan.md)'s step 4, from its step 3's measurement; predates it. Not scheduled |
 | [A61](#a61) | A native function the host places in the context, `Object.assign`, `Reflect.set` or `Object.defineProperty`, writes an `EvalScope` held as a value, its fields included, past A51's refusal of a member write | core | fix | Open — opened 2026-11-06 by the [A48 plan](a48/plan.md)'s step 5, from step 4's code review; predates it. Not scheduled |
+| [A62](#a62) | Evaluation time and memory are not bounded: a regular expression that backtracks, in a literal or built from a string, and a large allocation, each run inside one built-in call, which neither the iteration budget nor the call stack reaches | core | decision | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its finding 9 |
+| [A63](#a63) | No published package of the workspace loads in plain Node as installed: each throws at import, `ParserService` needing the JIT compiler, unless `@angular/compiler` was imported first | core | decision | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its finding 25 (M14) |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -257,6 +259,8 @@ and `v0.2.3`: lightweight tags from before the `<project>@<version>` names, whic
 | [E4](#e4) | Short-circuiting / value-rewriting hooks | core | phase | Open, by design |
 | [E5](backlog-retired.md#e5) | The options-first style cannot read `hookErrors` | core | decision | **Retired — decided 2026-09-30: closed with documentation**; no API. The README names the two routes, state-first or `onHookError: 'throw'` |
 | [E6](backlog-retired.md#e6) | `exit` has no mark to bound its scan | core | fix | **Retired — fixed, Phase 2 step 1**; released in `eval-core` 0.4.0; its "Phase 2 makes it reachable" premise was wrong |
+| [E7](#e7) | The parts of the rule design that no phase has: a converter from an earlier rule format, `parallel` and `fanOut`, a rule as a `computed`, timer and route event sources | rules | phase | Open — **no phase reserved**; not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its § 3.3 |
+| [E8](#e8) | What `eval-rules` 0.1.0 refuses and a later minor can admit: `caseInsensitive`, facts that are a class instance or a `Registry`, and `maxIterations` as an option | rules | decision | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its § 8 q3, q7, q15 and q21 |
 | [F1](backlog-retired.md#f1) | No `configurations.ci` on the `test` target — **two projects, not one** | signals, forms | fix + decision | **Retired — fixed, no thresholds** |
 | [F2](backlog-retired.md#f2) | One `CHANGELOG.md` for three independently-versioned packages | repo | decision | **Retired — decided 2026-09-28**: one `modules/<name>/CHANGELOG.md` per package; `nx release` still unadopted. `eval-core` had five changelogged versions npm never received |
 | [F3](backlog-retired.md#f3) | README-import drift gate — every `@zvenigora/…` import a README prints is exported — **three packages, four READMEs** | core, signals, forms | fix | **Retired — built and green**. Whether every export is documented is [F10](backlog-retired.md#f10)'s |
@@ -955,6 +959,78 @@ written by whatever the host also places there. The README states none of it
 *Recorded*: this entry; the [A48 plan](a48/plan.md) § 4, Step 5. *Verified*: `assign.mjs`, pinned
 with its output on each bundle above. No row pins it.
 
+<a id="a62"></a>
+## A62 — Evaluation time and memory are not bounded
+
+**Package** core · **Kind** decision · **Status** Open, not scheduled ([SR48](standing-rules.md#sr48)). Opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its finding 9
+
+`eval-core` bounds two things in an evaluation: every `for` iteration is charged against one
+budget, `maxIterations`, 100,000 per outermost walk by default, and the call stack ends unbounded
+recursion with a `RangeError`. It evaluates no `while` and no `do`, so no loop is endless.
+Neither bound reaches the time or the memory one built-in call takes. `/^(a+)+$/.test(big)`, over a
+26-character fact, ran for between 165 ms and 1,548 ms in Revision 3's run and between 193 ms and
+1,386 ms in step 1's, and `big.match("^(a+)+$")` did the same with no regular expression literal in
+the text, so no check of the text can refuse the form. An unpinned run on 31 characters took 50 s.
+`"a".repeat(50000000)` allocated at once. Evaluation is synchronous, so a caller cannot interrupt
+it. The rule design treats rule text as untrusted
+([`eval-rules/design-session.md`](eval-rules/design-session.md) Q54), so a library that evaluates
+it meets this.
+
+**Verified** by the Phase 12 plan's M3, `m3-statements.mjs` in the prototype its
+[§ 1.3](eval-rules/plan.md#13-mechanism-questions-measured) pins, on the `eval-core` 0.16.0 bundle
+`71936aeb…7f051264`, in both runs. The times are single runs in one process, not timings under
+[SR28](standing-rules.md#sr28); the claim is that they are unbounded, not how long they take. The
+50 s figure is unpinned. No row pins it.
+
+**What is published.** `SECURITY.md` says the budget counts loop iterations, not time or depth, and
+that a host function's time is not counted; it does not name a built-in's. No sentence is false.
+`eval-rules` 0.1.0's README states the limit (its plan's step 7), and its release commit gives
+`SECURITY.md` the built-in's case (step 9).
+
+**Not scheduled**, by SR48: it is not a way past a documented guard, since no README or
+`SECURITY.md` says time is bounded; no published sentence is false; it blocks no plan; and no
+consumer has reported it. **What reopens it**: a consumer's report; a host that runs untrusted text
+on a server, where one request can hold a thread; or a later phase of `eval-rules` or
+`eval-template` that needs a time bound. **The fix** is a decision, not costed: a time budget
+cannot interrupt a built-in already running, so the candidates are refusing a regular expression
+built at run time, running evaluation in a worker the host can terminate, or documentation alone.
+
+*Recorded*: the [Phase 12 plan](eval-rules/plan.md) § 1.2 finding 9 and § 3.3;
+[`eval-rules/design-session.md`](eval-rules/design-session.md) § 6 item 1 and Q60.
+
+<a id="a63"></a>
+## A63 — No published package loads in plain Node as installed
+
+**Package** core · **Kind** decision · **Status** Open, not scheduled ([SR48](standing-rules.md#sr48)). Opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its finding 25
+
+With `eval-core` 0.16.0, `eval-signals` 0.9.0 and `eval-forms` 0.9.0 installed from the npm
+registry, `import '@zvenigora/ng-eval-core'` in plain Node throws `The injectable 'ParserService'
+needs to be compiled using the JIT compiler, but '@angular/compiler' is not available`, and so do
+the two packages that import it; `@angular/forms` throws the same for its own `PlatformLocation`.
+The bundles are partially compiled, for an Angular build to finish. With `@angular/compiler`
+imported first, every entry point loads: the injector-free functions evaluate an expression, a
+`let` with a `for`, and a colon-joined name; `EvalService`, `createEvalSignal`,
+`bindFieldProperties` and `createExpressionRules` run over an environment injector built with no
+platform, which needs a token that is not public API, and two timers of the injector's services
+keep the process alive until `injector.destroy()`. No README of the three promises Node, and none
+documents the import.
+
+**Verified** by the Phase 12 plan's M14, `node-consumer/node-load.mjs` in two arms, one process
+each, over the packages its pinned `package-lock.json` installs with Angular 22.2.6
+([§ 1.3](eval-rules/plan.md#13-mechanism-questions-measured)). Step 1 did not run it again: its
+claim is about the packages a consumer installs, not the gate's bundle. No row pins it, since the
+gate runs Jest's Angular preset, not plain Node.
+
+**Not scheduled**, by SR48: no published sentence promises Node, it is no route past a guard, it
+blocks no plan, since `eval-rules` 0.1.0 requires an Angular build (its plan's § 8 q23), and no
+consumer has reported it. **What reopens it**: a consumer's report; a host of `eval-rules` or
+`eval-template` that renders or evaluates on a server; or a phase that promises Node. **The fix**
+is a decision, not costed: document the import, or give the injector-free functions an entry
+point with no injectable. Whether either changes a `.d.ts` is measured then
+([SR12](standing-rules.md#sr12)).
+
+*Recorded*: the [Phase 12 plan](eval-rules/plan.md) § 1.2 finding 25, § 3.7 and § 8 q23.
+
 ---
 
 # B. `eval-core` — security and hygiene
@@ -1085,6 +1161,49 @@ without touching `EvalNodeHook`'s signature or any existing consumer. Kept here 
 not lost in a tidying edit.
 
 *Recorded*: [`side-effects/phase-1-plan.md` § 8](side-effects/phase-1-plan.md).
+
+<a id="e7"></a>
+## E7 — The parts of the rule design that no phase has
+
+**Package** rules · **Kind** phase · **Status** Open — **no phase reserved**; not scheduled ([SR48](standing-rules.md#sr48)). Opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its § 3.3
+
+The rule design ([`eval-rules/design-session.md`](eval-rules/design-session.md)) names four things
+that none of Phases 12 to 16 builds, and `ROADMAP.md` sends them here:
+
+- **A converter from an earlier rule format.** The maintainer's earlier engine is the first host.
+  Its expressions compile as written under `colonIdentifiers` (the plan's finding 28), but a
+  colon-joined name bare in a conditional's consequent, `flag ? Q1:1 : 0`, is `eval-core`'s parse
+  error and needs `(Q1:1)`, and nothing rewrites a rule.
+- **`parallel` and `fanOut`**, two workflow nodes beside Phase 14's `sequence` and `branch`.
+- **A rule as a `computed`**: a rule's result as an Angular signal that re-evaluates when a fact
+  it read changes, beside Phase 15's event source.
+- **Timer and route event sources**, beside Phase 15's value-change source.
+
+Each needs a design decision before a plan. None is a defect.
+
+*Recorded*: the [Phase 12 plan](eval-rules/plan.md) § 3.3; `ROADMAP.md`, "Phases 12 to 16".
+
+<a id="e8"></a>
+## E8 — What `eval-rules` 0.1.0 refuses and a later minor can admit
+
+**Package** rules · **Kind** decision · **Status** Open, not scheduled ([SR48](standing-rules.md#sr48)). Opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its § 8 q3, q7, q15 and q21
+
+Three refusals that the plan's P-1 made ("where the design leaves a reading open, 0.1.0 ships the
+stricter one"), each of which a later minor can lift without a breaking release (the plan's § 3.8):
+
+- **`caseInsensitive`.** `compileRule` throws for the option, and every name is compared as
+  written (q3, q21). The maintainer wants it in a later minor. What it costs is the plan's
+  finding 21: the facts copied into a `Registry` on every run.
+- **Facts that are a class instance, a `Registry`, or an object whose prototype is another
+  object.** `evaluateRule` refuses any facts object whose prototype is not `Object.prototype` (q7).
+  `eval-core` reads all three, so the refusal is what they cost today (finding 26).
+- **`maxIterations` as an option.** A field runs under `eval-core`'s default budget, and
+  `compileRule` throws for the option (q15, q21).
+
+**Not scheduled**, by SR48: none is a defect, and the maintainer schedules a minor. **What reopens
+each**: a host that needs it, or the maintainer scheduling it; `caseInsensitive` is already wanted.
+
+*Recorded*: the [Phase 12 plan](eval-rules/plan.md) § 3.3, § 3.8 and § 8.
 
 ---
 

@@ -1,14 +1,15 @@
 # Phase 12 Plan — `@zvenigora/ng-eval-rules` 0.1.0, pure rule evaluation (new module)
 
-**Status: Revision 4, ready for step 1.** No step has run. The plan and the design sessions were
-committed at this revision, ahead of step 1, at the maintainer's request. Revision 3 measured
+**Status: Revision 5, the active plan: step 1 is done and step 2 is next.** Revisions 1 to 4 and
+the design sessions were committed ahead of step 1, at the maintainer's request. Revision 3 measured
 [§ 1.3](#13-mechanism-questions-measured)'s rows on the built 0.16.0 bundle, and Revision 4 added
 two, with eight scripts pinned outside the repository ([SR32](../standing-rules.md#sr32),
 [SR47](../standing-rules.md#sr47)). A statement here about how `eval-core` behaves is a row of
 § 1.3, or it says it is a prediction. Step 1 checks the hashes, re-runs the scripts on the bundle
 its gate builds, and reads [§ 2](#2-decisions--recorded-not-reopened) against the rows. No
 question is open: all twenty-three of [§ 8](#8-questions-all-decided) were decided by the
-maintainer on 2026-11-12, and § 3 and § 4 are written to the decisions.
+maintainer on 2026-11-12, and § 3 and § 4 are written to the decisions. Step 1 did all three:
+[§ 1.3](#13-mechanism-questions-measured)'s "Step 1's run" records the result.
 
 The design is [`design-session.md`](design-session.md), three sessions and questions Q1 to Q61.
 This plan does not restate it: it cites a decision by its Q number and section, and adds only
@@ -18,6 +19,28 @@ This phase ships **one release, 0.1.0**: a rule compiled once and evaluated to a
 engine, no events and no commit. The later slices of the design are Phases 13 to 16 in
 [`ROADMAP.md`](../../ROADMAP.md), each with a plan of its own when it starts. What they need from
 the shapes this phase publishes is [§ 3.8](#38-what-phases-13-to-16-need-from-010s-shapes).
+
+**Revision 5** is step 1's. The prototype's 21 hashes are the pinned ones, and its seven scripts
+ran again on the `eval-core` bundle the gate builds at 51791c9, which is byte for byte the bundle
+§ 1.3 names: every row reproduced, and only the times the scripts print differ. No decision of § 2
+is contradicted, and the maintainer confirmed the two readings, q22 and q23. It corrects § 4
+([SR4](../standing-rules.md#sr4)):
+
+- **The demo application joins**, as [`demo/plan.md` § 9](../demo/plan.md#9-contract-after-this-lands)
+  says each new library does: three feature pages and one use case, in a step before the release
+  step. A demo page names a heading of its library's README, and the demo's registry case goes red
+  on an anchor that is no heading, so the README has to exist first. Revision 4's step 7, the
+  README and the release commit, is therefore split, and the steps after step 6 are now 7, the
+  README; 8, the demo pages; 9, the release commit; 10, the post-publish record; and 11, the
+  retrospect.
+- **The gate has four existing projects**, the three libraries and `demo`. None of their counts
+  moves in any step but step 8, where `demo`'s does.
+- **The file lists name the register's two record files**, `docs/backlog-history.md` and
+  `docs/backlog-in-flight.md`, which left `docs/backlog.md` on 2026-11-15, after this plan was
+  written, and `docs/release-history.md`, which lists the plans by state.
+- **§ 3.3's register entries are opened**, four of them: [A62](../backlog.md#a62),
+  [A63](../backlog.md#a63), [E7](../backlog.md#e7) and [E8](../backlog.md#e8), each not scheduled
+  ([SR48](../standing-rules.md#sr48)).
 
 **Revision 4** wrote the maintainer's decisions into § 2, § 3 and § 4, and measured what four of
 them rest on (M13, M14; findings 25 to 28):
@@ -169,11 +192,12 @@ says so.
    root (P-1): the design has "a single expression", and the form adds only a `let` and a `for`.
    **What bounds a field, then**: the iteration budget, once per field, since a field is one
    walk; and the call stack, since `(f => f(f))(f => f(f))` threw a `RangeError`. **What does
-   not**: `/^(a+)+$/.test(big)` over a 26-character fact took between 165 ms and 1,548 ms, and
+   not**: `/^(a+)+$/.test(big)` over a 26-character fact took between 165 ms and 1,548 ms (step 1's
+   run: 193 ms and 1,386 ms), and
    `big.match("^(a+)+$")` did the same with no regular expression literal in the text, so
    `compileRule` cannot reject the form. (An unpinned run on 31 characters took 50 s.)
    `"a".repeat(50000000)` allocated at once. The README states that evaluation time and memory
-   are not bounded, and the register gets the entry.
+   are not bounded, and the register has the entry, [A62](../backlog.md#a62).
 10. **`await` under the default parser options is a parse error** (M9), `Unexpected token`, the
     message any malformed text gets ([SR18](../standing-rules.md#sr18): a message two layers share
     is a gap). And an async arrow function parses under the defaults: `(async () => await f())()`
@@ -309,7 +333,7 @@ says so.
     no platform, which needs a token that is not public API. Two timers of the injector's services
     kept the process alive until `injector.destroy()`; the injector-free rows left none. No README
     of the three promises Node. So this package's README says an Angular build is required, and
-    promises nothing about Node (§ 8 q23); what a Node host needs is a register entry.
+    promises nothing about Node (§ 8 q23); what a Node host needs is [A63](../backlog.md#a63).
 26. **The facts check, measured** (M13). `Object.getPrototypeOf(facts) === Object.prototype`, on a
     non-null object, admitted six of 19 shapes: a literal, what `JSON.parse` and `structuredClone`
     return, a frozen object, a `Proxy` over a plain object, and an object with an own getter. It
@@ -390,10 +414,25 @@ is not a timing under [SR28](../standing-rules.md#sr28), and none is published.
 | M13 | Which facts does § 8 q7's check admit, what does `instanceof Promise` call a promise, and which texts does § 8 q16's rule flag? | Findings 26, 27 and 28: six of 19 shapes admitted; three of seven values; 16 identifiers over 29 texts, and none over eight in the maintainer's `Q1:1` form, each of which gave its fact's value. Case-sensitive only, since 0.1.0 has no other mode | `m13-shape-and-colon` |
 | M14 | Do the three published packages load and evaluate in plain Node? | Finding 25. Arm `none`: the five entry points of the three packages, and `@angular/forms`, threw at import. Arm `compiler`: all loaded, and every row gave its value | `node-load`, two arms |
 
-What step 1 still owes: the hashes checked with `sha256sum -c`; and each script run again on the
+What step 1 owed: the hashes checked with `sha256sum -c`; and each script run again on the
 bundle the step's gate builds, with any row that differs written here as a plan correction
 ([SR4](../standing-rules.md#sr4)). M14 is not re-run on that bundle: its claim is about the
 packages a consumer installs. No script measures finding 3 or finding 5, which are step 2's.
+
+**Step 1's run**, 2026-11-18, in the reviewing chat's sandbox: Linux, Node 26.4.0, npm 12.2.3, a
+fresh clone of 51791c9. `sha256sum -c SHA256SUMS.txt` printed `OK` for all 21 lines. The gate's
+build wrote `dist/modules/eval-core/fesm2022/zvenigora-ng-eval-core.mjs` with SHA-256
+`71936aebff5ac843415f884bc04d274d9b98ed46eb7477b76fda04287f051264`, the hash above, so the bundle
+Revision 3 measured is the one 51791c9 builds, and the question of which tree built it is closed.
+Each of the seven scripts ran once on it with `REPO` set to the clone, and each exited 0. Four
+result files are identical to the pinned ones: `m1-binding`, `m2-writes`, `m4-recorders` and
+`m13-shape-and-colon`. In the other three, every line that differs is a time the script prints:
+17 lines of `m3-statements`, whose regular expression took 193 ms and 1,386 ms against Revision 3's
+165 ms and 1,548 ms; two of `m6-deps`, the per-run copy under `caseInsensitive`; and two of
+`m9-await-names-this`, the probe cost. With each time replaced by a placeholder, all seven files
+are identical to the pinned ones, and no row of the table above changes. The seven result files and the comparison are pinned in
+`ng-eval-12.1-measurements.zip`, whose SHA-256 is in step 1's commit body
+([SR47](../standing-rules.md#sr47)), since a pack that holds this text cannot be hashed in it.
 
 ## 2. Decisions — recorded, not reopened
 
@@ -442,7 +481,7 @@ them. q1, q4 and q5 had no recommendation to follow; each confirms what the plan
 | Under `colonIdentifiers`, an identifier whose first colon-joined segment is a reserved name is a compile error | q16 |
 
 Decided the same day, after the table above. Two rest on a reading of the maintainer's words,
-and say so; step 1's gate confirms both.
+and say so; the maintainer confirmed both at step 1's gate.
 
 | Decision | § 8 |
 | :--- | :--- |
@@ -512,7 +551,7 @@ when the decision's label is `===` to one of them.
 | The `/signals` entry point | Phase 15 |
 | `await` in a calculation; the async runner | Phase 16 |
 | The `onStep` debugger | The first phase that needs it |
-| A converter from an earlier format; `parallel`, `fanOut`; a rule as a `computed`; timer and route sources; a bound on evaluation time and memory (finding 9); `caseInsensitive`, which the maintainer wants in a later minor (§ 8 q3, q21); facts that are a class instance or a `Registry` (§ 8 q7); `maxIterations` as an option (§ 8 q15); running outside an Angular build (§ 8 q23) | The register ([SR5](../standing-rules.md#sr5)) |
+| A converter from an earlier format; `parallel`, `fanOut`; a rule as a `computed`; timer and route sources; a bound on evaluation time and memory (finding 9); `caseInsensitive`, which the maintainer wants in a later minor (§ 8 q3, q21); facts that are a class instance or a `Registry` (§ 8 q7); `maxIterations` as an option (§ 8 q15); running outside an Angular build (§ 8 q23) | The register ([SR5](../standing-rules.md#sr5)), opened by step 1: [E7](../backlog.md#e7) the converter, `parallel` and `fanOut`, the `computed` and the sources; [A62](../backlog.md#a62) the bound; [E8](../backlog.md#e8) `caseInsensitive`, the wider facts and `maxIterations`; [A63](../backlog.md#a63) plain Node |
 
 ### 3.4 What `compileRule` rejects
 
@@ -645,13 +684,13 @@ is not exported, so no consumer sees two.
 The package is built as the other three are, a partially compiled bundle for an Angular build.
 Its README says so and promises nothing about plain Node (§ 8 q23): `eval-core`, which it
 imports, does not load there as installed (finding 25). This library's own source declares no
-injectable, so what a Node host would need is `eval-core`'s to provide, and the register entry
-says that.
+injectable, so what a Node host would need is `eval-core`'s to provide, and
+[A63](../backlog.md#a63) says that.
 
 ### 3.8 What Phases 13 to 16 need from 0.1.0's shapes
 
 A later phase adds; it cannot change what this one published. Each row is checked at the step 1
-gate, and again in step 7 before the version is set.
+gate, and again in step 7, the README's, before step 9 sets the version.
 
 | Later need | What 0.1.0 must already be | Where |
 | :--- | :--- | :--- |
@@ -677,31 +716,41 @@ One step per session and per commit ([SR2](../standing-rules.md#sr2),
 `code-reviewer` before each commit from step 2 on ([SR33](../standing-rules.md#sr33)). Behaviour
 is written test-first ([SR13](../standing-rules.md#sr13)), and every new check gets a probe, applied
 alone and read case by case ([SR15](../standing-rules.md#sr15),
-[SR16](../standing-rules.md#sr16)). The three existing projects' test counts do not move in any
-step ([SR10](../standing-rules.md#sr10)); step 1 reads the baseline from the gate.
+[SR16](../standing-rules.md#sr16)). The four existing projects' test counts, the three libraries'
+and `demo`'s, do not move in any step but step 8, where `demo`'s does
+([SR10](../standing-rules.md#sr10)); step 1 reads the baseline from the gate.
 
 The `step` skill reads a plan's state from this table and from the last step with a recorded
 **Outcome**: each step's section ends with that bullet, written in the step's own commit. Every
 step's list also holds this document and the skill, whose recorded counts move with the gate's.
-The three existing projects' rows are 0 / 0 / 0 in every step; `eval-rules`' count starts at
-step 2 and is recorded in each Outcome, since no step's rows are counted in advance.
+The three libraries' rows are 0 / 0 / 0 in every step, and `demo`'s is 0 in every step but step
+8; `eval-rules`' count starts at step 2, and it and step 8's `demo` count are recorded in each
+Outcome, since no step's rows are counted in advance. A step that adds or closes a register entry
+also lists `docs/backlog-history.md`, whose *Unreleased* row moves with it, and
+`docs/backlog-in-flight.md`, which records what this plan opened and fixed.
 
 | Step | Subject | Files | Ships in |
 | :--- | :--- | :--- | :--- |
-| 1 | This plan, its records, and the measurements | `docs/eval-rules/plan.md`, `docs/eval-rules/design-session.md`, `docs/README.md`, `ROADMAP.md`, `CLAUDE.md`, the skill, `docs/backlog.md` | No package |
-| 2 | The project, empty and green | `modules/eval-rules/` (new), `tsconfig.base.json`, `eslint.config.mjs`, `tools/release-tags.mjs`, `.claude/agents/code-reviewer.md`, `CLAUDE.md`, the root `README.md` and `CHANGELOG.md`, `tools/published-links.txt` | No package: `eval-rules` is at 0.0.0 and unpublished until step 7 |
+| 1 | This plan, its records, and the measurements | `docs/eval-rules/plan.md`, `docs/eval-rules/design-session.md`, `docs/README.md`, `ROADMAP.md`, `CLAUDE.md`, the skill, `docs/backlog.md`, `docs/backlog-history.md`, `docs/backlog-in-flight.md`, `docs/release-history.md` | No package |
+| 2 | The project, empty and green | `modules/eval-rules/` (new), `tsconfig.base.json`, `eslint.config.mjs`, `tools/release-tags.mjs`, `.claude/agents/code-reviewer.md`, `CLAUDE.md`, the root `README.md` and `CHANGELOG.md`, `tools/published-links.txt` | No package: `eval-rules` is at 0.0.0 and unpublished until step 9 |
 | 3 | The format and `compileRule` | `rule.ts`, `compile-rule.ts`, `pattern.ts`, `define-rule.ts`, their specs, the barrel and its two specs, `package.json`, `README.md`, `CHANGELOG.md` | `eval-rules` 0.1.0 |
 | 4 | Evaluation | `rule-context.ts`, `evaluate-rule.ts`, `rule-result.ts`, their specs, the barrel and its specs, `CHANGELOG.md` | `eval-rules` 0.1.0 |
 | 5 | The trace, and the cost of building it | `rule-trace.ts`, its spec, `performance.spec.ts`, `evaluate-rule.ts`, `rule-result.ts`, `CHANGELOG.md` | `eval-rules` 0.1.0 |
 | 6 | The tests runner and the registry | `rule-test.ts`, `rule-registry.ts`, their specs, the barrel and its specs, `CHANGELOG.md` | `eval-rules` 0.1.0 |
-| 7 | The README, and the release commit | `modules/eval-rules/README.md`, `readme-examples.spec.ts`, `CHANGELOG.md`, `package.json`, `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root `README.md` and `CHANGELOG.md` | The release, `eval-rules` 0.1.0 |
-| 8 | The post-publish record | `docs/backlog.md`, `ROADMAP.md`, `CLAUDE.md` | No package |
-| 9 | The retrospect | This document's § 9 and § 10, `docs/standing-rules.md` if a rule is promoted, `CLAUDE.md`, `ROADMAP.md` | No package |
+| 7 | The README | `modules/eval-rules/README.md`, `readme-examples.spec.ts`, `CHANGELOG.md`, `tools/published-links.txt` | `eval-rules` 0.1.0 |
+| 8 | The demo pages | Under `apps/demo/src/app/`: `features/rules/` (new, three examples and their specs), `use-cases/` (one example and its spec), `registry.ts`, `app.ts`, `app.spec.ts`, `footer.ts`, `footer.spec.ts`; `apps/demo/project.json`; the root `eslint.config.mjs` | No package: the demo ships in none |
+| 9 | The release commit | `modules/eval-rules/package.json`, `CHANGELOG.md` and `README.md` (the demo link), `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root `README.md` and `CHANGELOG.md`, `docs/release-history.md`, `CLAUDE.md` | The release, `eval-rules` 0.1.0 |
+| 10 | The post-publish record | `docs/backlog.md`, `docs/backlog-history.md`, `docs/release-history.md`, `ROADMAP.md`, `CLAUDE.md`, `docs/README.md` | No package |
+| 11 | The retrospect | This document's § 9 and § 10, `docs/standing-rules.md` if a rule is promoted, `CLAUDE.md`, `ROADMAP.md`, `docs/README.md`, `docs/release-history.md` | No package |
 
 ### Step 1 — This plan, its records, and the measurements
 
 **Files**: `docs/eval-rules/plan.md`, `docs/eval-rules/design-session.md`, `docs/README.md`,
-`ROADMAP.md`, `CLAUDE.md`, `.claude/skills/step/SKILL.md`, `docs/backlog.md`.
+`ROADMAP.md`, `CLAUDE.md`, `.claude/skills/step/SKILL.md`, `docs/backlog.md`,
+`docs/backlog-history.md`, `docs/backlog-in-flight.md`, `docs/release-history.md`. The last
+three were added by this step ([SR4](../standing-rules.md#sr4)): the first two left
+`docs/backlog.md` on 2026-11-15, and an entry opened moves the first's *Unreleased* row; the third
+lists this plan as not started.
 
 - Read § 2's decisions once more against the rows run on the gate's bundle: a decision a row now
   contradicts goes back to the maintainer, and is not adjusted in place. Confirm, at the
@@ -710,18 +759,36 @@ step 2 and is recorded in each Outcome, since no step's rows are counted in adva
   that differs into § 1.3.
 - Correct § 3 where a measurement contradicts it.
 - Open the register entries § 3.3's last row names.
+- Write the demo step, by [`demo/plan.md` § 9](../demo/plan.md#9-contract-after-this-lands)
+  (added by this step). § 9 asks for the library's source to be measured compiling in the demo at
+  the phase's step 1; there is no source yet, so step 2 measures it.
 - Point `design-session.md`'s Q60 row and its § 6 item 1 at finding 9, which answers both.
 - Point `CLAUDE.md` and the `step` skill at this plan as the active one.
-- Record the gate's baseline counts for the three projects.
+- Record the gate's baseline counts for the four existing projects.
 
 **Exit criteria**: § 2's two readings are confirmed or corrected; `sha256sum -c` is clean, and
 every row of § 1.3 but M14's has been run on the gate's bundle; doc-links is green; the gate is
-green with the three projects' counts unchanged.
+green with the four projects' counts unchanged.
 
 **The wrong implementation** ([SR20](../standing-rules.md#sr20)): an answer read from `eval-core`'s
 source or its README instead of a pinned run, and a row copied from this revision without
 running its script on the gate's bundle. Each row therefore names its script, and each result
 file's second line names the bundle it ran on.
+
+- **Outcome** (2026-11-18, Revision 5). The prototype's hashes are clean, and every row of § 1.3
+  but M14's reproduced on the gate's bundle, which is the bundle Revision 3 measured
+  (§ 1.3, "Step 1's run"). No row contradicts a decision of § 2, and § 3 needed no correction.
+  The maintainer confirmed q22 and q23 at the gate. The register gains [A62](../backlog.md#a62),
+  the unbounded evaluation time and memory; [A63](../backlog.md#a63), no package of the workspace
+  loading in plain Node as installed; [E7](../backlog.md#e7), the four parts of the design that no
+  phase has; and [E8](../backlog.md#e8), what 0.1.0 refuses and a later minor can admit. Each is
+  not scheduled ([SR48](../standing-rules.md#sr48)), and the live entries go from 21 to 25. At
+  this phase boundary no backlog batch was chosen: the maintainer started Phase 12, so none runs
+  before `eval-rules` 0.1.0. The plan corrections are Revision 5's list. `design-session.md`'s
+  Q60 row and § 6 item 1 point at finding 9; `CLAUDE.md`, the skill, `docs/README.md` and
+  `ROADMAP.md` name this plan active, step 1 done and step 2 next. The gate on the final tree:
+  `eval-core` 3533, `eval-signals` 462, `eval-forms` 391 and `demo` 23, unchanged; doc-links
+  422 files, 3264 links, 0 dangling; release-tags 55 rows, 65 tags, 0 failing. Ships in no package.
 
 ### Step 2 — The project, empty and green
 
@@ -750,6 +817,13 @@ named in a code span.
   manifest keeps the form that is green. The result is written into finding 3
   ([SR4](../standing-rules.md#sr4)). The `acorn-walk` peer is declared in step 3, with the first
   import of it, since an unused peer is what finding 3 predicts lint refuses.
+- The demo compiles the library's source, as
+  [`demo/plan.md` § 9](../demo/plan.md#9-contract-after-this-lands) asks of a library joining it:
+  a scratch import of the one constant through the new `tsconfig.base.json` alias, in one demo
+  file, and the demo's `build` from a deleted `.angular` ([SR50](../standing-rules.md#sr50)) is
+  green. The import is not committed, and the result is written into step 8's text
+  ([SR4](../standing-rules.md#sr4)). A red build is this phase's finding, recorded as
+  [F32](../backlog.md#f32) was for `eval-core`'s source.
 
 **The wrong implementation**: a project the gate does not run. `nx run-many` skips a project with
 no matching target silently, so the criterion counts projects in the gate's output, not its colour.
@@ -928,11 +1002,13 @@ third argument, by name, as `evaluateRule`'s input does (§ 8 q22).
 - A rule that does not compile is not cached as compiled: a second request for it reports its
   problems again.
 
-### Step 7 — The README, and the release commit
+### Step 7 — The README
 
-**Files**: `modules/eval-rules/README.md`, `src/lib/readme-examples.spec.ts`, `CHANGELOG.md`,
-`package.json`, `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root
-`README.md` and `CHANGELOG.md`.
+**Files**: `modules/eval-rules/README.md`, `src/lib/readme-examples.spec.ts`, `CHANGELOG.md`, and
+`tools/published-links.txt` if the README links into the repository.
+
+Revision 4 had this step and the release commit as one. Revision 5 split them, so that step 8's
+demo pages can name the README's headings before the version is set.
 
 - The README opens as the other three do, documents the format, the two functions, the result,
   the limits, and states that rule text is untrusted and the registered functions are the
@@ -943,7 +1019,7 @@ third argument, by name, as `evaluateRule`'s input does (§ 8 q22).
     rule (finding 6), and under `colonIdentifiers` neither is one whose name starts with a
     reserved name and a colon (§ 8 q16);
   - evaluation time and memory are not bounded, with the regular expression as the example and
-    the iteration budget as what is (finding 9);
+    the iteration budget as what is (finding 9, [A62](../backlog.md#a62));
   - a copy a built-in makes cannot be changed in place, with the two forms that can
     (finding 16);
   - a function the host supplies, among the facts or the functions, can write, `Reflect` among
@@ -956,31 +1032,97 @@ third argument, by name, as `evaluateRule`'s input does (§ 8 q22).
     run; a thenable that is not one is a value (§ 8 q14, finding 27);
   - names are compared as written, and `compileRule` throws for `caseInsensitive` (§ 8 q21);
   - an effect item is one call, whatever `statements` is (§ 8 q20);
-  - an Angular build is required, and nothing is promised about plain Node (§ 8 q23);
+  - an Angular build is required, and nothing is promised about plain Node (§ 8 q23,
+    [A63](../backlog.md#a63));
   - a `version` match is the caller's promise.
 - Every example has a case that fails under the wrong library ([SR30](../standing-rules.md#sr30)).
 - A claim → witness table for every sentence of the README and the CHANGELOG entry
   ([SR21](../standing-rules.md#sr21)), each sentence scoped to the fixture its witness runs
   ([SR45](../standing-rules.md#sr45)).
 - § 3.8 is read again, row by row, against the `.d.ts` the build emits.
+
+**Exit criteria**: the gate green on the committed tree; the README counts pinned; the review
+finds no shipped sentence wider than its witnesses. The version stays `0.0.0`.
+
+### Step 8 — The demo pages
+
+**Files**: under `apps/demo/src/app/`, `features/rules/` (new: three `*.example.ts` and their
+`*.example.spec.ts`), one `*.example.ts` and its spec under `use-cases/`, `registry.ts`, `app.ts`,
+`app.spec.ts`, `footer.ts` and `footer.spec.ts`; `apps/demo/project.json`; the root
+`eslint.config.mjs`.
+
+Written by step 1, by [`demo/plan.md` § 9](../demo/plan.md#9-contract-after-this-lands), which
+is the reference for every item below; this step corrects § 9 where a place it names is missing
+([SR4](../standing-rules.md#sr4)). The process for the files under `apps/demo` is
+[SR49](../standing-rules.md#sr49): the gate, commits as asked, no `eslint-disable`, and no
+`code-reviewer`, probe or claim → witness table. The root `eslint.config.mjs` is not under
+`apps/demo`, so the step runs the `code-reviewer` on it alone. A cited build starts from a deleted
+`.angular` ([SR50](../standing-rules.md#sr50)).
+
+- **Three feature pages and one use case** (the demo design's Q21). Each is one example, one
+  registry entry and one smoke case, shaped as § 9's "A page is added" says: the example reads
+  `inject(EXPRESSION)` and `inject(DATA)`, is otherwise its README section's code, and is written
+  with LF endings; its entry's `readme` names a heading of `modules/eval-rules/README.md`, which
+  step 7 wrote; its summary states what the example does and nothing more. Which three features
+  and which use case are chosen at this step's gate, from step 7's README. A use case over the
+  first host's names, facts keyed `Q1:1` under `colonIdentifiers` (finding 28), is the
+  recommendation.
+- **The lint boundary**: the `scope:demo` constraint in the root `eslint.config.mjs` gains
+  `scope:rules`. It is a root configuration, so the full gate reads it, not lint alone.
+- **The footer**: `project.json`'s build `assets` copy `modules/eval-rules/package.json` to
+  `packages/eval-rules/`; `footer.ts`'s `FOLDERS` and `footer.spec.ts`'s list gain the folder. The
+  manifest is copied, not aliased (§ 9).
+- **The navigation**: `app.ts`'s `FEATURE_GROUPS` gains `features/rules` with its title, and
+  `app.spec.ts`'s list of group titles gains it.
+- **The source**: the demo compiles `eval-rules` through its `tsconfig.base.json` alias, with
+  `isolatedModules: false`, as step 2 measured.
+
+**Exit criteria**: the gate green, with `demo`'s count up by the four smoke cases and by any row
+the footer's and the navigation's specs gain, each counted in the Outcome, and the three
+libraries' counts and `eval-rules`' unchanged; `git status --porcelain modules/ tools/` empty; a
+cited build of `demo` from a deleted `.angular`; the maintainer's reading of the four pages under
+`npx nx serve demo`, which he runs. The site does not change until the workflow is next started,
+which is step 10's.
+
+**The wrong implementation**: a page whose example is not its README section's code, which the
+registry's cases do not catch; so the review reads each example beside the section its entry
+names.
+
+### Step 9 — The release commit
+
+**Files**: `modules/eval-rules/package.json`, `CHANGELOG.md`, and `README.md` for the demo link
+alone; `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root `README.md` and
+`CHANGELOG.md`, `docs/release-history.md`, `CLAUDE.md`.
+
 - The version becomes 0.1.0 and the CHANGELOG heading is dated by
   [CONTRIBUTING's Releasing](../../CONTRIBUTING.md#releasing), whose table and publish commands
   gain the fourth package.
+- The README links the demo site, as Releasing's step 1 says of a package README that does not
+  yet; the sentence and its link gain a row in step 7's claim → witness table.
+- `SECURITY.md` names the package, and its "The budget counts loop iterations, not time or depth"
+  gains a built-in's time, the regular expression of finding 9 ([A62](../backlog.md#a62)). The
+  root `README.md` and `CHANGELOG.md` list the package.
+- `docs/release-history.md` gains the release's line, and `CLAUDE.md` its "Published at" version.
 
-**Exit criteria**: the gate green on the committed tree; the README counts pinned; the review
-finds no shipped sentence wider than its witnesses.
+**Exit criteria**: the gate green on the committed tree; the README counts still pinned; the
+review finds no shipped sentence wider than its witnesses.
 
-### Step 8 — The post-publish record
+### Step 10 — The post-publish record
 
-**Files**: `docs/backlog.md` (the Publication status row), `ROADMAP.md`, `CLAUDE.md`.
+**Files**: `docs/backlog.md` (the Publication status row), `docs/backlog-history.md` (the
+release's Register history row, from the *Unreleased* one), `docs/release-history.md`,
+`ROADMAP.md`, `CLAUDE.md`, `docs/README.md`.
 
-After the publish and the annotated `eval-rules@0.1.0` tag: the row, at the release commit.
+After the publish and the annotated `eval-rules@0.1.0` tag: the row, at the release commit. Then
+the maintainer starts the `Pages` workflow from `master` and reads the footer, which names the
+commit and `eval-rules` 0.1.0 beside the other three
+([CONTRIBUTING's Releasing](../../CONTRIBUTING.md#releasing), step 7).
 **Exit criterion**: `release-tags.mjs` green with the row present.
 
-### Step 9 — The retrospect
+### Step 11 — The retrospect
 
 **Files**: this plan's § 9 and § 10, `docs/standing-rules.md` if a rule is promoted, `CLAUDE.md`,
-`.claude/skills/step/SKILL.md`, `ROADMAP.md`.
+`.claude/skills/step/SKILL.md`, `ROADMAP.md`, `docs/README.md`, `docs/release-history.md`.
 
 One retrospect for the track ([SR7](../standing-rules.md#sr7)). It counts P-1's uses, and says
 which a later phase has already asked to lift.
@@ -1023,7 +1165,7 @@ step's gate shows both before they are exported.
 ## 6. Verification gates
 
 The gate of [SR8](../standing-rules.md#sr8), unfiltered, after every step. From step 2 it runs
-four library projects and the root. A green `test` is not a type-check
+four library projects, the `demo` application and the root. A green `test` is not a type-check
 ([SR9](../standing-rules.md#sr9)): the specs' use of the public types is compiled by `build` only
 through the barrel, so a type exported wrongly is caught by `public-api.spec.ts`' import, not by
 Jest.
@@ -1166,17 +1308,18 @@ published shape § 3 could not settle from the design. **All are decided**, by t
 22. **Where `runRuleTest` takes the host's function implementations.** *Decided*: the
     maintainer's answer was "rule tests are separated to test the rules providing the
     expectations". This plan reads it as: a test is data stored apart from its rule, so the
-    implementations are an argument of their own. Step 1's gate confirms the reading.
+    implementations are an argument of their own. Confirmed by the maintainer at step 1's gate.
 23. **Whether 0.1.0 promises to run in plain Node.** *Decided*, by the maintainer's rule: "do
     other libraries work in Node? If yes, we can make such the promise, otherwise no". Measured
     (finding 25): as installed, none loads; with `@angular/compiler` imported first, all three
     load and evaluate; no README of theirs documents that import. This plan reads that as
-    "otherwise" (P-1): no promise in 0.1.0, and a register entry. Step 1's gate confirms it.
+    "otherwise" (P-1): no promise in 0.1.0, and a register entry, [A63](../backlog.md#a63).
+    Confirmed by the maintainer at step 1's gate.
 
 ## 9. Contract after this lands
 
-Written by step 9.
+Written by step 11.
 
 ## 10. Retrospect
 
-Written by step 9.
+Written by step 11.

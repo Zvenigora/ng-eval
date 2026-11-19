@@ -8,24 +8,26 @@ allowed-tools: Bash(npx nx *) Bash(git status *) Bash(git diff *) Bash(git branc
 
 # Execute one plan step
 
-Plan document: none active
-Target: none
+Plan document: docs/eval-rules/plan.md
+Target: `@zvenigora/ng-eval-rules` at `modules/eval-rules`, which step 2 creates; the `demo` application in step 8
 Requested step: $ARGUMENTS
 
-**No plan is active.** Phase 19's plan (`docs/demo/plan.md`), the demo application at `apps/demo`, is
-complete: it shipped in no package, its site is live at `https://zvenigora.github.io/ng-eval/`, and its
-retrospect is its § 10. The next plan retargets this file when it is written. It names the plan above,
-says which projects each step reaches, and records the gate's counts its steps start from: at 72585db,
-and unchanged by step 8's record, `eval-core` 3533, `eval-signals` 462, `eval-forms` 391 and `demo` 23.
-A file under `apps/demo` runs the demo's process, [SR49](../../../docs/standing-rules.md#sr49), in any
-plan's step, and a cited build of it starts from a deleted `.angular`
-([SR50](../../../docs/standing-rules.md#sr50)).
+**The active plan is Phase 12's, `@zvenigora/ng-eval-rules` 0.1.0** (`docs/eval-rules/plan.md`), a new
+package at `modules/eval-rules`. Step 1 reached documents only. Steps 2 to 7 reach the new project, with
+the root files each row of the plan's § 4 lists; step 8 reaches the `demo` application and the root
+`eslint.config.mjs`; steps 9 to 11 are the release commit, the post-publish record and the retrospect.
+**No step changes `eval-core`, `eval-signals` or `eval-forms`**, and a file under their folders changing
+is a stop. The gate's counts its steps start from, read by step 1 at 51791c9, are `eval-core` 3533,
+`eval-signals` 462, `eval-forms` 391 and `demo` 23. The three libraries' move in no step
+([SR10](../../../docs/standing-rules.md#sr10)), and `demo`'s moves in step 8 only. From step 2 the gate
+also runs the `eval-rules` project, and each step's Outcome records its count.
 
-**Invoked while no plan is active, this skill stops at § 1.** Run the baseline, report it, say that
-no plan is active, and do nothing else. Do not run a step of a completed plan, and do not treat a
-register entry as a plan: a one-commit item or a batch has its exit criteria in the prompt
-(`CLAUDE.md`, "Working from a plan"). A demo page added after Phase 19 is such an item: one commit,
-with no plan (`docs/demo/plan.md` § 9).
+**The plan's § 0 adds P-1**: where the design leaves a reading open, 0.1.0 ships the stricter one, and
+each use is marked. A file under `apps/demo`, in step 8 or in any other commit, runs the demo's process,
+[SR49](../../../docs/standing-rules.md#sr49), and a cited build of it starts from a deleted `.angular`
+([SR50](../../../docs/standing-rules.md#sr50)). A one-commit item or a batch is not a step of this plan:
+its exit criteria are in its prompt (`CLAUDE.md`, "Working from a plan"), and a demo page added outside
+step 8 is such an item (`docs/demo/plan.md` § 9).
 
 **Step state**: read it from the plan, not from here. The last step in its § 4 with a recorded
 **Outcome** is done, and the next is the step after it in § 4's table. A plan's step 1 records its
