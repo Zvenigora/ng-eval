@@ -501,14 +501,18 @@ released shape to protect; from 0.1.0 it has.
    it in a `finally` to the depth it started at; each field is one walk on a state of its own,
    followed by an unwind to the run's depth (finding 22). Trace every exit of a changed path,
    a throw included. A host function can strand a scope; `eval-core` does not.
-3. **Problems are returned, and they are all returned.** `compileRule` returns the compiled rule
-   or every problem, in a value, and for a rule JSON can write throws only for the caller's
-   options: one it does not define, one of the wrong type, or a key in an effect's declaration
-   (§ 8 q17, q21; Revision 7). An early return in the collector, or one `code` for two kinds of
-   problem, is a finding. So is a recursive walk of a rule's pattern or text with no bound or
+3. **Problems are returned, all of them but for three designed stops.** `compileRule` returns the
+   compiled rule or every problem, in a value, and for a rule JSON can write throws only for the
+   caller's options: one it does not define, one of the wrong type, or a key in an effect's
+   declaration (§ 8 q17, q21; Revision 7). The three stops are a `match`'s: its first depth
+   problem only; past 100,000 values, that problem alone; at its 101st problem, its first 100 and
+   one saying there are more, whichever bound the walk meets first (§ 8 q17 as amended). Any other
+   early return in the collector, or one
+   `code` for two kinds of problem, is a finding. So is a recursive walk of a rule's pattern or text with no bound or
    stack guard, or one whose cost grows with a shared value's paths or faster than its problems,
-   at compile or in a run (the step 3 follow-ups: `RangeError` at a depth of 2,000 to 5,000;
-   problems keyed on long paths, quadratic).
+   at compile or in a run, or a result that grows faster than the rule (the step 3 follow-ups:
+   `RangeError` at a depth of 2,000 to 5,000; problems keyed on long paths, quadratic; a 0.35 MB
+   rule returning 1.2 billion characters).
 4. **P-1.** Where the design leaves a reading open, 0.1.0 ships the stricter one, and each use is
    marked **P-1** where it is made (the plan's § 0). Accepting what § 3.4 rejects is a finding;
    so is a stricter reading made in the code and not marked in the plan.

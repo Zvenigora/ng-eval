@@ -27,13 +27,19 @@ import { compileRule, defineRule } from '@zvenigora/ng-eval-rules';
 
 For a rule JSON can write, `compileRule` does not throw for the rule's problems: it returns every
 problem it finds, each with a `code`, a `path` such as `decisions[0].cases[1].if`, and a `message`.
+A `match`'s walk stops at the first of two bounds it meets: at its 101st problem it gives its first
+100 and one saying there are more; past 100,000 values it gives that problem alone, whatever it had
+found. In a `match`'s path a
+key shows as `.key` when it is an ASCII identifier of at most 64 UTF-16 code units, and otherwise
+in brackets, quoted as JSON: `filter.match["Q1:1"]`. A longer key is cut to its first 64 code
+units and `…` before it is quoted.
 A rule built in code runs its own getters and proxy traps as `compileRule` reads it, and one may
 throw. A `match` is checked and copied in one reading, so the rule compiled holds what was checked.
 The list of codes is open: a later release may add one, so a host handles a code it does not know.
 
 | Code | The problem |
 | :--- | :--- |
-| `invalid-field` | A field holds a value of the wrong kind; a `match` nests more than 64 arrays and objects, itself the first, or holds more than 100,000 values, counting itself and a value once on each path to it |
+| `invalid-field` | A field holds a value of the wrong kind; a `match` nests more than 64 arrays and objects, itself the first, or holds more than 100,000 values, counting itself and a value once on each path to it; a `match`'s walk stopped at its 101st problem, the last saying so |
 | `missing-field` | A required field is absent |
 | `unknown-field` | A field the format does not list |
 | `invalid-name` | A calculation's or a decision's name is not an identifier |

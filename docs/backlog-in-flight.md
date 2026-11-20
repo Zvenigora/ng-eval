@@ -8,8 +8,8 @@ that the register's preamble and its entries are read without it. Only its links
 entries changed, from `#a56` to `backlog.md#a56`.
 
 **The [Phase 12 plan](eval-rules/plan.md) is active**, at Revision 7: `@zvenigora/ng-eval-rules`
-0.1.0, a new package. Steps 1 to 3 are done and step 4 is next; steps 2 and 3 opened and fixed no
-entry.
+0.1.0, a new package. Steps 1 to 3 are done and step 4 is next; steps 2 and 3 fixed no entry, and step 3's
+third follow-up opened [E9](backlog.md#e9), `compileRule` superlinear in long names, not scheduled.
 Step 1 fixed no entry and opened four,
 each not scheduled ([SR48](standing-rules.md#sr48)): [A62](backlog.md#a62), evaluation time and
 memory not bounded; [A63](backlog.md#a63), no package loading in plain Node as installed;

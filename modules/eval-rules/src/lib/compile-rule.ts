@@ -13,6 +13,7 @@ import { full, fullAncestor } from 'acorn-walk';
 import {
   type InvalidPatternValue,
   MAX_PATTERN_DEPTH,
+  MAX_PATTERN_PROBLEMS,
   MAX_PATTERN_VALUES,
   checkPattern,
   isPlainObject,
@@ -21,7 +22,10 @@ import {
 /**
  * `compileRule`: the Phase 12 plan's § 3.4. It checks a rule, parses each of
  * its expression fields once, and returns either the compiled rule or every
- * problem it found, each with a `code`, a `path` and a `message`. It throws
+ * problem it found, each with a `code`, a `path` and a `message`; a `match`'s
+ * walk stops at the first of two bounds it meets, its 101st problem (its
+ * first 100, and one saying there are more) or 100,000 values (that problem
+ * alone), by `checkPattern` (§ 8 q17 as amended). It throws
  * for neither (§ 8 q17). What it throws for is the caller's own code: an
  * option it does not define, or an option of the wrong type (§ 8 q21).
  *
@@ -220,6 +224,7 @@ const PATTERN_MESSAGES: Readonly<Record<InvalidPatternValue['reason'], string>> 
   size:
     `A pattern holds at most ${MAX_PATTERN_VALUES.toLocaleString('en-US')} values, counting the match ` +
     `itself and a value once on each path to it: this one holds more.`,
+  more: `A match lists at most ${MAX_PATTERN_PROBLEMS} of its problems: this one has more.`,
 };
 
 // ---------------------------------------------------------------------------
@@ -231,7 +236,9 @@ const PATTERN_MESSAGES: Readonly<Record<InvalidPatternValue['reason'], string>> 
  *
  * @param rule the rule, as JSON or as a `defineRule` literal
  * @param options the compile options; any key it does not define throws
- * @returns the compiled rule, or every problem found
+ * @returns the compiled rule, or every problem found; a `match`'s walk stops at the first of two
+ *   bounds it meets: at its 101st problem it gives its first 100 and one saying there are more;
+ *   past 100,000 values it gives that problem alone
  */
 export const compileRule = (rule: unknown, options?: CompileRuleOptions): CompileRuleResult => {
   const settings = readOptions(options);
@@ -581,10 +588,12 @@ class RuleCompiler {
       return undefined;
     }
     const checked = checkPattern(pattern, path);
-    // A pattern's paths are its own and each is met once, so its problems
-    // skip the duplicate check: a path past the depth bound repeats every key
-    // above it, and a set of such keys, long and of one length, hashes
-    // alike in V8 and made compiling quadratic.
+    // A pattern's problems skip the duplicate check: each is a value of its
+    // own, met once on its path, and the match's own path, its prefix, is no
+    // other pattern's. Two keys longer than 64 code units and alike in their
+    // first 64 show as one path, and both are reported. Through the check, a set of long keys of one length, which V8 hashes alike, made
+    // compiling quadratic (7e10e5a's review); only time shows it, so no row
+    // does (6997575's review, M-c).
     for (const value of checked.problems) {
       this.problems.push({ code: 'invalid-field', path: value.path, message: PATTERN_MESSAGES[value.reason] });
     }

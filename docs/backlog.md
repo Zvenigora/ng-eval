@@ -261,6 +261,7 @@ and `v0.2.3`: lightweight tags from before the `<project>@<version>` names, whic
 | [E6](backlog-retired.md#e6) | `exit` has no mark to bound its scan | core | fix | **Retired — fixed, Phase 2 step 1**; released in `eval-core` 0.4.0; its "Phase 2 makes it reachable" premise was wrong |
 | [E7](#e7) | The parts of the rule design that no phase has: a converter from an earlier rule format, `parallel` and `fanOut`, a rule as a `computed`, timer and route event sources | rules | phase | Open — **no phase reserved**; not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its § 3.3 |
 | [E8](#e8) | What `eval-rules` 0.1.0 refuses and a later minor can admit: `caseInsensitive`, facts that are a class instance or a `Registry`, and `maxIterations` as an option | rules | decision | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its § 8 q3, q7, q15 and q21 |
+| [E9](#e9) | `compileRule`'s sets of names and its duplicate check are keyed on strings as long as a rule's names and keys, which V8 hashes by length past 16,383 characters: calculations named, or unknown fields keyed, 17,000 characters compile superlinearly in their count | rules | decision | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-20 by the [Phase 12 plan](eval-rules/plan.md)'s step 3 third follow-up, from 6997575's code review (N-a) |
 | [F1](backlog-retired.md#f1) | No `configurations.ci` on the `test` target — **two projects, not one** | signals, forms | fix + decision | **Retired — fixed, no thresholds** |
 | [F2](backlog-retired.md#f2) | One `CHANGELOG.md` for three independently-versioned packages | repo | decision | **Retired — decided 2026-09-28**: one `modules/<name>/CHANGELOG.md` per package; `nx release` still unadopted. `eval-core` had five changelogged versions npm never received |
 | [F3](backlog-retired.md#f3) | README-import drift gate — every `@zvenigora/…` import a README prints is exported — **three packages, four READMEs** | core, signals, forms | fix | **Retired — built and green**. Whether every export is documented is [F10](backlog-retired.md#f10)'s |
@@ -1204,6 +1205,37 @@ stricter one"), each of which a later minor can lift without a breaking release 
 each**: a host that needs it, or the maintainer scheduling it; `caseInsensitive` is already wanted.
 
 *Recorded*: the [Phase 12 plan](eval-rules/plan.md) § 3.3, § 3.8 and § 8.
+
+<a id="e9"></a>
+## E9 — `compileRule` is superlinear in long names and keys
+
+**Package** rules · **Kind** decision · **Status** Open, not scheduled ([SR48](standing-rules.md#sr48)). Opened 2026-11-20 by the [Phase 12 plan](eval-rules/plan.md)'s step 3 third follow-up, from 6997575's code review (N-a)
+
+A rule's names, a calculation's or a decision's, have no bound on their length, and `compileRule`
+keys its sets on them: the names assigned, the names probed, and its duplicate check, whose key
+holds each problem's message, which quotes a name. V8 hashes a string longer than 16,383
+characters by its length alone, so a set of such strings of one length compares them one by one.
+Calculations named 17,000 characters, each reading the next before it is assigned, took 198, 502
+and 1,755 ms for 250, 500 and 1,000 of them on 6997575 in the reviewing sandbox. Hashing the
+duplicate check's keys in the library (FNV-1a into a map by number) left them superlinear, 514,
+1,042 and 2,878 ms, so the check is not the whole cost, and that change was not kept. The rules
+measured are 8.5 to 34 MB of JSON. Unknown fields too, by the second review of the third
+follow-up: `unknown-field` quotes a field's key as it is, in its path and its message, so 250, 500,
+1,000 and 2,000 unknown keys 17,000 characters long took 70, 251, 1,064 and 4,145 ms on that
+follow-up's second pin. A bound on names would not reach them; showing a key as a `match`'s path
+does, cut to 64 code units, would.
+
+**Verified** by `names-6997575.log`, `names-fnv.log` and `unknown-12.3g.log` in the third
+follow-up's pack (`m-names.spec.ts`, `m-unknown.spec.ts`), the sandbox's times, one run each and not by
+[SR28](standing-rules.md#sr28)'s paired method. No row pins it: only time shows it.
+
+**Not scheduled**, by SR48: no published sentence promises a cost, it is no route past a guard,
+it blocks no plan, and it needs names or keys thousands of characters long. **What reopens it**: a host
+that compiles rules it does not write, or a report. **The fix** is a decision: a bound on a name's
+length, refused as a problem (P-1), with an unknown key shown cut, which keeps every key short; or
+keys the library hashes in every set. Either is measured then.
+
+*Recorded*: the [Phase 12 plan](eval-rules/plan.md) Revision 7, "The fourth review".
 
 ---
 

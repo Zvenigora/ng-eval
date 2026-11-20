@@ -77,8 +77,9 @@ measured it wrong, each with rows and a probe; the shapes do not change:
   property's value and a rest element's argument are written.
 - **`delete calc?.x`** is refused as `delete calc.x` is: the check looks through the chain.
 - **A deleted name** is reported as "deleted", not "assigned", and § 3.4 marks the rejection P-1.
-- **A pattern reports every value JSON cannot write**, not the first; a rule built in code with a
-  cyclic `match` gets a problem at the value that closes the cycle, where it threw a `RangeError`.
+- **A pattern reports every value no pattern holds**, not the first (up to 100, by the third
+  follow-up); a rule built in code with a cyclic `match` gets a problem at the value that closes
+  the cycle, where it threw a `RangeError`.
 - **An output naming a decision that has a problem of its own** no longer adds `unknown-decision`
   for a decision that exists.
 - **The CHANGELOG line** says "for a rule JSON can write": a rule object built in code with a
@@ -144,15 +145,68 @@ took 4 s in this sandbox. **The second follow-up** fixes it and the
 notes with it, each with a row or a probe, measured before and after (its pack's `quad-*.log`):
 
 - **One depth problem per pattern**, at the first value past the bound; the walk does not enter
-  the others. A pattern's other problems are all reported, and skip the duplicate check, since a
-  pattern's paths are its own and each is met once.
+  the others. A pattern's other problems are reported, up to the third follow-up's cap, and skip the duplicate check, since a
+  pattern's paths are its own, and each problem a value of its own on its path.
 - **A pattern is checked and copied in one reading** (`checkPattern`): a getter in a rule built in
-  code is read once, and the rule compiled holds what was checked. The README says so, and that a
+  code is read once on each path to it, and the rule compiled holds what was checked. The README says so, and that a
   proxy trap, like a getter, may throw.
 - **`({ [k]: calc.x } = o)`** is a row: without the computed key's own test, `isWritten` took a
   computed property as making the whole pattern read.
 - **The size row holds 100,001 values**, one past the bound; **the README's depth wording** says
   the `match` is the first level.
+
+**The fourth review**, of 6997575, found no Critical and what `compileRule` returns unbounded:
+JSON writes a value no pattern holds, `1e999`, which parses to `Infinity`, and each problem's path
+repeated every key above it, so a 0.35 MB rule returned 20,000 problems and 1.2 billion characters,
+on which `JSON.stringify` threw `RangeError` (its pack's `out-6997575.log`). **The third
+follow-up** bounds it, measured before and after, each with a row:
+
+- **A `match` reports at most 100 problems** (§ 8 q17, amended: not P-1, since it lifts no
+  rejection), then one at its own path saying there are more, where the walk stops. The same rule
+  now returns 101, 0.44 MB as JSON; whatever the rule's size, at most 101 problems per `match`, of
+  at most 64 keys each. The walk stops at the first of its two bounds: at its 101st problem, or past
+  100,000 values, whose problem is given alone, whatever was found before it (the second review's
+  I-1, two rows). The last keeps `invalid-field`, the field's own code, as the README's row says: a code of
+  its own would be a 26th for a host to handle, for a match that already has 100.
+- **A key shows in a path as `.key`** when it is an ASCII identifier of at most 64 UTF-16 code
+  units, and otherwise in brackets, quoted as JSON, a longer key cut to 64 and `…` first
+  (`pathKey`), so no path grows with its keys past the bound, and a key holding a `.` reads as one
+  key (the review's M-a: `{"a.b":1e999,"a":{"b":1e999}}` gave two identical paths). Two keys
+  longer than 64 units and alike in their first 64 still show as one path; both are reported, since the skipped duplicate
+  check stands, each problem being a value of its own on its path. Only time shows that check, so
+  no row does (M-c).
+- **"Read once" is "read once on each path to it"** where a value is shared (M-b).
+
+**Its review** (of the first pin, 12.3f; no Critical, not safe to commit) found the "every
+problem" sentence alive where the README and CHANGELOG had narrowed it: the file header and
+`@returns` in `compile-rule.ts`, which ship in the `.d.ts`; § 8 q17 and its rows in § 2 and § 3.1;
+`CheckedPattern.problems`; the code-reviewer's item 3, which named any early return a finding.
+Each now names the cap, and item 3 names it as the one stop allowed. **Swept** (SR25), wrap-aware,
+by its pack's `sweep.py` over `modules/eval-rules`, `docs/eval-rules` and `.claude`, specs aside,
+for `every\s+problem|all\s+(the\s+)?problems|every\s+(invalid\s+)?value`: thirteen hits. Rewritten:
+the header, `@returns`, `CheckedPattern.problems`, Q11's and q17's rows, § 3.1 and item 3. Already
+qualified: the README and the CHANGELOG. Kept as history: this Revision's 12.3b paragraph (two)
+and q17's question. True as it stands: step 3's "Every problem carries a `code`". Its minors are
+taken with it: the path wording (M-1), the last problem's code (M-2) and the README's precision
+(M-3).
+
+**Its second review** (of the second pin, 12.3g; no Critical, not safe to commit) found the two
+bounds' interaction unsaid: whichever the walk meets first decides, so 100 problems then 100,000
+values gave the size problem alone, against "its first 100 problems and one more saying there are
+more" (its I-1). The sentence now names both bounds wherever it stands, by the wrap-aware sweep,
+with two contrast rows. Its minors are taken with it: the reviewer's item 3 names the three stops
+the design has, the cap, one depth problem and the size problem alone (M-1); "two keys alike" is
+"two keys longer than 64 units" (M-2); this step's pin (M-3); a row that the walk stops at the cap,
+a getter after the 101st problem never read (M-4); the "more" message says "lists at most 100 of
+its problems". Its M-5 widens E9, measured (below).
+
+Its note N-a, the duplicate check quadratic in long messages, is wider than the check: the
+compiler's sets of names are keyed on the same long strings, and hashing the check's keys itself
+left calculations named 17,000 characters superlinear (its pack's `names-*.log`). Long
+unknown keys do the same, `unknown-field` quoting each whole (the second review's M-5, measured:
+its pack's `unknown-12.3g.log`). It is [E9](../backlog.md#e9), a bound on names' length and a cut
+unknown key, for its own decision. Its note N-b, a match
+object built in code shared by T triggers, costs as T copies of it in JSON would: no change.
 
 **Revision 6** is step 2's. It measured finding 3 and finding 5, which § 1.2 now records, and
 corrects § 4 where the project's creation reached files step 2's list did not name
@@ -610,7 +664,7 @@ blocks; § 8 q4 lists the ones this phase depends on, and its decision confirms 
 | Every expression field is a plain expression; statements by a compile option, off by default | Q35, Q60 |
 | A filter is `{ match?, when? }`; a pattern is a subset match with arrays as any-of | Q36, and the unnumbered filter row |
 | Labels are read by nothing inside a rule | Q10, Q51 |
-| `compileRule` returns every problem at once, each with a path; evaluation never parses | Q11 |
+| `compileRule` returns every problem at once, each with a path (a `match` at most 101, by the first of its two bounds, § 8 q17 as amended); evaluation never parses | Q11 |
 | JSON is canonical; `defineRule` is a typed helper | Q4 |
 | Tests are stored beside the rule and never commit | Q18 |
 | The cache is keyed by id, reused for the same text or version, bounded at 500 | Q55 |
@@ -647,7 +701,7 @@ and say so; the maintainer confirmed both at step 1's gate.
 | Decision | § 8 |
 | :--- | :--- |
 | `colonIdentifiers` is an option, off by default, as in `eval-core` and both siblings. The maintainer's earlier rule engine writes colon-joined names in every expression, so its host turns the option on | q12 |
-| `compileRule` does not throw for a rule with problems: it returns a value that holds every problem | q17 |
+| `compileRule` does not throw for a rule with problems: it returns a value that holds every problem, a `match` at most 101, by the first of its two bounds (amended) | q17 |
 | A `RuleProblem` carries a stable `code` beside its `path` and `message` | q18 |
 | A rule may carry `description`, a string, and `meta`, any JSON value; both are ignored. Every other unknown field stays a problem | q19 |
 | `statements` applies to the expressions of a filter, a calculation and a decision. An effect item is one call of a declared effect in both settings: an effect is the rule's handler for an output | q20 |
@@ -663,7 +717,8 @@ A paragraph that cites a question of § 8 cites a decision, recorded in § 2.
 
 - The rule format, as TypeScript types and as JSON: [§ 3.2](#32-the-formats-fields).
 - `compileRule(rule, options?)`: validation and one parse per field. It returns the compiled rule
-  or every problem, and does not throw for a rule (§ 8 q17).
+  or every problem, a `match` at most 101, by the first of its two bounds, and does not throw for
+  a rule (§ 8 q17 as amended).
 - `evaluateRule(compiled, input)`: filter, calculations, decisions, outputs. Returns a result.
 - `evaluateInit(compiled, input)`: the `onInit` items. Returns a result.
 - The result: `calc`, `labels`, `effects`, `status`, `error`, `trace`.
@@ -734,9 +789,12 @@ an effect's declaration, which this release does not define (Revision 7, P-1).
   a `description` that is not a string, a name that is not an identifier.
 - An expression that does not parse, an empty one, and one nested too deeply for the checks'
   call stack, which is a `parse-error` as the parser's own overflow is (the step 3 follow-up).
-- A `match` holding a value JSON cannot write, or a cycle; one that nests more than 64 arrays and
-  objects, itself the first, or holds more than 100,000 values, counting itself and a value once on each path to it (the
-  step 3 follow-up, P-1).
+- A `match` holding a value no pattern holds (`NaN`, an infinity, which JSON writes as `1e999`, or
+  what JSON cannot write), or a cycle; one that nests more than 64 arrays and objects, itself the
+  first, or holds more than 100,000 values, counting itself and a value once on each path to it
+  (the step 3 follow-up, P-1). A `match`'s walk stops at the first of two bounds: at its 101st
+  problem it gives its first 100 and one saying there are more (the third follow-up, amending § 8
+  q17); past 100,000 values, that problem alone.
 - With statements off, a field that is not one expression, and a statement anywhere below it
   (finding 9, P-1). With statements on, a statement `eval-core` does not evaluate, anywhere, with
   its message (Revision 7, P-1).
@@ -1152,7 +1210,11 @@ from the README's stub section and its fence, and from the barrel specs' cases t
   SHA-256 is in its commit body. Its first two pins, `ng-eval-12.3b-followup.zip` and
   `ng-eval-12.3c-followup.zip`, stopped at their reviews. The second follow-up, the review of
   7e10e5a, is Revision 7's paragraph "The third review": 5 cases more, `eval-rules` 304, pinned in
-  `ng-eval-12.3e-followup2.zip`, whose SHA-256 is in its commit body.
+  `ng-eval-12.3e-followup2.zip`, whose SHA-256 is in its commit body. The third follow-up, the
+  review of 6997575, is the paragraph "The fourth review": 6 cases more,
+  `eval-rules` 310, pinned in `ng-eval-12.3h-followup3.zip`, whose SHA-256 is in its commit body;
+  it opens E9. Its first two pins, `ng-eval-12.3f-followup3.zip` and
+  `ng-eval-12.3g-followup3.zip`, stopped at their reviews.
 
 ### Step 4 — Evaluation
 
@@ -1556,7 +1618,12 @@ published shape § 3 could not settle from the design. **All are decided**, by t
     `Q1:1` or `Q2:12`, and none starts with one of the five.
 17. **What `compileRule` gives for a rule with problems**: a value holding them, or a throw. The
     design's "returns all problems at once" reads as the first, and a throw carries one message.
-    *Decided*: it does not throw; it returns the problems.
+    *Decided*: it does not throw; it returns the problems. *Amended* by the step 3 third
+    follow-up (Revision 7, "The fourth review"): a `match`'s walk stops at the first of two bounds
+    it meets: at its 101st problem it gives its first 100 and one saying there are more; past
+    100,000 values it gives that problem alone, whatever it had found. So what `compileRule`
+    returns stays bounded; every other field returns every problem. Not P-1, which lifts a rejection later: an amendment, whose bound a later minor
+    can raise.
 18. **Whether a `RuleProblem` carries a stable `code`** beside its `path` and `message`. Without
     one a host tells problems apart by matching text, and the text becomes a contract.
     *Decided*: yes.

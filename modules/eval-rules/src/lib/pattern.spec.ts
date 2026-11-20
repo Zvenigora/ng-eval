@@ -1,4 +1,12 @@
-import { MAX_PATTERN_DEPTH, MAX_PATTERN_VALUES, checkPattern, matchesPattern } from './pattern';
+import {
+  MAX_PATH_KEY,
+  MAX_PATTERN_DEPTH,
+  MAX_PATTERN_PROBLEMS,
+  MAX_PATTERN_VALUES,
+  checkPattern,
+  matchesPattern,
+  pathKey,
+} from './pattern';
 
 const problemsIn = (pattern: unknown, path: string) => checkPattern(pattern, path).problems;
 
@@ -119,6 +127,66 @@ describe('checkPattern', () => {
       { path: `match.a${'[0]'.repeat(63)}`, reason: 'depth' },
       { path: 'match.b', reason: 'value' },
     ]);
+  });
+
+  it('shows a key as .key when a short identifier, and quoted as JSON otherwise', () => {
+    expect(MAX_PATH_KEY).toBe(64);
+    expect(pathKey('tier')).toBe('.tier');
+    expect(pathKey('$a_1')).toBe('.$a_1');
+    expect(pathKey('a.b')).toBe('["a.b"]');
+    expect(pathKey('Q1:1')).toBe('["Q1:1"]');
+    expect(pathKey('')).toBe('[""]');
+    expect(pathKey('1a')).toBe('["1a"]');
+    expect(pathKey('a'.repeat(64))).toBe(`.${'a'.repeat(64)}`);
+    expect(pathKey('a'.repeat(65))).toBe(`[${JSON.stringify(`${'a'.repeat(64)}…`)}]`);
+  });
+
+  it('tells a key holding a dot from two keys, one inside the other', () => {
+    // JSON writes 1e999, which parses to Infinity.
+    const match = JSON.parse('{"a.b":1e999,"a":{"b":1e999}}') as unknown;
+    expect(problemsIn(match, 'match')).toEqual([
+      { path: 'match["a.b"]', reason: 'value' },
+      { path: 'match.a.b', reason: 'value' },
+    ]);
+  });
+
+  it(`reports at most ${MAX_PATTERN_PROBLEMS} problems, then one saying there are more`, () => {
+    expect(MAX_PATTERN_PROBLEMS).toBe(100);
+    const nans = (n: number) => Object.fromEntries(Array.from({ length: n }, (_, i) => [`c${i}`, Number.NaN]));
+    expect(problemsIn(nans(100), 'match')).toHaveLength(100);
+    expect(problemsIn(nans(100), 'match').at(-1)).toEqual({ path: 'match.c99', reason: 'value' });
+    const many = problemsIn(nans(101), 'match');
+    expect(many).toHaveLength(101);
+    expect(many[99]).toEqual({ path: 'match.c99', reason: 'value' });
+    expect(many[100]).toEqual({ path: 'match', reason: 'more' });
+    expect(problemsIn(nans(20_000), 'match')).toHaveLength(101);
+  });
+
+  it('stops at the first of its two bounds: 100 problems then 100,000 values is the size alone', () => {
+    const nans = (n: number) => Array.from({ length: n }, (_, i): [string, unknown] => [`c${i}`, Number.NaN]);
+    const big = new Array(100_000).fill(1);
+    expect(problemsIn(Object.fromEntries([...nans(100), ['big', big]]), 'match')).toEqual([
+      { path: 'match', reason: 'size' },
+    ]);
+    const capped = problemsIn(Object.fromEntries([...nans(101), ['big', big]]), 'match');
+    expect(capped).toHaveLength(101);
+    expect(capped[100]).toEqual({ path: 'match', reason: 'more' });
+  });
+
+  it('stops walking at the 101st problem: a getter after it is not read', () => {
+    let read = false;
+    const match: Record<string, unknown> = Object.fromEntries(
+      Array.from({ length: 101 }, (_, i) => [`c${i}`, Number.NaN])
+    );
+    Object.defineProperty(match, 'late', {
+      enumerable: true,
+      get: () => {
+        read = true;
+        return 1;
+      },
+    });
+    expect(problemsIn(match, 'match')).toHaveLength(101);
+    expect(read).toBe(false);
   });
 
   it('reads each value once, and copies what it read', () => {

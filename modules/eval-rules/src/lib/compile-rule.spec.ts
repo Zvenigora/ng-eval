@@ -1198,6 +1198,20 @@ describe('the step 3 follow-up (the review of d42d2cf)', () => {
     expect(problems[0]?.path).toMatch(/\.c0$/);
   });
 
+  it('reports a JSON match of 20,000 infinities under keys 1,000 long as 101 problems, each path bounded', () => {
+    const key = (i: number) => JSON.stringify(String(i).padStart(1_000, 'k'));
+    let text = `{${Array.from({ length: 20_000 }, (_, i) => `"c${i}":1e999`).join(',')}}`;
+    for (let i = 59; i >= 0; i--) {
+      text = `{${key(i)}:${text}}`;
+    }
+    const problems = problemsOf({ id: 'r', filter: { match: JSON.parse(text) as unknown } });
+    expect(problems).toHaveLength(101);
+    expect(problems[100]).toEqual(
+      p('invalid-field', 'filter.match', 'A match lists at most 100 of its problems: this one has more.')
+    );
+    expect(Math.max(...problems.map((problem) => problem.path.length))).toBeLessThan(60 * 72);
+  });
+
   it('copies a value two paths share once, and shares it in the compiled pattern', () => {
     const shared = { tier: 'gold' };
     const result = compileRule({ id: 'r', filter: { match: { a: shared, b: [shared] } } });
