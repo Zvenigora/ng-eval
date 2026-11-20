@@ -15,6 +15,7 @@
   "license": "MIT",
   "homepage": "https://github.com/Zvenigora/ng-eval#readme",
   "peerDependencies": {
+    "acorn-walk": "^8.3.0",
     "@zvenigora/ng-eval-core": ">=0.16.0 <0.17.0"
   },
   "publishConfig": {

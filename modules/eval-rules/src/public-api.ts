@@ -1,4 +1,17 @@
-import type { ParserOptions } from '@zvenigora/ng-eval-core';
-
-/** A placeholder, so the barrel's specs have an export to pin. Step 3 replaces it. */
-export const RULES_PLACEHOLDER: Readonly<ParserOptions> = {};
+export type {
+  Rule,
+  RuleFilter,
+  RuleTrigger,
+  RuleCalculation,
+  RuleDecision,
+  RuleDecisionCase,
+  RuleOutput,
+} from './lib/rule';
+export type {
+  CompileRuleResult,
+  CompiledRule,
+  CompileRuleOptions,
+  RuleProblem,
+} from './lib/compile-rule';
+export { compileRule } from './lib/compile-rule';
+export { defineRule } from './lib/define-rule';

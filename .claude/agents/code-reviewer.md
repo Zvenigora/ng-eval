@@ -502,8 +502,9 @@ released shape to protect; from 0.1.0 it has.
    followed by an unwind to the run's depth (finding 22). Trace every exit of a changed path,
    a throw included. A host function can strand a scope; `eval-core` does not.
 3. **Problems are returned, and they are all returned.** `compileRule` returns the compiled rule
-   or every problem, in a value, and throws only for an option it does not define (§ 8 q17, q21).
-   An early return in the collector, or one `code` for two kinds of problem, is a finding.
+   or every problem, in a value, and throws only for the caller's options: one it does not define,
+   one of the wrong type, or a key in an effect's declaration (§ 8 q17, q21; Revision 7). An early
+   return in the collector, or one `code` for two kinds of problem, is a finding.
 4. **P-1.** Where the design leaves a reading open, 0.1.0 ships the stricter one, and each use is
    marked **P-1** where it is made (the plan's § 0). Accepting what § 3.4 rejects is a finding;
    so is a stricter reading made in the code and not marked in the plan.

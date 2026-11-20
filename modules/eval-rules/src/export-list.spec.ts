@@ -368,22 +368,23 @@ describe('export-list reader (eval-rules copy)', () => {
   it('returns a value export, through the hop from index.ts to public-api.ts', () => {
     // index.ts holds only `export * from './public-api'`, so a reader that
     // read the entry file's own declarations would return nothing.
-    expect([...rules()]).toEqual(['RULES_PLACEHOLDER']);
+    expect([...rules()]).toContain('compileRule');
+    expect([...rules()]).toContain('defineRule');
   });
 
   it('returns a type-only export, which a runtime export list cannot see', () => {
-    // This package exports no type yet, so the case reads another package's
-    // entry, as the F11 cases below do. `ParserOptions` is an `export type`
-    // alias in eval-core, with no runtime presence.
-    expect([...exportedNames(SPECIFIER_ENTRY['@zvenigora/ng-eval-core'])]).toContain(
-      'ParserOptions'
-    );
+    // `Rule` is an `export interface` and `CompileRuleResult` an `export type`
+    // alias; neither has any runtime presence.
+    expect([...rules()]).toContain('Rule');
+    expect([...rules()]).toContain('CompileRuleResult');
   });
 
   it('returns exports, not every declaration the program can reach', () => {
-    // `ParserOptions` is in this program, since public-api.ts imports it, and
-    // the barrel does not re-export it.
-    expect([...rules()]).not.toContain('ParserOptions');
+    // `RULE_PROBLEM_CODES` and `compiledRuleInternals` are `export const` in
+    // lib/compile-rule.ts, which is in this program, and the barrel names
+    // neither.
+    expect([...rules()]).not.toContain('RULE_PROBLEM_CODES');
+    expect([...rules()]).not.toContain('compiledRuleInternals');
   });
 
   it('throws rather than returning an empty set for a missing entry file', () => {
@@ -425,12 +426,12 @@ describe('export-list reader (eval-rules copy)', () => {
 describe('README import scanner (eval-rules copy)', () => {
   it('scans a single-line import', () => {
     const found = readmeImportsFromText(
-      "```ts\nimport { RULES_PLACEHOLDER } from '@zvenigora/ng-eval-rules';\n```\n"
+      "```ts\nimport { compileRule } from '@zvenigora/ng-eval-rules';\n```\n"
     );
     expect(found).toEqual([
       {
         specifier: '@zvenigora/ng-eval-rules',
-        names: ['RULES_PLACEHOLDER'],
+        names: ['compileRule'],
         line: 2,
       },
     ]);
@@ -439,10 +440,10 @@ describe('README import scanner (eval-rules copy)', () => {
   it('scans an import statement that spans two lines', () => {
     // The arm a first-line-only reader fails.
     const found = readmeImportsFromText(
-      "import { RULES_PLACEHOLDER,\n  OTHER } from '@zvenigora/ng-eval-rules';\n"
+      "import { compileRule,\n  OTHER } from '@zvenigora/ng-eval-rules';\n"
     );
     expect(found).toHaveLength(1);
-    expect(found[0].names).toEqual(['RULES_PLACEHOLDER', 'OTHER']);
+    expect(found[0].names).toEqual(['compileRule', 'OTHER']);
   });
 
   it('ignores imports from other packages', () => {
@@ -474,7 +475,7 @@ describe('every @zvenigora import resolves against its own specifier (F11, eval-
 
 /**
  * The exports `modules/eval-rules/README.md` names in no code span, each
- * with its reason (`docs/backlog.md` F10). None: the README names its one
+ * with its reason (`docs/backlog.md` F10). None: the README names every
  * export.
  */
 const UNDOCUMENTED: Readonly<Record<string, UndocumentedReason>> = {};

@@ -30,18 +30,19 @@ import {
   unresolvedImports,
   workspaceRoot,
 } from './export-list.spec';
+import { RULE_PROBLEM_CODES } from './lib/compile-rule';
 
 const SPECIFIER = '@zvenigora/ng-eval-rules';
 const README = 'modules/eval-rules/README.md';
 const MANIFEST = 'modules/eval-rules/package.json';
 
 describe('README symbols resolve against the @zvenigora/ng-eval-rules export list', () => {
-  it('scans a non-empty identifier set containing RULES_PLACEHOLDER', () => {
+  it('scans a non-empty identifier set containing compileRule', () => {
     // The floor (§ 1.5): a named symbol known to be there, not an expected
-    // count. The package's first function replaces it, and this case with it.
+    // count.
     const scanned = namesFor(readmeImports(README), SPECIFIER);
     expect(scanned.size).toBeGreaterThan(0);
-    expect([...scanned]).toContain('RULES_PLACEHOLDER');
+    expect([...scanned]).toContain('compileRule');
   });
 
   it('imports no identifier the package does not export', () => {
@@ -145,5 +146,34 @@ describe('README peer ranges equal the @zvenigora/ng-eval-rules manifest', () =>
     );
     const missingFromInstall = Object.keys(declared).filter((peer) => !installed.has(peer));
     expect({ mismatched, missingFromInstall }).toEqual({ mismatched: [], missingFromInstall: [] });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The problem codes (the Phase 12 plan, step 3; SR30)
+// ---------------------------------------------------------------------------
+
+/**
+ * The codes the README's `## Problem codes` table lists, each the first cell
+ * of a row, as a code span. Read from that section alone, so a code span
+ * elsewhere in the README is not a listed code.
+ */
+const documentedCodes = (markdown: string): string[] => {
+  const section = /^## Problem codes\r?\n([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(markdown);
+  if (!section) {
+    throw new Error(`${README} has no "## Problem codes" section`);
+  }
+  return [...section[1].matchAll(/^\| `([a-z-]+)` \|/gm)].map((row) => row[1]);
+};
+
+describe('README problem codes equal the codes compileRule can give', () => {
+  it('lists every code the source can give, and no other, once each', () => {
+    const listed = documentedCodes(fs.readFileSync(path.join(workspaceRoot, README), 'utf8'));
+    const source: readonly string[] = RULE_PROBLEM_CODES;
+    expect({
+      missingFromReadme: source.filter((code) => !listed.includes(code)),
+      notInSource: listed.filter((code) => !source.includes(code)),
+      listedTwice: listed.filter((code, index) => listed.indexOf(code) !== index),
+    }).toEqual({ missingFromReadme: [], notInSource: [], listedTwice: [] });
   });
 });

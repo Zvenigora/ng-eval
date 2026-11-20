@@ -1,6 +1,6 @@
 # Phase 12 Plan — `@zvenigora/ng-eval-rules` 0.1.0, pure rule evaluation (new module)
 
-**Status: Revision 6, the active plan: steps 1 and 2 are done and step 3 is next.** Revisions 1 to 4 and
+**Status: Revision 7, the active plan: steps 1 to 3 are done and step 4 is next.** Revisions 1 to 4 and
 the design sessions were committed ahead of step 1, at the maintainer's request. Revision 3 measured
 [§ 1.3](#13-mechanism-questions-measured)'s rows on the built 0.16.0 bundle, and Revision 4 added
 two, with eight scripts pinned outside the repository ([SR32](../standing-rules.md#sr32),
@@ -19,6 +19,53 @@ This phase ships **one release, 0.1.0**: a rule compiled once and evaluated to a
 engine, no events and no commit. The later slices of the design are Phases 13 to 16 in
 [`ROADMAP.md`](../../ROADMAP.md), each with a plan of its own when it starts. What they need from
 the shapes this phase publishes is [§ 3.8](#38-what-phases-13-to-16-need-from-010s-shapes).
+
+**Revision 7** is step 3's. It wrote § 5's two open shapes, and corrects § 3.4, § 5 and step 3's
+text where the code met something they did not say ([SR4](../standing-rules.md#sr4)):
+
+- **What `compileRule` throws for** is the caller's options, and two cases join an unknown option:
+  an option of the wrong type, and a key in an effect's declaration, which this release does not
+  define (P-1). Each is the caller's code, as an unknown option is, and the second would otherwise
+  be ignored, as `caseInsensitive` would.
+- **An effect's declaration is typed as an empty object**, `Record<string, never>`, not § 5's
+  `Record<string, {}>`. Lint refuses `{}`, measured: `@typescript-eslint/no-empty-object-type`,
+  which says it admits `0` and `""`. Phase 13's `key(args)` widens the type, which is additive.
+- **The name probes ask about an effect too**, with the same `<name>()` call: a recorder is bound
+  and called by its name, so `eval-core`'s call sandbox refuses an effect declared as `eval` as it
+  does a function. Each declaration is parsed once, as `<name>()`, and that one parse also reads
+  the name as the parser does (§ 3.4's "a name the parser does not read as one identifier").
+- **With statements on, a statement `eval-core` does not evaluate is a problem** (P-1), with
+  `eval-core`'s own message, from `findUnsupportedStatement`, as `eval-forms` refuses one: a
+  `while`, a `for … of`, a `return` in an arrow function's body. Evaluation would throw only when
+  its walk reached it.
+- **`error` in an `onError` item is read, never bound or assigned** (P-1), as `event` is: § 3.4
+  had it only "outside an `onError` item", and a pushed binding is not behind `set` (finding 7).
+- **A name declared twice** is a problem, whether as a function and an effect, as § 3.4 says, or
+  twice in one list (P-1).
+- **A label is a finite number**, a string or a boolean, and a pattern holds what JSON writes, less
+  `NaN` and the infinities, which no `===` matches (P-1).
+- **An optional call is not an effect item** (P-1): `setValue?.(1)` is refused, since an effect is
+  declared and is never absent.
+- **The parse count** of step 3's last criterion is the fields plus one parse per name probe: each
+  declared name, and each distinct calculation name. Each field's text is parsed once, which is
+  what the criterion is for; the probes are § 3.4's own design.
+- **Step 4's `CLAUDE.md` edit** qualifies `evaluate-rule.ts` by package, since step 4 adds a file
+  of that name beside `eval-forms`' (the step 2 follow-up's review).
+- **`eval-core`'s `src/public-api.spec.ts`**, one assertion. Its `SECURITY.md` member reader
+  reads the exported types of every entry `SPECIFIER_ENTRY` maps, this package's among them since
+  step 2, and its case "reads code the way the two cases above rely on" asserted that `message`
+  is not a member, as the witness that `Error`'s own members are left out. `RuleProblem` declares
+  `message` (§ 5), so the case went red in the gate, measured. No `Error` member is left that no
+  package declares: `name` is the rule types', `stack` `EvalResult`'s. The assertion is removed,
+  with a comment ([SR14](../standing-rules.md#sr14), approved at this step's gate), and the case
+  keeps `copyWithin`, `Array`'s, as the witness of the same filter: with the filter removed the
+  case is red. No case is added or removed, so `eval-core`'s count does not move, and a spec ships
+  in no package. As in step 2, the `step` skill's sentence that no step changes the three
+  libraries names the exception.
+- **Step 3's list** gains the documents that named it next, as step 2's did: `CLAUDE.md`,
+  `docs/README.md`, `ROADMAP.md`, `docs/backlog-in-flight.md` and `docs/release-history.md`; and
+  `.claude/agents/code-reviewer.md`, whose `eval-rules` list said `compileRule` throws only for an
+  option it does not define.
 
 **Revision 6** is step 2's. It measured finding 3 and finding 5, which § 1.2 now records, and
 corrects § 4 where the project's creation reached files step 2's list did not name
@@ -593,20 +640,23 @@ runs before any evaluation, so none of them stands in a write's path
 define (§ 8 q21). The message names the option, and for `caseInsensitive` says that this release
 compares every name as written. A sibling library's caller who passes the option out of habit
 would otherwise have it ignored, and a rule that reads `Order.Total` over `order.total` would
-give `undefined` with no error.
+give `undefined` with no error. It also throws for an option of the wrong type, and for a key in
+an effect's declaration, which this release does not define (Revision 7, P-1).
 
 - A structural error: a missing `id`, a section that is not an array, a field § 3.2 does not list,
   a `description` that is not a string, a name that is not an identifier.
 - An expression that does not parse, and an empty one.
 - With statements off, a field that is not one expression, and a statement anywhere below it
-  (finding 9, P-1).
+  (finding 9, P-1). With statements on, a statement `eval-core` does not evaluate, anywhere, with
+  its message (Revision 7, P-1).
 - An `await`, an async function and an `import(…)`, anywhere (finding 10).
 - **A `this`, anywhere** (finding 15, P-1).
 - **The reserved names**, each compared as written, since 0.1.0 has no `caseInsensitive`
   (§ 8 q3):
   - `calc`, in any position but the object of a non-computed member read (finding 12);
   - `labels` and `run`, in any position: nothing reads either until Phase 14 (P-1);
-  - `error`, outside an `onError` item;
+  - `error`, outside an `onError` item, and inside one as a binding or an assignment target
+    (Revision 7, P-1);
   - `event`, as a binding or an assignment target;
   - under `colonIdentifiers`, any of the five as the first segment of a colon-joined identifier,
     in any position: `calc:discount` is one identifier, an unknown fact, where `calc.discount`
@@ -892,7 +942,10 @@ no matching target silently, so the criterion counts projects in the gate's outp
 **Files**: `src/lib/rule.ts` (the types), `src/lib/compile-rule.ts`, `src/lib/pattern.ts`,
 `src/lib/define-rule.ts`, their specs, `src/public-api.ts`, the two barrel specs, `package.json`
 and the README's `## Install` (the `acorn-walk` peer), `CHANGELOG.md` (an `[Unreleased]` line,
-[SR11](../standing-rules.md#sr11)).
+[SR11](../standing-rules.md#sr11)). Added by Revision 7 ([SR4](../standing-rules.md#sr4)):
+`CLAUDE.md`, `docs/README.md`, `ROADMAP.md`, `docs/backlog-in-flight.md` and
+`docs/release-history.md`, which named this step next, `.claude/agents/code-reviewer.md`,
+`.claude/skills/step/SKILL.md`, and `modules/eval-core/src/public-api.spec.ts`, one assertion.
 
 Step 2's placeholder, `RULES_PLACEHOLDER`, goes with this step's first export: from the barrel,
 from the README's stub section and its fence, and from the barrel specs' cases that name it
@@ -968,8 +1021,39 @@ from the README's stub section and its fence, and from the barrel specs' cases t
   both compiles; an `onError` item reads `error` and no `calc.` name; a trigger with no `event`
   is a problem.
 - Each field is parsed once by `compileRule`: the count finding 24's mechanism reads equals the
-  number of fields, in a spec file of its own. Step 4 owns the other half, that evaluation adds
+  number of fields, in a spec file of its own, plus one per name probe, each declared name and
+  each distinct calculation name (Revision 7). Step 4 owns the other half, that evaluation adds
   none.
+- **Outcome** (2026-11-19, Revision 7). The barrel exports `compileRule`, `defineRule`, the
+  format's seven types, and `CompileRuleResult`, `CompiledRule`, `CompileRuleOptions` and
+  `RuleProblem`; `RULES_PLACEHOLDER` is gone from it, from the README and from the barrel specs.
+  A `CompileRuleResult` is told apart by `ok`, and a problem's `code` is one of 25, in kebab case,
+  which the README's `## Problem codes` lists and a `public-api.spec.ts` case compares with the
+  source's list in both directions. The compiled rule is a frozen handle holding its `id` alone,
+  over a step list that names no section (§ 8 q5). The checks that read a tree are one
+  `fullAncestor` walk of `acorn-walk`, now a peer at `^8.3.0`, and the name probes ask
+  `eval-core`. `compile-rule.spec.ts` holds 79 rejection rows, each asserting the whole problem
+  list, its code, path and message, and the nearest valid rule compiling, with a case that every
+  code is given by a row; the M5 forms, 28 of them; and the rows of every criterion above. The
+  probes, each applied alone and read case by case: 48 wrong implementations of
+  `compile-rule.ts`, `pattern.ts` and the README, each red, among them the early return, the
+  removed `this` check, the role read from `node.type`, the statement check removed, `await` left
+  to the parser, the probe skipped and the probe refusing every name (168 red), the reserved name
+  anywhere in the text, the first-segment rule on `Identifier` alone, a check by name set alone,
+  `calc?.x` not read as `calc.x`, the inherited pattern, one statements switch for every field,
+  one structural code, and each field parsed twice. One probe stayed green: a blank text was
+  refused by a check on the text and again by the empty program it parses to, so the first was
+  removed. Lint with the `acorn-walk` import and no peer was red, `@nx/dependency-checks`; with
+  § 5's `Record<string, {}>`, red, `@typescript-eslint/no-empty-object-type`. The gate's first run
+  was red in `eval-core`, one case, its `SECURITY.md` member reader reading `RuleProblem`'s
+  `message`; one assertion of it is removed (Revision 7), and with the reader's filter removed the
+  case is red. Revision 7's list is what the step corrected. No register entry opened or fixed: 25 live. The gate on the final
+  tree: `eval-core` 3533, `eval-signals` 462, `eval-forms` 391 and `demo` 23, unchanged, and
+  `eval-rules` 268: `compile-rule.spec.ts` 219, `pattern.spec.ts` 9, the counting spec 2,
+  `define-rule.spec.ts` 2, and the barrel specs 36, of which 32 are `export-list.spec.ts`' 16
+  counted twice. doc-links 438 files, 3285 links, 0 dangling; release-tags 55 rows, 65 tags, 0 failing. The runs are pinned
+  in `ng-eval-12.3-step3.zip`, whose SHA-256 is in this step's commit body
+  ([SR47](../standing-rules.md#sr47)). Ships in `eval-rules` 0.1.0.
 
 ### Step 4 — Evaluation
 
@@ -977,7 +1061,8 @@ from the README's stub section and its fence, and from the barrel specs' cases t
 specs, the barrel and its specs, `CHANGELOG.md`; and `CLAUDE.md`, whose paragraph on the
 depth-mark unwind names the guards of "both downstream libraries", `eval-signal.ts` and
 `evaluate-rule.ts`, and gains this package's (found by step 2's review sweep,
-[SR4](../standing-rules.md#sr4)).
+[SR4](../standing-rules.md#sr4)). Since this step adds an `evaluate-rule.ts` of its own, the
+paragraph names each file with its package, `eval-forms`' and `eval-rules`' (Revision 7).
 
 `RuleResult` has no `trace` in this step; step 5 adds it, and nothing is published between them.
 
@@ -1225,7 +1310,8 @@ and what `compileRule` built is not a public field of it (§ 3.8).
 Shapes § 2 has fixed:
 
 - `CompileRuleOptions` holds `statements` and `colonIdentifiers`, both off by default,
-  `functions: string[]` and `effects: Record<string, {}>`. Any other key throws.
+  `functions: string[]` and `effects: Record<string, Record<string, never>>`, an empty object per
+  effect (Revision 7). Any other key throws.
 - `compileRule` returns a `CompileRuleResult`: the compiled rule and no problem, or no rule and
   at least one problem. It is a value a consumer reads and narrows.
 - A `RuleProblem` is `{ code, path, message }`, its `code` from a list documented as open.
@@ -1237,7 +1323,11 @@ Shapes § 2 has fixed:
 
 Left to step 3, which writes the types: the field that tells the two forms of a
 `CompileRuleResult` apart, and the spelling of each `code`. Neither is a decision § 8 holds; the
-step's gate shows both before they are exported.
+step's gate shows both before they are exported. Step 3 wrote them: `ok`, `true` with the
+`rule` and an empty `problems`, `false` with no `rule` and at least one problem; and 25 codes in
+kebab case, `RuleProblem.code` typed `string` since the list is open, each listed in the README's
+`## Problem codes` and given by a row of `compile-rule.spec.ts`. `compileRule` takes the rule as
+`unknown`, since it checks every field at run time, and `defineRule` takes and returns a `Rule`.
 
 ## 6. Verification gates
 
