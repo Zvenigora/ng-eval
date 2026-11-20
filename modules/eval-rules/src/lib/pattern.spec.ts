@@ -1,4 +1,6 @@
-import { MAX_PATTERN_DEPTH, MAX_PATTERN_VALUES, invalidPatternValues, matchesPattern } from './pattern';
+import { MAX_PATTERN_DEPTH, MAX_PATTERN_VALUES, checkPattern, matchesPattern } from './pattern';
+
+const problemsIn = (pattern: unknown, path: string) => checkPattern(pattern, path).problems;
 
 /** `levels` arrays, each holding the next, the innermost holding 1. */
 const nested = (levels: number): unknown => JSON.parse('['.repeat(levels) + '1' + ']'.repeat(levels));
@@ -49,14 +51,14 @@ describe('matchesPattern', () => {
   });
 });
 
-describe('invalidPatternValues', () => {
+describe('checkPattern', () => {
   it('accepts what JSON writes', () => {
-    expect(invalidPatternValues({ a: [1, 'b', true, null, { c: [] }] }, 'match')).toEqual([]);
+    expect(problemsIn({ a: [1, 'b', true, null, { c: [] }] }, 'match')).toEqual([]);
   });
 
   it('names every value that is not a pattern', () => {
-    expect(invalidPatternValues({ a: [1, Number.NaN] }, 'match')).toEqual([{ path: 'match.a[1]', reason: 'value' }]);
-    expect(invalidPatternValues({ a: { b: () => 1 }, c: new Date(0), d: Infinity }, 'match')).toEqual([
+    expect(problemsIn({ a: [1, Number.NaN] }, 'match')).toEqual([{ path: 'match.a[1]', reason: 'value' }]);
+    expect(problemsIn({ a: { b: () => 1 }, c: new Date(0), d: Infinity }, 'match')).toEqual([
       { path: 'match.a.b', reason: 'value' },
       { path: 'match.c', reason: 'value' },
       { path: 'match.d', reason: 'value' },
@@ -68,24 +70,24 @@ describe('invalidPatternValues', () => {
     cyclic['self'] = cyclic;
     const list: unknown[] = [];
     list.push({ back: list });
-    expect(invalidPatternValues({ x: cyclic, y: list }, 'match')).toEqual([
+    expect(problemsIn({ x: cyclic, y: list }, 'match')).toEqual([
       { path: 'match.x.self', reason: 'cycle' },
       { path: 'match.y[0].back', reason: 'cycle' },
     ]);
     const shared = { tier: 'gold' };
-    expect(invalidPatternValues({ a: shared, b: [shared] }, 'match')).toEqual([]);
+    expect(problemsIn({ a: shared, b: [shared] }, 'match')).toEqual([]);
   });
 
   it('reads an array by index, so a hole is a value, undefined, and named', () => {
     const holed: unknown[] = [1];
     holed[2] = 2;
-    expect(invalidPatternValues({ a: holed }, 'match')).toEqual([{ path: 'match.a[1]', reason: 'value' }]);
+    expect(problemsIn({ a: holed }, 'match')).toEqual([{ path: 'match.a[1]', reason: 'value' }]);
   });
 
   it(`nests at most ${MAX_PATTERN_DEPTH} arrays and objects, the pattern itself the first`, () => {
     expect(MAX_PATTERN_DEPTH).toBe(64);
-    expect(invalidPatternValues({ a: nested(63) }, 'match')).toEqual([]);
-    expect(invalidPatternValues({ a: nested(64) }, 'match')).toEqual([
+    expect(problemsIn({ a: nested(63) }, 'match')).toEqual([]);
+    expect(problemsIn({ a: nested(64) }, 'match')).toEqual([
       { path: `match.a${'[0]'.repeat(63)}`, reason: 'depth' },
     ]);
     // 65 objects, each holding the next: the 65th is one too deep.
@@ -93,23 +95,51 @@ describe('invalidPatternValues', () => {
     for (let level = 0; level < 65; level++) {
       objects = { a: objects };
     }
-    expect(invalidPatternValues(objects, 'match')).toEqual([{ path: `match${'.a'.repeat(64)}`, reason: 'depth' }]);
+    expect(problemsIn(objects, 'match')).toEqual([{ path: `match${'.a'.repeat(64)}`, reason: 'depth' }]);
   });
 
   it('names a pattern JSON nests 20,000 deep once, at its depth, and does not run out of stack', () => {
-    expect(invalidPatternValues({ a: nested(20_000) }, 'match')).toEqual([
+    expect(problemsIn({ a: nested(20_000) }, 'match')).toEqual([
       { path: `match.a${'[0]'.repeat(63)}`, reason: 'depth' },
     ]);
   });
 
   it(`holds at most ${MAX_PATTERN_VALUES.toLocaleString('en-US')} values, counted on every path, and names the pattern alone`, () => {
     expect(MAX_PATTERN_VALUES).toBe(100_000);
-    // The object, the array and its elements: 100,000 values, then one more.
-    // `b`, invalid, comes first, so the walk has found it when the count stops it.
-    expect(invalidPatternValues({ a: new Array(99_998).fill(1) }, 'match')).toEqual([]);
-    expect(invalidPatternValues({ b: Number.NaN, a: new Array(99_999).fill(1) }, 'match')).toEqual([
+    // The object, the array and its elements: 100,000 values. With `b` one more,
+    // and `b`, invalid, comes first, so the walk has found it when the count stops it.
+    expect(problemsIn({ a: new Array(99_998).fill(1) }, 'match')).toEqual([]);
+    expect(problemsIn({ b: Number.NaN, a: new Array(99_998).fill(1) }, 'match')).toEqual([
       { path: 'match', reason: 'size' },
     ]);
+  });
+
+  it('reports the first value past the depth bound alone, and every other problem', () => {
+    expect(problemsIn({ a: nested(64), b: Number.NaN, c: nested(64) }, 'match')).toEqual([
+      { path: `match.a${'[0]'.repeat(63)}`, reason: 'depth' },
+      { path: 'match.b', reason: 'value' },
+    ]);
+  });
+
+  it('reads each value once, and copies what it read', () => {
+    let reads = 0;
+    const match = {
+      get tier(): unknown {
+        reads += 1;
+        return reads === 1 ? 'gold' : Number.NaN;
+      },
+    };
+    const checked = checkPattern(match, 'match');
+    expect(checked.problems).toEqual([]);
+    expect(reads).toBe(1);
+    expect(checked.copy).toEqual({ tier: 'gold' });
+    expect(Object.isFrozen(checked.copy)).toBe(true);
+    expect(Object.getPrototypeOf(checked.copy)).toBeNull();
+  });
+
+  it('gives no copy for a pattern with a problem', () => {
+    expect(checkPattern({ a: Number.NaN }, 'match').copy).toBeUndefined();
+    expect(checkPattern({ a: new Array(100_000).fill(1) }, 'match').copy).toBeUndefined();
   });
 
   it('stops a shared value counted on every path at the bound, a diamond 40 levels deep among them', () => {
@@ -117,6 +147,6 @@ describe('invalidPatternValues', () => {
     for (let level = 0; level < 40; level++) {
       diamond = { l: diamond, r: diamond };
     }
-    expect(invalidPatternValues({ d: diamond }, 'match')).toEqual([{ path: 'match', reason: 'size' }]);
+    expect(problemsIn({ d: diamond }, 'match')).toEqual([{ path: 'match', reason: 'size' }]);
   });
 });

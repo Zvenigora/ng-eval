@@ -976,6 +976,7 @@ describe('the never-assigned check', () => {
     ['({ a: calc.x } = o)', `${NOT_A_READ} the object of a written member: a calculation assigns calc.<name>, and no expression does.`],
     ['({ ...calc.x } = o)', `${NOT_A_READ} the object of a written member: a calculation assigns calc.<name>, and no expression does.`],
     ['({ a, ...calc.x } = o)', `${NOT_A_READ} the object of a written member: a calculation assigns calc.<name>, and no expression does.`],
+    ['({ [k]: calc.x } = o)', `${NOT_A_READ} the object of a written member: a calculation assigns calc.<name>, and no expression does.`],
   ])('%s', (text, message) => {
     expect(problemsOf(calc(text))).toEqual(message === null ? [] : [p('reserved-name', Y, message)]);
   });
@@ -1183,6 +1184,18 @@ describe('the step 3 follow-up (the review of d42d2cf)', () => {
         'A pattern holds at most 100,000 values, counting the match itself and a value once on each path to it: this one holds more.'
       ),
     ]);
+  });
+
+  it('reports a JSON match with 2,000 values past the depth bound, under keys 300 long, once', () => {
+    const key = (i: number) => JSON.stringify(String(i).padStart(300, 'k'));
+    let text = `{${Array.from({ length: 2_000 }, (_, i) => `"c${i}":[1]`).join(',')}}`;
+    for (let i = 62; i >= 0; i--) {
+      text = `{${key(i)}:${text}}`;
+    }
+    const problems = problemsOf({ id: 'r', filter: { match: JSON.parse(text) as unknown } });
+    expect(problems).toHaveLength(1);
+    expect(problems[0]?.code).toBe('invalid-field');
+    expect(problems[0]?.path).toMatch(/\.c0$/);
   });
 
   it('copies a value two paths share once, and shares it in the compiled pattern', () => {

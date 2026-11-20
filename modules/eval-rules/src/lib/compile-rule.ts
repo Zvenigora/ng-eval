@@ -14,7 +14,7 @@ import {
   type InvalidPatternValue,
   MAX_PATTERN_DEPTH,
   MAX_PATTERN_VALUES,
-  invalidPatternValues,
+  checkPattern,
   isPlainObject,
 } from './pattern';
 
@@ -210,7 +210,7 @@ const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
  */
 const RESERVED = new Set(['calc', 'event', 'error', 'labels', 'run']);
 
-/** A pattern's problem, by the reason `invalidPatternValues` gives. */
+/** A pattern's problem, by the reason `checkPattern` gives. */
 const PATTERN_MESSAGES: Readonly<Record<InvalidPatternValue['reason'], string>> = {
   value: 'A pattern holds null, strings, finite numbers, booleans, arrays and objects.',
   cycle: 'A pattern holds no cycle: this value is an object or array that contains it.',
@@ -580,14 +580,15 @@ class RuleCompiler {
       this.problem('invalid-field', path, 'A match is an object.');
       return undefined;
     }
-    const invalid = invalidPatternValues(pattern, path);
-    for (const value of invalid) {
-      this.problem('invalid-field', value.path, PATTERN_MESSAGES[value.reason]);
+    const checked = checkPattern(pattern, path);
+    // A pattern's paths are its own and each is met once, so its problems
+    // skip the duplicate check: a path past the depth bound repeats every key
+    // above it, and a set of such keys, long and of one length, hashes
+    // alike in V8 and made compiling quadratic.
+    for (const value of checked.problems) {
+      this.problems.push({ code: 'invalid-field', path: value.path, message: PATTERN_MESSAGES[value.reason] });
     }
-    if (invalid.length > 0) {
-      return undefined;
-    }
-    return copyPattern(pattern) as Readonly<Record<string, unknown>>;
+    return checked.copy as Readonly<Record<string, unknown>> | undefined;
   }
 
   private decision(
@@ -1419,31 +1420,3 @@ const isLabel = (value: unknown): value is RuleLabel =>
   typeof value === 'boolean' ||
   (typeof value === 'number' && Number.isFinite(value));
 
-/**
- * A deep copy of a checked pattern, frozen, with null-prototype objects. A
- * value shared by two paths is copied once and shared in the copy, so the
- * copy is in proportion to the values the pattern holds, not to its paths.
- */
-const copyPattern = (pattern: unknown, copies = new Map<object, unknown>()): unknown => {
-  if (typeof pattern !== 'object' || pattern === null) {
-    return pattern;
-  }
-  const done = copies.get(pattern);
-  if (done !== undefined) {
-    return done;
-  }
-  if (Array.isArray(pattern)) {
-    const copy: unknown[] = [];
-    copies.set(pattern, copy);
-    for (let index = 0; index < pattern.length; index++) {
-      copy.push(copyPattern(pattern[index], copies));
-    }
-    return Object.freeze(copy);
-  }
-  const copy: Record<string, unknown> = Object.create(null);
-  copies.set(pattern, copy);
-  for (const key of Object.keys(pattern)) {
-    copy[key] = copyPattern((pattern as Record<string, unknown>)[key], copies);
-  }
-  return Object.freeze(copy);
-};

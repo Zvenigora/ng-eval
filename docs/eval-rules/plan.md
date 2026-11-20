@@ -136,6 +136,24 @@ and that a getter may throw. Fixed with it, each with a row or a probe:
 Its note N-2 is step 4's: a text the checks pass still runs `eval-core`'s walk, which has no stack
 guard of its own, and step 4 measures where it runs out.
 
+**The third review**, of 7e10e5a (the follow-up, committed as its stop rule allows), found no
+Critical and compile time quadratic in a pattern's problems: a depth problem's path repeats every
+key above it, the duplicate check keyed each problem on its path, and V8 hashes a string longer
+than 16,383 characters by its length, so such keys of one length collide. A JSON `match` of 0.09 MB
+took 4 s in this sandbox. **The second follow-up** fixes it and the
+notes with it, each with a row or a probe, measured before and after (its pack's `quad-*.log`):
+
+- **One depth problem per pattern**, at the first value past the bound; the walk does not enter
+  the others. A pattern's other problems are all reported, and skip the duplicate check, since a
+  pattern's paths are its own and each is met once.
+- **A pattern is checked and copied in one reading** (`checkPattern`): a getter in a rule built in
+  code is read once, and the rule compiled holds what was checked. The README says so, and that a
+  proxy trap, like a getter, may throw.
+- **`({ [k]: calc.x } = o)`** is a row: without the computed key's own test, `isWritten` took a
+  computed property as making the whole pattern read.
+- **The size row holds 100,001 values**, one past the bound; **the README's depth wording** says
+  the `match` is the first level.
+
 **Revision 6** is step 2's. It measured finding 3 and finding 5, which § 1.2 now records, and
 corrects § 4 where the project's creation reached files step 2's list did not name
 ([SR4](../standing-rules.md#sr4)):
@@ -717,7 +735,7 @@ an effect's declaration, which this release does not define (Revision 7, P-1).
 - An expression that does not parse, an empty one, and one nested too deeply for the checks'
   call stack, which is a `parse-error` as the parser's own overflow is (the step 3 follow-up).
 - A `match` holding a value JSON cannot write, or a cycle; one that nests more than 64 arrays and
-  objects, or holds more than 100,000 values, counting itself and a value once on each path to it (the
+  objects, itself the first, or holds more than 100,000 values, counting itself and a value once on each path to it (the
   step 3 follow-up, P-1).
 - With statements off, a field that is not one expression, and a statement anywhere below it
   (finding 9, P-1). With statements on, a statement `eval-core` does not evaluate, anywhere, with
@@ -1128,10 +1146,13 @@ from the README's stub section and its fence, and from the barrel specs' cases t
   counted twice. doc-links 438 files, 3285 links, 0 dangling; release-tags 55 rows, 65 tags, 0 failing. The runs are pinned
   in `ng-eval-12.3-step3.zip`, whose SHA-256 is in this step's commit body
   ([SR47](../standing-rules.md#sr47)). Ships in `eval-rules` 0.1.0. The follow-up, the review of
-  d42d2cf and of its own first two pins, is Revision 7's last three paragraphs: 31 cases more,
+  d42d2cf and of its own first two pins, is Revision 7's three paragraphs from "The step 3
+  follow-up" to "The second review": 31 cases more,
   `eval-rules` 299, and eighteen probes, each red, pinned in `ng-eval-12.3d-followup.zip`, whose
   SHA-256 is in its commit body. Its first two pins, `ng-eval-12.3b-followup.zip` and
-  `ng-eval-12.3c-followup.zip`, stopped at their reviews.
+  `ng-eval-12.3c-followup.zip`, stopped at their reviews. The second follow-up, the review of
+  7e10e5a, is Revision 7's paragraph "The third review": 5 cases more, `eval-rules` 304, pinned in
+  `ng-eval-12.3e-followup2.zip`, whose SHA-256 is in its commit body.
 
 ### Step 4 — Evaluation
 

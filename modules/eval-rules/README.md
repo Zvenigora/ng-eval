@@ -27,12 +27,13 @@ import { compileRule, defineRule } from '@zvenigora/ng-eval-rules';
 
 For a rule JSON can write, `compileRule` does not throw for the rule's problems: it returns every
 problem it finds, each with a `code`, a `path` such as `decisions[0].cases[1].if`, and a `message`.
-A rule built in code runs its own getters as `compileRule` reads it, and one may throw. The list of codes is open:
-a later release may add one, so a host handles a code it does not know.
+A rule built in code runs its own getters and proxy traps as `compileRule` reads it, and one may
+throw. A `match` is checked and copied in one reading, so the rule compiled holds what was checked.
+The list of codes is open: a later release may add one, so a host handles a code it does not know.
 
 | Code | The problem |
 | :--- | :--- |
-| `invalid-field` | A field holds a value of the wrong kind; a `match` nests more than 64 arrays and objects, or holds more than 100,000 values, counting itself and a value once on each path to it |
+| `invalid-field` | A field holds a value of the wrong kind; a `match` nests more than 64 arrays and objects, itself the first, or holds more than 100,000 values, counting itself and a value once on each path to it |
 | `missing-field` | A required field is absent |
 | `unknown-field` | A field the format does not list |
 | `invalid-name` | A calculation's or a decision's name is not an identifier |
