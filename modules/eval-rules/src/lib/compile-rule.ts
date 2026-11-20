@@ -10,7 +10,13 @@ import {
   type stateCallback,
 } from '@zvenigora/ng-eval-core';
 import { full, fullAncestor } from 'acorn-walk';
-import { invalidPatternPath, isPlainObject } from './pattern';
+import {
+  type InvalidPatternValue,
+  MAX_PATTERN_DEPTH,
+  MAX_PATTERN_VALUES,
+  invalidPatternValues,
+  isPlainObject,
+} from './pattern';
 
 /**
  * `compileRule`: the Phase 12 plan's § 3.4. It checks a rule, parses each of
@@ -204,6 +210,18 @@ const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
  */
 const RESERVED = new Set(['calc', 'event', 'error', 'labels', 'run']);
 
+/** A pattern's problem, by the reason `invalidPatternValues` gives. */
+const PATTERN_MESSAGES: Readonly<Record<InvalidPatternValue['reason'], string>> = {
+  value: 'A pattern holds null, strings, finite numbers, booleans, arrays and objects.',
+  cycle: 'A pattern holds no cycle: this value is an object or array that contains it.',
+  depth:
+    `A pattern nests at most ${MAX_PATTERN_DEPTH} arrays and objects, the match itself the first: ` +
+    `this one is deeper.`,
+  size:
+    `A pattern holds at most ${MAX_PATTERN_VALUES.toLocaleString('en-US')} values, counting the match ` +
+    `itself and a value once on each path to it: this one holds more.`,
+};
+
 // ---------------------------------------------------------------------------
 // compileRule
 // ---------------------------------------------------------------------------
@@ -301,7 +319,7 @@ interface Site {
   readonly assigned: ReadonlySet<string>;
 }
 
-type Role = 'binding' | 'assignment target' | 'value';
+type Role = 'binding' | 'assignment target' | 'deleted' | 'value';
 
 class RuleCompiler {
   readonly problems: RuleProblem[] = [];
@@ -311,6 +329,11 @@ class RuleCompiler {
   private readonly effects: ReadonlySet<string>;
   /** Every calculation name some calculation assigns. */
   private allAssigned: ReadonlySet<string> = new Set();
+  /**
+   * The names of decisions that have a problem of their own, which an output
+   * naming one does not repeat as `unknown-decision`.
+   */
+  private readonly rejectedDecisions = new Set<string>();
 
   constructor(private readonly settings: Settings) {
     this.parserOptions = {
@@ -410,6 +433,10 @@ class RuleCompiler {
     const labelsByDecision = new Map<string, readonly RuleLabel[]>();
     decisions.forEach((entry, index) => {
       const step = this.decision(entry, `decisions[${index}]`, statements, strict, labelsByDecision);
+      const name = isPlainObject(entry) ? own(entry, 'name') : undefined;
+      if (step === undefined && typeof name === 'string') {
+        this.rejectedDecisions.add(name);
+      }
       if (step) {
         steps.push(step);
       }
@@ -553,13 +580,11 @@ class RuleCompiler {
       this.problem('invalid-field', path, 'A match is an object.');
       return undefined;
     }
-    const invalid = invalidPatternPath(pattern, path);
-    if (invalid !== undefined) {
-      this.problem(
-        'invalid-field',
-        invalid,
-        'A pattern holds null, strings, finite numbers, booleans, arrays and objects.'
-      );
+    const invalid = invalidPatternValues(pattern, path);
+    for (const value of invalid) {
+      this.problem('invalid-field', value.path, PATTERN_MESSAGES[value.reason]);
+    }
+    if (invalid.length > 0) {
       return undefined;
     }
     return copyPattern(pattern) as Readonly<Record<string, unknown>>;
@@ -693,7 +718,9 @@ class RuleCompiler {
       } else if (typeof named !== 'string') {
         this.problem('invalid-field', `${path}.on.decision`, 'on.decision is a string.');
       } else if (known === undefined) {
-        this.problem('unknown-decision', `${path}.on.decision`, `No decision is named "${named}".`);
+        if (!this.rejectedDecisions.has(named)) {
+          this.problem('unknown-decision', `${path}.on.decision`, `No decision is named "${named}".`);
+        }
       } else {
         decision = named;
       }
@@ -880,6 +907,10 @@ class RuleCompiler {
     if (program === undefined) {
       return undefined;
     }
+    return this.withinStack(site.path, () => this.checkExpression(program, text as string, site));
+  }
+
+  private checkExpression(program: ProgramNode, text: string, site: Site): CompiledExpression | undefined {
     const before = this.problems.length;
     if (site.statements) {
       const unsupported = findUnsupportedStatement(program);
@@ -907,7 +938,7 @@ class RuleCompiler {
     if (this.problems.length > before) {
       return undefined;
     }
-    return { path: site.path, text: text as string, run: compile(program) };
+    return { path: site.path, text, run: compile(program) };
   }
 
   /** An effect item: one call of a declared effect, statements on or off (§ 8 q20). */
@@ -922,6 +953,11 @@ class RuleCompiler {
     if (program === undefined) {
       return undefined;
     }
+    return this.withinStack(path, () => this.checkItem(program, text as string, site));
+  }
+
+  private checkItem(program: ProgramNode, text: string, site: Site): CompiledExpression | undefined {
+    const path = site.path;
     const before = this.problems.length;
     const expression = extractExpression(program);
     const shape = itemShape(expression, this.effects);
@@ -942,7 +978,34 @@ class RuleCompiler {
     if (this.problems.length > before) {
       return undefined;
     }
-    return { path, text: text as string, run: compile(program) };
+    return { path, text, run: compile(program) };
+  }
+
+  /**
+   * A field's checks, run past its parse, or `undefined` with a problem when
+   * they run out of stack. The parser reports its own overflow as a parse
+   * error, and so does this, by the same test of the message as acorn's
+   * `catchStackOverflow`: a text the parser reads within the stack, a member
+   * chain or a sum 2,000 long among them, can still run the checks' walks out
+   * of it. Any other error is thrown, since it is this library's.
+   */
+  private withinStack(
+    path: string,
+    check: () => CompiledExpression | undefined
+  ): CompiledExpression | undefined {
+    try {
+      return check();
+    } catch (error) {
+      if (!isStackOverflow(error)) {
+        throw error;
+      }
+      this.problem(
+        'parse-error',
+        path,
+        'It is nested too deeply to check: the call stack ran out.'
+      );
+      return undefined;
+    }
   }
 
   /** The text parsed once, or `undefined` with the problem recorded. */
@@ -1066,11 +1129,14 @@ class RuleCompiler {
     itemReported: boolean
   ): void {
     const name = node.name;
+    const parent = ancestors[ancestors.length - 2];
     const role: Role = pattern
       ? patternRole(ancestors)
-      : isWritten(node, ancestors, ancestors.length - 1)
-        ? 'assignment target'
-        : 'value';
+      : parent?.type === 'UnaryExpression' && parent.operator === 'delete'
+        ? 'deleted'
+        : isWritten(node, ancestors, ancestors.length - 1)
+          ? 'assignment target'
+          : 'value';
 
     if (this.settings.colonIdentifiers && name.includes(':')) {
       const first = name.slice(0, name.indexOf(':'));
@@ -1102,12 +1168,12 @@ class RuleCompiler {
         if (!site.onError) {
           this.problem('reserved-name', site.path, 'error is a reserved name, read only in an onError item.');
         } else if (role !== 'value') {
-          this.problem('reserved-name', site.path, `error is read, never bound or assigned; here it is ${roleText(role)}.`);
+          this.problem('reserved-name', site.path, `error is read, never bound, assigned or deleted; here it is ${roleText(role)}.`);
         }
         return;
       case 'event':
         if (role !== 'value') {
-          this.problem('reserved-name', site.path, `event is read, never bound or assigned; here it is ${roleText(role)}.`);
+          this.problem('reserved-name', site.path, `event is read, never bound, assigned or deleted; here it is ${roleText(role)}.`);
         }
         return;
       default:
@@ -1235,6 +1301,9 @@ const isWritten = (node: AnyNode, ancestors: readonly AnyNode[], index: number):
     return false;
   }
   switch (parent.type) {
+    // `delete calc?.x`: the chain stands between the member and the delete.
+    case 'ChainExpression':
+      return isWritten(parent, ancestors, index - 1);
     case 'AssignmentExpression':
       return parent.left === node;
     case 'UpdateExpression':
@@ -1247,10 +1316,14 @@ const isWritten = (node: AnyNode, ancestors: readonly AnyNode[], index: number):
     case 'ArrayPattern':
     case 'RestElement':
       return true;
-    // `acorn-walk` visits an object pattern's property value with no visit of
-    // the `Property` between them, so the pattern is the parent.
+    // `acorn-walk` visits an object pattern's property value, a computed key
+    // and a rest element's argument with no visit of the `Property` or the
+    // `RestElement` between, so the pattern is the parent of all three. A
+    // computed key is read; the other two are written.
     case 'ObjectPattern':
-      return true;
+      return !parent.properties.some(
+        (property) => property.type === 'Property' && property.computed && property.key === node
+      );
     case 'AssignmentPattern':
       return parent.left === node;
     default:
@@ -1289,7 +1362,13 @@ const patternRole = (ancestors: readonly AnyNode[]): Role => {
 };
 
 const roleText = (role: Role): string =>
-  role === 'binding' ? 'bound' : role === 'assignment target' ? 'assigned' : 'read as a value';
+  role === 'binding'
+    ? 'bound'
+    : role === 'assignment target'
+      ? 'assigned'
+      : role === 'deleted'
+        ? 'deleted'
+        : 'read as a value';
 
 const labelMessage = (label: string): string =>
   `It parses as a statement labelled ${label}, which never evaluates. A colon-joined name needs ` +
@@ -1330,22 +1409,41 @@ const join = (path: string, key: string): string => (path === '' ? key : `${path
 const describe = (value: unknown): string =>
   typeof value === 'string' ? JSON.stringify(value) : `a ${value === null ? 'null' : typeof value}`;
 
+/** A stack overflow, by the test acorn's `catchStackOverflow` applies to the message. */
+const isStackOverflow = (error: unknown): boolean =>
+  error instanceof Error &&
+  (/\bstack\b.*\b(exceeded|overflow)\b/i.test(error.message) || /\btoo much recursion\b/i.test(error.message));
+
 const isLabel = (value: unknown): value is RuleLabel =>
   typeof value === 'string' ||
   typeof value === 'boolean' ||
   (typeof value === 'number' && Number.isFinite(value));
 
-/** A deep copy of a checked pattern, frozen, with null-prototype objects. */
-const copyPattern = (pattern: unknown): unknown => {
-  if (Array.isArray(pattern)) {
-    return Object.freeze(pattern.map(copyPattern));
+/**
+ * A deep copy of a checked pattern, frozen, with null-prototype objects. A
+ * value shared by two paths is copied once and shared in the copy, so the
+ * copy is in proportion to the values the pattern holds, not to its paths.
+ */
+const copyPattern = (pattern: unknown, copies = new Map<object, unknown>()): unknown => {
+  if (typeof pattern !== 'object' || pattern === null) {
+    return pattern;
   }
-  if (typeof pattern === 'object' && pattern !== null) {
-    const copy: Record<string, unknown> = Object.create(null);
-    for (const key of Object.keys(pattern)) {
-      copy[key] = copyPattern((pattern as Record<string, unknown>)[key]);
+  const done = copies.get(pattern);
+  if (done !== undefined) {
+    return done;
+  }
+  if (Array.isArray(pattern)) {
+    const copy: unknown[] = [];
+    copies.set(pattern, copy);
+    for (let index = 0; index < pattern.length; index++) {
+      copy.push(copyPattern(pattern[index], copies));
     }
     return Object.freeze(copy);
   }
-  return pattern;
+  const copy: Record<string, unknown> = Object.create(null);
+  copies.set(pattern, copy);
+  for (const key of Object.keys(pattern)) {
+    copy[key] = copyPattern((pattern as Record<string, unknown>)[key], copies);
+  }
+  return Object.freeze(copy);
 };

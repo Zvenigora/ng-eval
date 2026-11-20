@@ -445,20 +445,26 @@ const REJECTIONS: readonly Rejection[] = [
     title: 'error bound in an onError item',
     rule: { id: 'r', onError: ['setValue("e", (error => 1)(2))'] },
     options: DECLARED,
-    problem: p('reserved-name', 'onError[0]', 'error is read, never bound or assigned; here it is bound.'),
+    problem: p('reserved-name', 'onError[0]', 'error is read, never bound, assigned or deleted; here it is bound.'),
     valid: { id: 'r', onError: ['setValue("e", (e => 1)(2))'] },
   },
   {
     title: 'event as an assignment target',
     rule: calc('event = 1'),
-    problem: p('reserved-name', Y, 'event is read, never bound or assigned; here it is assigned.'),
+    problem: p('reserved-name', Y, 'event is read, never bound, assigned or deleted; here it is assigned.'),
     valid: calc('event == 1'),
   },
   {
     title: 'event bound',
     rule: calc('(event => 1)(2)'),
-    problem: p('reserved-name', Y, 'event is read, never bound or assigned; here it is bound.'),
+    problem: p('reserved-name', Y, 'event is read, never bound, assigned or deleted; here it is bound.'),
     valid: calc('(e => 1)(event)'),
+  },
+  {
+    title: 'event deleted',
+    rule: calc('delete event'),
+    problem: p('reserved-name', Y, 'event is read, never bound, assigned or deleted; here it is deleted.'),
+    valid: calc('event === undefined'),
   },
 
   // --- A reserved first segment, under colonIdentifiers (§ 8 q16) -----------
@@ -533,6 +539,20 @@ const REJECTIONS: readonly Rejection[] = [
     options: DECLARED,
     problem: p('declared-name', 'onInit[0]', 'setVisible is a declared effect, and here it is assigned.'),
     valid: { id: 'r', onInit: ['setValue("a", 1)'] },
+  },
+  {
+    title: 'a declared function deleted',
+    rule: calc('delete twice'),
+    options: DECLARED,
+    problem: p('declared-name', Y, 'twice is a declared function, and here it is deleted.'),
+    valid: calc('twice(1)'),
+  },
+  {
+    title: 'a declared effect deleted',
+    rule: calc('delete setVisible'),
+    options: DECLARED,
+    problem: p('declared-name', Y, 'setVisible is a declared effect, and here it is deleted.'),
+    valid: calc('twice(1)'),
   },
 
   // --- Effect items (§ 8 q20, finding 14) ------------------------------------
@@ -949,8 +969,13 @@ describe('the never-assigned check', () => {
     ['calc.x += 1', `${NOT_A_READ} the object of a written member: a calculation assigns calc.<name>, and no expression does.`],
     ['calc.x++', `${NOT_A_READ} the object of a written member: a calculation assigns calc.<name>, and no expression does.`],
     ['delete calc.x', `${NOT_A_READ} the object of a written member: a calculation assigns calc.<name>, and no expression does.`],
+    ['delete calc?.x', `${NOT_A_READ} the object of a written member: a calculation assigns calc.<name>, and no expression does.`],
+    ['delete calc', `${NOT_A_READ} deleted.`],
+    ['(({ [calc.x]: v }) => v)(o)', null],
     ['[calc.x] = [1]', `${NOT_A_READ} the object of a written member: a calculation assigns calc.<name>, and no expression does.`],
     ['({ a: calc.x } = o)', `${NOT_A_READ} the object of a written member: a calculation assigns calc.<name>, and no expression does.`],
+    ['({ ...calc.x } = o)', `${NOT_A_READ} the object of a written member: a calculation assigns calc.<name>, and no expression does.`],
+    ['({ a, ...calc.x } = o)', `${NOT_A_READ} the object of a written member: a calculation assigns calc.<name>, and no expression does.`],
   ])('%s', (text, message) => {
     expect(problemsOf(calc(text))).toEqual(message === null ? [] : [p('reserved-name', Y, message)]);
   });
@@ -1097,5 +1122,133 @@ describe('outputs, triggers and onError', () => {
         { ...DECLARED, colonIdentifiers: true }
       )
     ).toEqual([]);
+  });
+});
+
+describe('the step 3 follow-up (the review of d42d2cf)', () => {
+  it.each([
+    ['(({ [event]: v }) => v)(o)', {}],
+    ['(({ [twice]: v }) => v)(o)', DECLARED],
+    ['(({ [key]: v, ...rest }) => rest)(o)', {}],
+  ])('reads a computed key of an object pattern, %s, and binds nothing by it', (text, options) => {
+    expect(problemsOf(calc(text), options)).toEqual([]);
+  });
+
+  it('still refuses a reserved or declared name as an object pattern\'s value', () => {
+    expect(problemsOf(calc('(({ a: event }) => 1)(o)'))).toEqual([
+      p('reserved-name', Y, 'event is read, never bound, assigned or deleted; here it is bound.'),
+    ]);
+    expect(problemsOf(calc('(({ [k]: twice }) => 1)(o)'), DECLARED)).toEqual([
+      p('declared-name', Y, 'twice is a declared function, and here it is bound.'),
+    ]);
+  });
+
+  it('reports every value of a pattern JSON cannot write, not the first alone', () => {
+    expect(problemsOf({ id: 'r', filter: { match: { a: Infinity, b: { c: Number.NaN } } } })).toEqual([
+      p('invalid-field', 'filter.match.a', 'A pattern holds null, strings, finite numbers, booleans, arrays and objects.'),
+      p('invalid-field', 'filter.match.b.c', 'A pattern holds null, strings, finite numbers, booleans, arrays and objects.'),
+    ]);
+  });
+
+  it('reads a pattern\'s array by index, so a hole is reported', () => {
+    const holed: unknown[] = ['EU'];
+    holed[2] = 'UK';
+    expect(problemsOf({ id: 'r', filter: { match: { region: holed } } })).toEqual([
+      p('invalid-field', 'filter.match.region[1]', 'A pattern holds null, strings, finite numbers, booleans, arrays and objects.'),
+    ]);
+  });
+
+  it('reports a pattern JSON nests 20,000 deep at its 65th level, and does not throw', () => {
+    const match = JSON.parse(`{"a":${'['.repeat(20_000)}1${']'.repeat(20_000)}}`) as unknown;
+    let result: ReturnType<typeof compileRule> | undefined;
+    expect(() => (result = compileRule({ id: 'r', filter: { match } }))).not.toThrow();
+    expect(result?.problems).toEqual([
+      p(
+        'invalid-field',
+        `filter.match.a${'[0]'.repeat(63)}`,
+        'A pattern nests at most 64 arrays and objects, the match itself the first: this one is deeper.'
+      ),
+    ]);
+  });
+
+  it('reports a pattern holding more than 100,000 values on its paths, a shared diamond among them', () => {
+    let diamond: unknown = 'gold';
+    for (let level = 0; level < 40; level++) {
+      diamond = { l: diamond, r: diamond };
+    }
+    expect(problemsOf({ id: 'r', triggers: [{ event: 'e', match: { tier: diamond } }] })).toEqual([
+      p(
+        'invalid-field',
+        'triggers[0].match',
+        'A pattern holds at most 100,000 values, counting the match itself and a value once on each path to it: this one holds more.'
+      ),
+    ]);
+  });
+
+  it('copies a value two paths share once, and shares it in the compiled pattern', () => {
+    const shared = { tier: 'gold' };
+    const result = compileRule({ id: 'r', filter: { match: { a: shared, b: [shared] } } });
+    const match = result.ok ? compiledRuleInternals(result.rule)?.filter.match : undefined;
+    expect(match?.['a']).toEqual({ tier: 'gold' });
+    expect(match?.['a']).not.toBe(shared);
+    expect(match?.['a']).toBe((match?.['b'] as readonly unknown[])[0]);
+  });
+
+  it.each([
+    ['a calculation', calc(`a${'.b'.repeat(50_000)}`), Y],
+    ['an effect item', { id: 'r', onInit: [`setValue(a${'.b'.repeat(50_000)})`] }, 'onInit[0]'],
+  ])('reports %s nested past the stack as a parse error, and does not throw', (_kind, rule, path) => {
+    let result: ReturnType<typeof compileRule> | undefined;
+    expect(() => (result = compileRule(rule, DECLARED))).not.toThrow();
+    expect(result?.problems).toEqual([
+      p('parse-error', path, 'It is nested too deeply to check: the call stack ran out.'),
+    ]);
+  });
+
+  it('checks a member chain 500 long', () => {
+    expect(problemsOf(calc(`a${'.b'.repeat(500)}`))).toEqual([]);
+    expect(problemsOf({ id: 'r', onInit: [`setValue(a${'.b'.repeat(500)})`] }, DECLARED)).toEqual([]);
+  });
+
+  it('reports a cyclic pattern as a problem, and does not throw', () => {
+    const match: Record<string, unknown> = { region: 'EU' };
+    match['self'] = match;
+    let result: ReturnType<typeof compileRule> | undefined;
+    expect(() => (result = compileRule({ id: 'r', triggers: [{ event: 'e', match }] }))).not.toThrow();
+    expect(result?.problems).toEqual([
+      p(
+        'invalid-field',
+        'triggers[0].match.self',
+        'A pattern holds no cycle: this value is an object or array that contains it.'
+      ),
+    ]);
+  });
+
+  it('does not repeat a decision\'s own problem as an output\'s unknown-decision', () => {
+    expect(
+      problemsOf({
+        id: 'r',
+        decisions: [{ name: 'a b', cases: [{ value: 'x' }] }],
+        outputs: [{ on: { decision: 'a b', is: 'x' }, items: [] }],
+      })
+    ).toEqual([
+      p('invalid-name', 'decisions[0].name', 'A decision\'s name is an identifier, [A-Za-z_$][A-Za-z0-9_$]*, and "a b" is not.'),
+    ]);
+    expect(
+      problemsOf({
+        id: 'r',
+        calculations: [{ name: 'd', value: '1' }],
+        decisions: [{ name: 'd', cases: [{ value: 'x' }] }],
+        outputs: [{ on: { decision: 'd', is: 'x' }, items: [] }],
+      })
+    ).toEqual([p('duplicate-name', 'decisions[0].name', '"d" names a calculation too.')]);
+    // A name no decision has, problem or not, is still reported.
+    expect(
+      problemsOf({
+        id: 'r',
+        decisions: [{ name: 'a b', cases: [{ value: 'x' }] }],
+        outputs: [{ on: { decision: 'ab', is: 'x' }, items: [] }],
+      }).map((problem) => problem.code)
+    ).toEqual(['invalid-name', 'unknown-decision']);
   });
 });

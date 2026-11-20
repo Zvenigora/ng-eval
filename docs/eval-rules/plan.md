@@ -67,6 +67,75 @@ text where the code met something they did not say ([SR4](../standing-rules.md#s
   `.claude/agents/code-reviewer.md`, whose `eval-rules` list said `compileRule` throws only for an
   option it does not define.
 
+**The step 3 follow-up**, the review of d42d2cf, corrects step 3's code where the reviewer
+measured it wrong, each with rows and a probe; the shapes do not change:
+
+- **A computed key in an object pattern is read, not written.** `acorn-walk` visits a computed
+  key, as it visits a value, with no visit of the `Property`, and the check took both as written:
+  `(({ [event]: v }) => v)(o)` was refused as "assigned". A valid rule refused is § 7's risk; the
+  check now takes a node under an object pattern as written unless it is a computed key, so a
+  property's value and a rest element's argument are written.
+- **`delete calc?.x`** is refused as `delete calc.x` is: the check looks through the chain.
+- **A deleted name** is reported as "deleted", not "assigned", and § 3.4 marks the rejection P-1.
+- **A pattern reports every value JSON cannot write**, not the first; a rule built in code with a
+  cyclic `match` gets a problem at the value that closes the cycle, where it threw a `RangeError`.
+- **An output naming a decision that has a problem of its own** no longer adds `unknown-decision`
+  for a decision that exists.
+- **The CHANGELOG line** says "for a rule JSON can write": a rule object built in code with a
+  getter that throws makes `compileRule` throw.
+- **`eval-core`'s `public-api.spec.ts`**: the comment step 3 wrote said `stack` became
+  `EvalResult`'s "now", which it always was. The comment is corrected; no assertion changes.
+
+**The follow-up's own review**, of its first pin (`ng-eval-12.3b-followup.zip`), found no
+Critical and three shipped sentences false on a path they name. Each is fixed here, measured on
+d42d2cf first, with rows and a probe:
+
+- **A pattern's array is read by index.** The follow-up walked it by `forEach`, which skips a hole,
+  so `{ a: [1, , 2] }` built in code compiled and kept the hole, against "a pattern reports every
+  value JSON cannot write". d42d2cf's index loop reported it; the loop is back.
+- **A pattern is bounded** (P-1): at most 64 nested arrays and objects, the `match` itself the
+  first, and at most 100,000 values, counting the match itself and a value once on each path to
+  it, each an
+  `invalid-field` at its path. JSON nested 5,000 deep made `compileRule` throw `RangeError` on
+  both trees, arrays or objects, and arrays 3,000 deep did on d42d2cf; `matchesPattern` threw at
+  2,000 on a pattern that compiled. So "for a rule JSON can write, it throws for none of them" was
+  false, and step 4's filter would fail every run. Where the stack runs out moves with the run and
+  the host, so no depth short of it can be promised; a bound can. A value shared by
+  two paths, which only code can build, made the walk, the copy and a match grow with the paths,
+  2⁴¹ − 1 values on them for a 40-level diamond (the review's N-a); the count bounds all three, and the copy
+  keeps the sharing it is given. JSON writes no shared value, so for a rule read from JSON the
+  count is the values its text holds.
+- **An expression nested past the stack is a `parse-error`**, not a throw. A member chain, a call
+  chain, a sum or a run of `!` 2,000 long parses, and then ran `acorn-walk` out of stack in the
+  checks, on both trees, so the CHANGELOG line was false on a field's text too.
+  The parser reports its own overflow as a parse error, and which walk runs out first depends on
+  the text's shape and the host's stack, so one code covers both, by the test of the message
+  acorn's `catchStackOverflow` applies. A member chain 500 long still compiles.
+- **A declared function or effect deleted** is a `declared-name`, "…and here it is deleted": the
+  follow-up's "deleted" role reached it, and the README row listed "bound or assigned". The row
+  says "bound, assigned or deleted", and § 3.4 marks the reading P-1, as it does for `event`.
+
+Its two notes stand: N-b, a cyclic `match` and a value JSON cannot write share `invalid-field`, as
+the README row describes both; N-a is the bound above.
+
+**The second review**, of the second pin (`ng-eval-12.3c-followup.zip`), found no Critical and one
+shipped sentence false on a path the README names: "`compileRule` does not throw for a rule with
+problems" had no qualifier, and a rule built in code, `defineRule`'s path, runs its own getters as
+`compileRule` reads it. The README now says "for a rule JSON can write", as the CHANGELOG does,
+and that a getter may throw. Fixed with it, each with a row or a probe:
+
+- **A rest element in an object pattern is written again.** `acorn-walk` visits its argument with
+  the pattern as parent, as it does a computed key, and the first pin's test, written only as a
+  property's value, made `({ ...calc.x } = o)` a read, which d42d2cf refused as a written member. The test is now "written unless a computed key".
+- **The value count names the match itself**, which it counts: the message and the README row say
+  so.
+- **The size row's invalid value comes first**, so "reported alone" is tested: the walk has found
+  it when the count stops it.
+- **`eval-core`'s spec comment**: `name` was `FieldSchema`'s before `eval-rules` joined.
+
+Its note N-2 is step 4's: a text the checks pass still runs `eval-core`'s walk, which has no stack
+guard of its own, and step 4 measures where it runs out.
+
 **Revision 6** is step 2's. It measured finding 3 and finding 5, which § 1.2 now records, and
 corrects § 4 where the project's creation reached files step 2's list did not name
 ([SR4](../standing-rules.md#sr4)):
@@ -645,7 +714,11 @@ an effect's declaration, which this release does not define (Revision 7, P-1).
 
 - A structural error: a missing `id`, a section that is not an array, a field § 3.2 does not list,
   a `description` that is not a string, a name that is not an identifier.
-- An expression that does not parse, and an empty one.
+- An expression that does not parse, an empty one, and one nested too deeply for the checks'
+  call stack, which is a `parse-error` as the parser's own overflow is (the step 3 follow-up).
+- A `match` holding a value JSON cannot write, or a cycle; one that nests more than 64 arrays and
+  objects, or holds more than 100,000 values, counting itself and a value once on each path to it (the
+  step 3 follow-up, P-1).
 - With statements off, a field that is not one expression, and a statement anywhere below it
   (finding 9, P-1). With statements on, a statement `eval-core` does not evaluate, anywhere, with
   its message (Revision 7, P-1).
@@ -655,9 +728,10 @@ an effect's declaration, which this release does not define (Revision 7, P-1).
   (§ 8 q3):
   - `calc`, in any position but the object of a non-computed member read (finding 12);
   - `labels` and `run`, in any position: nothing reads either until Phase 14 (P-1);
-  - `error`, outside an `onError` item, and inside one as a binding or an assignment target
-    (Revision 7, P-1);
-  - `event`, as a binding or an assignment target;
+  - `error`, outside an `onError` item, and inside one as a binding, an assignment target or the
+    operand of a `delete` (Revision 7, P-1);
+  - `event`, as a binding, an assignment target or the operand of a `delete` (the last P-1, by
+    the step 3 follow-up: `delete` deletes nothing, finding 8, and the message says "deleted");
   - under `colonIdentifiers`, any of the five as the first segment of a colon-joined identifier,
     in any position: `calc:discount` is one identifier, an unknown fact, where `calc.discount`
     was meant (finding 13, § 8 q16, P-1). The parser gives the joined text as the identifier's
@@ -677,8 +751,8 @@ an effect's declaration, which this release does not define (Revision 7, P-1).
 - A decision case after a case with no `if`.
 - **An effect item that is not one call of a declared effect function**, with statements on or
   off (§ 8 q20), and a declared effect function anywhere else: in a calculation, a decision, a
-  filter, an argument, or as a value (finding 14, P-1, § 8 q6). A declared function's or effect's name as a binding or an assignment
-  target (finding 7).
+  filter, an argument, or as a value (finding 14, P-1, § 8 q6). A declared function's or effect's name as a binding, an assignment
+  target (finding 7) or the operand of a `delete` (the last P-1, by the step 3 follow-up).
 
 ### 3.5 The evaluation, in order
 
@@ -1053,7 +1127,11 @@ from the README's stub section and its fence, and from the barrel specs' cases t
   `define-rule.spec.ts` 2, and the barrel specs 36, of which 32 are `export-list.spec.ts`' 16
   counted twice. doc-links 438 files, 3285 links, 0 dangling; release-tags 55 rows, 65 tags, 0 failing. The runs are pinned
   in `ng-eval-12.3-step3.zip`, whose SHA-256 is in this step's commit body
-  ([SR47](../standing-rules.md#sr47)). Ships in `eval-rules` 0.1.0.
+  ([SR47](../standing-rules.md#sr47)). Ships in `eval-rules` 0.1.0. The follow-up, the review of
+  d42d2cf and of its own first two pins, is Revision 7's last three paragraphs: 31 cases more,
+  `eval-rules` 299, and eighteen probes, each red, pinned in `ng-eval-12.3d-followup.zip`, whose
+  SHA-256 is in its commit body. Its first two pins, `ng-eval-12.3b-followup.zip` and
+  `ng-eval-12.3c-followup.zip`, stopped at their reviews.
 
 ### Step 4 — Evaluation
 

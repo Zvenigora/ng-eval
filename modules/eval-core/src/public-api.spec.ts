@@ -465,10 +465,11 @@ describe('SECURITY.md names only what the code has (Phase 10, § 3.10)', () => {
     expect(allMembers().has('toUpperCase')).toBe(false);
     expect(allMembers().has('copyWithin')).toBe(false); // `Array`'s; `push` is `Stack`'s and `EvalContext`'s own
     expect(allMembers().has('push')).toBe(true);
-    // `Error`'s members are not asserted: each is now some package's own as
-    // well - `message` is `@zvenigora/ng-eval-rules`' `RuleProblem`'s (the
-    // Phase 12 plan, Revision 7), `name` its rule types', `stack`
-    // `EvalResult`'s - so none can show the filter. `copyWithin` shows it.
+    // `Error`'s members are not asserted: each is some package's own as well -
+    // `stack` `EvalResult`'s, `name` `FieldSchema`'s (eval-forms/reactive) and,
+    // since `@zvenigora/ng-eval-rules` joined the entries, its rule types',
+    // and `message` its `RuleProblem`'s (the Phase 12 plan, Revision 7) - so
+    // none can show the filter. `copyWithin` shows it.
     expect(allMembers().has('checkMemberWrite')).toBe(true);
     expect(codeRoutes('toString')).toEqual(['guard']);
     expect(codeRoutes('toLocaleString')).toEqual(['guard']);

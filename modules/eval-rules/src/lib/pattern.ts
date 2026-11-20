@@ -46,38 +46,87 @@ const matchesElement = (element: unknown, target: unknown): boolean =>
 const isObject = (value: unknown): value is object =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/** How deep a pattern nests: the `match` object is the first array or object. */
+export const MAX_PATTERN_DEPTH = 64;
+
+/** How many values a pattern holds, itself among them, counting a value once per path to it. */
+export const MAX_PATTERN_VALUES = 100_000;
+
+/** A value in a pattern that is not one, and why. */
+export interface InvalidPatternValue {
+  readonly path: string;
+  /**
+   * `value`: not a value JSON can write, or `NaN` or an infinity. `cycle`: an
+   * object or array that contains itself. `depth`: an array or object nested
+   * deeper than {@link MAX_PATTERN_DEPTH}. `size`: the pattern holds more than
+   * {@link MAX_PATTERN_VALUES}, reported alone, at the pattern's own path.
+   */
+  readonly reason: 'value' | 'cycle' | 'depth' | 'size';
+}
+
 /**
- * The path of the first value in `pattern` that is not a pattern, or
- * `undefined`. A pattern holds `null`, strings, finite numbers, booleans,
- * arrays of patterns and objects of patterns: what JSON can write, less
- * `NaN` and the infinities, which no `===` matches.
+ * Every value in `pattern` that is not a pattern, by path. A pattern holds
+ * `null`, strings, finite numbers, booleans, arrays of patterns and objects of
+ * patterns: what JSON can write, less `NaN` and the infinities, which no `===`
+ * matches. An array is read by index, so a hole is a value, `undefined`, and
+ * reported. A rule built in code can also hold a cycle, which JSON cannot
+ * write; it is reported at the value that closes it, and not walked again.
+ *
+ * Two bounds keep the walk, the copy `compileRule` makes and every match
+ * within the call stack and in proportion to the text: an array or object
+ * nested deeper than {@link MAX_PATTERN_DEPTH} is reported and not walked,
+ * and a pattern holding more than {@link MAX_PATTERN_VALUES}, counting itself
+ * and a value shared by two paths once on each, stops the walk and is reported alone. JSON
+ * writes no shared value, so for a rule read from JSON the count is the
+ * number of values in its text.
  */
-export const invalidPatternPath = (pattern: unknown, path: string): string | undefined => {
-  if (pattern === null || typeof pattern === 'string' || typeof pattern === 'boolean') {
-    return undefined;
-  }
-  if (typeof pattern === 'number') {
-    return Number.isFinite(pattern) ? undefined : path;
-  }
-  if (Array.isArray(pattern)) {
-    for (let index = 0; index < pattern.length; index++) {
-      const found = invalidPatternPath(pattern[index], `${path}[${index}]`);
-      if (found !== undefined) {
-        return found;
+export const invalidPatternValues = (pattern: unknown, path: string): readonly InvalidPatternValue[] => {
+  const found: InvalidPatternValue[] = [];
+  const open = new Set<object>();
+  let count = 0;
+  const visit = (value: unknown, at: string, depth: number): boolean => {
+    if (++count > MAX_PATTERN_VALUES) {
+      return false;
+    }
+    if (value === null || typeof value === 'string' || typeof value === 'boolean') {
+      return true;
+    }
+    if (typeof value === 'number') {
+      if (!Number.isFinite(value)) {
+        found.push({ path: at, reason: 'value' });
+      }
+      return true;
+    }
+    if (!Array.isArray(value) && !isPlainObject(value)) {
+      found.push({ path: at, reason: 'value' });
+      return true;
+    }
+    if (open.has(value)) {
+      found.push({ path: at, reason: 'cycle' });
+      return true;
+    }
+    if (depth > MAX_PATTERN_DEPTH) {
+      found.push({ path: at, reason: 'depth' });
+      return true;
+    }
+    open.add(value);
+    let within = true;
+    if (Array.isArray(value)) {
+      for (let index = 0; within && index < value.length; index++) {
+        within = visit(value[index], `${at}[${index}]`, depth + 1);
+      }
+    } else {
+      for (const key of Object.keys(value)) {
+        within = visit(value[key], `${at}.${key}`, depth + 1);
+        if (!within) {
+          break;
+        }
       }
     }
-    return undefined;
-  }
-  if (isPlainObject(pattern)) {
-    for (const key of Object.keys(pattern)) {
-      const found = invalidPatternPath((pattern as Record<string, unknown>)[key], `${path}.${key}`);
-      if (found !== undefined) {
-        return found;
-      }
-    }
-    return undefined;
-  }
-  return path;
+    open.delete(value);
+    return within;
+  };
+  return visit(pattern, path, 1) ? found : [{ path, reason: 'size' }];
 };
 
 /** An object whose prototype is `Object.prototype` or `null`. */

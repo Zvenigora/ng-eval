@@ -25,20 +25,21 @@ import { compileRule, defineRule } from '@zvenigora/ng-eval-rules';
 
 ## Problem codes
 
-`compileRule` does not throw for a rule with problems: it returns every problem it finds, each with
-a `code`, a `path` such as `decisions[0].cases[1].if`, and a `message`. The list of codes is open:
+For a rule JSON can write, `compileRule` does not throw for the rule's problems: it returns every
+problem it finds, each with a `code`, a `path` such as `decisions[0].cases[1].if`, and a `message`.
+A rule built in code runs its own getters as `compileRule` reads it, and one may throw. The list of codes is open:
 a later release may add one, so a host handles a code it does not know.
 
 | Code | The problem |
 | :--- | :--- |
-| `invalid-field` | A field holds a value of the wrong kind |
+| `invalid-field` | A field holds a value of the wrong kind; a `match` nests more than 64 arrays and objects, or holds more than 100,000 values, counting itself and a value once on each path to it |
 | `missing-field` | A required field is absent |
 | `unknown-field` | A field the format does not list |
 | `invalid-name` | A calculation's or a decision's name is not an identifier |
 | `duplicate-name` | A decision's name is a calculation's or another decision's |
 | `invalid-declaration` | A declared function or effect has a reserved name, is declared twice, or is not one identifier |
 | `refused-name` | `eval-core` refuses to read a calculation's name or to call a declared name |
-| `parse-error` | An expression does not parse |
+| `parse-error` | An expression does not parse, or is nested too deeply to check |
 | `empty-expression` | An expression is empty |
 | `not-one-expression` | With statements off, a field is not one expression |
 | `statement-not-allowed` | With statements off, a statement sits inside the expression |
@@ -47,7 +48,7 @@ a later release may add one, so a host handles a code it does not know.
 | `this-expression` | A `this` |
 | `reserved-name` | A reserved name used as the format does not allow |
 | `reserved-prefix` | With `colonIdentifiers`, a name whose first segment is a reserved name |
-| `declared-name` | A declared function or effect bound or assigned |
+| `declared-name` | A declared function or effect bound, assigned or deleted |
 | `unknown-calculation` | A `calc.` name no calculation assigns |
 | `read-before-assignment` | A `calc.` name read before every calculation that assigns it |
 | `calculation-in-on-error` | An `onError` item reads a `calc.` name |

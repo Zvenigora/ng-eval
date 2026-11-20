@@ -20,7 +20,8 @@ the root files each row of the plan's § 4 lists; step 8 reaches the `demo` appl
 is a stop. Step 2 was one exception: each one's `src/export-list.spec.ts` gained the new package's
 path, since the case that compares its list with `tsconfig.base.json`'s paths went red without it.
 Step 3 was the other: `eval-core`'s `src/public-api.spec.ts` lost one assertion, that `message` is not
-a member, which `RuleProblem`'s `message` turned red (the plan's Revision 7).
+a member, which `RuleProblem`'s `message` turned red (the plan's Revision 7), and its follow-up
+corrected that assertion's comment.
 The gate's counts its steps start from, read by step 1 at 51791c9, are `eval-core` 3533,
 `eval-signals` 462, `eval-forms` 391 and `demo` 23. The three libraries' move in no step
 ([SR10](../../../docs/standing-rules.md#sr10)), and `demo`'s moves in step 8 only. From step 2 the gate
