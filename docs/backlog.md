@@ -85,6 +85,7 @@ release, not a free change. Each package's release notes are in its own
 
 | Package | Version | Notes |
 | ------- | ------- | ----- |
+| `@zvenigora/ng-eval-core` | 0.16.1 | [A65](backlog-retired.md#a65) fix, a security patch: a computed member key that is an expression and evaluates to anything but a string, number or symbol is converted to its property key before the dangerous-name check, and the access uses that key, so `o[["constructor"]]` and `o[["__proto__"]]` are refused as `o["constructor"]` and `o["__proto__"]` are. Every published version up to 0.16.0 is affected: up to 0.12.0 the route reached the `Function` constructor and ran code, and from 0.12.1 it wrote into `Object.prototype`. A patch: the `.d.ts` and the README are byte-identical to 0.16.0's and `package.json` differs only in its version; `eval-signals` 0.9.0 and `eval-forms` 0.9.0 admit it through `>=0.16.0 <0.17.0`. Tagged `eval-core@0.16.1` at 188c0d9, published 2026-11-22 (npm: 01:56 UTC) |
 | `@zvenigora/ng-eval-core` | 0.16.0 | The [A48 plan](a48/plan.md): a member read lets a getter's throw reach the caller, and member reads and writes change under `caseInsensitive`, through `this` to a `Registry`, and to an `EvalScope`. [A55](backlog-retired.md#a55) fix: a member read lets a getter's or a proxy `get` trap's throw reach the caller, in both case modes, where case-sensitively it caught the throw and gave `undefined`; the CHANGELOG gives the paths under `caseInsensitive`, some of which already threw. [A48](backlog-retired.md#a48) fix: under `caseInsensitive` a member read tests a key with `in`, so `c.g` and its compound forms call an inherited getter once, where they called it twice, and a proxy's `has` trap is called for a key no own property matches; a key a proxy answers by its `get` trap alone is searched for a case variant on the target's prototype. [A50](backlog-retired.md#a50) fix: a write through `this` to a `Registry` that is the context's original reaches its map, for a key it holds, where it set an own property on the instance. [A51](backlog-retired.md#a51) fix: a member write to an `EvalScope` is refused, with `Write to an evaluation scope is blocked` unless the blocklist or a write policy refuses it first, where it set an own property on the instance. [A49](backlog-retired.md#a49) decided, a documented limit: how many times an expression calls a getter on the context or on a scope's object, or a lookup, is not part of the contract. Timed against 0.15.1 on seven paths by the plan's § 3.7, with no regression on any. A minor carrying breaking changes by behaviour: the `.d.ts` differs from 0.15.1's in two JSDoc blocks, `EvalContext`'s `lookups` and `getThis`, and in no declaration. Admitted only by `eval-signals` 0.9.0 and `eval-forms` 0.9.0; every earlier one excludes it by its own range. Tagged `eval-core@0.16.0` at 7d9d488, published 2026-11-08 (npm: 15:49 UTC) |
 | `@zvenigora/ng-eval-signals` | 0.9.0 | `eval-core` 0.16.0, forwarded. Over a context holding an object whose inherited getter `t` throws, a `createEvalSignal` over `x.t` throws the getter's error on read under the default `onError`, in both case modes, and a function policy receives it, where it read `undefined`; `'undefined'` still reads `undefined`. Under `caseInsensitive` a signal over `c.g + 1` calls an inherited getter `g` once, where it called it twice. Over a record, or a context `createSignalContext` built, the write guard refuses a member write first, as before, so A50's `this.k = 5` and A51's `ns.k = 5` throw `SignalContextWriteError`; over an `EvalContext` the caller built, both reach the signal as they reach `eval-core`. The A48 plan's step 6 rows witness the reads and the record path, in no package; the caller's-context path was measured through `createEvalSignal`. A breaking minor with no shipped code changed: the `.d.ts` is byte-identical to 0.8.0's. Peer range on `eval-core` moved to `>=0.16.0 <0.17.0` — the floor rises, since the forwarded behaviour exists only in 0.16.0. Tagged `eval-signals@0.9.0` at 7d9d488, published 2026-11-08 (npm: 16:00 UTC) |
 | `@zvenigora/ng-eval-forms` | 0.9.0 | `eval-core` 0.16.0, forwarded at both entry points over a signal context from `eval-signals`. At `/reactive`, over a control whose value has an inherited getter `t` that throws, a `text` rule `user.t` throws under `'throw'` and hands a function policy its error, where it rendered `''` under every policy; the default still renders `''`. `eval-core`'s other member read changes reach a rule's reads too, the `caseInsensitive` ones at `/signals` only, since `/reactive` takes no evaluation options; its member write changes do not, since the signal context's write guard refuses a member write first. Step 6's three `/reactive` rows witness the getter's throw; no row witnesses it at `/signals` ([F31](#f31)). A breaking minor with no shipped code changed: all three `.d.ts` files are byte-identical to 0.8.0's. Peer ranges raised: `eval-core` to `>=0.16.0 <0.17.0`, and `eval-signals` to `>=0.9.0 <0.10.0`, since every earlier `eval-signals` requires `eval-core` below 0.16.0. Tagged `eval-forms@0.9.0` at 7d9d488, published 2026-11-08 (npm: 16:05 UTC) |
@@ -150,10 +151,10 @@ the two commits only that spec and two backlog files changed, so neither package
 0c3299e, so it carries B6's fix and none of 0.11.0's other changes. Master has the fix as 1a6ebdc,
 and 776885a copied the [0.10.1] CHANGELOG section from d77fa16.
 
-**Every published version now carries a tag** — the fifty-five above (three at 7d9d488, one at 9e88d18, three at 67486ab, one at 95932e6, one at 69c3e0e, three at 0d305a3, one at 021d5e4, one at dc4302d, three at 5b9c859, three at f7f27f7, one at 7cc8d30, three at 3466c80, one at 7ee65fc, two at 577c4f0, three at 776885a, one at d77fa16, one at 3d56994, three at 0c3299e, three at eb403c0, three at c56f987, three at 724d831, two at 587ebf1, three at f26f987,
+**Every published version now carries a tag** — the fifty-six above (one at 188c0d9, three at 7d9d488, one at 9e88d18, three at 67486ab, one at 95932e6, one at 69c3e0e, three at 0d305a3, one at 021d5e4, one at dc4302d, three at 5b9c859, three at f7f27f7, one at 7cc8d30, three at 3466c80, one at 7ee65fc, two at 577c4f0, three at 776885a, one at d77fa16, one at 3d56994, three at 0c3299e, three at eb403c0, three at c56f987, three at 724d831, two at 587ebf1, three at f26f987,
 three at `016a313`, three at `7935a78`) plus ten for versions before this table: seven written
 retroactively on 2026-09-16, and three at their own release on 2026-08-22 (`eval-core@0.3.0`,
-`eval-signals@0.1.0`, `eval-forms@0.1.0`). That is sixty-five, the count `tools/release-tags.mjs`
+`eval-signals@0.1.0`, `eval-forms@0.1.0`). That is sixty-six, the count `tools/release-tags.mjs`
 reports, all annotated and all on the remote. The check tests that they are annotated since
 [F26](backlog-retired.md#f26): it reads each release tag's object type, fails on a lightweight one,
 and says `all annotated` in its summary line. `git tag -l` lists three more, `v0.1.0`, `v0.2.2`
@@ -227,6 +228,8 @@ and `v0.2.3`: lightweight tags from before the `<project>@<version>` names, whic
 | [A61](#a61) | A native function the host places in the context, `Object.assign`, `Reflect.set` or `Object.defineProperty`, writes an `EvalScope` held as a value, its fields included, past A51's refusal of a member write | core | fix | Open — opened 2026-11-06 by the [A48 plan](a48/plan.md)'s step 5, from step 4's code review; predates it. Not scheduled |
 | [A62](#a62) | Evaluation time and memory are not bounded: a regular expression that backtracks, in a literal or built from a string, and a large allocation, each run inside one built-in call, which neither the iteration budget nor the call stack reaches | core | decision | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its finding 9 |
 | [A63](#a63) | No published package of the workspace loads in plain Node as installed: each throws at import, `ParserService` needing the JIT compiler, unless `@angular/compiler` was imported first | core | decision | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its finding 25 (M14) |
+| [A65](backlog-retired.md#a65) | A computed member key that is not a string, number or symbol passed the dangerous-name blocklist unconverted and was converted at the access: `o[["constructor"]]` read `Object`. Up to 0.12.0 a route to code execution, and from 0.12.1 to writes into `Object.prototype` | core | fix, security | **Retired — fixed 2026-11-21**; released 2026-11-22 in `eval-core` 0.16.1, tagged 188c0d9. Opened and retired by its post-publish commit |
+| [A66](#a66) | `eval-core` 0.16.1's CHANGELOG leaves out two consequences of its key conversion: an object literal's computed key that is not a string or number now creates the property, where 0.16.0 dropped it; and a read hook and a write policy receive the converted key, where they received the array | core | docs | Open — opened 2026-11-22 by 0.16.1's post-publish commit, from 188c0d9's code review; for `eval-core`'s next release |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -296,6 +299,7 @@ and `v0.2.3`: lightweight tags from before the `<project>@<version>` names, whic
 | [F32](#f32) | `eval-core`'s barrels re-export 26 types without `export type`, so its source does not compile under `isolatedModules` (`TS1205`); an application that compiles the source, as the demo does, turns the option off | core | fix | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-15 by the [Phase 19 plan](demo/plan.md)'s step 1, from its M2 |
 | [F33](#f33) | Two of `eval.service.memory-leaks.spec.ts`' collector cases, (1.5) and the positive control (2.3), have each failed once in a full gate and passed on the next, with no edit | core | test gap | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 19 plan](demo/plan.md)'s step 8, from the reviewing chat's gates |
 | [F34](#f34) | `tools/doc-links.mjs` exits with an unhandled `ENOENT` on a tracked file deleted from the working tree and not staged, where it reports a dangling link once the deletion is staged | repo | fix | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 19 plan](demo/plan.md)'s step 8, noticed at its step 3 |
+| [F36](#f36) | A case of the demo's `dependencies.example.spec.ts` reaches Jest's 5 s timeout under a full gate's load and passes on the next run | demo | test gap | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-22 by 0.16.1's post-publish commit, from two step 4 reports |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
 | [R3](backlog-retired.md#r3) | `eval-core` missing its `release.version` blocks | core | — | **Retired — superseded** |
@@ -1031,6 +1035,36 @@ point with no injectable. Whether either changes a `.d.ts` is measured then
 ([SR12](standing-rules.md#sr12)).
 
 *Recorded*: the [Phase 12 plan](eval-rules/plan.md) § 1.2 finding 25, § 3.7 and § 8 q23.
+
+<a id="a66"></a>
+## A66 — `eval-core` 0.16.1's CHANGELOG leaves out two consequences of its key conversion
+
+**Package** core · **Kind** docs · **Status** Open. Opened 2026-11-22 by 0.16.1's post-publish commit, from 188c0d9's code review; for `eval-core`'s next release
+
+[A65](backlog-retired.md#a65)'s fix converts a computed key before every check. Two consequences
+hold in 0.16.1 and are not in its `[0.16.1]` CHANGELOG section:
+
+- **An object literal's computed key that is not a string or number creates the property**, as in
+  JavaScript: `({ [null]: 1 })` is `{ null: 1 }`, `({ [1n]: 1 })` is `{ "1": 1 }`, `({ [true]: 1 })`
+  is `{ true: 1 }`, and `({ [k]: 1 })` with `k` the array `["a"]` is `{ a: 1 }`. 0.16.0 gave `{}` for
+  each: the property was dropped. The section's "`{ [["a"]]: 1 }` is `{ a: 1 }`" is true, and does
+  not say that this changed. `toPropertyKey`'s JSDoc says a literal key is not passed through it,
+  which holds in a member access and not in an object literal, where every computed key is; that
+  JSDoc is internal and does not ship.
+- **A read hook and a write policy receive the converted key.** For `o[["a"]]` a read hook's
+  `EvalReadEvent.key` was the array `["a"]`, outside its declared `string | number | symbol`, and
+  is `"a"`; for `o[["a"]] = 1` a write policy's `EvalMemberWrite.key` was `["a"]` and is `"a"`. The
+  section names only `SignalContextWriteError.key`.
+
+**Verified** by the reviewing chat on the build of 188c0d9's tree, against 0.16.0's published
+bundle: `m1.mjs` and `m2.mjs`, with their logs, in `ng-eval-0.16.1-record.zip`.
+
+**Not corrected in 0.16.1**: neither is false on a path the shipped section names, so they wait
+for the next release, as 0.16.0's M1 and M2 did (bf01f87).
+
+**The fix**: a line for each in `eval-core`'s next CHANGELOG section, saying it changed in 0.16.1;
+the JSDoc qualified to a member access; and a row for each, an object literal's non-string key and
+the key a read hook and a write policy receive.
 
 ---
 
@@ -1816,3 +1850,23 @@ reason, which takes this with it ([SR33](standing-rules.md#sr33) runs the review
 
 **The fix**: skip a listed file that does not exist, or report it as deleted and not staged, and
 then check the links to it as the staged case does.
+
+<a id="f36"></a>
+## F36 — The demo's `dependencies.example.spec.ts` times out under a full gate's load
+
+**Package** demo · **Kind** test gap · **Status** Open, not scheduled ([SR48](standing-rules.md#sr48)). Opened 2026-11-22 by 0.16.1's post-publish commit, from two Phase 12 step 4 reports of 2026-11-21
+
+A case of `apps/demo`'s `dependencies.example.spec.ts` reached Jest's 5 s timeout in a full gate on
+the maintainer's machine twice: once while the code-reviewer ran scripts beside the gate, and once
+under the gate's own load. Each time it passed on the next run, with no edit. The prompts since
+have the gate re-run once when that case alone fails, and the reviewer runs after the gate.
+
+**Not measured** by the reviewing chat: its gates, run alone, have not timed it out.
+
+**Not scheduled**, by SR48: the timeout fails the gate, so nothing false passes, and the re-run
+tells it from a failure.
+
+**What reopens it**: a timeout in a gate run with nothing else running, or a third one.
+
+**The fix**: time the case alone and under the gate's load, then lighten it or raise its timeout,
+with the reason beside it.

@@ -74,6 +74,15 @@ refused. **Up to 0.13.3** it applied it to a member operand only, and `construct
 - **Member reads and writes** refuse a blocklisted key on an object receiver, in member access,
   assignment, update and object literals. **Binding names** — an arrow parameter, a `let` or `const`,
   a destructuring target — refuse it too.
+- **A computed key is checked as the name it converts to, from 0.16.1.** A key that is an
+  expression and evaluates to anything but a string, number or symbol, such as an array, is
+  converted to its property key once, before the check, and the access uses that key, so
+  `this[["constructor"]]` is refused as `this["constructor"]` is. **Up to 0.16.0** such a key passed
+  the check and was converted at the access, on every receiver: from expression text alone,
+  `this[["constructor"]]` read `Object` and `this[["__proto__"]]` reached `Object.prototype`. Up to
+  0.12.0 that reached the Function constructor and ran code in the host; from 0.12.1 to 0.16.0 it
+  could write into `Object.prototype`. Every published version up to 0.16.0 is affected; the fix and
+  its measurements are in [`docs/backlog-retired.md`](docs/backlog-retired.md#a65), A65.
 - **The resolved-key re-check.** Under `caseInsensitive`, a key written as `CONSTRUCTOR` resolves to
   whatever key it matched, and the guard checks the key it matched, not only the key as written, for
   identifiers and members alike. Pinned by

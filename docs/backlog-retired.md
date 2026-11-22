@@ -4341,6 +4341,60 @@ The fix: `assignment-target.spec.ts`' `J` rows and its two `S` rows, and `protot
 four, those the fix changes red on 6086872's code, all green with it, and their probes (the
 [A48 plan](a48/plan.md) § 4, Step 4).
 
+<a id="a65"></a>
+## A65 — A computed member key that is not a string passed the blocklist unconverted
+
+**Package** core · **Kind** fix, security · **Status** **Retired — fixed 2026-11-21**; released
+2026-11-22 in `eval-core` 0.16.1, tagged 188c0d9. Opened and retired by 0.16.1's post-publish
+commit: found on 2026-11-21 by the code review of a [Phase 12 plan](eval-rules/plan.md) step 4 pin,
+and recorded only once the fixed release was public
+
+*Found* 2026-11-21. `isDangerousProperty` matched a string key only, and `safeGetProperty`
+converted the key with `String(key)` at the access. So a computed key that converts to a
+blocklisted name, an array such as `["__proto__"]`, passed the check and was read by the name it
+converts to: `o[["constructor"]]` was `Object`, and `o[["__proto__"]]` was `Object.prototype`. The
+route was open on every receiver branch of the member visitor (a plain object, the context through
+`this`, a primitive, an `EvalScope` held as a value), for a read, an optional read, a call, a write,
+an update and a compound assignment, under `caseInsensitive` too, and for an object literal's
+computed key.
+
+**What it reached**, measured on each of the 30 releases npm serves (0.1.101 was unpublished: npm
+keeps its time, and its tarball answers 404):
+
+- **0.1.102 to 0.12.0: code execution.** `o[["constructor"]][["constructor"]]` is the `Function`
+  constructor, and `.call(0, "return typeof process")()` runs the body in the host, giving
+  `"object"` under Node; so do `.apply` and `.bind`. From 0.2.1 a direct call is refused. The 0.1
+  releases refuse no names at all, so `o.constructor.constructor` does the same there.
+- **0.12.1 to 0.16.0: writes into `Object.prototype`.** The `Function` constructor is refused by its
+  value from 0.12.1 ([A35](#a35)'s check), and `o[["constructor"]].assign(o[["__proto__"]], { pwn: 1 })`
+  sets `pwn` on `Object.prototype`.
+
+*Fixed* 2026-11-21, 188c0d9. `toPropertyKey`, in `prototype-pollution-guard.ts`, converts a computed
+key that is not a string, number or symbol once, by an object literal's own computed-key
+conversion, where the key enters: `evaluateMember` (reads, optional reads, calls, updates,
+compound assignments), `resolveMemberTarget` (writes) and an object literal's computed property.
+Every check, the primitive carve-out and the `caseInsensitive` match among them, and the access see
+the converted key, so a key object cannot answer the check with one name and the access with
+another. A written key is converted before the right side runs, where JavaScript converts it
+after. A destructuring pattern's computed key accepts only a string or a number, as before. Under
+`eval-signals`, `o[["__proto__"]] = 1` now fails with the blocklist's `Error`, as
+`o["__proto__"] = 1` always has, where it raised `SignalContextWriteError`.
+
+The fix: the twenty rows of `eval.service.prototype-pollution.spec.ts`' "a computed key is checked
+as the property key it converts to (0.16.1)", one refusal per receiver branch and access kind, each
+asserting the blocklist's message and that nothing it reached changed, with the contrasts, the key
+object converted once and the write order; and `eval-signal.spec.ts`' two, on the error and the
+key under `eval-signals`. Six probes, each applied alone: the read path unconverted, the write path
+unconverted, the object literal unconverted, no conversion at all, the key converted twice, and a
+narrower fix that checks plain-object reads only. Every new row is red under one of them, and no
+other test is. The first pin's review stopped on a Critical in its CHANGELOG, which said `Function`
+stayed out of reach, false up to 0.12.0; the per-release measurement and the rows per branch answer
+it.
+
+Placed from `ng-eval-0.16.1-fix-b.zip` (SHA-256 26b91124…2701b3), patch a3ebc8a9…076408, tree
+f644292c…. The published tarball equals the build of that tree file for file, and its `.d.ts` and
+README equal 0.16.0's. Left for the next release: [A66](backlog.md#a66).
+
 # B. `eval-core` — security and hygiene
 
 <a id="b1"></a>
