@@ -1,6 +1,6 @@
 # Phase 12 Plan — `@zvenigora/ng-eval-rules` 0.1.0, pure rule evaluation (new module)
 
-**Status: Revision 7, the active plan: steps 1 to 3 are done and step 4 is next.** Revisions 1 to 4 and
+**Status: Revision 7, the active plan: steps 1 to 4 are done and A64's first commit is next, then step 5.** Revisions 1 to 4 and
 the design sessions were committed ahead of step 1, at the maintainer's request. Revision 3 measured
 [§ 1.3](#13-mechanism-questions-measured)'s rows on the built 0.16.0 bundle, and Revision 4 added
 two, with eight scripts pinned outside the repository ([SR32](../standing-rules.md#sr32),
@@ -358,7 +358,7 @@ step 2 measured them, and each says how.
    type-only import satisfies it (Revision 6).
 4. **A peer range here is bounded above.** Both downstream packages declare
    `>=0.16.0 <0.17.0`, and the workspace lint reads the range against the workspace version
-   ([SR42](../standing-rules.md#sr42)).
+   ([SR42](../standing-rules.md#sr42)). This package's floor is 0.16.1 (§ 3.7).
 5. **`release-tags.mjs` names its packages**, read from the script, and run by step 2. Without an
    entry in its `PROJECT` map, a Publication status row for a fourth package fails as "is not a
    package this workspace publishes", and the package's tags are not required to be annotated.
@@ -794,7 +794,7 @@ an effect's declaration, which this release does not define (Revision 7, P-1).
   first, or holds more than 100,000 values, counting itself and a value once on each path to it
   (the step 3 follow-up, P-1). A `match`'s walk stops at the first of two bounds: at its 101st
   problem it gives its first 100 and one saying there are more (the third follow-up, amending § 8
-  q17); past 100,000 values, that problem alone.
+  q17); past 100,000 values, the size problem alone.
 - With statements off, a field that is not one expression, and a statement anywhere below it
   (finding 9, P-1). With statements on, a statement `eval-core` does not evaluate, anywhere, with
   its message (Revision 7, P-1).
@@ -845,7 +845,9 @@ For one `evaluateRule(compiled, { facts, event?, functions? })`:
    run started at.
 4. Each field below is one walk on a state of its own, followed by an unwind of the scope stack to
    the run's depth (finding 22). A state per field is what makes a `calc` value replaceable and
-   not mutable (finding 16), and what gives each field its own iteration budget (finding 9). No
+   not mutable (finding 16); a field being one walk is what gives it its own iteration budget
+   (finding 9), since `eval-core` charges the budget per outermost walk, whatever state it runs on
+   (measured in step 4: one state shared by every field still gave each its own). No
    state declares a binding `const`: with the names declared at compile time (§ 8 q6), § 3.4
    rejects every write to one before a run exists (finding 7).
 5. The filter: `match` against the facts (§ 8 q7), then `when`. A miss gives
@@ -864,11 +866,20 @@ For one `evaluateRule(compiled, { facts, event?, functions? })`:
 
 `evaluateInit` runs steps 1 to 5 and the `onInit` items, with step 10's rule.
 
-**What the run keeps on every path** ([SR44](../standing-rules.md#sr44)): the caller's facts
-object, and every object reachable from it, is not written by an expression of the rule, unless
-through a function the host supplied, among the facts or among the functions (finding 17). What
-it does not promise: that a write is refused (`delete` is not, finding 8); that a refused write's
-right side did not run (it did, M2); and a recorded argument is the value the expression
+**What the run keeps on every path** ([SR44](../standing-rules.md#sr44)): a write is refused at
+two places, where it is made, and nothing is written there; the throw goes where any throw goes: one that
+leaves a field fails the run, code the host supplied may catch it on the way, and one from a
+function the run gave out, called after the run, reaches that caller (E10; step 4's twelfth and
+thirteenth reviews, I-1):
+an assignment or update, to a fact or to a member of an
+object the expression did not create; and a call the expression itself makes, directly or through
+`call`, `apply` or `bind`, of a built-in in `eval-core`'s table of writers into such an object.
+The run does not promise the facts unwritten: other routes write, among them a function the host
+supplied, among the facts or among the functions (finding 17), a built-in of the table that native
+code calls (`[1].forEach(list.push, list)`), and a built-in outside the table that changes what it
+is handed ([A64](../backlog.md#a64), amended by step 4's second and fourth reviews). Nor does it
+promise that `delete` is refused (it deletes nothing, finding 8), or that a refused write's right
+side did not run (it did, M2); and a recorded argument is the value the expression
 produced, so an object among the arguments is the host's own object, not a copy (§ 8 q9).
 
 A recorder returns `undefined` (§ 8 q8). Under § 3.4's item rule nothing reads its return value.
@@ -898,7 +909,10 @@ published: `RuleTraceEntry` is bound from 0.1.0.
 ### 3.7 The package
 
 `modules/eval-rules`, tag `scope:rules`, depending on `scope:core` only. Its peers are
-`@zvenigora/ng-eval-core >=0.16.0 <0.17.0`; and `acorn-walk ^8.3.0`, as `eval-forms` declares it
+`@zvenigora/ng-eval-core >=0.16.1 <0.17.0`, the floor raised from 0.16.0 by step 4's twelfth pin
+(its tenth review, I-1): 0.16.1 checks a computed key as the name it converts to
+([A65](../backlog-retired.md#a65)), and the CHANGELOG's blocklist sentence and its "where the host
+supplies `Object`" hold only from it; and `acorn-walk ^8.3.0`, as `eval-forms` declares it
 (finding 20). Not `@angular/core`: step 2's lint refuses a peer the source does not import
 (finding 3). It imports nothing from `acorn`. Its `tsconfig.json` is `eval-signals`' own,
 so its `lib` is `es2020`: `Object.hasOwn`, `Array.prototype.at` and `ErrorOptions` do not compile
@@ -1223,7 +1237,23 @@ specs, the barrel and its specs, `CHANGELOG.md`; and `CLAUDE.md`, whose paragrap
 depth-mark unwind names the guards of "both downstream libraries", `eval-signal.ts` and
 `evaluate-rule.ts`, and gains this package's (found by step 2's review sweep,
 [SR4](../standing-rules.md#sr4)). Since this step adds an `evaluate-rule.ts` of its own, the
-paragraph names each file with its package, `eval-forms`' and `eval-rules`' (Revision 7).
+paragraph names each file with its package, `eval-forms`' and `eval-rules`' (Revision 7). As
+written it also touches: the package README, whose "What it exports" names each new export, as
+F10's export-list spec requires of an export the README does not allowlist; the progress
+documents (`CLAUDE.md`'s two lines, `ROADMAP.md`, `docs/README.md`, `docs/backlog-in-flight.md`,
+`docs/release-history.md`, this plan's status); and, for step 3's carried notes, `compile-rule.ts`'
+JSDoc, `pattern.spec.ts` and the code-reviewer's item 3; `pattern.ts`, whose match keeps a memo
+(its review's I-3); `compile-rule.ts`' reading of the options, an effect's name and its declaration
+by their own keys, with rows in `compile-rule.spec.ts` (the eleventh and twelfth pins); and the
+manifest's `eval-core` peer and the README's Install line, raised to 0.16.1 (the twelfth pin,
+§ 3.7). By [SR5](../standing-rules.md#sr5) it widens to the register:
+`docs/backlog.md` and `docs/backlog-history.md` for [A64](../backlog.md#a64),
+[E10](../backlog.md#e10) and [F35](../backlog.md#f35), with `tools/published-links.txt`, which
+binds the README's link to E10. Pins six to nine also widened it, by
+[SR31](../standing-rules.md#sr31), to the published packages' sentences that A64 found false:
+`SECURITY.md`, both adapters' READMEs and CHANGELOGs, and JSDoc in `eval-core` and
+`eval-signals`. The tenth pin returns those files to 1993c81 and moves their correction to A64's
+first commit (below, "Its eighth review").
 
 `RuleResult` has no `trace` in this step; step 5 adds it, and nothing is published between them.
 
@@ -1261,6 +1291,288 @@ paragraph names each file with its package, `eval-forms`' and `eval-rules`' (Rev
   [SR44](../standing-rules.md#sr44)).
 - Effect order: items in array order, outputs in array order.
 - `strict` on the rule, off on one decision, and the reverse.
+
+**Step 4, as written.** 176 cases more, `eval-rules` 486: `evaluate-rule.spec.ts` 169, three rows
+in `compile-rule.spec.ts`, a row in the parse-count spec, a `pathKey` row, and two
+`matchesPattern` rows. Sixty-six probes, each red, and each new case red
+under at least one; one of them patches `eval-core`'s `delete` to delete, so the two rows that
+witness finding 8 turn red. What it measured, and the readings it took:
+
+- **The run's scope is a plain object.** A null-prototype scope read as empty, since `eval-core`
+  reads a context only when it is an instance of this realm's `Object` (finding 18): every
+  declared function was "Cannot call undefined or null function". `calc` stays null-prototype,
+  being read by member. A probe makes the scope null-prototype, and twenty rows turn red.
+- **Finding 22's example strands nothing that answers, on `eval-core` 0.16.0** (and its rows pass on 0.16.1). After a host
+  function's one `this.push({ a: 'stranded' })`, the walk's own pop takes the top scope, the
+  host's, and leaves an empty one of its own: the depth is one more, and `a` reads the fact. A
+  host that pushes twice leaves a scope that answers `'stranded'`, so the row's host pushes
+  twice, and the unwind's probe turns it red. Finding 22's mechanism stands; its example does not.
+- **The iteration budget is per walk, not per state** (§ 3.5 line 4, corrected): one state shared
+  by every field still gave each its own 100,000. A state per field is what keeps a `calc` value
+  from being mutated, which its probe shows.
+- **A throw from the facts as the filter's `match` reads them is thrown**, as line 2's are: line
+  10's rule begins at `when`, which the plan says, and a getter or a `Proxy` trap among the facts
+  is the caller's. A row and a probe.
+- **P-1, four times**: an own input key `RuleInput` does not name throws, a symbol or a
+  non-enumerable one included, as an unknown option does (§ 8 q21); a field the input inherits
+  throws (the twelfth pin); an implementation that is not a function throws; and a host function
+  that pops the rule's own scope fails the run, with a message naming the field.
+- **The facts' shapes are M13's** (step 1's pack, `m13-shape-and-colon.txt`): its thirteen refused
+  shapes are rows, with a number besides, fourteen. Five of its six admitted shapes are rows. **What `structuredClone` returns is
+  not**: no Jest environment builds it in the test's realm (jsdom has none, and the node
+  environment's is the host realm's, whose result the check refuses as of another realm, which
+  there it is). M13 measured it read in Node. Step 7's README says that facts cloned by
+  `structuredClone` inside a Jest test are refused.
+- **The write forms are M2's** (step 1's pack, `m2-writes.txt`), each that § 3.4 lets compile, with
+  its fixture's names: forty-three refused, the facts as they were, among them five copies a
+  host's built-in makes (`list.slice().sort()`, `concat`, `map`, `filter`, `JSON.parse`), which
+  the walk did not create, and five `eval-core` refuses itself (a `prototype` read, and four
+  destructuring targets); two writes to the event; eleven that complete, writing only into what
+  they created; the two `delete` forms; the right-hand side run once before a refusal; and
+  `Reflect.set`, which writes when the host puts `Reflect` among the facts (finding 17), as the
+  CHANGELOG says. M2's `this` writes, a member of `calc` and `delete calc.x` are refused at
+  compile. Logical assignment does not parse at `compileRule`'s level.
+- **Its review** (of the second pin, 12.4b; no Critical, not safe to commit) found three things,
+  each fixed here with a row or a probe:
+  - **The filter's `match` was exponential over the facts**: a target with shared or cyclic
+    paths, an order whose items each name it, reached one object by many paths, and an any-of
+    list at each level multiplied the work (its pack's `match-12.4b.log`: about twice a level over
+    two items, 2,049 ms at 20 levels for a 499-byte rule, within the depth bound). `matchesPattern`
+    now keeps each pair of a pattern node and a target object's answer for the call: 0.1 ms
+    (`match-12.4c.log`), and a getter on each item, read 2^17 − 2 times without it, is read twice a
+    level, which the rows assert.
+  - **"Either throws, before any field runs" holds for an active rule**: line 1 comes before line
+    2, so an inactive rule checks nothing but its handle. The README, the CHANGELOG, `@throws` and `RuleInput`
+    say so.
+  - **"An expression cannot write the facts" is the expression's own**: a function the host
+    supplies writes as it is written, one among the functions, a fact's own method or `Reflect`,
+    as § 3.5's note and `rule-context.ts` say; the CHANGELOG now does, with a row for each.
+- **Its minors, taken with it**: `RuleStatus`' `'failed'` names the strict decision and the popped
+  scope; a field's `Promise` is its error's `cause`, so a host can handle a rejection in the same
+  turn (Jest does not show an unhandled rejection, measured, so no row can show one; the `cause`
+  row can); the scope guard is by identity, so a host that pops twice and pushes twice, which
+  leaves the depth as it was, still fails the run (the walk pushes a scope of its own around the
+  call, so a host's first pop takes that one); `CLAUDE.md`'s package paragraph names step 4's
+  exports. `close()`, the run's last unwind, was said to have no row; the second review showed it
+  has one (below).
+- **Its second review** (of the third pin, 12.4c; no Critical, not safe to commit) found one
+  sentence false on paths it names, I-A, fixed here: **"an expression cannot write the facts"
+  held only for the built-ins in `eval-core`'s table of writers**, which a context's
+  `checkMemberWrite` is asked about. A regex's `lastIndex`, `RegExp#compile`, a `DataView`'s
+  setters, `ArrayBuffer#transfer` and `resize`, an array iterator's `next`, and `getOrInsert` on a `Map`
+  or a `WeakMap`, write a fact and the run completes (the pack's `gap-rules.log`, on Node 26.4.0), and so do
+  `eval-signals`' and `eval-forms`' contexts over what the host supplied (`gap-signals.log`,
+  `gap-forms.log`). So the CHANGELOG, `rule-context.ts` and § 3.5's note name the table and what
+  is outside it; `SECURITY.md`'s two write-policy bullets and the two adapters' READMEs, false
+  now, were corrected here ([SR31](../standing-rules.md#sr31)), until the tenth pin moved that
+  correction to A64's first commit (below); and [A64](../backlog.md#a64) is the
+  table's gap, a route past a documented guard, so at [SR48](../standing-rules.md#sr48)'s bar,
+  fixed on its own track ([SR3](../standing-rules.md#sr3)) before step 5. Each gap Node 24 has
+  is a row that completes; `Atomics`, like `Reflect`, writes when the host supplies it, a row.
+  Its minors, taken with it: **`close()` has a row** (M-1): an arrow a calculation gives, called
+  after the run, reads `calc` and `event` from the facts, and with `close()` removed reads the
+  run's; that a function in a result runs later against the facts alone is a README limit and
+  [E10](../backlog.md#e10), not scheduled. `evaluateInit`'s inactive rule has the row
+  `evaluateRule`'s has (M-2). The README and the CHANGELOG name the throw from the facts as
+  `match` reads them (M-3). The carried `tsc` error in two `test-setup.ts` files is
+  [F35](../backlog.md#f35), not scheduled.
+- **Its third review** (of the fourth pin, 12.4d; no Critical, not safe to commit) found the
+  same claim still overstated in summaries of the table, I-1 and I-2, fixed here:
+  `EvalContext.checkMemberWrite`'s JSDoc, which ships in `eval-core`'s types, still said every
+  built-in that writes is asked about; and "`WeakMap`'s writers" claimed `getOrInsert` and
+  `getOrInsertComputed`, which the table does not hold and which insert into a given `WeakMap`
+  (`gap-*.log`). So every sentence that summarises the table now names its methods, or says
+  "the table" and lists it once, in the CHANGELOG, `SECURITY.md`, the adapters' READMEs and A64;
+  the tenth pin kept that in the CHANGELOG and A64 and moved the rest, `checkMemberWrite`'s JSDoc
+  included, to A64's first commit.
+  Its minors: a sticky regex's `lastIndex` is moved, not reset, by `replace` and `match` (M-a,
+  two rows more); the adapters' "outside the list" meant the README's examples, so that pin named
+  `eval-core`'s table there (M-b, moved by the tenth pin); the three bold leads it named now say the table (M-c); and the
+  memo's bound is the pattern's nodes times the target's edges, not its objects (M-d).
+- **Its fourth review** (of the fifth pin, 12.4e) found a Critical, C-1, fixed here in the
+  wording and recorded in A64: **a built-in of the table that native code calls writes** —
+  `[1].forEach(list.push, list)` asks about `forEach`, not `push` — under all three contexts
+  (`gap-*.log`). Each pin's review had found one more route, so the sentences no longer list
+  exceptions to "an expression cannot write what it was given"; each states the contract every
+  path keeps ([SR44](../standing-rules.md#sr44)): where the policy is asked, an assignment or
+  update and a call the expression itself makes of a table built-in, and that other routes write,
+  the register keeping the known ones. Three rows pin the callback route, red under probe S47.
+  Its I-1: the three published packages' `[Unreleased]` sections each gained a line for their
+  corrected sentences (SR11), moved with them by the tenth pin. Its minors: this list names `call-expression.ts` (M-1); `lastIndex`
+  is what the regex methods move, not a built-in (M-2); an assignment to `event` is refused at
+  compile, so the CHANGELOG says so (M-3); the README names every throw (M-4); A64 says what a
+  `/gy` regex does (M-5); the `'method'` kind's JSDoc says the expression's own call (M-6).
+- **Its fifth review** (of the sixth pin, 12.4f; no Critical; safe once one line is fixed) found
+  that line, I-1: `SignalContextWriteError`'s JSDoc, which ships in `eval-signals`' types, still
+  said a call of any built-in that would write is refused; that pin made it say the expression's
+  own call of a table built-in, as its `checkMemberWrite` does, and the tenth moved the correction
+  to A64's first commit. Its minors: the `eval-signals` CHANGELOG
+  line quotes the README's old heading as it was ("Two things"); `SECURITY.md`'s `eval-signals`
+  bullet names the key refusal; the README and the CHANGELOG list an input and `functions` that
+  are not objects among the throws; and `EvalMemberWrite.method` names the typed arrays' methods.
+  The `eval-signals` CHANGELOG line, the `SECURITY.md` bullet and `EvalMemberWrite.method`'s JSDoc
+  moved with the tenth pin; the README and CHANGELOG lines are `eval-rules`' and stand.
+  The further callers it reported, `push` handed to `filter`, a `Map`'s `forEach` and
+  `Array.from`, and `Object.assign` handed to `reduce` or to `sort`, are measured into A64
+  (`cb2.log`). No row or probe changes.
+- **Its sixth review** (of the seventh pin, 12.4g; no Critical; not as staged) found that pin's
+  own new clause false, I-1: "`functions` that is not an object" is false for `null`, which
+  `functions ?? {}` reads as none, and no row pinned the throw. The README and the CHANGELOG now
+  say what `checkInput` does: an input that is `null`, an array or not an object, and `functions`
+  that is an array or not an object, absent or `null` being none. The input's `null`, array and
+  function shapes are three assertions added to the input row; `functions` has an `it.each` of
+  three shapes and a row for `null` and absent, four cases more. They are red under probes S48
+  (the functions check deleted), S49 (the input's `null` clause deleted), S51 (its array clause
+  deleted) and S50 (`null` refused); the function shape is asserted and reddened by none of them
+  alone. Its minors: `SignalContextWriteError`'s JSDoc said "directly or through
+  `call`, `apply` or `bind`", and `SECURITY.md` named the bare-name refusal as measured (a `let` or
+  a parameter binds its own), both in that pin and moved by the tenth; A64 says which contexts measured `Object.assign` and `sort`, keeps
+  "other methods that take a callback are not measured", names the callers measured since
+  (`some`, `every`, `find`, `findIndex`, `findLast`, `flatMap`), and gains a third route, a
+  function the host supplies (`Reflect.set`, `deleteProperty` and `apply`, `Atomics.store`,
+  `Error.captureStackTrace`); and `cb2.log`, `cb3.log` and `cb4.log` are one script each.
+- **Its seventh review** (of the eighth pin, 12.4h; no Critical; not as staged) found
+  `SECURITY.md`'s new bare-name clause false for a name on `eval-core`'s blocklist, I-1:
+  `constructor = 1`, `__proto__ = 1`, `toString = 1` and `valueOf = 1`, a key or not, are refused
+  by `eval-core`'s own `Error` before the context is asked (`bn2.log`), and `eval-forms` rethrows by
+  class. That pin's clause said so; the tenth moved it to A64's first commit. Its minors: A64's Verified paragraph names the rows that exist and
+  that `push` through `call` was measured under two contexts; its index row names three kinds;
+  probe S49 is split, S51 witnessing the input's array clause; `signal-context.ts` said "a bare
+  name" where it had said "a key" (moved by the tenth pin); this record says where the input assertions went; `cb3.log` prints
+  its Node. The routes it reported are listed in A64 as reported and not measured. No row
+  changes; fifty-one probes.
+- **Its eighth review** (of the ninth pin, 12.4i; no Critical; not safe to commit as staged)
+  found the seventh's defect in more places: `eval-core`'s blocklist runs before the context, for
+  a member key as for a bare name (`o.__proto__ = 1`, `o.prototype = 1`). So `SignalContextWriteError`
+  is not what `eval-signals`' README and JSDoc, and `eval-forms`' README, promise for those
+  writes. That includes two sentences pins six to nine had rewritten. Each of the last four
+  reviews found a sentence in the published packages that a pin had fixed only where the review
+  pointed. So **the tenth pin narrows the step back to `eval-rules`**:
+  - `SECURITY.md`, the adapters' READMEs and CHANGELOGs, and the JSDoc in `eval-core` and
+    `eval-signals` return to 1993c81.
+  - Their correction is A64's first commit ([SR31](../standing-rules.md#sr31)), before step 5. It
+    sweeps every shipped README, `SECURITY.md` and `modules/*/src`'s JSDoc for each error class
+    and each "refuses", "throws" and "not caught", against `refuseDangerousName` and
+    `resolveMemberTarget`, which run first.
+  - The drafts in pins six to nine are its starting text.
+  - `eval-rules`' CHANGELOG names the blocklist (`bl.log`: `constructor = 1`, `o.__proto__ = 1`
+    and `o.prototype = 1` fail the run with `eval-core`'s `Error`); the eleventh pin replaces that
+    sentence (its ninth review, below).
+  - Its minors: A64 says ten rows over nine built-ins, and that `Reflect.set`'s probes are broad;
+    this record no longer credits a probe with the input row's function shape, which none
+    reddens alone.
+- **Its ninth review** (of the tenth pin, 12.4j; no Critical; not safe to commit as staged) found
+  one shipped sentence false, I-1: the CHANGELOG's blocklist sentence promised `eval-core`'s own
+  `Error`, and on a string, number or boolean receiver the six names a primitive keeps readable
+  fail with `RuleWriteError`. It reported, beside the step, a route past the blocklist in the
+  published `eval-core` 0.16.0, a computed key that is an array, which became
+  [A65](../backlog-retired.md#a65), fixed and released in `eval-core` 0.16.1 before this pin. So
+  **the eleventh pin, 12.4k, is the tenth rebased onto 0.16.1's record (e74f1e9)**: the register
+  counts 31 live, A64, E10 and F35 joining A65, A66 and F36 in the history's Unreleased row; and
+  the sentence states what every path keeps on 0.16.1: a write to a listed name fails the run,
+  into a given object, a created one or a primitive, and which error it fails with is not
+  promised (narrowed to an assignment or update by the tenth and eleventh reviews, below). Measured (`bl3.log`): 572 writes, the thirteen names into ten receivers by four key
+  forms, a bare name, a compound assignment, an update and a `delete`; 428 fail with
+  `eval-core`'s `Error`, 144 with `RuleWriteError`, and none completes. Eight rows and a contrast,
+  red under probes S57 (0.16.0's unconverted key), S58 (the blocklist off) and S59 (a primitive
+  receiver's two guards off together, the rules policy and `eval-core`'s refusal of a write to a
+  primitive, either of which fails the run alone). Its minors: "any other input key throws" held
+  only for own enumerable string keys (M-1), so the input's own keys, the implementations',
+  `compileRule`'s options' and an effect declaration's are read by `Reflect.ownKeys`, a symbol
+  and a non-enumerable key included, and the input's fields only as own properties, an
+  inherited `facts` being no facts (P-1): five rows, red under probes S52 to S56. "Where the host
+  supplies `Object`" (M-2) holds on 0.16.1, which refuses `({})[["constructor"]]` under every key
+  form (`bl3.log`). `@throws` names every throw the README does (M-3). The records above say what
+  the tenth pin moved (M-4), and `CLAUDE.md` names the two adapters it meant by "both packages"
+  (M-5). Its note for A64: the first commit's sweep reads its hits against what the blocklist
+  lets through to the context, the primitive receiver's six names, as A64 now says.
+- **Its tenth review** (of the eleventh pin, 12.4k; no Critical; not safe to commit as staged)
+  found three Important. I-1: the blocklist sentence and "where the host supplies `Object`" hold
+  only from `eval-core` 0.16.1, and the peer range admitted 0.16.0 (probe S57 turns the array-key
+  row red); the twelfth pin, 12.4l, raises the floor to 0.16.1 in the manifest and the README's
+  Install line, and § 3.7, finding 4 and step 9 say so (SR4). I-2: "unless the host puts it among
+  the facts" was false for the event and for a declared function's return (measured:
+  `event.R.set(o, "k", 1)` completes); the CHANGELOG names the three ways, as `rule-context.ts`
+  did, finding 17's row writes through each, and A64 says so. I-3: the blocklist sentence claimed
+  every write, and `Reflect.set(o, "toString", 1)`, `Reflect` supplied, completes (measured); it
+  named an assignment, update or `delete` (SR45), which the eleventh review found
+  wider than `bl3.log`, below. Each of its rows
+  asserts one of the two guards' messages (SR18), and each is red under the probe its comment
+  names: S60 and S61 switch off a bare name's and a given object's two guards, and S62 refuses
+  every array key, the contrast's wrong fix (SR15). Its minors: a field the input inherits throws
+  (M-1, P-1), and an effect's name is read by its own keys, a symbol throwing (probes S53, S63);
+  the P-1 count is four (M-2); `evaluate-rule.ts` cites the ninth and tenth reviews (M-3); the
+  Files paragraph names `compile-rule.ts`' reading, its rows, the manifest and the Install line
+  (M-4); the CHANGELOG's inactive rule "runs nothing else and checks nothing else", as the README
+  says (M-5). Its note, a recorder reaching the host as a value: E10 gains nothing, from a
+  `rec.log` whose run held only the `this` routes (the eleventh review, I-2, below).
+- **Its eleventh review** (of the twelfth pin, 12.4l; no Critical; not safe to commit) found two
+  Important. I-1: the CHANGELOG's `delete` was false on a primitive: a `delete` evaluates its
+  operand as a read, which the six names a primitive keeps readable pass, so `delete s.toString`
+  completes, deleting nothing. Measured by the thirteenth pin, 12.4m (`bl4.log`, 4,771
+  runs: `=`, `+=`, `-=`, `||=`, `??=` and `&&=`, `++` after and `--` before, and `delete`,
+  each name into each receiver by each key form; and bare, `=`, `+=`, `-=`, `||=`, `??=`, `++` and
+  `--` after; the compound operators not run take the same branch of `eval-core`'s
+  `assignmentExpressionVisitor`, one for every operator): every assignment and update that compiles
+  fails the run; the logical
+  assignments are refused at compile; and `delete` completes in exactly the 144 runs of those six
+  names on a primitive. So the sentence names an assignment or update (SR44), the rows comment
+  says why `delete` is not among them, and four rows more pin the other forms (`constructor++`,
+  `o.__proto__ -= 1`, `({})[["constructor"]]++`, `s.toString += "x"`). I-2: the tenth review's
+  record cited `bl3.log` for forms it did not run, and a `rec.log` whose kept run held only the
+  `this` routes (the first run's `effect-outside-item` lines were overwritten, and its skipped
+  variant was not a skipped run). `rec2.log` runs the eight routes: the name, direct and as an
+  item's argument, gives `effect-outside-item`; `this` gives `this-expression`; and a
+  `filter: { when: 'false' }` contrast is skipped, so the skipped route was reached. E10 gains
+  nothing. Its minors: the rows comment said "every write" (M-1); and a bare name's second guard
+  is `set`, so a row accepts the blocklist's message or its target's policy's, `set`'s for a
+  bare name, and the map holds (M-2).
+- **Its twelfth review** (of the thirteenth pin, 12.4m; no Critical; not safe to commit as staged)
+  found one Important, I-1: "either fails the run" and "fails the run too" were false where a
+  function the host supplied catches the refusal: the arrow's walk throws, the arrow pops its
+  scope, the host catches, and the run completes. Measured on the gate's bundles by the agent, and
+  by the fourteenth pin, 12.4n (`catch.log`, through ts-jest on the source, not the bundles): one of
+  the host's functions catches each of the five kinds of refused write, to a member, to a fact, to a
+  blocklisted member key or bare name, and by a table writer, and a fact's method and the event's
+  each catch a member write; each run completes with nothing written. `eval-core` has no `try`
+  statement an expression can write, and an async arrow is refused at compile (`async-expression`). So the CHANGELOG, § 3.5 and the rows comment said: the throw fails the run unless a function
+  the host supplied catches it, and then the run completes, a list the thirteenth review found
+  short (below). Seven rows and the uncaught contrast; probe S64, a caught refusal that still fails
+  the run (the wrong design). Its minors: "Measured in full" overstated `bl4.log` (M-1), and the record names
+  the operators it ran and the one branch the others take; `'completed'`'s JSDoc said every field
+  ran (M-2); the blocklist rows assert their given objects' prototype and keys (M-3); the progress
+  lines say A64's first commit comes before step 5 (M-4). Its note: each implementation was read
+  twice, by the check and by the run; it is read once and copied ("check and copy a host's value in
+  one reading"), with a row and probe S65.
+- **Its thirteenth review** (of the fourteenth pin, 12.4n; no Critical; not safe to commit as
+  staged) found one Important, I-1: the sentence's list of catchers was short, and "fails the run"
+  is not what a throw after the run does. (a) An arrow a field gives, called after the run, is
+  still refused, and the throw reaches its caller (the row on a field's arrow called after the run,
+  E10). (b) Other host code catches too, measured by the agent on the gate's bundles: a fact that is
+  itself a function, a nested fact's method, and a method of what a declared function returns each
+  catch a refused member write, and the run completes with nothing written; by reading, so might a
+  `Proxy` trap or an accessor. And a later field can still fail the run. **The fifteenth pin, 12.4o,
+  stops listing**: the write throws where it is made, and nothing is written there; the throw goes
+  where any throw goes: one that leaves a field fails the run, code the host supplied may catch it
+  on the way, and one from a function the run gave out, called after the run, reaches that caller
+  (E10). The reviewer verified that nothing of ours catches: every `catch` in `eval-core`'s
+  `src/lib` rethrows, sits behind `caseInsensitive`, or guards a callee's `toString` or `name`, and
+  `run`'s is the only one around a walk in `eval-rules`. Its minors: the blocklist rows' fixture
+  lines were vacuous for `__proto__ = 1` (a non-object prototype is ignored) and unprobed (M-1), so
+  the given-object `__proto__` row writes `{ z: 1 }`, the compound row's check is its status, and
+  probe S66 writes before it refuses, which turns the two given-object rows red at those lines; S64
+  marked only `RuleWriteError` and its flag leaked across rows (M-2): it clears the flag when a run
+  starts and reddens exactly the five legs whose guard is the rules context's, the two blocklist
+  legs red under S58, S60 and S61; the twelfth record overstated `catch.log` (M-3), corrected above;
+  and the caught blocklist legs accept either of their target's guards' messages (M-4).
+- **Step 3's N-2, measured** (`deeprun-12.4c.log`): every member chain, sum and run of `!` that
+  `compileRule` accepted, to 2,000 long, ran to completion; from 2,500 `compileRule` gave
+  `parse-error`. A walk that does run out of stack in a field throws, and line 10 fails the run: a
+  row, with a host function that recurses.
+- **Step 3's carried notes**: N3, a handle `compileRule` did not return, throws a `TypeError`;
+  "gives that problem alone" is "gives the size problem alone" in the README, the CHANGELOG,
+  `@returns`, the plan and the code-reviewer's item 3; and a `pathKey` row pins "ASCII identifier"
+  and "UTF-16 code units".
 
 ### Step 5 — The trace, and the cost of building it
 
@@ -1410,7 +1722,8 @@ names.
 ### Step 9 — The release commit
 
 **Files**: `modules/eval-rules/package.json`, `CHANGELOG.md`, and `README.md` for the demo link
-alone; `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root `README.md` and
+alone (step 4 raised the peer floor to 0.16.1 in both the manifest and the README's Install line,
+§ 3.7, and the release keeps it); `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root `README.md` and
 `CHANGELOG.md`, `docs/release-history.md`, `CLAUDE.md`.
 
 - The version becomes 0.1.0 and the CHANGELOG heading is dated by
@@ -1621,7 +1934,7 @@ published shape § 3 could not settle from the design. **All are decided**, by t
     *Decided*: it does not throw; it returns the problems. *Amended* by the step 3 third
     follow-up (Revision 7, "The fourth review"): a `match`'s walk stops at the first of two bounds
     it meets: at its 101st problem it gives its first 100 and one saying there are more; past
-    100,000 values it gives that problem alone, whatever it had found. So what `compileRule`
+    100,000 values it gives the size problem alone, whatever it had found. So what `compileRule`
     returns stays bounded; every other field returns every problem. Not P-1, which lifts a rejection later: an amendment, whose bound a later minor
     can raise.
 18. **Whether a `RuleProblem` carries a stable `code`** beside its `path` and `message`. Without

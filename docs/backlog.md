@@ -228,6 +228,7 @@ and `v0.2.3`: lightweight tags from before the `<project>@<version>` names, whic
 | [A61](#a61) | A native function the host places in the context, `Object.assign`, `Reflect.set` or `Object.defineProperty`, writes an `EvalScope` held as a value, its fields included, past A51's refusal of a member write | core | fix | Open — opened 2026-11-06 by the [A48 plan](a48/plan.md)'s step 5, from step 4's code review; predates it. Not scheduled |
 | [A62](#a62) | Evaluation time and memory are not bounded: a regular expression that backtracks, in a literal or built from a string, and a large allocation, each run inside one built-in call, which neither the iteration budget nor the call stack reaches | core | decision | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its finding 9 |
 | [A63](#a63) | No published package of the workspace loads in plain Node as installed: each throws at import, `ParserService` needing the JIT compiler, unless `@angular/compiler` was imported first | core | decision | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its finding 25 (M14) |
+| [A64](#a64) | `eval-core` asks a write policy only at an expression's own assignments and updates and its own calls of the built-ins in its table of writers, so three kinds of route write: a table built-in that native code calls (`[1].forEach(t.push, t)`), a built-in outside the table that changes what it is handed (`getOrInsert` on a `Map` or a `WeakMap`, a regex's `lastIndex`, `RegExp#compile`, a `DataView`'s setters, `ArrayBuffer#transfer` and `resize`, an array iterator's `next`), and a function the host supplies (`Reflect.set`, `Atomics.store`); each writes what an expression was given under `eval-signals`', `eval-forms`' and `eval-rules`' contexts | core, signals, forms, rules | fix | Open — **at the fix bar: a route past a documented guard** ([SR48](standing-rules.md#sr48)); scheduled before the [Phase 12 plan](eval-rules/plan.md)'s step 5, on its own track. Opened 2026-11-20 by that step, from its second code review (I-A); its first commit corrects the published packages' sentences false now ([SR31](standing-rules.md#sr31)) |
 | [A65](backlog-retired.md#a65) | A computed member key that is not a string, number or symbol passed the dangerous-name blocklist unconverted and was converted at the access: `o[["constructor"]]` read `Object`. Up to 0.12.0 a route to code execution, and from 0.12.1 to writes into `Object.prototype` | core | fix, security | **Retired — fixed 2026-11-21**; released 2026-11-22 in `eval-core` 0.16.1, tagged 188c0d9. Opened and retired by its post-publish commit |
 | [A66](#a66) | `eval-core` 0.16.1's CHANGELOG leaves out two consequences of its key conversion: an object literal's computed key that is not a string or number now creates the property, where 0.16.0 dropped it; and a read hook and a write policy receive the converted key, where they received the array | core | docs | Open — opened 2026-11-22 by 0.16.1's post-publish commit, from 188c0d9's code review; for `eval-core`'s next release |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
@@ -265,6 +266,7 @@ and `v0.2.3`: lightweight tags from before the `<project>@<version>` names, whic
 | [E7](#e7) | The parts of the rule design that no phase has: a converter from an earlier rule format, `parallel` and `fanOut`, a rule as a `computed`, timer and route event sources | rules | phase | Open — **no phase reserved**; not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its § 3.3 |
 | [E8](#e8) | What `eval-rules` 0.1.0 refuses and a later minor can admit: `caseInsensitive`, facts that are a class instance or a `Registry`, and `maxIterations` as an option | rules | decision | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its § 8 q3, q7, q15 and q21 |
 | [E9](#e9) | `compileRule`'s sets of names and its duplicate check are keyed on strings as long as a rule's names and keys, which V8 hashes by length past 16,383 characters: calculations named, or unknown fields keyed, 17,000 characters compile superlinearly in their count | rules | decision | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-20 by the [Phase 12 plan](eval-rules/plan.md)'s step 3 third follow-up, from 6997575's code review (N-a) |
+| [E10](#e10) | A function a rule's field gives, such as an arrow among the calculations, runs after the run against the facts alone: its `calc`, `event` and declared functions name the facts' own | rules | decision | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-20 by the [Phase 12 plan](eval-rules/plan.md)'s step 4, from its second code review (M-1) |
 | [F1](backlog-retired.md#f1) | No `configurations.ci` on the `test` target — **two projects, not one** | signals, forms | fix + decision | **Retired — fixed, no thresholds** |
 | [F2](backlog-retired.md#f2) | One `CHANGELOG.md` for three independently-versioned packages | repo | decision | **Retired — decided 2026-09-28**: one `modules/<name>/CHANGELOG.md` per package; `nx release` still unadopted. `eval-core` had five changelogged versions npm never received |
 | [F3](backlog-retired.md#f3) | README-import drift gate — every `@zvenigora/…` import a README prints is exported — **three packages, four READMEs** | core, signals, forms | fix | **Retired — built and green**. Whether every export is documented is [F10](backlog-retired.md#f10)'s |
@@ -299,6 +301,7 @@ and `v0.2.3`: lightweight tags from before the `<project>@<version>` names, whic
 | [F32](#f32) | `eval-core`'s barrels re-export 26 types without `export type`, so its source does not compile under `isolatedModules` (`TS1205`); an application that compiles the source, as the demo does, turns the option off | core | fix | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-15 by the [Phase 19 plan](demo/plan.md)'s step 1, from its M2 |
 | [F33](#f33) | Two of `eval.service.memory-leaks.spec.ts`' collector cases, (1.5) and the positive control (2.3), have each failed once in a full gate and passed on the next, with no edit | core | test gap | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 19 plan](demo/plan.md)'s step 8, from the reviewing chat's gates |
 | [F34](#f34) | `tools/doc-links.mjs` exits with an unhandled `ENOENT` on a tracked file deleted from the working tree and not staged, where it reports a dangling link once the deletion is staged | repo | fix | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 19 plan](demo/plan.md)'s step 8, noticed at its step 3 |
+| [F35](#f35) | `eval-rules`' and `eval-signals`' `test-setup.ts` do not type-check under their spec configs: `tsc` reports `TS2353` for `errorOnUnknownElements`, which ts-jest never sees | rules, signals | fix | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-20 by the [Phase 12 plan](eval-rules/plan.md)'s step 4; noticed at its step 3 |
 | [F36](#f36) | A case of the demo's `dependencies.example.spec.ts` reaches Jest's 5 s timeout under a full gate's load and passes on the next run | demo | test gap | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-22 by 0.16.1's post-publish commit, from two step 4 reports |
 | [R1](backlog-retired.md#r1) | `ASYNC_HOOK_MESSAGE`'s dangling `{@link}` | core | — | **Retired — fixed** |
 | [R2](backlog-retired.md#r2) | `model-source.spec.ts`'s "registrars are stubs" comment | forms | — | **Retired — fixed** |
@@ -1036,6 +1039,116 @@ point with no injectable. Whether either changes a `.d.ts` is measured then
 
 *Recorded*: the [Phase 12 plan](eval-rules/plan.md) § 1.2 finding 25, § 3.7 and § 8 q23.
 
+<a id="a64"></a>
+## A64 — A write policy is asked only at an expression's own writes and its own calls of the table's built-ins
+
+**Package** core, signals, forms, rules · **Kind** fix · **Status** Open, **at the fix bar: a route past a documented guard** ([SR48](standing-rules.md#sr48)); scheduled before the [Phase 12 plan](eval-rules/plan.md)'s step 5, on its own track ([SR3](standing-rules.md#sr3)). Opened 2026-11-20 by that step, from its second code review (I-A)
+
+A context's `checkMemberWrite` is asked at two places: before an assignment or update to a
+member, and before a call the expression itself makes, directly or through `call`, `apply` or
+`bind`, of a built-in in `MUTATING_BUILT_INS`, in `member-write-policy.ts`. That table, which
+`eval-core`'s 0.11.0 CHANGELOG lists, holds `Array`'s and the typed arrays' mutators; `set` and
+`delete` on a `Map` or a `WeakMap`; `clear` on a `Map` or a `Set`; `add` and `delete` on a `Set` or
+a `WeakSet`; a `Date`'s setters; and `Object`'s writers. Every other route writes as written,
+under every policy. Three kinds are known; no sweep of the specification has been made, so no
+list below is complete.
+
+- **A built-in of the table that native code calls.** `consultMethodWrite` asks about the function
+  the expression's own call node calls. `[1].forEach(t.push, t)` calls `forEach`, which is not in
+  the table, and `forEach` then calls `push` with no question asked. Measured under all three
+  contexts: `push` handed to `forEach` or `map`, and `Map#set` and a `Date`'s `setUTCFullYear`
+  handed to `forEach`. Measured under `eval-rules` and `eval-signals`, from step 4's fifth and
+  sixth reviews: `push` handed to `filter`, `some`, `every`, `find`, `findIndex`, `findLast`,
+  `flatMap`, a `Map`'s `forEach` or, where the host supplies `Array`, `Array.from`; and, where it
+  supplies `Object`, `Object.freeze` handed to `forEach` and `Object.assign` handed to `reduce` or
+  to `sort` as its comparator, which `sort`, itself in the table, calls on an array the expression
+  created. Other methods that take a callback are not measured. Found by step 4's fourth review
+  (C-1).
+- **A built-in outside the table that changes what it is handed.** `getOrInsert` and
+  `getOrInsertComputed` on a `Map` or a `WeakMap`, which insert; `test` and `exec`, which move a
+  global or sticky regex's `lastIndex`, and `match` and `replace`, which reset it on a global
+  regex, sticky or not, and move it on a sticky one that is not global; `RegExp#compile`, which
+  rewrites the regex; a `DataView`'s setters, which write its buffer; `ArrayBuffer#transfer` and
+  `transferToFixedLength`, which detach the buffer, and `resize`; and an array iterator's `next`,
+  which advances it. Found by step 4's second review (I-A).
+- **A function the host supplies.** It is the host's code, and no expression reaches one unless the
+  host supplies it: among the facts or the context, or under `eval-rules` also as the event or from
+  one of its functions (step 4's tenth review, I-2). Measured under `eval-rules` and `eval-signals`, from
+  step 4's sixth review: `Reflect.set` and `Reflect.deleteProperty` on a given object;
+  `Reflect.apply` with `push` and a given array, since `consultMethodWrite` follows `call`, `apply`
+  and `bind` but not `Reflect.apply`; `Atomics.store` on a given typed array; and
+  `Error.captureStackTrace`, which adds `stack` to a given object.
+
+The expression is the untrusted input `SECURITY.md` names, so each is a way past three documented
+guards: `eval-signals`' write refusal over what an expression was given, open since its 0.4.0,
+`eval-forms`' over a control's value, and `eval-rules`' over the facts. `lastIndex` was already
+named, in both adapters' READMEs, as not caught. The step that opened this states the contract in
+`eval-rules`' own text, its CHANGELOG, `rule-context.ts` and its plan's § 3.5 note: where the
+policy is asked ([SR44](standing-rules.md#sr44)), and that other routes write.
+
+**The sentences false now in the published packages are this entry's first commit**
+([SR31](standing-rules.md#sr31)), before the fix itself and before the Phase 12 plan's step 5.
+Step 4's pins six to nine wrote and reviewed them inside the step, and each review found another
+copy or another class. So they move here, to one commit that audits them together. The known set:
+- `SECURITY.md`'s two write-policy bullets, which say the policy is asked before a built-in writes
+  into what it is handed.
+- `eval-signals`' README ("Two things this does not catch") and `eval-forms`' README ("Not
+  caught"), which list two routes of the many.
+- The JSDoc of `EvalContext.checkMemberWrite`, of `EvalMemberWrite` and its `method`, and of
+  `eval-signals`' `SignalContextWriteError`, its `kind` and its `checkMemberWrite`, which ship in
+  each package's types.
+- From step 4's ninth review: the sentences that promise `SignalContextWriteError` for a write
+  that `eval-core`'s blocklist of dangerous names refuses first, with its own `Error`. That covers
+  a bare name (`constructor = 1`) and a member key (`o.__proto__ = 1`, `o.prototype = 1`). The
+  sentences are in `eval-signals`' README and `eval-signal.ts`, and in `eval-forms`' README, where
+  `applyErrorPolicy` rethrows by class, so the default renders a blank.
+
+Step 4's pins six to nine hold measured drafts of each correction (`ng-eval-12.4f` to
+`ng-eval-12.4i`). The commit sweeps every shipped README, `SECURITY.md` and `modules/*/src`'s
+JSDoc for each error class it names and each "refuses", "throws" and "not caught". It checks
+each hit against `refuseDangerousName` and `resolveMemberTarget`, which run first, and
+against what they let through to the context: on a string, number or boolean receiver, the six
+names a primitive keeps readable, `toString`, `valueOf`, `toLocaleString`, `hasOwnProperty`,
+`isPrototypeOf` and `propertyIsEnumerable`, so a write of one fails with the context's own error,
+not `eval-core`'s (measured under `eval-rules` by step 4's eleventh pin, `bl3.log`; the adapters'
+by the sweep). Up to `eval-core` 0.16.0 a key that was not a string passed too
+([A65](backlog-retired.md#a65)); the drafts predate 0.16.1, so the sweep reads them against it. Each
+package's `[Unreleased]` section gets a documentation line ([SR11](standing-rules.md#sr11)). The
+npm READMEs of `eval-signals` 0.9.0 and `eval-forms` 0.9.0 keep the old sentences until each
+package's next release. The
+[Phase 17 plan](eval-template/plan.md)'s § 3.5 note "What the render keeps on every path" states
+the same contract for a template; its step 1 reads this entry.
+
+**Verified** on step 4's sixth to tenth pins, in the reviewing chat's sandbox on Node 26.4.0, by
+one scratch spec per package (`gap-rules.log`, `gap-signals.log` and `gap-forms.log`) and scripts
+over the built bundles for the fifth and sixth reviews' routes (`cb2.log`, `cb3.log`, `cb4.log`),
+all in step 4's tenth pack: under each context `set` on a given `Map` or `WeakMap` and `push` on a
+given array, called directly, were refused, and so, under `eval-rules` and `eval-signals`, were
+`push` through `call` and `Object.assign` into a given object; each route above changed the given
+value under the contexts it names. `eval-rules`' `evaluate-rule.spec.ts` pins some as rows whose
+run completes: ten rows over nine outside built-ins (`test`, `exec`, `replace` and `match` on a regex's
+`lastIndex`, `RegExp#compile`, a `DataView`'s setter, `ArrayBuffer#transfer` and `resize`, an
+array iterator's `next`), three callers (`push`, `Map#set` and `Object.freeze` handed to
+`forEach`), and two host functions (`Reflect.set`, `Atomics.store`); the rest are measured only
+in the logs. Probe S45 turns the first group red, S47 the second, and S46 the `Atomics` row; the
+`Reflect.set` row is red only under broad probes, S10, S30 and S31, none aimed at it.
+
+Reported by step 4's seventh review and not measured here: `push` handed to `findLastIndex`, a
+`Set`'s `forEach` or a typed array's `forEach`; `replaceAll` resetting a global regex's
+`lastIndex`; `FinalizationRegistry#register`; `SharedArrayBuffer#grow`; the iterator helpers
+(`toArray`, `drop().next()`) advancing a given iterator; and `Atomics.add`.
+
+**The fix**, its own track, measured then. For the outside built-ins: widen the table, or keep a
+second one beside it as `REFLECT_WRITERS` is, since the table is what a published policy is asked
+about; decide `next`, which reading a given iterator needs, and `lastIndex`, which
+`pattern.test(value)` moves; sweep the specification for the rest. For native calls: refuse a
+table built-in where it is passed as a value, or ask about it where a callback-taking built-in is
+called with it, and sweep for the built-ins that call what they are handed. Then patch releases of
+`eval-core`, and of `eval-signals` and `eval-forms`, whose READMEs list what is caught.
+`eval-rules` takes it before or with its 0.1.0.
+
+*Recorded*: the [Phase 12 plan](eval-rules/plan.md) § 3.5's note and "Step 4, as written".
+
 <a id="a66"></a>
 ## A66 — `eval-core` 0.16.1's CHANGELOG leaves out two consequences of its key conversion
 
@@ -1270,6 +1383,29 @@ length, refused as a problem (P-1), with an unknown key shown cut, which keeps e
 keys the library hashes in every set. Either is measured then.
 
 *Recorded*: the [Phase 12 plan](eval-rules/plan.md) Revision 7, "The fourth review".
+
+<a id="e10"></a>
+## E10 — A function a rule's field gives runs, after the run, against the facts alone
+
+**Package** rules · **Kind** decision · **Status** Open, not scheduled ([SR48](standing-rules.md#sr48)). Opened 2026-11-20 by the [Phase 12 plan](eval-rules/plan.md)'s step 4, from its second code review (M-1)
+
+A calculation's value may be a function, such as `() => calc.k`, and `evaluateRule` returns it in
+`calc` as it returns any value; so may a nested value, or an effect's argument. Called after the
+run, it resolves its names in the context as it is then: the run's last unwind has popped the
+run's scope, so `calc`, `event` and a declared function name the facts' own, or nothing. Its
+member writes are still refused. With facts holding `calc: { k: 'facts' }` and a calculation `k`
+of `"run"`, the arrow gives `'facts'`; with the last unwind removed it gives `'run'`.
+
+**Verified** by `evaluate-rule.spec.ts`' row "pops its scope when the run ends", which probe S43
+(no `close()`) turns red, in step 4's fifth pack.
+
+**Not scheduled**, by SR48: the README states it, it reads only what the host gave and writes
+nothing it was given, so it is no route past a guard, it blocks no plan, and no consumer has
+reported it. **What reopens it**: a host that keeps a result's function, or a report. **The fix**
+is a decision: a field whose value is a function fails the run, as a `Promise` does, which leaves a
+nested function and an argument; or the run's scope kept for the function, which outlives the run.
+
+*Recorded*: the [Phase 12 plan](eval-rules/plan.md), "Step 4, as written".
 
 ---
 
@@ -1850,6 +1986,29 @@ reason, which takes this with it ([SR33](standing-rules.md#sr33) runs the review
 
 **The fix**: skip a listed file that does not exist, or report it as deleted and not staged, and
 then check the links to it as the staged case does.
+
+<a id="f35"></a>
+## F35 — Two `test-setup.ts` files do not type-check under their spec configs
+
+**Package** rules, signals · **Kind** fix · **Status** Open, not scheduled ([SR48](standing-rules.md#sr48)). Opened 2026-11-20 by the [Phase 12 plan](eval-rules/plan.md)'s step 4; noticed at its step 3
+
+`modules/eval-rules/src/test-setup.ts` and `modules/eval-signals/src/test-setup.ts` pass
+`errorOnUnknownElements` and `errorOnUnknownProperties` to `jest-preset-angular` 17.0.1's
+`setupZoneTestEnv`, and `tsc -p <project>/tsconfig.spec.json --noEmit` reports `TS2353` at line 4
+of each: `'errorOnUnknownElements' does not exist in type 'SetupOptions'`. `SetupOptions` extends
+`@angular/core/testing`'s `TestEnvironmentOptions`, which declares both, so the type is not
+resolved there under those configs. `eval-forms`' identical file reports nothing, under a spec
+config whose `moduleResolution` is `bundler`, and neither does the demo's. The gate does not see
+it: ts-jest does not type-check, and lint runs no `tsc`. Whether the two options take effect under
+Jest is not measured.
+
+**Verified** on step 4's fifth pin by the reviewing chat: `tsc` on the four spec configs (`tsc-spec.log` in
+step 4's fifth pack). The runs print other errors too, which this entry does not examine.
+
+**Not scheduled**, by SR48: nothing ships from a test setup, no sentence states it, it is no route
+past a guard, and it blocks no plan. **What reopens it**: a step that type-checks the specs, or a
+test that relies on the two options. **The fix**: the two spec configs' module resolution, as
+`eval-forms`' is, measured then.
 
 <a id="f36"></a>
 ## F36 — The demo's `dependencies.example.spec.ts` times out under a full gate's load

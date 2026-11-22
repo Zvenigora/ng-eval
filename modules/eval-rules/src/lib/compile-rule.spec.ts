@@ -868,6 +868,35 @@ describe('compileRule\'s options (§ 8 q21)', () => {
     );
   });
 
+  it('throws for an own option key it does not define, a symbol or a non-enumerable one (step 4 ninth review, M-1)', () => {
+    expect(() => compileRule(ORDER, { [Symbol('s')]: 1 } as unknown as CompileRuleOptions)).toThrow(
+      'compileRule: unknown option "Symbol(s)". The options are statements, colonIdentifiers, functions and effects.'
+    );
+    const hidden = Object.defineProperty({}, 'maxIterations', { value: 10, enumerable: false });
+    expect(() => compileRule(ORDER, hidden as CompileRuleOptions)).toThrow(
+      'compileRule: unknown option "maxIterations". The options are statements, colonIdentifiers, functions and effects.'
+    );
+  });
+
+  it('throws for an effect named by a symbol, and declares a non-enumerable one (step 4 tenth review, M-1)', () => {
+    expect(() => compileRule(ORDER, { effects: { [Symbol('e')]: {} } } as unknown as CompileRuleOptions)).toThrow(
+      new TypeError("compileRule: the effect Symbol(e) is named by a symbol; an effect's name is a string")
+    );
+    const hidden = Object.defineProperty({ shown: {} }, 'notify', { value: {}, enumerable: false });
+    const result = compileRule(ORDER, { effects: hidden });
+    expect(result.ok ? compiledRuleInternals(result.rule)?.effects : undefined).toEqual(['shown', 'notify']);
+  });
+
+  it('throws for a symbol or a non-enumerable key in an effect\'s declaration (step 4 ninth review, M-1)', () => {
+    expect(() =>
+      compileRule(ORDER, { effects: { notify: { [Symbol('k')]: 1 } } } as unknown as CompileRuleOptions)
+    ).toThrow('compileRule: the effect "notify" declares "Symbol(k)", which this release does not define.');
+    const hidden = Object.defineProperty({}, 'key', { value: 1, enumerable: false });
+    expect(() => compileRule(ORDER, { effects: { notify: hidden } } as unknown as CompileRuleOptions)).toThrow(
+      'compileRule: the effect "notify" declares "key", which this release does not define.'
+    );
+  });
+
   it('throws for a key in an effect\'s declaration, which this release does not define', () => {
     expect(() =>
       compileRule(ORDER, { effects: { notify: { key: 1 } } } as unknown as CompileRuleOptions)

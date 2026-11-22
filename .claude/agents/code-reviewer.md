@@ -505,7 +505,7 @@ released shape to protect; from 0.1.0 it has.
    compiled rule or every problem, in a value, and for a rule JSON can write throws only for the
    caller's options: one it does not define, one of the wrong type, or a key in an effect's
    declaration (§ 8 q17, q21; Revision 7). The three stops are a `match`'s: its first depth
-   problem only; past 100,000 values, that problem alone; at its 101st problem, its first 100 and
+   problem only; past 100,000 values, the size problem alone; at its 101st problem, its first 100 and
    one saying there are more, whichever bound the walk meets first (§ 8 q17 as amended). Any other
    early return in the collector, or one
    `code` for two kinds of problem, is a finding. So is a recursive walk of a rule's pattern or text with no bound or

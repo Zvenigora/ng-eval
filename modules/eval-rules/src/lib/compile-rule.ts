@@ -24,8 +24,8 @@ import {
  * its expression fields once, and returns either the compiled rule or every
  * problem it found, each with a `code`, a `path` and a `message`; a `match`'s
  * walk stops at the first of two bounds it meets, its 101st problem (its
- * first 100, and one saying there are more) or 100,000 values (that problem
- * alone), by `checkPattern` (§ 8 q17 as amended). It throws
+ * first 100, and one saying there are more) or 100,000 values (the size
+ * problem alone), by `checkPattern` (§ 8 q17 as amended). It throws
  * for neither (§ 8 q17). What it throws for is the caller's own code: an
  * option it does not define, or an option of the wrong type (§ 8 q21).
  *
@@ -104,7 +104,8 @@ export type CompileRuleResult =
   | { readonly ok: false; readonly rule?: undefined; readonly problems: readonly RuleProblem[] };
 
 /**
- * The options `compileRule` defines. Any other key throws.
+ * The options `compileRule` defines. Any other key throws, a symbol or a
+ * non-enumerable one included.
  *
  * `functions` declares the names of the host's functions, whose
  * implementations `evaluateRule` takes; `effects` declares the effect
@@ -119,8 +120,9 @@ export interface CompileRuleOptions {
   readonly functions?: readonly string[];
   /**
    * From each effect's name to its declaration, an object (§ 8 q6), so that
-   * Phase 13's `key(args)` has a place. Empty in this release: a key in it
-   * throws, as an unknown option does.
+   * Phase 13's `key(args)` has a place. Every own key names an effect, a
+   * non-enumerable one included, and a symbol throws. Empty in this release:
+   * a key in a declaration throws, as an unknown option does.
    */
   readonly effects?: Readonly<Record<string, Readonly<Record<string, never>>>>;
 }
@@ -238,7 +240,7 @@ const PATTERN_MESSAGES: Readonly<Record<InvalidPatternValue['reason'], string>> 
  * @param options the compile options; any key it does not define throws
  * @returns the compiled rule, or every problem found; a `match`'s walk stops at the first of two
  *   bounds it meets: at its 101st problem it gives its first 100 and one saying there are more;
- *   past 100,000 values it gives that problem alone
+ *   past 100,000 values it gives the size problem alone
  */
 export const compileRule = (rule: unknown, options?: CompileRuleOptions): CompileRuleResult => {
   const settings = readOptions(options);
@@ -267,10 +269,10 @@ const readOptions = (options: CompileRuleOptions | undefined): Settings => {
   if (!isPlainObject(options)) {
     throw new TypeError('compileRule: the options are an object');
   }
-  for (const key of Object.keys(options)) {
-    if (!(OPTIONS as readonly string[]).includes(key)) {
+  for (const key of Reflect.ownKeys(options)) {
+    if (typeof key !== 'string' || !(OPTIONS as readonly string[]).includes(key)) {
       throw new Error(
-        `compileRule: unknown option "${key}". The options are statements, colonIdentifiers, ` +
+        `compileRule: unknown option "${String(key)}". The options are statements, colonIdentifiers, ` +
         `functions and effects.` +
         (key === 'caseInsensitive'
           ? ' This release compares every name as written, and caseInsensitive is not supported.'
@@ -293,14 +295,19 @@ const readOptions = (options: CompileRuleOptions | undefined): Settings => {
   if (!isPlainObject(effects)) {
     throw new TypeError('compileRule: the option effects is an object, from each name to its declaration');
   }
-  for (const [name, declaration] of Object.entries(effects)) {
+  const names = Reflect.ownKeys(effects);
+  for (const name of names) {
+    if (typeof name !== 'string') {
+      throw new TypeError(`compileRule: the effect ${String(name)} is named by a symbol; an effect's name is a string`);
+    }
+    const declaration: unknown = (effects as Record<string, unknown>)[name];
     if (!isPlainObject(declaration)) {
       throw new TypeError(`compileRule: the effect "${name}" is declared by an object`);
     }
-    const keys = Object.keys(declaration);
+    const keys = Reflect.ownKeys(declaration);
     if (keys.length > 0) {
       throw new Error(
-        `compileRule: the effect "${name}" declares "${keys[0]}", which this release does not define. ` +
+        `compileRule: the effect "${name}" declares "${String(keys[0])}", which this release does not define. ` +
         `An effect's declaration is an empty object.`
       );
     }
@@ -309,7 +316,7 @@ const readOptions = (options: CompileRuleOptions | undefined): Settings => {
     statements: flag('statements'),
     colonIdentifiers: flag('colonIdentifiers'),
     functions: [...functions],
-    effects: Object.keys(effects),
+    effects: names as string[],
   };
 };
 

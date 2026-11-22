@@ -59,6 +59,47 @@ describe('matchesPattern', () => {
   });
 });
 
+/** An order whose items each name it, read through a getter that counts. */
+const cyclicOrder = (items: number): { order: Record<string, unknown>; reads: () => number } => {
+  let reads = 0;
+  const order: Record<string, unknown> = { id: 'o1' };
+  order['items'] = Array.from({ length: items }, () => ({
+    get order(): unknown {
+      reads += 1;
+      return order;
+    },
+  }));
+  return { order, reads: () => reads };
+};
+
+/** `levels` of `{ items: [{ order: … }] }` under `{ order: … }`, an id no order has at the bottom. */
+const orderPattern = (levels: number): unknown => {
+  let pattern: unknown = { id: 'no such id' };
+  for (let level = 0; level < levels; level++) {
+    pattern = { items: [{ order: pattern }] };
+  }
+  return { order: pattern };
+};
+
+describe('matchesPattern over shared and cyclic paths (step 4 review, I-3)', () => {
+  it('reads each pair of a pattern node and a target object once: 16 levels over two items', () => {
+    const { order, reads } = cyclicOrder(2);
+    const pattern = checkPattern(orderPattern(16), 'match').copy;
+    expect(matchesPattern(pattern, { order })).toBe(false);
+    // Without the memo, 2 + 4 + … + 2^16 reads; with it, two per level.
+    expect(reads()).toBe(32);
+  });
+
+  it('still matches what is there, by any path', () => {
+    const { order } = cyclicOrder(3);
+    let pattern: unknown = { id: 'o1' };
+    for (let level = 0; level < 10; level++) {
+      pattern = { items: [{ order: pattern }] };
+    }
+    expect(matchesPattern(checkPattern({ order: pattern }, 'match').copy, { order })).toBe(true);
+  });
+});
+
 describe('checkPattern', () => {
   it('accepts what JSON writes', () => {
     expect(problemsIn({ a: [1, 'b', true, null, { c: [] }] }, 'match')).toEqual([]);
@@ -139,6 +180,20 @@ describe('checkPattern', () => {
     expect(pathKey('1a')).toBe('["1a"]');
     expect(pathKey('a'.repeat(64))).toBe(`.${'a'.repeat(64)}`);
     expect(pathKey('a'.repeat(65))).toBe(`[${JSON.stringify(`${'a'.repeat(64)}…`)}]`);
+  });
+
+  it('takes only an ASCII identifier for .key, and counts UTF-16 code units (12.3h review)', () => {
+    // é is an identifier to JavaScript, and not ASCII: it is quoted.
+    expect(pathKey('é')).toBe('["é"]');
+    expect(pathKey('$é')).toBe('["$é"]');
+    // 62 units and an astral character, two units: 64, shown whole.
+    const whole = `${'a'.repeat(62)}😀`;
+    expect(whole.length).toBe(64);
+    expect(pathKey(whole)).toBe(`["${whole}"]`);
+    // 63 units and the astral character: 65, cut after 64, which splits the
+    // pair; JSON.stringify escapes the high half it leaves.
+    const split = `${'a'.repeat(63)}😀`;
+    expect(pathKey(split)).toBe(`["${'a'.repeat(63)}\\ud83d…"]`);
   });
 
   it('tells a key holding a dot from two keys, one inside the other', () => {

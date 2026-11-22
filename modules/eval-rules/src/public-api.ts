@@ -15,3 +15,5 @@ export type {
 } from './lib/compile-rule';
 export { compileRule } from './lib/compile-rule';
 export { defineRule } from './lib/define-rule';
+export type { RuleEffect, RuleInput, RuleResult, RuleStatus } from './lib/rule-result';
+export { evaluateInit, evaluateRule } from './lib/evaluate-rule';

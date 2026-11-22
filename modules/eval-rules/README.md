@@ -10,7 +10,7 @@ the problem codes.
 ## Install
 
 The package is not on npm yet. Its peer dependencies are `acorn-walk ^8.3.0` and
-`@zvenigora/ng-eval-core >=0.16.0 <0.17.0`.
+`@zvenigora/ng-eval-core >=0.16.1 <0.17.0`.
 
 ## What it exports
 
@@ -23,12 +23,27 @@ The format's types are `Rule`, `RuleTrigger`, `RuleFilter`, `RuleCalculation`, `
 import { compileRule, defineRule } from '@zvenigora/ng-eval-rules';
 ```
 
+`evaluateRule(rule, input)` runs a compiled rule against a `RuleInput` of `facts`, `event` and
+`functions`, and returns a `RuleResult`: a `RuleStatus`, the calculations and labels, and a
+`RuleEffect` for each effect the rule called, which it records and does not perform. A run that
+fails keeps no effect. `evaluateInit` runs a rule's `onInit` items the same way. For an active
+rule, either throws, before any field runs, for an input that is `null`, an array or not an
+object, an own key of the input that `RuleInput` does not name, a symbol or a non-enumerable one
+included, a field the input inherits, facts that are not a plain object, `functions`
+that is an array or not an object (absent or `null` is none), a declared function with no
+implementation, and an implementation with no declaration or that is not a function, and passes
+on what the facts throw as the filter's `match` reads them; either throws for a rule `compileRule`
+did not return, active or not; an inactive rule runs nothing else and checks nothing else. A
+function a field gives, such as an arrow among the calculations, runs later against the
+facts alone: called after the run, its `calc`, `event` and declared functions name the facts' own
+([E10](https://github.com/zvenigora/ng-eval/blob/master/docs/backlog.md#e10)).
+
 ## Problem codes
 
 For a rule JSON can write, `compileRule` does not throw for the rule's problems: it returns every
 problem it finds, each with a `code`, a `path` such as `decisions[0].cases[1].if`, and a `message`.
 A `match`'s walk stops at the first of two bounds it meets: at its 101st problem it gives its first
-100 and one saying there are more; past 100,000 values it gives that problem alone, whatever it had
+100 and one saying there are more; past 100,000 values it gives the size problem alone, whatever it had
 found. In a `match`'s path a
 key shows as `.key` when it is an ASCII identifier of at most 64 UTF-16 code units, and otherwise
 in brackets, quoted as JSON: `filter.match["Q1:1"]`. A longer key is cut to its first 64 code

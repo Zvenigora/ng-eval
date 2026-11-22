@@ -19,32 +19,57 @@
  * evaluation applies it.
  */
 
-/** Whether `target` matches `pattern`. */
-export const matchesPattern = (pattern: unknown, target: unknown): boolean => {
-  if (Array.isArray(pattern)) {
-    return pattern.some((element) => matchesElement(element, target));
+/** What a match has found, by pattern node and then by target object. */
+type MatchMemo = Map<object, WeakMap<object, boolean>>;
+
+/**
+ * Whether `target` matches `pattern`. Each pair of a pattern's array or
+ * object and a target's object is matched once, and its answer kept for the
+ * call: a target with shared or cyclic paths, an order whose items each name
+ * it, reaches one object by many paths, and without the memo an any-of list
+ * at each level multiplied the work by its target's length, level on level
+ * (step 4's review: about twice per level over two items). With it, each
+ * pair's answer is worked out once, and that reads the object's keys or items
+ * the pattern names, so the work is at most the pattern's nodes times the
+ * target's edges, its objects' keys and items. A getter among the target's
+ * values is read once for each such pair, not once per path.
+ */
+export const matchesPattern = (pattern: unknown, target: unknown): boolean =>
+  matches(pattern, target, new Map());
+
+const matches = (pattern: unknown, target: unknown, memo: MatchMemo): boolean => {
+  if (typeof pattern !== 'object' || pattern === null) {
+    return pattern === target;
   }
-  if (isObject(pattern)) {
-    if (!isObject(target)) {
-      return false;
-    }
-    return Object.keys(pattern).every(
-      (key) =>
-        Object.prototype.hasOwnProperty.call(target, key) &&
-        matchesPattern((pattern as Record<string, unknown>)[key], (target as Record<string, unknown>)[key])
-    );
+  if (typeof target !== 'object' || target === null) {
+    return Array.isArray(pattern) && pattern.some((element) => matches(element, target, memo));
   }
-  return pattern === target;
+  let found = memo.get(pattern);
+  const known = found?.get(target);
+  if (known !== undefined) {
+    return known;
+  }
+  const answer = Array.isArray(pattern)
+    ? pattern.some((element) => matchesElement(element, target, memo))
+    : !Array.isArray(target) &&
+      Object.keys(pattern).every(
+        (key) =>
+          Object.prototype.hasOwnProperty.call(target, key) &&
+          matches((pattern as Record<string, unknown>)[key], (target as Record<string, unknown>)[key], memo)
+      );
+  if (found === undefined) {
+    found = new WeakMap();
+    memo.set(pattern, found);
+  }
+  found.set(target, answer);
+  return answer;
 };
 
 /** One element of an any-of list, against a target or each of its elements. */
-const matchesElement = (element: unknown, target: unknown): boolean =>
+const matchesElement = (element: unknown, target: unknown, memo: MatchMemo): boolean =>
   Array.isArray(target)
-    ? target.some((item) => matchesPattern(element, item))
-    : matchesPattern(element, target);
-
-const isObject = (value: unknown): value is object =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
+    ? target.some((item) => matches(element, item, memo))
+    : matches(element, target, memo);
 
 /** How deep a pattern nests: the `match` object is the first array or object. */
 export const MAX_PATTERN_DEPTH = 64;

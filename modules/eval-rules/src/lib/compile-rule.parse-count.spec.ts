@@ -1,4 +1,5 @@
 import { compileRule } from './compile-rule';
+import { evaluateInit, evaluateRule } from './evaluate-rule';
 
 // Finding 24's mechanism, as `eval-forms`' `rules.invocation-count.spec.ts`
 // built it: a delegating `jest.mock` of `eval-core`'s barrel that records
@@ -70,6 +71,31 @@ describe('compileRule parses each field once', () => {
 
   it('parses nothing for a rule with no field and no declaration', () => {
     expect(compileRule({ id: 'r' }).ok).toBe(true);
+    expect(mockParsed).toEqual([]);
+  });
+});
+
+describe('evaluateRule parses nothing (the plan\'s step 4)', () => {
+  it('parses no text across two runs and an init of a rule with every kind of field', () => {
+    const result = compileRule(
+      {
+        id: 'r',
+        filter: { when: 'total > 0' },
+        onInit: ['setValue("a", 1)'],
+        calculations: [{ name: 'doubled', when: 'total > 1', value: 'twice(total)' }],
+        decisions: [{ name: 'offer', cases: [{ if: 'calc.doubled > 10', value: 'apply' }, { value: 'clear' }] }],
+        outputs: [{ on: { decision: 'offer', is: 'apply' }, items: ['setValue("b", calc.doubled)'] }],
+      },
+      { functions: ['twice'], effects: { setValue: {} } }
+    );
+    if (!result.ok) {
+      throw new Error(JSON.stringify(result.problems));
+    }
+    mockParsed.length = 0;
+    const functions = { twice: (n: number) => n * 2 };
+    expect(evaluateRule(result.rule, { facts: { total: 9 }, functions }).status).toBe('completed');
+    expect(evaluateRule(result.rule, { facts: { total: 1 }, functions }).status).toBe('completed');
+    expect(evaluateInit(result.rule, { facts: { total: 9 }, functions }).effects).toHaveLength(1);
     expect(mockParsed).toEqual([]);
   });
 });
