@@ -1173,4 +1173,40 @@ describe('createEvalSignal', () => {
 
   });
 
+  // eval-core 0.16.1 converts a computed key before its checks, so a member
+  // write through an array key fails as the same write through a string key
+  // does. Up to eval-core 0.16.0, `o[["__proto__"]] = 1` reached the signal
+  // context's write check and raised SignalContextWriteError, which bypasses
+  // `onError`, and `o[["a"]] = 1` named the key `["a"]`.
+  describe('a member write through an array key (eval-core 0.16.1)', () => {
+
+    it('should refuse o[["__proto__"]] = 1 with eval-core\'s dangerous-name Error, which onError handles', () => {
+      const refused = create('o[["__proto__"]] = 1', { o: {} });
+      let caught: unknown;
+      try {
+        refused();
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toEqual(new Error('Access to dangerous property "__proto__" is blocked for security reasons'));
+      expect(caught).not.toBeInstanceOf(SignalContextWriteError);
+      expect(create('o[["__proto__"]] = 1', { o: {} }, { onError: 'undefined' })()).toBeUndefined();
+    });
+
+    it('should name the converted key in the SignalContextWriteError for o[["a"]] = 1', () => {
+      const value = create('o[["a"]] = 1', { o: {} }, { onError: 'undefined' });
+      let caught: unknown;
+      try {
+        value();
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(SignalContextWriteError);
+      expect((caught as SignalContextWriteError).kind).toEqual('member');
+      expect((caught as SignalContextWriteError).key).toEqual('a');
+    });
+  });
+
 });

@@ -14,6 +14,46 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ---
 
+## [0.16.1] - 2026-11-22
+
+**A security patch: a computed member key is checked as the property key it converts to.** No
+exported symbol changes shape. Every earlier release is affected: up to 0.12.0 an expression could
+run code in the host, and from 0.12.1 to 0.16.0 it could write into `Object.prototype`.
+
+### Security
+
+- **A computed key that is an expression, and evaluates to anything other than a string, number
+  or symbol, such as an array, is converted to its property key before the dangerous-name check,
+  and the access uses that converted key.** Before this release the check saw only a string key,
+  so from expression text alone `o[["constructor"]]` read `Object` and `o[["__proto__"]]` read
+  `Object.prototype`. What that reached, measured in every release published to npm:
+  - **0.2.1 up to 0.12.0: code execution.** `o[["constructor"]][["constructor"]]` read the
+    `Function` constructor, and calling it through `.call`, `.apply` or `.bind` ran a function
+    body written in the expression, with the host's globals in scope. A direct call was refused.
+  - **0.12.1 up to 0.16.0: writes into `Object.prototype`.** From 0.12.1 the `Function`
+    constructor is refused by its value, but `o[["constructor"]].assign(o[["__proto__"]], { pwn: 1 })`
+    gave every object in the host a `pwn` property.
+  - The 0.1 releases refused no names, so the same expressions with string keys reached code
+    execution there.
+- Covered: a key on a plain object, through `this`, on a primitive receiver and on an `EvalScope`
+  held as a value; a member read, an optional read, a call, a write (into a created object too),
+  an update and a compound assignment, under `caseInsensitive` too; and an object literal's
+  computed key. A key object is converted once, so the check and the access see the same name.
+  The key is converted where it is evaluated, so for a write it is converted before the right side
+  runs, where JavaScript converts it after. A key that converts to a name that is not dangerous
+  reads, writes and creates as in JavaScript: `a[[0]]` is `a[0]`, `o[["b"]] = 1` sets `o.b`, and
+  `{ [["a"]]: 1 }` is `{ a: 1 }`. A literal key, such as `o[null]`, is checked as before: no literal
+  converts to a dangerous name unless it is that string. A destructuring pattern's computed key
+  still accepts only a string or a number, as before.
+- `eval-signals` 0.9.0 and `eval-forms` 0.9.0 take it through their `eval-core` range,
+  `>=0.16.0 <0.17.0`, and do not release. Under `eval-signals` a member write through an array key
+  now fails as the same write through a string key does: `o[["__proto__"]] = 1` raises the
+  dangerous-name `Error`, which `onError` handles, where it raised `SignalContextWriteError`, which
+  bypasses `onError`; and the `SignalContextWriteError` for `o[["a"]] = 1` names the key `"a"`,
+  where it named `["a"]`.
+
+---
+
 ## [0.16.0] - 2026-11-08
 
 **A member read lets a getter's throw reach the caller, and member reads and writes change under

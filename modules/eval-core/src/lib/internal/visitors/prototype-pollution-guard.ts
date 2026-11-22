@@ -85,6 +85,29 @@ const DANGEROUS_CONSTRUCTORS = new Set([
 ]);
 
 /**
+ * The property key a computed key names, as JavaScript computes it: a string,
+ * a number or a symbol is its own key, and any other value is converted once,
+ * by the conversion a property access performs (`ToPropertyKey`), which an
+ * object literal's computed key runs here. Every check of a computed key
+ * that is an expression runs on what this returns, and the access uses the
+ * same value, so a key such as `["__proto__"]`, which converts to
+ * `"__proto__"`, is checked as the name it converts to, and a key object
+ * cannot answer the check with one name and the access with another. A
+ * literal key (`o["a"]`, `o[null]`) is not passed through it: no literal
+ * converts to a dangerous name unless it is that string. The conversion runs
+ * where the key is evaluated, so for a write it runs before the right side,
+ * where JavaScript converts after it.
+ * @param key The computed key's value
+ * @returns The property key it names
+ */
+export const toPropertyKey = (key: unknown): string | number | symbol => {
+  if (typeof key === 'string' || typeof key === 'number' || typeof key === 'symbol') {
+    return key;
+  }
+  return Reflect.ownKeys({ [key as PropertyKey]: undefined })[0] as string | symbol;
+};
+
+/**
  * Checks if a property name is dangerous for prototype pollution
  * @param key The property name to check
  * @returns true if the property is dangerous, false otherwise

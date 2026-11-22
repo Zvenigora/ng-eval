@@ -4,7 +4,7 @@ import { beforeVisitor } from './before-visitor';
 import { pushVisitorResult, popVisitorResult } from './visitor-result';
 import { EvalScope, EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
-import { safeGetProperty, safeSetProperty, isDangerousProperty, isDangerousPrimitiveProperty } from './prototype-pollution-guard';
+import { safeGetProperty, safeSetProperty, isDangerousProperty, isDangerousPrimitiveProperty, toPropertyKey } from './prototype-pollution-guard';
 import { Registry } from '../classes/common';
 import { equalIgnoreCase } from './utils';
 import { getCachedCaseInsensitiveProperty } from './property-lookup-cache';
@@ -90,9 +90,10 @@ export const evaluateMember = (node: MemberExpression, st: EvalState, callback: 
     // Computed literal: obj["literal"]
     key = node.property.value as string | number | symbol;
   } else {
-    // Computed expression: obj[key], obj[expression]
+    // Computed expression: obj[key], obj[expression]. Converted once, before
+    // any check, so every check sees the key the access uses.
     callback(node.property, st);
-    key = popVisitorResult(node, st) as (string | number | symbol);
+    key = toPropertyKey(popVisitorResult(node, st));
   }
 
   // Get the value with context-aware or prototype pollution protection
@@ -332,7 +333,7 @@ export const resolveMemberTarget = (node: MemberExpression, st: EvalState, callb
     key = node.property.value as string | number | symbol;
   } else {
     callback(node.property, st);
-    key = popVisitorResult(node, st) as (string | number | symbol);
+    key = toPropertyKey(popVisitorResult(node, st));
   }
 
   if (object === st.context) {

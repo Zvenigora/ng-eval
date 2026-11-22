@@ -4,7 +4,7 @@ import { beforeVisitor } from './before-visitor';
 import { pushVisitorResult, popVisitorResult } from './visitor-result';
 import { EvalState } from '../classes/eval';
 import { afterVisitor } from './after-visitor';
-import { createSafeObject, validateSafeObject } from './prototype-pollution-guard';
+import { createSafeObject, toPropertyKey, validateSafeObject } from './prototype-pollution-guard';
 
 type KeyValuePair = {key: unknown; value: unknown};
 
@@ -63,7 +63,7 @@ const evalProperty = (property: Property, st: EvalState, callback: walk.WalkerCa
   // } else
   if (property.computed) {
     callback(property.key, st);
-    const key = popVisitorResult(property, st);
+    const key = toPropertyKey(popVisitorResult(property, st));
     callback(property.value, st);
     const value = popVisitorResult(property, st);
     return { key, value };

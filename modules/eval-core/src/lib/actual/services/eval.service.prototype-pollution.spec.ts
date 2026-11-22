@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { EvalService } from './eval.service';
+import { EvalScope } from '../../internal/classes/eval';
 
 describe('EvalService - Prototype Pollution Prevention', () => {
   let service: EvalService;
@@ -344,6 +345,95 @@ describe('EvalService - Prototype Pollution Prevention', () => {
           malicious: { evil: true }
         });
       }).toThrow(/Access to dangerous property "__proto__" is blocked for security reasons/);
+    });
+  });
+
+  // A computed key that is not a string, number or symbol is converted to the
+  // property key it names before the dangerous-name check, and the access uses
+  // that key: before 0.16.1 the check ran on the unconverted value, so an
+  // array that converts to a dangerous name read and wrote through it. One row
+  // per receiver branch: a plain object, the context through `this`, a
+  // primitive and an `EvalScope` held as a value.
+  describe('a computed key is checked as the property key it converts to (0.16.1)', () => {
+    // A failing row must not leave the prototypes it reached changed for the
+    // rest of the worker.
+    afterEach(() => {
+      for (const proto of [Object.prototype, String.prototype] as Record<string, unknown>[]) {
+        delete proto['pwn'];
+        delete proto['z'];
+      }
+    });
+
+    const context = () => ({ o: {} as object, s: 'x', ns: new EvalScope({ k: 1 }, { global: true }) });
+
+    it.each([
+      ['a read', 'o[["__proto__"]]', '__proto__'],
+      ['a nested array', 'o[[["constructor"]]]', 'constructor'],
+      ['an optional read', 'o?.[["constructor"]]', 'constructor'],
+      ['a call', 'o[["__defineGetter__"]]("z", () => 1)', '__defineGetter__'],
+      ['a write', 'o[["__proto__"]] = { z: 1 }', '__proto__'],
+      ['a write to an object the expression created', '({})[["__proto__"]] = { z: 1 }', '__proto__'],
+      ['an update', 'o[["constructor"]]++', 'constructor'],
+      ['a compound assignment', 'o[["prototype"]] += 1', 'prototype'],
+      ['the chain that wrote Object.prototype', 'o[["constructor"]].assign(o[["__proto__"]], { pwn: 1 })', '__proto__'],
+      ['a read through this', 'this[["constructor"]]', 'constructor'],
+      ['a call through this', 'this[["__proto__"]][["__defineGetter__"]]("z", () => 1)', '__proto__'],
+      ['a read on a string receiver', 's[["constructor"]]', 'constructor'],
+      ['a call through a string receiver', 's[["__proto__"]][["__proto__"]][["__defineGetter__"]]("z", () => 1)', '__proto__'],
+      ['a global EvalScope held as a value', 'ns[["constructor"]]', 'constructor'],
+    ])('refuses %s', (_name, expr, key) => {
+      const ctx = context();
+      expect(() => service.simpleEval(expr, ctx)).toThrow(
+        new Error(`Access to dangerous property "${key}" is blocked for security reasons`)
+      );
+      // Nothing the refused expression reached is changed.
+      expect(Object.getPrototypeOf(ctx.o)).toBe(Object.prototype);
+      expect(Reflect.ownKeys(ctx.o)).toEqual([]);
+      expect(Object.prototype.hasOwnProperty.call(Object.prototype, 'pwn')).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(Object.prototype, 'z')).toBe(false);
+    });
+
+    it('refuses an object literal whose computed key converts to a dangerous name', () => {
+      expect(() => service.simpleEval('({ [["__proto__"]]: 1 })', {})).toThrow(
+        /Cannot create object with dangerous property "__proto__"/
+      );
+    });
+
+    it.each([
+      ['a read', 'o[["CONSTRUCTOR"]]'],
+      ['a write', 'o[["CONSTRUCTOR"]] = 1'],
+    ])('refuses %s through the converted key under caseInsensitive', (_name, expr) => {
+      const o = {};
+      expect(() => service.simpleEval(expr, { o }, { caseInsensitive: true })).toThrow(
+        new Error('Access to dangerous property "constructor" is blocked for security reasons')
+      );
+      expect(Reflect.ownKeys(o)).toEqual([]);
+    });
+
+    it('reads, writes and creates through a converted key that is not dangerous', () => {
+      const o: Record<string, unknown> = { a: 7 };
+      expect(service.simpleEval('a[[0]]', { a: [5] })).toBe(5);
+      expect(service.simpleEval('o[["a"]]', { o })).toBe(7);
+      expect(service.simpleEval('o[["b"]] = 1', { o })).toBe(1);
+      expect(o['b']).toBe(1);
+      expect(service.simpleEval('({ [["a"]]: 1 })', {})).toEqual({ a: 1 });
+    });
+
+    it('converts a key object once, so the check and the access see one name', () => {
+      let conversions = 0;
+      const k = { toString: () => (conversions++ ? '__proto__' : 'a') };
+      expect(service.simpleEval('o[k]', { o: { a: 1 }, k })).toBe(1);
+      expect(conversions).toBe(1);
+    });
+
+    it('converts a written key before the right side runs, where JavaScript converts it after', () => {
+      const log: string[] = [];
+      const k = { toString: () => { log.push('key'); return 'a'; } };
+      const f = () => { log.push('value'); return 1; };
+      const o: Record<string, unknown> = {};
+      expect(service.simpleEval('o[k] = f()', { o, k, f })).toBe(1);
+      expect(o['a']).toBe(1);
+      expect(log).toEqual(['key', 'value']);
     });
   });
 });
