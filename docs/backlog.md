@@ -282,7 +282,7 @@ and `v0.2.3`: lightweight tags from before the `<project>@<version>` names, whic
 | [F13](backlog-retired.md#f13) | Nothing gates the README block count `readme-examples.spec.ts` claims | core, signals, forms | test gap | **Retired — fixed 2026-09-27**, test only; all four specs gated. The gate's first run found `eval-core`'s count wrong a third time |
 | [F14](backlog-retired.md#f14) | Six sites cite the retired `^0.3.0` range, two of them in published READMEs | signals, forms | fix (comments, docs) | **Retired — fixed, Phase 2 step 8**; filed as four sites, was six |
 | [F15](backlog-retired.md#f15) | The downstream peer ranges exclude `eval-core` 0.6.0 — **latent until the bump, then both downstream `lint` targets fail** | signals, forms | fix (release coordination) | **Retired — fixed and released 2026-09-26**; both ranges widened to `>=0.3.0 <0.7.0`, and both packages released: `eval-signals` 0.1.3 and `eval-forms` 0.2.3, tagged f26f987 |
-| [F16](#f16) | Workspace dependency advisories — 9 moderate on the workspace's Angular 22.0.8, and a **temporary override under `nx`**, now `undici`'s; beside it, the **`qs` override**, whose floor `^6.14.2` excludes GHSA-w7fw-mjwx-w883 since 2026-10-29; and **`deepmerge`** 4.3.1, under `jest-config`, GHSA-gcqx-w48m-w2h4 with no patched release | repo | fix | Open — **part 2's `brace-expansion`, `smol-toml` and `axios` overrides retired 2026-10-23** with `nx` 23.3.0 ([F21](backlog-retired.md#f21)); part 2 now holds `overrides.nx.undici` only, until a stable `nx` no longer pins `undici` below 7.30.1. **Part 1 retired 2026-09-27**: `nx` 23.2.1, Angular 22.1.8 / 22.1.9, `npm audit` 0 at every severity. Part 2, the override, is live until a stable `nx` depends on `smol-toml >= 1.7.1`. **Re-audited 2026-09-30: 22 (14 high, 8 moderate)**, none reaching a published package; **fixed the same day**: Angular 22.2.1 / 22.2.0, two more `overrides.nx` entries, `verdaccio` removed, `npm audit` 0. **`qs` recorded 2026-10-14**: the override was added for GHSA-6rw7-vpxm-498p, not prototype pollution; raising its floor is held here. **Re-audited 2026-10-20 at 7741395**: `qs` resolves 6.16.0, past both advisories, and audit reports nothing for it. **Re-audited 2026-10-26 at f78fca2: 2 (1 high, 1 moderate)**, seven `undici` and `fast-uri` advisories, dev-only; **fixed the same day** in range: `undici` 8.12.3, `fast-uri` 3.1.9, and `overrides.nx.undici`'s floor raised to `^7.30.1`, `npm audit` 0. **2026-10-29**: the `qs` floor raised to `^6.14.2`, the lockfile unchanged; `deepmerge` recorded, 11 low, dev-only, open until a release past 4.3.1 or a `jest-config` without it. **Re-audited 2026-10-31 at cc40f9e: 50 (1 high, 48 moderate, 1 low)**, four advisories, dev-only; `follow-redirects` **lifted the same day** in range to 1.16.2, the lockfile alone; `minimatch` and `glob` recorded, no patched release in their dependents' ranges, open beside `deepmerge` |
+| [F16](#f16) | Workspace dependency advisories — 9 moderate on the workspace's Angular 22.0.8, and a **temporary override under `nx`**, now `undici`'s; beside it, the **`qs` override**, whose floor `^6.14.2` excludes GHSA-w7fw-mjwx-w883 since 2026-10-29; and **`deepmerge`** 4.3.1, under `jest-config`, GHSA-gcqx-w48m-w2h4 with no patched release | repo | fix | Open — **part 2's `brace-expansion`, `smol-toml` and `axios` overrides retired 2026-10-23** with `nx` 23.3.0 ([F21](backlog-retired.md#f21)); part 2 now holds `overrides.nx.undici` only, until a stable `nx` no longer pins `undici` below 7.30.1. **Part 1 retired 2026-09-27**: `nx` 23.2.1, Angular 22.1.8 / 22.1.9, `npm audit` 0 at every severity. Part 2, the override, is live until a stable `nx` depends on `smol-toml >= 1.7.1`. **Re-audited 2026-09-30: 22 (14 high, 8 moderate)**, none reaching a published package; **fixed the same day**: Angular 22.2.1 / 22.2.0, two more `overrides.nx` entries, `verdaccio` removed, `npm audit` 0. **`qs` recorded 2026-10-14**: the override was added for GHSA-6rw7-vpxm-498p, not prototype pollution; raising its floor is held here. **Re-audited 2026-10-20 at 7741395**: `qs` resolves 6.16.0, past both advisories, and audit reports nothing for it. **Re-audited 2026-10-26 at f78fca2: 2 (1 high, 1 moderate)**, seven `undici` and `fast-uri` advisories, dev-only; **fixed the same day** in range: `undici` 8.12.3, `fast-uri` 3.1.9, and `overrides.nx.undici`'s floor raised to `^7.30.1`, `npm audit` 0. **2026-10-29**: the `qs` floor raised to `^6.14.2`, the lockfile unchanged; `deepmerge` recorded, 11 low, dev-only, open until a release past 4.3.1 or a `jest-config` without it. **Re-audited 2026-10-31 at cc40f9e: 50 (1 high, 48 moderate, 1 low)**, four advisories, dev-only; `follow-redirects` **lifted the same day** in range to 1.16.2, the lockfile alone; `minimatch` and `glob` recorded, no patched release in their dependents' ranges, open beside `deepmerge`. **Re-audited 2026-11-22 at 252f618: 33 moderate**, from `glob` and `minimatch`; held open by them and by part 2's `undici` override, `deepmerge` no longer reported and no longer holding it |
 | [F17](#f17) | An unhandled rejection reaches no channel a spec would normally watch — only zone.js's `unhandledPromiseRejectionHandler` hook sees it | repo | test gap | Open — opened 2026-10-08 by Phase 5 step 2 |
 | [F18](backlog-retired.md#f18) | `eval-signal.ts` line citations in `eval-forms` comments and completed plans are stale | forms, repo | docs | **Retired — fixed 2026-10-10** in live source; completed records kept as written, per `CLAUDE.md`. The three `eval-forms` comments cite symbols; `applyErrorPolicy`'s ships in the core `.d.ts` |
 | [F19](backlog-retired.md#f19) | `CLAUDE.md` cites the resolved-key re-check as `member-expression.ts:188`; it was at `:211`, and is at `:244` | repo | docs | **Retired — fixed 2026-10-21** by Phase 10 step 6: `CLAUDE.md` cites `isDangerousProperty(foundKey)` in `member-expression.ts` by symbol, as the entry's fix recorded |
@@ -299,7 +299,7 @@ and `v0.2.3`: lightweight tags from before the `<project>@<version>` names, whic
 | [F30](backlog-retired.md#f30) | `eval-signals` 0.8.0's `await` claims — the sync signal's throw on a refused `await` and its operand by identity, the async signal resolving an accepted one, a rejection as raised — are measured through the package once, and witnessed by no row of it | signals | test gap | **Retired — fixed 2026-10-31**, in no package: five rows, `eval-signals` 444 → 449, committed after the release commit 67486ab and before the publish. Opened the same day by the A24 plan's step 7a code review |
 | [F31](#f31) | `eval-core` 0.16.0's A55 at `eval-forms`' `/signals` — a rule over a getter that throws now sees its throw under `'throw'` or a function policy — is witnessed by no row; `/reactive`'s three rows witness it there | forms | test gap | Open — opened 2026-11-08 by the [A48 plan](a48/plan.md)'s step 9, from step 8's code review |
 | [F32](#f32) | `eval-core`'s barrels re-export 26 types without `export type`, so its source does not compile under `isolatedModules` (`TS1205`); an application that compiles the source, as the demo does, turns the option off | core | fix | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-15 by the [Phase 19 plan](demo/plan.md)'s step 1, from its M2 |
-| [F33](#f33) | Two of `eval.service.memory-leaks.spec.ts`' collector cases, (1.5) and the positive control (2.3), have each failed once in a full gate and passed on the next, with no edit | core | test gap | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 19 plan](demo/plan.md)'s step 8, from the reviewing chat's gates |
+| [F33](#f33) | Two of `eval.service.memory-leaks.spec.ts`' collector cases have failed in a full gate, (1.5) once and the positive control (2.3) twice, and each passed on the next, with no edit | core | test gap | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 19 plan](demo/plan.md)'s step 8, from the reviewing chat's gates |
 | [F34](#f34) | `tools/doc-links.mjs` exits with an unhandled `ENOENT` on a tracked file deleted from the working tree and not staged, where it reports a dangling link once the deletion is staged | repo | fix | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 19 plan](demo/plan.md)'s step 8, noticed at its step 3 |
 | [F35](#f35) | `eval-rules`' and `eval-signals`' `test-setup.ts` do not type-check under their spec configs: `tsc` reports `TS2353` for `errorOnUnknownElements`, which ts-jest never sees | rules, signals | fix | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-20 by the [Phase 12 plan](eval-rules/plan.md)'s step 4; noticed at its step 3 |
 | [F36](#f36) | A case of the demo's `dependencies.example.spec.ts` reaches Jest's 5 s timeout under a full gate's load and passes on the next run | demo | test gap | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-22 by 0.16.1's post-publish commit, from two step 4 reports |
@@ -1418,10 +1418,13 @@ nested function and an argument; or the run's scope kept for the function, which
 narrowed 2026-10-23 to the `undici` override. A re-audit 2026-09-30 found 22 new findings, and they
 were fixed the same day (below). A re-audit 2026-10-26 found 2, from seven `undici` and `fast-uri`
 advisories, fixed in range the same day (below). On 2026-10-29 the `qs` override's floor was raised,
-and `deepmerge`, which has no patched release, was recorded; it holds the entry open with `undici`.
+and `deepmerge`, which has no patched release, was recorded; it held the entry open with `undici`.
 A re-audit 2026-10-31 found 50, from four advisories: `follow-redirects` was lifted in range the same
 day (below), and `minimatch` and `glob`, which have no patched release in range, were recorded; they
-hold the entry open with `deepmerge` and `undici`. Recorded 2026-09-26, by the commit that cleared the
+held the entry open with `deepmerge` and `undici`. A re-audit 2026-11-22 found 33, from `glob` and
+`minimatch` (below): the entry is held open by `glob` and `minimatch` and by part 2's `undici`
+override, and `deepmerge`, which that re-audit no longer reports, no longer holds it. Recorded
+2026-09-26, by the commit that cleared the
 Dependabot high alert
 
 **None of this reaches a consumer.** Every package below is a root workspace dependency. No
@@ -1762,6 +1765,9 @@ the test runner's config loader.
 it. Either clears the 11 findings by an update in range. Until then it holds this entry open beside
 part 2's `undici` override.
 
+**2026-11-22**: `deepmerge` no longer holds this entry open; the re-audit of that date, below, no
+longer reports it.
+
 **Re-audit 2026-10-31.** Dependabot reported 3 alerts on the push of cc40f9e: 1 high, 1 moderate and
 1 low. `npm audit --package-lock-only` at cc40f9e reported 50 findings, 1 high, 48 moderate and
 1 low, from four root advisories, all `development` scope:
@@ -1798,6 +1804,14 @@ root workspace dev dependencies, the lint, test and build toolchain, and no
 `modules/*/package.json` depends on any package in their chains. **What reopens them**: a release
 of the dependents above whose range admits a patched `minimatch` or `glob`. Until then they hold this
 entry open with `deepmerge` and part 2's `undici` override.
+
+**Re-audit 2026-11-22.** `npm audit --package-lock-only` at 252f618, npm 12.0.1 on Node 26.4.0,
+reported 33 findings, all moderate, from two root advisories: `glob` 9.0.0–14.0.1
+(GHSA-3g3m-2fjr-6pw4) and `minimatch` 7.0.0–11.0.0 (GHSA-g3hv-75wg-m249); the rest are their
+dependents. It reported no low, and `deepmerge` is no longer reported. `npm ls deepmerge
+--package-lock-only` still gives one deduped `deepmerge` 4.3.1, under `jest-config` 30.5.2
+(`@nx/jest`) and 30.3.0 (`jest`'s `@jest/core` and `jest-cli`), each of which declares `^4.3.1` in
+the lockfile; the audit no longer reports it.
 
 *Recorded*: this entry; `package.json` `overrides.nx` and `overrides.qs`.
 *Verified*: `npm audit --package-lock-only`, 2026-09-26. Before the override: 12 high, 9 moderate.
@@ -1936,22 +1950,38 @@ which makes it a blocker of the active plan; or `eval-core`'s own build gains th
 measured then, not assumed here ([SR12](standing-rules.md#sr12)).
 
 <a id="f33"></a>
-## F33 — Two collector cases have each failed once and passed on the next gate
+## F33 — One collector case has failed once and another twice, and each passed on the next gate
 
 **Package** core · **Kind** test gap · **Status** Open, not scheduled ([SR48](standing-rules.md#sr48)). Opened 2026-11-18 by the [Phase 19 plan](demo/plan.md)'s step 8, from the reviewing chat's gates
 
 `eval.service.memory-leaks.spec.ts` asks the collector whether a context is still reachable: its
-`collect` runs `gc()` in up to five macrotasks and reads a `WeakRef`. Two of its cases have each
-failed once in a full gate ([SR8](standing-rules.md#sr8)) and passed on the next, with no edit. Both
-runs were in the reviewing chat's Linux sandbox, on trees that changed no file under `modules/`:
+`collect` runs `gc()` in up to five macrotasks and reads a `WeakRef`. One of its cases has failed
+once in a full gate ([SR8](standing-rules.md#sr8)) and another twice, and each passed on the next,
+with no edit. All three runs were in the reviewing chat's Linux sandbox, on trees that changed no
+`eval-core` file:
 
 | Case | When | Next gate |
 | :--- | :--- | :--- |
 | `should not retain a state whose simpleEvalAsync promise rejected (1.5)` | The measurements for the Phase 19 plan's step 2 | Green |
 | `should still see a context whose state the caller holds (2.3)`, the positive control | The first gate of the fix-up 72585db, 2026-11-18 | Green |
+| `should still see a context whose state the caller holds (2.3)`, the positive control | The full gate's first run on the Phase 12 plan's step 4 pin 12.4n, 2026-11-22, Node 26.4.0, run alone with nothing else running; the step changed no `eval-core` file | Green, run alone on the same tree |
 
 The failure messages were not kept. `collect`'s own comment records an earlier one: a single round
 lost to a short-lived reference once on CI under Node 24, which is why it now runs five.
+
+The 2026-11-22 run's message was kept, in `m4n/gate-first-crlf-timeout.log` in the 12.4n pack,
+outside the repository:
+
+```text
+● EvalService - Memory Leak Prevention › Context and State Cleanup › contexts passed in are not retained (A20) › should still see a context whose state the caller holds (2.3)
+    thrown: "Exceeded timeout of 5000 ms for a test.
+```
+
+It is the failure message the fix below asks to record, so that half of the fix is done. What
+reopens the entry, red on two gates of one tree or red in CI, is not met: (2.3) is red twice now,
+but on two trees, and each red was followed by green on the same tree. On 2026-11-21 an earlier sandbox gate, on pin 12.4f, timed out "an eval-core
+memory-retention case" while a probe sweep ran beside it; the case was not recorded by name, so it
+is not a row.
 
 **Not scheduled**, by SR48: it is a test's reliability, and no consumer meets it. Meanwhile a prompt
 that runs the gate says that one of these cases red once is read by its `●` line and the gate run
@@ -2019,6 +2049,13 @@ A case of `apps/demo`'s `dependencies.example.spec.ts` reached Jest's 5 s timeou
 the maintainer's machine twice: once while the code-reviewer ran scripts beside the gate, and once
 under the gate's own load. Each time it passed on the next run, with no edit. The prompts since
 have the gate re-run once when that case alone fails, and the reviewer runs after the gate.
+
+On 2026-11-22 it timed out a third time on the maintainer's machine (Windows, Node 26.4.0, npm
+12.0.1), in the full gate's first run for the commit that recorded F33's failure message, run alone:
+`● the dependencies page, zoneless › dependencies: shows the value and the keys read, and new ones
+after the expression changes`, with `thrown: "Exceeded timeout of 5000 ms for a test.`. The re-run,
+alone, on the same tree, was green. It meets what reopens the entry, below, on both counts: a gate
+run with nothing else running, and a third timeout.
 
 **Not measured** by the reviewing chat: its gates, run alone, have not timed it out.
 
