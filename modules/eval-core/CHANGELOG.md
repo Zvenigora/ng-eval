@@ -12,6 +12,20 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Fixed
+- **Documentation: where a write policy is asked.** The JSDoc of `EvalContext.checkMemberWrite`
+  and `EvalMemberWrite`, which ships in the types, said a policy is asked before a built-in
+  writes into what it is handed. It is asked before a call the expression itself makes of a
+  built-in in the table of writers, directly or through `call`, `apply` or `bind`, and a write by
+  any other route is not asked about. `SECURITY.md`'s Write policies say the same.
+  [A64](../../docs/backlog.md#a64). No code changes.
+- **Documentation: a call's result can be created.** `EvalMemberWrite.createdByEvaluation`'s
+  JSDoc said a call's result and a `new` result are never created. A call does not make its result
+  created, even when the result is new (`[1].map(f)`'s array is not), but what the expression
+  made itself (a literal, a rest value, an arrow) stays created when a call hands it back: in
+  `(() => ({}))().x = 1` the write is allowed. True since 0.10.0; the JSDoc now says so.
+  [A64](../../docs/backlog.md#a64). No code changes.
+
 ---
 
 ## [0.16.1] - 2026-11-22

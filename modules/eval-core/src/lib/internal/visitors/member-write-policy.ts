@@ -53,7 +53,8 @@ export const consultMemberWrite = (st: EvalState,
 };
 
 /**
- * A built-in method that writes into an object it is handed: the name
+ * A built-in method of the table below, which writes into an object it is
+ * handed: the name
  * `EvalMemberWrite.method` reports, and whether the object written is the
  * method's receiver or its first argument.
  */
@@ -282,11 +283,14 @@ export const refuseContextMethodWrite = (fn: unknown, receiver: unknown,
 };
 
 /**
- * Asks the context whether a call may run, when the function is a built-in
- * that writes into an object it is handed, through
- * `EvalContext.checkMemberWrite` with `method` naming it. Any other function is
- * not asked about. A refusal is a throw, and it propagates from here
- * unchanged: the call has not been made.
+ * Asks the context whether a call may run, when the function the call node
+ * calls is one of {@link MUTATING_BUILT_INS}, the built-ins in the table that
+ * write into an object they are handed, through `EvalContext.checkMemberWrite`
+ * with `method` naming it. Any other function is not asked about, a built-in
+ * outside the table included, and neither is a call native code makes, such
+ * as `forEach`'s of the callback it is handed (`docs/backlog.md` A64). A
+ * refusal is a throw, and it propagates from here unchanged: the call has not
+ * been made.
  *
  * Reached through `Function.prototype.call`, `apply` or `bind`, the function
  * the visitor calls is one of those three and not the built-in, so it is asked

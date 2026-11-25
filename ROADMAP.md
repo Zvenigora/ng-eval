@@ -76,7 +76,8 @@ summary of every phase.
 | 19 | A demo application at `apps/demo` | Ships in no package: an application at `apps/demo` and the site at [`zvenigora.github.io/ng-eval`](https://zvenigora.github.io/ng-eval/) | [`demo/plan.md`](docs/demo/plan.md) | [Its § 10](docs/demo/plan.md#10-retrospect) |
 
 Phases 1 to 11 and 19 are complete, Phase 19 the last of them. Phase 11 shipped as `eval-forms` 0.7.1 and
-retired [F28](docs/backlog-retired.md#f28). Phase 12's plan is active: steps 1 to 4 done, A64's first commit next, then step 5.
+retired [F28](docs/backlog-retired.md#f28). Phase 12's plan is active: steps 1 to 4 done, A64's
+first commit done, its fix next, then step 5.
 
 Phase 9 is numbered after the two reserved phases below and ran ahead of them: it was the one with
 a consumer waiting. Until Phase 10 condensed this file, each phase had a section here with its
@@ -108,7 +109,7 @@ design, with its 61 questions, is
 
 | Phase | Release | Subject | State |
 | :--- | :--- | :--- | :--- |
-| 12 | 0.1.0 | Pure rule evaluation: the format, `compileRule`, the result with its trace, the tests runner, the registry cache | [Plan](docs/eval-rules/plan.md), active: steps 1 to 4 done, A64's first commit next, then step 5 |
+| 12 | 0.1.0 | Pure rule evaluation: the format, `compileRule`, the result with its trace, the tests runner, the registry cache | [Plan](docs/eval-rules/plan.md), active: steps 1 to 4 done, A64's first commit done, its fix next, then step 5 |
 | 13 | 0.2.0 | The engine: rule sets, events, the sink, batch commit, the queue and the loop guard | Designed, no plan |
 | 14 | 0.3.0 | Workflows: the node-kind registry, `sequence`, `branch`, async commit and cancellation | Designed, no plan |
 | 15 | 0.4.0 | The `/signals` entry point: a value-change event source | Designed, no plan |

@@ -49,10 +49,10 @@ site is `https://zvenigora.github.io/ng-eval/`, deployed by hand
 Phases 1 to 6, 9 to 11 and 19 are complete, and so is every track `docs/README.md` lists with a
 release; their plan documents are design records rather than active work. **Phase 12's plan is
 active** (`docs/eval-rules/plan.md`): `@zvenigora/ng-eval-rules` 0.1.0, a new package at
-`modules/eval-rules`. Its steps 1 to 4 are done and A64's first commit is next, then step 5; its step 8 is its demo step
-(`docs/demo/plan.md` § 9). One more is written and no step of it has run: Phase 17,
-`@zvenigora/ng-eval-template` (`docs/eval-template/plan.md`), which gains a demo step before its
-release step when it starts.
+`modules/eval-rules`. Its steps 1 to 4 are done, A64's first commit is done, and its fix is
+next, then step 5; its step 8 is its demo step (`docs/demo/plan.md` § 9). One more is written
+and no step of it has run: Phase 17, `@zvenigora/ng-eval-template`
+(`docs/eval-template/plan.md`), which gains a demo step before its release step when it starts.
 `ROADMAP.md` has the phases, and says which of them are reserved without a specification.
 
 Which release each completed phase and track shipped as, and what each plan is the reference for,
@@ -129,9 +129,10 @@ than one commit ([SR1](docs/standing-rules.md#sr1)) — as in `docs/a8/`, `docs/
 [SR2](docs/standing-rules.md#sr2)–[SR4](docs/standing-rules.md#sr4),
 [SR8](docs/standing-rules.md#sr8) and [SR33](docs/standing-rules.md#sr33)–[SR35](docs/standing-rules.md#sr35).
 
-- The active plan is Phase 12's, `docs/eval-rules/plan.md`: steps 1 to 4 are done and A64's first commit is next, then step 5.
-  `.claude/skills/step/SKILL.md` is retargeted with each new plan and names this one; while none
-  is active it names none, and stops at its § 1 if invoked.
+- The active plan is Phase 12's, `docs/eval-rules/plan.md`: steps 1 to 4 are done, A64's first
+  commit is done, and its fix is next, then step 5. `.claude/skills/step/SKILL.md` is retargeted
+  with each new plan and names this one; while none is active it names none, and stops at its
+  § 1 if invoked.
 - The completed plans are design records, not work in progress, and each remains the
   reference for its library — they record findings about this codebase that are not
   obvious from reading files in isolation. [`docs/release-history.md`](docs/release-history.md)

@@ -728,6 +728,24 @@ describe('createEvalSignalAsync', () => {
 
   describe('the AbortSignal reaches the function (step 3 criterion 1)', () => {
 
+    it('should let an assignment to the abortSignalKey rebind the run\'s own scope, not refuse it', async () => {
+      // SECURITY.md and SignalContextWriteError's JSDoc: the context refuses a
+      // bare name no scope of the run binds, and the run's abortSignalKey is
+      // such a scope, so the write lands in it (`docs/backlog.md` A64,
+      // a64-abort.log).
+      const seen: unknown[] = [];
+      const load = async (_id: number, a: unknown): Promise<string> => {
+        seen.push(a);
+        return 'ok';
+      };
+      const user = create('(abort = 1, load(id, abort))', { id: signal(1), load }, { abortSignalKey: 'abort' });
+
+      user();
+      await Promise.resolve();
+
+      expect(seen).toEqual([1]);
+    });
+
     it('should abort a run at the read that supersedes it, not at the change, and not abort the new run', () => {
       const { signals, load } = aborting();
       const id = signal(1);

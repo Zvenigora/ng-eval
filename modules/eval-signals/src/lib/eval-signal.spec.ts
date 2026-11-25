@@ -470,6 +470,42 @@ describe('createEvalSignal', () => {
         expect(user()).toEqual({ name: 'Ada', n: 1, tags: ['a'] });
       });
 
+      // A call does not make its result created, even when the call made it
+      // new: it may be the caller's own object (`docs/backlog.md` A64).
+      it('should refuse a write into a signal value a call hands back, and write nothing', () => {
+        const user = userOf();
+        const value = create('[user].find(u => true).name = "Bob"', { user });
+
+        let caught: unknown;
+        try {
+          value();
+        } catch (error) {
+          caught = error;
+        }
+
+        expect(caught).toBeInstanceOf(SignalContextWriteError);
+        expect((caught as SignalContextWriteError).kind).toEqual('member');
+        expect((caught as SignalContextWriteError).key).toEqual('name');
+        expect(user()).toEqual({ name: 'Ada', n: 1, tags: ['a'] });
+      });
+
+      it('should refuse a write into a new array a call made, though nothing given is at stake', () => {
+        // `slice` copies, so there is nothing of the signal's to protect here:
+        // the row pins only that a call's new result counts as given.
+        const value = create('user.tags.slice()[0] = "x"', { user: userOf() });
+
+        let caught: unknown;
+        try {
+          value();
+        } catch (error) {
+          caught = error;
+        }
+
+        expect(caught).toBeInstanceOf(SignalContextWriteError);
+        expect((caught as SignalContextWriteError).kind).toEqual('member');
+        expect((caught as SignalContextWriteError).key).toEqual(0);
+      });
+
       it('should raise a member error naming the property and the expression', () => {
         const value = create('user.name = "Bob"', { user: userOf() });
 
@@ -503,7 +539,12 @@ describe('createEvalSignal', () => {
       it.each([
         ['a member of an object literal', 'let o = {}; o.a = 1; o.a', 1],
         ['a loop over its own bindings', 'let t = 0; for (let i = 0; i < 3; i++) { t += i; } t', 3],
+        ['a parameter of its own arrow', '((x) => (x = 2, x))(1)', 2],
         ['the lastIndex of a regex literal', 'let r = /a/g; r.lastIndex = 0', 0],
+        ['a member of a literal its own arrow returns', '(() => ({}))().x = 1', 1],
+        ['a member of a literal its own callback returned', '[1].map(() => ({}))[0].x = 1', 1],
+        ['a member of a rest value its own arrow returns', '((...r) => r)(1).x = 1', 1],
+        ['a member of an arrow its own arrow returns', '(() => () => 1)().x = 1', 1],
       ])('should allow %s', (_label, source, expected) => {
         expect(create(source, { user: userOf() })()).toEqual(expected);
       });
@@ -1206,6 +1247,72 @@ describe('createEvalSignal', () => {
       expect(caught).toBeInstanceOf(SignalContextWriteError);
       expect((caught as SignalContextWriteError).kind).toEqual('member');
       expect((caught as SignalContextWriteError).key).toEqual('a');
+    });
+  });
+
+  // `docs/backlog.md` A67: a write of a name on eval-core's blocklist is
+  // refused, and which error it throws is not promised. Today a bare name, and
+  // a member key on an object, throw eval-core's own Error before the context
+  // is asked, which onError routes; on a primitive receiver the six names it
+  // keeps readable reach the context, whose refusal bypasses onError.
+  describe('a write of a blocklisted name (A67)', () => {
+
+    it('should throw eval-core\'s Error for constructor = 1, which onError undefined renders blank', () => {
+      let caught: unknown;
+      try {
+        create('constructor = 1', { o: {} })();
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toEqual(new Error('Access to dangerous property "constructor" is blocked for security reasons'));
+      expect(caught).not.toBeInstanceOf(SignalContextWriteError);
+      expect(create('constructor = 1', { o: {} }, { onError: 'undefined' })()).toBeUndefined();
+    });
+
+    it.each([
+      ['a spelling of this, bare', 'THIS = 1', 'Access to "this" outside a member access is blocked for security reasons'],
+      ['a case variant of a blocklisted member key', 'o.CONSTRUCTOR = 1', 'Access to dangerous property "constructor" is blocked for security reasons'],
+    ])('should throw eval-core\'s Error under caseInsensitive for %s', (_label, source, message) => {
+      let caught: unknown;
+      try {
+        create(source, { o: {} }, { eval: { caseInsensitive: true } })();
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toEqual(new Error(message));
+      expect(caught).not.toBeInstanceOf(SignalContextWriteError);
+    });
+
+    it('should let a case variant of a blocklisted key on a primitive reach the context under caseInsensitive', () => {
+      // The contrast to the row above: which error a case variant throws is
+      // not promised, and on a primitive today it is the context's.
+      let caught: unknown;
+      try {
+        create('s.TOSTRING = 1', { s: 'str' }, { eval: { caseInsensitive: true } })();
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(SignalContextWriteError);
+      expect((caught as SignalContextWriteError).kind).toEqual('member');
+      expect((caught as SignalContextWriteError).key).toEqual('TOSTRING');
+    });
+
+    it('should throw SignalContextWriteError for s.toString = 1, which onError undefined does not swallow', () => {
+      const value = create('s.toString = 1', { s: 'str' }, { onError: 'undefined' });
+
+      let caught: unknown;
+      try {
+        value();
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(SignalContextWriteError);
+      expect((caught as SignalContextWriteError).kind).toEqual('member');
+      expect((caught as SignalContextWriteError).key).toEqual('toString');
     });
   });
 

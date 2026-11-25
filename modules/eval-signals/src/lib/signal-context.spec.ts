@@ -1,6 +1,6 @@
 import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { EvalService } from '@zvenigora/ng-eval-core';
+import { EvalService, parse } from '@zvenigora/ng-eval-core';
 import { SignalContextWriteError, createSignalContext } from './signal-context';
 
 describe('createSignalContext', () => {
@@ -774,6 +774,26 @@ describe('createSignalContext', () => {
 
       expect(service.simpleEval('A', context, options)).toEqual(1);
       expect(service.simpleEval('this.A', context, options)).toEqual(1);
+    });
+
+    it('should not refuse a logical assignment that short-circuits on a blocklisted name it can read', () => {
+      // `docs/backlog.md` A64 and A67: a blocklisted name's write is refused
+      // where it is made; where the name can be read, `||=` on a truthy value
+      // and `??=` on a defined one make none. On an object the read itself is
+      // refused. Parsed at ES2022, which createEvalSignal does not parse
+      // (a64-signals.log: the 288 that complete are the six names a primitive
+      // keeps readable).
+      const o = {};
+      const context = createSignalContext({ o, s: 'str', n: 7 });
+      const at2022 = (text: string) =>
+        service.simpleEval(parse(text, { ecmaVersion: 2022, extractExpressions: false }) as never, context);
+
+      expect(at2022('s.toString ||= 1')).toBe(String.prototype.toString);
+      expect(at2022('n.valueOf ??= 1')).toBe(Number.prototype.valueOf);
+      expect(() => at2022('o.constructor ??= 1')).toThrow(
+        new Error('Access to dangerous property "constructor" is blocked for security reasons'));
+      expect(Object.keys(o)).toEqual([]);
+      expect(Object.getPrototypeOf(o)).toBe(Object.prototype);
     });
   });
 

@@ -95,7 +95,7 @@ itself down with the component. See [Lifetime](#lifetime) for every other case.
 | `createEvalSignalAsync(expression, source, options?)` | The async counterpart. Resolves the expression's value as `evaluateAsync` does, and returns an `EvalSignalAsync`. |
 | `EvalSignalService.createAsync(…)` | The same, for callers outside an injection context. |
 | `createSignalContext(source, options?)` | The context adapter on its own, for use with `EvalService` directly. |
-| `SignalContextWriteError` | Thrown when an expression assigns to a context key, or to a member of anything it did not create. |
+| `SignalContextWriteError` | Thrown where the context refuses a write: an assignment or update to a bare name that no scope of the run binds, or, where `eval-core` asks, a write into anything the expression did not create. Not every refused write throws it: see [Writes are not supported](#writes-are-not-supported). |
 | `EvalSignal<T>` | `Signal<T>` plus `dependencies`, `invalidate()` and `destroy()`. The factory returns `EvalSignal<unknown>` — an expression's type is not knowable, so narrow at the call site. |
 | `EvalSignalAsync<T>` | `EvalSignal<T>` plus `status`. The value reads `undefined` while a run is pending. |
 | `EvalSignalStatus` | `'idle'`, `'loading'`, `'resolved'` or `'error'` — the words Angular's `ResourceStatus` uses for those states. |
@@ -123,7 +123,9 @@ cached and rethrown on every read until a dependency changes. `'undefined'` rend
 instead, and a function maps the error to a value. Two things are **not** routed through it —
 a parse error, which throws from `createEvalSignal` itself because the expression is compiled
 eagerly, and a `SignalContextWriteError`, which bypasses `onError` in every mode because an
-illegal assignment is a bug in the expression rather than a runtime failure to render around.
+illegal assignment is a bug in the expression rather than a runtime failure to render around. A
+write that `eval-core` refuses itself is not a `SignalContextWriteError`, and goes through
+`onError` like any other error ([A67](https://github.com/zvenigora/ng-eval/blob/master/docs/backlog.md#a67)).
 
 **`equal`** matters more than it looks for expressions producing objects or arrays: a fresh
 literal per recompute is never `Object.is`-equal to the last one, so every downstream consumer
@@ -241,8 +243,9 @@ callback, a plain method — where the free function would throw `NG0203`.
 
 ## Writes are not supported
 
-The keys of a signal context are read-only. An assignment throws `SignalContextWriteError` on
-the first read, naming the key and the expression:
+The keys of a signal context are read-only. An assignment to one throws
+`SignalContextWriteError` on the first read, naming the key and the expression, unless `eval-core`
+refuses the write itself first:
 
 ```ts
 const count = signal(1);
@@ -264,13 +267,19 @@ value that mutates its own inputs has no stable value. The error is raised by th
 the message names the cause rather than surfacing an Angular error code from inside a
 `TypeError`.
 
-**A signal expression may write into what it created — object, array and regex literals, rest
-values, arrow functions — and not into anything it was given or got back from a call.** Since
+**An assignment or update of a name on `eval-core`'s blocklist of dangerous names** — `prototype`
+and `Object.prototype`'s own names — is refused where it is made, bare or as a member key, and
+which error it throws is not promised ([A67](https://github.com/zvenigora/ng-eval/blob/master/docs/backlog.md#a67)).
+
+**Over a signal context, an expression's own assignment may write into what it created — object,
+array and regex literals, rest values, arrow functions — and not into anything it was given or got
+back from a call, unless the expression made it.** Since
 0.3.0, `user.name = 'Bob'` throws `SignalContextWriteError` with `kind` `'member'` and `key`
 `'name'`, and so do `user.n++`, `let u = user; u.name = 'Bob'` and
 `[user].map(u => (u.name = 'Bob'))`. Up to 0.2.x each of them wrote into the object your signal
-holds. A call's result counts as given even when it is new, because a call can as easily hand
-back your own object — `[user].find(u => true)` does.
+holds. A call's result counts as given, because a call can hand back your own object —
+`[user].find(u => true)` does — unless the expression made it itself: `(() => ({}))().x = 1`
+writes.
 
 To change something you were given, spread it into a literal first, and write into the copy:
 
@@ -286,24 +295,32 @@ marked();    // ['x']
 
 A spread copies one level: `u.tags` above is still your array, and writing into it throws.
 
-**A built-in method that would write into what the expression was given is refused too, since
-0.4.0.** `user.tags.push('x')`, `user.tags.sort()`, `splice` and the rest of `Array`'s mutators,
-the typed arrays' own, `Map#set`, `Set#add` and their removers, a `Date`'s setters, and, when
-your context supplies `Object`, `Object.assign(user, …)` and `Object`'s other mutators each throw
-`SignalContextWriteError` with `kind` `'method'` and `key` naming the method,
-`'Array.prototype.push'`. The message says what to call instead where JavaScript has it —
-`toSorted`, `toReversed`, `toSpliced`, `with` — or to spread the value into a literal and change
-the copy. Up to 0.3.x each of these calls went through and
+**Over a signal context, a call the expression makes of a built-in method in `eval-core`'s table of
+writers, into what the expression was given, is refused too, since 0.4.0.** `user.tags.push('x')`,
+`user.tags.sort()`, `splice` and the rest of `Array`'s mutators, the typed arrays' own, `Map#set`,
+`Set#add` and their removers, a `Date`'s setters, and, when your context supplies `Object`,
+`Object.assign(user, …)` and `Object`'s other mutators each throw `SignalContextWriteError` with
+`kind` `'method'` and `key` naming the method, `'Array.prototype.push'`. The message says what to
+call instead where JavaScript has it — `toSorted`, `toReversed`, `toSpliced`, `with` — or to spread
+the value into a literal and change the copy. Up to 0.3.x each of these calls went through and
 mutated your data. On a copy the expression made they still work: `[...user.tags].sort()`.
 Reached through `call`, `apply` or `bind` — `[].push.call(user.tags, 'x')` — a method is refused
 as a direct call of it is, and `bind` is refused when it binds.
 
-Two things this does not catch:
+The context is asked only at the expression's own writes and calls. A write by any other route is
+not asked about; among the known ones:
 
 - **A regex you supplied keeps its `lastIndex` behaviour.** With a global or sticky regex, `test`
   and `exec` advance it, and `match`, `replace` and `replaceAll` given a global one reset it to 0.
   Refusing them would break the commonest rule there is, `pattern.test(value)`.
-- **A method you wrote is your own code**, and runs as written, whatever it is called.
+- **A method you wrote is your own code**, and runs as written, whatever it is called; a function
+  your context supplies, such as `Reflect.set`, is not asked about either.
+- **A built-in of the table that native code calls is not asked about.**
+  `[1].forEach(user.tags.push, user.tags)` calls `forEach`, which is not in the table, and
+  `forEach` calls `push`. The same holds for `map`.
+- **A built-in outside `eval-core`'s table is not asked about**, such as `getOrInsert` on a `Map`
+  or a `WeakMap`, or a `DataView`'s setters. The register keeps the known routes
+  ([A64](https://github.com/zvenigora/ng-eval/blob/master/docs/backlog.md#a64)).
 
 **The cost** is a record of each object an expression creates, kept only for a signal context,
 and a lookup of each function called in a table of the built-ins above. `eval-core` does both for

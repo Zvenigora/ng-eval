@@ -317,17 +317,26 @@ evaluation's trace can take. Implemented in
 
 ### Write policies
 
-- **`eval-core`**: a context may implement `EvalContext.checkMemberWrite`, which is asked before
-  every member write and before a built-in method writes into what it is handed, called directly or
-  through `call`, `apply` or `bind`, and refuses by throwing. Implemented in
+- **`eval-core`**: a context may implement `EvalContext.checkMemberWrite`, which refuses by
+  throwing. It is asked before an assignment or update to a member, and before a call the
+  expression itself makes, directly or through `call`, `apply` or `bind`, of a built-in in its
+  table of writers: the mutators of arrays and of typed arrays; set and delete on maps and weak
+  maps; clear on maps and sets; add and delete on sets and weak sets; a date's setters; and
+  `Object`'s writers. Where it refuses, nothing is written there. `eval-core`'s own checks still
+  apply, and may refuse a write before it is asked. A write by any other route is not asked about;
+  the register keeps the known ones ([A64](docs/backlog.md#a64)). Implemented in
   [eval-context.ts](modules/eval-core/src/lib/internal/classes/eval/eval-context.ts) and
   [member-write-policy.ts](modules/eval-core/src/lib/internal/visitors/member-write-policy.ts);
   pinned by
   [member-write-policy.spec.ts](modules/eval-core/src/lib/internal/visitors/member-write-policy.spec.ts).
-- **`eval-signals`**: an expression may write into what it created and into nothing it was given:
-  such a write throws `SignalContextWriteError`, whose `kind` says whether a key, a member or a
-  method wrote. Implemented in
-  [signal-context.ts](modules/eval-signals/src/lib/signal-context.ts); pinned by
+- **`eval-signals`**: the context refuses an assignment to a bare name that no scope of the run
+  binds, and, where `eval-core` asks it, above, a write into anything the expression did not
+  create, with a `SignalContextWriteError`; nothing is written there. `eval-core` may refuse a write
+  itself first, with its own error. An assignment or update of a name on `eval-core`'s blocklist of
+  dangerous names, above, is refused where it is made, and which error it throws is not promised
+  ([A67](docs/backlog.md#a67)). The context is not asked about a write by any other route
+  ([A64](docs/backlog.md#a64)).
+  Implemented in [signal-context.ts](modules/eval-signals/src/lib/signal-context.ts); pinned by
   [signal-context.spec.ts](modules/eval-signals/src/lib/signal-context.spec.ts).
 - **`eval-forms`**: `guardIdentifiers` refuses, when a rule is registered, any identifier named
   after an own property of `Object.prototype`, at both entry points. Implemented in

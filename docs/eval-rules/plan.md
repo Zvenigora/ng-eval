@@ -1,15 +1,16 @@
 # Phase 12 Plan — `@zvenigora/ng-eval-rules` 0.1.0, pure rule evaluation (new module)
 
-**Status: Revision 7, the active plan: steps 1 to 4 are done and A64's first commit is next, then step 5.** Revisions 1 to 4 and
-the design sessions were committed ahead of step 1, at the maintainer's request. Revision 3 measured
-[§ 1.3](#13-mechanism-questions-measured)'s rows on the built 0.16.0 bundle, and Revision 4 added
-two, with eight scripts pinned outside the repository ([SR32](../standing-rules.md#sr32),
-[SR47](../standing-rules.md#sr47)). A statement here about how `eval-core` behaves is a row of
-§ 1.3, or it says it is a prediction. Step 1 checks the hashes, re-runs the scripts on the bundle
-its gate builds, and reads [§ 2](#2-decisions--recorded-not-reopened) against the rows. No
-question is open: all twenty-three of [§ 8](#8-questions-all-decided) were decided by the
-maintainer on 2026-11-12, and § 3 and § 4 are written to the decisions. Step 1 did all three:
-[§ 1.3](#13-mechanism-questions-measured)'s "Step 1's run" records the result.
+**Status: Revision 7, the active plan: steps 1 to 4 are done, A64's first commit is done, and its
+fix is next, then step 5.** Revisions 1 to 4 and the design sessions were committed ahead of step 1,
+at the maintainer's request. Revision 3 measured [§ 1.3](#13-mechanism-questions-measured)'s rows on
+the built 0.16.0 bundle, and Revision 4 added two, with eight scripts pinned outside the repository
+([SR32](../standing-rules.md#sr32), [SR47](../standing-rules.md#sr47)). A statement here about how
+`eval-core` behaves is a row of § 1.3, or it says it is a prediction. Step 1 checks the hashes,
+re-runs the scripts on the bundle its gate builds, and reads
+[§ 2](#2-decisions--recorded-not-reopened) against the rows. No question is open: all twenty-three
+of [§ 8](#8-questions-all-decided) were decided by the maintainer on 2026-11-12, and § 3 and § 4 are
+written to the decisions. Step 1 did all three: [§ 1.3](#13-mechanism-questions-measured)'s "Step
+1's run" records the result.
 
 The design is [`design-session.md`](design-session.md), three sessions and questions Q1 to Q61.
 This plan does not restate it: it cites a decision by its Q number and section, and adds only

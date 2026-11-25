@@ -261,26 +261,30 @@ Two things are **not** routed through `options.onError`, in either adapter:
   eagerly: at `/reactive` it throws from `bindFieldProperties` itself, so
   `visible: 'country ==='` fails at bind time, and at `/signals` from `form()`, where the
   schema body that registers the rule runs.
-- **An assignment throws `SignalContextWriteError`, in every mode.** Expression keys are
-  read-only, and a write violation is *static* — illegal on every recompute with every
-  dataset. Swallowing it under the default would hand you a silent blank for a syntax bug
-  in the rule itself.
+- **An assignment the context refuses throws `SignalContextWriteError`, in every mode.**
+  Expression keys are read-only, and a write violation is *static* — illegal on every recompute
+  with every dataset. Swallowing it under the default would hand you a silent blank for a syntax
+  bug in the rule itself.
 
-  **So does a write into the form's data, since 0.3.0.**
-  A rule may write into what it created — object, array and regex literals, rest values,
-  arrow functions — and not into anything it was given. `address.city = 'x'`, over a
+  **So does a rule's own assignment into the form's data, since 0.3.0.**
+  A rule's assignment may write into what it created — object, array and regex literals, rest
+  values, arrow functions — and not into anything it was given. `address.city = 'x'`, over a
   control whose value is `{ city: 'Rome' }` or over the `/signals` model, throws
   `SignalContextWriteError` with `kind` `'member'`, in every mode; up to 0.2.x it wrote into
   the very object Angular holds.
 
-  **So does a built-in method that would write into it, since 0.4.0.** `tags.push('x')`,
+  **So does a call the rule makes of a built-in method in `eval-core`'s table of writers into it,
+  since 0.4.0.** `tags.push('x')`,
   `tags.sort()`, `splice`, `Map#set`, a `Date`'s setters and, where the context supplies
   `Object`, `Object.assign`, over a control's value or the `/signals` model, throw
   `SignalContextWriteError` with `kind` `'method'`, in every mode, naming the method and what to
   call instead — `toSorted`, `toReversed`, `toSpliced`, `with`, or a spread into a literal. So
   does each one reached through `call`, `apply` or `bind`. Up to 0.3.x the call went through and
-  mutated the form's data. On a copy the rule made they still work: `[...tags].sort()`. Not
-  caught: a method you wrote, and `lastIndex` on a regex you supplied.
+  mutated the form's data. On a copy the rule made they still work: `[...tags].sort()`. Only the
+  rule's own writes and calls are asked about; a write by any other route is not, such as a
+  method you wrote or a built-in of the table that native code calls, as
+  `[1].forEach(tags.push, tags)` calls `push`. The register keeps the known routes
+  ([A64](https://github.com/zvenigora/ng-eval/blob/master/docs/backlog.md#a64)).
 
   **It holds through a call too.** An assignment **nested inside a call**,
   `[1].map(x => (country = 'CA'))`, reaches the bypass as `SignalContextWriteError` and is
@@ -289,6 +293,12 @@ Two things are **not** routed through `options.onError`, in either adapter:
   by `onError` like any other failure: under the default, a blank field with nothing in the
   console. The peer range admitted those versions until 0.3.0 raised its `eval-core` floor to
   0.10.0.
+
+  **`eval-core` may refuse any of these writes itself first**, with its own error, which is not a
+  `SignalContextWriteError`: the policy routes it like any runtime failure, and under the default
+  it renders a blank. An assignment or update of a name on `eval-core`'s blocklist of dangerous
+  names is refused where it is made, and which error it throws is not promised
+  ([A67](https://github.com/zvenigora/ng-eval/blob/master/docs/backlog.md#a67)).
 
 ## Quick start — Reactive Forms (`/reactive`)
 

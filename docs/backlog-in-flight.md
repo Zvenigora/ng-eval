@@ -8,14 +8,18 @@ that the register's preamble and its entries are read without it. Only its links
 entries changed, from `#a56` to `backlog.md#a56`.
 
 **The [Phase 12 plan](eval-rules/plan.md) is active**, at Revision 7: `@zvenigora/ng-eval-rules`
-0.1.0, a new package. Steps 1 to 4 are done and A64's first commit is next, then step 5; steps 2 and 3 fixed no entry, and step 3's
-third follow-up opened [E9](backlog.md#e9), `compileRule` superlinear in long names, not scheduled.
-Step 4 fixed no entry and opened three: [A64](backlog.md#a64), a write policy asked only at an
-expression's own writes and its own calls of the table's built-ins, so other routes write what it
-was given, at the fix bar and scheduled before step 5, on its own track, its first commit
-correcting the published packages' sentences false now; [E10](backlog.md#e10), a field's function
-running after the run against the facts; and [F35](backlog.md#f35), two `test-setup.ts` files that
-do not type-check; the last two not scheduled.
+0.1.0, a new package. Steps 1 to 4 are done, A64's first commit is done, and its fix is next, then
+step 5; steps 2 and 3 fixed no entry, and step 3's third follow-up opened [E9](backlog.md#e9),
+`compileRule` superlinear in long names, not scheduled. Step 4 fixed no entry and opened three:
+[A64](backlog.md#a64), a write policy asked only at an expression's own writes and its own calls of
+the table's built-ins, so other routes write what it was given, at the fix bar and scheduled before
+step 5, on its own track, its first commit correcting the published packages' sentences false now;
+[E10](backlog.md#e10), a field's function running after the run against the facts; and
+[F35](backlog.md#f35), two `test-setup.ts` files that do not type-check; the last two not
+scheduled. A64's first commit, 2026-11-25, corrected the published packages' sentences false on
+`eval-core` 0.16.1 about where a write policy is asked and which error a refused write throws,
+fixed no entry, and opened one: [A67](backlog.md#a67), a write of a name on `eval-core`'s blocklist
+routed through `onError` like a runtime failure, so `'undefined'` renders a blank, not scheduled.
 Step 1 fixed no entry and opened four,
 each not scheduled ([SR48](standing-rules.md#sr48)): [A62](backlog.md#a62), evaluation time and
 memory not bounded; [A63](backlog.md#a63), no package loading in plain Node as installed;

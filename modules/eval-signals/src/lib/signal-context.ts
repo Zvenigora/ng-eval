@@ -65,9 +65,14 @@ const writeErrorMessage = (key: unknown, expression: string | undefined,
 };
 
 /**
- * Thrown when an expression assigns to a key of a signal context, or to a
- * member of an object the expression did not create, or calls a built-in
- * method that would write into one.
+ * Thrown where the context refuses a write: an assignment to a bare name that
+ * no scope of the run binds, a key of the signal context or not, or, where
+ * `eval-core` asks, a write into a member of an object the expression did not
+ * create, or a call the expression makes, directly or through `call`, `apply`
+ * or `bind`, of a built-in in `eval-core`'s table of writers that would write
+ * into one. `eval-core` may refuse a write itself first, with its own error
+ * (`docs/backlog.md` A67). Other routes are not asked about
+ * (`docs/backlog.md` A64).
  *
  * The keys are read-only by design. An `AssignmentExpression` or
  * `UpdateExpression` against one would otherwise write into the context's
@@ -112,16 +117,19 @@ export class SignalContextWriteError extends Error {
   /**
    * Which policy refused the write.
    *
-   * - `'key'` - an assignment to a key of the context, `count = 5`. The keys
-   *   are read-only.
+   * - `'key'` - an assignment to a bare name that no scope of the run binds,
+   *   `count = 5`, whether or not it is a key of the context. The keys are
+   *   read-only.
    * - `'member'` - an assignment to a member of an object the expression did
-   *   not create: anything it was given, or got back from a call.
+   *   not create: anything it was given, or got back from a call, unless the
+   *   expression made it itself, as in `(() => ({}))().x = 1`.
    *   `user.name = 'Bob'`, `user.n++`, `[user].map(u => (u.name = 'x'))`.
    *   An object the expression created - an object, array or regex literal, a
    *   rest value, an arrow function - may be written. Since 0.3.0; up to
    *   0.2.x a member write was not refused at all.
-   * - `'method'` - a call of a built-in method that would write into an
-   *   object the expression did not create: `user.tags.push('x')`,
+   * - `'method'` - a call the expression makes of a built-in method in
+   *   `eval-core`'s table of writers that would write into an object the
+   *   expression did not create (not one native code makes): `user.tags.push('x')`,
    *   `user.tags.sort()`, `m.set(k, v)`, `Object.assign(user, p)`. The same
    *   objects may be written as for `'member'`, so `[...user.tags].sort()`
    *   is allowed. The message names the method and, where JavaScript has
@@ -182,15 +190,19 @@ export class SignalContextWriteError extends Error {
  * consumer's signal: a write *through* a signal-backed key rather than *to*
  * one, into data this library does not own. Up to 0.2.x nothing refused it
  * (`docs/backlog-retired.md` C1). `eval-core` 0.10.0 asks the context about
- * every member write and says whether the walk created the target; this
- * context refuses any target it did not.
+ * a member write and says whether the walk created the target; this context
+ * refuses any target it did not.
  *
  * A mutating *method* is asked about through the same hook: since
- * `eval-core` 0.11.0 the call visitor asks before calling a built-in that
- * writes into an object it is handed - `user.tags.push('x')`, `m.set(k, v)`,
+ * `eval-core` 0.11.0 the call visitor asks before calling a built-in in its
+ * table of writers that writes into an object it is handed -
+ * `user.tags.push('x')`, `m.set(k, v)`,
  * `Object.assign(user, p)` - and this context refuses one whose target the
  * walk did not create (`docs/backlog-retired.md` C4). A method the caller
- * wrote is the caller's own code and is not asked about.
+ * wrote is the caller's own code and is not asked about; neither is a
+ * built-in outside that table, such as `m.getOrInsert(k, v)`, nor one of the
+ * table's that native code calls, as `[1].forEach(m.set, m)` calls `set`
+ * (`docs/backlog.md` A64).
  *
  * Guarding the `original` object instead - a `Proxy` with a throwing `set`
  * trap - was rejected: it sits below the layer that knows *who* is writing,
@@ -218,8 +230,10 @@ class SignalEvalContext extends EvalContext {
   }
 
   /**
-   * Refuses a member write unless the walk created its target, and a built-in
-   * method's call on the same terms. Implementing this is what opts the
+   * Refuses a member write unless the walk created its target, and, on the
+   * same terms, a call of a built-in in `eval-core`'s table that the
+   * expression itself makes, directly or through `call`, `apply` or `bind`,
+   * which is all `eval-core` asks about. Implementing this is what opts the
    * context in: `eval-core` then records, per evaluation, the objects the
    * walk creates - which is the whole cost, and one that only a signal
    * context pays.
@@ -305,9 +319,11 @@ class SignalEvalContext extends EvalContext {
  *   Angular's tracking model.
  *
  * The returned context's keys are **read-only**: an assignment or update
- * against one throws {@link SignalContextWriteError} rather than writing. So
- * does an assignment or update to a member of anything the expression did not
- * create - see {@link SignalContextWriteError.kind}.
+ * against one throws {@link SignalContextWriteError} rather than writing,
+ * unless `eval-core` refuses it itself first, with its own error
+ * (`docs/backlog.md` A67). So does an assignment or update to a member of
+ * anything the expression did not create - see
+ * {@link SignalContextWriteError.kind}.
  *
  * @param source - The backing record. Values that are signals are unwrapped.
  * @param options - Configures this context and its resolver, not the walk.

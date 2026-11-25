@@ -8,6 +8,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **Documentation: what the write refusal covers.** The README's "Two things this does not
+  catch" listed two of the routes by which an expression still writes what it was given: it now
+  says the context is asked only at the expression's own writes and calls, and lists a built-in of
+  `eval-core`'s table that native code calls, as `[1].forEach(user.tags.push, user.tags)` does,
+  and a built-in outside the table, such as `getOrInsert` on a `Map` or a `WeakMap`, among the
+  known routes, none of them asked about. The context's JSDoc says the same.
+  [A64](../../docs/backlog.md#a64). No code changes.
+- **Documentation: not every refused write is a `SignalContextWriteError`.** The README and the
+  JSDoc of `SignalContextWriteError`, `createSignalContext` and `createEvalSignal` said an
+  assignment throws it. `eval-core` may refuse a write itself first, with its own error, which
+  `onError` routes like any other; each now says so. An assignment or update of a name on
+  `eval-core`'s blocklist is refused where it is made, and which error it throws is not
+  promised. [A67](../../docs/backlog.md#a67). No code changes.
+- **Documentation: a call's result.** The README said a call's result counts as given even when
+  it is new, and `SignalContextWriteError.kind`'s JSDoc said `'member'` covers anything got back
+  from a call. What the expression made itself stays its own when a call hands it back:
+  `(() => ({}))().x = 1` writes, as it has since 0.3.0. Both now say so.
+  [A64](../../docs/backlog.md#a64). No code changes.
+
 ---
 
 ## [0.9.0] - 2026-11-08

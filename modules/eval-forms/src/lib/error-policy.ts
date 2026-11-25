@@ -50,6 +50,9 @@ import { SignalContextWriteError } from '@zvenigora/ng-eval-signals';
  * every recompute with every dataset - and swallowing it under a default of
  * `'undefined'` would hand every consumer a silent blank for a bug in the
  * rule's own syntax. `createEvalSignal` already bypasses `onError` for it.
+ * The bypass is by class: a write that `eval-core` refuses itself is not a
+ * `SignalContextWriteError`, and is routed through the policy like any other
+ * failure (`docs/backlog.md` A67).
  *
  * **{@link applyErrorPolicy} ships beside this type as of Phase 6** (its
  * S 3.4). Through Phase 4 only the type shipped, because the helper would have
@@ -81,6 +84,8 @@ export type ExpressionErrorPolicy =
  * does not exist. An assigning expression is illegal on every recompute with
  * every dataset, so under this module's default of `'undefined'` it would
  * otherwise render as a permanently blank field with nothing in the console.
+ * A write that `eval-core` refuses itself is not that class, and does render
+ * that way (`docs/backlog.md` A67).
  *
  * **The `instanceof` needs the constructor, so the import of that class is a
  * *value* import** - see the note above it, and the plan's revision 13, for

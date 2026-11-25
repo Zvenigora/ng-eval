@@ -228,7 +228,8 @@ export const callMember = (st: EvalState, [object, propertyName, fn, contextReso
  * Enhanced call expression visitor with security checks
  *
  * A context with a member-write policy is asked, before the call, about a
- * built-in that writes into its receiver or its first argument - see
+ * built-in in the table of writers that writes into its receiver or its
+ * first argument - see
  * `consultMethodWrite`. The receiver asked about is the write target: the
  * member's object, a prior scope's `thisArg`, or the context itself for a
  * bare call. A context without a policy pays one field read per call.

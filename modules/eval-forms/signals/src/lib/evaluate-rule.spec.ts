@@ -246,4 +246,18 @@ describe('applyErrorPolicy over evaluateRule', () => {
     expect(runUnderPolicy(fixture(), 'boom()', handler)).toBe('handled');
     expect(handler).toHaveBeenCalledTimes(1);
   });
+
+  it('should route a write eval-core\'s blocklist refuses through the policy (A67)', () => {
+    // `docs/backlog.md` A67: the bypass is by class, and `eval-core` refuses
+    // a name on its blocklist with its own `Error`, before the context is
+    // asked, so the default renders it as a blank and a handler receives it.
+    const handler = jest.fn((error: unknown) => error);
+
+    expect(runUnderPolicy(fixture(), 'country.constructor = 1')).toBeUndefined();
+    expect(runUnderPolicy(fixture(), 'country.constructor = 1', handler))
+      .not.toBeInstanceOf(SignalContextWriteError);
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler.mock.calls[0][0]).toEqual(
+      new Error('Access to dangerous property "constructor" is blocked for security reasons'));
+  });
 });

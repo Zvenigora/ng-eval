@@ -252,11 +252,25 @@ describe('member-write policy', () => {
         const data = dataOf();
         const context = new PolicedContext(data, {});
 
-        // Why no call result counts as created: this one is `o` itself.
+        // Why a call does not make its result created: this one is `o` itself.
         expect(() => run('[o].find(u => true).a = 2', context)).toThrow(RefusedWrite);
 
         expect(data.o.a).toBe(1);
         expect(context.writes[0].target).toBe(data.o);
+      });
+
+      it('should allow a write into a literal of its own that its own arrow returns', () => {
+        const context = new PolicedContext(dataOf(), {});
+
+        // The call does not make its result created; the literal inside the
+        // arrow did, and it stays created when the arrow hands it back.
+        expect(run('(() => ({ a: 1 }))().a = 2', context)).toBe(2);
+        expect(run('[1].map(() => ({}))[0].a = 3', context)).toBe(3);
+
+        expect(context.writes).toEqual([
+          { target: expect.any(Object), key: 'a', createdByEvaluation: true },
+          { target: expect.any(Object), key: 'a', createdByEvaluation: true },
+        ]);
       });
 
       it('should allow a write once the result is spread into a literal', () => {

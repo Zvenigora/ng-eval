@@ -189,14 +189,17 @@ export interface EvalSignalOptions {
  * evaluation and is called later is the one way to hit this. It is inherent
  * to Angular's model rather than to this library.
  *
- * The context's keys are read-only: an assignment throws
- * {@link SignalContextWriteError}, as does a write to a member of anything the
- * expression did not create, and that error bypasses `onError` in every
- * mode. A write violation is a *static* property of the expression - illegal
- * on every recompute with every dataset - while `onError` exists so a
- * *runtime* failure can render a blank rather than break. Routing one through
- * the other would hand a consumer who set `'undefined'` for the ordinary
- * reason a silent blank for a bug in their own code.
+ * Over a signal context, its keys are read-only: an assignment to one throws
+ * {@link SignalContextWriteError}, unless `eval-core` refuses it itself first,
+ * as does a write the context refuses into a member of anything the expression
+ * did not create, and that error bypasses `onError` in every mode. A write
+ * that `eval-core` refuses itself is not a `SignalContextWriteError`, and goes
+ * through `onError` like any other error (`docs/backlog.md` A67). A write violation
+ * is a *static* property of the expression - illegal on every recompute with
+ * every dataset - while `onError` exists so a *runtime* failure can render a
+ * blank rather than break. Routing one through the other would hand a consumer
+ * who set `'undefined'` for the ordinary reason a silent blank for a bug in
+ * their own code.
  *
  * @param expression - A JavaScript expression.
  * @param source - A record whose values may be signals, or a pre-built

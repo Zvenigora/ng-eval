@@ -503,19 +503,22 @@ export class EvalContext {
    *   says what does not count, and why.
    *
    * To refuse a write, throw: nothing is written, and the error leaves the
-   * evaluation as thrown. Returning allows it, and the prototype-pollution
+   * evaluation as thrown. The walk's own checks may refuse a write before this
+   * is asked. Returning allows it, and the prototype-pollution
    * guard still applies after. A context that does not implement this pays
    * one field read at each of those sites, and nothing else.
    *
-   * Since 0.11.0 it is also asked before a call of a built-in **method** that
-   * writes into an object it is handed - `arr.push(x)`, `arr.splice(i, 1)`,
-   * `map.set(k, v)`, `Object.assign(o, p)` - which writes from native code and
-   * reaches neither write visitor. The call visitor asks, with
-   * {@link EvalMemberWrite.method} naming the method and the object it writes
-   * as the target; refusing it means the call is not made. The same is asked
-   * when the method is reached through `Function.prototype.call`, `apply` or
-   * `bind` - for `bind`, when it binds. A method the caller wrote is not asked
-   * about: what it does is the caller's own code.
+   * Since 0.11.0 it is also asked before a call the expression makes of a
+   * built-in **method** in `eval-core`'s table of writers that writes into an
+   * object it is handed - `arr.push(x)`, `arr.splice(i, 1)`, `map.set(k, v)`,
+   * `Object.assign(o, p)` - which writes from native code and reaches neither
+   * write visitor. A write by any other route is not asked about
+   * (`docs/backlog.md` A64). The call visitor asks,
+   * with {@link EvalMemberWrite.method} naming the method and the object it
+   * writes as the target; refusing it means the call is not made. The same is
+   * asked when the method is reached through `Function.prototype.call`, `apply`
+   * or `bind` - for `bind`, when it binds. A method the caller wrote is not
+   * asked about: what it does is the caller's own code.
    *
    * @param write - The write about to happen.
    * @throws To refuse the write.

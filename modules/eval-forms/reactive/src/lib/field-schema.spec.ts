@@ -340,6 +340,61 @@ describe('bindFieldProperties', () => {
       expect(address.value).toEqual({ city: 'Rome' });
     });
 
+    it('should render a blank, under the default, for a member write eval-core\'s blocklist refuses', () => {
+      // `docs/backlog.md` A67: the bypass is by class, and `eval-core` refuses
+      // a name on its blocklist with its own `Error` before the context is
+      // asked, so the policy routes it like any runtime failure. Nothing is
+      // written: the control's value keeps its own prototype and keys.
+      const address = new FormControl<Record<string, unknown>>({ city: 'Rome' });
+
+      const bound = bindFields(
+        [{ name: 'country', text: 'address.constructor = "x"' }],
+        group({ country: new FormControl('CA'), address }),
+        { injector }
+      );
+
+      expect(bound['country'].text?.()).toBe('');
+      expect(address.value).toEqual({ city: 'Rome' });
+      expect(Object.getPrototypeOf(address.value)).toBe(Object.prototype);
+
+      // What the default swallowed is eval-core's refusal, not the context's.
+      let received: unknown;
+      const handled = bindFields(
+        [{ name: 'country', text: 'address.constructor = "x"' }],
+        group({ country: new FormControl('CA'), address }),
+        { injector, onError: (error: unknown) => { received = error; return 'handled'; } }
+      );
+
+      expect(handled['country'].text?.()).toBe('handled');
+      expect(received).toEqual(
+        new Error('Access to dangerous property "constructor" is blocked for security reasons'));
+      expect(received).not.toBeInstanceOf(SignalContextWriteError);
+    });
+
+    it('should let a blocklisted name a primitive keeps readable reach the context and throw', () => {
+      // The contrast to the row above (A67): on a string, number or boolean
+      // receiver `eval-core` lets `toString` and five other names through to
+      // the context, whose refusal is a `SignalContextWriteError`, which the
+      // default does not swallow. Which error a blocklisted name throws is
+      // not promised; this pins today's.
+      const bound = bindFields(
+        [{ name: 'country', text: 'country.toString = "x"' }],
+        group(),
+        { injector }
+      );
+
+      let caught: unknown;
+      try {
+        bound['country'].text?.();
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(SignalContextWriteError);
+      expect((caught as SignalContextWriteError).kind).toEqual('member');
+      expect((caught as SignalContextWriteError).key).toEqual('toString');
+    });
+
     it('should let a mutating method call on a control\'s value through the default too', () => {
       // `eval-signals` 0.4.0 (`docs/backlog-retired.md` C4): a built-in method
       // that would write into a control's value is refused as a member write

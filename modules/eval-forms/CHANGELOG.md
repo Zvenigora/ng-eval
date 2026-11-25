@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **Documentation: what the write refusal covers.** The README's "Not caught" named a method you
+  wrote and a regex's `lastIndex`: it now says only the rule's own writes and calls are asked
+  about, and that a write by any other route is not, such as a built-in of `eval-core`'s table
+  that native code calls. [A64](../../docs/backlog.md#a64). No code changes.
+- **Documentation: not every refused write is a `SignalContextWriteError`.** The README said an
+  assignment throws `SignalContextWriteError` in every mode. `eval-core` may refuse a write
+  itself first, with its own error, which the policy routes like any other: under the default the
+  field renders a blank. The README and the JSDoc of `ExpressionErrorPolicy` and
+  `applyErrorPolicy` now say so. [A67](../../docs/backlog.md#a67). No code changes.
+
 ---
 
 ## [0.9.0] - 2026-11-08

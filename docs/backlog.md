@@ -228,9 +228,10 @@ and `v0.2.3`: lightweight tags from before the `<project>@<version>` names, whic
 | [A61](#a61) | A native function the host places in the context, `Object.assign`, `Reflect.set` or `Object.defineProperty`, writes an `EvalScope` held as a value, its fields included, past A51's refusal of a member write | core | fix | Open — opened 2026-11-06 by the [A48 plan](a48/plan.md)'s step 5, from step 4's code review; predates it. Not scheduled |
 | [A62](#a62) | Evaluation time and memory are not bounded: a regular expression that backtracks, in a literal or built from a string, and a large allocation, each run inside one built-in call, which neither the iteration budget nor the call stack reaches | core | decision | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its finding 9 |
 | [A63](#a63) | No published package of the workspace loads in plain Node as installed: each throws at import, `ParserService` needing the JIT compiler, unless `@angular/compiler` was imported first | core | decision | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its finding 25 (M14) |
-| [A64](#a64) | `eval-core` asks a write policy only at an expression's own assignments and updates and its own calls of the built-ins in its table of writers, so three kinds of route write: a table built-in that native code calls (`[1].forEach(t.push, t)`), a built-in outside the table that changes what it is handed (`getOrInsert` on a `Map` or a `WeakMap`, a regex's `lastIndex`, `RegExp#compile`, a `DataView`'s setters, `ArrayBuffer#transfer` and `resize`, an array iterator's `next`), and a function the host supplies (`Reflect.set`, `Atomics.store`); each writes what an expression was given under `eval-signals`', `eval-forms`' and `eval-rules`' contexts | core, signals, forms, rules | fix | Open — **at the fix bar: a route past a documented guard** ([SR48](standing-rules.md#sr48)); scheduled before the [Phase 12 plan](eval-rules/plan.md)'s step 5, on its own track. Opened 2026-11-20 by that step, from its second code review (I-A); its first commit corrects the published packages' sentences false now ([SR31](standing-rules.md#sr31)) |
+| [A64](#a64) | `eval-core` asks a write policy only at an expression's own assignments and updates and its own calls of the built-ins in its table of writers, so three kinds of route write: a table built-in that native code calls (`[1].forEach(t.push, t)`), a built-in outside the table that changes what it is handed (`getOrInsert` on a `Map` or a `WeakMap`, a regex's `lastIndex`, `RegExp#compile`, a `DataView`'s setters, `ArrayBuffer#transfer` and `resize`, an array iterator's `next`), and a function the host supplies (`Reflect.set`, `Atomics.store`); each writes what an expression was given under `eval-signals`', `eval-forms`' and `eval-rules`' contexts | core, signals, forms, rules | fix | Open — **at the fix bar: a route past a documented guard** ([SR48](standing-rules.md#sr48)); scheduled before the [Phase 12 plan](eval-rules/plan.md)'s step 5, on its own track. Opened 2026-11-20 by that step, from its second code review (I-A); its first commit, 2026-11-25, corrected the published packages' sentences false on 0.16.1 ([SR31](standing-rules.md#sr31)) and opened [A67](#a67); the fix is next |
 | [A65](backlog-retired.md#a65) | A computed member key that is not a string, number or symbol passed the dangerous-name blocklist unconverted and was converted at the access: `o[["constructor"]]` read `Object`. Up to 0.12.0 a route to code execution, and from 0.12.1 to writes into `Object.prototype` | core | fix, security | **Retired — fixed 2026-11-21**; released 2026-11-22 in `eval-core` 0.16.1, tagged 188c0d9. Opened and retired by its post-publish commit |
 | [A66](#a66) | `eval-core` 0.16.1's CHANGELOG leaves out two consequences of its key conversion: an object literal's computed key that is not a string or number now creates the property, where 0.16.0 dropped it; and a read hook and a write policy receive the converted key, where they received the array | core | docs | Open — opened 2026-11-22 by 0.16.1's post-publish commit, from 188c0d9's code review; for `eval-core`'s next release |
+| [A67](#a67) | A write of a name on `eval-core`'s blocklist of dangerous names is refused with `eval-core`'s own `Error` before the context is asked, for a bare name and for a member key on an object or array, so `eval-signals`' and `eval-forms`' write bypass, which matches `SignalContextWriteError` by class, routes it through `onError` like a runtime failure: under `'undefined'`, `eval-forms`' default, `o.constructor = 1` renders a blank. Nothing is written | core, signals, forms | fix | Open — not scheduled ([SR48](standing-rules.md#sr48)): a refused write, nothing written, and the READMEs say so. Opened 2026-11-25 by [A64](#a64)'s first commit, from its sweep |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -1042,14 +1043,14 @@ point with no injectable. Whether either changes a `.d.ts` is measured then
 <a id="a64"></a>
 ## A64 — A write policy is asked only at an expression's own writes and its own calls of the table's built-ins
 
-**Package** core, signals, forms, rules · **Kind** fix · **Status** Open, **at the fix bar: a route past a documented guard** ([SR48](standing-rules.md#sr48)); scheduled before the [Phase 12 plan](eval-rules/plan.md)'s step 5, on its own track ([SR3](standing-rules.md#sr3)). Opened 2026-11-20 by that step, from its second code review (I-A)
+**Package** core, signals, forms, rules · **Kind** fix · **Status** Open, **at the fix bar: a route past a documented guard** ([SR48](standing-rules.md#sr48)); scheduled before the [Phase 12 plan](eval-rules/plan.md)'s step 5, on its own track ([SR3](standing-rules.md#sr3)). Opened 2026-11-20 by that step, from its second code review (I-A). First commit done 2026-11-25; the fix is next
 
 A context's `checkMemberWrite` is asked at two places: before an assignment or update to a
 member, and before a call the expression itself makes, directly or through `call`, `apply` or
 `bind`, of a built-in in `MUTATING_BUILT_INS`, in `member-write-policy.ts`. That table, which
 `eval-core`'s 0.11.0 CHANGELOG lists, holds `Array`'s and the typed arrays' mutators; `set` and
 `delete` on a `Map` or a `WeakMap`; `clear` on a `Map` or a `Set`; `add` and `delete` on a `Set` or
-a `WeakSet`; a `Date`'s setters; and `Object`'s writers. Every other route writes as written,
+a `WeakSet`; a `Date`'s setters; and `Object`'s writers. Every other route is not asked about,
 under every policy. Three kinds are known; no sweep of the specification has been made, so no
 list below is complete.
 
@@ -1138,6 +1139,62 @@ Reported by step 4's seventh review and not measured here: `push` handed to `fin
 `lastIndex`; `FinalizationRegistry#register`; `SharedArrayBuffer#grow`; the iterator helpers
 (`toArray`, `drop().next()`) advancing a given iterator; and `Atomics.add`.
 
+**The first commit, 2026-11-25**, corrected the published sentences false on 0.16.1, and states
+four things only, where it ships: where the policy is asked; that nothing is written where it
+refuses; that a write by any other route is not asked about; and that an assignment or update of
+a name on the blocklist is refused where it is made, with which error not promised (`eval-core`
+may refuse a write itself first). It also corrected "a call's result is never created", false
+since `eval-core` 0.10.0 and `eval-signals` 0.3.0: what the expression made itself stays created
+when a call hands it back. The detail is here, measured on Node 26.4.0 and `eval-core` 0.16.1 by
+the scratch specs and logs in `ng-eval-a64.9.zip`:
+- **Which class answers a blocklisted write** (`a64-signals.log`; eight write forms of the 13
+  names, bare and as a member key on ten receivers, 4,264 runs a context). Under the plain context
+  every write that is made throws `eval-core`'s `Error`; `||=` and `??=` complete (288), all on
+  the six names a primitive keeps readable, because they short-circuit and write nothing; on an
+  object the read is refused first. Under `eval-signals`' context a bare name, and a member key on
+  an object or array, throw `eval-core`'s `Error`; on a string, number or boolean receiver the six
+  readable names throw `SignalContextWriteError` (864).
+- **Where it ends up** (`a64-signals-onerror.log`, `a64-forms-signals.log`,
+  `a64-forms-reactive.log`; 2,665 writes each). `createEvalSignal` under `onError: 'undefined'`
+  reads a blank for 1,945 and throws `SignalContextWriteError` for 720. Under `eval-forms`'
+  default, `guardIdentifiers` refuses 12 of the 13 bare names at registration (60), 1,885 render a
+  blank and 720 throw. No run changed the given object's keys or prototype or the array's length.
+- **Under `caseInsensitive`** (`a64-ci.log`, `a64-ci2.log`, `a64-ci3.log`): any spelling of `this`
+  as a bare name throws `eval-core`'s `Error`; a case variant of a blocklisted member key does too
+  where the case-insensitive lookup finds the name among the receiver's own keys or its immediate
+  prototype's own names (`{}`, an array's `constructor`, a `Map`), and otherwise reaches the
+  context, or, on an arrow or array the expression created, writes an own key in that spelling.
+- **Call results** (`a64-m5.log`, `a64-ci2.log`): a literal, a rest value or an arrow that a call
+  hands back stays created; a new value native code returns (`slice`, `Object.entries`) counts as
+  given.
+- **Scopes** (`a64-abort.log`): a bare name a run's scope binds is written there, not refused; a
+  run's `abortSignalKey` is such a scope.
+That is [A67](#a67). Rows (18): `eval-core`'s `member-write-policy.spec.ts` (1, the call result);
+`eval-signals`' `eval-signal.spec.ts` (12: the A67 class rows, the `caseInsensitive` rows and
+contrast, the call-result rows, a parameter), `signal-context.spec.ts` (1, the short-circuit) and
+`eval-signal-async.spec.ts` (1, the `abortSignalKey`); `eval-forms`' `field-schema.spec.ts` (2)
+and `evaluate-rule.spec.ts` (1). Each is red under one of the pack's probes S1 to S15.
+
+It took nine pins: each of the first seven was stopped by its review, nearly always on a sentence
+that the pin before had added, claiming more than its witness ran. The eighth cut the shipped text
+to the four statements above and moved the detail here; its review, under a stop rule that needs a
+measured counterexample, stopped it once, on `createEvalSignal`'s "the context's keys are
+read-only", false over a caller-built `EvalContext`, which no policy guards (a probe run on the
+gate's bundles). The ninth scoped that sentence, and two README headings with the same cause, to
+a signal context. Lesson: correct a false sentence with the least text that is true, and keep the
+detail in the register.
+
+**Left from the eighth pin's review, for the next touch** (Minors; none measured false):
+- "asked only at the expression's own writes and calls" (both adapters' READMEs) can be read as
+  every own call being asked; the routes listed after it are own calls. Narrower: "its own
+  writes, and its own calls of the table's built-ins".
+- "so the write is allowed" (`EvalMemberWrite.createdByEvaluation`, eval-core's CHANGELOG): the
+  flag is `true`, and the policy still decides.
+- `eval-forms`' "refused where it is made": `guardIdentifiers` refuses 12 of the 13 bare names
+  when the rule is registered (`a64-forms-reactive.log`, `a64-forms-signals.log`).
+- `eval-signal.spec.ts`' "…on a primitive reach the context under caseInsensitive" does not
+  depend on the option (`a64-ci.log`: the same without it); its title claims more (SR19).
+
 **The fix**, its own track, measured then. For the outside built-ins: widen the table, or keep a
 second one beside it as `REFLECT_WRITERS` is, since the table is what a published policy is asked
 about; decide `next`, which reading a given iterator needs, and `lastIndex`, which
@@ -1178,6 +1235,50 @@ for the next release, as 0.16.0's M1 and M2 did (bf01f87).
 **The fix**: a line for each in `eval-core`'s next CHANGELOG section, saying it changed in 0.16.1;
 the JSDoc qualified to a member access; and a row for each, an object literal's non-string key and
 the key a read hook and a write policy receive.
+
+<a id="a67"></a>
+## A67 — A blocklisted name's write is routed through `onError`, so `'undefined'` renders a blank
+
+**Package** core, signals, forms · **Kind** fix · **Status** Open, not scheduled ([SR48](standing-rules.md#sr48)): the write is refused and nothing is written, and the READMEs say so. Opened 2026-11-25 by [A64](#a64)'s first commit, from its sweep
+
+`eval-core` refuses an assignment or update of a name on its blocklist of dangerous names
+(`prototype` and `Object.prototype`'s twelve own names) with its own `Error`, before a
+context is asked: a bare name in `identifier.ts`'s `refuseIdentifierTarget`, and a member key
+in `resolveMemberTarget` for an assignment and in `evaluateMember` for a compound, logical
+or update target, except on a string, number or boolean receiver, where it refuses
+only seven and lets the six a primitive keeps readable reach the context. Under
+`caseInsensitive` it also refuses any spelling of `this` as a bare name, `THIS = 1`, with its
+own `Error`, and a case variant of a blocklisted name as a member key where its case-insensitive
+lookup finds the name among the receiver's own keys or its immediate prototype's own names:
+`o.CONSTRUCTOR = 1` on a plain object, an array or a map. On a primitive, a null-prototype
+object, a function, an object whose dangerous name is further up the chain, `a.HASOWNPROPERTY`
+on an array, or an own key spelled alike, the variant reaches the context and throws
+`SignalContextWriteError`; a bare variant, `CONSTRUCTOR = 1`, does too (`a64-ci.log`,
+`a64-ci2.log`). A case variant is not always refused: written into an arrow or an array the
+expression created, where the lookup finds no dangerous name, `f.CONSTRUCTOR = 1` and
+`a.HASOWNPROPERTY = 1` write an own key in that spelling, and nothing reaches
+`Object.prototype`; on a created object, an array's `constructor` or a regex the variant is
+refused (`a64-ci3.log`). `eval-signals`' `createEvalSignal` and `eval-forms`'
+`applyErrorPolicy` take a `SignalContextWriteError` out of `onError` by class, because a
+write violation is static and a blank would hide a bug in the expression. `eval-core`'s
+`Error` is not that class, so it is routed like a runtime failure: under `'undefined'`, which
+is `eval-forms`' default, `o.constructor = 1` renders a blank and `s.toString = 1` throws.
+`guardIdentifiers` refuses twelve of the bare names when an `eval-forms` rule is registered,
+all but `prototype`.
+
+**Verified** by A64's first commit's measurements (`ng-eval-a64.9.zip`, A64's entry has the
+counts), and pinned as today's behaviour by its rows: `eval-signals`' "a write of a blocklisted name
+(A67)" and the 0.16.1 row for `o[["__proto__"]] = 1`; `/reactive`'s blank row and its contrast;
+`/signals`' "should route a write eval-core's blocklist refuses through the policy (A67)".
+
+**Not scheduled**: nothing is written, so it is not a route past a guard; the sentences that said
+otherwise were A64's first commit. A blank for a static error is what the bypass exists to
+prevent, so the fix is the bypass's, not the README's.
+
+**The fix**, when scheduled: give the refusal a class the bypass can match, from `eval-core` (a
+subclass of `Error` with the same message, which a consumer matching on `Error` still catches), or
+check the name in the adapters' contexts first. Either changes what `onError` receives, so it is a
+minor for `eval-signals` and `eval-forms`, and their rows above flip.
 
 ---
 
