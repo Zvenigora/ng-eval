@@ -869,14 +869,13 @@ For one `evaluateRule(compiled, { facts, event?, functions? })`:
 `evaluateInit` runs steps 1 to 5 and the `onInit` items, with step 10's rule.
 
 **What the run keeps on every path** ([SR44](../standing-rules.md#sr44)): a write is refused at
-two places, where it is made, and nothing is written there; the throw goes where any throw goes: one that
-leaves a field fails the run, code the host supplied may catch it on the way, and one from a
-function the run gave out, called after the run, reaches that caller (E10; step 4's twelfth and
-thirteenth reviews, I-1):
-an assignment or update, to a fact or to a member of an
-object the expression did not create; and a call the expression itself makes, directly or through
-`call`, `apply` or `bind`, of a built-in in `eval-core`'s table of writers into such an object, or
-handed as an argument to a function the rule did not create.
+two places: an assignment or update, to a fact or to a member of an object the expression did not
+create; and a call the expression itself makes, directly or through `call`, `apply` or `bind`, of
+a built-in in `eval-core`'s table of writers into such an object, or handed as an argument to a
+function the rule did not create. Either throws where the write is made, and nothing is written
+there. The throw goes where any throw goes: one that leaves a field fails the run, code the host
+supplied may catch it on the way, and one from a function the run gave out, called after the run,
+reaches that caller (E10; step 4's twelfth and thirteenth reviews, I-1).
 The run does not promise the facts unwritten: other routes write, among them a function the host
 supplied, among the facts or among the functions (finding 17), and a built-in outside the table
 that changes what it is handed ([A64](../backlog.md#a64), amended by step 4's second and fourth reviews). Nor does it
@@ -1539,7 +1538,9 @@ witness finding 8 turn red. What it measured, and the readings it took:
   scope, the host catches, and the run completes. Measured on the gate's bundles by the agent, and
   by the fourteenth pin, 12.4n (`catch.log`, through ts-jest on the source, not the bundles): one of
   the host's functions catches each of the five kinds of refused write, to a member, to a fact, to a
-  blocklisted member key or bare name, and by a table writer, and a fact's method and the event's
+  blocklisted member key or bare name, and by a table writer (`catch.log`'s member-key leg wrote
+  `1`, which shows no write; step 5's first commit writes `{ z: 1 }`, red under S66 at the
+  prototype line, as that commit's pack's `S66.log` pins), and a fact's method and the event's
   each catch a member write; each run completes with nothing written. `eval-core` has no `try`
   statement an expression can write, and an async arrow is refused at compile (`async-expression`). So the CHANGELOG, § 3.5 and the rows comment said: the throw fails the run unless a function
   the host supplied catches it, and then the run completes, a list the thirteenth review found
@@ -1568,8 +1569,9 @@ witness finding 8 turn red. What it measured, and the readings it took:
   the given-object `__proto__` row writes `{ z: 1 }`, the compound row's check is its status, and
   probe S66 writes before it refuses, which turns the two given-object rows red at those lines; S64
   marked only `RuleWriteError` and its flag leaked across rows (M-2): it clears the flag when a run
-  starts and reddens exactly the five legs whose guard is the rules context's, the two blocklist
-  legs red under S58, S60 and S61; the twelfth record overstated `catch.log` (M-3), corrected above;
+  starts and reddens exactly the five legs whose guard is the rules context's; of the two
+  blocklist legs, S60 reddens the bare name's and S61 the member key's, and S58, the blocklist
+  alone off, neither (measured by step 5's first commit); the twelfth record overstated `catch.log` (M-3), corrected above;
   and the caught blocklist legs accept either of their target's guards' messages (M-4).
 - **Step 3's N-2, measured** (`deeprun-12.4c.log`): every member chain, sum and run of `!` that
   `compileRule` accepted, to 2,000 long, ran to completion; from 2,500 `compileRule` gave
@@ -1602,6 +1604,39 @@ witness finding 8 turn red. What it measured, and the readings it took:
   been measured on the production bundle ([SR22](../standing-rules.md#sr22)).
 - § 3.6's decision is made: the names read stay on every run, or move under `debug`, by the rule
   written before the run.
+
+**The decision rule**, written by step 5's first commit, before any run
+([SR28](../standing-rules.md#sr28)):
+- *Where*: production bundles ([SR22](../standing-rules.md#sr22)), every process alone,
+  never beside an nx or Jest run; on a machine with performance and efficiency cores, each
+  process is pinned to the performance cores and its affinity read back and reported.
+- *The rule timed*: 100 calculations `c0` to `c99`, each `a.b.c + <i>`, over facts
+  `{ a: { b: { c: 1 } } }`, `debug` off.
+- *The deciding arm*: the names read on every run, against the same commit's bundle with
+  the read hook attached only under `debug` (§ 3.6's fallback, that one change).
+- *The control*: the deciding bundle against a copy of itself, in the same run.
+- *Reported, not deciding*: the rule with its trace against the same fields evaluated bare
+  through `call`; the context built per run against one built once; `debug` on with
+  `maxTraceItems` at `0` against `eval-core`'s default.
+- *Shape*: 12 rotations, arm order alternated, one process per bundle and arm; each
+  process warms up for 2 s and times 8 s, its figure the median time per run over 1-s
+  windows; paired within each rotation.
+- *Void*: the control meets the cost test below, or its paired median delta exceeds ±3%. A
+  void run is repeated and reported, not dropped.
+- *A cost*: a paired median delta above +10% with at least 10 of 12 rotations positive
+  (about 1.9% under the null).
+- *Memory*: the retained size of 1,000 results of the timed rule, names read on and off,
+  by `heapUsed` after `gc()` under `--expose-gc`, with its own figure. A cost: above +50%.
+- *Decision*: a cost in time on the deciding arm, or in memory, moves the names read under
+  `debug` (§ 3.6); otherwise they stay on every run. Each arm's figure is recorded; none is
+  published before SR22 holds.
+
+**Step 5's first commit's review** (no Critical, no Important); its minors, recorded, not fixed:
+- M-1: "wrote `1`, which shows no write" in the twelfth record reads as "nothing was written"; meant: a prototype check cannot see a write of `1`.
+- M-2: *The control*'s "the deciding bundle" is ambiguous, as the deciding arm has two bundles; name the one copied.
+- M-3: *Memory* states its threshold, not how its figure is formed: processes per bundle, alone or per rotation, and the statistic.
+- M-4: the exit criteria name the trace against bare `call` first, which the rule only reports; it does not say that § 3.6 decides the names read alone.
+- M-5 (SR47): the new text cites the pack's logs without naming the pack; the commit body names it and its SHA-256.
 
 ### Step 6 — The tests runner and the registry
 

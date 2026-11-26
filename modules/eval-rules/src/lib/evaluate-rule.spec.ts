@@ -725,7 +725,8 @@ describe('evaluateRule, what the run keeps: where a write into the facts is refu
   // object, a created one or a primitive, and the throw goes where any throw
   // goes: out of a field it fails the run (these rows), host code may catch it
   // (the rows after the contrast), and after the run it reaches the caller
-  // (the row on a field's arrow called after the run, E10), with
+  // (E10; the row on a field's arrow called after the run shows this for a
+  // member write, not a listed name), with
   // eval-core's own `Error` or, for the six
   // names a primitive keeps readable, with `RuleWriteError`; the CHANGELOG
   // promises no class. A `delete` is not among them: on a primitive, the six
@@ -789,8 +790,11 @@ describe('evaluateRule, what the run keeps: where a write into the facts is refu
   // `catch.log`). Each leg: the run completes, the caught error is one of its
   // target's guards', and the facts are as given. The uncaught contrast
   // fails. Probe S64 (a caught refusal still fails the run) reaches the five
-  // legs whose guard is the rules context's; the two blocklist legs are red
-  // under S58, S60 and S61, which change their guard.
+  // legs whose guard is the rules context's. Of the two blocklist legs, S60
+  // reddens the bare name's and S61 the member key's, each at its
+  // `toBeInstanceOf(Error)`, and S66 the member key's at its prototype line;
+  // S58, the blocklist alone off, reddens neither, since each leg's other
+  // guard still refuses (step 5's first commit's probe logs).
   const attempt = (f: () => unknown): unknown => {
     try {
       return f();
@@ -800,7 +804,7 @@ describe('evaluateRule, what the run keeps: where a write into the facts is refu
   };
   it.each<[string, string, string | string[]]>([
     ['a member, caught by one of its functions', 'attempt(() => (obj.z = 1))', unwritable('z')],
-    ['a blocklisted member key', 'attempt(() => (o.__proto__ = 1))', [dangerous('__proto__'), unwritable('__proto__')]],
+    ['a blocklisted member key', 'attempt(() => (o.__proto__ = { z: 1 }))', [dangerous('__proto__'), unwritable('__proto__')]],
     ['a fact', 'attempt(() => (obj = 1))', readOnly('obj')],
     ['a blocklisted bare name', 'attempt(() => (constructor = 1))', [dangerous('constructor'), readOnly('constructor')]],
     ['a table writer', 'attempt(() => list.push(1))', "Cannot call Array.prototype.push: a rule's expression may write only into objects it created."],
