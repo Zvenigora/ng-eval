@@ -37,7 +37,7 @@ rather than active work. So are the tracks below.
 | The A33 plan | The case-insensitive lookup cache's miss, A33, and the options a parse remembers, A34 | `eval-core` 0.15.1, a patch | [`a33/plan.md`](a33/plan.md) |
 | The A48 plan | Member reads and writes that miss the data, and a getter's throw: A48, A50, A51, A55 and F29 fixed, and A49 decided a documented limit | `eval-core` 0.16.0 with `eval-signals` 0.9.0 and `eval-forms` 0.9.0 | [`a48/plan.md`](a48/plan.md) |
 | Phase 19 | The demo application at `apps/demo` | No package: the site at `zvenigora.github.io/ng-eval/`, first deployed 2026-11-18 | [`demo/plan.md`](demo/plan.md) |
-| A64's track | A write policy asked about a table built-in handed as an argument to a function the walk did not create; [A64](backlog.md#a64) stays open, not scheduled | `eval-core` 0.16.2, a security patch, pending publish | None: two commits, ed8dc0c and 47f4634, recorded in A64's entry |
+| A64's track | A write policy asked about a table built-in handed as an argument to a function the walk did not create; [A64](backlog.md#a64) stays open, not scheduled | `eval-core` 0.16.2, a security patch, published 2026-11-26 | None: two commits, ed8dc0c and 47f4634, recorded in A64's entry |
 
 Phases 1 and 4 have no row: `CLAUDE.md` did not record their versions. Phases 1, 3, 4 and 6
 shipped before the Publication status table began, and each one's release is the entry that opens

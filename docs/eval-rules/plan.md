@@ -1,7 +1,7 @@
 # Phase 12 Plan — `@zvenigora/ng-eval-rules` 0.1.0, pure rule evaluation (new module)
 
 **Status: Revision 7, the active plan: steps 1 to 4 are done, A64's track is done, and `eval-core`
-0.16.2 is released, pending publish, then step 5.** Revisions 1 to 4 and the design sessions were committed ahead of
+0.16.2 is published 2026-11-26, then step 5.** Revisions 1 to 4 and the design sessions were committed ahead of
 step 1,
 at the maintainer's request. Revision 3 measured [§ 1.3](#13-mechanism-questions-measured)'s rows on
 the built 0.16.0 bundle, and Revision 4 added two, with eight scripts pinned outside the repository
@@ -981,7 +981,7 @@ also lists `docs/backlog-history.md`, whose *Unreleased* row moves with it, and
 | 3 | The format and `compileRule` | `rule.ts`, `compile-rule.ts`, `pattern.ts`, `define-rule.ts`, their specs, the barrel and its two specs, `package.json`, `README.md`, `CHANGELOG.md` | `eval-rules` 0.1.0 |
 | 4 | Evaluation | `rule-context.ts`, `evaluate-rule.ts`, `rule-result.ts`, their specs, the barrel and its specs, `CHANGELOG.md` | `eval-rules` 0.1.0 |
 | — | [A64](../backlog.md#a64) code fix — done (47f4634) | Separate track (ended 2026-11-25) | `eval-core` 0.16.2 |
-| — | `eval-core` 0.16.2 patch release — released, pending publish | Separate release before step 5 | `eval-core` 0.16.2 |
+| — | `eval-core` 0.16.2 patch release — published 2026-11-26 | Separate release before step 5 | `eval-core` 0.16.2 |
 | 5 | The trace, and the cost of building it | `rule-trace.ts`, its spec, `performance.spec.ts`, `evaluate-rule.ts`, `rule-result.ts`, `CHANGELOG.md` | `eval-rules` 0.1.0 |
 | 6 | The tests runner and the registry | `rule-test.ts`, `rule-registry.ts`, their specs, the barrel and its specs, `CHANGELOG.md` | `eval-rules` 0.1.0 |
 | 7 | The README | `modules/eval-rules/README.md`, `readme-examples.spec.ts`, `CHANGELOG.md`, `tools/published-links.txt` | `eval-rules` 0.1.0 |
