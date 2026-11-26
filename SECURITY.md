@@ -326,7 +326,8 @@ evaluation's trace can take. Implemented in
   built-ins as an argument to a function the walk did not create. Where it refuses, nothing is
   written there. `eval-core`'s own checks still
   apply, and may refuse a write before it is asked. A write by any other route is not asked about;
-  the register keeps the known ones ([A64](docs/backlog.md#a64)). Implemented in
+  the register keeps the known ones ([A64](docs/backlog.md#a64)). A host that needs a value
+  unchanged gives the expression a deep copy of it. Implemented in
   [eval-context.ts](modules/eval-core/src/lib/internal/classes/eval/eval-context.ts) and
   [member-write-policy.ts](modules/eval-core/src/lib/internal/visitors/member-write-policy.ts);
   pinned by
