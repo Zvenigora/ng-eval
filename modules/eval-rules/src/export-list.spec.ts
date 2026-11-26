@@ -478,7 +478,14 @@ describe('every @zvenigora import resolves against its own specifier (F11, eval-
  * with its reason (`docs/backlog.md` F10). None: the README names every
  * export.
  */
-const UNDOCUMENTED: Readonly<Record<string, UndocumentedReason>> = {};
+// `RuleTrace` is a member of the `RuleResult` that `evaluateRule` returns, and
+// `RuleTraceEntry` an element of it. The README documents both in the Phase 12
+// plan's step 7, which then empties this list: once the README names them, the
+// case below that allowlists no name the README names is red until it does.
+const UNDOCUMENTED: Readonly<Record<string, UndocumentedReason>> = {
+  RuleTrace: 'signature-type',
+  RuleTraceEntry: 'signature-type',
+};
 
 describe('every export is documented or allowlisted (F10, eval-rules copy)', () => {
   const README = 'modules/eval-rules/README.md';

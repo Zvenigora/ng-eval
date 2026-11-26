@@ -1,4 +1,5 @@
 import type { RuleDecisionCase } from './rule';
+import type { RuleTrace } from './rule-trace';
 
 /**
  * How a run ended. Open: a later release may add one, so a host handles a
@@ -47,13 +48,16 @@ export interface RuleInput {
  * `calc` holds each calculation's value by name, and `labels` each decision's
  * label by name, as far as the run went: an unmatched decision has none.
  * Both are frozen, with null prototypes. `effects` holds the recorded effect
- * calls in order, and is empty unless the run completed. `error` is what a
- * failed run threw, and absent otherwise.
+ * calls in order, and is empty unless the run completed. `trace` is the
+ * {@link RuleTrace} of the run, on every status: an inactive rule's has no
+ * entries, and a failed run's holds the entries up to the failure. `error` is
+ * what a failed run threw, and absent otherwise.
  */
 export interface RuleResult {
   readonly status: RuleStatus;
   readonly calc: Readonly<Record<string, unknown>>;
   readonly labels: Readonly<Record<string, RuleDecisionCase['value']>>;
   readonly effects: readonly RuleEffect[];
+  readonly trace: RuleTrace;
   readonly error?: unknown;
 }

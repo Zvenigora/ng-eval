@@ -1539,8 +1539,8 @@ witness finding 8 turn red. What it measured, and the readings it took:
   by the fourteenth pin, 12.4n (`catch.log`, through ts-jest on the source, not the bundles): one of
   the host's functions catches each of the five kinds of refused write, to a member, to a fact, to a
   blocklisted member key or bare name, and by a table writer (`catch.log`'s member-key leg wrote
-  `1`, which shows no write; step 5's first commit writes `{ z: 1 }`, red under S66 at the
-  prototype line, as that commit's pack's `S66.log` pins), and a fact's method and the event's
+  `1`, which a prototype check cannot see; step 5's first commit writes `{ z: 1 }`, red under S66 at the
+  prototype line, as `ng-eval-12.5a.zip`'s `S66.log` pins), and a fact's method and the event's
   each catch a member write; each run completes with nothing written. `eval-core` has no `try`
   statement an expression can write, and an async arrow is refused at compile (`async-expression`). So the CHANGELOG, § 3.5 and the rows comment said: the throw fails the run unless a function
   the host supplied catches it, and then the run completes, a list the thirteenth review found
@@ -1571,7 +1571,7 @@ witness finding 8 turn red. What it measured, and the readings it took:
   marked only `RuleWriteError` and its flag leaked across rows (M-2): it clears the flag when a run
   starts and reddens exactly the five legs whose guard is the rules context's; of the two
   blocklist legs, S60 reddens the bare name's and S61 the member key's, and S58, the blocklist
-  alone off, neither (measured by step 5's first commit); the twelfth record overstated `catch.log` (M-3), corrected above;
+  alone off, neither (measured by `ng-eval-12.5a.zip`); the twelfth record overstated `catch.log` (M-3), corrected above;
   and the caught blocklist legs accept either of their target's guards' messages (M-4).
 - **Step 3's N-2, measured** (`deeprun-12.4c.log`): every member chain, sum and run of `!` that
   `compileRule` accepted, to 2,000 long, ran to completion; from 2,500 `compileRule` gave
@@ -1614,7 +1614,7 @@ witness finding 8 turn red. What it measured, and the readings it took:
   `{ a: { b: { c: 1 } } }`, `debug` off.
 - *The deciding arm*: the names read on every run, against the same commit's bundle with
   the read hook attached only under `debug` (§ 3.6's fallback, that one change).
-- *The control*: the deciding bundle against a copy of itself, in the same run.
+- *The control*: the bundle with the names read on every run against a copy of itself, in the same run.
 - *Reported, not deciding*: the rule with its trace against the same fields evaluated bare
   through `call`; the context built per run against one built once; `debug` on with
   `maxTraceItems` at `0` against `eval-core`'s default.
@@ -1625,11 +1625,14 @@ witness finding 8 turn red. What it measured, and the readings it took:
   void run is repeated and reported, not dropped.
 - *A cost*: a paired median delta above +10% with at least 10 of 12 rotations positive
   (about 1.9% under the null).
-- *Memory*: the retained size of 1,000 results of the timed rule, names read on and off,
-  by `heapUsed` after `gc()` under `--expose-gc`, with its own figure. A cost: above +50%.
+- *Memory*: in each rotation, one process per bundle, names read on and off, each alone: it
+  builds the timed rule's result 1,000 times and keeps them, calls `gc()` under `--expose-gc`
+  before and after, and its figure is the `heapUsed` difference over 1,000. The arm's figure is
+  the median of the 12 paired ratios, on over off; a cost is that median above 1.5.
 - *Decision*: a cost in time on the deciding arm, or in memory, moves the names read under
   `debug` (§ 3.6); otherwise they stay on every run. Each arm's figure is recorded; none is
-  published before SR22 holds.
+  published before SR22 holds. § 3.6 decides the names read alone: the trace is bound from
+  0.1.0, so its cost against bare `call` is reported, not decided.
 
 **Step 5's first commit's review** (no Critical, no Important); its minors, recorded, not fixed:
 - M-1: "wrote `1`, which shows no write" in the twelfth record reads as "nothing was written"; meant: a prototype check cannot see a write of `1`.
@@ -1637,6 +1640,16 @@ witness finding 8 turn red. What it measured, and the readings it took:
 - M-3: *Memory* states its threshold, not how its figure is formed: processes per bundle, alone or per rotation, and the statistic.
 - M-4: the exit criteria name the trace against bare `call` first, which the rule only reports; it does not say that § 3.6 decides the names read alone.
 - M-5 (SR47): the new text cites the pack's logs without naming the pack; the commit body names it and its SHA-256.
+
+M-1 to M-5 fixed by step 5's second commit; the decision rule amended there, before any run.
+
+**Step 5's second commit's review** (no Critical; it stopped on I-1, a sentence `m5b`'s `namesread.log` measured false):
+- I-1, fixed: the `namesRead` sentence (`rule-trace.ts`, the CHANGELOG) said "no function" and listed fewer paths than every path keeps; measured, a function the facts hold is in it, and `event`, a fact named as an arrow's parameter and what a function an earlier field gave reads are not. Rewritten as what every path keeps, with three rows; step 7's README follows the rewritten sentence, not § 3.6's shorter list.
+- I-2, recorded, not fixed: `tracker.install`'s unsubscribe is discarded, so a function a field gives keeps its field's state's read hook active, and its tracker keeps every read of each later call; `off()` in the `finally` would end it.
+- M-1: `at`'s "from the run's start to the field's start" and "a decision that matches no case has no such entry" have no row that goes red.
+- M-2: under the read hook, a bare name's read of a fact calls its getter or a `Proxy`'s `get` twice, `getKey` resolving it again; outside `eval-core`'s contract (A49), for step 7's README and § 3.6's decision.
+- M-3: a `'matched'` path is counted from the step list, on `compileRule`'s invariant that an accepted rule compiles every decision and case in order; a path on the compiled step would not need it.
+- Notes: `evalTrace` publishes `eval-core`'s `EvalTraceItem` in this package's types; if § 3.6's decision moves the names read under `debug`, the timing commit changes `namesRead`'s type, its JSDoc and the CHANGELOG line.
 
 ### Step 6 — The tests runner and the registry
 

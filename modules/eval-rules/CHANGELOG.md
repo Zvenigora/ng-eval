@@ -68,3 +68,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   to ([A65](../../docs/backlog-retired.md#a65)), and 0.16.2 asks about a table built-in handed as
   an argument ([A64](../../docs/backlog.md#a64)), which the sentences above rely on.
   Phase 12 step 4.
+- **The run's trace: `RuleTrace` and `RuleTraceEntry`.** A `RuleResult` holds a `trace` on every
+  status: the rule's `id` as its `rule`, and its `entries` in the order the run reached them. An
+  inactive rule's trace has no entries, and a failed run's holds the entries up to the failure,
+  the entry of the field that threw included. An entry's `kind` is `'field'`, `'skipped'` or
+  `'matched'`, documented as open, and its `path` names a field as `compileRule` names it, such as
+  `calculations[0].value` or `decisions[0].cases[1].if`. A `'field'` entry is a field the run
+  evaluated: its `value`, absent when it threw, or its `error`; its `namesRead`, what `eval-core`'s
+  dependency tracker reported for the field's own walk, in the order the field first read each:
+  each prefix of a member path, a computed member's object only, a name the facts do not hold,
+  and a function the facts hold, read by its name; it leaves out each name the run binds, `calc`,
+  `event`, a declared function and an effect, and each name the field binds, such as an arrow's
+  parameter, with every path rooted at one, even where a fact has that name, and what a function
+  an earlier field gave reads when a later field calls it; its `at`, the milliseconds from the run's start to the
+  field's start, by `performance.now()`; and, under the rule's `debug` only, `evalTrace`,
+  `eval-core`'s trace of the field, and `evalTraceTruncated`, whether `eval-core` stopped it at its
+  first 10,000 values. A `'skipped'` entry names the `value` of a calculation whose `when` was
+  falsy, after the `when`'s entry; a `'matched'` entry names the case a decision matched, after its
+  `if`'s entry, or alone for a case with no `if`, and a decision that matches no case has none.
+  Each entry and array is frozen, and a value is by reference, as an effect's arguments are. A
+  trace is a value a host reads and does not build, so a later release can add an optional member
+  or a kind. Phase 12 step 5.

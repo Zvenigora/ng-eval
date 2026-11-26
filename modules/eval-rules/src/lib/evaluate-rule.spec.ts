@@ -42,7 +42,13 @@ describe('evaluateRule, § 3.5 line 1: an inactive rule', () => {
       { functions: ['count'] }
     );
     const result = evaluateRule(rule, { facts: null as never });
-    expect(result).toEqual({ status: 'inactive', calc: {}, labels: {}, effects: [] });
+    expect(result).toEqual({
+      status: 'inactive',
+      calc: {},
+      labels: {},
+      effects: [],
+      trace: { rule: 'r', entries: [] },
+    });
     expect(evaluateRule(rule, { facts: {}, functions: { count: () => ++calls } }).status).toBe('inactive');
     expect(calls).toBe(0);
   });
@@ -58,6 +64,7 @@ describe('evaluateRule, § 3.5 line 1: an inactive rule', () => {
       calc: {},
       labels: {},
       effects: [],
+      trace: { rule: 'r', entries: [] },
     });
     expect(evaluateInit(rule, { facts: {}, functions: { count: () => ++calls } }).status).toBe('inactive');
     expect(calls).toBe(0);
@@ -794,7 +801,7 @@ describe('evaluateRule, what the run keeps: where a write into the facts is refu
   // reddens the bare name's and S61 the member key's, each at its
   // `toBeInstanceOf(Error)`, and S66 the member key's at its prototype line;
   // S58, the blocklist alone off, reddens neither, since each leg's other
-  // guard still refuses (step 5's first commit's probe logs).
+  // guard still refuses (`ng-eval-12.5a.zip`'s probe logs).
   const attempt = (f: () => unknown): unknown => {
     try {
       return f();
@@ -840,7 +847,13 @@ describe('evaluateRule, § 3.5 line 5: the filter', () => {
 
   it("gives 'skipped' for a match that misses, and runs no calculation", () => {
     const result = evaluateRule(filtered({ match: { tier: 'gold' } }), { facts: { tier: 'silver' } });
-    expect(result).toEqual({ status: 'skipped', calc: {}, labels: {}, effects: [] });
+    expect(result).toEqual({
+      status: 'skipped',
+      calc: {},
+      labels: {},
+      effects: [],
+      trace: { rule: 'r', entries: [] },
+    });
     expect(evaluateRule(filtered({ match: { tier: 'gold' } }), { facts: { tier: 'gold' } }).calc).toEqual({ x: 1 });
   });
 
@@ -1036,6 +1049,15 @@ describe('evaluateRule, § 3.5 line 9: a run that completes', () => {
       calc: { total: 12 },
       labels: { tier: 'gold' },
       effects: [{ name: 'setValue', args: ['total', 12] }],
+      trace: {
+        rule: 'r',
+        entries: [
+          { kind: 'field', path: 'calculations[0].value', value: 12, namesRead: ['price'], at: expect.any(Number) },
+          { kind: 'field', path: 'decisions[0].cases[0].if', value: true, namesRead: [], at: expect.any(Number) },
+          { kind: 'matched', path: 'decisions[0].cases[0]' },
+          { kind: 'field', path: 'outputs[0].items[0]', value: undefined, namesRead: [], at: expect.any(Number) },
+        ],
+      },
     });
     expect('error' in result).toBe(false);
     expect(Object.isFrozen(result)).toBe(true);
@@ -1164,6 +1186,13 @@ describe('evaluateInit', () => {
         { name: 'setVisible', args: ['banner', false] },
         { name: 'setValue', args: ['a', 1] },
       ],
+      trace: {
+        rule: 'r',
+        entries: [
+          { kind: 'field', path: 'onInit[0]', value: undefined, namesRead: [], at: expect.any(Number) },
+          { kind: 'field', path: 'onInit[1]', value: undefined, namesRead: [], at: expect.any(Number) },
+        ],
+      },
     });
     expect(evaluateInit(rule, { facts: { tier: 'silver' } }).status).toBe('skipped');
   });

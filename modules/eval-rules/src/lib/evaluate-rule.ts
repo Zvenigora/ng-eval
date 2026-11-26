@@ -1,4 +1,4 @@
-import { EvalState, call, type EvalContext } from '@zvenigora/ng-eval-core';
+import { EvalState, call, createDependencyTracker, type EvalContext } from '@zvenigora/ng-eval-core';
 import {
   compiledRuleInternals,
   type CompiledExpression,
@@ -9,6 +9,7 @@ import {
 import { matchesPattern } from './pattern';
 import { checkFacts, createRuleContext, describeShape } from './rule-context';
 import type { RuleEffect, RuleInput, RuleResult, RuleStatus } from './rule-result';
+import type { RuleTrace, RuleTraceEntry } from './rule-trace';
 
 /**
  * `evaluateRule` and `evaluateInit`: the Phase 12 plan's § 3.5, each numbered
@@ -113,6 +114,7 @@ const result = (
   calc: Record<string, unknown>,
   labels: Record<string, RuleLabel>,
   effects: readonly RuleEffect[],
+  trace: RuleTrace,
   error?: { readonly thrown: unknown }
 ): RuleResult =>
   Object.freeze({
@@ -120,8 +122,13 @@ const result = (
     calc: Object.freeze(calc),
     labels: Object.freeze(labels),
     effects: Object.freeze(effects),
+    trace,
     ...(error === undefined ? {} : { error: error.thrown }),
   });
+
+/** A trace of the entries given, frozen with them. */
+const traceOf = (rule: string, entries: RuleTraceEntry[]): RuleTrace =>
+  Object.freeze({ rule, entries: Object.freeze(entries) });
 
 const nothing = (): Record<string, never> => Object.create(null) as Record<string, never>;
 
@@ -130,6 +137,10 @@ class Run {
   readonly calc: Record<string, unknown> = Object.create(null);
   readonly labels: Record<string, RuleLabel> = Object.create(null);
   readonly effects: RuleEffect[] = [];
+  /** The trace's entries, in the order the run reached them (§ 3.6). */
+  readonly entries: RuleTraceEntry[] = [];
+  /** The run's start, the one clock read each entry's `at` is measured from. */
+  private readonly start = performance.now();
   private readonly context: EvalContext;
   private readonly scope: Record<string, unknown>;
   private readonly depth: number;
@@ -178,16 +189,47 @@ class Run {
    * replaceable and not mutable (finding 16). The trace `eval-core` records
    * on every state is kept only under `debug` (finding 23). A value that is
    * an instance of `Promise` fails the run (§ 8 q14).
+   *
+   * Its trace entry (§ 3.6) is written in the `finally`, so a field that
+   * throws has one too: one clock read for `at`, and one dependency tracker on
+   * the field's state, installed before the walk, for the names it read
+   * (finding 19). `eval-core`'s trace is copied, not frozen in place: a
+   * function the field gave re-enters the walk on this state when it is called
+   * later, and pushes to that array.
    */
   field(expression: CompiledExpression): unknown {
-    const state = EvalState.fromContext(this.context, this.internals.debug ? {} : { maxTraceItems: 0 });
+    const at = performance.now() - this.start;
+    const debug = this.internals.debug;
+    const state = EvalState.fromContext(this.context, debug ? {} : { maxTraceItems: 0 });
+    const tracker = createDependencyTracker();
+    tracker.install(state.hooks);
     let value: unknown;
+    let outcome: { readonly value: unknown } | { readonly error: unknown } | undefined;
     try {
       value = call(expression.run, state);
+      outcome = { value };
+    } catch (thrown) {
+      outcome = { error: thrown };
+      throw thrown;
     } finally {
       while (this.context.scopes.length > this.fieldDepth) {
         this.context.pop();
       }
+      this.entries.push(
+        Object.freeze({
+          kind: 'field' as const,
+          path: expression.path,
+          ...outcome,
+          namesRead: Object.freeze([...tracker.dependencies]),
+          at,
+          ...(debug
+            ? {
+                evalTrace: Object.freeze(Array.from(state.result.trace)),
+                evalTraceTruncated: state.result.traceTruncated,
+              }
+            : {}),
+        })
+      );
     }
     // By identity, not depth alone: a host function that pops and pushes
     // leaves the depth as it was and the rule's scope gone. `asArray` lists
@@ -207,18 +249,31 @@ class Run {
     return value;
   }
 
-  /** § 3.5 lines 6 to 8: the step list, in order. */
+  /**
+   * § 3.5 lines 6 to 8: the step list, in order. A rule `compileRule` accepted
+   * has one `decide` step per decision and every case of each, in the rule's
+   * order, since a case it could not compile is a problem: so the decisions
+   * counted here, and a case's index among its step's, are the rule's own, and
+   * name a `'matched'` entry's path (§ 3.6).
+   */
   steps(): void {
+    let decision = 0;
     for (const step of this.internals.steps) {
       switch (step.kind) {
         case 'assign':
           if (step.when === undefined || this.field(step.when)) {
             this.calc[step.name] = this.field(step.value);
+          } else {
+            this.entries.push(Object.freeze({ kind: 'skipped' as const, path: step.value.path }));
           }
           break;
         case 'decide': {
-          const matched = step.cases.find((each) => each.if === undefined || !!this.field(each.if));
+          const path = `decisions[${decision}]`;
+          decision += 1;
+          const index = step.cases.findIndex((each) => each.if === undefined || !!this.field(each.if));
+          const matched = index < 0 ? undefined : step.cases[index];
           if (matched !== undefined) {
+            this.entries.push(Object.freeze({ kind: 'matched' as const, path: `${path}.cases[${index}]` }));
             this.labels[step.name] = matched.label;
           } else if (step.strict) {
             throw new RuleRunError(`The decision ${step.name} matched no case, and it is strict.`);
@@ -263,19 +318,20 @@ class Run {
  */
 const run = (internals: CompiledRuleInternals, input: CheckedInput, body: (run: Run) => void): RuleResult => {
   const state = new Run(internals, input);
+  const trace = (): RuleTrace => traceOf(internals.id, state.entries);
   try {
     if (internals.filter.match !== undefined && !matchesPattern(internals.filter.match, input.facts)) {
-      return result('skipped', state.calc, state.labels, []);
+      return result('skipped', state.calc, state.labels, [], trace());
     }
     try {
       if (internals.filter.when !== undefined && !state.field(internals.filter.when)) {
-        return result('skipped', state.calc, state.labels, []);
+        return result('skipped', state.calc, state.labels, [], trace());
       }
       body(state);
     } catch (thrown) {
-      return result('failed', state.calc, state.labels, [], { thrown });
+      return result('failed', state.calc, state.labels, [], trace(), { thrown });
     }
-    return result('completed', state.calc, state.labels, state.effects);
+    return result('completed', state.calc, state.labels, state.effects, trace());
   } finally {
     state.close();
   }
@@ -288,7 +344,7 @@ const run = (internals: CompiledRuleInternals, input: CheckedInput, body: (run: 
  * @param rule what `compileRule` returned as `rule`
  * @param input the facts, the event, and the declared functions' implementations
  * @returns the run's status, its calculations and labels, its effects in
- *   order, and the error a failed run threw
+ *   order, its trace, and the error a failed run threw
  * @throws TypeError for a rule `compileRule` did not return; and, for an
  *   active rule, before any field runs, for an input that is `null`, an array
  *   or not an object, an own key of the input `RuleInput` does not name, a
@@ -301,7 +357,7 @@ const run = (internals: CompiledRuleInternals, input: CheckedInput, body: (run: 
 export const evaluateRule = (rule: CompiledRule, input: RuleInput): RuleResult => {
   const internals = internalsOf(rule, 'evaluateRule');
   if (!internals.active) {
-    return result('inactive', nothing(), nothing(), []);
+    return result('inactive', nothing(), nothing(), [], traceOf(internals.id, []));
   }
   return run(internals, checkInput(internals, input, 'evaluateRule'), (state) => state.steps());
 };
@@ -312,13 +368,14 @@ export const evaluateRule = (rule: CompiledRule, input: RuleInput): RuleResult =
  *
  * @param rule what `compileRule` returned as `rule`
  * @param input the facts, the event, and the declared functions' implementations
- * @returns the run's status, its effects in order, and the error a failed run threw
+ * @returns the run's status, its effects in order, its trace, and the error a
+ *   failed run threw
  * @throws TypeError as {@link evaluateRule} does
  */
 export const evaluateInit = (rule: CompiledRule, input: RuleInput): RuleResult => {
   const internals = internalsOf(rule, 'evaluateInit');
   if (!internals.active) {
-    return result('inactive', nothing(), nothing(), []);
+    return result('inactive', nothing(), nothing(), [], traceOf(internals.id, []));
   }
   return run(internals, checkInput(internals, input, 'evaluateInit'), (state) => state.init());
 };
