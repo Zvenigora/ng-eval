@@ -228,7 +228,7 @@ and `v0.2.3`: lightweight tags from before the `<project>@<version>` names, whic
 | [A61](#a61) | A native function the host places in the context, `Object.assign`, `Reflect.set` or `Object.defineProperty`, writes an `EvalScope` held as a value, its fields included, past A51's refusal of a member write | core | fix | Open — opened 2026-11-06 by the [A48 plan](a48/plan.md)'s step 5, from step 4's code review; predates it. Not scheduled |
 | [A62](#a62) | Evaluation time and memory are not bounded: a regular expression that backtracks, in a literal or built from a string, and a large allocation, each run inside one built-in call, which neither the iteration budget nor the call stack reaches | core | decision | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its finding 9 |
 | [A63](#a63) | No published package of the workspace loads in plain Node as installed: each throws at import, `ParserService` needing the JIT compiler, unless `@angular/compiler` was imported first | core | decision | Open, not scheduled ([SR48](standing-rules.md#sr48)) — opened 2026-11-18 by the [Phase 12 plan](eval-rules/plan.md)'s step 1, from its finding 25 (M14) |
-| [A64](#a64) | `eval-core` asks a write policy only at an expression's own assignments and updates and its own calls of the built-ins in its table of writers, so three kinds of route write: a table built-in that native code calls (`[1].forEach(t.push, t)`), a built-in outside the table that changes what it is handed (`getOrInsert` on a `Map` or a `WeakMap`, a regex's `lastIndex`, `RegExp#compile`, a `DataView`'s setters, `ArrayBuffer#transfer` and `resize`, an array iterator's `next`), and a function the host supplies (`Reflect.set`, `Atomics.store`); each writes what an expression was given under `eval-signals`', `eval-forms`' and `eval-rules`' contexts | core, signals, forms, rules | fix | Open — **at the fix bar: a route past a documented guard** ([SR48](standing-rules.md#sr48)); scheduled before the [Phase 12 plan](eval-rules/plan.md)'s step 5, on its own track. Opened 2026-11-20 by that step, from its second code review (I-A); its first commit, 2026-11-25, corrected the published packages' sentences false on 0.16.1 ([SR31](standing-rules.md#sr31)) and opened [A67](#a67); the fix is next |
+| [A64](#a64) | `eval-core` asks a write policy only at an expression's own assignments and updates and its own calls of the built-ins in its table of writers, so three kinds of route write: a table built-in that native code calls (`[1].forEach(t.push, t)`), a built-in outside the table that changes what it is handed (`getOrInsert` on a `Map` or a `WeakMap`, a regex's `lastIndex`, `RegExp#compile`, a `DataView`'s setters, `ArrayBuffer#transfer` and `resize`, an array iterator's `next`), and a function the host supplies (`Reflect.set`, `Atomics.store`); each writes what an expression was given under `eval-signals`', `eval-forms`' and `eval-rules`' contexts | core, signals, forms, rules | fix | Open — **at the fix bar: a route past a documented guard** ([SR48](standing-rules.md#sr48)); scheduled before the [Phase 12 plan](eval-rules/plan.md)'s step 5, on its own track. Opened 2026-11-20 by that step, from its second code review (I-A); its first commit, 2026-11-25, corrected the published packages' sentences false on 0.16.1 ([SR31](standing-rules.md#sr31)) and opened [A67](#a67); the fix's code commit, the same day, asks about a table built-in handed as an argument to a function the walk did not create: the direct-argument case is closed; the rest of the first kind and the other two kinds are open |
 | [A65](backlog-retired.md#a65) | A computed member key that is not a string, number or symbol passed the dangerous-name blocklist unconverted and was converted at the access: `o[["constructor"]]` read `Object`. Up to 0.12.0 a route to code execution, and from 0.12.1 to writes into `Object.prototype` | core | fix, security | **Retired — fixed 2026-11-21**; released 2026-11-22 in `eval-core` 0.16.1, tagged 188c0d9. Opened and retired by its post-publish commit |
 | [A66](#a66) | `eval-core` 0.16.1's CHANGELOG leaves out two consequences of its key conversion: an object literal's computed key that is not a string or number now creates the property, where 0.16.0 dropped it; and a read hook and a write policy receive the converted key, where they received the array | core | docs | Open — opened 2026-11-22 by 0.16.1's post-publish commit, from 188c0d9's code review; for `eval-core`'s next release |
 | [A67](#a67) | A write of a name on `eval-core`'s blocklist of dangerous names is refused with `eval-core`'s own `Error` before the context is asked, for a bare name and for a member key on an object or array, so `eval-signals`' and `eval-forms`' write bypass, which matches `SignalContextWriteError` by class, routes it through `onError` like a runtime failure: under `'undefined'`, `eval-forms`' default, `o.constructor = 1` renders a blank. Nothing is written | core, signals, forms | fix | Open — not scheduled ([SR48](standing-rules.md#sr48)): a refused write, nothing written, and the READMEs say so. Opened 2026-11-25 by [A64](#a64)'s first commit, from its sweep |
@@ -1043,7 +1043,7 @@ point with no injectable. Whether either changes a `.d.ts` is measured then
 <a id="a64"></a>
 ## A64 — A write policy is asked only at an expression's own writes and its own calls of the table's built-ins
 
-**Package** core, signals, forms, rules · **Kind** fix · **Status** Open, **at the fix bar: a route past a documented guard** ([SR48](standing-rules.md#sr48)); scheduled before the [Phase 12 plan](eval-rules/plan.md)'s step 5, on its own track ([SR3](standing-rules.md#sr3)). Opened 2026-11-20 by that step, from its second code review (I-A). First commit done 2026-11-25; the fix is next
+**Package** core, signals, forms, rules · **Kind** fix · **Status** Open, **at the fix bar: a route past a documented guard** ([SR48](standing-rules.md#sr48)); scheduled before the [Phase 12 plan](eval-rules/plan.md)'s step 5, on its own track ([SR3](standing-rules.md#sr3)). Opened 2026-11-20 by that step, from its second code review (I-A). First commit done 2026-11-25. The fix's code commit, the same day, asks about a table built-in handed as an argument to a function the walk did not create; the rest of the first kind, the outside built-ins and the host's functions are open
 
 A context's `checkMemberWrite` is asked at two places: before an assignment or update to a
 member, and before a call the expression itself makes, directly or through `call`, `apply` or
@@ -1064,7 +1064,7 @@ list below is complete.
   supplies `Object`, `Object.freeze` handed to `forEach` and `Object.assign` handed to `reduce` or
   to `sort` as its comparator, which `sort`, itself in the table, calls on an array the expression
   created. Other methods that take a callback are not measured. Found by step 4's fourth review
-  (C-1).
+  (C-1). Asked, as a direct argument, since the fix's code commit, below.
 - **A built-in outside the table that changes what it is handed.** `getOrInsert` and
   `getOrInsertComputed` on a `Map` or a `WeakMap`, which insert; `test` and `exec`, which move a
   global or sticky regex's `lastIndex`, and `match` and `replace`, which reset it on a global
@@ -1184,23 +1184,74 @@ gate's bundles). The ninth scoped that sentence, and two README headings with th
 a signal context. Lesson: correct a false sentence with the least text that is true, and keep the
 detail in the register.
 
-**Left from the eighth pin's review, for the next touch** (Minors; none measured false):
+**The fix's code commit, 2026-11-25**, closes the first kind's direct-argument case: a table
+built-in among a call's arguments, to a function the walk did not create. It does so by argument
+rather than by a sweep of the built-ins that call what they are handed: a call
+the expression makes to a function the walk did not create is asked about each argument that is a
+built-in of the table, after the call's own question, with no target (`eval-core` `[Unreleased]`,
+`### Security`). A function the walk made is not asked about for its arguments, since its own
+calls are asked. Measured under `eval-signals`' signal context on Node 26.4.0 by
+`a64-fix-signals.log` in `ng-eval-a64-fix-1.zip`: 17 routes, `push` on a given array handed to
+`forEach`, `map`, `filter`, `some`, `every`, `find`, `findIndex`, `findLast`, `findLastIndex`,
+`flatMap`, a `Map`'s, a `Set`'s and a typed array's `forEach` and, where the host supplies
+`Array`, `Array.from`; `Object.freeze` handed to `forEach`; and `Object.assign` handed to `reduce`
+and to `sort` as its comparator. Each was refused with `SignalContextWriteError`, the given value
+unchanged, and each wrote under a plain context. Rows (12): `eval-core`'s
+`member-write-policy.methods.spec.ts`; and `eval-rules`' `evaluate-rule.spec.ts`' three callback
+rows above now assert the refusal. Turning off the argument check turns 9 of the 12 and the three
+`eval-rules` rows red; removing the exemption turns the other two opted-in rows red.
+- **Still open**: a `new` expression's arguments are not asked about; and a table built-in that
+  reaches native code other than as an argument of the expression's own call. Measured by the
+  review on the gate's `eval-core` bundle, Node 26.4.0, with a policy that refuses what the walk
+  did not create, over a given `a` of `[3,1,2]` (`review/probe.log` in the same pack):
+  `[a.push, a].reduce([].forEach.bind([1]))` gives `a = [3,1,2,1,0,"arr"] | asked = []`, and
+  `[[a.push, a]].reduce([].forEach.apply.bind([].forEach), [1])` gives
+  `a = [3,1,2,1,0,"arr"] | asked = []`.
+- **Unchanged**: the outside built-ins and the host's functions, the second and third kinds above.
+- **The adapters.** Their READMEs, `signal-context.ts` and their `[Unreleased]` lines no longer
+  name the native-call route. Their peers still admit `eval-core` 0.16.1, where it writes, so they
+  state neither outcome. An adapter release that raises its floor to `>=0.16.2` may state it as
+  refused. The npm READMEs of `eval-signals` 0.9.0 and `eval-forms` 0.9.0 still carry the old
+  sentence until each package's next release.
+- `eval-rules`' `eval-core` peer rises to `>=0.16.2` in `eval-core`'s release commit.
+
+**Left from the eighth and ninth pins' reviews, for the next touch** (Minors; none measured
+false):
 - "asked only at the expression's own writes and calls" (both adapters' READMEs) can be read as
   every own call being asked; the routes listed after it are own calls. Narrower: "its own
   writes, and its own calls of the table's built-ins".
-- "so the write is allowed" (`EvalMemberWrite.createdByEvaluation`, eval-core's CHANGELOG): the
-  flag is `true`, and the policy still decides.
 - `eval-forms`' "refused where it is made": `guardIdentifiers` refuses 12 of the 13 bare names
   when the rule is registered (`a64-forms-reactive.log`, `a64-forms-signals.log`).
 - `eval-signal.spec.ts`' "…on a primitive reach the context under caseInsensitive" does not
   depend on the option (`a64-ci.log`: the same without it); its title claims more (SR19).
+- `eval-signals`' CHANGELOG has no line telling a caller who passes their own `EvalContext` that
+  the read-only guarantee never covered them.
+- `createEvalSignal`'s JSDoc never says that a record `source` is wrapped in a signal context,
+  which a caller-built `EvalContext` is not.
+- "both adapters' READMEs", in the first Minor above: its wording is verbatim only in
+  `eval-signals`' README.
+- The adapters' READMEs name no native-call route after the fix's deletion, though their next
+  release still admits `eval-core` 0.16.1, where `[1].forEach(user.tags.push, user.tags)` writes,
+  and the routes under "Still open" write on any; "among the known ones" keeps the sentence true,
+  but a consumer loses the one warning that applies on every `eval-core` the range admits.
+- For a handed built-in (`target: undefined`) the refusal advises "Spread it into an array literal
+  and change the copy instead" (`rule-context.ts`, `signal-context.ts`): there is no "it" to
+  spread; the remedy is not to pass the built-in.
+- Over-asking (`review/probe2.log`): `(f => 0).bind(null)(a.push)` and `[1].includes(a.push)` are
+  refused, and complete under a plain context; consistent with "a function the walk did not
+  create", a note for whoever widens the exemption.
+- `EvalMemberWrite.target`'s JSDoc says it is undefined for a handed built-in, but not that a
+  policy deciding by target identity should read `undefined` as unknown, or it allows the call.
 
 **The fix**, its own track, measured then. For the outside built-ins: widen the table, or keep a
 second one beside it as `REFLECT_WRITERS` is, since the table is what a published policy is asked
 about; decide `next`, which reading a given iterator needs, and `lastIndex`, which
-`pattern.test(value)` moves; sweep the specification for the rest. For native calls: refuse a
-table built-in where it is passed as a value, or ask about it where a callback-taking built-in is
-called with it, and sweep for the built-ins that call what they are handed. Then patch releases of
+`pattern.test(value)` moves; sweep the specification for the rest. For native calls: the
+direct-argument case is done, by the code commit above. One option for the rest, not a decision:
+refuse a table built-in wherever the walk reads it as a value, other than as a callee or the
+receiver of `call`, `apply` or `bind`, as [A35](backlog-retired.md#a35) does for dangerous
+functions. It covers both routes measured under "Still open"; it is not yet measured as a whole.
+Then patch releases of
 `eval-core`, and of `eval-signals` and `eval-forms`, whose READMEs list what is caught.
 `eval-rules` takes it before or with its 0.1.0.
 

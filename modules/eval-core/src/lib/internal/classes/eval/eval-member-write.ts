@@ -6,8 +6,9 @@
  * Since 0.11.0 the same question is asked before a call the expression makes
  * of a built-in method in `eval-core`'s table of writers that writes into an
  * object it is handed - `a.push(x)`, `m.set(k, v)`, `Object.assign(o, p)` -
- * with {@link method} naming it. A write by any other route is not asked
- * about (`docs/backlog.md` A64).
+ * with {@link method} naming it, and before a call that hands one of them as
+ * an argument to a function the walk did not create. A write by any other
+ * route is not asked about (`docs/backlog.md` A64).
  */
 export interface EvalMemberWrite {
 
@@ -23,6 +24,10 @@ export interface EvalMemberWrite {
    * `this` passed through `call`, `apply` or `bind`, `a` in
    * `[].push.call(a, x)` - or, for `Object`'s mutators, the first argument,
    * `o` in `Object.assign(o, p)`.
+   *
+   * Undefined for a built-in of the table that the expression hands as an
+   * argument to a function the walk did not create, `push` in
+   * `[1].forEach(a.push, a)`, because the object it writes is not known.
    */
   readonly target: unknown;
 
@@ -53,8 +58,8 @@ export interface EvalMemberWrite {
    * new - `[1].map(f)`'s array is - because either can hand back an existing
    * object: `[o].find(x => true)` returns `o`. What the expression made
    * itself, a literal, a rest value or an arrow, stays created when a call
-   * hands it back: in `(() => ({}))().x = 1` the literal is, so the write is
-   * allowed.
+   * hands it back: in `(() => ({}))().x = 1` the literal is, so the flag is
+   * `true`, and the policy still decides.
    */
   readonly createdByEvaluation: boolean;
 
@@ -78,7 +83,8 @@ export interface EvalMemberWrite {
    * `Set`, and `add` and `delete` on a `Set` or a `WeakSet`; `Date`'s setters;
    * and `Object`'s `assign`, `defineProperty`, `defineProperties`,
    * `setPrototypeOf`, `freeze`, `seal` and `preventExtensions`, each when the
-   * expression's own call calls it. No other built-in is: not `getOrInsert` on
+   * expression's own call calls it, or hands it as an argument to a function
+   * the walk did not create. No other built-in is: not `getOrInsert` on
    * a `Map` or a `WeakMap`, which inserts (`docs/backlog.md` A64).
    *
    * Since 0.11.0.

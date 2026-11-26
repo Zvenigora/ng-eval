@@ -41,15 +41,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `fill`, `reverse`, `set` or `sort`, `Map`'s and `WeakMap`'s `set` and `delete`, `Map`'s and
   `Set`'s `clear`, `Set`'s and `WeakSet`'s `add` and `delete`, a `Date`'s setters, or, where the
   host supplies `Object`, its `assign`, `defineProperty`, `defineProperties`, `setPrototypeOf`,
-  `freeze`, `seal` or `preventExtensions`. Either throws where the write is made, and nothing is
+  `freeze`, `seal` or `preventExtensions`, or handed as an argument to a function the rule did not
+  create. Either throws where the write is made, and nothing is
   written there. The throw goes where any throw goes: one that leaves a field fails the run, code
   the host supplied may catch it on the way, and one from a function the run gave out, called after
   the run, reaches that caller ([E10](../../docs/backlog.md#e10)). `delete` deletes nothing, and an
   assignment to `event` is refused at compile. An assignment or update whose target is a name
   on `eval-core`'s blocklist of dangerous names is refused too, in the same way, bare (`constructor = 1`) or as a member key of a given
   object, a created one or a primitive (`o.__proto__ = 1`, `({})[["__proto__"]] = {}`,
-  `s.toString = 1`); which error it throws is not promised. Other routes write, and the run completes: a table
-  built-in that native code calls, as `[1].forEach(list.push, list)` calls `push`; a built-in
+  `s.toString = 1`); which error it throws is not promised.
+  Other routes write, and the run completes: a table built-in that reaches native code other
+  than as an argument of the rule's own call, as an element of an array that `reduce` walks;
+  a built-in
   outside the table, such as `getOrInsert` and `getOrInsertComputed` on a `Map` or a `WeakMap`,
   `test`, `exec`, `match` and `replace`, which move or reset a global or sticky regex's
   `lastIndex`, `RegExp#compile`, a `DataView`'s setters, `ArrayBuffer#transfer`,

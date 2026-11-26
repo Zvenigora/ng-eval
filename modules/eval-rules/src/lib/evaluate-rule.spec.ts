@@ -2,6 +2,7 @@ import * as vm from 'node:vm';
 import { EvalContext, Registry } from '@zvenigora/ng-eval-core';
 import { compileRule, type CompileRuleOptions, type CompiledRule } from './compile-rule';
 import { evaluateInit, evaluateRule } from './evaluate-rule';
+import { RuleWriteError } from './rule-context';
 import type { RuleInput } from './rule-result';
 
 // The Phase 12 plan's step 4: one row per numbered line of § 3.5, at
@@ -678,21 +679,43 @@ describe('evaluateRule, what the run keeps: where a write into the facts is refu
     expect(read(given)).toEqual(after);
   });
 
-  // A64: a built-in of the table that native code calls is not asked about:
-  // the expression's call is forEach's, which the table does not hold.
-  it.each<[string, string, () => Record<string, unknown>, (facts: Record<string, unknown>) => unknown, unknown]>([
-    ['push, which forEach calls', '[2].forEach(list.push, list)', () => ({ list: [1] }), (f) => (f['list'] as unknown[]).length, 4],
-    ['Map#set, which forEach calls', '[1].forEach(m.set, m)', () => ({ m: new Map() }), (f) => (f['m'] as Map<number, number>).get(1), 0],
+  // A64: a built-in of the table handed to a function the rule did not create
+  // is asked about, with no target, since forEach may call it; so the run
+  // fails, and the fact is as it was.
+  it.each<[string, string, () => Record<string, unknown>, (facts: Record<string, unknown>) => unknown, unknown, string]>([
+    [
+      'push, which forEach calls',
+      '[2].forEach(list.push, list)',
+      () => ({ list: [1] }),
+      (f) => f['list'],
+      [1],
+      "Cannot call Array.prototype.push: a rule's expression may write only into objects it created. " +
+        'Spread it into an array literal and change the copy instead.',
+    ],
+    [
+      'Map#set, which forEach calls',
+      '[1].forEach(m.set, m)',
+      () => ({ m: new Map() }),
+      (f) => (f['m'] as Map<number, number>).size,
+      0,
+      "Cannot call Map.prototype.set: a rule's expression may write only into objects it created. " +
+        'Spread it into a literal and change the copy instead.',
+    ],
     [
       'Object.freeze, which forEach calls',
       '[o].forEach(Object.freeze)',
       () => ({ o: { a: 1 }, Object }),
       (f) => Object.isFrozen(f['o']),
-      true,
+      false,
+      "Cannot call Object.freeze: a rule's expression may write only into objects it created. " +
+        'Spread it into a literal and change the copy instead.',
     ],
-  ])('does not refuse %s with a fact as its target (A64)', (_name, text, make, read, after) => {
+  ])('refuses %s with a fact as its target (A64)', (_name, text, make, read, after, message) => {
     const given = make();
-    expect(evaluateRule(calcRule(text), { facts: given }).status).toBe('completed');
+    const result = evaluateRule(calcRule(text), { facts: given });
+    expect(result.status).toBe('failed');
+    expect(result.error).toBeInstanceOf(RuleWriteError);
+    expect((result.error as Error).message).toBe(message);
     expect(read(given)).toEqual(after);
   });
 

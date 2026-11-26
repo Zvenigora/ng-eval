@@ -315,9 +315,6 @@ not asked about; among the known ones:
   Refusing them would break the commonest rule there is, `pattern.test(value)`.
 - **A method you wrote is your own code**, and runs as written, whatever it is called; a function
   your context supplies, such as `Reflect.set`, is not asked about either.
-- **A built-in of the table that native code calls is not asked about.**
-  `[1].forEach(user.tags.push, user.tags)` calls `forEach`, which is not in the table, and
-  `forEach` calls `push`. The same holds for `map`.
 - **A built-in outside `eval-core`'s table is not asked about**, such as `getOrInsert` on a `Map`
   or a `WeakMap`, or a `DataView`'s setters. The register keeps the known routes
   ([A64](https://github.com/zvenigora/ng-eval/blob/master/docs/backlog.md#a64)).

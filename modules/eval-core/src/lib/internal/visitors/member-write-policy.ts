@@ -287,8 +287,10 @@ export const refuseContextMethodWrite = (fn: unknown, receiver: unknown,
  * calls is one of {@link MUTATING_BUILT_INS}, the built-ins in the table that
  * write into an object they are handed, through `EvalContext.checkMemberWrite`
  * with `method` naming it. Any other function is not asked about, a built-in
- * outside the table included, and neither is a call native code makes, such
- * as `forEach`'s of the callback it is handed (`docs/backlog.md` A64). A
+ * outside the table included. A call native code makes is not asked about
+ * either, but a call the expression makes to a function the walk did not
+ * create is asked about each argument that is a built-in of the table, with
+ * no target, since that function may call it (`docs/backlog.md` A64). A
  * refusal is a throw, and it propagates from here unchanged: the call has not
  * been made.
  *
@@ -332,16 +334,32 @@ export const consultMethodWrite = (st: EvalState, created: WeakSet<object>,
   }
 
   const builtIn = MUTATING_BUILT_INS.get(fn);
-  if (!builtIn) {
+  if (builtIn) {
+    const target = builtIn.writes === 'receiver' ? receiver : args[0];
+
+    contextCheckMemberWrite(st.context, {
+      target,
+      key: undefined,
+      createdByEvaluation: isObjectLike(target) && created.has(target),
+      method: builtIn.name,
+    });
+  }
+
+  // A function the walk made runs its body through this walk, so its own
+  // calls are asked about; any other may call what it is handed.
+  if (isObjectLike(fn) && created.has(fn)) {
     return;
   }
 
-  const target = builtIn.writes === 'receiver' ? receiver : args[0];
-
-  contextCheckMemberWrite(st.context, {
-    target,
-    key: undefined,
-    createdByEvaluation: isObjectLike(target) && created.has(target),
-    method: builtIn.name,
-  });
+  for (const arg of args) {
+    const handed = MUTATING_BUILT_INS.get(arg);
+    if (handed) {
+      contextCheckMemberWrite(st.context, {
+        target: undefined,
+        key: undefined,
+        createdByEvaluation: false,
+        method: handed.name,
+      });
+    }
+  }
 };

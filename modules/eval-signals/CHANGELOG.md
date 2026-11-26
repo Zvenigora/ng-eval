@@ -11,9 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 - **Documentation: what the write refusal covers.** The README's "Two things this does not
   catch" listed two of the routes by which an expression still writes what it was given: it now
-  says the context is asked only at the expression's own writes and calls, and lists a built-in of
-  `eval-core`'s table that native code calls, as `[1].forEach(user.tags.push, user.tags)` does,
-  and a built-in outside the table, such as `getOrInsert` on a `Map` or a `WeakMap`, among the
+  says the context is asked only at the expression's own writes and calls, and lists a built-in
+  outside `eval-core`'s table, such as `getOrInsert` on a `Map` or a `WeakMap`, among the
   known routes, none of them asked about. The context's JSDoc says the same.
   [A64](../../docs/backlog.md#a64). No code changes.
 - **Documentation: not every refused write is a `SignalContextWriteError`.** The README and the

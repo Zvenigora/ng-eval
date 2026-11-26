@@ -322,7 +322,9 @@ evaluation's trace can take. Implemented in
   expression itself makes, directly or through `call`, `apply` or `bind`, of a built-in in its
   table of writers: the mutators of arrays and of typed arrays; set and delete on maps and weak
   maps; clear on maps and sets; add and delete on sets and weak sets; a date's setters; and
-  `Object`'s writers. Where it refuses, nothing is written there. `eval-core`'s own checks still
+  `Object`'s writers. It is also asked, with no target, before a call that hands one of those
+  built-ins as an argument to a function the walk did not create. Where it refuses, nothing is
+  written there. `eval-core`'s own checks still
   apply, and may refuse a write before it is asked. A write by any other route is not asked about;
   the register keeps the known ones ([A64](docs/backlog.md#a64)). Implemented in
   [eval-context.ts](modules/eval-core/src/lib/internal/classes/eval/eval-context.ts) and

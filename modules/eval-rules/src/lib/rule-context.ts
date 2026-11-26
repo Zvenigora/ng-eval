@@ -6,7 +6,8 @@ import { EvalContext, type EvalMemberWrite } from '@zvenigora/ng-eval-core';
  * hooks refuse: `set`, an assignment to a name no pushed scope binds, which
  * is a fact or an unknown name; and `checkMemberWrite`, an assignment to a
  * member, or a built-in method in `eval-core`'s table of writers that writes,
- * unless the walk created the object (finding 16). `eval-signals`' signal context has the same two
+ * unless the walk created the object (finding 16), or one handed as an
+ * argument to a function the rule did not create. `eval-signals`' signal context has the same two
  * overrides; this package writes its own, since its main entry depends on
  * `eval-core` alone ([SR29](../../../../docs/standing-rules.md#sr29)).
  *
@@ -14,8 +15,9 @@ import { EvalContext, type EvalMemberWrite } from '@zvenigora/ng-eval-core';
  * function the host supplied, among the facts or among the functions, which
  * is the host's own code; `delete`, which deletes nothing (finding 8);
  * `Reflect`'s writers and `Atomics`', which no expression reaches unless the
- * host supplies them (finding 17); a built-in of the table that native code
- * calls, as `[1].forEach(list.push, list)` calls `push`; and a built-in that
+ * host supplies them (finding 17); a table built-in that reaches native code
+ * other than as an argument of the rule's own call, as an element of an array
+ * that `reduce` walks; and a built-in that
  * changes what it is handed and is not in `eval-core`'s table of writers:
  * `test` and `exec` moving a regex's `lastIndex`, `RegExp#compile`, a
  * `DataView`'s setters, `ArrayBuffer#transfer` and `resize`, an array

@@ -12,18 +12,33 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+### Security
+- **A built-in of the table of writers, handed as an argument to a function the walk did not
+  create, wrote past a write policy.**
+  `[1].forEach(t.push, t)` calls `forEach`, which is not in the table, and `forEach` then called
+  `push` on a given array with nothing asked. A policy is now also asked before a call the
+  expression makes to a function the walk did not create, about each argument that is a built-in
+  of the table, with `EvalMemberWrite.target` undefined, since the object it writes is not known;
+  refusing it means the call is not made. A function the walk made is not asked about for its
+  arguments: its own calls are asked. A context without `checkMemberWrite` is unchanged. A table
+  built-in that reaches native code by another route, such as an element of an array that
+  `reduce` walks, is still not asked about. [A64](../../docs/backlog.md#a64).
+
 ### Fixed
 - **Documentation: where a write policy is asked.** The JSDoc of `EvalContext.checkMemberWrite`
   and `EvalMemberWrite`, which ships in the types, said a policy is asked before a built-in
   writes into what it is handed. It is asked before a call the expression itself makes of a
-  built-in in the table of writers, directly or through `call`, `apply` or `bind`, and a write by
-  any other route is not asked about. `SECURITY.md`'s Write policies say the same.
-  [A64](../../docs/backlog.md#a64). No code changes.
+  built-in in the table of writers, directly or through `call`, `apply` or `bind`, and, as the
+  Security entry above says, about one handed as an argument to a function the walk did not
+  create; a write by any other route is not asked about. `SECURITY.md`'s Write policies say the
+  same.
+  [A64](../../docs/backlog.md#a64).
 - **Documentation: a call's result can be created.** `EvalMemberWrite.createdByEvaluation`'s
   JSDoc said a call's result and a `new` result are never created. A call does not make its result
   created, even when the result is new (`[1].map(f)`'s array is not), but what the expression
   made itself (a literal, a rest value, an arrow) stays created when a call hands it back: in
-  `(() => ({}))().x = 1` the write is allowed. True since 0.10.0; the JSDoc now says so.
+  `(() => ({}))().x = 1` the flag is `true`, and the policy still decides. True since 0.10.0; the
+  JSDoc now says so.
   [A64](../../docs/backlog.md#a64). No code changes.
 
 ---

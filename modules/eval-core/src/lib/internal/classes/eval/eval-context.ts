@@ -512,7 +512,9 @@ export class EvalContext {
    * built-in **method** in `eval-core`'s table of writers that writes into an
    * object it is handed - `arr.push(x)`, `arr.splice(i, 1)`, `map.set(k, v)`,
    * `Object.assign(o, p)` - which writes from native code and reaches neither
-   * write visitor. A write by any other route is not asked about
+   * write visitor, and, with no target, before a call that hands one of them
+   * as an argument to a function the walk did not create. A write by any
+   * other route is not asked about
    * (`docs/backlog.md` A64). The call visitor asks,
    * with {@link EvalMemberWrite.method} naming the method and the object it
    * writes as the target; refusing it means the call is not made. The same is

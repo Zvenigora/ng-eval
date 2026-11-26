@@ -326,9 +326,91 @@ describe('member-write policy: built-in mutating methods', () => {
         expect(context.writes).toEqual([]);
       });
     });
+
+    /**
+     * `docs/backlog.md` A64. A function the walk did not create may call what
+     * it is handed - `forEach` calls `push` from native code, where no call
+     * node is - so a built-in of the table among a call's arguments is asked
+     * about, after the call's own question, with no target: the object it
+     * would write is not known.
+     */
+    describe('handed as an argument to a function the walk did not create', () => {
+
+      const handed = (method: string) =>
+        ({ target: undefined, key: undefined, createdByEvaluation: false, method });
+
+      it.each([
+        ['push, to forEach', '[1].forEach(a.push, a)', 'Array.prototype.push'],
+        ['Map#set, to forEach', '["j"].forEach(m.set, m)', 'Map.prototype.set'],
+        ['Object.assign, to reduce', '[{ n: 2 }].reduce(Object.assign, o)', 'Object.assign'],
+        ['push, to forEach through call', '[1].forEach.call([1], a.push, a)', 'Array.prototype.push'],
+        ['push, in apply\'s list', '[1].forEach.apply([1], [a.push, a])', 'Array.prototype.push'],
+        ['push, bound to forEach', '[1].forEach.bind([1], a.push)', 'Array.prototype.push'],
+        ['push, as the thisArg of call handed to forEach', '[a].forEach(a.push.call, a.push)', 'Array.prototype.push'],
+        ['push, spread from a given array', '[1].forEach(...fns, a)', 'Array.prototype.push'],
+      ])('should refuse %s, ask with no target, and write nothing', (_label, source, method) => {
+        const data = { ...dataOf(), fns: [Array.prototype.push] };
+        const before = stateOf(data);
+        const context = new PolicedContext(data, {});
+
+        expect(() => run(source, context)).toThrow(RefusedWrite);
+
+        expect(stateOf(data)).toEqual(before);
+        expect(context.writes).toEqual([handed(method)]);
+      });
+
+      it('should allow sort on a created array, then refuse Object.assign as its comparator', () => {
+        const data = dataOf();
+        const before = stateOf(data);
+        const context = new PolicedContext(data, {});
+
+        // V8 calls the comparator with the later element first, so this order
+        // is the one that would write `o`.
+        expect(() => run('[{ n: 2 }, o].sort(Object.assign)', context)).toThrow(RefusedWrite);
+
+        expect(stateOf(data)).toEqual(before);
+        expect(context.writes).toEqual([
+          { target: expect.any(Array), key: undefined, createdByEvaluation: true, method: 'Array.prototype.sort' },
+          handed('Object.assign'),
+        ]);
+      });
+
+      it('should not ask about one handed to an arrow the walk made', () => {
+        const data = dataOf();
+        const context = new PolicedContext(data, {});
+
+        expect(run('(f => 0)(a.push)', context)).toBe(0);
+
+        expect(context.writes).toEqual([]);
+      });
+
+      it('should ask at the arrow\'s own call of it, with the target it passes', () => {
+        const data = dataOf();
+        const before = stateOf(data);
+        const context = new PolicedContext(data, {});
+
+        expect(() => run('(f => f.call(a, 1))(a.push)', context)).toThrow(RefusedWrite);
+
+        expect(stateOf(data)).toEqual(before);
+        expect(context.writes).toEqual([
+          { target: data.a, key: undefined, createdByEvaluation: false, method: 'Array.prototype.push' },
+        ]);
+        expect(context.writes[0].target).toBe(data.a);
+      });
+    });
   });
 
   describe('not opted in', () => {
+
+    it('should let a built-in handed to forEach write what the context holds', () => {
+      const data = dataOf();
+      const state = EvalState.fromContext(new EvalContext(data, {}));
+
+      evaluate(programOf('[1].forEach(a.push, a)'), state);
+
+      expect(state.createdObjects).toBeUndefined();
+      expect(data.a).toEqual([3, 1, 2, 1, 0, [1]]);
+    });
 
     it('should let a mutating method run on what the context holds', () => {
       const data = dataOf();

@@ -282,8 +282,7 @@ Two things are **not** routed through `options.onError`, in either adapter:
   does each one reached through `call`, `apply` or `bind`. Up to 0.3.x the call went through and
   mutated the form's data. On a copy the rule made they still work: `[...tags].sort()`. Only the
   rule's own writes and calls are asked about; a write by any other route is not, such as a
-  method you wrote or a built-in of the table that native code calls, as
-  `[1].forEach(tags.push, tags)` calls `push`. The register keeps the known routes
+  method you wrote. The register keeps the known routes
   ([A64](https://github.com/zvenigora/ng-eval/blob/master/docs/backlog.md#a64)).
 
   **It holds through a call too.** An assignment **nested inside a call**,

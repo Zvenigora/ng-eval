@@ -200,8 +200,7 @@ export class SignalContextWriteError extends Error {
  * `Object.assign(user, p)` - and this context refuses one whose target the
  * walk did not create (`docs/backlog-retired.md` C4). A method the caller
  * wrote is the caller's own code and is not asked about; neither is a
- * built-in outside that table, such as `m.getOrInsert(k, v)`, nor one of the
- * table's that native code calls, as `[1].forEach(m.set, m)` calls `set`
+ * built-in outside that table, such as `m.getOrInsert(k, v)`
  * (`docs/backlog.md` A64).
  *
  * Guarding the `original` object instead - a `Proxy` with a throwing `set`

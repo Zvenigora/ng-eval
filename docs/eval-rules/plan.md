@@ -874,11 +874,11 @@ function the run gave out, called after the run, reaches that caller (E10; step 
 thirteenth reviews, I-1):
 an assignment or update, to a fact or to a member of an
 object the expression did not create; and a call the expression itself makes, directly or through
-`call`, `apply` or `bind`, of a built-in in `eval-core`'s table of writers into such an object.
+`call`, `apply` or `bind`, of a built-in in `eval-core`'s table of writers into such an object, or
+handed as an argument to a function the rule did not create.
 The run does not promise the facts unwritten: other routes write, among them a function the host
-supplied, among the facts or among the functions (finding 17), a built-in of the table that native
-code calls (`[1].forEach(list.push, list)`), and a built-in outside the table that changes what it
-is handed ([A64](../backlog.md#a64), amended by step 4's second and fourth reviews). Nor does it
+supplied, among the facts or among the functions (finding 17), and a built-in outside the table
+that changes what it is handed ([A64](../backlog.md#a64), amended by step 4's second and fourth reviews). Nor does it
 promise that `delete` is refused (it deletes nothing, finding 8), or that a refused write's right
 side did not run (it did, M2); and a recorded argument is the value the expression
 produced, so an object among the arguments is the host's own object, not a copy (§ 8 q9).
@@ -1393,7 +1393,7 @@ witness finding 8 turn red. What it measured, and the readings it took:
 - **Its fourth review** (of the fifth pin, 12.4e) found a Critical, C-1, fixed here in the
   wording and recorded in A64: **a built-in of the table that native code calls writes** —
   `[1].forEach(list.push, list)` asks about `forEach`, not `push` — under all three contexts
-  (`gap-*.log`). Each pin's review had found one more route, so the sentences no longer list
+  (`gap-*.log`); since A64's fix it is asked about `push` too, and refused. Each pin's review had found one more route, so the sentences no longer list
   exceptions to "an expression cannot write what it was given"; each states the contract every
   path keeps ([SR44](../standing-rules.md#sr44)): where the policy is asked, an assignment or
   update and a call the expression itself makes of a table built-in, and that other routes write,
