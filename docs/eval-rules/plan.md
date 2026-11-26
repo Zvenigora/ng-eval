@@ -1,7 +1,7 @@
 # Phase 12 Plan — `@zvenigora/ng-eval-rules` 0.1.0, pure rule evaluation (new module)
 
 **Status: Revision 7, the active plan: steps 1 to 4 are done, A64's track is done, and `eval-core`
-0.16.2 is next, then step 5.** Revisions 1 to 4 and the design sessions were committed ahead of
+0.16.2 is released, pending publish, then step 5.** Revisions 1 to 4 and the design sessions were committed ahead of
 step 1,
 at the maintainer's request. Revision 3 measured [§ 1.3](#13-mechanism-questions-measured)'s rows on
 the built 0.16.0 bundle, and Revision 4 added two, with eight scripts pinned outside the repository
@@ -360,7 +360,7 @@ step 2 measured them, and each says how.
    type-only import satisfies it (Revision 6).
 4. **A peer range here is bounded above.** Both downstream packages declare
    `>=0.16.0 <0.17.0`, and the workspace lint reads the range against the workspace version
-   ([SR42](../standing-rules.md#sr42)). This package's floor is 0.16.1 (§ 3.7).
+   ([SR42](../standing-rules.md#sr42)). This package's floor is 0.16.2 (§ 3.7).
 5. **`release-tags.mjs` names its packages**, read from the script, and run by step 2. Without an
    entry in its `PROJECT` map, a Publication status row for a fourth package fails as "is not a
    package this workspace publishes", and the package's tags are not required to be annotated.
@@ -911,10 +911,12 @@ published: `RuleTraceEntry` is bound from 0.1.0.
 ### 3.7 The package
 
 `modules/eval-rules`, tag `scope:rules`, depending on `scope:core` only. Its peers are
-`@zvenigora/ng-eval-core >=0.16.1 <0.17.0`, the floor raised from 0.16.0 by step 4's twelfth pin
+`@zvenigora/ng-eval-core >=0.16.2 <0.17.0`, the floor raised from 0.16.0 by step 4's twelfth pin
 (its tenth review, I-1): 0.16.1 checks a computed key as the name it converts to
 ([A65](../backlog-retired.md#a65)), and the CHANGELOG's blocklist sentence and its "where the host
-supplies `Object`" hold only from it; and `acorn-walk ^8.3.0`, as `eval-forms` declares it
+supplies `Object`" hold only from it; then to 0.16.2 by `eval-core` 0.16.2's release commit, since
+the CHANGELOG's "handed as an argument to a function the rule did not create" holds only from it
+([A64](../backlog.md#a64)); and `acorn-walk ^8.3.0`, as `eval-forms` declares it
 (finding 20). Not `@angular/core`: step 2's lint refuses a peer the source does not import
 (finding 3). It imports nothing from `acorn`. Its `tsconfig.json` is `eval-signals`' own,
 so its `lib` is `es2020`: `Object.hasOwn`, `Array.prototype.at` and `ErrorOptions` do not compile
@@ -979,7 +981,7 @@ also lists `docs/backlog-history.md`, whose *Unreleased* row moves with it, and
 | 3 | The format and `compileRule` | `rule.ts`, `compile-rule.ts`, `pattern.ts`, `define-rule.ts`, their specs, the barrel and its two specs, `package.json`, `README.md`, `CHANGELOG.md` | `eval-rules` 0.1.0 |
 | 4 | Evaluation | `rule-context.ts`, `evaluate-rule.ts`, `rule-result.ts`, their specs, the barrel and its specs, `CHANGELOG.md` | `eval-rules` 0.1.0 |
 | — | [A64](../backlog.md#a64) code fix — done (47f4634) | Separate track (ended 2026-11-25) | `eval-core` 0.16.2 |
-| — | `eval-core` 0.16.2 patch release — next | Separate release before step 5 | `eval-core` 0.16.2 |
+| — | `eval-core` 0.16.2 patch release — released, pending publish | Separate release before step 5 | `eval-core` 0.16.2 |
 | 5 | The trace, and the cost of building it | `rule-trace.ts`, its spec, `performance.spec.ts`, `evaluate-rule.ts`, `rule-result.ts`, `CHANGELOG.md` | `eval-rules` 0.1.0 |
 | 6 | The tests runner and the registry | `rule-test.ts`, `rule-registry.ts`, their specs, the barrel and its specs, `CHANGELOG.md` | `eval-rules` 0.1.0 |
 | 7 | The README | `modules/eval-rules/README.md`, `readme-examples.spec.ts`, `CHANGELOG.md`, `tools/published-links.txt` | `eval-rules` 0.1.0 |
@@ -1727,7 +1729,7 @@ names.
 
 **Files**: `modules/eval-rules/package.json`, `CHANGELOG.md`, and `README.md` for the demo link
 alone (step 4 raised the peer floor to 0.16.1 in both the manifest and the README's Install line,
-§ 3.7, and the release keeps it); `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root `README.md` and
+and `eval-core` 0.16.2's release commit raised it to 0.16.2 in both, § 3.7; the release keeps it); `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root `README.md` and
 `CHANGELOG.md`, `docs/release-history.md`, `CLAUDE.md`.
 
 - The version becomes 0.1.0 and the CHANGELOG heading is dated by

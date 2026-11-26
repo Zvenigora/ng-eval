@@ -10,7 +10,7 @@ the problem codes.
 ## Install
 
 The package is not on npm yet. Its peer dependencies are `acorn-walk ^8.3.0` and
-`@zvenigora/ng-eval-core >=0.16.1 <0.17.0`.
+`@zvenigora/ng-eval-core >=0.16.2 <0.17.0`.
 
 ## What it exports
 

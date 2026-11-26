@@ -12,6 +12,10 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
 
 ## [Unreleased]
 
+---
+
+## [0.16.2] - 2026-11-26
+
 ### Security
 - **A built-in of the table of writers, handed as an argument to a function the walk did not
   create, wrote past a write policy.**
@@ -22,7 +26,8 @@ Versions 0.1.104–0.1.107 are on npm without entries here.
   refusing it means the call is not made. A function the walk made is not asked about for its
   arguments: its own calls are asked. A context without `checkMemberWrite` is unchanged. A table
   built-in that reaches native code by another route, such as an element of an array that
-  `reduce` walks, is still not asked about. [A64](../../docs/backlog.md#a64).
+  `reduce` walks, is still not asked about. No version before 0.16.2 asks about a table built-in
+  handed as an argument. [A64](../../docs/backlog.md#a64).
 
 ### Fixed
 - **Documentation: where a write policy is asked.** The JSDoc of `EvalContext.checkMemberWrite`

@@ -2,6 +2,8 @@
 
 An expression evaluator for Angular: JavaScript expression parsing and evaluation, built on [acorn](https://github.com/acornjs/acorn) and exposed as injectable services. An expression is evaluated against a context the host supplies, and resolves names only against that context. This file is the package's whole documentation.
 
+The [demo site](https://zvenigora.github.io/ng-eval/) runs examples from this README in the browser, each page with a link to the section it comes from.
+
 ## Install
 
 ```sh

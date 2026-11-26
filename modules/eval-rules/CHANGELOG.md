@@ -64,6 +64,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   arrow among the calculations, runs later against the facts alone: called after the run, its
   `calc`, `event` and declared functions name the facts' own ([E10](../../docs/backlog.md#e10)). A
   field whose value is an instance of `Promise` fails the run, the promise its error's `cause`.
-  The `eval-core` peer is `>=0.16.1 <0.17.0`: 0.16.1 checks a computed key as the name it converts
-  to, which the sentences above rely on ([A65](../../docs/backlog-retired.md#a65)).
+  The `eval-core` peer is `>=0.16.2 <0.17.0`: 0.16.1 checks a computed key as the name it converts
+  to ([A65](../../docs/backlog-retired.md#a65)), and 0.16.2 asks about a table built-in handed as
+  an argument ([A64](../../docs/backlog.md#a64)), which the sentences above rely on.
   Phase 12 step 4.

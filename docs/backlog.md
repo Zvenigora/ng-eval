@@ -1043,7 +1043,7 @@ point with no injectable. Whether either changes a `.d.ts` is measured then
 <a id="a64"></a>
 ## A64 — A write policy is asked only at an expression's own writes and its own calls of the table's built-ins
 
-**Package** core, signals, forms, rules · **Kind** fix · **Status** Open, not scheduled ([SR48](standing-rules.md#sr48)): the shipped text states where a policy is asked and that a write by any other route is not asked about, so the routes below are outside a documented guard, not past one. Its own track ended 2026-11-25 with the fix's commit (47f4634), which closes the first kind's direct-argument case. What reopens it: a route measured past a sentence the packages ship.
+**Package** core, signals, forms, rules · **Kind** fix · **Status** Open, not scheduled ([SR48](standing-rules.md#sr48)): the shipped text states where a policy is asked and that a write by any other route is not asked about, so the routes below are outside a documented guard, not past one. Its own track ended 2026-11-25 with the fix's commit (47f4634), which closes the first kind's direct-argument case, released in `eval-core` 0.16.2, pending publish. What reopens it: a route measured past a sentence the packages ship.
 
 A context's `checkMemberWrite` is asked at two places: before an assignment or update to a
 member, and before a call the expression itself makes, directly or through `call`, `apply` or
@@ -1216,7 +1216,7 @@ rows above now assert the refusal. Turning off the argument check turns 9 of the
   state neither outcome. An adapter release that raises its floor to `>=0.16.2` may state it as
   refused. The npm READMEs of `eval-signals` 0.9.0 and `eval-forms` 0.9.0 still carry the old
   sentence until each package's next release.
-- `eval-rules`' `eval-core` peer rises to `>=0.16.2` in `eval-core`'s release commit.
+- `eval-rules`' `eval-core` peer rose to `>=0.16.2` in `eval-core` 0.16.2's release commit.
 
 **Left from the eighth and ninth pins' reviews, for the next touch** (Minors; none measured
 false):
