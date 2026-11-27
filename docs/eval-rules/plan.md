@@ -1636,6 +1636,97 @@ witness finding 8 turn red. What it measured, and the readings it took:
 
 Reported: with the read hook on, a fact's getter read by bare name runs twice per read ([A68](../backlog.md#a68)).
 
+**The run**, step 5's timing commit (12.5e), 2026-11-26, 22:32:29–22:47:35 local (UTC−5); the
+pack is `ng-eval-12.5e.zip` (`m5e`), its harness in `bench/`, the run in `run.log` and
+`run.jsonl`, the dry run in `dry.log`. **Valid at the first run; the deciding arm is a cost, so
+the names read move under `debug`.**
+
+- **The harness**, as run:
+
+  ```text
+  node 26.4.0, plain Node against the production bundles (fesm2022), @angular/compiler imported first (finding 25)
+  child process = one bundle × one arm; children run one at a time (spawnSync); 7 timed + 2 memory per rotation
+  bundles: D = ca8adf2's eval-rules; D′ = a byte copy of D; F, G, H = D with one edit to evaluate-rule.ts each;
+    one eval-core bundle, ca8adf2's, beside each
+  F: the tracker created and installed only under debug; namesRead [] without it
+  G: createRuleContext(input.facts) cached in a module-level WeakMap keyed by the facts object
+  H: under debug, { maxTraceItems: 0 } in place of {}
+  rule: id 'm5e', calculations c0..c99, each a.b.c + <i>; facts { a: { b: { c: 1 } } }, one object per process
+  compileRule once per process; one evaluation = evaluateRule(rule, { facts }), status 'completed' checked
+  B: the same 100 texts, parse(text, { ...defaultParserOptions, allowAwaitOutsideFunction: true }) and
+    compile once per process; one evaluation = call(fn_i, EvalState.fromContext(facts)) for i = 0..99,
+    each on a state of its own, eval-core's default options
+  arms: D, D′, F, B, G with debug off; Dd = D and H with the rule's debug: true
+  loop: rotation 1..12 → arm (odd: D, D′, F, B, G, Dd, H; even: H, Dd, G, B, F, D′, D) → memory (odd: D, F; even: F, D)
+  one untimed evaluation, its calc hashed (SHA-256 of its JSON) and checked against D's; then warm-up 2 s, untimed
+  then 8 windows of 1 s, each timed by process.hrtime.bigint(); µs per evaluation per window
+  per process: the median of its 8 windows is the figure
+  pair, per rotation: control (D′ − D)/D; deciding (D − F)/F; reported (D − B)/B, (D − G)/G, (Dd − H)/H
+  per pair: median of the 12 deltas; positive = delta > 0
+  cost: median > +10% and ≥ 10 of 12 positive; void: the control meets the cost test, or |median| > 3%
+  memory, node --expose-gc: gc(); heapUsed; 1,000 evaluations kept in an array; gc(); heapUsed;
+    the figure (after − before)/1,000; the arm's figure the median of the 12 ratios D/F; cost: above 1.5
+  ```
+
+- **The machine.** A laptop, Intel Core i7-13700H, 14 cores and 20 threads, 31.7 GB. On mains
+  power (`Win32_Battery` status 2), the battery at 100%; Windows power plan Balanced. Node 26.4.0.
+  **The affinity mask was `0xFFF`**, logical processors 0 to 11: `bench/cpusets.ps1` reads
+  `GetSystemCpuSetInformation` (kernel32) and gave efficiency class 1 for logical 0 to 11 (six
+  cores, two threads each) and 0 for 12 to 19 (`cpusets.log`). The harness was started by
+  `cmd /c start /affinity FFF node bench/harness.mjs`, and every child inherited the mask. Each
+  process read its own mask back while it ran, the harness at its start and each child before its
+  warm-up, by `(Get-Process -Id <pid>).ProcessorAffinity` in a `pwsh` child, and stopped the run
+  on any other value: all 109 read 4095 (`0xFFF`). The Nx daemon was stopped before the run, and
+  no nx, Jest or build process ran during it. Two processes not started by this run were present:
+  the agent session's CodeGraph MCP servers, and an `npx serve` static server started at 21:49
+  local, which had used 0.53 CPU-s in total by the run's end. The control is within ±3%, so neither
+  voids the run. Absolute figures moved between the dry run and this one (D 205.8 µs, then 269.5 to
+  334.0 µs), so only the paired deltas within this run are compared.
+
+- **The bundles**, SHA-256 of each `fesm2022` file (`bundles.txt`), all built before the harness
+  started, under the git-ignored `dist/m5e-bench/`, deleted after. Each variant was one edit,
+  built with `npx nx build eval-rules --skip-nx-cache`, copied out, and reverted with
+  `git checkout --`, `git status` clean before the next (`bench/variants/*.patch`):
+
+  | Bundle | SHA-256 | Bytes |
+  | :--- | :--- | ---: |
+  | `eval-core`, every folder | `e37e53f3bd3ec7156e84830fc3558d52d4da0a124d7b200cfe61657dee76b252` | 362,193 |
+  | D and D′ | `80efa771c6f5e644dfa6b17421eb023f70e905ec14e8fe1d8644080670bec9d3` | 77,115 |
+  | F | `9c2bcb3de1d2209ed6bd040e72af637a619ec3e7ce6b9eac599cdd48b6be589a` | 77,167 |
+  | G | `8a4279fc4bad9249bb1d8f411d54b8fb3578eab04dd37013f9c8c9c66b4c9470` | 77,322 |
+  | H | `e14e6047db0e1f0b8fe3b844474d1116d83fc93080c7cc0ed631ce3bb3b2e8ee` | 77,133 |
+
+  D and D′ are equal; D, F, G and H differ pairwise; the `eval-core` bundle the later builds wrote
+  hashed equal to the first.
+
+- **The arms.** Deltas in %, rotations 1–12:
+
+  | Arm | Pair | Deltas | Median | Positive |
+  | :--- | :--- | :--- | ---: | ---: |
+  | control | (D′ − D)/D | 0.4, −6.0, 8.3, 10.4, 6.3, 15.9, −23.0, 0.7, −6.7, −9.5, −13.5, 5.9 | +0.55% | 7 / 12 |
+  | deciding: names read on every run against under `debug` | (D − F)/F | 179.2, 159.1, 170.6, 120.6, 154.6, 130.0, 215.4, 149.6, 139.1, 197.5, 138.0, 133.6 | +152.08% | 12 / 12 |
+  | reported: the rule against bare `call` | (D − B)/B | 116.5, 99.4, 92.5, 74.0, 88.6, 100.4, 148.6, 104.3, 86.0, 129.0, 109.5, 88.1 | +99.88% | 12 / 12 |
+  | reported: the context built per run against once | (D − G)/G | 5.9, −7.5, 4.0, 5.6, −7.5, −6.9, 3.3, 4.7, −4.9, 22.6, 17.2, 3.7 | +3.86% | 8 / 12 |
+  | reported: `debug` on, `maxTraceItems` default against `0` | (Dd − H)/H | 30.0, 43.2, 38.2, 17.0, 17.4, 27.4, 24.2, 33.8, 58.2, 30.4, 16.0, 25.5 | +28.70% | 12 / 12 |
+
+  Per-process medians, µs per evaluation of the 100 fields, rotations 1–12: D 321.8, 286.9,
+  323.3, 278.0, 291.0, 274.4, 269.5, 286.8, 307.3, 333.6, 314.8, 334.0; F 115.2, 110.7, 119.5,
+  126.0, 114.3, 119.3, 85.5, 114.9, 128.5, 112.1, 132.3, 143.0. The control's spread, −23.0% to
+  +15.9%, is wider than A45's; its median and its 7 of 12 meet the void rule as written. Every
+  arm's untimed `calc` equalled D's in every rotation, G's included, so the G arm ran. Each arm
+  reached its edit on its untimed run in every rotation (`run.jsonl`'s `shape`): the first
+  entry's `namesRead` was `[]` under F and `["a", "a.b", "a.b.c"]` under D; its `evalTrace` held
+  0 items under H and 7 under Dd.
+
+- **Memory.** Bytes retained per result, D 24,257.3 to 24,258.3 and F 20,142.2 to 20,143.8 over
+  the 12 rotations; the ratio D/F 1.2042 or 1.2043 in each, its median **1.204**, not a cost
+  (1.5).
+
+- **The decision**, by the rule: the deciding arm's +152.08% with 12 of 12 positive is a cost in
+  time, so **the names read move under `debug`** (§ 3.6). The change, `namesRead` under `debug`
+  with its type, its JSDoc and the CHANGELOG line (the second review's note), is the next
+  commit's. No figure is published in this commit.
+
 **Step 5's first commit's review** (no Critical, no Important); its minors, recorded, not fixed:
 - M-1: "wrote `1`, which shows no write" in the twelfth record reads as "nothing was written"; meant: a prototype check cannot see a write of `1`.
 - M-2: *The control*'s "the deciding bundle" is ambiguous, as the deciding arm has two bundles; name the one copied.
@@ -1665,6 +1756,18 @@ I-2, M-1, M-3 fixed by step 5's third commit; M-2 measured there (`ng-eval-12.5c
 - M-5: the README's ", and its trace" follows a list already closed, and its "its" is ambiguous.
 - M-6: A68's Kind "defect" is outside the register's vocabulary.
 - I-1 and M-1 to M-6 fixed by step 5's follow-up commit, 12.5d (`ng-eval-12.5d.zip`).
+- 12.5d's patch review: the I-2 describe's title still said the hook comes off after the entry; renamed by 12.5e.
+
+**Step 5's timing commit's review** (no Critical, no sentence shown false by the data; recorded, not fixed):
+- I-1 (SR47): the battery and power-plan readings, the `npx serve` process's start and 0.53 CPU-s, the stopped Nx daemon and the CodeGraph servers are in no file of `m5e`; they were read by hand.
+- I-2 (SR23): `shape` witnesses F's, H's and Dd's edits, not G's: G's untimed run is its process's first, a cache miss, and no field of `run.jsonl` shows a later hit; D′ and B have no edit.
+- I-3: B keeps `eval-core`'s default trace and builds a context per field, which D's fields with `debug` off do not, so +99.88% understates the rule's cost over bare `call`; reported, not deciding.
+- M-1: "its median and its 7 of 12 meet the void rule as written" reads as void; meant: they do not meet the void test.
+- M-2: the dry run's shape (1 rotation, 1 s warm-up, 1 s timed) is not stated, and its log's "decision" cannot fail on one rotation.
+- M-3: the dry run's lower D is better explained by its single first window (each arm's first window is 0.82–0.92 of its process median in `run.jsonl`) than by the machine moving.
+- M-4: the harness block's "one evaluation = evaluateRule(rule, { facts })" builds the input once per process, not per call.
+- M-5: F freezes a new `[]` per field; a fallback that omits `namesRead` without `debug` would make the deciding delta larger, not smaller.
+- M-6 (SR5): with the hook under `debug`, A68's reach changes, so the next commit updates its entry.
 
 ### Step 6 — The tests runner and the registry
 

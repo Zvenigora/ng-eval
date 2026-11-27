@@ -194,7 +194,7 @@ describe('the trace, § 3.6: one entry per field evaluated, in order', () => {
   });
 });
 
-describe("a field's read hook, removed once its entry is written (step 5's second commit's review, I-2)", () => {
+describe("a field's read hook, removed as its walk ends (step 5's second commit's review, I-2)", () => {
   it('reads a fact once per read when a function a field gave is called after the run', () => {
     // `ng-eval-12.5c.zip`'s `hook.log`: with the hook left on the field's state, each later call
     // of the arrow reaches its tracker, and `eval-core` reads a fact by bare name
