@@ -1634,6 +1634,8 @@ witness finding 8 turn red. What it measured, and the readings it took:
   published before SR22 holds. § 3.6 decides the names read alone: the trace is bound from
   0.1.0, so its cost against bare `call` is reported, not decided.
 
+Reported: with the read hook on, a fact's getter read by bare name runs twice per read ([A68](../backlog.md#a68)).
+
 **Step 5's first commit's review** (no Critical, no Important); its minors, recorded, not fixed:
 - M-1: "wrote `1`, which shows no write" in the twelfth record reads as "nothing was written"; meant: a prototype check cannot see a write of `1`.
 - M-2: *The control*'s "the deciding bundle" is ambiguous, as the deciding arm has two bundles; name the one copied.
@@ -1650,6 +1652,18 @@ M-1 to M-5 fixed by step 5's second commit; the decision rule amended there, bef
 - M-2: under the read hook, a bare name's read of a fact calls its getter or a `Proxy`'s `get` twice, `getKey` resolving it again; outside `eval-core`'s contract (A49), for step 7's README and § 3.6's decision.
 - M-3: a `'matched'` path is counted from the step list, on `compileRule`'s invariant that an accepted rule compiles every decision and case in order; a path on the compiled step would not need it.
 - Notes: `evalTrace` publishes `eval-core`'s `EvalTraceItem` in this package's types; if § 3.6's decision moves the names read under `debug`, the timing commit changes `namesRead`'s type, its JSDoc and the CHANGELOG line.
+
+I-2, M-1, M-3 fixed by step 5's third commit; M-2 measured there (`ng-eval-12.5c.zip`'s `getter.log`).
+
+**Step 5's third commit's review** (it stopped on C-1, a sentence rows of `rule-trace.spec.ts` show false; one fix, the gate again, no second review):
+- C-1, fixed: `namesRead`'s "each prefix of a member path" and "a name the facts do not hold" read as universal, false for `list.map` (a method hop) and `customer["tier"]`, which the arrow-parameter and computed-member rows pin; rewritten in `rule-trace.ts` and the CHANGELOG as the two measured examples, the exclusion sentence kept.
+- I-1, recorded, not fixed: no row pins `at`'s "from the run's start"; an `at` on the absolute clock passes every row, and a row bounding `at` by the run's own elapsed time would go red.
+- M-1: `off()` runs after the unwind and the entry; first in the `finally` it would come off whatever follows.
+- M-2: the compiled `decide` step's `path` is read nowhere and no row sees it.
+- M-3: A68's entry does not say that its fix must replace the I-2 row's witness, which counts A68's second getter call.
+- M-4: the spec names the pack `m5c`, the plan and A68 `ng-eval-12.5c.zip` (SR47).
+- M-5: the README's ", and its trace" follows a list already closed, and its "its" is ambiguous.
+- M-6: A68's Kind "defect" is outside the register's vocabulary.
 
 ### Step 6 — The tests runner and the registry
 

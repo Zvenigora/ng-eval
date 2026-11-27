@@ -130,6 +130,82 @@ describe('the trace, § 3.6: one entry per field evaluated, in order', () => {
     expect(entry.value).toBe(promise);
     expect('error' in entry).toBe(false);
   });
+
+  // Step 5's second commit's review, M-1: two sentences no row turned red.
+  it("measures each at from the run's start to the field's start", () => {
+    // `wait` returns only once 20 ms have passed on the clock `at` reads, so the
+    // second field starts at least 20 ms after the first: an `at` read when a
+    // field ends, or from a clock of each field's own, gives less.
+    const wait = (): number => {
+      const end = performance.now() + 20;
+      let spins = 0;
+      while (performance.now() < end) {
+        spins += 1;
+      }
+      return spins;
+    };
+    const rule = compiled(
+      { id: 'r', calculations: [{ name: 'a', value: 'wait()' }, { name: 'b', value: '1' }] },
+      { functions: ['wait'] }
+    );
+    const result = evaluateRule(rule, { facts: {}, functions: { wait } });
+    expect(result.status).toBe('completed');
+    const [first, second] = result.trace.entries as Extract<RuleTraceEntry, { kind: 'field' }>[];
+    expect(typeof first.at).toBe('number');
+    expect(typeof second.at).toBe('number');
+    expect(second.at - first.at).toBeGreaterThanOrEqual(20);
+  });
+
+  it("gives a decision that matches no case its cases' if entries and no 'matched' entry", () => {
+    const rule = compiled({
+      id: 'r',
+      decisions: [
+        {
+          name: 'tier',
+          strict: false,
+          cases: [
+            { if: 'total > 100', value: 'gold' },
+            { if: 'total > 10', value: 'silver' },
+          ],
+        },
+      ],
+    });
+    const result = evaluateRule(rule, { facts: { total: 1 } });
+    expect(result.status).toBe('completed');
+    expect(result.labels).toEqual({});
+    expect(result.trace.entries).toStrictEqual([
+      field('decisions[0].cases[0].if', false, ['total']),
+      field('decisions[0].cases[1].if', false, ['total']),
+    ]);
+  });
+});
+
+describe("a field's read hook, removed once its entry is written (step 5's second commit's review, I-2)", () => {
+  it('reads a fact once per read when a function a field gave is called after the run', () => {
+    // m5c's hook.log: with the hook left on the field's state, each later call
+    // of the arrow reaches its tracker, and `eval-core` reads a fact by bare name
+    // twice under a read hook (A68), so the getter counts 2 per call. If A68 is
+    // fixed, the count is 1 either way and this row stops telling them apart
+    // (SR26): the barrel mock of hook.log is the witness that does not need it.
+    let reads = 0;
+    const facts = {};
+    Object.defineProperty(facts, 'fact', {
+      enumerable: true,
+      get: () => {
+        reads += 1;
+        return 2;
+      },
+    });
+    const rule = compiled({ id: 'r', calculations: [{ name: 'f', value: 'x => x + fact' }] });
+    const result = evaluateRule(rule, { facts });
+    expect(result.status).toBe('completed');
+    expect(reads).toBe(0);
+    const f = result.calc['f'] as (x: number) => number;
+    expect(f(1)).toBe(3);
+    expect(reads).toBe(1);
+    expect(f(2)).toBe(4);
+    expect(reads).toBe(2);
+  });
 });
 
 describe('the names read, § 3.6 as finding 19 has them', () => {
@@ -172,8 +248,10 @@ describe('the names read, § 3.6 as finding 19 has them', () => {
     expect(byPath.get('outputs[0].items[0]')?.namesRead).toStrictEqual([]);
   });
 
-  // Step 5's second commit's review, I-1: each leg of the sentence's other
-  // clauses, measured by m5b's namesread.log. Each test builds its own rule.
+  // Step 5's second commit's review, I-1: the legs m5b's namesread.log
+  // measured. Step 5's third commit cut the sentence to the contract, which
+  // states none of these but `event`; they stay pinned as behaviour. Each test
+  // builds its own rule.
   it('holds a computed member\'s object only, and a function the facts hold, read by its name', () => {
     const computed = evaluateRule(compiled({ id: 'r', calculations: [{ name: 'x', value: 'customer["tier"]' }] }), {
       facts: { customer: { tier: 'g' } },

@@ -24,16 +24,12 @@ export interface RuleTrace {
  *
  * - `'field'`: a field the run evaluated. `value` is what it gave, and is
  *   absent when it threw; `error` is what it threw, and is absent when it gave
- *   a value. `namesRead` is what `eval-core`'s dependency tracker reported for
- *   the field's own walk, in the order it first read each name: each prefix of
- *   a member path, so `customer.address.city` gives `customer`,
- *   `customer.address` and `customer.address.city`; for a computed member, its
- *   object only; a name the facts do not hold; and a function the facts hold,
- *   read by its name. It leaves out each name the run binds, `calc`, `event`,
- *   a declared function and an effect, and each name the field binds, such as
- *   an arrow's parameter, with every path rooted at one, even where a fact has
- *   that name; and what a function an earlier field gave reads when this field
- *   calls it, which is that earlier walk's. `at` is the time from the run's start to the
+ *   a value. `namesRead` is what `eval-core`'s dependency tracker reports for
+ *   the field's own walk, in the order the field first read each name: for
+ *   `customer.address.city` read from the facts, `customer`,
+ *   `customer.address` and `customer.address.city`; for `missing + 1` over
+ *   facts that do not hold `missing`, `missing`. It holds no name the run
+ *   binds: `calc`, `event`, a declared function or an effect. `at` is the time from the run's start to the
  *   field's start, in milliseconds, by `performance.now()`. Under the rule's
  *   `debug`, and only then, `evalTrace` is `eval-core`'s trace of the field,
  *   its items as `eval-core` recorded them, and `evalTraceTruncated` whether

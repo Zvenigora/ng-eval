@@ -75,12 +75,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `'matched'`, documented as open, and its `path` names a field as `compileRule` names it, such as
   `calculations[0].value` or `decisions[0].cases[1].if`. A `'field'` entry is a field the run
   evaluated: its `value`, absent when it threw, or its `error`; its `namesRead`, what `eval-core`'s
-  dependency tracker reported for the field's own walk, in the order the field first read each:
-  each prefix of a member path, a computed member's object only, a name the facts do not hold,
-  and a function the facts hold, read by its name; it leaves out each name the run binds, `calc`,
-  `event`, a declared function and an effect, and each name the field binds, such as an arrow's
-  parameter, with every path rooted at one, even where a fact has that name, and what a function
-  an earlier field gave reads when a later field calls it; its `at`, the milliseconds from the run's start to the
+  dependency tracker reports for the field's own walk, in first-read order, such as `customer`,
+  `customer.address` and `customer.address.city` for `customer.address.city` read from the facts,
+  and `missing` for `missing + 1` over facts that do not hold it, and no name the run binds,
+  `calc`, `event`, a declared function or an effect; its `at`, the milliseconds from the run's start to the
   field's start, by `performance.now()`; and, under the rule's `debug` only, `evalTrace`,
   `eval-core`'s trace of the field, and `evalTraceTruncated`, whether `eval-core` stopped it at its
   first 10,000 values. A `'skipped'` entry names the `value` of a calculation whose `when` was

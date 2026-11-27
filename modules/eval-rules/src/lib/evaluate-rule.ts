@@ -193,16 +193,18 @@ class Run {
    * Its trace entry (§ 3.6) is written in the `finally`, so a field that
    * throws has one too: one clock read for `at`, and one dependency tracker on
    * the field's state, installed before the walk, for the names it read
-   * (finding 19). `eval-core`'s trace is copied, not frozen in place: a
-   * function the field gave re-enters the walk on this state when it is called
-   * later, and pushes to that array.
+   * (finding 19), and removed once the entry has its names: a function the
+   * field gave re-enters the walk on this state when it is called later, and
+   * would otherwise keep the hook and its tracker reading. `eval-core`'s trace
+   * is copied, not frozen in place, for the same reason: that later walk
+   * pushes to that array.
    */
   field(expression: CompiledExpression): unknown {
     const at = performance.now() - this.start;
     const debug = this.internals.debug;
     const state = EvalState.fromContext(this.context, debug ? {} : { maxTraceItems: 0 });
     const tracker = createDependencyTracker();
-    tracker.install(state.hooks);
+    const off = tracker.install(state.hooks);
     let value: unknown;
     let outcome: { readonly value: unknown } | { readonly error: unknown } | undefined;
     try {
@@ -230,6 +232,7 @@ class Run {
             : {}),
         })
       );
+      off();
     }
     // By identity, not depth alone: a host function that pops and pushes
     // leaves the depth as it was and the rule's scope gone. `asArray` lists
@@ -250,14 +253,10 @@ class Run {
   }
 
   /**
-   * § 3.5 lines 6 to 8: the step list, in order. A rule `compileRule` accepted
-   * has one `decide` step per decision and every case of each, in the rule's
-   * order, since a case it could not compile is a problem: so the decisions
-   * counted here, and a case's index among its step's, are the rule's own, and
-   * name a `'matched'` entry's path (§ 3.6).
+   * § 3.5 lines 6 to 8: the step list, in order. A `'matched'` entry's path
+   * (§ 3.6) is the case's own, which `compileRule` gave it.
    */
   steps(): void {
-    let decision = 0;
     for (const step of this.internals.steps) {
       switch (step.kind) {
         case 'assign':
@@ -268,12 +267,9 @@ class Run {
           }
           break;
         case 'decide': {
-          const path = `decisions[${decision}]`;
-          decision += 1;
-          const index = step.cases.findIndex((each) => each.if === undefined || !!this.field(each.if));
-          const matched = index < 0 ? undefined : step.cases[index];
+          const matched = step.cases.find((each) => each.if === undefined || !!this.field(each.if));
           if (matched !== undefined) {
-            this.entries.push(Object.freeze({ kind: 'matched' as const, path: `${path}.cases[${index}]` }));
+            this.entries.push(Object.freeze({ kind: 'matched' as const, path: matched.path }));
             this.labels[step.name] = matched.label;
           } else if (step.strict) {
             throw new RuleRunError(`The decision ${step.name} matched no case, and it is strict.`);

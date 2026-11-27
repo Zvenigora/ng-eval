@@ -151,8 +151,11 @@ export type CompiledStep =
   | {
       readonly kind: 'decide';
       readonly name: string;
+      /** The decision's path, `decisions[0]`, as the problems name it. */
+      readonly path: string;
       readonly strict: boolean;
-      readonly cases: readonly { readonly if?: CompiledExpression; readonly label: RuleLabel }[];
+      /** Each case compiled, with its own path, `decisions[0].cases[1]`, which a `'matched'` entry names. */
+      readonly cases: readonly { readonly path: string; readonly if?: CompiledExpression; readonly label: RuleLabel }[];
     }
   | {
       readonly kind: 'emit';
@@ -653,7 +656,7 @@ class RuleCompiler {
       cases = rawCases;
     }
 
-    const compiled: { if?: CompiledExpression; label: RuleLabel }[] = [];
+    const compiled: { path: string; if?: CompiledExpression; label: RuleLabel }[] = [];
     const labels: RuleLabel[] = [];
     let fallback: string | undefined;
     cases.forEach((entryCase, index) => {
@@ -691,7 +694,7 @@ class RuleCompiler {
       } else {
         labels.push(label);
         if (condition === undefined || compiledIf !== undefined) {
-          compiled.push({ ...(compiledIf ? { if: compiledIf } : {}), label });
+          compiled.push({ path: casePath, ...(compiledIf ? { if: compiledIf } : {}), label });
         }
       }
     });
@@ -703,6 +706,7 @@ class RuleCompiler {
     return {
       kind: 'decide',
       name,
+      path,
       strict: typeof strictValue === 'boolean' ? strictValue : ruleStrict,
       cases: compiled,
     };
