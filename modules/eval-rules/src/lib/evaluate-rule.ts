@@ -42,8 +42,11 @@ interface CheckedInput {
   readonly functions: Readonly<Record<string, unknown>>;
 }
 
-/** The compiled form behind a handle, or a `TypeError` for any other value (N3, step 3's review). */
-const internalsOf = (rule: unknown, caller: string): CompiledRuleInternals => {
+/**
+ * The compiled form behind a handle, or a `TypeError` for any other value (N3,
+ * step 3's review). Exported to `rule-test.ts`, not from the barrel.
+ */
+export const internalsOf = (rule: unknown, caller: string): CompiledRuleInternals => {
   const internals =
     typeof rule === 'object' && rule !== null ? compiledRuleInternals(rule as CompiledRule) : undefined;
   if (internals === undefined) {

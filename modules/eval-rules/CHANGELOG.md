@@ -88,3 +88,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Each entry and array is frozen, and a value is by reference, as an effect's arguments are. A
   trace is a value a host reads and does not build, so a later release can add an optional member
   or a kind. Phase 12 step 5.
+- **The tests runner: `runRuleTest`.** `runRuleTest(rule, test, functions?)` runs a
+  `RuleTest`, `{ ruleId, given, expect }`, through `evaluateRule`, with `functions` as its
+  input's, and returns a frozen `RuleTestResult`: `passed`, the run's `result`, and, when the
+  test did not pass, the first `difference`, `{ path, message, expected?, actual? }`. A run
+  that failed fails the test; `skipped` is whether the filter skipped the run; `calc` and
+  `labels` are compared at the names the test lists, and `effects` as the whole list. An array
+  is compared with an array by its length and items, a non-null non-array object with another
+  by its own enumerable string keys and their values, and anything else by `===`: a value's
+  prototype and class are not compared, and a name it inherits is not one of its keys. It
+  throws for a rule `compileRule` did not return; for a test whose `ruleId` is not the rule's
+  `id`; for a test, a `given` or an `expect` that is `null`, an array or not an object, holds
+  an own key it does not define, a symbol or a non-enumerable one included, or inherits a
+  field; and for an `expect` whose `calc` or `labels` is not such an object, whose `effects`
+  is not an array or whose `skipped` is not a boolean, an `undefined` field being absent. It
+  checks nothing those fields hold, and leaves `given` to `evaluateRule`, which checks no
+  input of an inactive rule. What `evaluateRule` throws, and what a value of the result throws
+  as it is compared, passes through; a comparison nested deeper than the stack allows throws a
+  `RangeError` ([A69](../../docs/backlog.md#a69)). Phase 12 step 6.

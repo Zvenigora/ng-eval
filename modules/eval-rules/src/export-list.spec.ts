@@ -475,8 +475,7 @@ describe('every @zvenigora import resolves against its own specifier (F11, eval-
 
 /**
  * The exports `modules/eval-rules/README.md` names in no code span, each
- * with its reason (`docs/backlog.md` F10). None: the README names every
- * export.
+ * with its reason (`docs/backlog.md` F10).
  */
 // `RuleTrace` is a member of the `RuleResult` that `evaluateRule` returns, and
 // `RuleTraceEntry` an element of it. The README documents both in the Phase 12

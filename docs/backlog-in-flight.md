@@ -23,6 +23,9 @@ fixed no entry, and opened one: [A67](backlog.md#a67), a write of a name on `eva
 routed through `onError` like a runtime failure, so `'undefined'` renders a blank, not scheduled.
 Step 5's third commit opened [A68](backlog.md#a68), from its second commit's review: a
 fact's getter read by bare name runs twice under a read hook, not scheduled.
+Step 6's second commit, 12.6b, opened [A69](backlog.md#a69), from its review: `runRuleTest`'s
+comparison recurses once per level of nesting, so a deep or cyclic pair throws a `RangeError`, not
+scheduled.
 Step 1 fixed no entry and opened four,
 each not scheduled ([SR48](standing-rules.md#sr48)): [A62](backlog.md#a62), evaluation time and
 memory not bounded; [A63](backlog.md#a63), no package loading in plain Node as installed;

@@ -234,6 +234,7 @@ and `v0.2.3`: lightweight tags from before the `<project>@<version>` names, whic
 | [A66](#a66) | `eval-core` 0.16.1's CHANGELOG leaves out two consequences of its key conversion: an object literal's computed key that is not a string or number now creates the property, where 0.16.0 dropped it; and a read hook and a write policy receive the converted key, where they received the array | core | docs | Open — opened 2026-11-22 by 0.16.1's post-publish commit, from 188c0d9's code review; for `eval-core`'s next release |
 | [A67](#a67) | A write of a name on `eval-core`'s blocklist of dangerous names is refused with `eval-core`'s own `Error` before the context is asked, for a bare name and for a member key on an object or array, so `eval-signals`' and `eval-forms`' write bypass, which matches `SignalContextWriteError` by class, routes it through `onError` like a runtime failure: under `'undefined'`, `eval-forms`' default, `o.constructor = 1` renders a blank. Nothing is written | core, signals, forms | fix | Open — not scheduled ([SR48](standing-rules.md#sr48)): a refused write, nothing written, and the READMEs say so. Opened 2026-11-25 by [A64](#a64)'s first commit, from its sweep |
 | [A68](#a68) | With a read hook installed, a fact's getter read by bare name runs twice per read: `fact + 1` calls it twice and `fact + fact` four times, against once and twice without the hook; a member read, `obj.fact + 1`, calls it once either way | core | fix | Open, not scheduled ([SR48](standing-rules.md#sr48)). Opened 2026-11-26 by the [Phase 12 plan](eval-rules/plan.md)'s step 5, from its second commit's review (M-2) |
+| [A69](#a69) | `runRuleTest`'s comparison recurses once per level of nesting the expectation and the result share, so a deep enough pair, or a cyclic expectation against a cyclic value, throws a `RangeError` | rules | fix | Open, not scheduled ([SR48](standing-rules.md#sr48)); the maintainer decides before the Phase 12 plan's step 9 whether 0.1.0 ships with it. Opened 2026-11-27 by the [Phase 12 plan](eval-rules/plan.md)'s step 6, from 12.6b's review (I-2) |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -1367,6 +1368,24 @@ A fix leaves two rows of `eval-rules`' `rule-trace.spec.ts` without their witnes
 counts the second call: the row on a field's read hook removed after the run (step 5's second
 commit's review, I-2), and the row on a fact's getter with the rule's `debug` off (step 5's fifth
 commit's review, I-2), which counts 4 under a read hook and 2 without. The fix gives each another.
+
+<a id="a69"></a>
+## A69 — `runRuleTest`'s comparison recurses once per level of nesting
+
+**Package** rules · **Kind** fix · **Status** Open, not scheduled ([SR48](standing-rules.md#sr48)); the maintainer decides before the [Phase 12 plan](eval-rules/plan.md)'s step 9 whether 0.1.0 ships with it. Opened 2026-11-27 by its step 6, from 12.6b's review (I-2)
+
+`runRuleTest`'s comparison (`rule-test.ts`, `compareValues` and `compareNames`) recurses once per
+level of nesting the expectation and the result share, so a deep enough pair, or a cyclic
+expectation against a cyclic value, throws a `RangeError` from inside the comparison, after
+`evaluateRule` has returned. The README, the CHANGELOG and the JSDoc state it as "a comparison
+nested deeper than the stack allows throws a `RangeError`". 12.6b's reviewer measured the threshold
+near 2,000 levels on one host, a JSON-parsed expectation against a host fact of the same depth on
+the built bundle: that is its measurement, not this register's, and not a bound.
+
+Verified by the row of `eval-rules`' `rule-test.spec.ts` that compares a fact holding itself with
+an expectation holding itself under the same key, and expects a `RangeError`; 12.6b's probe P30,
+a `compareValues` that catches the `RangeError` and gives no difference, turns it red. The
+candidate fix is a fixed depth bound with its own error, which flips that row.
 
 ---
 

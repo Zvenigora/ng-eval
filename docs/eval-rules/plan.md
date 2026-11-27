@@ -985,7 +985,7 @@ also lists `docs/backlog-history.md`, whose *Unreleased* row moves with it, and
 | — | [A64](../backlog.md#a64) code fix — done (47f4634) | Separate track (ended 2026-11-25) | `eval-core` 0.16.2 |
 | — | `eval-core` 0.16.2 patch release — published 2026-11-26 | Separate release before step 5 | `eval-core` 0.16.2 |
 | 5 | The trace, and the cost of building it | `rule-trace.ts`, its spec, `performance.spec.ts`, `evaluate-rule.ts`, `rule-result.ts`, `CHANGELOG.md` | `eval-rules` 0.1.0 |
-| 6 | The tests runner and the registry | `rule-test.ts`, `rule-registry.ts`, their specs, the barrel and its specs, `CHANGELOG.md` | `eval-rules` 0.1.0 |
+| 6 | The tests runner and the registry | `rule-test.ts`, `rule-registry.ts`, their specs, the barrel and its specs, `CHANGELOG.md`, the README's `## What it exports`, `evaluate-rule.ts` (12.6b) | `eval-rules` 0.1.0 |
 | 7 | The README | `modules/eval-rules/README.md`, `readme-examples.spec.ts`, `CHANGELOG.md`, `tools/published-links.txt` | `eval-rules` 0.1.0 |
 | 8 | The demo pages | Under `apps/demo/src/app/`: `features/rules/` (new, three examples and their specs), `use-cases/` (one example and its spec), `registry.ts`, `app.ts`, `app.spec.ts`, `footer.ts`, `footer.spec.ts`; `apps/demo/project.json`; the root `eslint.config.mjs` | No package: the demo ships in none |
 | 9 | The release commit | `modules/eval-rules/package.json`, `CHANGELOG.md` and `README.md` (the demo link), `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root `README.md` and `CHANGELOG.md`, `docs/release-history.md`, `CLAUDE.md` | The release, `eval-rules` 0.1.0 |
@@ -1790,7 +1790,9 @@ I-1, I-2, M-1, M-3, M-4 and M-6 fixed by step 6's first commit (12.6a); M-2, M-5
 ### Step 6 — The tests runner and the registry
 
 **Files**: `src/lib/rule-test.ts`, `src/lib/rule-registry.ts`, their specs, the barrel and its
-specs, `CHANGELOG.md`.
+specs, `CHANGELOG.md`, and the README's `## What it exports`; 12.6b adds `evaluate-rule.ts`,
+whose `internalsOf` it exports to `rule-test.ts`, and, for A69, `docs/backlog.md`,
+`docs/backlog-history.md` and `docs/backlog-in-flight.md`.
 
 A registry is constructed with its compile options and holds one set. What a compile gives
 depends on them, so a registry that took options per call and keyed by id and text would hand a
@@ -1842,8 +1844,61 @@ third argument, by name, as `evaluateRule`'s input does (§ 8 q22).
   of the design's word (its node status "skipped by filter"), confirmed by the maintainer before
   this commit.
 
+**12.6b's decisions**, where the shapes leave a reading open (P-1 where marked):
+- The checks run in this order, each a `TypeError` naming `runRuleTest`: 1, the rule, by
+  `internalsOf`'s check and message, `evaluate-rule.ts` exporting it to `rule-test.ts` and not
+  from the barrel; 2, the test, then its `given`, then its `expect`, each a non-null non-array
+  object whose every own key, by `Reflect.ownKeys`, is one its shape defines, and which inherits
+  none of them, `functions` in `given` saying to pass them as the third argument; 3, `expect`'s
+  fields by type alone, `calc` and `labels` objects, `effects` an array, `skipped` a boolean, their
+  contents not checked; 4, a `ruleId` that is not the rule's `id`, the message naming both. Then
+  `evaluateRule`, whose throws pass through.
+- Each field is read once, as an own property, and the value read is the one used; an own field
+  whose value is `undefined` is absent (P-1: it is neither checked nor compared).
+- A path names a key that matches `/^[A-Za-z_$][A-Za-z0-9_$]*$/` as `.key`, and any other as
+  `[` its `JSON.stringify` `]`; an index as `[i]`.
+- `effects`, and any array a value holds, is walked index by index up to the longer side's
+  length: an index one side lacks is a difference with that side absent, and an index both hold
+  is compared deep. A non-array object is compared at the expectation's own enumerable string
+  keys, in its order, then at the result's others, whose `expected` is absent; at the top level,
+  `calc` and `labels` stop after the expectation's names.
+- The comparison is by own enumerable string keys: a value's prototype and class are not
+  compared, and a name it inherits is not one of its keys, so a `Date`, a `Map` or a class
+  instance is compared by those keys alone. This narrows the shapes' "as JSON data", which the
+  shipped sentences do not use.
+- `'inactive'` is compared like any status other than `'failed'`: an empty expectation passes, and
+  a listed calculation fails with its `actual` absent.
+- A value of the result is read as it is compared, so a host getter runs then, and what it throws
+  passes through `runRuleTest`.
+
 Commits: 12.6a, step 5's fifth commit's review and these shapes; 12.6b, `rule-test.ts`; 12.6c,
 `rule-registry.ts`.
+
+**12.6b's record** (`ng-eval-12.6b.zip`, the pack `m6b`): `rule-test.ts`, `runRuleTest` and the
+types `RuleTest`, `RuleTestResult` and `RuleTestDifference`, exported from the barrel;
+`internalsOf` exported from `evaluate-rule.ts` to `rule-test.ts` only. `rule-test.spec.ts` adds
+44 rows, T1 to T44 in `m6b`'s `predictions.txt`: `eval-rules` 506 → 550, the other four
+unchanged. Thirty probes, P1 to P30 (`probes.py`, pinned as `P1.patch` to `P30.patch` in
+`probes.sha256`), each applied alone against the whole `eval-rules` suite on the final tree; each
+turned red exactly the rows its prediction names, and every row is red under at least one
+(`probe-table.txt`).
+
+**12.6b's review** (one review, then one fix round, the two-round rule):
+- C-1, fixed by rewording: the README's and the CHANGELOG's throw sentences said `runRuleTest`
+  throws for any shape `RuleTest` does not describe and for any field of the wrong type; measured,
+  an inactive rule's test with `given: {}` or `given: { facts: 5 }` passes, and `labels`' and
+  `effects`' contents give a difference, not a throw. Both now list what is checked, and say that
+  `given` is left to `evaluateRule`, which checks no input of an inactive rule.
+- I-1, fixed by rewording: "values as JSON data" and "`actual` is absent where the result holds no
+  such name" claimed more than the comparison does (a `Date` against another `Date`, `{}` against
+  a `Map`, an inherited `message`); the CHANGELOG and the JSDoc now state the rule by own
+  enumerable string keys, prototype and class not compared.
+- I-2, recorded as [A69](../backlog.md#a69), no code change: the comparison recurses once per
+  level, so a deep or cyclic pair throws a `RangeError`; stated in the README, the CHANGELOG and the
+  JSDoc, and witnessed by the cyclic row, which P30 turns red.
+- M-1, fixed: `internalsOf`'s missing space after `=`.
+- M-2, recorded, not fixed: `expect.calc` or `expect.labels` as a `Map`, a `Date` or a class
+  instance passes the object check and compares nothing; only a JavaScript caller reaches it.
 
 **Exit criteria**
 - A test of a rule that calls a declared function passes with the implementation given as the

@@ -39,6 +39,18 @@ function a field gives, such as an arrow among the calculations, runs later agai
 facts alone: called after the run, its `calc`, `event` and declared functions name the facts' own
 ([E10](https://github.com/zvenigora/ng-eval/blob/master/docs/backlog.md#e10)).
 
+`runRuleTest(rule, test, functions?)` runs a `RuleTest`, `{ ruleId, given, expect }`, through
+`evaluateRule`, with `functions` as the input's, and returns a `RuleTestResult`: whether the test
+passed, the run's `RuleResult`, and the first difference, a `RuleTestDifference`, when it did not.
+It throws for a rule `compileRule` did not return; for a test of another rule; for a test, a
+`given` or an `expect` that is `null`, an array or not an object, holds an own key `RuleTest` does
+not define, a symbol or a non-enumerable one included, or inherits a field; and for an `expect`
+whose `calc` or `labels` is not such an object, whose `effects` is not an array or whose `skipped`
+is not a boolean, an `undefined` field being absent. It checks nothing those fields hold, and
+leaves `given` to `evaluateRule`, which checks no input of an inactive rule. What `evaluateRule`
+throws, and what a value of the result throws as it is compared, passes through; a comparison
+nested deeper than the stack allows throws a `RangeError`.
+
 ## Problem codes
 
 For a rule JSON can write, `compileRule` does not throw for the rule's problems: it returns every
