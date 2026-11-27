@@ -225,9 +225,9 @@ class Run {
           path: expression.path,
           ...outcome,
           at,
-          ...(debug
+          ...(tracker
             ? {
-                namesRead: Object.freeze(tracker ? [...tracker.dependencies] : []),
+                namesRead: Object.freeze([...tracker.dependencies]),
                 evalTrace: Object.freeze(Array.from(state.result.trace)),
                 evalTraceTruncated: state.result.traceTruncated,
               }

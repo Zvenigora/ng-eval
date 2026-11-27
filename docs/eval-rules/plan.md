@@ -893,7 +893,8 @@ so a compiled rule carries it and `evaluateRule` takes none.
 ### 3.6 The trace
 
 A tree: the rule, then one entry per field evaluated, in order, each with its path, its value or
-error, and, with `debug` on the rule (step 5's decision, below), the names it read. A skipped calculation records "when was false". A decision records
+error, and, with `debug` on the rule (step 5's decision, below), the names it read. A skipped
+calculation records "when was false". A decision records
 which case matched. With `debug` on the rule, an entry also carries `eval-core`'s own trace for
 that field, and whether `eval-core` truncated it at its bound (finding 23). Timings come from one
 clock read per field.
@@ -902,7 +903,8 @@ clock read per field.
 contract `rule-trace.ts` states. The entry's field is named for what it holds, not `facts`.
 
 Kept on every run, the names read needed a read hook on every walk, so every node of every field
-dispatched hooks, `debug` on or off. Step 5 measures that cost against a decision rule written before the run. **If the rule
+dispatched hooks, `debug` on or off. Step 5 measures that cost against a decision rule written
+before the run. **If the rule
 fails, the names read move under `debug`**, and that is decided in step 5, before the shape is
 published: `RuleTraceEntry` is bound from 0.1.0. **Decided in step 5** (12.5e's run): the rule
 failed, so the names read, and their read hook, are under `debug`; step 5's fifth commit moved
@@ -1783,6 +1785,8 @@ M-6 fixed by step 5's fifth commit; I-1, I-2, I-3 and the other Minors recorded,
 - M-6: `rule.ts`'s `debug` JSDoc, "Expression-level detail in the trace", does not name `namesRead` or the read hook it now also governs.
 - M-7: under `debug`, `namesRead` follows `at` in the entry's key order.
 
+I-1, I-2, M-1, M-3, M-4 and M-6 fixed by step 6's first commit (12.6a); M-2, M-5 and M-7 recorded, not fixed.
+
 ### Step 6 — The tests runner and the registry
 
 **Files**: `src/lib/rule-test.ts`, `src/lib/rule-registry.ts`, their specs, the barrel and its
@@ -1796,6 +1800,50 @@ rule compiled with statements on to a caller who asked for them off. That is
 A test is stored apart from its rule and holds the inputs and the expectations, and no function;
 a rule may call a declared one (§ 8 q6). So `runRuleTest` takes the host's implementations as a
 third argument, by name, as `evaluateRule`'s input does (§ 8 q22).
+
+**The shapes**, written by step 6's first commit (12.6a), before the code; bound from 0.1.0
+([SR12](../standing-rules.md#sr12)):
+
+- `RuleTest` is the design's `{ ruleId, given, expect }`
+  ([§ 2.7](design-session.md#27-trace-logger-debugger-tests-cache)): `ruleId`, the `id` of the
+  rule it tests; `given`, `{ facts, event? }`, the input `evaluateRule` takes without its
+  functions; `expect`, `{ calc?, labels?, effects?, skipped? }`. Any other own
+  key of the test, of `given` or of `expect` throws, as `RuleInput`'s do: a misspelt expectation
+  would otherwise pass.
+- `runRuleTest(compiled, test, functions?)` throws when `test.ruleId` is not `compiled.id`, gives
+  `functions` to `evaluateRule` as its input's, and lets what `evaluateRule` throws through. It
+  returns a `RuleTestResult`: `passed`, the run's `result`, and, when `passed` is `false`, the
+  first `difference`.
+- A difference is `{ path, message, expected?, actual? }`. `path` names where, such as
+  `calc.total`, `labels.tier`, `effects[1].args[0]`, `skipped` or `status`; `message` is for a
+  person. `actual` is absent where the result holds no such name or index, `expected` where the
+  result holds one the expectation does not, and at `status`.
+- Compared in this order, the first difference ending the test: a run whose status is `'failed'`
+  fails it at `status`; `skipped`, a boolean, against whether the status is `'skipped'`; `calc`
+  and `labels`, each name the expectation lists, in its order, and no other; `effects`, the whole
+  list, its length and each `{ name, args }` in order. Values are compared as JSON data: an array
+  equals an array of the same length whose items are equal; an object equals a non-array object
+  with the same own enumerable string keys whose values are equal, the expectation's keys first;
+  any other value by `===`.
+- `RuleRegistry` is constructed with `{ compile?, maxEntries? }`: `compile`, a
+  `CompileRuleOptions` checked as `compileRule` checks it and copied, so a later change to the
+  caller's object changes no compile; `maxEntries`, an integer from 1, default 500. Any other key
+  throws.
+- `registry.compile(text, version?)` takes the rule's JSON text and a `version` string, and
+  returns what `compileRule(JSON.parse(text), compile)` returns; text that is not JSON throws
+  `JSON.parse`'s error. Entries are keyed by the rule's `id`. With `version`, an entry stored
+  under the same `version` is reused and the text is not compared, the caller's promise; without
+  it, an entry stored without one from the same text is reused. A reuse returns the stored result
+  object and makes the entry the most recently used. Any other request compiles: a result with no
+  problem replaces the id's entry, the least recently used evicted past `maxEntries`; a result
+  with problems is not stored, and removes the id's entry.
+- `registry.invalidate(id)` removes the id's entry, if it has one.
+- `skipped` is whether the filter skipped the run, not a list of skipped calculations: a reading
+  of the design's word (its node status "skipped by filter"), confirmed by the maintainer before
+  this commit.
+
+Commits: 12.6a, step 5's fifth commit's review and these shapes; 12.6b, `rule-test.ts`; 12.6c,
+`rule-registry.ts`.
 
 **Exit criteria**
 - A test of a rule that calls a declared function passes with the implementation given as the

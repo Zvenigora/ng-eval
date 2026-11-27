@@ -36,7 +36,7 @@ const field = (path: string, value: unknown, namesRead?: readonly string[]): Rul
   at: expect.any(Number) as number,
   ...(namesRead === undefined
     ? {}
-    : { namesRead, evalTrace: expect.any(Array) as readonly never[],evalTraceTruncated: false }),
+    : { namesRead, evalTrace: expect.any(Array) as readonly never[], evalTraceTruncated: false }),
 });
 
 describe('the trace, § 3.6: one entry per field evaluated, in order', () => {
@@ -127,6 +127,36 @@ describe('the trace, § 3.6: one entry per field evaluated, in order', () => {
     ]);
     expect((result.trace.entries[1] as { error?: unknown }).error).toBe(thrown);
     expect('value' in result.trace.entries[1]).toBe(false);
+  });
+
+  it("keeps, under debug, the names read and eval-core's trace on the entry of the field that threw", () => {
+    // The row above runs with debug off; this one has it (step 5's fifth
+    // commit's review, I-1): an entry that built these only from a value fails it.
+    const thrown = new Error('the host threw');
+    const rule = compiled(
+      { id: 'r', debug: true, calculations: [{ name: 'b', value: 'base + boom()' }] },
+      { functions: ['boom'] }
+    );
+    const result = evaluateRule(rule, {
+      facts: { base: 1 },
+      functions: {
+        boom: () => {
+          throw thrown;
+        },
+      },
+    });
+    expect(result.status).toBe('failed');
+    expect(result.trace.entries).toStrictEqual([
+      {
+        kind: 'field',
+        path: 'calculations[0].value',
+        error: thrown,
+        at: expect.any(Number),
+        namesRead: ['base'],
+        evalTrace: expect.any(Array),
+        evalTraceTruncated: false,
+      },
+    ]);
   });
 
   it('gives the Promise a field gave as its value, by identity, in a run it fails', () => {

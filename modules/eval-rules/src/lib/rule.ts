@@ -31,7 +31,11 @@ export interface Rule {
    * decisions. An effect item is one call whatever this is.
    */
   readonly statements?: boolean;
-  /** Expression-level detail in the trace. Default `false`. */
+  /**
+   * Expression-level detail in the trace: with it, each `'field'` entry also
+   * holds `namesRead`, `evalTrace` and `evalTraceTruncated`; without it, none
+   * does. Default `false`.
+   */
   readonly debug?: boolean;
   readonly triggers?: readonly RuleTrigger[];
   readonly filter?: RuleFilter;

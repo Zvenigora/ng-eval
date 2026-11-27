@@ -1355,7 +1355,7 @@ read through bare `call` on an `EvalState` built from it with `maxTraceItems` 0,
 read hook and once with `createDependencyTracker().install(state.hooks)`; and the same field
 through `eval-rules`' `evaluateRule`, which at `a6f0b27` installed a tracker on every field's
 state; from step 5's fifth commit it installs one only under the rule's `debug`, so a rule without
-it calls the getter once.
+it calls the getter once per read.
 
 | Field | Getter calls, hook off | Hook on | `evaluateRule` |
 | :--- | ---: | ---: | ---: |
@@ -1363,9 +1363,10 @@ it calls the getter once.
 | `fact + fact` | 2 | 4 | 4 |
 | `obj.fact + 1`, the getter on `obj` | 1 | 1 | 1 |
 
-A fix leaves `eval-rules`' row on a field's read hook removed after the run
-(`rule-trace.spec.ts`, step 5's second commit's review, I-2) without its witness, since
-that row counts the second call: the fix gives it another.
+A fix leaves two rows of `eval-rules`' `rule-trace.spec.ts` without their witness, since each
+counts the second call: the row on a field's read hook removed after the run (step 5's second
+commit's review, I-2), and the row on a fact's getter with the rule's `debug` off (step 5's fifth
+commit's review, I-2), which counts 4 under a read hook and 2 without. The fix gives each another.
 
 ---
 
