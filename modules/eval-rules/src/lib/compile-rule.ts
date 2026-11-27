@@ -151,8 +151,6 @@ export type CompiledStep =
   | {
       readonly kind: 'decide';
       readonly name: string;
-      /** The decision's path, `decisions[0]`, as the problems name it. */
-      readonly path: string;
       readonly strict: boolean;
       /** Each case compiled, with its own path, `decisions[0].cases[1]`, which a `'matched'` entry names. */
       readonly cases: readonly { readonly path: string; readonly if?: CompiledExpression; readonly label: RuleLabel }[];
@@ -706,7 +704,6 @@ class RuleCompiler {
     return {
       kind: 'decide',
       name,
-      path,
       strict: typeof strictValue === 'boolean' ? strictValue : ruleStrict,
       cases: compiled,
     };

@@ -233,7 +233,7 @@ and `v0.2.3`: lightweight tags from before the `<project>@<version>` names, whic
 | [A65](backlog-retired.md#a65) | A computed member key that is not a string, number or symbol passed the dangerous-name blocklist unconverted and was converted at the access: `o[["constructor"]]` read `Object`. Up to 0.12.0 a route to code execution, and from 0.12.1 to writes into `Object.prototype` | core | fix, security | **Retired — fixed 2026-11-21**; released 2026-11-22 in `eval-core` 0.16.1, tagged 188c0d9. Opened and retired by its post-publish commit |
 | [A66](#a66) | `eval-core` 0.16.1's CHANGELOG leaves out two consequences of its key conversion: an object literal's computed key that is not a string or number now creates the property, where 0.16.0 dropped it; and a read hook and a write policy receive the converted key, where they received the array | core | docs | Open — opened 2026-11-22 by 0.16.1's post-publish commit, from 188c0d9's code review; for `eval-core`'s next release |
 | [A67](#a67) | A write of a name on `eval-core`'s blocklist of dangerous names is refused with `eval-core`'s own `Error` before the context is asked, for a bare name and for a member key on an object or array, so `eval-signals`' and `eval-forms`' write bypass, which matches `SignalContextWriteError` by class, routes it through `onError` like a runtime failure: under `'undefined'`, `eval-forms`' default, `o.constructor = 1` renders a blank. Nothing is written | core, signals, forms | fix | Open — not scheduled ([SR48](standing-rules.md#sr48)): a refused write, nothing written, and the READMEs say so. Opened 2026-11-25 by [A64](#a64)'s first commit, from its sweep |
-| [A68](#a68) | With a read hook installed, a fact's getter read by bare name runs twice per read: `fact + 1` calls it twice and `fact + fact` four times, against once and twice without the hook; a member read, `obj.fact + 1`, calls it once either way | core | defect | Open, not scheduled ([SR48](standing-rules.md#sr48)). Opened 2026-11-26 by the [Phase 12 plan](eval-rules/plan.md)'s step 5, from its second commit's review (M-2) |
+| [A68](#a68) | With a read hook installed, a fact's getter read by bare name runs twice per read: `fact + 1` calls it twice and `fact + fact` four times, against once and twice without the hook; a member read, `obj.fact + 1`, calls it once either way | core | fix | Open, not scheduled ([SR48](standing-rules.md#sr48)). Opened 2026-11-26 by the [Phase 12 plan](eval-rules/plan.md)'s step 5, from its second commit's review (M-2) |
 | [B1](backlog-retired.md#b1) | The `!isPrimitive` carve-out in `member-expression.ts` | core | decision → fix | **Retired — fixed 2026-10-02**; released 2026-10-03 in `eval-core` 0.9.0, tagged eb403c0. A primitive receiver is refused `constructor`, `__proto__`, `prototype` and the four accessor definers; `toString` and its five kin stay readable |
 | [B2](backlog-retired.md#b2) | `pattern.ts:83` logs the whole `EvalState` | core | fix | **Retired — fixed**, Phase 2 step 0; released in `eval-core` 0.4.0 |
 | [B3](backlog-retired.md#b3) | Two service-layer `console.*` calls reach the published bundle | core | decision | **Retired — fixed 2026-09-29**; released 2026-09-30 in `eval-core` 0.6.1, tagged 587ebf1. The last one, `parser.service.ts`'s cache-timer `console.debug`, deleted: none in the bundle, eleven in source, all `memory-manager.ts` |
@@ -1348,7 +1348,7 @@ minor for `eval-signals` and `eval-forms`, and their rows above flip.
 <a id="a68"></a>
 ## A68 — With a read hook installed, a fact's getter read by bare name runs twice per read
 
-**Package** core · **Kind** defect · **Status** Open, not scheduled ([SR48](standing-rules.md#sr48)). Opened 2026-11-26 by the [Phase 12 plan](eval-rules/plan.md)'s step 5, from its second commit's review (M-2)
+**Package** core · **Kind** fix · **Status** Open, not scheduled ([SR48](standing-rules.md#sr48)). Opened 2026-11-26 by the [Phase 12 plan](eval-rules/plan.md)'s step 5, from its second commit's review (M-2)
 
 Measured at `a6f0b27` (`ng-eval-12.5c.zip`'s `getter.log`): a counting getter on a plain object,
 read through bare `call` on an `EvalState` built from it with `maxTraceItems` 0, once without a
@@ -1360,6 +1360,10 @@ through `eval-rules`' `evaluateRule`, which installs a tracker on every field's 
 | `fact + 1` | 1 | 2 | 2 |
 | `fact + fact` | 2 | 4 | 4 |
 | `obj.fact + 1`, the getter on `obj` | 1 | 1 | 1 |
+
+A fix leaves `eval-rules`' row on a field's read hook removed after the run
+(`rule-trace.spec.ts`, step 5's second commit's review, I-2) without its witness, since
+that row counts the second call: the fix gives it another.
 
 ---
 

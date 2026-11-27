@@ -5,7 +5,8 @@ import type { RuleTraceEntry } from './rule-trace';
 // The Phase 12 plan's step 5, its first three exit criteria: the trace § 3.6
 // describes, at `evaluateRule`, the entry point a caller uses (SR40). Each test
 // builds its own rule and facts (SR43). A timing differs between two runs, so
-// `at` is asserted as a number and nothing more.
+// `at` is asserted only by bounds no run misses: a number, a gap of at least a wait
+// between two fields, and at most the run's own time.
 
 const compiled = (rule: unknown, options?: CompileRuleOptions): CompiledRule => {
   const result = compileRule(rule, options);
@@ -156,6 +157,19 @@ describe('the trace, § 3.6: one entry per field evaluated, in order', () => {
     expect(second.at - first.at).toBeGreaterThanOrEqual(20);
   });
 
+  it("measures at from the run's start, not from the clock's origin", () => {
+    // `before` is the time since this Jest process's clock began; an `at` read
+    // on that clock alone is at least it, and one from the run's start is at
+    // most the run's own time.
+    const rule = compiled({ id: 'r', calculations: [{ name: 'a', value: '1' }] });
+    const before = performance.now();
+    const result = evaluateRule(rule, { facts: {} });
+    const after = performance.now();
+    expect(result.status).toBe('completed');
+    const [first] = result.trace.entries as Extract<RuleTraceEntry, { kind: 'field' }>[];
+    expect(first.at).toBeLessThanOrEqual(after - before);
+  });
+
   it("gives a decision that matches no case its cases' if entries and no 'matched' entry", () => {
     const rule = compiled({
       id: 'r',
@@ -182,7 +196,7 @@ describe('the trace, § 3.6: one entry per field evaluated, in order', () => {
 
 describe("a field's read hook, removed once its entry is written (step 5's second commit's review, I-2)", () => {
   it('reads a fact once per read when a function a field gave is called after the run', () => {
-    // m5c's hook.log: with the hook left on the field's state, each later call
+    // `ng-eval-12.5c.zip`'s `hook.log`: with the hook left on the field's state, each later call
     // of the arrow reaches its tracker, and `eval-core` reads a fact by bare name
     // twice under a read hook (A68), so the getter counts 2 per call. If A68 is
     // fixed, the count is 1 either way and this row stops telling them apart

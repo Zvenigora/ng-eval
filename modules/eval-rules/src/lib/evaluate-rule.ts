@@ -193,7 +193,7 @@ class Run {
    * Its trace entry (§ 3.6) is written in the `finally`, so a field that
    * throws has one too: one clock read for `at`, and one dependency tracker on
    * the field's state, installed before the walk, for the names it read
-   * (finding 19), and removed once the entry has its names: a function the
+   * (finding 19), and removed as the walk ends, before the entry: a function the
    * field gave re-enters the walk on this state when it is called later, and
    * would otherwise keep the hook and its tracker reading. `eval-core`'s trace
    * is copied, not frozen in place, for the same reason: that later walk
@@ -214,6 +214,7 @@ class Run {
       outcome = { error: thrown };
       throw thrown;
     } finally {
+      off();
       while (this.context.scopes.length > this.fieldDepth) {
         this.context.pop();
       }
@@ -232,7 +233,6 @@ class Run {
             : {}),
         })
       );
-      off();
     }
     // By identity, not depth alone: a host function that pops and pushes
     // leaves the depth as it was and the rule's scope gone. `asArray` lists

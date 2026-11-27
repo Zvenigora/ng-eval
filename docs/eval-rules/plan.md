@@ -1664,6 +1664,7 @@ I-2, M-1, M-3 fixed by step 5's third commit; M-2 measured there (`ng-eval-12.5c
 - M-4: the spec names the pack `m5c`, the plan and A68 `ng-eval-12.5c.zip` (SR47).
 - M-5: the README's ", and its trace" follows a list already closed, and its "its" is ambiguous.
 - M-6: A68's Kind "defect" is outside the register's vocabulary.
+- I-1 and M-1 to M-6 fixed by step 5's follow-up commit, 12.5d (`ng-eval-12.5d.zip`).
 
 ### Step 6 — The tests runner and the registry
 

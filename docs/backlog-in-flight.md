@@ -21,6 +21,8 @@ scheduled. A64's first commit, 2026-11-25, corrected the published packages' sen
 `eval-core` 0.16.1 about where a write policy is asked and which error a refused write throws,
 fixed no entry, and opened one: [A67](backlog.md#a67), a write of a name on `eval-core`'s blocklist
 routed through `onError` like a runtime failure, so `'undefined'` renders a blank, not scheduled.
+Step 5's third commit opened [A68](backlog.md#a68), from its second commit's review: a
+fact's getter read by bare name runs twice under a read hook, not scheduled.
 Step 1 fixed no entry and opened four,
 each not scheduled ([SR48](standing-rules.md#sr48)): [A62](backlog.md#a62), evaluation time and
 memory not bounded; [A63](backlog.md#a63), no package loading in plain Node as installed;

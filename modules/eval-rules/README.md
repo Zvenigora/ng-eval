@@ -24,8 +24,9 @@ import { compileRule, defineRule } from '@zvenigora/ng-eval-rules';
 ```
 
 `evaluateRule(rule, input)` runs a compiled rule against a `RuleInput` of `facts`, `event` and
-`functions`, and returns a `RuleResult`: a `RuleStatus`, the calculations and labels, and a
-`RuleEffect` for each effect the rule called, which it records and does not perform, and its trace. A run that
+`functions`, and returns a `RuleResult`: a `RuleStatus`, the calculations and labels, a
+`RuleEffect` for each effect the rule called, which it records and does not perform, and the
+run's trace. A run that
 fails keeps no effect. `evaluateInit` runs a rule's `onInit` items the same way. For an active
 rule, either throws, before any field runs, for an input that is `null`, an array or not an
 object, an own key of the input that `RuleInput` does not name, a symbol or a non-enumerable one
