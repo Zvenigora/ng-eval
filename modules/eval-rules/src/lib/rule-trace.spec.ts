@@ -24,12 +24,19 @@ const fields = (entries: readonly RuleTraceEntry[]): Map<string, Extract<RuleTra
     entries.flatMap((entry) => (entry.kind === 'field' ? [[entry.path, entry] as const] : []))
   );
 
-const field = (path: string, value: unknown, namesRead: readonly string[]): RuleTraceEntry => ({
+/**
+ * A field entry. With `namesRead`, the entry a rule with `debug` gives, its
+ * `evalTrace` and an `evalTraceTruncated` of `false` beside it; without, the
+ * entry of a rule with `debug` off (step 5's timing, 12.5e).
+ */
+const field = (path: string, value: unknown, namesRead?: readonly string[]): RuleTraceEntry => ({
   kind: 'field',
   path,
   value,
-  namesRead,
   at: expect.any(Number) as number,
+  ...(namesRead === undefined
+    ? {}
+    : { namesRead, evalTrace: expect.any(Array) as readonly never[],evalTraceTruncated: false }),
 });
 
 describe('the trace, § 3.6: one entry per field evaluated, in order', () => {
@@ -37,6 +44,7 @@ describe('the trace, § 3.6: one entry per field evaluated, in order', () => {
     const rule = compiled(
       {
         id: 'trace-fixture',
+        debug: true,
         filter: { when: 'order.total > 0' },
         calculations: [
           { name: 'big', when: 'order.total > 1000', value: '"yes"' },
@@ -78,7 +86,7 @@ describe('the trace, § 3.6: one entry per field evaluated, in order', () => {
     expect(Object.isFrozen(result.trace.entries)).toBe(true);
     for (const entry of result.trace.entries) {
       expect(Object.isFrozen(entry)).toBe(true);
-      if (entry.kind === 'field') {
+      if (entry.kind === 'field' && entry.namesRead !== undefined) {
         expect(Object.isFrozen(entry.namesRead)).toBe(true);
       }
     }
@@ -114,8 +122,8 @@ describe('the trace, § 3.6: one entry per field evaluated, in order', () => {
     });
     expect(result.status).toBe('failed');
     expect(result.trace.entries).toStrictEqual([
-      field('calculations[0].value', 2, ['base']),
-      { kind: 'field', path: 'calculations[1].value', error: thrown, namesRead: [], at: expect.any(Number) },
+      field('calculations[0].value', 2),
+      { kind: 'field', path: 'calculations[1].value', error: thrown, at: expect.any(Number) },
     ]);
     expect((result.trace.entries[1] as { error?: unknown }).error).toBe(thrown);
     expect('value' in result.trace.entries[1]).toBe(false);
@@ -188,8 +196,8 @@ describe('the trace, § 3.6: one entry per field evaluated, in order', () => {
     expect(result.status).toBe('completed');
     expect(result.labels).toEqual({});
     expect(result.trace.entries).toStrictEqual([
-      field('decisions[0].cases[0].if', false, ['total']),
-      field('decisions[0].cases[1].if', false, ['total']),
+      field('decisions[0].cases[0].if', false),
+      field('decisions[0].cases[1].if', false),
     ]);
   });
 });
@@ -201,6 +209,8 @@ describe("a field's read hook, removed as its walk ends (step 5's second commit'
     // twice under a read hook (A68), so the getter counts 2 per call. If A68 is
     // fixed, the count is 1 either way and this row stops telling them apart
     // (SR26): the barrel mock of hook.log is the witness that does not need it.
+    // The hook exists only under the rule's `debug` (step 5's timing, 12.5e), so
+    // the rule has it: without it there is no hook to leave on.
     let reads = 0;
     const facts = {};
     Object.defineProperty(facts, 'fact', {
@@ -210,7 +220,7 @@ describe("a field's read hook, removed as its walk ends (step 5's second commit'
         return 2;
       },
     });
-    const rule = compiled({ id: 'r', calculations: [{ name: 'f', value: 'x => x + fact' }] });
+    const rule = compiled({ id: 'r', debug: true, calculations: [{ name: 'f', value: 'x => x + fact' }] });
     const result = evaluateRule(rule, { facts });
     expect(result.status).toBe('completed');
     expect(reads).toBe(0);
@@ -222,10 +232,16 @@ describe("a field's read hook, removed as its walk ends (step 5's second commit'
   });
 });
 
-describe('the names read, § 3.6 as finding 19 has them', () => {
+describe("the names read, § 3.6 as finding 19 has them, under the rule's debug", () => {
+  // Each rule has `debug`: without it a field entry has no `namesRead` (step 5's
+  // timing, 12.5e), which the describe after this one pins.
   it('holds each prefix of a member path, in the order the field first read each', () => {
     // `tier` is read first and sorts last: the order is the reads', not the names'.
-    const rule = compiled({ id: 'r', calculations: [{ name: 'x', value: 'tier + customer.address.city' }] });
+    const rule = compiled({
+      id: 'r',
+      debug: true,
+      calculations: [{ name: 'x', value: 'tier + customer.address.city' }],
+    });
     const result = evaluateRule(rule, { facts: { customer: { address: { city: 'Oslo' } }, tier: 'gold' } });
     expect(fields(result.trace.entries).get('calculations[0].value')?.namesRead).toStrictEqual([
       'tier',
@@ -236,7 +252,7 @@ describe('the names read, § 3.6 as finding 19 has them', () => {
   });
 
   it('holds a name the facts do not hold, which reads undefined', () => {
-    const rule = compiled({ id: 'r', calculations: [{ name: 'x', value: 'missing + 1' }] });
+    const rule = compiled({ id: 'r', debug: true, calculations: [{ name: 'x', value: 'missing + 1' }] });
     const result = evaluateRule(rule, { facts: { other: 1 } });
     expect(result.calc['x']).toBeNaN();
     expect(fields(result.trace.entries).get('calculations[0].value')?.namesRead).toStrictEqual(['missing']);
@@ -246,6 +262,7 @@ describe('the names read, § 3.6 as finding 19 has them', () => {
     const rule = compiled(
       {
         id: 'r',
+        debug: true,
         calculations: [
           { name: 'a', value: '2' },
           { name: 'b', value: 'twice(calc.a) + fact' },
@@ -267,26 +284,28 @@ describe('the names read, § 3.6 as finding 19 has them', () => {
   // states none of these but `event`; they stay pinned as behaviour. Each test
   // builds its own rule.
   it('holds a computed member\'s object only, and a function the facts hold, read by its name', () => {
-    const computed = evaluateRule(compiled({ id: 'r', calculations: [{ name: 'x', value: 'customer["tier"]' }] }), {
-      facts: { customer: { tier: 'g' } },
-    });
+    const computed = evaluateRule(
+      compiled({ id: 'r', debug: true, calculations: [{ name: 'x', value: 'customer["tier"]' }] }),
+      { facts: { customer: { tier: 'g' } } }
+    );
     expect(fields(computed.trace.entries).get('calculations[0].value')?.namesRead).toStrictEqual(['customer']);
-    const called = evaluateRule(compiled({ id: 'r', calculations: [{ name: 'x', value: 'fmt(tier)' }] }), {
-      facts: { fmt: (t: string) => `<${t}>`, tier: 'g' },
-    });
+    const called = evaluateRule(
+      compiled({ id: 'r', debug: true, calculations: [{ name: 'x', value: 'fmt(tier)' }] }),
+      { facts: { fmt: (t: string) => `<${t}>`, tier: 'g' } }
+    );
     expect(called.calc['x']).toBe('<g>');
     expect(fields(called.trace.entries).get('calculations[0].value')?.namesRead).toStrictEqual(['tier', 'fmt']);
   });
 
   it('leaves out event, and a fact named as an arrow parameter the field binds', () => {
-    const event = evaluateRule(compiled({ id: 'r', calculations: [{ name: 'x', value: 'event.kind' }] }), {
+    const event = evaluateRule(compiled({ id: 'r', debug: true, calculations: [{ name: 'x', value: 'event.kind' }] }), {
       facts: {},
       event: { kind: 'k' },
     });
     expect(event.calc['x']).toBe('k');
     expect(fields(event.trace.entries).get('calculations[0].value')?.namesRead).toStrictEqual([]);
     const shadowed = evaluateRule(
-      compiled({ id: 'r', calculations: [{ name: 'x', value: 'list.map(tier => tier)[0] + tier' }] }),
+      compiled({ id: 'r', debug: true, calculations: [{ name: 'x', value: 'list.map(tier => tier)[0] + tier' }] }),
       { facts: { list: [1], tier: 'g' } }
     );
     expect(shadowed.calc['x']).toBe('1g');
@@ -296,6 +315,7 @@ describe('the names read, § 3.6 as finding 19 has them', () => {
   it('leaves out what a function an earlier field gave reads when a later field calls it', () => {
     const rule = compiled({
       id: 'r',
+      debug: true,
       calculations: [
         { name: 'f', value: 'x => x + fact' },
         { name: 'y', value: 'calc.f(1)' },
@@ -306,6 +326,54 @@ describe('the names read, § 3.6 as finding 19 has them', () => {
     const byPath = fields(result.trace.entries);
     expect(byPath.get('calculations[0].value')?.namesRead).toStrictEqual([]);
     expect(byPath.get('calculations[1].value')?.namesRead).toStrictEqual([]);
+  });
+});
+
+describe("with the rule's debug off: no names read and no read hook (step 5's timing, 12.5e)", () => {
+  it("gives no 'field' entry a namesRead", () => {
+    // Every kind of field, each reading a fact, so a tracker on every run
+    // would give each a name to report.
+    const rule = compiled(
+      {
+        id: 'r',
+        filter: { when: 'order.total > 0' },
+        calculations: [{ name: 'total', value: 'order.total * 2' }],
+        decisions: [{ name: 'tier', cases: [{ if: 'customer.vip', value: 'vip' }] }],
+        outputs: [{ on: { decision: 'tier', is: 'vip' }, items: ['setValue("tier", order.total)'] }],
+      },
+      EFFECTS
+    );
+    const result = evaluateRule(rule, { facts: { order: { total: 60 }, customer: { vip: true } } });
+    expect(result.status).toBe('completed');
+    const entries = result.trace.entries.filter((entry) => entry.kind === 'field');
+    expect(entries.map((entry) => entry.path)).toStrictEqual([
+      'filter.when',
+      'calculations[0].value',
+      'decisions[0].cases[0].if',
+      'outputs[0].items[0]',
+    ]);
+    for (const entry of entries) {
+      expect(Object.prototype.hasOwnProperty.call(entry, 'namesRead')).toBe(false);
+    }
+  });
+
+  it("calls a fact's getter read by bare name once per read", () => {
+    // No read hook on the field's state, so `eval-core` does not resolve the
+    // name a second time (A68): two reads, two calls. Under a read hook the
+    // count is 4.
+    let reads = 0;
+    const facts = {};
+    Object.defineProperty(facts, 'fact', {
+      enumerable: true,
+      get: () => {
+        reads += 1;
+        return 2;
+      },
+    });
+    const rule = compiled({ id: 'r', calculations: [{ name: 'x', value: 'fact + fact' }] });
+    const result = evaluateRule(rule, { facts });
+    expect(result.calc['x']).toBe(4);
+    expect(reads).toBe(2);
   });
 });
 

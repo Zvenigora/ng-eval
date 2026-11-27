@@ -24,16 +24,17 @@ export interface RuleTrace {
  *
  * - `'field'`: a field the run evaluated. `value` is what it gave, and is
  *   absent when it threw; `error` is what it threw, and is absent when it gave
- *   a value. `namesRead` is what `eval-core`'s dependency tracker reports for
- *   the field's own walk, in the order the field first read each name: for
+ *   a value. `at` is the time from the run's start to the field's start, in
+ *   milliseconds, by `performance.now()`. Under the rule's `debug`, and only
+ *   then: `namesRead`, what `eval-core`'s dependency tracker reports for the
+ *   field's own walk, in the order the field first read each name (for
  *   `customer.address.city` read from the facts, `customer`,
  *   `customer.address` and `customer.address.city`; for `missing + 1` over
- *   facts that do not hold `missing`, `missing`. It holds no name the run
- *   binds: `calc`, `event`, a declared function or an effect. `at` is the time from the run's start to the
- *   field's start, in milliseconds, by `performance.now()`. Under the rule's
- *   `debug`, and only then, `evalTrace` is `eval-core`'s trace of the field,
- *   its items as `eval-core` recorded them, and `evalTraceTruncated` whether
- *   `eval-core` stopped it at its bound, its first 10,000 values.
+ *   facts that do not hold `missing`, `missing`), holding no name the run
+ *   binds: `calc`, `event`, a declared function or an effect; `evalTrace`,
+ *   `eval-core`'s trace of the field, its items as `eval-core` recorded them;
+ *   and `evalTraceTruncated`, whether `eval-core` stopped it at its bound, its
+ *   first 10,000 values.
  * - `'skipped'`: a calculation whose `when` was falsy, so that its `value` did
  *   not run. `path` is that `value`'s, `calculations[0].value`, and the entry
  *   follows the `when`'s own.
@@ -51,7 +52,7 @@ export type RuleTraceEntry =
       readonly path: string;
       readonly value?: unknown;
       readonly error?: unknown;
-      readonly namesRead: readonly string[];
+      readonly namesRead?: readonly string[];
       readonly at: number;
       readonly evalTrace?: readonly EvalTraceItem[];
       readonly evalTraceTruncated?: boolean;

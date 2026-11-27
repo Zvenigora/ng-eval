@@ -74,16 +74,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   the entry of the field that threw included. An entry's `kind` is `'field'`, `'skipped'` or
   `'matched'`, documented as open, and its `path` names a field as `compileRule` names it, such as
   `calculations[0].value` or `decisions[0].cases[1].if`. A `'field'` entry is a field the run
-  evaluated: its `value`, absent when it threw, or its `error`; its `namesRead`, what `eval-core`'s
-  dependency tracker reports for the field's own walk, in first-read order, such as `customer`,
-  `customer.address` and `customer.address.city` for `customer.address.city` read from the facts,
-  and `missing` for `missing + 1` over facts that do not hold it, and no name the run binds,
-  `calc`, `event`, a declared function or an effect; its `at`, the milliseconds from the run's start to the
-  field's start, by `performance.now()`; and, under the rule's `debug` only, `evalTrace`,
-  `eval-core`'s trace of the field, and `evalTraceTruncated`, whether `eval-core` stopped it at its
-  first 10,000 values. A `'skipped'` entry names the `value` of a calculation whose `when` was
-  falsy, after the `when`'s entry; a `'matched'` entry names the case a decision matched, after its
-  `if`'s entry, or alone for a case with no `if`, and a decision that matches no case has none.
+  evaluated: its `value`, absent when it threw, or its `error`; its `at`, the milliseconds from the
+  run's start to the field's start, by `performance.now()`; and, under the rule's `debug` only, its
+  `namesRead`, what `eval-core`'s dependency tracker reports for the field's own walk, in
+  first-read order, such as `customer`, `customer.address` and `customer.address.city` for
+  `customer.address.city` read from the facts, and `missing` for `missing + 1` over facts that do
+  not hold it, and no name the run binds, `calc`, `event`, a declared function or an effect;
+  `evalTrace`, `eval-core`'s trace of the field; and `evalTraceTruncated`, whether `eval-core`
+  stopped it at its first 10,000 values. A `'skipped'` entry names the `value` of a calculation
+  whose `when` was falsy, after the `when`'s entry; a `'matched'` entry names the case a decision
+  matched, after its `if`'s entry, or alone for a case with no `if`, and a decision that matches no
+  case has none.
   Each entry and array is frozen, and a value is by reference, as an effect's arguments are. A
   trace is a value a host reads and does not build, so a later release can add an optional member
   or a kind. Phase 12 step 5.

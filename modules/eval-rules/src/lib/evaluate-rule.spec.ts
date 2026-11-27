@@ -1052,10 +1052,10 @@ describe('evaluateRule, § 3.5 line 9: a run that completes', () => {
       trace: {
         rule: 'r',
         entries: [
-          { kind: 'field', path: 'calculations[0].value', value: 12, namesRead: ['price'], at: expect.any(Number) },
-          { kind: 'field', path: 'decisions[0].cases[0].if', value: true, namesRead: [], at: expect.any(Number) },
+          { kind: 'field', path: 'calculations[0].value', value: 12, at: expect.any(Number) },
+          { kind: 'field', path: 'decisions[0].cases[0].if', value: true, at: expect.any(Number) },
           { kind: 'matched', path: 'decisions[0].cases[0]' },
-          { kind: 'field', path: 'outputs[0].items[0]', value: undefined, namesRead: [], at: expect.any(Number) },
+          { kind: 'field', path: 'outputs[0].items[0]', value: undefined, at: expect.any(Number) },
         ],
       },
     });
@@ -1189,8 +1189,8 @@ describe('evaluateInit', () => {
       trace: {
         rule: 'r',
         entries: [
-          { kind: 'field', path: 'onInit[0]', value: undefined, namesRead: [], at: expect.any(Number) },
-          { kind: 'field', path: 'onInit[1]', value: undefined, namesRead: [], at: expect.any(Number) },
+          { kind: 'field', path: 'onInit[0]', value: undefined, at: expect.any(Number) },
+          { kind: 'field', path: 'onInit[1]', value: undefined, at: expect.any(Number) },
         ],
       },
     });

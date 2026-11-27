@@ -893,19 +893,20 @@ so a compiled rule carries it and `evaluateRule` takes none.
 ### 3.6 The trace
 
 A tree: the rule, then one entry per field evaluated, in order, each with its path, its value or
-error, and the names it read. A skipped calculation records "when was false". A decision records
+error, and, with `debug` on the rule (step 5's decision, below), the names it read. A skipped calculation records "when was false". A decision records
 which case matched. With `debug` on the rule, an entry also carries `eval-core`'s own trace for
 that field, and whether `eval-core` truncated it at its bound (finding 23). Timings come from one
 clock read per field.
 
-"The names it read" is `createDependencyTracker`'s set, and the README describes it as
-finding 19 does: each prefix of a member path, an unknown name too, and no `calc` name, function
-or effect. The entry's field is named for what it holds, not `facts`.
+"The names it read" is `createDependencyTracker`'s set, and the README describes it by the
+contract `rule-trace.ts` states. The entry's field is named for what it holds, not `facts`.
 
-It needs a read hook on every walk, so every node of every field dispatches hooks, `debug` on or
-off. Step 5 measures that cost against a decision rule written before the run. **If the rule
+Kept on every run, the names read needed a read hook on every walk, so every node of every field
+dispatched hooks, `debug` on or off. Step 5 measures that cost against a decision rule written before the run. **If the rule
 fails, the names read move under `debug`**, and that is decided in step 5, before the shape is
-published: `RuleTraceEntry` is bound from 0.1.0.
+published: `RuleTraceEntry` is bound from 0.1.0. **Decided in step 5** (12.5e's run): the rule
+failed, so the names read, and their read hook, are under `debug`; step 5's fifth commit moved
+them.
 
 ### 3.7 The package
 
@@ -1768,6 +1769,19 @@ I-2, M-1, M-3 fixed by step 5's third commit; M-2 measured there (`ng-eval-12.5c
 - M-4: the harness block's "one evaluation = evaluateRule(rule, { facts })" builds the input once per process, not per call.
 - M-5: F freezes a new `[]` per field; a fallback that omits `namesRead` without `debug` would make the deciding delta larger, not smaller.
 - M-6 (SR5): with the hook under `debug`, A68's reach changes, so the next commit updates its entry.
+
+M-6 fixed by step 5's fifth commit; I-1, I-2, I-3 and the other Minors recorded, not fixed: the run is not repeated.
+
+**Step 5's fifth commit's review** (no Critical, no sentence shown false; recorded, not fixed):
+- I-1: the failed-run row now runs with `debug` off, so no row pins `namesRead`, `evalTrace` and `evalTraceTruncated` on the entry of a field that threw under `debug`; an entry that built them only from a value would pass every row.
+- I-2 (SR5, SR26): A68's entry names the I-2 row as the one its fix leaves without a witness, and not the debug-off getter row, which also counts A68's second call (4 under a read hook, 2 once A68 is fixed).
+- M-1: `rule-trace.spec.ts`'s `field` helper lacks a space after the comma before `evalTraceTruncated`.
+- M-2 (SR16): P1 changes two mechanisms, the tracker on every run and `namesRead` on every run; its reds are read apart by row ((a) an own key, (b) a getter count), and no probe changes the tracker alone.
+- M-3: `evaluate-rule.ts`'s `tracker ? … : []` under `debug` has a branch no run takes, there for the type checker.
+- M-4: § 3.6's two rewritten sentences of the fifth commit's sweep run past the file's line width.
+- M-5: § 3.6's README sentence was rewritten by the prompt's item 5, not by the sweep; the old "no … function" was already false (I-1 of the second commit's review).
+- M-6: `rule.ts`'s `debug` JSDoc, "Expression-level detail in the trace", does not name `namesRead` or the read hook it now also governs.
+- M-7: under `debug`, `namesRead` follows `at` in the entry's key order.
 
 ### Step 6 — The tests runner and the registry
 

@@ -1353,7 +1353,9 @@ minor for `eval-signals` and `eval-forms`, and their rows above flip.
 Measured at `a6f0b27` (`ng-eval-12.5c.zip`'s `getter.log`): a counting getter on a plain object,
 read through bare `call` on an `EvalState` built from it with `maxTraceItems` 0, once without a
 read hook and once with `createDependencyTracker().install(state.hooks)`; and the same field
-through `eval-rules`' `evaluateRule`, which installs a tracker on every field's state.
+through `eval-rules`' `evaluateRule`, which at `a6f0b27` installed a tracker on every field's
+state; from step 5's fifth commit it installs one only under the rule's `debug`, so a rule without
+it calls the getter once.
 
 | Field | Getter calls, hook off | Hook on | `evaluateRule` |
 | :--- | ---: | ---: | ---: |
