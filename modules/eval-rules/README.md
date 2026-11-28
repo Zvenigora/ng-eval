@@ -43,6 +43,93 @@ functions. **The functions are the boundary**: each is the host's own code and r
 host's privileges, whatever arguments a rule passes it, so give a rule only the functions you
 would let its author call.
 
+## Quick start
+
+A rule is data, whose fields hold `eval-core` expressions as strings. `compileRule` checks a rule
+and compiles it once, and `evaluateRule` runs the compiled rule against facts.
+
+```ts
+import { compileRule, evaluateRule } from '@zvenigora/ng-eval-rules';
+
+const compiled = compileRule(
+  {
+    id: 'order-discount',
+    filter: { match: { order: { status: 'open' } }, when: 'order.total > 0' },
+    calculations: [
+      { name: 'discount', value: 'order.total >= 100 ? 10 : 0' },
+      { name: 'net', value: 'order.total - order.total * calc.discount / 100' },
+    ],
+    decisions: [
+      { name: 'tier', cases: [{ if: 'calc.net >= 500', value: 'gold' }, { value: 'standard' }] },
+    ],
+    outputs: [{ on: { decision: 'tier', is: 'gold' }, items: ['notify("vip", order.id)'] }],
+  },
+  { effects: { notify: {} } },
+);
+if (!compiled.ok) {
+  throw new Error(compiled.problems.map((problem) => problem.message).join('\n'));
+}
+
+const result = evaluateRule(compiled.rule, {
+  facts: { order: { id: 7, status: 'open', total: 600 } },
+});
+result.status;  // 'completed'
+result.calc;    // { discount: 10, net: 540 }
+result.labels;  // { tier: 'gold' }
+result.effects; // [{ name: 'notify', args: ['vip', 7] }]
+
+evaluateRule(compiled.rule, {
+  facts: { order: { id: 8, status: 'paid', total: 600 } },
+}).status; // 'skipped'
+```
+
+The first order matches the filter, so the calculations run in order, the decision takes the
+label of its first case whose `if` is truthy, and the output, on that label, runs its item.
+`notify` is declared to `compileRule` as an effect, so its call is recorded in `effects` and not
+performed: performing it is the host's. The second order's `status` does not match the filter,
+and the run is skipped.
+
+## The rule format
+
+A rule can be written in JSON and arrive as text, or be written in TypeScript and typed by
+`defineRule`. Only `id` is required, and a section that is absent is empty. Every expression
+field is a string of `eval-core` expression text, and a field the table does not list is a
+problem, `unknown-field`.
+
+| Field | Type | In a run |
+| :--- | :--- | :--- |
+| `id` | A non-empty string | Any text: it need not be an identifier |
+| `name`, `description` | Strings | Not read |
+| `meta` | Any JSON value | Not read: the host's own data about the rule |
+| `active` | A boolean, default `true` | `false` makes every evaluation of the rule do nothing |
+| `strict` | A boolean, default `false` | A decision that matches no case fails the run |
+| `statements` | A boolean | Overrides the compile option; an effect item is one call whatever it is |
+| `debug` | A boolean, default `false` | The trace's expression-level detail |
+| `triggers` | `{ event, match? }[]` | Checked and compiled; nothing runs them in this release |
+| `filter` | `{ match?, when? }` | `match` against the facts, and `when`; a miss of either skips the rule |
+| `onInit` | Effect items | Run by `evaluateInit` |
+| `calculations` | `{ name, when?, value }[]` | In order: `when`, if present, then `value`, which becomes `calc.<name>`; a falsy `when` skips its `value` |
+| `decisions` | `{ name, strict?, cases: { if?, value }[] }[]` | In order: the label is the `value` of the first case whose `if` is truthy or absent; with none, the decision has no label |
+| `outputs` | `{ on: { decision, is }, items }[]` | In order: when the decision's label is one of `is`, the items run |
+| `onError` | Effect items, which may read `error` | Checked and compiled; nothing runs them in this release |
+
+A calculation's and a decision's `name` is an identifier, `[A-Za-z_$][A-Za-z0-9_$]*`, and a
+decision's is neither a calculation's nor another decision's. A case's `value` is a label, a
+constant and not an expression: a string, a finite number or a boolean. A case with no `if`
+always matches, so it is the last: a case after it is `unreachable-case`. A decision's `strict`
+overrides the rule's. An output's `is` is one label or a non-empty list of labels, each the
+label of a case of its decision.
+
+An expression reads a fact by its name, a calculation's value as `calc.<name>`, the event as
+`event`, and a declared function by its name; Problem codes lists what `compileRule` refuses. An
+effect item is one call of a declared effect, which the run records.
+
+A `match` is a pattern with no operators. A scalar matches a value `===` to it. An array is
+any-of: it matches a value that one of its elements matches, and an array that holds such a
+value. An object matches an object that is not an array and has, as its own properties, every
+key the pattern names, each matching, whatever other keys it has. A `match` holds only values
+JSON can write, and no `NaN` or infinity.
+
 ## Compilation — `compileRule`
 
 `compileRule` checks a rule and compiles it, and `defineRule` types a rule written in TypeScript.

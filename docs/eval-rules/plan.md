@@ -2108,6 +2108,54 @@ lands found no word whose antecedent the move changed.
 | Each function is the host's own code and runs with the host's privileges, whatever arguments a rule passes it | `evaluate-rule.spec.ts`, "writes through a host function, which is the host's code, as the CHANGELOG says (step 4 review, I-2)" |
 | Give a rule only the functions you would let its author call | Advice: it claims nothing a row could fail |
 
+**Claim → witness, 12.7b** ([SR21](../standing-rules.md#sr21)). `readme-examples.spec.ts` is new:
+one case for `## Quick start`'s block, two for `## The rule format`'s sentences no other row runs
+(three label rows and one `match` row), and the two block counts, 2 `ts` and 1 `sh`; the import
+line under Compilation runs nothing, and `public-api.spec.ts` resolves its names. Each case was red
+under a probe on 2026-11-28, run Claude-side on the README-example harness and again on the tree
+by the run: the label check without `Number.isFinite` (the three label rows), a recorder that
+drops its first argument (Quick start), the object pattern without `!Array.isArray(target)` (the
+`match` row), one more `ts` fence (the `ts` count), and the `sh` fence as `bash` (the `sh`
+count). The run is on Claude Code, and its `code-reviewer` reads 12.7a's sentences with these
+([SR33](../standing-rules.md#sr33)). Measured Claude-side and not shipped: a `match` scalar never
+matches an array, by `===`, so that row's scalar line is a contrast no probe reds alone.
+
+| README sentence | Witness |
+| :--- | :--- |
+| A rule is data, whose fields hold `eval-core` expressions as strings | `rule.ts`' expression fields are `string`; `compile-rule.spec.ts`, "an expression that is not a string" |
+| `compileRule` checks a rule and compiles it once; `evaluateRule` runs it against facts | `readme-examples.spec.ts`, "completes the open order with its calculations, label and effect, and skips the paid one" |
+| The block's printed values | The same case, asserting each |
+| The calculations run in order, the decision takes its first truthy case's label, the output on that label runs its item | The same case; `evaluate-rule.spec.ts`, "runs when, then value, in order; a falsy when leaves the name unset", "labels by the first truthy if", "runs the items of each matching output, items and outputs in array order, each one call" |
+| `notify` is declared as an effect, so its call is recorded in `effects` and not performed | The same case, which gives no implementation of `notify`; `evaluate-rule.spec.ts`, "binds a host function as given, and records an effect by its declared name" |
+| Performing it is the host's | Advice: it claims nothing a row could fail |
+| The second order does not match the filter, and the run is skipped | The same case; `evaluate-rule.spec.ts`, "gives 'skipped' for a match that misses, and runs no calculation" |
+| A rule can be written in JSON and arrive as text, or in TypeScript, typed by `defineRule` | `rule-registry.spec.ts`, "returns the same result for the same id and text"; `define-rule.spec.ts` |
+| Only `id` is required; a section that is absent is empty | `compile-rule.spec.ts`, "a missing id"; the Quick start case's rule, which has no `triggers`, `onInit` or `onError` |
+| Every expression field is a string of expression text | `compile-rule.spec.ts`, "an expression that is not a string" |
+| A field the table does not list is `unknown-field` | `compile-rule.spec.ts`, "a field the format does not list", "a field a calculation does not have" |
+| `id`: a non-empty string, any text | `compile-rule.spec.ts`, "a missing id", "an empty id"; the Quick start case's `order-discount` |
+| `name`, `description`: strings, not read | `compile-rule.spec.ts`, "a description that is not a string"; `CompiledRuleInternals` holds neither |
+| `meta`: any JSON value, not read | `compile-rule.spec.ts`, "compiles a rule whose meta is %s"; `CompiledRuleInternals` holds no `meta` |
+| `active` | `evaluate-rule.spec.ts`, "gives 'inactive', and runs nothing, the input's checks included"; `compile-rule.spec.ts`, "a flag that is not a boolean" |
+| `strict`, and a decision's `strict` overriding the rule's | `evaluate-rule.spec.ts`, "fails the run when no case matches under strict: on the rule, and on the decision alone", "lets a decision turn strict off, on a strict rule, and on, on a lenient one" |
+| `statements` | `compile-rule.spec.ts`, "lets the rule's statements override the compile option", "an item holding statements, with statements on (§ 8 q20)" |
+| `debug` | `rule-trace.spec.ts`, "carries none with debug off", "carries it with debug on, and its truncation flag on a field that pushes more than 10,000 values" |
+| `triggers` and `onError`: checked and compiled, not run; `onError` may read `error` | `compile-rule.spec.ts`, "compiles triggers and onError items, which nothing runs in this release (§ 8 q2)", "a trigger with no event", "error outside an onError item" |
+| `filter` | `evaluate-rule.spec.ts`, "gives 'skipped' for a match that misses, and runs no calculation", "gives 'skipped' for a when that is falsy" |
+| `onInit` | `evaluate-rule.spec.ts`, "runs the onInit items in order under the filter, and gives no calc and no label" |
+| `calculations` | `evaluate-rule.spec.ts`, "runs when, then value, in order; a falsy when leaves the name unset" |
+| `decisions`, and a case with no `if` always matching | `evaluate-rule.spec.ts`, "labels by the first truthy if", "labels by a case with no if, which always matches", "leaves the label unset when no case matches, by default" |
+| `outputs`, and `is` as one label or a non-empty list of its decision's labels | `evaluate-rule.spec.ts`, "runs the items of each matching output, items and outputs in array order, each one call", "runs no item for a decision with no label"; `compile-rule.spec.ts`, "matches an output on one label and on a list", "an output is that no case has, as one label", "… in a list", "an output is that is an empty list" |
+| A `name` is an identifier; a decision's is neither a calculation's nor another decision's | `compile-rule.spec.ts`, "a calculation name that is not an identifier", "a decision name with a colon", "a calculation and a decision with the same name", "two decisions with the same name" |
+| A label is a constant: a string, a finite number or a boolean | `compile-rule.spec.ts`, "a case whose value is not a label"; `readme-examples.spec.ts`, "refuses %s as a label: a label is a finite number" |
+| A case after a case with no `if` is `unreachable-case` | `compile-rule.spec.ts`, "a case after a case with no if" |
+| An expression reads a fact by name, `calc.<name>`, `event`, and a declared function | `evaluate-rule.spec.ts`, "answers calc, event and a function from the run, not from facts of those names (finding 6)"; the Quick start case |
+| Problem codes lists what `compileRule` refuses | A pointer |
+| An effect item is one call of a declared effect, which the run records | `compile-rule.spec.ts`, "an item calling a function that is not an effect", "two effects joined by &&"; `evaluate-rule.spec.ts`, "binds a host function as given, and records an effect by its declared name" |
+| A `match`: a scalar by `===`; an array any-of, over a value and over an array target | `pattern.spec.ts`, "matches a scalar by ===", "reads an array as any-of", "matches an array target by any of its elements"; `readme-examples.spec.ts`, "matches an array target by an array, and never by a scalar or an object" |
+| An object matches an object that is not an array, by own keys, other keys ignored | `readme-examples.spec.ts`, the same case; `pattern.spec.ts`, "recurses into a nested object", "does not match a target that lacks a key the pattern names", "reads own properties only: an inherited constructor is not a match" |
+| A `match` holds only values JSON can write, no `NaN` or infinity | `pattern.spec.ts`, "names every value that is not a pattern"; `compile-rule.spec.ts`, "a pattern holding a value JSON cannot write" |
+
 ### Step 8 — The demo pages
 
 **Files**: under `apps/demo/src/app/`, `features/rules/` (new: three `*.example.ts` and their
