@@ -989,7 +989,7 @@ also lists `docs/backlog-history.md`, whose *Unreleased* row moves with it, and
 | — | [A69](../backlog-retired.md#a69) fix — 12.6e | `rule-test.ts`, its spec, the README's and `CHANGELOG.md`'s `runRuleTest` sentences, `docs/backlog.md`, `docs/backlog-retired.md`, `docs/backlog-history.md`, `docs/backlog-in-flight.md` | `eval-rules` 0.1.0 |
 | 7 | The README | `modules/eval-rules/README.md`, `readme-examples.spec.ts`, `CHANGELOG.md`, `tools/published-links.txt` | `eval-rules` 0.1.0 |
 | 8 | The demo pages | Under `apps/demo/src/app/`: `features/rules/` (new, three examples and their specs), `use-cases/` (one example and its spec), `registry.ts`, `app.ts`, `app.spec.ts`, `footer.ts`, `footer.spec.ts`; `apps/demo/project.json`; the root `eslint.config.mjs` | No package: the demo ships in none |
-| 9 | The release commit | `modules/eval-rules/package.json`, `CHANGELOG.md` and `README.md` (the demo link), `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root `README.md` and `CHANGELOG.md`, `docs/release-history.md`, `CLAUDE.md` | The release, `eval-rules` 0.1.0 |
+| 9 | The release commit | `modules/eval-rules/package.json`, `CHANGELOG.md` and `README.md` (the demo link, and the "not published" paragraph removed), `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root `README.md` and `CHANGELOG.md`, `docs/release-history.md`, `CLAUDE.md` | The release, `eval-rules` 0.1.0 |
 | 10 | The post-publish record | `docs/backlog.md`, `docs/backlog-history.md`, `docs/release-history.md`, `ROADMAP.md`, `CLAUDE.md`, `docs/README.md` | No package |
 | 11 | The retrospect | This document's § 9 and § 10, `docs/standing-rules.md` if a rule is promoted, `CLAUDE.md`, `ROADMAP.md`, `docs/README.md`, `docs/release-history.md` | No package |
 
@@ -2030,6 +2030,28 @@ red under at least one (`probe-table.txt`). A69 is retired.
 Revision 4 had this step and the release commit as one. Revision 5 split them, so that step 8's
 demo pages can name the README's headings before the version is set.
 
+**Commits** (decided 2026-11-28, under the 2026-11-25 working rules: one review and one fix round
+at most for each). Step 7 is five commits, each with its gate:
+
+- **12.7a**, the opening and the sections: `## Install` with the command and the peers,
+  `## Sibling packages`, `## Security`'s two statements, and the paragraphs `## What it exports`
+  held, moved verbatim under the section headings below. `## Problem codes` stays a section of
+  its own: `public-api.spec.ts` reads its table by that heading. No spec changes.
+- **12.7b**, the format and the quick start, with `readme-examples.spec.ts`: a case for each
+  block, and the block counts. Its review reads 12.7a's new sentences too, since 12.7a was
+  applied without the `code-reviewer`.
+- **12.7c**, an example for each function's section, and `### The result` and `### The trace`,
+  each example with its case.
+- **12.7d**, `## Limits`: the list below, each limit with its witness.
+- **12.7e**, the CHANGELOG entry read against the README, § 3.8 read again against the `.d.ts`,
+  the claim → witness table completed, and this step's Outcome.
+
+**The headings**, in order, fixed here so that step 8's pages can name one a later commit adds:
+Install; Sibling packages; Security; Quick start; The rule format; Compilation — `compileRule`;
+Problem codes; Evaluation — `evaluateRule` and `evaluateInit`, with The result and
+The trace below it; Testing — `runRuleTest`; Caching — `RuleRegistry`; Limits. 12.7a writes
+Install, Sibling packages, Security, the four function sections and Problem codes.
+
 - The README opens as the other three do, documents the format, the two functions, the result,
   the limits, and states that rule text is untrusted and the registered functions are the
   boundary.
@@ -2063,6 +2085,25 @@ demo pages can name the README's headings before the version is set.
 
 **Exit criteria**: the gate green on the committed tree; the README counts pinned; the review
 finds no shipped sentence wider than its witnesses. The version stays `0.0.0`.
+
+**Claim → witness, 12.7a** ([SR21](../standing-rules.md#sr21)). The paragraphs moved verbatim keep
+the rows of the commits that wrote them (step 3's for Problem codes; 12.6b, 12.6c and 12.6e for
+the functions' paragraphs), and [SR39](../standing-rules.md#sr39)'s re-read of each where it
+lands found no word whose antecedent the move changed.
+
+| README sentence | Witness |
+| :--- | :--- |
+| Not published; at 0.0.0; the first release 0.1.0 | `modules/eval-rules/package.json`'s `"version": "0.0.0"`; `release-tags.mjs` has no row for the package |
+| The install command | None while the package is not on npm: held by review. Step 9 removes the "not published" paragraph above it |
+| The peers and their ranges | `public-api.spec.ts`, "quotes every peer in ## Install, and every quoted range as the manifest declares it" |
+| `@angular/core` is not one: this package imports nothing from it | `git grep -c "from '@angular/core'" -- 'modules/eval-rules/src/**' ':!*.spec.ts'`: no hits (exit 1) |
+| … and it is `eval-core`'s peer | `modules/eval-core/package.json`'s `peerDependencies` |
+| The three sibling descriptions | For `eval-core`, its README's `## Supported syntax`; the other two are `eval-core`'s README's `## Sibling packages` lines, witnessed there |
+| The sources for all four are in the repository | The four `modules/*/project.json` |
+| A rule's expressions are `eval-core` expressions, and `SECURITY.md` applies to them | Held by review: a pointer |
+| What a run is given reaches them as the facts, the event and the functions | `evaluate-rule.spec.ts`, "answers calc, event and a function from the run, not from facts of those names (finding 6)" and "binds a host function as given, and records an effect by its declared name" |
+| Each function is the host's own code and runs with the host's privileges, whatever arguments a rule passes it | `evaluate-rule.spec.ts`, "writes through a host function, which is the host's code, as the CHANGELOG says (step 4 review, I-2)" |
+| Give a rule only the functions you would let its author call | Advice: it claims nothing a row could fail |
 
 ### Step 8 — The demo pages
 
@@ -2118,7 +2159,7 @@ names.
 ### Step 9 — The release commit
 
 **Files**: `modules/eval-rules/package.json`, `CHANGELOG.md`, and `README.md` for the demo link
-alone (step 4 raised the peer floor to 0.16.1 in both the manifest and the README's Install line,
+and the "not published" paragraph alone (step 4 raised the peer floor to 0.16.1 in both the manifest and the README's Install line,
 and `eval-core` 0.16.2's release commit raised it to 0.16.2 in both, § 3.7; the release keeps it); `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root `README.md` and
 `CHANGELOG.md`, `docs/release-history.md`, `CLAUDE.md`.
 
@@ -2126,7 +2167,9 @@ and `eval-core` 0.16.2's release commit raised it to 0.16.2 in both, § 3.7; the
   [CONTRIBUTING's Releasing](../../CONTRIBUTING.md#releasing), whose table and publish commands
   gain the fourth package.
 - The README links the demo site, as Releasing's step 1 says of a package README that does not
-  yet; the sentence and its link gain a row in step 7's claim → witness table.
+  yet; the sentence and its link gain a row in step 7's claim → witness table. Its
+  "This package is not published" paragraph goes (12.7a's correction: step 9's list had the demo
+  link alone, and the paragraph has stood since step 2, [SR4](../standing-rules.md#sr4)).
 - `SECURITY.md` names the package, and its "The budget counts loop iterations, not time or depth"
   gains a built-in's time, the regular expression of finding 9 ([A62](../backlog.md#a62)). The
   root `README.md` and `CHANGELOG.md` list the package.

@@ -4,15 +4,46 @@ Rules for [`@zvenigora/ng-eval-core`](https://github.com/zvenigora/ng-eval/tree/
 expressions: a rule compiled once and evaluated to a result.
 
 **This package is not published.** It is at version 0.0.0 while it is built, and its first release
-will be 0.1.0. Until then this file is a stub: it names what the package exports so far, and lists
-the problem codes.
+will be 0.1.0.
 
 ## Install
 
-The package is not on npm yet. Its peer dependencies are `acorn-walk ^8.3.0` and
-`@zvenigora/ng-eval-core >=0.16.2 <0.17.0`.
+```sh
+npm install @zvenigora/ng-eval-rules @zvenigora/ng-eval-core
+```
 
-## What it exports
+Peer dependencies: `@zvenigora/ng-eval-core >=0.16.2 <0.17.0` and `acorn-walk ^8.3.0`.
+`@angular/core` is not one: this package imports nothing from it, and it is `eval-core`'s peer.
+
+## Sibling packages
+
+- [`@zvenigora/ng-eval-core`](https://github.com/zvenigora/ng-eval/tree/master/modules/eval-core#readme)
+  — the expression evaluator a rule's expressions run on. Its README documents the expression
+  syntax.
+- [`@zvenigora/ng-eval-signals`](https://github.com/zvenigora/ng-eval/tree/master/modules/eval-signals#readme)
+  — an expression over a context of signals as an Angular `Signal`, which recomputes exactly when a
+  key the expression read has changed.
+- [`@zvenigora/ng-eval-forms`](https://github.com/zvenigora/ng-eval/tree/master/modules/eval-forms#readme)
+  — Angular form field properties driven by expressions that arrive as strings at runtime, for
+  Reactive Forms and Signal Forms.
+
+The sources for all four are in the [@zvenigora/ng-eval](https://github.com/zvenigora/ng-eval)
+repository.
+
+## Security
+
+**ng-eval is not a sandbox.** An expression reaches whatever its context holds, and every function
+in the context runs with the host's privileges.
+[`SECURITY.md`](https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md) covers the threat
+model, the protections the code has, and where they stop.
+
+**Rule text is untrusted.** A rule's expressions are `eval-core` expressions, and `SECURITY.md`
+applies to them as to any; what a run is given reaches them as the facts, the event and the
+functions. **The functions are the boundary**: each is the host's own code and runs with the
+host's privileges, whatever arguments a rule passes it, so give a rule only the functions you
+would let its author call.
+
+## Compilation — `compileRule`
 
 `compileRule` checks a rule and compiles it, and `defineRule` types a rule written in TypeScript.
 The format's types are `Rule`, `RuleTrigger`, `RuleFilter`, `RuleCalculation`, `RuleDecision`,
@@ -22,57 +53,6 @@ The format's types are `Rule`, `RuleTrigger`, `RuleFilter`, `RuleCalculation`, `
 ```ts
 import { compileRule, defineRule } from '@zvenigora/ng-eval-rules';
 ```
-
-`evaluateRule(rule, input)` runs a compiled rule against a `RuleInput` of `facts`, `event` and
-`functions`, and returns a `RuleResult`: a `RuleStatus`, the calculations and labels, a
-`RuleEffect` for each effect the rule called, which it records and does not perform, and the
-run's trace. A run that
-fails keeps no effect. `evaluateInit` runs a rule's `onInit` items the same way. For an active
-rule, either throws, before any field runs, for an input that is `null`, an array or not an
-object, an own key of the input that `RuleInput` does not name, a symbol or a non-enumerable one
-included, a field the input inherits, facts that are not a plain object, `functions`
-that is an array or not an object (absent or `null` is none), a declared function with no
-implementation, and an implementation with no declaration or that is not a function, and passes
-on what the facts throw as the filter's `match` reads them; either throws for a rule `compileRule`
-did not return, active or not; an inactive rule runs nothing else and checks nothing else. A
-function a field gives, such as an arrow among the calculations, runs later against the
-facts alone: called after the run, its `calc`, `event` and declared functions name the facts' own
-([E10](https://github.com/zvenigora/ng-eval/blob/master/docs/backlog.md#e10)).
-
-`runRuleTest(rule, test, functions?)` runs a `RuleTest`, `{ ruleId, given, expect }`, through
-`evaluateRule`, with `functions` as the input's, and returns a `RuleTestResult`: whether the test
-passed, the run's `RuleResult`, and the first difference, a `RuleTestDifference`, when it did not.
-It throws for a rule `compileRule` did not return; for a test of another rule; for a test, a
-`given` or an `expect` that is `null`, an array or not an object, holds an own key `RuleTest` does
-not define, a symbol or a non-enumerable one included, or inherits a field; and for an `expect`
-whose `calc` or `labels` is not such an object, whose `effects` is not an array or whose `skipped`
-is not a boolean, an `undefined` field being absent. It checks nothing those fields hold, and
-leaves `given` to `evaluateRule`, which checks no input of an inactive rule. What `evaluateRule`
-throws, and what a value of the result throws as it is compared, passes through. It compares
-values to a depth of 100, a name of `calc` or an item of `effects` being at depth 1, and throws a
-`RangeError` where it reaches a value the test and the result both hold deeper than that, a cycle
-included.
-
-`RuleRegistry` caches compiled rules by `id`. `new RuleRegistry(options?)` takes a
-`RuleRegistryOptions`, `{ compile?, maxEntries? }`: `compile`, the `CompileRuleOptions`
-every compile uses, checked and copied when the registry is constructed, so a later change
-to that object changes nothing; `maxEntries`, the most rules it holds, an integer from 1,
-500 by default. `registry.compile(text, version?)` takes a rule's JSON text and returns
-what `compileRule(JSON.parse(text), compile)` returns. It returns the stored result, the
-same object, when it holds one for the rule's `id` stored with the same `version`, or,
-without a `version`, stored without one from the same text. A `version` is the caller's
-promise that the text is the same: the text is not compared. A reuse makes the entry the
-most recently used. Any other request compiles: a result with no problems is stored, frozen,
-in place of the id's entry, and the least recently used entry is evicted past
-`maxEntries`; a result with problems is not stored, and removes the id's entry.
-`registry.invalidate(id)` removes the id's entry, if there is one. The constructor throws a
-`TypeError` for options that are not a plain object, that hold an own key other than
-`compile` and `maxEntries`, a symbol or a non-enumerable one included, or whose
-`maxEntries` is not an integer from 1, an `undefined` field being absent, and throws what
-`compileRule` throws for the `compile` options, with `compileRule`'s message.
-`registry.compile` throws a `TypeError` for a `text` that is not a string or a `version`
-that is given and is not one, and lets `JSON.parse`'s error through; neither changes an
-entry. `registry.invalidate` throws a `TypeError` for an `id` that is not a string.
 
 ## Problem codes
 
@@ -116,9 +96,59 @@ The list of codes is open: a later release may add one, so a host handles a code
 | `unknown-label` | An output's `is` holds a label no case of its decision has |
 | `unreachable-case` | A case after a case with no `if` |
 
-## Security
+## Evaluation — `evaluateRule` and `evaluateInit`
 
-**ng-eval is not a sandbox.** An expression reaches whatever its context holds, and every function
-in the context runs with the host's privileges.
-[`SECURITY.md`](https://github.com/zvenigora/ng-eval/blob/master/SECURITY.md) covers the threat
-model, the protections the code has, and where they stop.
+`evaluateRule(rule, input)` runs a compiled rule against a `RuleInput` of `facts`, `event` and
+`functions`, and returns a `RuleResult`: a `RuleStatus`, the calculations and labels, a
+`RuleEffect` for each effect the rule called, which it records and does not perform, and the
+run's trace. A run that
+fails keeps no effect. `evaluateInit` runs a rule's `onInit` items the same way. For an active
+rule, either throws, before any field runs, for an input that is `null`, an array or not an
+object, an own key of the input that `RuleInput` does not name, a symbol or a non-enumerable one
+included, a field the input inherits, facts that are not a plain object, `functions`
+that is an array or not an object (absent or `null` is none), a declared function with no
+implementation, and an implementation with no declaration or that is not a function, and passes
+on what the facts throw as the filter's `match` reads them; either throws for a rule `compileRule`
+did not return, active or not; an inactive rule runs nothing else and checks nothing else. A
+function a field gives, such as an arrow among the calculations, runs later against the
+facts alone: called after the run, its `calc`, `event` and declared functions name the facts' own
+([E10](https://github.com/zvenigora/ng-eval/blob/master/docs/backlog.md#e10)).
+
+## Testing — `runRuleTest`
+
+`runRuleTest(rule, test, functions?)` runs a `RuleTest`, `{ ruleId, given, expect }`, through
+`evaluateRule`, with `functions` as the input's, and returns a `RuleTestResult`: whether the test
+passed, the run's `RuleResult`, and the first difference, a `RuleTestDifference`, when it did not.
+It throws for a rule `compileRule` did not return; for a test of another rule; for a test, a
+`given` or an `expect` that is `null`, an array or not an object, holds an own key `RuleTest` does
+not define, a symbol or a non-enumerable one included, or inherits a field; and for an `expect`
+whose `calc` or `labels` is not such an object, whose `effects` is not an array or whose `skipped`
+is not a boolean, an `undefined` field being absent. It checks nothing those fields hold, and
+leaves `given` to `evaluateRule`, which checks no input of an inactive rule. What `evaluateRule`
+throws, and what a value of the result throws as it is compared, passes through. It compares
+values to a depth of 100, a name of `calc` or an item of `effects` being at depth 1, and throws a
+`RangeError` where it reaches a value the test and the result both hold deeper than that, a cycle
+included.
+
+## Caching — `RuleRegistry`
+
+`RuleRegistry` caches compiled rules by `id`. `new RuleRegistry(options?)` takes a
+`RuleRegistryOptions`, `{ compile?, maxEntries? }`: `compile`, the `CompileRuleOptions`
+every compile uses, checked and copied when the registry is constructed, so a later change
+to that object changes nothing; `maxEntries`, the most rules it holds, an integer from 1,
+500 by default. `registry.compile(text, version?)` takes a rule's JSON text and returns
+what `compileRule(JSON.parse(text), compile)` returns. It returns the stored result, the
+same object, when it holds one for the rule's `id` stored with the same `version`, or,
+without a `version`, stored without one from the same text. A `version` is the caller's
+promise that the text is the same: the text is not compared. A reuse makes the entry the
+most recently used. Any other request compiles: a result with no problems is stored, frozen,
+in place of the id's entry, and the least recently used entry is evicted past
+`maxEntries`; a result with problems is not stored, and removes the id's entry.
+`registry.invalidate(id)` removes the id's entry, if there is one. The constructor throws a
+`TypeError` for options that are not a plain object, that hold an own key other than
+`compile` and `maxEntries`, a symbol or a non-enumerable one included, or whose
+`maxEntries` is not an integer from 1, an `undefined` field being absent, and throws what
+`compileRule` throws for the `compile` options, with `compileRule`'s message.
+`registry.compile` throws a `TypeError` for a `text` that is not a string or a `version`
+that is given and is not one, and lets `JSON.parse`'s error through; neither changes an
+entry. `registry.invalidate` throws a `TypeError` for an `id` that is not a string.
