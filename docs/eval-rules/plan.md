@@ -987,7 +987,7 @@ also lists `docs/backlog-history.md`, whose *Unreleased* row moves with it, and
 | 5 | The trace, and the cost of building it | `rule-trace.ts`, its spec, `performance.spec.ts`, `evaluate-rule.ts`, `rule-result.ts`, `CHANGELOG.md` | `eval-rules` 0.1.0 |
 | 6 | The tests runner and the registry | `rule-test.ts`, `rule-registry.ts`, their specs, the barrel and its specs, `CHANGELOG.md`, the README's `## What it exports`, `evaluate-rule.ts` (12.6b), `compile-rule.ts` (12.6c) | `eval-rules` 0.1.0 |
 | — | [A69](../backlog-retired.md#a69) fix — 12.6e | `rule-test.ts`, its spec, the README's and `CHANGELOG.md`'s `runRuleTest` sentences, `docs/backlog.md`, `docs/backlog-retired.md`, `docs/backlog-history.md`, `docs/backlog-in-flight.md` | `eval-rules` 0.1.0 |
-| 7 | The README | `modules/eval-rules/README.md`, `readme-examples.spec.ts`, `CHANGELOG.md`, `tools/published-links.txt` | `eval-rules` 0.1.0 |
+| 7 | The README | `modules/eval-rules/README.md`, `readme-examples.spec.ts`, `CHANGELOG.md`, `tools/published-links.txt`; `evaluate-rule.spec.ts` and `docs/backlog.md`'s F35 (12.7t) | `eval-rules` 0.1.0 |
 | 8 | The demo pages | Under `apps/demo/src/app/`: `features/rules/` (new, three examples and their specs), `use-cases/` (one example and its spec), `registry.ts`, `app.ts`, `app.spec.ts`, `footer.ts`, `footer.spec.ts`; `apps/demo/project.json`; the root `eslint.config.mjs` | No package: the demo ships in none |
 | 9 | The release commit | `modules/eval-rules/package.json`, `CHANGELOG.md` and `README.md` (the demo link, and the "not published" paragraph removed), `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root `README.md` and `CHANGELOG.md`, `docs/release-history.md`, `CLAUDE.md` | The release, `eval-rules` 0.1.0 |
 | 10 | The post-publish record | `docs/backlog.md`, `docs/backlog-history.md`, `docs/release-history.md`, `ROADMAP.md`, `CLAUDE.md`, `docs/README.md` | No package |
@@ -2037,6 +2037,9 @@ at most for each). Step 7 is five commits, each with its gate:
   `## Sibling packages`, `## Security`'s two statements, and the paragraphs `## What it exports`
   held, moved verbatim under the section headings below. `## Problem codes` stays a section of
   its own: `public-api.spec.ts` reads its table by that heading. No spec changes.
+- **12.7t**, between 12.7a and 12.7b: `evaluate-rule.spec.ts`' getter among the functions typed
+  as a function, the one `TS2322` that `tsc` on the spec config printed for this package's specs
+  on 2026-11-28 ([F35](../backlog.md#f35) records the run). No row changes.
 - **12.7b**, the format and the quick start, with `readme-examples.spec.ts`: a case for each
   block, and the block counts. Its review reads 12.7a's new sentences too, since 12.7a was
   applied without the `code-reviewer`.

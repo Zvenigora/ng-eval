@@ -2223,7 +2223,10 @@ it: ts-jest does not type-check, and lint runs no `tsc`. Whether the two options
 Jest is not measured.
 
 **Verified** on step 4's fifth pin by the reviewing chat: `tsc` on the four spec configs (`tsc-spec.log` in
-step 4's fifth pack). The runs print other errors too, which this entry does not examine.
+step 4's fifth pack). The runs print other errors too, which this entry does not examine. On
+2026-11-28, `tsc -p modules/eval-rules/tsconfig.spec.json --noEmit` printed this entry's line 4,
+[F32](#f32)'s 26 `TS1205`, and one more, `evaluate-rule.spec.ts` line 166 (`TS2322`: a getter typed
+`unknown` among the functions), which 12.7t typed as the function its first read gives.
 
 **Not scheduled**, by SR48: nothing ships from a test setup, no sentence states it, it is no route
 past a guard, and it blocks no plan. **What reopens it**: a step that type-checks the specs, or a

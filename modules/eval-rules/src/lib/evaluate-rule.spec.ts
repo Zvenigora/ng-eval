@@ -157,9 +157,10 @@ describe('evaluateRule, § 3.5 line 2: the input is checked, and a failure throw
   it('reads each implementation once, and calls what it read (step 4 twelfth review, a note)', () => {
     let reads = 0;
     const functions = {
-      get count(): unknown {
+      // Typed as a function, which its first read is; a second read gives a string.
+      get count(): () => number {
         reads += 1;
-        return reads === 1 ? () => 7 : 'not a function';
+        return (reads === 1 ? () => 7 : 'not a function') as () => number;
       },
     };
     const rule = compiled({ id: 'r', calculations: [{ name: 'x', value: 'count()' }] }, { functions: ['count'] });
