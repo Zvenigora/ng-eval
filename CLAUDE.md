@@ -32,7 +32,8 @@ independently. The first three are **published to npm** under the `@zvenigora` s
 - **`@zvenigora/ng-eval-rules`** (`modules/eval-rules`) — rules over `eval-core` expressions: a
   rule compiled once and evaluated to a result. At **0.0.0, not published**: Phase 12 builds its
   0.1.0. It depends on `eval-core` only, and exports the rule format and `compileRule` (step 3),
-  and `evaluateRule` and `evaluateInit` (step 4); the trace comes with step 5.
+  `evaluateRule` and `evaluateInit` (step 4), the trace (step 5), and `runRuleTest` and
+  `RuleRegistry` (step 6).
 
 **Published is a constraint, not a status line.** No exported symbol's shape can change
 without a breaking release, in any of the three published; "nothing has shipped yet" no longer
@@ -49,8 +50,8 @@ site is `https://zvenigora.github.io/ng-eval/`, deployed by hand
 Phases 1 to 6, 9 to 11 and 19 are complete, and so is every track `docs/README.md` lists with a
 release; their plan documents are design records rather than active work. **Phase 12's plan is
 active** (`docs/eval-rules/plan.md`): `@zvenigora/ng-eval-rules` 0.1.0, a new package at
-`modules/eval-rules`. Its steps 1 to 4 are done, A64's track is done, and `eval-core` 0.16.2 is
-published 2026-11-26, then step 5; its step 8 is its demo step (`docs/demo/plan.md` § 9). One more is written
+`modules/eval-rules`. Its steps 1 to 6 are done, A64's track is done, and `eval-core` 0.16.2 is
+published 2026-11-26, then step 7; its step 8 is its demo step (`docs/demo/plan.md` § 9). One more is written
 and no step of it has run: Phase 17, `@zvenigora/ng-eval-template`
 (`docs/eval-template/plan.md`), which gains a demo step before its release step when it starts.
 `ROADMAP.md` has the phases, and says which of them are reserved without a specification.
@@ -129,8 +130,8 @@ than one commit ([SR1](docs/standing-rules.md#sr1)) — as in `docs/a8/`, `docs/
 [SR2](docs/standing-rules.md#sr2)–[SR4](docs/standing-rules.md#sr4),
 [SR8](docs/standing-rules.md#sr8) and [SR33](docs/standing-rules.md#sr33)–[SR35](docs/standing-rules.md#sr35).
 
-- The active plan is Phase 12's, `docs/eval-rules/plan.md`: steps 1 to 4 are done, A64's track is
-  done, and `eval-core` 0.16.2 is published 2026-11-26, then step 5. `.claude/skills/step/SKILL.md` is retargeted
+- The active plan is Phase 12's, `docs/eval-rules/plan.md`: steps 1 to 6 are done, A64's track is
+  done, and `eval-core` 0.16.2 is published 2026-11-26, then step 7. `.claude/skills/step/SKILL.md` is retargeted
   with each new plan and names this one; while none is active it names none, and stops at its
   § 1 if invoked.
 - The completed plans are design records, not work in progress, and each remains the

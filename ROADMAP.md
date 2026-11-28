@@ -71,13 +71,13 @@ summary of every phase.
 | 9 | Colon-joined identifiers | `@zvenigora/ng-eval-core`, with `@zvenigora/ng-eval-signals` and `@zvenigora/ng-eval-forms` | [`colon-identifiers/phase-9-plan.md`](docs/colon-identifiers/phase-9-plan.md) | [`colon-identifiers/phase-9-summary.md`](docs/colon-identifiers/phase-9-summary.md) |
 | 10 | Documentation restructure, repository-wide | All three, as docs-only patches | [`documentation/phase-10-plan.md`](docs/documentation/phase-10-plan.md) | [`documentation/phase-10-summary.md`](docs/documentation/phase-10-summary.md) |
 | 11 | `eval-forms`' README by entry point | `@zvenigora/ng-eval-forms`, a docs-only patch | [`documentation/phase-11-plan.md`](docs/documentation/phase-11-plan.md) | [Its § 10](docs/documentation/phase-11-plan.md#10-retrospect) |
-| 12 | `@zvenigora/ng-eval-rules`, a new module: pure rule evaluation | Not shipped: planned as `@zvenigora/ng-eval-rules` 0.1.0 | [`eval-rules/plan.md`](docs/eval-rules/plan.md), steps 1 to 4 done | — |
+| 12 | `@zvenigora/ng-eval-rules`, a new module: pure rule evaluation | Not shipped: planned as `@zvenigora/ng-eval-rules` 0.1.0 | [`eval-rules/plan.md`](docs/eval-rules/plan.md), steps 1 to 6 done | — |
 | 17 | `@zvenigora/ng-eval-template`, a new module: the pure template compiler | Not shipped: planned as `@zvenigora/ng-eval-template` 0.1.0 | [`eval-template/plan.md`](docs/eval-template/plan.md), no step run | — |
 | 19 | A demo application at `apps/demo` | Ships in no package: an application at `apps/demo` and the site at [`zvenigora.github.io/ng-eval`](https://zvenigora.github.io/ng-eval/) | [`demo/plan.md`](docs/demo/plan.md) | [Its § 10](docs/demo/plan.md#10-retrospect) |
 
 Phases 1 to 11 and 19 are complete, Phase 19 the last of them. Phase 11 shipped as `eval-forms` 0.7.1 and
-retired [F28](docs/backlog-retired.md#f28). Phase 12's plan is active: steps 1 to 4 done, A64's
-track done, `eval-core` 0.16.2 published 2026-11-26, then step 5.
+retired [F28](docs/backlog-retired.md#f28). Phase 12's plan is active: steps 1 to 6 done, A64's
+track done, `eval-core` 0.16.2 published 2026-11-26, then step 7.
 
 Phase 9 is numbered after the two reserved phases below and ran ahead of them: it was the one with
 a consumer waiting. Until Phase 10 condensed this file, each phase had a section here with its
@@ -109,7 +109,7 @@ design, with its 61 questions, is
 
 | Phase | Release | Subject | State |
 | :--- | :--- | :--- | :--- |
-| 12 | 0.1.0 | Pure rule evaluation: the format, `compileRule`, the result with its trace, the tests runner, the registry cache | [Plan](docs/eval-rules/plan.md), active: steps 1 to 4 done, A64's track done, `eval-core` 0.16.2 published 2026-11-26, then step 5 |
+| 12 | 0.1.0 | Pure rule evaluation: the format, `compileRule`, the result with its trace, the tests runner, the registry cache | [Plan](docs/eval-rules/plan.md), active: steps 1 to 6 done, A64's track done, `eval-core` 0.16.2 published 2026-11-26, then step 7 |
 | 13 | 0.2.0 | The engine: rule sets, events, the sink, batch commit, the queue and the loop guard | Designed, no plan |
 | 14 | 0.3.0 | Workflows: the node-kind registry, `sequence`, `branch`, async commit and cancellation | Designed, no plan |
 | 15 | 0.4.0 | The `/signals` entry point: a value-change event source | Designed, no plan |

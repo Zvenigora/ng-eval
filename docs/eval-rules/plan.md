@@ -1,7 +1,7 @@
 # Phase 12 Plan — `@zvenigora/ng-eval-rules` 0.1.0, pure rule evaluation (new module)
 
-**Status: Revision 7, the active plan: steps 1 to 4 are done, A64's track is done, and `eval-core`
-0.16.2 is published 2026-11-26, then step 5.** Revisions 1 to 4 and the design sessions were committed ahead of
+**Status: Revision 7, the active plan: steps 1 to 6 are done, A64's track is done, and `eval-core`
+0.16.2 is published 2026-11-26, then step 7.** Revisions 1 to 4 and the design sessions were committed ahead of
 step 1,
 at the maintainer's request. Revision 3 measured [§ 1.3](#13-mechanism-questions-measured)'s rows on
 the built 0.16.0 bundle, and Revision 4 added two, with eight scripts pinned outside the repository
@@ -1584,6 +1584,9 @@ witness finding 8 turn red. What it measured, and the readings it took:
   "gives that problem alone" is "gives the size problem alone" in the README, the CHANGELOG,
   `@returns`, the plan and the code-reviewer's item 3; and a `pathKey` row pins "ASCII identifier"
   and "UTF-16 code units".
+- **Outcome** (2026-11-22, Revision 7). `evaluateRule` and `evaluateInit`, in 252f618, by "Step 4,
+  as written" above: `eval-rules` 486. The step fixed no register entry and opened A64, E10 and
+  F35. Written by step 6's progress sweep (2026-11-27); the step's own commits wrote none.
 
 ### Step 5 — The trace, and the cost of building it
 
@@ -1787,6 +1790,13 @@ M-6 fixed by step 5's fifth commit; I-1, I-2, I-3 and the other Minors recorded,
 
 I-1, I-2, M-1, M-3, M-4 and M-6 fixed by step 6's first commit (12.6a); M-2, M-5 and M-7 recorded, not fixed.
 
+- **Outcome** (2026-11-27, Revision 7). The run's trace, `RuleTrace` and `RuleTraceEntry`, in six
+  commits, 78e254c, a6f0b27, b83fd90, ca8adf2, ba89ba6 and 3d6ed8f (12.5a to 12.5f): `eval-rules`
+  505. The timing commit (12.5e) measured the names read on every run at +152.08%, 12 of 12
+  positive, a cost, so the fifth commit (12.5f) reads them under `debug` only. The step fixed no
+  register entry and opened A68. Written by step 6's progress sweep (2026-11-27); the step's own
+  commits wrote none.
+
 ### Step 6 — The tests runner and the registry
 
 **Files**: `src/lib/rule-test.ts`, `src/lib/rule-registry.ts`, their specs, the barrel and its
@@ -1949,8 +1959,9 @@ holds no text, so the probe also stores the text in every entry.
 Important finding, and no counterexample to a shipped sentence.
 - M-1, fixed: the row "applies them to every compile: statements on, then off" compiled once per
   registry; it now compiles a second rule on the `statements: true` registry.
-- M-2, recorded, not fixed: in the README's and the CHANGELOG's last sentences, "`compile` throws"
-  names the method two sentences after `compile` names the option; the text was dictated.
+- M-2, fixed by step 6's progress sweep: in the README's and the CHANGELOG's last sentences,
+  "`compile` throws" named the method two sentences after `compile` names the option; they now say
+  `registry.compile` and `registry.invalidate`.
 - M-3, fixed: § 4's step 6 row lacked `compile-rule.ts` (12.6c).
 - M-4, fixed: § 5's step 6 rows lacked `RuleRegistryOptions`, and `RuleTestDifference` since
   12.6b.
@@ -1973,6 +1984,13 @@ Important finding, and no counterexample to a shipped sentence.
   read refreshes recency. *Probe*: key by id alone; the changed-text row goes red.
 - A rule that does not compile is not cached as compiled: a second request for it reports its
   problems again.
+- **Outcome** (2026-11-27, Revision 7). The tests runner, `runRuleTest` with `RuleTest`,
+  `RuleTestResult` and `RuleTestDifference` (12.6b, e947b05), and the registry, `RuleRegistry`
+  with `RuleRegistryOptions` (12.6c, 4200101), by the shapes 12.6a wrote (e9d4cd0): `eval-rules`
+  585. The gate on 4200101: `eval-core` 3566, `eval-signals` 478, `eval-forms` 394 and `demo` 23;
+  doc-links 448 files, 3401 links, 0 dangling; release-tags 57 rows, 67 tags, 0 failing. The step
+  fixed no register entry and opened A69. This bullet is the progress sweep's (2026-11-27), which
+  also fixed 12.6c's M-2.
 
 ### Step 7 — The README
 

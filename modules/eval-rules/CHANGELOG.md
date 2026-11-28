@@ -123,6 +123,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   that hold an own key other than `compile` and `maxEntries`, a symbol or a non-enumerable one
   included, or whose `maxEntries` is not an integer from 1, an `undefined` field being absent,
   and throws what `compileRule` throws for the `compile` options, with `compileRule`'s message.
-  `compile` throws a `TypeError` for a `text` that is not a string or a `version` that is given
-  and is not one, and lets `JSON.parse`'s error through; neither changes an entry. `invalidate`
-  throws a `TypeError` for an `id` that is not a string. Phase 12 step 6.
+  `registry.compile` throws a `TypeError` for a `text` that is not a string or a `version` that
+  is given and is not one, and lets `JSON.parse`'s error through; neither changes an entry.
+  `registry.invalidate` throws a `TypeError` for an `id` that is not a string. Phase 12 step 6.

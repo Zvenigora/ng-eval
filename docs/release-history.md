@@ -115,7 +115,7 @@ unrelated subjects.
 
 ## Plans written and not released
 
-Phase 12's is active, steps 1 to 4 done; no step of Phase 17's has run.
+Phase 12's is active, steps 1 to 6 done; no step of Phase 17's has run.
 
 - [`eval-rules/plan.md`](eval-rules/plan.md) — Phase 12, `@zvenigora/ng-eval-rules` 0.1.0: active.
 - [`eval-template/plan.md`](eval-template/plan.md) — Phase 17, `@zvenigora/ng-eval-template`

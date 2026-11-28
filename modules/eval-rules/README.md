@@ -67,10 +67,10 @@ in place of the id's entry, and the least recently used entry is evicted past
 `TypeError` for options that are not a plain object, that hold an own key other than
 `compile` and `maxEntries`, a symbol or a non-enumerable one included, or whose
 `maxEntries` is not an integer from 1, an `undefined` field being absent, and throws what
-`compileRule` throws for the `compile` options, with `compileRule`'s message. `compile`
-throws a `TypeError` for a `text` that is not a string or a `version` that is given and is
-not one, and lets `JSON.parse`'s error through; neither changes an entry. `invalidate`
-throws a `TypeError` for an `id` that is not a string.
+`compileRule` throws for the `compile` options, with `compileRule`'s message.
+`registry.compile` throws a `TypeError` for a `text` that is not a string or a `version`
+that is given and is not one, and lets `JSON.parse`'s error through; neither changes an
+entry. `registry.invalidate` throws a `TypeError` for an `id` that is not a string.
 
 ## Problem codes
 

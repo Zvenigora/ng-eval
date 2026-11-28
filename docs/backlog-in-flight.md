@@ -8,9 +8,9 @@ that the register's preamble and its entries are read without it. Only its links
 entries changed, from `#a56` to `backlog.md#a56`.
 
 **The [Phase 12 plan](eval-rules/plan.md) is active**, at Revision 7: `@zvenigora/ng-eval-rules`
-0.1.0, a new package. Steps 1 to 4 are done, A64's track is done, and `eval-core` 0.16.2 is
+0.1.0, a new package. Steps 1 to 6 are done, A64's track is done, and `eval-core` 0.16.2 is
 published 2026-11-26, then
-step 5; steps 2 and 3 fixed no entry, and step 3's third follow-up opened [E9](backlog.md#e9),
+step 7; steps 2 and 3 fixed no entry, and step 3's third follow-up opened [E9](backlog.md#e9),
 `compileRule` superlinear in long names, not scheduled. Step 4 fixed no entry and opened three:
 [A64](backlog.md#a64), a write policy asked only at an expression's own writes and its own calls of
 the table's built-ins, so other routes write what it was given, at the fix bar and scheduled before
