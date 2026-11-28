@@ -985,7 +985,7 @@ also lists `docs/backlog-history.md`, whose *Unreleased* row moves with it, and
 | — | [A64](../backlog.md#a64) code fix — done (47f4634) | Separate track (ended 2026-11-25) | `eval-core` 0.16.2 |
 | — | `eval-core` 0.16.2 patch release — published 2026-11-26 | Separate release before step 5 | `eval-core` 0.16.2 |
 | 5 | The trace, and the cost of building it | `rule-trace.ts`, its spec, `performance.spec.ts`, `evaluate-rule.ts`, `rule-result.ts`, `CHANGELOG.md` | `eval-rules` 0.1.0 |
-| 6 | The tests runner and the registry | `rule-test.ts`, `rule-registry.ts`, their specs, the barrel and its specs, `CHANGELOG.md`, the README's `## What it exports`, `evaluate-rule.ts` (12.6b) | `eval-rules` 0.1.0 |
+| 6 | The tests runner and the registry | `rule-test.ts`, `rule-registry.ts`, their specs, the barrel and its specs, `CHANGELOG.md`, the README's `## What it exports`, `evaluate-rule.ts` (12.6b), `compile-rule.ts` (12.6c) | `eval-rules` 0.1.0 |
 | 7 | The README | `modules/eval-rules/README.md`, `readme-examples.spec.ts`, `CHANGELOG.md`, `tools/published-links.txt` | `eval-rules` 0.1.0 |
 | 8 | The demo pages | Under `apps/demo/src/app/`: `features/rules/` (new, three examples and their specs), `use-cases/` (one example and its spec), `registry.ts`, `app.ts`, `app.spec.ts`, `footer.ts`, `footer.spec.ts`; `apps/demo/project.json`; the root `eslint.config.mjs` | No package: the demo ships in none |
 | 9 | The release commit | `modules/eval-rules/package.json`, `CHANGELOG.md` and `README.md` (the demo link), `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root `README.md` and `CHANGELOG.md`, `docs/release-history.md`, `CLAUDE.md` | The release, `eval-rules` 0.1.0 |
@@ -1792,7 +1792,8 @@ I-1, I-2, M-1, M-3, M-4 and M-6 fixed by step 6's first commit (12.6a); M-2, M-5
 **Files**: `src/lib/rule-test.ts`, `src/lib/rule-registry.ts`, their specs, the barrel and its
 specs, `CHANGELOG.md`, and the README's `## What it exports`; 12.6b adds `evaluate-rule.ts`,
 whose `internalsOf` it exports to `rule-test.ts`, and, for A69, `docs/backlog.md`,
-`docs/backlog-history.md` and `docs/backlog-in-flight.md`.
+`docs/backlog-history.md` and `docs/backlog-in-flight.md`; 12.6c adds `compile-rule.ts`, whose
+`readOptions`, `compileWithSettings` and `Settings` it exports to `rule-registry.ts`.
 
 A registry is constructed with its compile options and holds one set. What a compile gives
 depends on them, so a registry that took options per call and keyed by id and text would hand a
@@ -1871,6 +1872,38 @@ third argument, by name, as `evaluateRule`'s input does (§ 8 q22).
 - A value of the result is read as it is compared, so a host getter runs then, and what it throws
   passes through `runRuleTest`.
 
+**12.6c's decisions**, where the shapes leave a reading open:
+- `compile-rule.ts` splits `compileRule` into `readOptions` and `compileWithSettings(rule,
+  settings)`, `compileRule` being `compileWithSettings(rule, readOptions(options))`, and exports
+  both and the `Settings` type to `rule-registry.ts`, not from the barrel; `compileRule`'s
+  behaviour and messages are unchanged. `RuleRegistry` keeps its state in `#` fields, and no
+  member, public or `#`, takes a name that is a key of `SECURITY_ALLOWLIST` in
+  `eval-core`'s `public-api.spec.ts`.
+- The constructor: options `undefined`, or a plain object (`isPlainObject`: prototype
+  `Object.prototype` or `null`), else a `TypeError` naming `RuleRegistry`. Every own key, by
+  `Reflect.ownKeys`, is `compile` or `maxEntries`, else a `TypeError` naming the key and the two.
+  Each field is read once, as an own property; an own field whose value is `undefined` is absent.
+  `maxEntries`: `Number.isInteger` and `>= 1`, else a `TypeError`; default 500. `compile`: passed
+  to `readOptions` once, at construction; its throws (`compileRule`'s, `Error` or `TypeError`,
+  with `compileRule`'s messages) pass through; the `Settings` are kept.
+- `compile(text, version?)`: a `TypeError` naming `RuleRegistry.compile` for a `text` that is not
+  a string, then for a `version` that is not `undefined` and not a string (an empty string is a
+  version). Then `JSON.parse(text)`, whose error passes through. These throws change no entry.
+- The key: the parsed value's own `id`, when the parsed value is a non-null non-array object and
+  that `id` is a string; else no key.
+- Reuse: with a `version`, when the key's entry was stored with the same `version`, the text not
+  compared; without one, when the key's entry was stored without a `version` from the identical
+  string. A reuse moves the entry to most recently used and returns the stored result object.
+- Otherwise `compileWithSettings(parsed, settings)`. A result that is `ok`: the result object and
+  its `problems` array are frozen, `{ result, version, text }`, the text only when there is no
+  `version`, is stored in place of the key's entry as the most recently used, and the least
+  recently used is evicted while the size is over `maxEntries`; it is returned. A result that is
+  not `ok`: the key's entry, if any, is deleted, nothing is stored, and it is returned, not frozen.
+- `invalidate(id)`: a `TypeError` naming `RuleRegistry.invalidate` for an `id` that is not a
+  string; else the entry, if any, is deleted; it returns `undefined`.
+- One `Map` holds both the lookup and the recency (`delete`, then `set`). Nothing else is promised
+  about the order.
+
 Commits: 12.6a, step 5's fifth commit's review and these shapes; 12.6b, `rule-test.ts`; 12.6c,
 `rule-registry.ts`.
 
@@ -1899,6 +1932,32 @@ turned red exactly the rows its prediction names, and every row is red under at 
 - M-1, fixed: `internalsOf`'s missing space after `=`.
 - M-2, recorded, not fixed: `expect.calc` or `expect.labels` as a `Map`, a `Date` or a class
   instance passes the object check and compares nothing; only a JavaScript caller reaches it.
+
+**12.6c's record** (`ng-eval-12.6c.zip`, the pack `m6c`): `rule-registry.ts`, the class
+`RuleRegistry` and the type `RuleRegistryOptions`, exported from the barrel; `compile-rule.ts`
+split into `readOptions` and `compileWithSettings`, exported with `Settings` to
+`rule-registry.ts` only, `compileRule`'s behaviour gated by the existing suite.
+`rule-registry.spec.ts` adds 35 rows, R1 to R35 in `m6c`'s `predictions.txt`: `eval-rules`
+550 → 585, the other four unchanged. Thirty probes, P1 to P30 (`probes.py`, pinned as `P1.patch`
+to `P30.patch` in `probes.sha256`), each applied alone against the whole `eval-rules` suite on the
+final tree; each turned red exactly the rows its prediction names, and every row is red under at
+least one (`probe-table.txt`). P8, a request without a `version` matched by its text alone, is two
+edits of one mechanism: its one-edit form turns no row red, since an entry stored with a `version`
+holds no text, so the probe also stores the text in every entry.
+
+**12.6c's review** (one review, then one fix round, the two-round rule): no Critical and no
+Important finding, and no counterexample to a shipped sentence.
+- M-1, fixed: the row "applies them to every compile: statements on, then off" compiled once per
+  registry; it now compiles a second rule on the `statements: true` registry.
+- M-2, recorded, not fixed: in the README's and the CHANGELOG's last sentences, "`compile` throws"
+  names the method two sentences after `compile` names the option; the text was dictated.
+- M-3, fixed: § 4's step 6 row lacked `compile-rule.ts` (12.6c).
+- M-4, fixed: § 5's step 6 rows lacked `RuleRegistryOptions`, and `RuleTestDifference` since
+  12.6b.
+- Noted, not changed: every rule one registry compiles shares its `Settings`' `functions` and
+  `effects` arrays in its internals, which are only read; a reuse still runs `JSON.parse` on the
+  whole text, and an entry stored without a `version` keeps its text; `CLAUDE.md`'s line on what
+  `eval-rules` exports predates 12.6b, and is outside this commit's files.
 
 **Exit criteria**
 - A test of a rule that calls a declared function passes with the implementation given as the
@@ -2067,8 +2126,8 @@ and what `compileRule` built is not a public field of it (§ 3.8).
 | `defineRule` | Function | 3 |
 | `evaluateRule`, `evaluateInit`, `RuleInput`, `RuleResult`, `RuleEffect`, `RuleStatus` | Functions and types | 4 |
 | `RuleTrace`, `RuleTraceEntry` | Types | 5 |
-| `runRuleTest`, `RuleTest`, `RuleTestResult` | Function and types | 6 |
-| `RuleRegistry` | Class | 6 |
+| `runRuleTest`, `RuleTest`, `RuleTestResult`, `RuleTestDifference` | Function and types | 6 |
+| `RuleRegistry`, `RuleRegistryOptions` | Class and type | 6 |
 
 Shapes § 2 has fixed:
 

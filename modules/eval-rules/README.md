@@ -51,6 +51,27 @@ leaves `given` to `evaluateRule`, which checks no input of an inactive rule. Wha
 throws, and what a value of the result throws as it is compared, passes through; a comparison
 nested deeper than the stack allows throws a `RangeError`.
 
+`RuleRegistry` caches compiled rules by `id`. `new RuleRegistry(options?)` takes a
+`RuleRegistryOptions`, `{ compile?, maxEntries? }`: `compile`, the `CompileRuleOptions`
+every compile uses, checked and copied when the registry is constructed, so a later change
+to that object changes nothing; `maxEntries`, the most rules it holds, an integer from 1,
+500 by default. `registry.compile(text, version?)` takes a rule's JSON text and returns
+what `compileRule(JSON.parse(text), compile)` returns. It returns the stored result, the
+same object, when it holds one for the rule's `id` stored with the same `version`, or,
+without a `version`, stored without one from the same text. A `version` is the caller's
+promise that the text is the same: the text is not compared. A reuse makes the entry the
+most recently used. Any other request compiles: a result with no problems is stored, frozen,
+in place of the id's entry, and the least recently used entry is evicted past
+`maxEntries`; a result with problems is not stored, and removes the id's entry.
+`registry.invalidate(id)` removes the id's entry, if there is one. The constructor throws a
+`TypeError` for options that are not a plain object, that hold an own key other than
+`compile` and `maxEntries`, a symbol or a non-enumerable one included, or whose
+`maxEntries` is not an integer from 1, an `undefined` field being absent, and throws what
+`compileRule` throws for the `compile` options, with `compileRule`'s message. `compile`
+throws a `TypeError` for a `text` that is not a string or a `version` that is given and is
+not one, and lets `JSON.parse`'s error through; neither changes an entry. `invalidate`
+throws a `TypeError` for an `id` that is not a string.
+
 ## Problem codes
 
 For a rule JSON can write, `compileRule` does not throw for the rule's problems: it returns every

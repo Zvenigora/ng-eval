@@ -243,8 +243,25 @@ const PATTERN_MESSAGES: Readonly<Record<InvalidPatternValue['reason'], string>> 
  *   bounds it meets: at its 101st problem it gives its first 100 and one saying there are more;
  *   past 100,000 values it gives the size problem alone
  */
-export const compileRule = (rule: unknown, options?: CompileRuleOptions): CompileRuleResult => {
-  const settings = readOptions(options);
+export const compileRule = (rule: unknown, options?: CompileRuleOptions): CompileRuleResult =>
+  compileWithSettings(rule, readOptions(options));
+
+/**
+ * The options, checked and copied. Exported to `rule-registry.ts`, which reads
+ * them once and compiles with them many times, and not from the barrel.
+ */
+export interface Settings {
+  readonly statements: boolean;
+  readonly colonIdentifiers: boolean;
+  readonly functions: readonly string[];
+  readonly effects: readonly string[];
+}
+
+/**
+ * `compileRule` past its options: checks a rule and compiles it with settings
+ * `readOptions` gave. Exported to `rule-registry.ts`, and not from the barrel.
+ */
+export const compileWithSettings = (rule: unknown, settings: Settings): CompileRuleResult => {
   const compiler = new RuleCompiler(settings);
   const compiled = compiler.compile(rule);
   if (compiler.problems.length > 0 || compiled === undefined) {
@@ -255,15 +272,11 @@ export const compileRule = (rule: unknown, options?: CompileRuleOptions): Compil
   return { ok: true, rule: handle, problems: [] };
 };
 
-interface Settings {
-  readonly statements: boolean;
-  readonly colonIdentifiers: boolean;
-  readonly functions: readonly string[];
-  readonly effects: readonly string[];
-}
-
-/** The options, checked. A mistake here is the caller's code, so it throws. */
-const readOptions = (options: CompileRuleOptions | undefined): Settings => {
+/**
+ * The options, checked. A mistake here is the caller's code, so it throws.
+ * Exported to `rule-registry.ts`, and not from the barrel.
+ */
+export const readOptions = (options: CompileRuleOptions | undefined): Settings => {
   if (options === undefined) {
     return { statements: false, colonIdentifiers: false, functions: [], effects: [] };
   }
