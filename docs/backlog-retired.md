@@ -4395,6 +4395,30 @@ Placed from `ng-eval-0.16.1-fix-b.zip` (SHA-256 26b91124…2701b3), patch a3ebc8
 f644292c…. The published tarball equals the build of that tree file for file, and its `.d.ts` and
 README equal 0.16.0's. Left for the next release: [A66](backlog.md#a66).
 
+<a id="a69"></a>
+## A69 — `runRuleTest`'s comparison recurses once per level of nesting
+
+**Package** rules · **Kind** fix · **Status** **Retired — fixed 2026-11-27** by 12.6e, its own
+commit after the [Phase 12 plan](eval-rules/plan.md)'s step 6, for `eval-rules` 0.1.0; no published
+version had the defect. Opened 2026-11-27 by its step 6, from 12.6b's review (I-2)
+
+`runRuleTest`'s comparison (`rule-test.ts`, `compareValues` and `compareNames`) recursed once per
+level of nesting the expectation and the result share, so a deep enough pair, or a cyclic
+expectation against a cyclic value, threw a `RangeError` from inside the comparison, after
+`evaluateRule` had returned. The README, the CHANGELOG and the JSDoc stated it as "a comparison
+nested deeper than the stack allows throws a `RangeError`". 12.6b's reviewer measured the threshold
+near 2,000 levels on one host, a JSON-parsed expectation against a host fact of the same depth on
+the built bundle: that is its measurement, not this register's, and not a bound.
+
+**The fix** (12.6e): a fixed bound, since the stack's depth moves between hosts. The comparison
+reads values to a depth of 100, a name of `calc` or an item of `effects` being at depth 1, and
+throws its own `RangeError`, naming `runRuleTest` and the path, where it reaches a value the test
+and the result both hold deeper than that; a cycle in both is bounded, not detected. Verified by six rows of
+`eval-rules`' `rule-test.spec.ts` (the plan's step 6, 12.6e's record): the cyclic row, which
+expected any `RangeError` and now expects that message; a pair at depth 100 that passes and one
+that differs there; a pair at depth 101 under `calc`, and one under `effects`, that throw; and a
+name only the test holds at depth 101, a difference. Probes P1 to P5 of 12.6e turn each red.
+
 # B. `eval-core` — security and hygiene
 
 <a id="b1"></a>

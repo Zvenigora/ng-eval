@@ -1,7 +1,7 @@
 # Phase 12 Plan — `@zvenigora/ng-eval-rules` 0.1.0, pure rule evaluation (new module)
 
-**Status: Revision 7, the active plan: steps 1 to 6 are done, A64's track is done, and `eval-core`
-0.16.2 is published 2026-11-26, then step 7.** Revisions 1 to 4 and the design sessions were committed ahead of
+**Status: Revision 7, the active plan: steps 1 to 6 are done, A64's track is done, `eval-core`
+0.16.2 is published 2026-11-26, and A69 is fixed (12.6e), then step 7.** Revisions 1 to 4 and the design sessions were committed ahead of
 step 1,
 at the maintainer's request. Revision 3 measured [§ 1.3](#13-mechanism-questions-measured)'s rows on
 the built 0.16.0 bundle, and Revision 4 added two, with eight scripts pinned outside the repository
@@ -986,6 +986,7 @@ also lists `docs/backlog-history.md`, whose *Unreleased* row moves with it, and
 | — | `eval-core` 0.16.2 patch release — published 2026-11-26 | Separate release before step 5 | `eval-core` 0.16.2 |
 | 5 | The trace, and the cost of building it | `rule-trace.ts`, its spec, `performance.spec.ts`, `evaluate-rule.ts`, `rule-result.ts`, `CHANGELOG.md` | `eval-rules` 0.1.0 |
 | 6 | The tests runner and the registry | `rule-test.ts`, `rule-registry.ts`, their specs, the barrel and its specs, `CHANGELOG.md`, the README's `## What it exports`, `evaluate-rule.ts` (12.6b), `compile-rule.ts` (12.6c) | `eval-rules` 0.1.0 |
+| — | [A69](../backlog-retired.md#a69) fix — 12.6e | `rule-test.ts`, its spec, the README's and `CHANGELOG.md`'s `runRuleTest` sentences, `docs/backlog.md`, `docs/backlog-retired.md`, `docs/backlog-history.md`, `docs/backlog-in-flight.md` | `eval-rules` 0.1.0 |
 | 7 | The README | `modules/eval-rules/README.md`, `readme-examples.spec.ts`, `CHANGELOG.md`, `tools/published-links.txt` | `eval-rules` 0.1.0 |
 | 8 | The demo pages | Under `apps/demo/src/app/`: `features/rules/` (new, three examples and their specs), `use-cases/` (one example and its spec), `registry.ts`, `app.ts`, `app.spec.ts`, `footer.ts`, `footer.spec.ts`; `apps/demo/project.json`; the root `eslint.config.mjs` | No package: the demo ships in none |
 | 9 | The release commit | `modules/eval-rules/package.json`, `CHANGELOG.md` and `README.md` (the demo link), `SECURITY.md`, `CONTRIBUTING.md`, `tools/published-links.txt`, the root `README.md` and `CHANGELOG.md`, `docs/release-history.md`, `CLAUDE.md` | The release, `eval-rules` 0.1.0 |
@@ -1936,7 +1937,7 @@ turned red exactly the rows its prediction names, and every row is red under at 
   such name" claimed more than the comparison does (a `Date` against another `Date`, `{}` against
   a `Map`, an inherited `message`); the CHANGELOG and the JSDoc now state the rule by own
   enumerable string keys, prototype and class not compared.
-- I-2, recorded as [A69](../backlog.md#a69), no code change: the comparison recurses once per
+- I-2, recorded as [A69](../backlog-retired.md#a69), no code change: the comparison recurses once per
   level, so a deep or cyclic pair throws a `RangeError`; stated in the README, the CHANGELOG and the
   JSDoc, and witnessed by the cyclic row, which P30 turns red.
 - M-1, fixed: `internalsOf`'s missing space after `=`.
@@ -1970,6 +1971,35 @@ Important finding, and no counterexample to a shipped sentence.
   whole text, and an entry stored without a `version` keeps its text; `CLAUDE.md`'s line on what
   `eval-rules` exports predates 12.6b, and is outside this commit's files.
 
+**12.6e, A69's fix** (its own commit after the step, before step 7; `ng-eval-12.6e.zip`, the pack
+`m6e`): `rule-test.ts` bounds the comparison at a depth of 100 (`MAX_DEPTH`), a name of `calc` or
+an item of `effects` being at depth 1, and throws a `RangeError` naming `runRuleTest` and the path
+where it reaches a value both sides hold deeper; a cycle is bounded, not detected, and a fixed depth is used,
+never a measured stack threshold. `rule-test.spec.ts`: the cyclic row now expects that message,
+and five rows are added, N1 to N6 in `m6e`'s `predictions.txt` with the cyclic row as N1:
+`eval-rules` 585 → 590, the other four unchanged. Five probes, P1 to P5 (`probes.py`, pinned as
+`P1.patch` to `P5.patch` in `probes.sha256`), each applied alone against the whole `eval-rules`
+suite on 4029cd88, the tree before the review's rewording, which changed comments only; each
+turned red exactly the rows its prediction names, and every row is
+red under at least one (`probe-table.txt`). A69 is retired.
+
+**12.6e's review** (one review, then one fix round, the two-round rule): no Critical.
+- I-1, fixed by rewording, no code change: "throws a `RangeError` where the test and the result
+  both hold a value deeper than that" claimed the throw wherever such a pair exists; measured, a
+  difference the comparison reaches first ends it, so `{ a: 2, b: nest(100, 1) }` under `calc`
+  against `{ a: 1, b: nest(100, 1) }` gives the difference at `calc.a`, and a `skipped` mismatch
+  gives that difference. The README's, the CHANGELOG's and both JSDoc sentences, A69's retired
+  entry, `backlog-in-flight.md` and this record now say it throws where the comparison *reaches*
+  such a value. The rewording changes comments in `rule-test.ts` and no code; the probes ran on the
+  tree before it.
+- M-1, recorded, not fixed: a hole of a sparse array at depth 101 on both sides throws "both hold",
+  though neither side holds a value there; at depth 100 or less a hole compares as `undefined`.
+- M-2, noted, not changed: a cyclic pair listed before a name whose values differ throws, since the
+  comparison is depth-first in the expectation's order; "a cycle included" covers it.
+- M-3, noted, not changed: the README's and the CHANGELOG's "It compares values" follows a sentence
+  whose subject is what `evaluateRule` throws; `runRuleTest` is the paragraph's "It", and the
+  rewording keeps it.
+
 **Exit criteria**
 - A test of a rule that calls a declared function passes with the implementation given as the
   third argument, and throws as `evaluateRule` does when it is missing. *Wrong implementation*: a
@@ -1990,7 +2020,7 @@ Important finding, and no counterexample to a shipped sentence.
   585. The gate on 4200101: `eval-core` 3566, `eval-signals` 478, `eval-forms` 394 and `demo` 23;
   doc-links 448 files, 3401 links, 0 dangling; release-tags 57 rows, 67 tags, 0 failing. The step
   fixed no register entry and opened A69. This bullet is the progress sweep's (2026-11-27), which
-  also fixed 12.6c's M-2.
+  also fixed 12.6c's M-2. A69 was fixed after the step by its own commit, 12.6e: `eval-rules` 590.
 
 ### Step 7 — The README
 

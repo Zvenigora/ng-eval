@@ -62,6 +62,26 @@ const thrown = (attempt: () => unknown): unknown => {
   throw new Error('it did not throw');
 };
 
+/** A `RangeError` with exactly this message. */
+const rangeError = (attempt: () => unknown, message: string): void => {
+  const error = thrown(attempt);
+  expect(error).toBeInstanceOf(RangeError);
+  expect((error as Error).message).toBe(message);
+};
+
+/** `levels` objects `{ n: … }` around `leaf`; `nest(0, leaf)` is `leaf`. */
+const nest = (levels: number, leaf: unknown): unknown => {
+  let value = leaf;
+  for (let level = 0; level < levels; level++) {
+    value = { n: value };
+  }
+  return value;
+};
+
+/** The message of the comparison's depth bound, at `path` (A69). */
+const tooDeep = (path: string): string =>
+  `runRuleTest compares values to a depth of 100 below calc and effects: the test and the result both hold ${path}, deeper than that.`;
+
 /** A `TypeError` with exactly this message. */
 const typeError = (attempt: () => unknown, message: string): void => {
   const error = thrown(attempt);
@@ -355,19 +375,77 @@ describe('runRuleTest: a value of the result is read as it is compared', () => {
   });
 });
 
-describe('runRuleTest: a comparison nested deeper than the stack allows (A69)', () => {
-  it('throws a RangeError for a cyclic expectation against a cyclic fact under the same key', () => {
-    // The comparison recurses once per level both sides share, so a fact that
-    // holds itself, against an expectation that holds itself, never ends. A
-    // depth bound with its own error, A69's candidate fix, turns this row red.
+describe('runRuleTest: the comparison reads to a depth of 100 (A69)', () => {
+  // `calc.d` is at depth 1, so `nest(99, leaf)` there puts `leaf` at 100 and
+  // `nest(100, leaf)` at 101.
+  const deepRule = (): CompiledRule => compiled({ id: 'deep', calculations: [{ name: 'd', value: 'deep' }] });
+  const deepTest = (fact: unknown, expected: unknown): RuleTest => ({
+    ruleId: 'deep',
+    given: { facts: { deep: fact } },
+    expect: { calc: { d: expected } },
+  });
+
+  it('throws a RangeError naming runRuleTest for a cyclic expectation against a cyclic fact under the same key', () => {
     const loop: Record<string, unknown> = {};
     loop['self'] = loop;
     const expected: Record<string, unknown> = {};
     expected['self'] = expected;
     const rule = compiled({ id: 'loop', calculations: [{ name: 'l', value: 'loop' }] });
-    expect(() =>
-      runRuleTest(rule, { ruleId: 'loop', given: { facts: { loop } }, expect: { calc: { l: expected } } })
-    ).toThrow(RangeError);
+    rangeError(
+      () => runRuleTest(rule, { ruleId: 'loop', given: { facts: { loop } }, expect: { calc: { l: expected } } }),
+      tooDeep(`calc.l${'.self'.repeat(100)}`)
+    );
+  });
+
+  it('passes a pair both sides nest to a depth of 100 below calc', () => {
+    const outcome = runRuleTest(deepRule(), deepTest(nest(99, 1), nest(99, 1)));
+    expect(outcome.passed).toBe(true);
+    expect('difference' in outcome).toBe(false);
+  });
+
+  it('gives the difference at a depth of 100', () => {
+    const path = `calc.d${'.n'.repeat(99)}`;
+    expect(runRuleTest(deepRule(), deepTest(nest(99, 2), nest(99, 1))).difference).toEqual({
+      path,
+      message: `${path} is not the value the test expects.`,
+      expected: 1,
+      actual: 2,
+    });
+  });
+
+  it('throws where both sides hold a value at a depth of 101 below calc', () => {
+    rangeError(() => runRuleTest(deepRule(), deepTest(nest(100, 1), nest(100, 1))), tooDeep(`calc.d${'.n'.repeat(100)}`));
+  });
+
+  it('counts an item of effects as depth 1, and throws at 101', () => {
+    // `effects[0]` is at 1, its `args` at 2 and `args[1]` at 3, so `nest(98, 1)`
+    // there puts its leaf at 101.
+    const rule = compiled(
+      {
+        id: 'deepEffect',
+        decisions: [{ name: 'go', cases: [{ value: 'yes' }] }],
+        outputs: [{ on: { decision: 'go', is: 'yes' }, items: ['setValue("d", deep)'] }],
+      },
+      EFFECTS
+    );
+    rangeError(
+      () =>
+        runRuleTest(rule, {
+          ruleId: 'deepEffect',
+          given: { facts: { deep: nest(98, 1) } },
+          expect: { effects: [{ name: 'setValue', args: ['d', nest(98, 1)] }] },
+        }),
+      tooDeep(`effects[0].args[1]${'.n'.repeat(98)}`)
+    );
+  });
+
+  it('gives a difference, not a throw, where only the test holds a name at a depth of 101', () => {
+    const path = `calc.d${'.n'.repeat(99)}.x`;
+    expect(runRuleTest(deepRule(), deepTest(nest(99, {}), nest(99, { x: 1 }))).difference).toEqual({
+      path,
+      message: `The result has no ${path}, which the test expects.`,
+      expected: 1,
+    });
   });
 });
 

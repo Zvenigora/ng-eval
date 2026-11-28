@@ -48,8 +48,10 @@ not define, a symbol or a non-enumerable one included, or inherits a field; and 
 whose `calc` or `labels` is not such an object, whose `effects` is not an array or whose `skipped`
 is not a boolean, an `undefined` field being absent. It checks nothing those fields hold, and
 leaves `given` to `evaluateRule`, which checks no input of an inactive rule. What `evaluateRule`
-throws, and what a value of the result throws as it is compared, passes through; a comparison
-nested deeper than the stack allows throws a `RangeError`.
+throws, and what a value of the result throws as it is compared, passes through. It compares
+values to a depth of 100, a name of `calc` or an item of `effects` being at depth 1, and throws a
+`RangeError` where it reaches a value the test and the result both hold deeper than that, a cycle
+included.
 
 `RuleRegistry` caches compiled rules by `id`. `new RuleRegistry(options?)` takes a
 `RuleRegistryOptions`, `{ compile?, maxEntries? }`: `compile`, the `CompileRuleOptions`

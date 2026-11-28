@@ -104,8 +104,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   is not an array or whose `skipped` is not a boolean, an `undefined` field being absent. It
   checks nothing those fields hold, and leaves `given` to `evaluateRule`, which checks no
   input of an inactive rule. What `evaluateRule` throws, and what a value of the result throws
-  as it is compared, passes through; a comparison nested deeper than the stack allows throws a
-  `RangeError` ([A69](../../docs/backlog.md#a69)). Phase 12 step 6.
+  as it is compared, passes through. It compares values to a depth of 100, a name of `calc` or
+  an item of `effects` being at depth 1, and throws a `RangeError` where it reaches a value the
+  test and the result both hold deeper than that, a cycle included. Phase 12 step 6.
 - **The registry: `RuleRegistry`.** `RuleRegistry` caches compiled rules by `id`, under one set
   of compile options. `new RuleRegistry(options?)` takes a `RuleRegistryOptions`,
   `{ compile?, maxEntries? }`: `compile`, the `CompileRuleOptions` every compile uses, checked

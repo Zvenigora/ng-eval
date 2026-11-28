@@ -66,6 +66,13 @@ const TEST_KEYS: readonly string[] = ['ruleId', 'given', 'expect'];
 const GIVEN_KEYS: readonly string[] = ['facts', 'event'];
 const EXPECT_KEYS: readonly string[] = ['calc', 'labels', 'effects', 'skipped'];
 
+/**
+ * How deep the comparison reads (A69): a name of `calc` or an item of
+ * `effects` is at depth 1. A fixed bound, since the stack's depth moves
+ * between hosts.
+ */
+const MAX_DEPTH = 100;
+
 const isRecord = (value: unknown): value is object =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -141,15 +148,21 @@ const listed = (value: object, key: string): boolean => Object.prototype.propert
 /**
  * The expectation's names, in its order, each against the result's: a name
  * the result does not list is a difference whose `actual` is absent. The
- * result's other names are not compared here.
+ * result's other names are not compared here. `depth` is the two objects'
+ * own, so their values are at `depth + 1`.
  */
-const compareNames = (expected: object, actual: object, path: string): RuleTestDifference | undefined => {
+const compareNames = (
+  expected: object,
+  actual: object,
+  path: string,
+  depth: number
+): RuleTestDifference | undefined => {
   for (const key of Object.keys(expected)) {
     const want = (expected as Record<string, unknown>)[key];
     if (!listed(actual, key)) {
       return difference(`${path}${segment(key)}`, { value: want }, undefined);
     }
-    const found = compareValues(want, (actual as Record<string, unknown>)[key], `${path}${segment(key)}`);
+    const found = compareValues(want, (actual as Record<string, unknown>)[key], `${path}${segment(key)}`, depth + 1);
     if (found !== undefined) {
       return found;
     }
@@ -165,11 +178,21 @@ const compareNames = (expected: object, actual: object, path: string): RuleTestD
  * others, whose `expected` is absent; and anything else by `===`. A value's
  * prototype and class are not compared, and a name it inherits is not one of
  * its keys. A value of the result is read as it is compared, so a getter runs
- * then, and what it throws passes through. It recurses once per level both
- * sides share, so a comparison nested deeper than the stack allows throws a
- * `RangeError` (A69).
+ * then, and what it throws passes through. `depth` is the values': a name of
+ * `calc` or an item of `effects` is at 1. Where it reaches a value both sides
+ * hold deeper than `MAX_DEPTH`, a cycle included, it throws a `RangeError` (A69).
  */
-const compareValues = (expected: unknown, actual: unknown, path: string): RuleTestDifference | undefined => {
+const compareValues = (
+  expected: unknown,
+  actual: unknown,
+  path: string,
+  depth: number
+): RuleTestDifference | undefined => {
+  if (depth > MAX_DEPTH) {
+    throw new RangeError(
+      `${CALLER} compares values to a depth of ${MAX_DEPTH} below calc and effects: the test and the result both hold ${path}, deeper than that.`
+    );
+  }
   if (Array.isArray(expected) && Array.isArray(actual)) {
     const length = Math.max(expected.length, actual.length);
     for (let index = 0; index < length; index++) {
@@ -180,7 +203,7 @@ const compareValues = (expected: unknown, actual: unknown, path: string): RuleTe
       if (index >= expected.length) {
         return difference(at, undefined, { value: actual[index] });
       }
-      const found = compareValues(expected[index], actual[index], at);
+      const found = compareValues(expected[index], actual[index], at, depth + 1);
       if (found !== undefined) {
         return found;
       }
@@ -188,7 +211,7 @@ const compareValues = (expected: unknown, actual: unknown, path: string): RuleTe
     return undefined;
   }
   if (isRecord(expected) && isRecord(actual)) {
-    const found = compareNames(expected, actual, path);
+    const found = compareNames(expected, actual, path, depth);
     if (found !== undefined) {
       return found;
     }
@@ -215,14 +238,14 @@ const compare = (expected: Record<string, unknown>, result: RuleResult): RuleTes
   }
   for (const key of ['calc', 'labels'] as const) {
     if (Object.prototype.hasOwnProperty.call(expected, key)) {
-      const found = compareNames(expected[key] as object, result[key], key);
+      const found = compareNames(expected[key] as object, result[key], key, 0);
       if (found !== undefined) {
         return found;
       }
     }
   }
   if (Object.prototype.hasOwnProperty.call(expected, 'effects')) {
-    return compareValues(expected['effects'], result.effects, 'effects');
+    return compareValues(expected['effects'], result.effects, 'effects', 0);
   }
   return undefined;
 };
@@ -250,8 +273,10 @@ const compare = (expected: Record<string, unknown>, result: RuleResult): RuleTes
  *   `labels` is not an object, whose `effects` is not an array, or whose
  *   `skipped` is not a boolean; and for a test whose `ruleId` is not the rule's
  *   `id`, an `undefined` field being absent. What `evaluateRule` throws, and
- *   what a value of the result throws as it is compared, passes through; a
- *   comparison nested deeper than the stack allows throws a `RangeError`.
+ *   what a value of the result throws as it is compared, passes through.
+ * @throws RangeError where the comparison reaches a value the test and the
+ *   result both hold at a depth over 100, a name of `calc` or an item of
+ *   `effects` being at depth 1, a cycle included.
  */
 export const runRuleTest = (
   rule: CompiledRule,
